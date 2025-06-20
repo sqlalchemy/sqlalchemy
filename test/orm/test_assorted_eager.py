@@ -6,6 +6,7 @@ These are generally very old 0.1-era tests and at some point should
 be cleaned up and modernized.
 
 """
+
 import datetime
 
 import sqlalchemy as sa

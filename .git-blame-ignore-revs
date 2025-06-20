@@ -8,3 +8,4 @@
 1e1a38e7801f410f244e4bbb44ec795ae152e04e  # initial blackification
 1e278de4cc9a4181e0747640a960e80efcea1ca9  # follow up mass style changes
 058c230cea83811c3bebdd8259988c5c501f4f7e  # Update black to v23.3.0 and flake8 to v6
+9b153ff18f12eab7b74a20ce53538666600f8bbf  # Update black to 24.1.1

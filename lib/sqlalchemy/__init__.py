@@ -1,5 +1,5 @@
-# sqlalchemy/__init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# __init__.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -47,15 +47,12 @@ from .engine import URL as URL
 from .inspection import inspect as inspect
 from .pool import AssertionPool as AssertionPool
 from .pool import AsyncAdaptedQueuePool as AsyncAdaptedQueuePool
-from .pool import (
-    FallbackAsyncAdaptedQueuePool as FallbackAsyncAdaptedQueuePool,
-)
 from .pool import NullPool as NullPool
 from .pool import Pool as Pool
 from .pool import PoolProxiedConnection as PoolProxiedConnection
 from .pool import PoolResetState as PoolResetState
 from .pool import QueuePool as QueuePool
-from .pool import SingletonThreadPool as SingleonThreadPool
+from .pool import SingletonThreadPool as SingletonThreadPool
 from .pool import StaticPool as StaticPool
 from .schema import BaseDDLElement as BaseDDLElement
 from .schema import BLANK_SCHEMA as BLANK_SCHEMA
@@ -249,6 +246,7 @@ from .types import LargeBinary as LargeBinary
 from .types import NCHAR as NCHAR
 from .types import NUMERIC as NUMERIC
 from .types import Numeric as Numeric
+from .types import NumericCommon as NumericCommon
 from .types import NVARCHAR as NVARCHAR
 from .types import PickleType as PickleType
 from .types import REAL as REAL
@@ -269,13 +267,11 @@ from .types import Uuid as Uuid
 from .types import VARBINARY as VARBINARY
 from .types import VARCHAR as VARCHAR
 
-__version__ = "2.0.22"
+__version__ = "2.1.0b1"
 
 
 def __go(lcls: Any) -> None:
-    from . import util as _sa_util
-
-    _sa_util.preloaded.import_prefix("sqlalchemy")
+    _util.preloaded.import_prefix("sqlalchemy")
 
     from . import exc
 

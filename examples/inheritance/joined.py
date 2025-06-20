@@ -1,4 +1,5 @@
 """Joined-table (table-per-subclass) inheritance example."""
+
 from __future__ import annotations
 
 from typing import Annotated

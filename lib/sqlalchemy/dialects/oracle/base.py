@@ -1,5 +1,5 @@
-# oracle/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/oracle/base.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,8 +9,7 @@
 
 r"""
 .. dialect:: oracle
-    :name: Oracle
-    :full_support: 18c
+    :name: Oracle Database
     :normal_support: 11+
     :best_effort: 9+
 
@@ -18,21 +17,24 @@ r"""
 Auto Increment Behavior
 -----------------------
 
-SQLAlchemy Table objects which include integer primary keys are usually
-assumed to have "autoincrementing" behavior, meaning they can generate their
-own primary key values upon INSERT. For use within Oracle, two options are
-available, which are the use of IDENTITY columns (Oracle 12 and above only)
-or the association of a SEQUENCE with the column.
+SQLAlchemy Table objects which include integer primary keys are usually assumed
+to have "autoincrementing" behavior, meaning they can generate their own
+primary key values upon INSERT. For use within Oracle Database, two options are
+available, which are the use of IDENTITY columns (Oracle Database 12 and above
+only) or the association of a SEQUENCE with the column.
 
-Specifying GENERATED AS IDENTITY (Oracle 12 and above)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Specifying GENERATED AS IDENTITY (Oracle Database 12 and above)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Starting from version 12 Oracle can make use of identity columns using
-the :class:`_sql.Identity` to specify the autoincrementing behavior::
+Starting from version 12, Oracle Database can make use of identity columns
+using the :class:`_sql.Identity` to specify the autoincrementing behavior::
 
-    t = Table('mytable', metadata,
-        Column('id', Integer, Identity(start=3), primary_key=True),
-        Column(...), ...
+    t = Table(
+        "mytable",
+        metadata,
+        Column("id", Integer, Identity(start=3), primary_key=True),
+        Column(...),
+        ...,
     )
 
 The CREATE TABLE for the above :class:`_schema.Table` object would be:
@@ -47,35 +49,51 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
 
 The :class:`_schema.Identity` object support many options to control the
 "autoincrementing" behavior of the column, like the starting value, the
-incrementing value, etc.
-In addition to the standard options, Oracle supports setting
-:paramref:`_schema.Identity.always` to ``None`` to use the default
-generated mode, rendering GENERATED AS IDENTITY in the DDL. It also supports
-setting :paramref:`_schema.Identity.on_null` to ``True`` to specify ON NULL
-in conjunction with a 'BY DEFAULT' identity column.
+incrementing value, etc.  In addition to the standard options, Oracle Database
+supports setting :paramref:`_schema.Identity.always` to ``None`` to use the
+default generated mode, rendering GENERATED AS IDENTITY in the DDL.  Oracle
+Database also supports two custom options specified using dialect kwargs:
 
-Using a SEQUENCE (all Oracle versions)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* ``oracle_on_null``: when set to ``True`` renders ``ON NULL`` in conjunction
+  with a 'BY DEFAULT' identity column.
+* ``oracle_order``: when ``True``, renders the ORDER keyword, indicating the
+  identity is definitively ordered. May be necessary to provide deterministic
+  ordering using Oracle Real Application Clusters (RAC).
 
-Older version of Oracle had no "autoincrement"
-feature, SQLAlchemy relies upon sequences to produce these values.   With the
-older Oracle versions, *a sequence must always be explicitly specified to
-enable autoincrement*.  This is divergent with the majority of documentation
-examples which assume the usage of an autoincrement-capable database.   To
-specify sequences, use the sqlalchemy.schema.Sequence object which is passed
-to a Column construct::
+Using a SEQUENCE (all Oracle Database versions)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  t = Table('mytable', metadata,
-        Column('id', Integer, Sequence('id_seq', start=1), primary_key=True),
-        Column(...), ...
+Older version of Oracle Database had no "autoincrement" feature: SQLAlchemy
+relies upon sequences to produce these values.  With the older Oracle Database
+versions, *a sequence must always be explicitly specified to enable
+autoincrement*.  This is divergent with the majority of documentation examples
+which assume the usage of an autoincrement-capable database.  To specify
+sequences, use the sqlalchemy.schema.Sequence object which is passed to a
+Column construct::
+
+  t = Table(
+      "mytable",
+      metadata,
+      Column("id", Integer, Sequence("id_seq", start=1), primary_key=True),
+      Column(...),
+      ...,
   )
 
 This step is also required when using table reflection, i.e. autoload_with=engine::
 
-  t = Table('mytable', metadata,
-        Column('id', Integer, Sequence('id_seq', start=1), primary_key=True),
-        autoload_with=engine
+  t = Table(
+      "mytable",
+      metadata,
+      Column("id", Integer, Sequence("id_seq", start=1), primary_key=True),
+      autoload_with=engine,
   )
+
+In addition to the standard options, Oracle Database supports the following
+custom option specified using dialect kwargs:
+
+* ``oracle_order``: when ``True``, renders the ORDER keyword, indicating the
+  sequence is definitively ordered. May be necessary to provide deterministic
+  ordering using Oracle RAC.
 
 .. versionchanged::  1.4   Added :class:`_schema.Identity` construct
    in a :class:`_schema.Column` to specify the option of an autoincrementing
@@ -86,21 +104,18 @@ This step is also required when using table reflection, i.e. autoload_with=engin
 Transaction Isolation Level / Autocommit
 ----------------------------------------
 
-The Oracle database supports "READ COMMITTED" and "SERIALIZABLE" modes of
-isolation. The AUTOCOMMIT isolation level is also supported by the cx_Oracle
-dialect.
+Oracle Database supports "READ COMMITTED" and "SERIALIZABLE" modes of
+isolation. The AUTOCOMMIT isolation level is also supported by the
+python-oracledb and cx_Oracle dialects.
 
 To set using per-connection execution options::
 
     connection = engine.connect()
-    connection = connection.execution_options(
-        isolation_level="AUTOCOMMIT"
-    )
+    connection = connection.execution_options(isolation_level="AUTOCOMMIT")
 
-For ``READ COMMITTED`` and ``SERIALIZABLE``, the Oracle dialect sets the
-level at the session level using ``ALTER SESSION``, which is reverted back
-to its default setting when the connection is returned to the connection
-pool.
+For ``READ COMMITTED`` and ``SERIALIZABLE``, the Oracle Database dialects sets
+the level at the session level using ``ALTER SESSION``, which is reverted back
+to its default setting when the connection is returned to the connection pool.
 
 Valid values for ``isolation_level`` include:
 
@@ -110,37 +125,26 @@ Valid values for ``isolation_level`` include:
 
 .. note:: The implementation for the
    :meth:`_engine.Connection.get_isolation_level` method as implemented by the
-   Oracle dialect necessarily forces the start of a transaction using the
-   Oracle LOCAL_TRANSACTION_ID function; otherwise no level is normally
-   readable.
+   Oracle Database dialects necessarily force the start of a transaction using the
+   Oracle Database DBMS_TRANSACTION.LOCAL_TRANSACTION_ID function; otherwise no
+   level is normally readable.
 
    Additionally, the :meth:`_engine.Connection.get_isolation_level` method will
    raise an exception if the ``v$transaction`` view is not available due to
-   permissions or other reasons, which is a common occurrence in Oracle
+   permissions or other reasons, which is a common occurrence in Oracle Database
    installations.
 
-   The cx_Oracle dialect attempts to call the
+   The python-oracledb and cx_Oracle dialects attempt to call the
    :meth:`_engine.Connection.get_isolation_level` method when the dialect makes
    its first connection to the database in order to acquire the
    "default"isolation level.  This default level is necessary so that the level
    can be reset on a connection after it has been temporarily modified using
-   :meth:`_engine.Connection.execution_options` method.   In the common event
+   :meth:`_engine.Connection.execution_options` method.  In the common event
    that the :meth:`_engine.Connection.get_isolation_level` method raises an
    exception due to ``v$transaction`` not being readable as well as any other
    database-related failure, the level is assumed to be "READ COMMITTED".  No
    warning is emitted for this initial first-connect condition as it is
    expected to be a common restriction on Oracle databases.
-
-.. versionadded:: 1.3.16 added support for AUTOCOMMIT to the cx_oracle dialect
-   as well as the notion of a default isolation level
-
-.. versionadded:: 1.3.21 Added support for SERIALIZABLE as well as live
-   reading of the isolation level.
-
-.. versionchanged:: 1.3.22 In the event that the default isolation
-   level cannot be read due to permissions on the v$transaction view as
-   is common in Oracle installations, the default isolation level is hardcoded
-   to "READ COMMITTED" which was the behavior prior to 1.3.21.
 
 .. seealso::
 
@@ -149,56 +153,192 @@ Valid values for ``isolation_level`` include:
 Identifier Casing
 -----------------
 
-In Oracle, the data dictionary represents all case insensitive identifier
-names using UPPERCASE text.   SQLAlchemy on the other hand considers an
-all-lower case identifier name to be case insensitive.   The Oracle dialect
-converts all case insensitive identifiers to and from those two formats during
-schema level communication, such as reflection of tables and indexes.   Using
-an UPPERCASE name on the SQLAlchemy side indicates a case sensitive
-identifier, and SQLAlchemy will quote the name - this will cause mismatches
-against data dictionary data received from Oracle, so unless identifier names
-have been truly created as case sensitive (i.e. using quoted names), all
-lowercase names should be used on the SQLAlchemy side.
+In Oracle Database, the data dictionary represents all case insensitive
+identifier names using UPPERCASE text.  This is in contradiction to the
+expectations of SQLAlchemy, which assume a case insensitive name is represented
+as lowercase text.
+
+As an example of case insensitive identifier names, consider the following table:
+
+.. sourcecode:: sql
+
+    CREATE TABLE MyTable (Identifier INTEGER PRIMARY KEY)
+
+If you were to ask Oracle Database for information about this table, the
+table name would be reported as ``MYTABLE`` and the column name would
+be reported as ``IDENTIFIER``.    Compare to most other databases such as
+PostgreSQL and MySQL which would report these names as ``mytable`` and
+``identifier``.   The names are **not quoted, therefore are case insensitive**.
+The special casing of ``MyTable`` and ``Identifier`` would only be maintained
+if they were quoted in the table definition:
+
+.. sourcecode:: sql
+
+    CREATE TABLE "MyTable" ("Identifier" INTEGER PRIMARY KEY)
+
+When constructing a SQLAlchemy :class:`.Table` object, **an all lowercase name
+is considered to be case insensitive**.   So the following table assumes
+case insensitive names::
+
+    Table("mytable", metadata, Column("identifier", Integer, primary_key=True))
+
+Whereas when mixed case or UPPERCASE names are used, case sensitivity is
+assumed::
+
+    Table("MyTable", metadata, Column("Identifier", Integer, primary_key=True))
+
+A similar situation occurs at the database driver level when emitting a
+textual SQL SELECT statement and looking at column names in the DBAPI
+``cursor.description`` attribute.  A database like PostgreSQL will normalize
+case insensitive names to be lowercase::
+
+    >>> pg_engine = create_engine("postgresql://scott:tiger@localhost/test")
+    >>> pg_connection = pg_engine.connect()
+    >>> result = pg_connection.exec_driver_sql("SELECT 1 AS SomeName")
+    >>> result.cursor.description
+    (Column(name='somename', type_code=23),)
+
+Whereas Oracle normalizes them to UPPERCASE::
+
+    >>> oracle_engine = create_engine("oracle+oracledb://scott:tiger@oracle18c/xe")
+    >>> oracle_connection = oracle_engine.connect()
+    >>> result = oracle_connection.exec_driver_sql(
+    ...     "SELECT 1 AS SomeName FROM DUAL"
+    ... )
+    >>> result.cursor.description
+    [('SOMENAME', <DbType DB_TYPE_NUMBER>, 127, None, 0, -127, True)]
+
+In order to achieve cross-database parity for the two cases of a. table
+reflection and b. textual-only SQL statement round trips, SQLAlchemy performs a step
+called **name normalization** when using the Oracle dialect.  This process may
+also apply to other third party dialects that have similar UPPERCASE handling
+of case insensitive names.
+
+When using name normalization, SQLAlchemy attempts to detect if a name is
+case insensitive by checking if all characters are UPPERCASE letters only;
+if so, then it assumes this is a case insensitive name and is delivered as
+a lowercase name.
+
+For table reflection, a tablename that is seen represented as all UPPERCASE
+in Oracle Database's catalog tables will be assumed to have a case insensitive
+name.  This is what allows the ``Table`` definition to use lower case names
+and be equally compatible from a reflection point of view on Oracle Database
+and all other databases such as PostgreSQL and MySQL::
+
+    # matches a table created with CREATE TABLE mytable
+    Table("mytable", metadata, autoload_with=some_engine)
+
+Above, the all lowercase name ``"mytable"`` is case insensitive; it will match
+a table reported by PostgreSQL as ``"mytable"`` and a table reported by
+Oracle as ``"MYTABLE"``.  If name normalization were not present, it would
+not be possible for the above :class:`.Table` definition to be introspectable
+in a cross-database way, since we are dealing with a case insensitive name
+that is not reported by each database in the same way.
+
+Case sensitivity can be forced on in this case, such as if we wanted to represent
+the quoted tablename ``"MYTABLE"`` with that exact casing, most simply by using
+that casing directly, which will be seen as a case sensitive name::
+
+    # matches a table created with CREATE TABLE "MYTABLE"
+    Table("MYTABLE", metadata, autoload_with=some_engine)
+
+For the unusual case of a quoted all-lowercase name, the :class:`.quoted_name`
+construct may be used::
+
+    from sqlalchemy import quoted_name
+
+    # matches a table created with CREATE TABLE "mytable"
+    Table(
+        quoted_name("mytable", quote=True), metadata, autoload_with=some_engine
+    )
+
+Name normalization also takes place when handling result sets from **purely
+textual SQL strings**, that have no other :class:`.Table` or :class:`.Column`
+metadata associated with them. This includes SQL strings executed using
+:meth:`.Connection.exec_driver_sql` and SQL strings executed using the
+:func:`.text` construct which do not include :class:`.Column` metadata.
+
+Returning to the Oracle Database SELECT statement, we see that even though
+``cursor.description`` reports the column name as ``SOMENAME``, SQLAlchemy
+name normalizes this to ``somename``::
+
+    >>> oracle_engine = create_engine("oracle+oracledb://scott:tiger@oracle18c/xe")
+    >>> oracle_connection = oracle_engine.connect()
+    >>> result = oracle_connection.exec_driver_sql(
+    ...     "SELECT 1 AS SomeName FROM DUAL"
+    ... )
+    >>> result.cursor.description
+    [('SOMENAME', <DbType DB_TYPE_NUMBER>, 127, None, 0, -127, True)]
+    >>> result.keys()
+    RMKeyView(['somename'])
+
+The single scenario where the above behavior produces inaccurate results
+is when using an all-uppercase, quoted name.  SQLAlchemy has no way to determine
+that a particular name in ``cursor.description`` was quoted, and is therefore
+case sensitive, or was not quoted, and should be name normalized::
+
+    >>> result = oracle_connection.exec_driver_sql(
+    ...     'SELECT 1 AS "SOMENAME" FROM DUAL'
+    ... )
+    >>> result.cursor.description
+    [('SOMENAME', <DbType DB_TYPE_NUMBER>, 127, None, 0, -127, True)]
+    >>> result.keys()
+    RMKeyView(['somename'])
+
+For this exact scenario, SQLAlchemy offers the :paramref:`.Connection.execution_options.driver_column_names`
+execution options, which turns off name normalize for result sets::
+
+    >>> result = oracle_connection.exec_driver_sql(
+    ...     'SELECT 1 AS "SOMENAME" FROM DUAL',
+    ...     execution_options={"driver_column_names": True},
+    ... )
+    >>> result.keys()
+    RMKeyView(['SOMENAME'])
+
+.. versionadded:: 2.1 Added the :paramref:`.Connection.execution_options.driver_column_names`
+   execution option
+
 
 .. _oracle_max_identifier_lengths:
 
-Max Identifier Lengths
-----------------------
+Maximum Identifier Lengths
+--------------------------
 
-Oracle has changed the default max identifier length as of Oracle Server
-version 12.2.   Prior to this version, the length was 30, and for 12.2 and
-greater it is now 128.   This change impacts SQLAlchemy in the area of
-generated SQL label names as well as the generation of constraint names,
-particularly in the case where the constraint naming convention feature
-described at :ref:`constraint_naming_conventions` is being used.
+SQLAlchemy is sensitive to the maximum identifier length supported by Oracle
+Database. This affects generated SQL label names as well as the generation of
+constraint names, particularly in the case where the constraint naming
+convention feature described at :ref:`constraint_naming_conventions` is being
+used.
 
-To assist with this change and others, Oracle includes the concept of a
-"compatibility" version, which is a version number that is independent of the
-actual server version in order to assist with migration of Oracle databases,
-and may be configured within the Oracle server itself. This compatibility
-version is retrieved using the query  ``SELECT value FROM v$parameter WHERE
-name = 'compatible';``.   The SQLAlchemy Oracle dialect, when tasked with
-determining the default max identifier length, will attempt to use this query
-upon first connect in order to determine the effective compatibility version of
-the server, which determines what the maximum allowed identifier length is for
-the server.  If the table is not available, the  server version information is
-used instead.
-
-As of SQLAlchemy 1.4, the default max identifier length for the Oracle dialect
-is 128 characters.  Upon first connect, the compatibility version is detected
-and if it is less than Oracle version 12.2, the max identifier length is
-changed to be 30 characters.  In all cases, setting the
+Oracle Database 12.2 increased the default maximum identifier length from 30 to
+128. As of SQLAlchemy 1.4, the default maximum identifier length for the Oracle
+dialects is 128 characters.  Upon first connection, the maximum length actually
+supported by the database is obtained. In all cases, setting the
 :paramref:`_sa.create_engine.max_identifier_length` parameter will bypass this
 change and the value given will be used as is::
 
     engine = create_engine(
-        "oracle+cx_oracle://scott:tiger@oracle122",
-        max_identifier_length=30)
+        "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1",
+        max_identifier_length=30,
+    )
+
+If :paramref:`_sa.create_engine.max_identifier_length` is not set, the oracledb
+dialect internally uses the ``max_identifier_length`` attribute available on
+driver connections since python-oracledb version 2.5. When using an older
+driver version, or using the cx_Oracle dialect, SQLAlchemy will instead attempt
+to use the query ``SELECT value FROM v$parameter WHERE name = 'compatible'``
+upon first connect in order to determine the effective compatibility version of
+the database. The "compatibility" version is a version number that is
+independent of the actual database version. It is used to assist database
+migration. It is configured by an Oracle Database initialization parameter. The
+compatibility version then determines the maximum allowed identifier length for
+the database. If the V$ view is not available, the database version information
+is used instead.
 
 The maximum identifier length comes into play both when generating anonymized
 SQL labels in SELECT statements, but more crucially when generating constraint
 names from a naming convention.  It is this area that has created the need for
-SQLAlchemy to change this default conservatively.   For example, the following
+SQLAlchemy to change this default conservatively.  For example, the following
 naming convention produces two very different constraint names based on the
 identifier length::
 
@@ -230,68 +370,71 @@ identifier length::
     oracle_dialect = oracle.dialect(max_identifier_length=30)
     print(CreateIndex(ix).compile(dialect=oracle_dialect))
 
-With an identifier length of 30, the above CREATE INDEX looks like::
+With an identifier length of 30, the above CREATE INDEX looks like:
+
+.. sourcecode:: sql
 
     CREATE INDEX ix_some_column_name_1s_70cd ON t
     (some_column_name_1, some_column_name_2, some_column_name_3)
 
-However with length=128, it becomes::
+However with length of 128, it becomes::
+
+.. sourcecode:: sql
 
     CREATE INDEX ix_some_column_name_1some_column_name_2some_column_name_3 ON t
     (some_column_name_1, some_column_name_2, some_column_name_3)
 
-Applications which have run versions of SQLAlchemy prior to 1.4 on an  Oracle
-server version 12.2 or greater are therefore subject to the scenario of a
+Applications which have run versions of SQLAlchemy prior to 1.4 on Oracle
+Database version 12.2 or greater are therefore subject to the scenario of a
 database migration that wishes to "DROP CONSTRAINT" on a name that was
 previously generated with the shorter length.  This migration will fail when
 the identifier length is changed without the name of the index or constraint
 first being adjusted.  Such applications are strongly advised to make use of
-:paramref:`_sa.create_engine.max_identifier_length`
-in order to maintain control
-of the generation of truncated names, and to fully review and test all database
-migrations in a staging environment when changing this value to ensure that the
-impact of this change has been mitigated.
+:paramref:`_sa.create_engine.max_identifier_length` in order to maintain
+control of the generation of truncated names, and to fully review and test all
+database migrations in a staging environment when changing this value to ensure
+that the impact of this change has been mitigated.
 
-.. versionchanged:: 1.4 the default max_identifier_length for Oracle is 128
-   characters, which is adjusted down to 30 upon first connect if an older
-   version of Oracle server (compatibility version < 12.2) is detected.
+.. versionchanged:: 1.4 the default max_identifier_length for Oracle Database
+   is 128 characters, which is adjusted down to 30 upon first connect if the
+   Oracle Database, or its compatibility setting, are lower than version 12.2.
 
 
 LIMIT/OFFSET/FETCH Support
 --------------------------
 
-Methods like :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` make
-use of ``FETCH FIRST N ROW / OFFSET N ROWS`` syntax assuming
-Oracle 12c or above, and assuming the SELECT statement is not embedded within
-a compound statement like UNION.  This syntax is also available directly by using
-the :meth:`_sql.Select.fetch` method.
+Methods like :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` make use
+of ``FETCH FIRST N ROW / OFFSET N ROWS`` syntax assuming Oracle Database 12c or
+above, and assuming the SELECT statement is not embedded within a compound
+statement like UNION.  This syntax is also available directly by using the
+:meth:`_sql.Select.fetch` method.
 
-.. versionchanged:: 2.0  the Oracle dialect now uses
-   ``FETCH FIRST N ROW / OFFSET N ROWS`` for all
-   :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` usage including
-   within the ORM and legacy :class:`_orm.Query`.  To force the legacy
-   behavior using window functions, specify the ``enable_offset_fetch=False``
-   dialect parameter to :func:`_sa.create_engine`.
+.. versionchanged:: 2.0 the Oracle Database dialects now use ``FETCH FIRST N
+   ROW / OFFSET N ROWS`` for all :meth:`_sql.Select.limit` and
+   :meth:`_sql.Select.offset` usage including within the ORM and legacy
+   :class:`_orm.Query`.  To force the legacy behavior using window functions,
+   specify the ``enable_offset_fetch=False`` dialect parameter to
+   :func:`_sa.create_engine`.
 
-The use of ``FETCH FIRST / OFFSET`` may be disabled on any Oracle version
-by passing ``enable_offset_fetch=False`` to :func:`_sa.create_engine`, which
-will force the use of "legacy" mode that makes use of window functions.
+The use of ``FETCH FIRST / OFFSET`` may be disabled on any Oracle Database
+version by passing ``enable_offset_fetch=False`` to :func:`_sa.create_engine`,
+which will force the use of "legacy" mode that makes use of window functions.
 This mode is also selected automatically when using a version of Oracle
-prior to 12c.
+Database prior to 12c.
 
-When using legacy mode, or when a :class:`.Select` statement
-with limit/offset is embedded in a compound statement, an emulated approach for
-LIMIT / OFFSET based on window functions is used, which involves creation of a
-subquery using ``ROW_NUMBER`` that is prone to performance issues as well as
-SQL construction issues for complex statements. However, this approach is
-supported by all Oracle versions. See notes below.
+When using legacy mode, or when a :class:`.Select` statement with limit/offset
+is embedded in a compound statement, an emulated approach for LIMIT / OFFSET
+based on window functions is used, which involves creation of a subquery using
+``ROW_NUMBER`` that is prone to performance issues as well as SQL construction
+issues for complex statements. However, this approach is supported by all
+Oracle Database versions. See notes below.
 
 Notes on LIMIT / OFFSET emulation (when fetch() method cannot be used)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If using :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset`, or with the
 ORM the :meth:`_orm.Query.limit` and :meth:`_orm.Query.offset` methods on an
-Oracle version prior to 12c, the following notes apply:
+Oracle Database version prior to 12c, the following notes apply:
 
 * SQLAlchemy currently makes use of ROWNUM to achieve
   LIMIT/OFFSET; the exact methodology is taken from
@@ -302,10 +445,11 @@ Oracle version prior to 12c, the following notes apply:
   to :func:`_sa.create_engine`.
 
   .. versionchanged:: 1.4
-      The Oracle dialect renders limit/offset integer values using a "post
-      compile" scheme which renders the integer directly before passing the
-      statement to the cursor for execution.   The ``use_binds_for_limits`` flag
-      no longer has an effect.
+
+      The Oracle Database dialect renders limit/offset integer values using a
+      "post compile" scheme which renders the integer directly before passing
+      the statement to the cursor for execution.  The ``use_binds_for_limits``
+      flag no longer has an effect.
 
       .. seealso::
 
@@ -316,37 +460,36 @@ Oracle version prior to 12c, the following notes apply:
 RETURNING Support
 -----------------
 
-The Oracle database supports RETURNING fully for INSERT, UPDATE and DELETE
-statements that are invoked with a single collection of bound parameters
-(that is, a ``cursor.execute()`` style statement; SQLAlchemy does not generally
+Oracle Database supports RETURNING fully for INSERT, UPDATE and DELETE
+statements that are invoked with a single collection of bound parameters (that
+is, a ``cursor.execute()`` style statement; SQLAlchemy does not generally
 support RETURNING with :term:`executemany` statements).  Multiple rows may be
 returned as well.
 
-.. versionchanged:: 2.0  the Oracle backend has full support for RETURNING
-   on parity with other backends.
-
+.. versionchanged:: 2.0 the Oracle Database backend has full support for
+   RETURNING on parity with other backends.
 
 
 ON UPDATE CASCADE
 -----------------
 
-Oracle doesn't have native ON UPDATE CASCADE functionality.  A trigger based
-solution is available at
-https://asktom.oracle.com/tkyte/update_cascade/index.html .
+Oracle Database doesn't have native ON UPDATE CASCADE functionality.  A trigger
+based solution is available at
+https://web.archive.org/web/20090317041251/https://asktom.oracle.com/tkyte/update_cascade/index.html
 
 When using the SQLAlchemy ORM, the ORM has limited ability to manually issue
 cascading updates - specify ForeignKey objects using the
 "deferrable=True, initially='deferred'" keyword arguments,
 and specify "passive_updates=False" on each relationship().
 
-Oracle 8 Compatibility
-----------------------
+Oracle Database 8 Compatibility
+-------------------------------
 
-.. warning:: The status of Oracle 8 compatibility is not known for SQLAlchemy
-   2.0.
+.. warning:: The status of Oracle Database 8 compatibility is not known for
+   SQLAlchemy 2.0.
 
-When Oracle 8 is detected, the dialect internally configures itself to the
-following behaviors:
+When Oracle Database 8 is detected, the dialect internally configures itself to
+the following behaviors:
 
 * the use_ansi flag is set to False.  This has the effect of converting all
   JOIN phrases into the WHERE clause, and in the case of LEFT OUTER JOIN
@@ -368,14 +511,15 @@ for tables indicated by synonyms, either in local or remote schemas or
 accessed over DBLINK, by passing the flag ``oracle_resolve_synonyms=True`` as
 a keyword argument to the :class:`_schema.Table` construct::
 
-    some_table = Table('some_table', autoload_with=some_engine,
-                                oracle_resolve_synonyms=True)
+    some_table = Table(
+        "some_table", autoload_with=some_engine, oracle_resolve_synonyms=True
+    )
 
-When this flag is set, the given name (such as ``some_table`` above) will
-be searched not just in the ``ALL_TABLES`` view, but also within the
+When this flag is set, the given name (such as ``some_table`` above) will be
+searched not just in the ``ALL_TABLES`` view, but also within the
 ``ALL_SYNONYMS`` view to see if this name is actually a synonym to another
-name.  If the synonym is located and refers to a DBLINK, the oracle dialect
-knows how to locate the table's information using DBLINK syntax(e.g.
+name.  If the synonym is located and refers to a DBLINK, the Oracle Database
+dialects know how to locate the table's information using DBLINK syntax(e.g.
 ``@dblink``).
 
 ``oracle_resolve_synonyms`` is accepted wherever reflection arguments are
@@ -389,17 +533,14 @@ If synonyms are not in use, this flag should be left disabled.
 Constraint Reflection
 ---------------------
 
-The Oracle dialect can return information about foreign key, unique, and
-CHECK constraints, as well as indexes on tables.
+The Oracle Database dialects can return information about foreign key, unique,
+and CHECK constraints, as well as indexes on tables.
 
 Raw information regarding these constraints can be acquired using
 :meth:`_reflection.Inspector.get_foreign_keys`,
 :meth:`_reflection.Inspector.get_unique_constraints`,
 :meth:`_reflection.Inspector.get_check_constraints`, and
 :meth:`_reflection.Inspector.get_indexes`.
-
-.. versionchanged:: 1.2  The Oracle dialect can now reflect UNIQUE and
-   CHECK constraints.
 
 When using reflection at the :class:`_schema.Table` level, the
 :class:`_schema.Table`
@@ -408,29 +549,29 @@ will also include these constraints.
 Note the following caveats:
 
 * When using the :meth:`_reflection.Inspector.get_check_constraints` method,
-  Oracle
-  builds a special "IS NOT NULL" constraint for columns that specify
-  "NOT NULL".  This constraint is **not** returned by default; to include
-  the "IS NOT NULL" constraints, pass the flag ``include_all=True``::
+  Oracle Database builds a special "IS NOT NULL" constraint for columns that
+  specify "NOT NULL".  This constraint is **not** returned by default; to
+  include the "IS NOT NULL" constraints, pass the flag ``include_all=True``::
 
       from sqlalchemy import create_engine, inspect
 
-      engine = create_engine("oracle+cx_oracle://s:t@dsn")
+      engine = create_engine(
+          "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1"
+      )
       inspector = inspect(engine)
       all_check_constraints = inspector.get_check_constraints(
-          "some_table", include_all=True)
+          "some_table", include_all=True
+      )
 
-* in most cases, when reflecting a :class:`_schema.Table`,
-  a UNIQUE constraint will
-  **not** be available as a :class:`.UniqueConstraint` object, as Oracle
-  mirrors unique constraints with a UNIQUE index in most cases (the exception
-  seems to be when two or more unique constraints represent the same columns);
-  the :class:`_schema.Table` will instead represent these using
-  :class:`.Index`
-  with the ``unique=True`` flag set.
+* in most cases, when reflecting a :class:`_schema.Table`, a UNIQUE constraint
+  will **not** be available as a :class:`.UniqueConstraint` object, as Oracle
+  Database mirrors unique constraints with a UNIQUE index in most cases (the
+  exception seems to be when two or more unique constraints represent the same
+  columns); the :class:`_schema.Table` will instead represent these using
+  :class:`.Index` with the ``unique=True`` flag set.
 
-* Oracle creates an implicit index for the primary key of a table; this index
-  is **excluded** from all index results.
+* Oracle Database creates an implicit index for the primary key of a table;
+  this index is **excluded** from all index results.
 
 * the list of columns reflected for an index will not include column names
   that start with SYS_NC.
@@ -450,50 +591,112 @@ the ``exclude_tablespaces`` parameter::
 
     # exclude SYSAUX and SOME_TABLESPACE, but not SYSTEM
     e = create_engine(
-      "oracle+cx_oracle://scott:tiger@xe",
-      exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"])
+        "oracle+oracledb://scott:tiger@localhost:1521/?service_name=freepdb1",
+        exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"],
+    )
+
+.. _oracle_float_support:
+
+FLOAT / DOUBLE Support and Behaviors
+------------------------------------
+
+The SQLAlchemy :class:`.Float` and :class:`.Double` datatypes are generic
+datatypes that resolve to the "least surprising" datatype for a given backend.
+For Oracle Database, this means they resolve to the ``FLOAT`` and ``DOUBLE``
+types::
+
+    >>> from sqlalchemy import cast, literal, Float
+    >>> from sqlalchemy.dialects import oracle
+    >>> float_datatype = Float()
+    >>> print(cast(literal(5.0), float_datatype).compile(dialect=oracle.dialect()))
+    CAST(:param_1 AS FLOAT)
+
+Oracle's ``FLOAT`` / ``DOUBLE`` datatypes are aliases for ``NUMBER``.   Oracle
+Database stores ``NUMBER`` values with full precision, not floating point
+precision, which means that ``FLOAT`` / ``DOUBLE`` do not actually behave like
+native FP values. Oracle Database instead offers special datatypes
+``BINARY_FLOAT`` and ``BINARY_DOUBLE`` to deliver real 4- and 8- byte FP
+values.
+
+SQLAlchemy supports these datatypes directly using :class:`.BINARY_FLOAT` and
+:class:`.BINARY_DOUBLE`.   To use the :class:`.Float` or :class:`.Double`
+datatypes in a database agnostic way, while allowing Oracle backends to utilize
+one of these types, use the :meth:`.TypeEngine.with_variant` method to set up a
+variant::
+
+    >>> from sqlalchemy import cast, literal, Float
+    >>> from sqlalchemy.dialects import oracle
+    >>> float_datatype = Float().with_variant(oracle.BINARY_FLOAT(), "oracle")
+    >>> print(cast(literal(5.0), float_datatype).compile(dialect=oracle.dialect()))
+    CAST(:param_1 AS BINARY_FLOAT)
+
+E.g. to use this datatype in a :class:`.Table` definition::
+
+    my_table = Table(
+        "my_table",
+        metadata,
+        Column(
+            "fp_data", Float().with_variant(oracle.BINARY_FLOAT(), "oracle")
+        ),
+    )
 
 DateTime Compatibility
 ----------------------
 
-Oracle has no datatype known as ``DATETIME``, it instead has only ``DATE``,
-which can actually store a date and time value.  For this reason, the Oracle
-dialect provides a type :class:`_oracle.DATE` which is a subclass of
-:class:`.DateTime`.   This type has no special behavior, and is only
-present as a "marker" for this type; additionally, when a database column
-is reflected and the type is reported as ``DATE``, the time-supporting
+Oracle Database has no datatype known as ``DATETIME``, it instead has only
+``DATE``, which can actually store a date and time value.  For this reason, the
+Oracle Database dialects provide a type :class:`_oracle.DATE` which is a
+subclass of :class:`.DateTime`.  This type has no special behavior, and is only
+present as a "marker" for this type; additionally, when a database column is
+reflected and the type is reported as ``DATE``, the time-supporting
 :class:`_oracle.DATE` type is used.
 
 .. _oracle_table_options:
 
-Oracle Table Options
--------------------------
+Oracle Database Table Options
+-----------------------------
 
-The CREATE TABLE phrase supports the following options with Oracle
-in conjunction with the :class:`_schema.Table` construct:
+The CREATE TABLE phrase supports the following options with Oracle Database
+dialects in conjunction with the :class:`_schema.Table` construct:
 
 
 * ``ON COMMIT``::
 
     Table(
-        "some_table", metadata, ...,
-        prefixes=['GLOBAL TEMPORARY'], oracle_on_commit='PRESERVE ROWS')
+        "some_table",
+        metadata,
+        ...,
+        prefixes=["GLOBAL TEMPORARY"],
+        oracle_on_commit="PRESERVE ROWS",
+    )
 
-* ``COMPRESS``::
+*
+  ``COMPRESS``::
 
-    Table('mytable', metadata, Column('data', String(32)),
-        oracle_compress=True)
+     Table(
+         "mytable", metadata, Column("data", String(32)), oracle_compress=True
+     )
 
-    Table('mytable', metadata, Column('data', String(32)),
-        oracle_compress=6)
+     Table("mytable", metadata, Column("data", String(32)), oracle_compress=6)
 
-   The ``oracle_compress`` parameter accepts either an integer compression
-   level, or ``True`` to use the default compression level.
+  The ``oracle_compress`` parameter accepts either an integer compression
+  level, or ``True`` to use the default compression level.
+
+*
+  ``TABLESPACE``::
+
+     Table("mytable", metadata, ..., oracle_tablespace="EXAMPLE_TABLESPACE")
+
+  The ``oracle_tablespace`` parameter specifies the tablespace in which the
+  table is to be created. This is useful when you want to create a table in a
+  tablespace other than the default tablespace of the user.
+
+  .. versionadded:: 2.0.37
 
 .. _oracle_index_options:
 
-Oracle Specific Index Options
------------------------------
+Oracle Database Specific Index Options
+--------------------------------------
 
 Bitmap Indexes
 ~~~~~~~~~~~~~~
@@ -501,7 +704,7 @@ Bitmap Indexes
 You can specify the ``oracle_bitmap`` parameter to create a bitmap index
 instead of a B-tree index::
 
-    Index('my_index', my_table.c.data, oracle_bitmap=True)
+    Index("my_index", my_table.c.data, oracle_bitmap=True)
 
 Bitmap indexes cannot be unique and cannot be compressed. SQLAlchemy will not
 check for such limitations, only the database will.
@@ -509,24 +712,195 @@ check for such limitations, only the database will.
 Index compression
 ~~~~~~~~~~~~~~~~~
 
-Oracle has a more efficient storage mode for indexes containing lots of
-repeated values. Use the ``oracle_compress`` parameter to turn on key
+Oracle Database has a more efficient storage mode for indexes containing lots
+of repeated values. Use the ``oracle_compress`` parameter to turn on key
 compression::
 
-    Index('my_index', my_table.c.data, oracle_compress=True)
+    Index("my_index", my_table.c.data, oracle_compress=True)
 
-    Index('my_index', my_table.c.data1, my_table.c.data2, unique=True,
-           oracle_compress=1)
+    Index(
+        "my_index",
+        my_table.c.data1,
+        my_table.c.data2,
+        unique=True,
+        oracle_compress=1,
+    )
 
 The ``oracle_compress`` parameter accepts either an integer specifying the
 number of prefix columns to compress, or ``True`` to use the default (all
 columns for non-unique indexes, all but the last column for unique indexes).
+
+.. _oracle_vector_datatype:
+
+VECTOR Datatype
+---------------
+
+Oracle Database 23ai introduced a new VECTOR datatype for artificial intelligence
+and machine learning search operations. The VECTOR datatype is a homogeneous array
+of 8-bit signed integers, 8-bit unsigned integers (binary), 32-bit floating-point numbers,
+or 64-bit floating-point numbers.
+
+.. seealso::
+
+    `Using VECTOR Data
+    <https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_ - in the documentation
+    for the :ref:`oracledb` driver.
+
+.. versionadded:: 2.0.41
+
+CREATE TABLE support for VECTOR
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With the :class:`.VECTOR` datatype, you can specify the dimension for the data
+and the storage format. Valid values for storage format are enum values from
+:class:`.VectorStorageFormat`. To create a table that includes a
+:class:`.VECTOR` column::
+
+    from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
+
+    t = Table(
+        "t1",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column(
+            "embedding",
+            VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+        ),
+        Column(...),
+        ...,
+    )
+
+Vectors can also be defined with an arbitrary number of dimensions and formats.
+This allows you to specify vectors of different dimensions with the various
+storage formats mentioned above.
+
+**Examples**
+
+* In this case, the storage format is flexible, allowing any vector type data to be inserted,
+  such as INT8 or BINARY etc::
+
+    vector_col: Mapped[array.array] = mapped_column(VECTOR(dim=3))
+
+* The dimension is flexible in this case, meaning that any dimension vector can be used::
+
+    vector_col: Mapped[array.array] = mapped_column(
+        VECTOR(storage_format=VectorStorageType.INT8)
+    )
+
+* Both the dimensions and the storage format are flexible::
+
+    vector_col: Mapped[array.array] = mapped_column(VECTOR)
+
+Python Datatypes for VECTOR
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+VECTOR data can be inserted using Python list or Python ``array.array()`` objects.
+Python arrays of type FLOAT (32-bit), DOUBLE (64-bit), or INT (8-bit signed integer)
+are used as bind values when inserting VECTOR columns::
+
+    from sqlalchemy import insert, select
+
+    with engine.begin() as conn:
+        conn.execute(
+            insert(t1),
+            {"id": 1, "embedding": [1, 2, 3]},
+        )
+
+VECTOR Indexes
+~~~~~~~~~~~~~~
+
+The VECTOR feature supports an Oracle-specific parameter ``oracle_vector``
+on the :class:`.Index` construct, which allows the construction of VECTOR
+indexes.
+
+To utilize VECTOR indexing, set the ``oracle_vector`` parameter to True to use
+the default values provided by Oracle. HNSW is the default indexing method::
+
+    from sqlalchemy import Index
+
+    Index(
+        "vector_index",
+        t1.c.embedding,
+        oracle_vector=True,
+    )
+
+The full range of parameters for vector indexes are available by using the
+:class:`.VectorIndexConfig` dataclass in place of a boolean; this dataclass
+allows full configuration of the index::
+
+    Index(
+        "hnsw_vector_index",
+        t1.c.embedding,
+        oracle_vector=VectorIndexConfig(
+            index_type=VectorIndexType.HNSW,
+            distance=VectorDistanceType.COSINE,
+            accuracy=90,
+            hnsw_neighbors=5,
+            hnsw_efconstruction=20,
+            parallel=10,
+        ),
+    )
+
+    Index(
+        "ivf_vector_index",
+        t1.c.embedding,
+        oracle_vector=VectorIndexConfig(
+            index_type=VectorIndexType.IVF,
+            distance=VectorDistanceType.DOT,
+            accuracy=90,
+            ivf_neighbor_partitions=5,
+        ),
+    )
+
+For complete explanation of these parameters, see the Oracle documentation linked
+below.
+
+.. seealso::
+
+    `CREATE VECTOR INDEX <https://www.oracle.com/pls/topic/lookup?ctx=dblatest&id=GUID-B396C369-54BB-4098-A0DD-7C54B3A0D66F>`_ - in the Oracle documentation
+
+
+
+Similarity Searching
+~~~~~~~~~~~~~~~~~~~~
+
+When using the :class:`_oracle.VECTOR` datatype with a :class:`.Column` or similar
+ORM mapped construct, additional comparison functions are available, including:
+
+* ``l2_distance``
+* ``cosine_distance``
+* ``inner_product``
+
+Example Usage::
+
+    result_vector = connection.scalars(
+        select(t1).order_by(t1.embedding.l2_distance([2, 3, 4])).limit(3)
+    )
+
+    for user in vector:
+        print(user.id, user.embedding)
+
+FETCH APPROXIMATE support
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Approximate vector search can only be performed when all syntax and semantic
+rules are satisfied, the corresponding vector index is available, and the
+query optimizer determines to perform it. If any of these conditions are
+unmet, then an approximate search is not performed. In this case the query
+returns exact results.
+
+To enable approximate searching during similarity searches on VECTORS, the
+``oracle_fetch_approximate`` parameter may be used with the :meth:`.Select.fetch`
+clause to add ``FETCH APPROX`` to the SELECT statement::
+
+    select(users_table).fetch(5, oracle_fetch_approximate=True)
 
 """  # noqa
 
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import fields
 from functools import lru_cache
 from functools import wraps
 import re
@@ -549,6 +923,9 @@ from .types import RAW
 from .types import ROWID  # noqa
 from .types import TIMESTAMP
 from .types import VARCHAR2  # noqa
+from .vector import VECTOR
+from .vector import VectorIndexConfig
+from .vector import VectorIndexType
 from ... import Computed
 from ... import exc
 from ... import schema as sa_schema
@@ -567,6 +944,7 @@ from ...sql import func
 from ...sql import null
 from ...sql import or_
 from ...sql import select
+from ...sql import selectable as sa_selectable
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql import visitors
@@ -594,7 +972,7 @@ RESERVED_WORDS = set(
 )
 
 NO_ARG_FNS = set(
-    "UID CURRENT_DATE SYSDATE USER " "CURRENT_TIME CURRENT_TIMESTAMP".split()
+    "UID CURRENT_DATE SYSDATE USER CURRENT_TIME CURRENT_TIMESTAMP".split()
 )
 
 
@@ -628,6 +1006,7 @@ ischema_names = {
     "BINARY_DOUBLE": BINARY_DOUBLE,
     "BINARY_FLOAT": BINARY_FLOAT,
     "ROWID": ROWID,
+    "VECTOR": VECTOR,
 }
 
 
@@ -708,16 +1087,16 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
                 # https://www.oracletutorial.com/oracle-basics/oracle-float/
                 estimated_binary_precision = int(precision / 0.30103)
                 raise exc.ArgumentError(
-                    "Oracle FLOAT types use 'binary precision', which does "
-                    "not convert cleanly from decimal 'precision'.  Please "
-                    "specify "
-                    f"this type with a separate Oracle variant, such as "
-                    f"{type_.__class__.__name__}(precision={precision})."
+                    "Oracle Database FLOAT types use 'binary precision', "
+                    "which does not convert cleanly from decimal "
+                    "'precision'.  Please specify "
+                    "this type with a separate Oracle Database variant, such "
+                    f"as {type_.__class__.__name__}(precision={precision})."
                     f"with_variant(oracle.FLOAT"
                     f"(binary_precision="
                     f"{estimated_binary_precision}), 'oracle'), so that the "
-                    "Oracle specific 'binary_precision' may be specified "
-                    "accurately."
+                    "Oracle Database specific 'binary_precision' may be "
+                    "specified accurately."
                 )
             else:
                 precision = binary_precision
@@ -785,6 +1164,16 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     def visit_ROWID(self, type_, **kw):
         return "ROWID"
 
+    def visit_VECTOR(self, type_, **kw):
+        if type_.dim is None and type_.storage_format is None:
+            return "VECTOR(*,*)"
+        elif type_.storage_format is None:
+            return f"VECTOR({type_.dim},*)"
+        elif type_.dim is None:
+            return f"VECTOR(*,{type_.storage_format.value})"
+        else:
+            return f"VECTOR({type_.dim},{type_.storage_format.value})"
+
 
 class OracleCompiler(compiler.SQLCompiler):
     """Oracle compiler modifies the lexical structure of Select
@@ -813,6 +1202,9 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "LENGTH" + self.function_argspec(fn, **kw)
 
+    def visit_pow_func(self, fn, **kw):
+        return f"POWER{self.function_argspec(fn)}"
+
     def visit_match_op_binary(self, binary, operator, **kw):
         return "CONTAINS (%s, %s)" % (
             self.process(binary.left),
@@ -839,7 +1231,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def visit_function(self, func, **kw):
         text = super().visit_function(func, **kw)
-        if kw.get("asfrom", False):
+        if kw.get("asfrom", False) and func.name.lower() != "table":
             text = "TABLE (%s)" % text
         return text
 
@@ -946,13 +1338,13 @@ class OracleCompiler(compiler.SQLCompiler):
                 and not self.dialect._supports_update_returning_computed_cols
             ):
                 util.warn(
-                    "Computed columns don't work with Oracle UPDATE "
+                    "Computed columns don't work with Oracle Database UPDATE "
                     "statements that use RETURNING; the value of the column "
                     "*before* the UPDATE takes place is returned.   It is "
-                    "advised to not use RETURNING with an Oracle computed "
-                    "column.  Consider setting implicit_returning to False on "
-                    "the Table object in order to avoid implicit RETURNING "
-                    "clauses from being generated for this Table."
+                    "advised to not use RETURNING with an Oracle Database "
+                    "computed column.  Consider setting implicit_returning "
+                    "to False on the Table object in order to avoid implicit "
+                    "RETURNING clauses from being generated for this Table."
                 )
             if column.type._has_column_expression:
                 col_expr = column.type.column_expression(column)
@@ -976,7 +1368,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 raise exc.InvalidRequestError(
                     "Using explicit outparam() objects with "
                     "UpdateBase.returning() in the same Core DML statement "
-                    "is not supported in the Oracle dialect."
+                    "is not supported in the Oracle Database dialects."
                 )
 
             self._oracle_returning = True
@@ -997,7 +1389,7 @@ class OracleCompiler(compiler.SQLCompiler):
         return "RETURNING " + ", ".join(columns) + " INTO " + ", ".join(binds)
 
     def _row_limit_clause(self, select, **kw):
-        """ORacle 12c supports OFFSET/FETCH operators
+        """Oracle Database 12c supports OFFSET/FETCH operators
         Use it instead subquery with row_number
 
         """
@@ -1022,6 +1414,29 @@ class OracleCompiler(compiler.SQLCompiler):
             return select._limit_clause
         else:
             return select._fetch_clause
+
+    def fetch_clause(
+        self,
+        select,
+        fetch_clause=None,
+        require_offset=False,
+        use_literal_execute_for_simple_int=False,
+        **kw,
+    ):
+        text = super().fetch_clause(
+            select,
+            fetch_clause=fetch_clause,
+            require_offset=require_offset,
+            use_literal_execute_for_simple_int=(
+                use_literal_execute_for_simple_int
+            ),
+            **kw,
+        )
+
+        if select.dialect_options["oracle"]["fetch_approximate"]:
+            text = re.sub("FETCH FIRST", "FETCH APPROX FIRST", text)
+
+        return text
 
     def translate_select_structure(self, select_stmt, **kwargs):
         select = select_stmt
@@ -1244,8 +1659,75 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_aggregate_strings_func(self, fn, **kw):
         return "LISTAGG%s" % self.function_argspec(fn, **kw)
 
+    def _visit_bitwise(self, binary, fn_name, custom_right=None, **kw):
+        left = self.process(binary.left, **kw)
+        right = self.process(
+            custom_right if custom_right is not None else binary.right, **kw
+        )
+        return f"{fn_name}({left}, {right})"
+
+    def visit_bitwise_xor_op_binary(self, binary, operator, **kw):
+        return self._visit_bitwise(binary, "BITXOR", **kw)
+
+    def visit_bitwise_or_op_binary(self, binary, operator, **kw):
+        return self._visit_bitwise(binary, "BITOR", **kw)
+
+    def visit_bitwise_and_op_binary(self, binary, operator, **kw):
+        return self._visit_bitwise(binary, "BITAND", **kw)
+
+    def visit_bitwise_rshift_op_binary(self, binary, operator, **kw):
+        raise exc.CompileError("Cannot compile bitwise_rshift in oracle")
+
+    def visit_bitwise_lshift_op_binary(self, binary, operator, **kw):
+        raise exc.CompileError("Cannot compile bitwise_lshift in oracle")
+
+    def visit_bitwise_not_op_unary_operator(self, element, operator, **kw):
+        raise exc.CompileError("Cannot compile bitwise_not in oracle")
+
 
 class OracleDDLCompiler(compiler.DDLCompiler):
+
+    def _build_vector_index_config(
+        self, vector_index_config: VectorIndexConfig
+    ) -> str:
+        parts = []
+        sql_param_name = {
+            "hnsw_neighbors": "neighbors",
+            "hnsw_efconstruction": "efconstruction",
+            "ivf_neighbor_partitions": "neighbor partitions",
+            "ivf_sample_per_partition": "sample_per_partition",
+            "ivf_min_vectors_per_partition": "min_vectors_per_partition",
+        }
+        if vector_index_config.index_type == VectorIndexType.HNSW:
+            parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH")
+        elif vector_index_config.index_type == VectorIndexType.IVF:
+            parts.append("ORGANIZATION NEIGHBOR PARTITIONS")
+        if vector_index_config.distance is not None:
+            parts.append(f"DISTANCE {vector_index_config.distance.value}")
+
+        if vector_index_config.accuracy is not None:
+            parts.append(
+                f"WITH TARGET ACCURACY {vector_index_config.accuracy}"
+            )
+
+        parameters_str = [f"type {vector_index_config.index_type.name}"]
+        prefix = vector_index_config.index_type.name.lower() + "_"
+
+        for field in fields(vector_index_config):
+            if field.name.startswith(prefix):
+                key = sql_param_name.get(field.name)
+                value = getattr(vector_index_config, field.name)
+                if value is not None:
+                    parameters_str.append(f"{key} {value}")
+
+        parameters_str = ", ".join(parameters_str)
+        parts.append(f"PARAMETERS ({parameters_str})")
+
+        if vector_index_config.parallel is not None:
+            parts.append(f"PARALLEL {vector_index_config.parallel}")
+
+        return " ".join(parts)
+
     def define_constraint_cascades(self, constraint):
         text = ""
         if constraint.ondelete is not None:
@@ -1253,10 +1735,10 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         # oracle has no ON UPDATE CASCADE -
         # its only available via triggers
-        # https://asktom.oracle.com/tkyte/update_cascade/index.html
+        # https://web.archive.org/web/20090317041251/https://asktom.oracle.com/tkyte/update_cascade/index.html
         if constraint.onupdate is not None:
             util.warn(
-                "Oracle does not contain native UPDATE CASCADE "
+                "Oracle Database does not contain native UPDATE CASCADE "
                 "functionality - onupdates will not be rendered for foreign "
                 "keys.  Consider using deferrable=True, initially='deferred' "
                 "or triggers."
@@ -1278,6 +1760,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         if index.dialect_options["oracle"]["bitmap"]:
             text += "BITMAP "
+        vector_options = index.dialect_options["oracle"]["vector"]
+        if vector_options:
+            text += "VECTOR "
         text += "INDEX %s ON %s (%s)" % (
             self._prepared_index_name(index, include_schema=True),
             preparer.format_table(index.table, use_schema=True),
@@ -1295,6 +1780,11 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 text += " COMPRESS %d" % (
                     index.dialect_options["oracle"]["compress"]
                 )
+        if vector_options:
+            if vector_options is True:
+                vector_options = VectorIndexConfig()
+
+            text += " " + self._build_vector_index_config(vector_options)
         return text
 
     def post_create_table(self, table):
@@ -1310,7 +1800,10 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 table_opts.append("\n COMPRESS")
             else:
                 table_opts.append("\n COMPRESS FOR %s" % (opts["compress"]))
-
+        if opts["tablespace"]:
+            table_opts.append(
+                "\n TABLESPACE %s" % self.preparer.quote(opts["tablespace"])
+            )
         return "".join(table_opts)
 
     def get_identity_options(self, identity_options):
@@ -1318,8 +1811,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         text = text.replace("NO MINVALUE", "NOMINVALUE")
         text = text.replace("NO MAXVALUE", "NOMAXVALUE")
         text = text.replace("NO CYCLE", "NOCYCLE")
-        if identity_options.order is not None:
-            text += " ORDER" if identity_options.order else " NOORDER"
+        options = identity_options.dialect_options["oracle"]
+        if options.get("order") is not None:
+            text += " ORDER" if options["order"] else " NOORDER"
         return text.strip()
 
     def visit_computed_column(self, generated, **kw):
@@ -1328,8 +1822,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         )
         if generated.persisted is True:
             raise exc.CompileError(
-                "Oracle computed columns do not support 'stored' persistence; "
-                "set the 'persisted' flag to None or False for Oracle support."
+                "Oracle Database computed columns do not support 'stored' "
+                "persistence; set the 'persisted' flag to None or False for "
+                "Oracle Database support."
             )
         elif generated.persisted is False:
             text += " VIRTUAL"
@@ -1341,7 +1836,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         else:
             kind = "ALWAYS" if identity.always else "BY DEFAULT"
         text = "GENERATED %s" % kind
-        if identity.on_null:
+        if identity.dialect_options["oracle"].get("on_null"):
             text += " ON NULL"
         text += " AS IDENTITY"
         options = self.get_identity_options(identity)
@@ -1434,16 +1929,32 @@ class OracleDialect(default.DefaultDialect):
     construct_arguments = [
         (
             sa_schema.Table,
-            {"resolve_synonyms": False, "on_commit": None, "compress": False},
+            {
+                "resolve_synonyms": False,
+                "on_commit": None,
+                "compress": False,
+                "tablespace": None,
+            },
         ),
-        (sa_schema.Index, {"bitmap": False, "compress": False}),
+        (
+            sa_schema.Index,
+            {
+                "bitmap": False,
+                "compress": False,
+                "vector": False,
+            },
+        ),
+        (sa_schema.Sequence, {"order": None}),
+        (sa_schema.Identity, {"order": None, "on_null": None}),
+        (sa_selectable.Select, {"fetch_approximate": False}),
+        (sa_selectable.CompoundSelect, {"fetch_approximate": False}),
     ]
 
     @util.deprecated_params(
         use_binds_for_limits=(
             "1.4",
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated. The dialect now renders LIMIT /OFFSET integers "
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated. The dialect now renders LIMIT / OFFSET integers "
             "inline in all cases using a post-compilation hook, so that the "
             "value is still represented by a 'bound parameter' on the Core "
             "Expression side.",
@@ -1464,9 +1975,9 @@ class OracleDialect(default.DefaultDialect):
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
         self.exclude_tablespaces = exclude_tablespaces
-        self.enable_offset_fetch = (
-            self._supports_offset_fetch
-        ) = enable_offset_fetch
+        self.enable_offset_fetch = self._supports_offset_fetch = (
+            enable_offset_fetch
+        )
 
     def initialize(self, connection):
         super().initialize(connection)
@@ -2036,8 +2547,17 @@ class OracleDialect(default.DefaultDialect):
     ):
         query = select(
             dictionary.all_tables.c.table_name,
-            dictionary.all_tables.c.compression,
-            dictionary.all_tables.c.compress_for,
+            (
+                dictionary.all_tables.c.compression
+                if self._supports_table_compression
+                else sql.null().label("compression")
+            ),
+            (
+                dictionary.all_tables.c.compress_for
+                if self._supports_table_compress_for
+                else sql.null().label("compress_for")
+            ),
+            dictionary.all_tables.c.tablespace_name,
         ).where(dictionary.all_tables.c.owner == owner)
         if has_filter_names:
             query = query.where(
@@ -2129,11 +2649,12 @@ class OracleDialect(default.DefaultDialect):
                 connection, query, dblink, returns_long=False, params=params
             )
 
-            for table, compression, compress_for in result:
+            for table, compression, compress_for, tablespace in result:
+                data = default()
                 if compression == "ENABLED":
-                    data = {"oracle_compress": compress_for}
-                else:
-                    data = default()
+                    data["oracle_compress"] = compress_for
+                if tablespace:
+                    data["oracle_tablespace"] = tablespace
                 options[(schema, self.normalize_name(table))] = data
         if ObjectKind.VIEW in kind and ObjectScope.DEFAULT in scope:
             # add the views (no temporary views)
@@ -2398,7 +2919,7 @@ class OracleDialect(default.DefaultDialect):
         parts = [p.strip() for p in identity_options.split(",")]
         identity = {
             "always": parts[0] == "ALWAYS",
-            "on_null": default_on_null == "YES",
+            "oracle_on_null": default_on_null == "YES",
         }
 
         for part in parts[1:]:
@@ -2418,7 +2939,7 @@ class OracleDialect(default.DefaultDialect):
             elif "CACHE_SIZE" in option:
                 identity["cache"] = int(value)
             elif "ORDER_FLAG" in option:
-                identity["order"] = value == "Y"
+                identity["oracle_order"] = value == "Y"
         return identity
 
     @reflection.cache
@@ -2523,10 +3044,12 @@ class OracleDialect(default.DefaultDialect):
         return (
             (
                 (schema, self.normalize_name(table)),
-                {"text": comment}
-                if comment is not None
-                and not comment.startswith(ignore_mat_view)
-                else default(),
+                (
+                    {"text": comment}
+                    if comment is not None
+                    and not comment.startswith(ignore_mat_view)
+                    else default()
+                ),
             )
             for table, comment in result
         )
@@ -3068,9 +3591,11 @@ class OracleDialect(default.DefaultDialect):
                 table_uc[constraint_name] = uc = {
                     "name": constraint_name,
                     "column_names": [],
-                    "duplicates_index": constraint_name
-                    if constraint_name_orig in index_names
-                    else None,
+                    "duplicates_index": (
+                        constraint_name
+                        if constraint_name_orig in index_names
+                        else None
+                    ),
                 }
             else:
                 uc = table_uc[constraint_name]
@@ -3082,9 +3607,11 @@ class OracleDialect(default.DefaultDialect):
         return (
             (
                 key,
-                list(unique_cons[key].values())
-                if key in unique_cons
-                else default(),
+                (
+                    list(unique_cons[key].values())
+                    if key in unique_cons
+                    else default()
+                ),
             )
             for key in (
                 (schema, self.normalize_name(obj_name))
@@ -3207,9 +3734,11 @@ class OracleDialect(default.DefaultDialect):
         return (
             (
                 key,
-                check_constraints[key]
-                if key in check_constraints
-                else default(),
+                (
+                    check_constraints[key]
+                    if key in check_constraints
+                    else default()
+                ),
             )
             for key in (
                 (schema, self.normalize_name(obj_name))

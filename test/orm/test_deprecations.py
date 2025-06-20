@@ -23,9 +23,7 @@ from sqlalchemy.engine import result_tuple
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
-from sqlalchemy.orm import collections
 from sqlalchemy.orm import column_property
-from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_alias
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defaultload
@@ -40,13 +38,13 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import strategies
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
-from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
-from sqlalchemy.orm.collections import collection
-from sqlalchemy.orm.util import polymorphic_union
+from sqlalchemy.orm.strategy_options import lazyload
+from sqlalchemy.orm.strategy_options import noload
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -56,29 +54,25 @@ from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_noload_deprecation
+from sqlalchemy.testing.assertions import in_
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import CacheKeyFixture
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from . import _fixtures
 from .inheritance import _poly_fixtures
 from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
+from .test_default_strategies import DefaultStrategyOptionsTestFixtures
 from .test_deferred import InheritanceTest as _deferred_InheritanceTest
-from .test_options import PathTest as OptionsPathTest
+from .test_dynamic import _DynamicFixture
+from .test_dynamic import _WriteOnlyFixture
 from .test_options import PathTest
 from .test_options import QueryTest as OptionsQueryTest
 from .test_query import QueryTest
-
-if True:
-    # hack - zimports won't stop reformatting this to be too-long for now
-    from .test_default_strategies import (
-        DefaultStrategyOptionsTest as _DefaultStrategyOptionsTest,
-    )
 
 join_aliased_dep = (
     r"The ``aliased`` and ``from_joinpoint`` keyword arguments to "
@@ -495,34 +489,6 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def setup_mappers(cls):
         cls._setup_stock_mapping()
 
-    @classmethod
-    def _expect_implicit_subquery(cls):
-        return assertions.expect_deprecated(
-            "Implicit coercion of SELECT and textual SELECT constructs into "
-            r"FROM clauses is deprecated; please call \.subquery\(\) on any "
-            "Core select or ORM Query object in order to produce a "
-            "subquery object."
-        )
-
-    def test_deprecated_select_coercion_join_target(self):
-        User = self.classes.User
-        addresses = self.tables.addresses
-
-        s = addresses.select()
-        sess = fixture_session()
-        with testing.expect_deprecated(
-            "Implicit coercion of SELECT and textual SELECT constructs",
-            "An alias is being generated automatically against joined entity",
-        ):
-            self.assert_compile(
-                sess.query(User).join(s, User.addresses),
-                "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users JOIN (SELECT addresses.id AS id, "
-                "addresses.user_id AS user_id, addresses.email_address "
-                "AS email_address FROM addresses) AS anon_1 "
-                "ON users.id = anon_1.user_id",
-            )
-
     def test_invalid_column(self):
         User = self.classes.User
 
@@ -570,20 +536,6 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "be removed in a future release."
         ):
             s.query(User).as_scalar()
-
-    def test_select_from_q_statement_no_aliasing(self):
-        User = self.classes.User
-        sess = fixture_session()
-
-        q = sess.query(User)
-        with self._expect_implicit_subquery():
-            q = sess.query(User).select_from(User, q.statement)
-        self.assert_compile(
-            q.filter(User.name == "ed"),
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users, (SELECT users.id AS id, users.name AS name FROM "
-            "users) AS anon_1 WHERE users.name = :name_1",
-        )
 
     def test_apply_labels(self):
         User = self.classes.User
@@ -652,19 +604,6 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
                     b.cs
 
         self.assert_sql_count(testing.db, go, expected)
-
-
-class DeprecatedInhTest(_poly_fixtures._Polymorphic):
-    def test_with_polymorphic(self):
-        Person = _poly_fixtures.Person
-        Engineer = _poly_fixtures.Engineer
-
-        with DeprecatedQueryTest._expect_implicit_subquery():
-            p_poly = with_polymorphic(Person, [Engineer], select(Person))
-
-        is_true(
-            sa.inspect(p_poly).selectable.compare(select(Person).subquery())
-        )
 
 
 class DeprecatedMapperTest(
@@ -763,26 +702,6 @@ class DeprecatedMapperTest(
             "expired_attribute_loader"
         ):
             is_(manager.deferred_scalar_loader, myloader)
-
-    def test_polymorphic_union_w_select(self):
-        users, addresses = self.tables.users, self.tables.addresses
-
-        with DeprecatedQueryTest._expect_implicit_subquery():
-            dep = polymorphic_union(
-                {"u": users.select(), "a": addresses.select()},
-                "type",
-                "bcjoin",
-            )
-
-        subq_version = polymorphic_union(
-            {
-                "u": users.select().subquery(),
-                "a": addresses.select().subquery(),
-            },
-            "type",
-            "bcjoin",
-        )
-        is_true(dep.compare(subq_version))
 
     def test_comparable_column(self):
         users, User = self.tables.users, self.classes.User
@@ -901,482 +820,6 @@ class DeprecatedMapperTest(
             m.add_property(key, new_prop)
 
 
-class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
-    run_inserts = "once"
-    run_deletes = None
-
-    def _mapper_fixture_one(self):
-        users, User, addresses, Address, orders, Order = (
-            self.tables.users,
-            self.classes.User,
-            self.tables.addresses,
-            self.classes.Address,
-            self.tables.orders,
-            self.classes.Order,
-        )
-        keywords, items, item_keywords, Keyword, Item = (
-            self.tables.keywords,
-            self.tables.items,
-            self.tables.item_keywords,
-            self.classes.Keyword,
-            self.classes.Item,
-        )
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={
-                "addresses": relationship(Address),
-                "orders": relationship(Order),
-            },
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-        self.mapper_registry.map_imperatively(
-            Order,
-            orders,
-            properties={
-                "items": relationship(Item, secondary=self.tables.order_items)
-            },
-        )
-        self.mapper_registry.map_imperatively(
-            Keyword,
-            keywords,
-            properties={
-                "keywords": column_property(keywords.c.name + "some keyword")
-            },
-        )
-        self.mapper_registry.map_imperatively(
-            Item,
-            items,
-            properties=dict(
-                keywords=relationship(Keyword, secondary=item_keywords)
-            ),
-        )
-
-    def _assert_eager_with_entity_exception(
-        self, entity_list, options, message
-    ):
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            message,
-            fixture_session()
-            .query(*entity_list)
-            .options(*options)
-            ._compile_context,
-        )
-
-    def test_defer_addtl_attrs(self):
-        users, User, Address, addresses = (
-            self.tables.users,
-            self.classes.User,
-            self.classes.Address,
-            self.tables.addresses,
-        )
-
-        self.mapper_registry.map_imperatively(Address, addresses)
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={
-                "addresses": relationship(
-                    Address, lazy="selectin", order_by=addresses.c.id
-                )
-            },
-        )
-
-        sess = fixture_session()
-
-        with testing.expect_deprecated(undefer_needs_chaining):
-            sess.query(User).options(
-                defer(User.addresses, Address.email_address)
-            )
-
-        with testing.expect_deprecated(undefer_needs_chaining):
-            sess.query(User).options(
-                undefer(User.addresses, Address.email_address)
-            )
-
-
-class InstrumentationTest(fixtures.ORMTest):
-    def test_dict_subclass4(self):
-        # tests #2654
-        with testing.expect_deprecated(
-            r"The collection.converter\(\) handler is deprecated and will "
-            "be removed in a future release.  Please refer to the "
-            "AttributeEvents"
-        ):
-
-            class MyDict(collections.KeyFuncDict):
-                def __init__(self):
-                    super().__init__(lambda value: "k%d" % value)
-
-                @collection.converter
-                def _convert(self, dictlike):
-                    for key, value in dictlike.items():
-                        yield value + 5
-
-        class Foo:
-            pass
-
-        instrumentation.register_class(Foo)
-        attributes.register_attribute(
-            Foo,
-            "attr",
-            parententity=object(),
-            comparator=object(),
-            uselist=True,
-            typecallable=MyDict,
-            useobject=True,
-        )
-
-        f = Foo()
-        f.attr = {"k1": 1, "k2": 2}
-
-        eq_(f.attr, {"k7": 7, "k6": 6})
-
-    def test_name_setup(self):
-        with testing.expect_deprecated(
-            r"The collection.converter\(\) handler is deprecated and will "
-            "be removed in a future release.  Please refer to the "
-            "AttributeEvents"
-        ):
-
-            class Base:
-                @collection.iterator
-                def base_iterate(self, x):
-                    return "base_iterate"
-
-                @collection.appender
-                def base_append(self, x):
-                    return "base_append"
-
-                @collection.converter
-                def base_convert(self, x):
-                    return "base_convert"
-
-                @collection.remover
-                def base_remove(self, x):
-                    return "base_remove"
-
-        from sqlalchemy.orm.collections import _instrument_class
-
-        _instrument_class(Base)
-
-        eq_(Base._sa_remover(Base(), 5), "base_remove")
-        eq_(Base._sa_appender(Base(), 5), "base_append")
-        eq_(Base._sa_iterator(Base(), 5), "base_iterate")
-        eq_(Base._sa_converter(Base(), 5), "base_convert")
-
-        with testing.expect_deprecated(
-            r"The collection.converter\(\) handler is deprecated and will "
-            "be removed in a future release.  Please refer to the "
-            "AttributeEvents"
-        ):
-
-            class Sub(Base):
-                @collection.converter
-                def base_convert(self, x):
-                    return "sub_convert"
-
-                @collection.remover
-                def sub_remove(self, x):
-                    return "sub_remove"
-
-        _instrument_class(Sub)
-
-        eq_(Sub._sa_appender(Sub(), 5), "base_append")
-        eq_(Sub._sa_remover(Sub(), 5), "sub_remove")
-        eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
-        eq_(Sub._sa_converter(Sub(), 5), "sub_convert")
-
-
-class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
-    run_inserts = "once"
-    run_deletes = None
-
-    def test_selectload(self):
-        """tests lazy loading with two relationships simultaneously,
-        from the same table, using aliases."""
-
-        users, orders, User, Address, Order, addresses = (
-            self.tables.users,
-            self.tables.orders,
-            self.classes.User,
-            self.classes.Address,
-            self.classes.Order,
-            self.tables.addresses,
-        )
-
-        openorders = sa.alias(orders, "openorders")
-        closedorders = sa.alias(orders, "closedorders")
-
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        self.mapper_registry.map_imperatively(Order, orders)
-
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
-        ):
-            open_mapper = self.mapper_registry.map_imperatively(
-                Order, openorders, non_primary=True
-            )
-            closed_mapper = self.mapper_registry.map_imperatively(
-                Order, closedorders, non_primary=True
-            )
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(Address, lazy=True),
-                open_orders=relationship(
-                    open_mapper,
-                    primaryjoin=sa.and_(
-                        openorders.c.isopen == 1,
-                        users.c.id == openorders.c.user_id,
-                    ),
-                    lazy="select",
-                ),
-                closed_orders=relationship(
-                    closed_mapper,
-                    primaryjoin=sa.and_(
-                        closedorders.c.isopen == 0,
-                        users.c.id == closedorders.c.user_id,
-                    ),
-                    lazy="select",
-                ),
-            ),
-        )
-
-        self._run_double_test(10)
-
-    def test_joinedload(self):
-        """Eager loading with two relationships simultaneously,
-        from the same table, using aliases."""
-
-        users, orders, User, Address, Order, addresses = (
-            self.tables.users,
-            self.tables.orders,
-            self.classes.User,
-            self.classes.Address,
-            self.classes.Order,
-            self.tables.addresses,
-        )
-
-        openorders = sa.alias(orders, "openorders")
-        closedorders = sa.alias(orders, "closedorders")
-
-        self.mapper_registry.map_imperatively(Address, addresses)
-        self.mapper_registry.map_imperatively(Order, orders)
-
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
-        ):
-            open_mapper = self.mapper_registry.map_imperatively(
-                Order, openorders, non_primary=True
-            )
-            closed_mapper = self.mapper_registry.map_imperatively(
-                Order, closedorders, non_primary=True
-            )
-
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(
-                    Address, lazy="joined", order_by=addresses.c.id
-                ),
-                open_orders=relationship(
-                    open_mapper,
-                    primaryjoin=sa.and_(
-                        openorders.c.isopen == 1,
-                        users.c.id == openorders.c.user_id,
-                    ),
-                    lazy="joined",
-                    order_by=openorders.c.id,
-                ),
-                closed_orders=relationship(
-                    closed_mapper,
-                    primaryjoin=sa.and_(
-                        closedorders.c.isopen == 0,
-                        users.c.id == closedorders.c.user_id,
-                    ),
-                    lazy="joined",
-                    order_by=closedorders.c.id,
-                ),
-            ),
-        )
-        self._run_double_test(1)
-
-    def test_selectin(self):
-        users, orders, User, Address, Order, addresses = (
-            self.tables.users,
-            self.tables.orders,
-            self.classes.User,
-            self.classes.Address,
-            self.classes.Order,
-            self.tables.addresses,
-        )
-
-        openorders = sa.alias(orders, "openorders")
-        closedorders = sa.alias(orders, "closedorders")
-
-        self.mapper_registry.map_imperatively(Address, addresses)
-        self.mapper_registry.map_imperatively(Order, orders)
-
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
-        ):
-            open_mapper = self.mapper_registry.map_imperatively(
-                Order, openorders, non_primary=True
-            )
-            closed_mapper = self.mapper_registry.map_imperatively(
-                Order, closedorders, non_primary=True
-            )
-
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(
-                    Address, lazy="selectin", order_by=addresses.c.id
-                ),
-                open_orders=relationship(
-                    open_mapper,
-                    primaryjoin=sa.and_(
-                        openorders.c.isopen == 1,
-                        users.c.id == openorders.c.user_id,
-                    ),
-                    lazy="selectin",
-                    order_by=openorders.c.id,
-                ),
-                closed_orders=relationship(
-                    closed_mapper,
-                    primaryjoin=sa.and_(
-                        closedorders.c.isopen == 0,
-                        users.c.id == closedorders.c.user_id,
-                    ),
-                    lazy="selectin",
-                    order_by=closedorders.c.id,
-                ),
-            ),
-        )
-
-        self._run_double_test(4)
-
-    def test_subqueryload(self):
-        users, orders, User, Address, Order, addresses = (
-            self.tables.users,
-            self.tables.orders,
-            self.classes.User,
-            self.classes.Address,
-            self.classes.Order,
-            self.tables.addresses,
-        )
-
-        openorders = sa.alias(orders, "openorders")
-        closedorders = sa.alias(orders, "closedorders")
-
-        self.mapper_registry.map_imperatively(Address, addresses)
-        self.mapper_registry.map_imperatively(Order, orders)
-
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
-        ):
-            open_mapper = self.mapper_registry.map_imperatively(
-                Order, openorders, non_primary=True
-            )
-            closed_mapper = self.mapper_registry.map_imperatively(
-                Order, closedorders, non_primary=True
-            )
-
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(
-                    Address, lazy="subquery", order_by=addresses.c.id
-                ),
-                open_orders=relationship(
-                    open_mapper,
-                    primaryjoin=sa.and_(
-                        openorders.c.isopen == 1,
-                        users.c.id == openorders.c.user_id,
-                    ),
-                    lazy="subquery",
-                    order_by=openorders.c.id,
-                ),
-                closed_orders=relationship(
-                    closed_mapper,
-                    primaryjoin=sa.and_(
-                        closedorders.c.isopen == 0,
-                        users.c.id == closedorders.c.user_id,
-                    ),
-                    lazy="subquery",
-                    order_by=closedorders.c.id,
-                ),
-            ),
-        )
-
-        self._run_double_test(4)
-
-    def _run_double_test(self, count):
-        User, Address, Order, Item = self.classes(
-            "User", "Address", "Order", "Item"
-        )
-        q = fixture_session().query(User).order_by(User.id)
-
-        def go():
-            eq_(
-                [
-                    User(
-                        id=7,
-                        addresses=[Address(id=1)],
-                        open_orders=[Order(id=3)],
-                        closed_orders=[Order(id=1), Order(id=5)],
-                    ),
-                    User(
-                        id=8,
-                        addresses=[
-                            Address(id=2),
-                            Address(id=3),
-                            Address(id=4),
-                        ],
-                        open_orders=[],
-                        closed_orders=[],
-                    ),
-                    User(
-                        id=9,
-                        addresses=[Address(id=5)],
-                        open_orders=[Order(id=4)],
-                        closed_orders=[Order(id=2)],
-                    ),
-                    User(id=10),
-                ],
-                q.all(),
-            )
-
-        self.assert_sql_count(testing.db, go, count)
-
-        sess = fixture_session()
-        user = sess.get(User, 7)
-
-        closed_mapper = User.closed_orders.entity
-        open_mapper = User.open_orders.entity
-        eq_(
-            [Order(id=1), Order(id=5)],
-            fixture_session()
-            .query(closed_mapper)
-            .filter(with_parent(user, User.closed_orders))
-            .all(),
-        )
-        eq_(
-            [Order(id=3)],
-            fixture_session()
-            .query(open_mapper)
-            .filter(with_parent(user, User.open_orders))
-            .all(),
-        )
-
-
 class ViewonlyFlagWarningTest(fixtures.MappedTest):
     """test for #4993.
 
@@ -1431,157 +874,6 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             rel = relationship(Order, **kw)
 
             eq_(getattr(rel, flag), value)
-
-
-class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
-    __dialect__ = "default"
-
-    def teardown_test(self):
-        clear_mappers()
-
-    def test_non_primary_identity_class(self):
-        User = self.classes.User
-        users, addresses = self.tables.users, self.tables.addresses
-
-        class AddressUser(User):
-            pass
-
-        self.mapper_registry.map_imperatively(
-            User, users, polymorphic_identity="user"
-        )
-        m2 = self.mapper_registry.map_imperatively(
-            AddressUser,
-            addresses,
-            inherits=User,
-            polymorphic_identity="address",
-            properties={"address_id": addresses.c.id},
-        )
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
-        ):
-            m3 = self.mapper_registry.map_imperatively(
-                AddressUser, addresses, non_primary=True
-            )
-        assert m3._identity_class is m2._identity_class
-        eq_(
-            m2.identity_key_from_instance(AddressUser()),
-            m3.identity_key_from_instance(AddressUser()),
-        )
-
-    def test_illegal_non_primary(self):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        self.mapper_registry.map_imperatively(User, users)
-        self.mapper_registry.map_imperatively(Address, addresses)
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
-        ):
-            m = self.mapper_registry.map_imperatively(  # noqa: F841
-                User,
-                users,
-                non_primary=True,
-                properties={"addresses": relationship(Address)},
-            )
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Attempting to assign a new relationship 'addresses' "
-            "to a non-primary mapper on class 'User'",
-            configure_mappers,
-        )
-
-    def test_illegal_non_primary_2(self):
-        User, users = self.classes.User, self.tables.users
-
-        assert_raises_message(
-            sa.exc.InvalidRequestError,
-            "Configure a primary mapper first",
-            self.mapper_registry.map_imperatively,
-            User,
-            users,
-            non_primary=True,
-        )
-
-    def test_illegal_non_primary_3(self):
-        users, addresses = self.tables.users, self.tables.addresses
-
-        class Base:
-            pass
-
-        class Sub(Base):
-            pass
-
-        self.mapper_registry.map_imperatively(Base, users)
-        assert_raises_message(
-            sa.exc.InvalidRequestError,
-            "Configure a primary mapper first",
-            self.mapper_registry.map_imperatively,
-            Sub,
-            addresses,
-            non_primary=True,
-        )
-
-    def test_illegal_non_primary_legacy(self, registry):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        registry.map_imperatively(User, users)
-        registry.map_imperatively(Address, addresses)
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
-        ):
-            m = registry.map_imperatively(  # noqa: F841
-                User,
-                users,
-                non_primary=True,
-                properties={"addresses": relationship(Address)},
-            )
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Attempting to assign a new relationship 'addresses' "
-            "to a non-primary mapper on class 'User'",
-            configure_mappers,
-        )
-
-    def test_illegal_non_primary_2_legacy(self, registry):
-        User, users = self.classes.User, self.tables.users
-
-        assert_raises_message(
-            sa.exc.InvalidRequestError,
-            "Configure a primary mapper first",
-            registry.map_imperatively,
-            User,
-            users,
-            non_primary=True,
-        )
-
-    def test_illegal_non_primary_3_legacy(self, registry):
-        users, addresses = self.tables.users, self.tables.addresses
-
-        class Base:
-            pass
-
-        class Sub(Base):
-            pass
-
-        registry.map_imperatively(Base, users)
-
-        assert_raises_message(
-            sa.exc.InvalidRequestError,
-            "Configure a primary mapper first",
-            registry.map_imperatively,
-            Sub,
-            addresses,
-            non_primary=True,
-        )
 
 
 class InstancesTest(QueryTest, AssertsCompiledSQL):
@@ -1789,70 +1081,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
 
-class SessionEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
-    run_inserts = None
-
-    def test_on_bulk_update_hook(self):
-        User, users = self.classes.User, self.tables.users
-
-        sess = fixture_session()
-        canary = Mock()
-
-        event.listen(sess, "after_bulk_update", canary.after_bulk_update)
-
-        def legacy(ses, qry, ctx, res):
-            canary.after_bulk_update_legacy(ses, qry, ctx, res)
-
-        event.listen(sess, "after_bulk_update", legacy)
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        with testing.expect_deprecated(
-            'The argument signature for the "SessionEvents.after_bulk_update" '
-            "event listener"
-        ):
-            sess.query(User).update({"name": "foo"})
-
-        eq_(canary.after_bulk_update.call_count, 1)
-
-        upd = canary.after_bulk_update.mock_calls[0][1][0]
-        eq_(upd.session, sess)
-        eq_(
-            canary.after_bulk_update_legacy.mock_calls,
-            [call(sess, upd.query, None, upd.result)],
-        )
-
-    def test_on_bulk_delete_hook(self):
-        User, users = self.classes.User, self.tables.users
-
-        sess = fixture_session()
-        canary = Mock()
-
-        event.listen(sess, "after_bulk_delete", canary.after_bulk_delete)
-
-        def legacy(ses, qry, ctx, res):
-            canary.after_bulk_delete_legacy(ses, qry, ctx, res)
-
-        event.listen(sess, "after_bulk_delete", legacy)
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        with testing.expect_deprecated(
-            'The argument signature for the "SessionEvents.after_bulk_delete" '
-            "event listener"
-        ):
-            sess.query(User).delete()
-
-        eq_(canary.after_bulk_delete.call_count, 1)
-
-        upd = canary.after_bulk_delete.mock_calls[0][1][0]
-        eq_(upd.session, sess)
-        eq_(
-            canary.after_bulk_delete_legacy.mock_calls,
-            [call(sess, upd.query, None, upd.result)],
-        )
-
-
 class ImmediateTest(_fixtures.FixtureTest):
     run_inserts = "once"
     run_deletes = None
@@ -1995,7 +1223,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
     @testing.fails_on("mssql", "FIXME: unknown")
     @testing.fails_on(
-        "oracle", "Oracle doesn't support boolean expressions as " "columns"
+        "oracle", "Oracle doesn't support boolean expressions as columns"
     )
     @testing.fails_on(
         "postgresql+pg8000",
@@ -2269,11 +1497,13 @@ class BindSensitiveStringifyTest(fixtures.MappedTest):
 
         eq_ignore_whitespace(
             str(q),
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users WHERE users.id = ?"
-            if expect_bound
-            else "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users WHERE users.id = :id_1",
+            (
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = ?"
+                if expect_bound
+                else "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = :id_1"
+            ),
         )
 
     def test_query_bound_session(self):
@@ -2307,7 +1537,6 @@ class DeprecationScopedSessionTest(fixtures.MappedTest):
 
 
 class RequirementsTest(fixtures.MappedTest):
-
     """Tests the contract for user classes."""
 
     @classmethod
@@ -2355,61 +1584,6 @@ class RequirementsTest(fixtures.MappedTest):
             Column("ht1b_id", Integer, ForeignKey("ht1.id"), primary_key=True),
             Column("value", String(10)),
         )
-
-
-class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
-    __dialect__ = "default"
-
-    def test_deep_options(self):
-        users, items, order_items, Order, Item, User, orders = (
-            self.tables.users,
-            self.tables.items,
-            self.tables.order_items,
-            self.classes.Order,
-            self.classes.Item,
-            self.classes.User,
-            self.tables.orders,
-        )
-
-        self.mapper_registry.map_imperatively(
-            Item,
-            items,
-            properties=dict(description=deferred(items.c.description)),
-        )
-        self.mapper_registry.map_imperatively(
-            Order,
-            orders,
-            properties=dict(items=relationship(Item, secondary=order_items)),
-        )
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(orders=relationship(Order, order_by=orders.c.id)),
-        )
-
-        sess = fixture_session()
-        q = sess.query(User).order_by(User.id)
-        result = q.all()
-        item = result[0].orders[1].items[1]
-
-        def go():
-            eq_(item.description, "item 4")
-
-        self.sql_count_(1, go)
-        eq_(item.description, "item 4")
-
-        sess.expunge_all()
-        with assertions.expect_deprecated(undefer_needs_chaining):
-            result = q.options(
-                undefer(User.orders, Order.items, Item.description)
-            ).all()
-        item = result[0].orders[1].items[1]
-
-        def go():
-            eq_(item.description, "item 4")
-
-        self.sql_count_(0, go)
-        eq_(item.description, "item 4")
 
 
 class SubOptionsTest(PathTest, OptionsQueryTest):
@@ -2873,7 +2047,7 @@ class MergeResultTest(_fixtures.FixtureTest):
         )
 
 
-class DefaultStrategyOptionsTest(_DefaultStrategyOptionsTest):
+class DefaultStrategyOptionsTest(DefaultStrategyOptionsTestFixtures):
     def test_joined_path_wildcards(self):
         sess = self._upgrade_fixture()
         users = []
@@ -2928,6 +2102,69 @@ class DefaultStrategyOptionsTest(_DefaultStrategyOptionsTest):
             # verify everything loaded, with no additional sql needed
             self._assert_fully_loaded(users)
 
+    def test_noload_with_joinedload(self):
+        """Mapper load strategy defaults can be downgraded with
+        noload('*') option, while explicit joinedload() option
+        is still honored"""
+        sess = self._downgrade_fixture()
+        users = []
+
+        # test noload('*') shuts off 'orders' subquery, only 1 sql
+        def go():
+            users[:] = (
+                sess.query(self.classes.User)
+                .options(sa.orm.noload("*"))
+                .options(joinedload(self.classes.User.addresses))
+                .order_by(self.classes.User.id)
+                .all()
+            )
+
+        with expect_noload_deprecation():
+            self.assert_sql_count(testing.db, go, 1)
+
+        # verify all the addresses were joined loaded (no more sql)
+        self._assert_addresses_loaded(users)
+
+        # User.orders should have loaded "noload" (meaning [])
+        def go():
+            for u in users:
+                assert u.orders == []
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_noload_with_subqueryload(self):
+        """Mapper load strategy defaults can be downgraded with
+        noload('*') option, while explicit subqueryload() option
+        is still honored"""
+        sess = self._downgrade_fixture()
+        users = []
+
+        # test noload('*') option combined with subqueryload()
+        # shuts off 'addresses' load AND orders.items load: 2 sql expected
+        def go():
+            users[:] = (
+                sess.query(self.classes.User)
+                .options(sa.orm.noload("*"))
+                .options(subqueryload(self.classes.User.orders))
+                .order_by(self.classes.User.id)
+                .all()
+            )
+
+        with expect_noload_deprecation():
+            self.assert_sql_count(testing.db, go, 2)
+
+        def go():
+            # Verify orders have already been loaded: 0 sql
+            for u, static in zip(users, self.static.user_all_result):
+                assert len(u.orders) == len(static.orders)
+            # Verify noload('*') prevented orders.items load
+            # and set 'items' to []
+            for u in users:
+                for o in u.orders:
+                    assert o.items == []
+
+        self.assert_sql_count(testing.db, go, 0)
+
 
 class Deferred_InheritanceTest(_deferred_InheritanceTest):
     def test_defer_on_wildcard_subclass(self):
@@ -2953,3 +2190,326 @@ class Deferred_InheritanceTest(_deferred_InheritanceTest):
         )
         # note this doesn't apply to "bound" loaders since they don't seem
         # to have this ".*" feature.
+
+
+class NoLoadTest(_fixtures.FixtureTest):
+    run_inserts = "once"
+    run_deletes = None
+
+    def test_o2m_noload(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        m = self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="noload",
+                )
+            ),
+        )
+        q = fixture_session().query(m)
+        result = [None]
+
+        def go():
+            x = q.filter(User.id == 7).all()
+            x[0].addresses
+            result[0] = x
+
+        with expect_noload_deprecation():
+            self.assert_sql_count(testing.db, go, 1)
+
+        self.assert_result(
+            result[0], User, {"id": 7, "addresses": (Address, [])}
+        )
+
+    def test_upgrade_o2m_noload_lazyload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        m = self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="noload",
+                )
+            ),
+        )
+        with expect_noload_deprecation():
+            q = (
+                fixture_session()
+                .query(m)
+                .options(sa.orm.lazyload(User.addresses))
+            )
+        result = [None]
+
+        def go():
+            x = q.filter(User.id == 7).all()
+            x[0].addresses
+            result[0] = x
+
+        self.sql_count_(2, go)
+
+        self.assert_result(
+            result[0], User, {"id": 7, "addresses": (Address, [{"id": 1}])}
+        )
+
+    def test_m2o_noload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
+        self.mapper_registry.map_imperatively(User, users)
+        s = fixture_session()
+        with expect_noload_deprecation():
+            a1 = (
+                s.query(Address)
+                .filter_by(id=1)
+                .options(sa.orm.noload(Address.user))
+                .first()
+            )
+
+        def go():
+            eq_(a1.user, None)
+
+        self.sql_count_(0, go)
+
+
+class DynamicTest(_DynamicFixture, _fixtures.FixtureTest):
+
+    @testing.combinations(("star",), ("attronly",), argnames="type_")
+    def test_noload_issue(self, type_, user_address_fixture):
+        """test #6420.   a noload that hits the dynamic loader
+        should have no effect.
+
+        """
+
+        User, Address = user_address_fixture()
+
+        s = fixture_session()
+
+        with expect_noload_deprecation():
+
+            if type_ == "star":
+                u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
+                assert "name" not in u1.__dict__["name"]
+            elif type_ == "attronly":
+                u1 = (
+                    s.query(User)
+                    .filter_by(id=7)
+                    .options(noload(User.addresses))
+                    .first()
+                )
+
+                eq_(u1.__dict__["name"], "jack")
+
+        # noload doesn't affect a dynamic loader, because it has no state
+        eq_(list(u1.addresses), [Address(id=1)])
+
+
+class WriteOnlyTest(_WriteOnlyFixture, _fixtures.FixtureTest):
+
+    @testing.combinations(("star",), ("attronly",), argnames="type_")
+    def test_noload_issue(self, type_, user_address_fixture):
+        """test #6420.   a noload that hits the dynamic loader
+        should have no effect.
+
+        """
+
+        User, Address = user_address_fixture()
+
+        s = fixture_session()
+
+        with expect_noload_deprecation():
+
+            if type_ == "star":
+                u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
+                assert "name" not in u1.__dict__["name"]
+            elif type_ == "attronly":
+                u1 = (
+                    s.query(User)
+                    .filter_by(id=7)
+                    .options(noload(User.addresses))
+                    .first()
+                )
+
+                eq_(u1.__dict__["name"], "jack")
+
+
+class ExpireTest(_fixtures.FixtureTest):
+    def test_state_noload_to_lazy(self):
+        """Behavioral test to verify the current activity of
+        loader callables
+
+        """
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={"addresses": relationship(Address, lazy="noload")},
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        sess = fixture_session(autoflush=False)
+        with expect_noload_deprecation():
+            u1 = sess.query(User).options(lazyload(User.addresses)).first()
+        assert isinstance(
+            attributes.instance_state(u1).callables["addresses"],
+            strategies._LoadLazyAttribute,
+        )
+        # expire, it goes away from callables as of 1.4 and is considered
+        # to be expired
+        sess.expire(u1)
+
+        assert "addresses" in attributes.instance_state(u1).expired_attributes
+        assert "addresses" not in attributes.instance_state(u1).callables
+
+        # load it
+        sess.query(User).first()
+        assert (
+            "addresses" not in attributes.instance_state(u1).expired_attributes
+        )
+        assert "addresses" not in attributes.instance_state(u1).callables
+
+        sess.expunge_all()
+        u1 = sess.query(User).options(lazyload(User.addresses)).first()
+        sess.expire(u1, ["addresses"])
+        assert (
+            "addresses" not in attributes.instance_state(u1).expired_attributes
+        )
+        assert isinstance(
+            attributes.instance_state(u1).callables["addresses"],
+            strategies._LoadLazyAttribute,
+        )
+
+        # load the attr, goes away
+        u1.addresses
+        assert (
+            "addresses" not in attributes.instance_state(u1).expired_attributes
+        )
+        assert "addresses" not in attributes.instance_state(u1).callables
+
+
+class NoLoadBackPopulates(_fixtures.FixtureTest):
+    """test the noload stratgegy which unlike others doesn't use
+    lazyloader to set up instrumentation"""
+
+    def test_o2m(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, back_populates="user", lazy="noload"
+                )
+            },
+        )
+
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
+        with expect_noload_deprecation():
+            u1 = User()
+        a1 = Address()
+        u1.addresses.append(a1)
+        is_(a1.user, u1)
+
+    def test_m2o(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User, back_populates="addresses", lazy="noload"
+                )
+            },
+        )
+        with expect_noload_deprecation():
+            u1 = User()
+        a1 = Address()
+        a1.user = u1
+        in_(a1, u1.addresses)
+
+
+class ManyToOneTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    def test_bidirectional_no_load(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, backref="user", lazy="noload"
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        # try it on unsaved objects
+        with expect_noload_deprecation():
+            u1 = User(name="u1")
+        a1 = Address(email_address="e1")
+        a1.user = u1
+
+        session = fixture_session()
+        session.add(u1)
+        session.flush()
+        session.expunge_all()
+
+        a1 = session.get(Address, a1.id)
+
+        a1.user = None
+        session.flush()
+        session.expunge_all()
+        assert session.get(Address, a1.id).user is None
+        assert session.get(User, u1.id).addresses == []

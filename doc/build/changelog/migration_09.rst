@@ -1148,7 +1148,7 @@ can be dropped in using callable functions.
 
 It is hoped that the :class:`.AutomapBase` system provides a quick
 and modernized solution to the problem that the very famous
-`SQLSoup <https://sqlsoup.readthedocs.io/en/latest/>`_
+`SQLSoup <https://pypi.org/project/sqlsoup/>`_
 also tries to solve, that of generating a quick and rudimentary object
 model from an existing database on the fly.  By addressing the issue strictly
 at the mapper configuration level, and integrating fully with existing

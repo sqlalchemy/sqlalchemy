@@ -552,8 +552,7 @@ SQLAlchemy has for a long time used a parameter-injecting decorator to help reso
 mutually-dependent module imports, like this::
 
     @util.dependency_for("sqlalchemy.sql.dml")
-    def insert(self, dml, *args, **kw):
-        ...
+    def insert(self, dml, *args, **kw): ...
 
 Where the above function would be rewritten to no longer have the ``dml`` parameter
 on the outside.  This would confuse code-linting tools into seeing a missing parameter
@@ -2274,8 +2273,7 @@ in any way::
         addresses = relationship(Address, backref=backref("user", viewonly=True))
 
 
-    class Address(Base):
-        ...
+    class Address(Base): ...
 
 
     u1 = session.query(User).filter_by(name="x").first()

@@ -1,5 +1,5 @@
 # sql/__init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,6 +11,7 @@ from ._typing import ColumnExpressionArgument as ColumnExpressionArgument
 from ._typing import NotNullable as NotNullable
 from ._typing import Nullable as Nullable
 from .base import Executable as Executable
+from .base import SyntaxExtension as SyntaxExtension
 from .compiler import COLLECT_CARTESIAN_PRODUCTS as COLLECT_CARTESIAN_PRODUCTS
 from .compiler import FROM_LINTING as FROM_LINTING
 from .compiler import NO_LINTING as NO_LINTING

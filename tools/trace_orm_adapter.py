@@ -3,26 +3,27 @@ Debug ORMAdapter calls within ORM runs.
 
 Demos::
 
-    python tools/trace_orm_adapter.py -m pytest \
+    $ python tools/trace_orm_adapter.py -m pytest \
         test/orm/inheritance/test_polymorphic_rel.py::PolymorphicAliasedJoinsTest::test_primary_eager_aliasing_joinedload
 
-    python tools/trace_orm_adapter.py -m pytest \
+    $ python tools/trace_orm_adapter.py -m pytest \
         test/orm/test_eager_relations.py::LazyLoadOptSpecificityTest::test_pathed_joinedload_aliased_abs_bcs
 
-    python tools/trace_orm_adapter.py my_test_script.py
+    $ python tools/trace_orm_adapter.py my_test_script.py
 
 
 The above two tests should spit out a ton of debug output.  If a test or program
 has no debug output at all, that's a good thing!  it means ORMAdapter isn't
 used for that case.
 
-You can then set a breakpoint at the end of any adapt step:
+You can then set a breakpoint at the end of any adapt step::
 
-    python tools/trace_orm_adapter.py -d 10 -m pytest -s \
+    $ python tools/trace_orm_adapter.py -d 10 -m pytest -s \
         test/orm/test_eager_relations.py::LazyLoadOptSpecificityTest::test_pathed_joinedload_aliased_abs_bcs
 
 
 """  # noqa: E501
+
 # mypy: ignore-errors
 
 

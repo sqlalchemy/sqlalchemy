@@ -140,6 +140,33 @@ this value can be supported::
     # it to use the return value
     listen(UserContact.phone, "set", validate_phone, retval=True)
 
+Events and Multiprocessing
+--------------------------
+
+SQLAlchemy's event hooks are implemented with Python functions and objects,
+so events propagate via Python function calls.
+Python multiprocessing follows the
+same way we think about OS multiprocessing,
+such as a parent process forking a child process,
+thus we can describe the SQLAlchemy event system's behavior using the same model.
+
+Event hooks registered in a parent process
+will be present in new child processes
+that are forked from that parent after the hooks have been registered,
+since the child process starts with
+a copy of all existing Python structures from the parent when spawned.
+Child processes that already exist before the hooks are registered
+will not receive those new event hooks,
+as changes made to Python structures in a parent process
+do not propagate to child processes.
+
+For the events themselves, these are Python function calls,
+which do not have any ability to propagate between processes.
+SQLAlchemy's event system does not implement any inter-process communication.
+It is possible to implement event hooks
+that use Python inter-process messaging within them,
+however this would need to be implemented by the user.
+
 Event Reference
 ---------------
 

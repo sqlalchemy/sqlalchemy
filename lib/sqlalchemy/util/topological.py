@@ -1,5 +1,5 @@
 # util/topological.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -112,7 +112,7 @@ def find_cycles(
                     todo.remove(node)
                     break
             else:
-                node = stack.pop()
+                stack.pop()
     return output
 
 

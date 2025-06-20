@@ -204,8 +204,7 @@ scenarios. Highlights of this release include:
 
 A demonstration of callcount reduction including a sample
 benchmark script is at
-https://techspot.zzzeek.org/2010/12/12/a-tale-of-three-
-profiles/
+https://techspot.zzzeek.org/2010/12/12/a-tale-of-three-profiles/
 
 Composites Rewritten
 --------------------

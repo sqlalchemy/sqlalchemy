@@ -664,7 +664,7 @@ RETURN
     def test_scalar_strings_named_control(self, scalar_strings, connection):
         result = (
             connection.exec_driver_sql(
-                "SELECT anon_1.my_string " "FROM scalar_strings() AS anon_1"
+                "SELECT anon_1.my_string FROM scalar_strings() AS anon_1"
             )
             .scalars()
             .all()

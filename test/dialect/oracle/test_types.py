@@ -1,3 +1,4 @@
+import array
 import datetime
 import decimal
 import os
@@ -15,6 +16,7 @@ from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import FLOAT
 from sqlalchemy import Float
+from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import LargeBinary
 from sqlalchemy import literal
@@ -37,9 +39,13 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.dialects.oracle import oracledb
+from sqlalchemy.dialects.oracle import VECTOR
+from sqlalchemy.dialects.oracle import VectorDistanceType
+from sqlalchemy.dialects.oracle import VectorIndexConfig
+from sqlalchemy.dialects.oracle import VectorIndexType
+from sqlalchemy.dialects.oracle import VectorStorageFormat
 from sqlalchemy.sql import column
 from sqlalchemy.sql.sqltypes import NullType
-from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
@@ -50,6 +56,7 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import b
+from sqlalchemy.util.concurrency import await_
 
 
 def exec_sql(conn, sql, *args, **kwargs):
@@ -183,6 +190,10 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             oracle.INTERVAL(day_precision=2, second_precision=5),
             "INTERVAL DAY(2) TO SECOND(5)",
         ),
+        (
+            sqltypes.Interval(day_precision=9, second_precision=3),
+            "INTERVAL DAY(9) TO SECOND(3)",
+        ),
     )
     def test_interval(self, type_, expected):
         self.assert_compile(type_, expected)
@@ -207,6 +218,33 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     )
     def test_float_type_compile(self, type_, sql_text):
         self.assert_compile(type_, sql_text)
+
+    @testing.combinations(
+        (
+            text("select :parameter from dual").bindparams(
+                parameter=datetime.timedelta(days=2)
+            ),
+            "select NUMTODSINTERVAL(172800.0, 'SECOND') from dual",
+        ),
+        (
+            text("SELECT :parameter from dual").bindparams(
+                parameter=datetime.timedelta(days=1, minutes=3, seconds=4)
+            ),
+            "SELECT NUMTODSINTERVAL(86584.0, 'SECOND') from dual",
+        ),
+        (
+            text("select :parameter - :parameter2 from dual").bindparams(
+                parameter=datetime.timedelta(days=1, minutes=3, seconds=4),
+                parameter2=datetime.timedelta(days=0, minutes=1, seconds=4),
+            ),
+            (
+                "select NUMTODSINTERVAL(86584.0, 'SECOND') - "
+                "NUMTODSINTERVAL(64.0, 'SECOND') from dual"
+            ),
+        ),
+    )
+    def test_interval_literal_processor(self, type_, expected):
+        self.assert_compile(type_, expected, literal_binds=True)
 
 
 class TypesTest(fixtures.TestBase):
@@ -323,15 +361,34 @@ class TypesTest(fixtures.TestBase):
             datetime.timedelta(days=35, seconds=5743),
         )
 
+    def test_interval_literal_processor(self, connection):
+        stmt = text("select :parameter - :parameter2 from dual")
+        result = connection.execute(
+            stmt.bindparams(
+                bindparam(
+                    "parameter",
+                    datetime.timedelta(days=1, minutes=3, seconds=4),
+                    literal_execute=True,
+                ),
+                bindparam(
+                    "parameter2",
+                    datetime.timedelta(days=0, minutes=1, seconds=4),
+                    literal_execute=True,
+                ),
+            )
+        ).one()
+        eq_(result[0], datetime.timedelta(days=1, seconds=120))
+
     def test_no_decimal_float_precision(self):
         with expect_raises_message(
             exc.ArgumentError,
-            "Oracle FLOAT types use 'binary precision', which does not "
-            "convert cleanly from decimal 'precision'.  Please specify this "
-            "type with a separate Oracle variant, such as "
+            "Oracle Database FLOAT types use 'binary precision', which does "
+            "not convert cleanly from decimal 'precision'.  Please specify "
+            "this type with a separate Oracle Database variant, such as "
             r"FLOAT\(precision=5\).with_variant\(oracle.FLOAT\("
             r"binary_precision=16\), 'oracle'\), so that the Oracle "
-            "specific 'binary_precision' may be specified accurately.",
+            "Database specific 'binary_precision' may be specified "
+            "accurately.",
         ):
             FLOAT(5).compile(dialect=oracle.dialect())
 
@@ -522,7 +579,7 @@ class TypesTest(fixtures.TestBase):
         )
 
     def test_numerics_broken_inspection(self, metadata, connection):
-        """Numeric scenarios where Oracle type info is 'broken',
+        """Numeric scenarios where Oracle Database type info is 'broken',
         returning us precision, scale of the form (0, 0) or (0, -127).
         We convert to Decimal and let int()/float() processors take over.
 
@@ -901,6 +958,194 @@ class TypesTest(fixtures.TestBase):
         finally:
             exec_sql(connection, "DROP TABLE Z_TEST")
 
+    @testing.only_on("oracle>=23.4")
+    def test_vector_dim(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column(
+                "c1", VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32)
+            ),
+        )
+
+        t1.create(connection)
+        eq_(t1.c.c1.type.dim, 3)
+
+    @testing.only_on("oracle>=23.4")
+    def test_vector_insert(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("c1", VECTOR(storage_format=VectorStorageFormat.INT8)),
+        )
+
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
+            dict(id=1, c1=[6, 7, 8, 5]),
+        )
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7, 8, 5]),
+        )
+        connection.execute(t1.delete().where(t1.c.id == 1))
+        connection.execute(t1.insert(), dict(id=1, c1=[6, 7]))
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7]),
+        )
+
+    @testing.only_on("oracle>=23.4")
+    def test_vector_insert_array(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("c1", VECTOR),
+        )
+
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
+            dict(id=1, c1=array.array("b", [6, 7, 8, 5])),
+        )
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7, 8, 5]),
+        )
+
+        connection.execute(t1.delete().where(t1.c.id == 1))
+
+        connection.execute(
+            t1.insert(), dict(id=1, c1=array.array("b", [6, 7]))
+        )
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7]),
+        )
+
+    @testing.only_on("oracle>=23.4")
+    def test_vector_multiformat_insert(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("c1", VECTOR),
+        )
+
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
+            dict(id=1, c1=[6.12, 7.54, 8.33]),
+        )
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6.12, 7.54, 8.33]),
+        )
+        connection.execute(t1.delete().where(t1.c.id == 1))
+        connection.execute(t1.insert(), dict(id=1, c1=[6, 7]))
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7]),
+        )
+
+    @testing.only_on("oracle>=23.4")
+    def test_vector_format(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column(
+                "c1", VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32)
+            ),
+        )
+
+        t1.create(connection)
+        eq_(t1.c.c1.type.storage_format, VectorStorageFormat.FLOAT32)
+
+    @testing.only_on("oracle>=23.4")
+    def test_vector_hnsw_index(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer),
+            Column(
+                "embedding",
+                VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+            ),
+        )
+
+        t1.create(connection)
+
+        hnsw_index = Index(
+            "hnsw_vector_index", t1.c.embedding, oracle_vector=True
+        )
+        hnsw_index.create(connection)
+
+        connection.execute(t1.insert(), dict(id=1, embedding=[6, 7, 8]))
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6.0, 7.0, 8.0]),
+        )
+
+    @testing.only_on("oracle>=23.4")
+    def test_vector_ivf_index(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer),
+            Column(
+                "embedding",
+                VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+            ),
+        )
+
+        t1.create(connection)
+        ivf_index = Index(
+            "ivf_vector_index",
+            t1.c.embedding,
+            oracle_vector=VectorIndexConfig(
+                index_type=VectorIndexType.IVF,
+                distance=VectorDistanceType.DOT,
+                accuracy=90,
+                ivf_neighbor_partitions=5,
+            ),
+        )
+        ivf_index.create(connection)
+
+        connection.execute(t1.insert(), dict(id=1, embedding=[6, 7, 8]))
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6.0, 7.0, 8.0]),
+        )
+
+    @testing.only_on("oracle>=23.4")
+    def test_vector_l2_distance(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer),
+            Column(
+                "embedding",
+                VECTOR(dim=3, storage_format=VectorStorageFormat.INT8),
+            ),
+        )
+
+        t1.create(connection)
+
+        connection.execute(t1.insert(), dict(id=1, embedding=[8, 9, 10]))
+        connection.execute(t1.insert(), dict(id=2, embedding=[1, 2, 3]))
+        connection.execute(
+            t1.insert(),
+            dict(id=3, embedding=[15, 16, 17]),
+        )
+
+        query_vector = [2, 3, 4]
+        res = connection.execute(
+            t1.select().order_by((t1.c.embedding.l2_distance(query_vector)))
+        ).first()
+        eq_(res.embedding, [1, 2, 3])
+
 
 class LOBFetchTest(fixtures.TablesTest):
     __only_on__ = "oracle"
@@ -949,13 +1194,23 @@ class LOBFetchTest(fixtures.TablesTest):
         for i in range(1, 11):
             connection.execute(binary_table.insert(), dict(id=i, data=stream))
 
+    def _read_lob(self, engine, row):
+        if engine.dialect.is_async:
+            data = await_(row._mapping["data"].read())
+            bindata = await_(row._mapping["bindata"].read())
+        else:
+            data = row._mapping["data"].read()
+            bindata = row._mapping["bindata"].read()
+        return data, bindata
+
     def test_lobs_without_convert(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
         t = self.tables.z_test
         with engine.begin() as conn:
             row = conn.execute(t.select().where(t.c.id == 1)).first()
-            eq_(row._mapping["data"].read(), "this is text 1")
-            eq_(row._mapping["bindata"].read(), b("this is binary 1"))
+            data, bindata = self._read_lob(engine, row)
+            eq_(data, "this is text 1")
+            eq_(bindata, b("this is binary 1"))
 
     def test_lobs_with_convert(self, connection):
         t = self.tables.z_test
@@ -979,28 +1234,15 @@ class LOBFetchTest(fixtures.TablesTest):
         results = result.fetchall()
 
         def go():
-            eq_(
-                [
-                    dict(
-                        id=row._mapping["id"],
-                        data=row._mapping["data"].read(),
-                        bindata=row._mapping["bindata"].read(),
-                    )
-                    for row in results
-                ],
-                self.data,
-            )
+            actual = []
+            for row in results:
+                data, bindata = self._read_lob(engine, row)
+                actual.append(
+                    dict(id=row._mapping["id"], data=data, bindata=bindata)
+                )
+            eq_(actual, self.data)
 
-        # this comes from cx_Oracle because these are raw
-        # cx_Oracle.Variable objects
-        if testing.requires.oracle5x.enabled:
-            assert_raises_message(
-                testing.db.dialect.dbapi.ProgrammingError,
-                "LOB variable no longer valid after subsequent fetch",
-                go,
-            )
-        else:
-            go()
+        go()
 
     def test_lobs_with_convert_many_rows(self):
         # even with low arraysize, lobs are fine in autoconvert

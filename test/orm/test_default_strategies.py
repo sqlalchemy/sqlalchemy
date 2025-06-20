@@ -1,17 +1,24 @@
 import sqlalchemy as sa
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import util
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
-class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
+class DefaultStrategyOptionsTestFixtures(_fixtures.FixtureTest):
     def _assert_fully_loaded(self, users):
         # verify everything loaded, with no additional sql needed
         def go():
@@ -185,6 +192,9 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         )
 
         return fixture_session()
+
+
+class DefaultStrategyOptionsTest(DefaultStrategyOptionsTestFixtures):
 
     def test_downgrade_baseline(self):
         """Mapper strategy defaults load as expected
@@ -360,67 +370,6 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
 
         # lastly, make sure they actually loaded properly
         eq_(users, self.static.user_all_result)
-
-    def test_noload_with_joinedload(self):
-        """Mapper load strategy defaults can be downgraded with
-        noload('*') option, while explicit joinedload() option
-        is still honored"""
-        sess = self._downgrade_fixture()
-        users = []
-
-        # test noload('*') shuts off 'orders' subquery, only 1 sql
-        def go():
-            users[:] = (
-                sess.query(self.classes.User)
-                .options(sa.orm.noload("*"))
-                .options(joinedload(self.classes.User.addresses))
-                .order_by(self.classes.User.id)
-                .all()
-            )
-
-        self.assert_sql_count(testing.db, go, 1)
-
-        # verify all the addresses were joined loaded (no more sql)
-        self._assert_addresses_loaded(users)
-
-        # User.orders should have loaded "noload" (meaning [])
-        def go():
-            for u in users:
-                assert u.orders == []
-
-        self.assert_sql_count(testing.db, go, 0)
-
-    def test_noload_with_subqueryload(self):
-        """Mapper load strategy defaults can be downgraded with
-        noload('*') option, while explicit subqueryload() option
-        is still honored"""
-        sess = self._downgrade_fixture()
-        users = []
-
-        # test noload('*') option combined with subqueryload()
-        # shuts off 'addresses' load AND orders.items load: 2 sql expected
-        def go():
-            users[:] = (
-                sess.query(self.classes.User)
-                .options(sa.orm.noload("*"))
-                .options(subqueryload(self.classes.User.orders))
-                .order_by(self.classes.User.id)
-                .all()
-            )
-
-        self.assert_sql_count(testing.db, go, 2)
-
-        def go():
-            # Verify orders have already been loaded: 0 sql
-            for u, static in zip(users, self.static.user_all_result):
-                assert len(u.orders) == len(static.orders)
-            # Verify noload('*') prevented orders.items load
-            # and set 'items' to []
-            for u in users:
-                for o in u.orders:
-                    assert o.items == []
-
-        self.assert_sql_count(testing.db, go, 0)
 
     def test_joined(self):
         """Mapper load strategy defaults can be upgraded with
@@ -647,94 +596,120 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self._assert_fully_loaded(users)
 
 
-class NoLoadTest(_fixtures.FixtureTest):
-    run_inserts = "once"
-    run_deletes = None
+class Issue11292Test(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
 
-    def test_o2m_noload(self):
-        Address, addresses, users, User = (
-            self.classes.Address,
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
+        class Parent(Base):
+            __tablename__ = "parent"
+
+            id = Column(Integer, primary_key=True)
+
+            extension = relationship(
+                "Extension", back_populates="parent", uselist=False
+            )
+
+        class Child(Base):
+            __tablename__ = "child"
+
+            id = Column(Integer, primary_key=True)
+
+            extensions = relationship("Extension", back_populates="child")
+
+        class Extension(Base):
+            __tablename__ = "extension"
+
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(Integer, ForeignKey(Parent.id))
+            child_id = Column(Integer, ForeignKey(Child.id))
+
+            parent = relationship("Parent", back_populates="extension")
+            child = relationship("Child", back_populates="extensions")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Parent, Child, Extension = cls.classes("Parent", "Child", "Extension")
+        with Session(connection) as session:
+            for id_ in (1, 2, 3):
+                session.add(Parent(id=id_))
+                session.add(Child(id=id_))
+                session.add(Extension(id=id_, parent_id=id_, child_id=id_))
+            session.commit()
+
+    @testing.variation("load_as_option", [True, False])
+    def test_defaultload_dont_propagate(self, load_as_option):
+        Parent, Child, Extension = self.classes("Parent", "Child", "Extension")
+
+        session = fixture_session()
+
+        # here, we want the defaultload() to go away on subsequent loads,
+        # becuase Parent.extension is propagate_to_loaders=False
+        query = (
+            select(Parent)
+            .join(Extension)
+            .join(Child)
+            .options(
+                contains_eager(Parent.extension),
+                (
+                    defaultload(Parent.extension).options(
+                        contains_eager(Extension.child)
+                    )
+                    if load_as_option
+                    else defaultload(Parent.extension).contains_eager(
+                        Extension.child
+                    )
+                ),
+            )
         )
 
-        m = self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(
-                    self.mapper_registry.map_imperatively(Address, addresses),
-                    lazy="noload",
+        parents = session.scalars(query).all()
+
+        eq_(
+            [(p.id, p.extension.id, p.extension.child.id) for p in parents],
+            [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
+        )
+
+        session.expire_all()
+
+        eq_(
+            [(p.id, p.extension.id, p.extension.child.id) for p in parents],
+            [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
+        )
+
+    @testing.variation("load_as_option", [True, False])
+    def test_defaultload_yes_propagate(self, load_as_option):
+        Parent, Child, Extension = self.classes("Parent", "Child", "Extension")
+
+        session = fixture_session()
+
+        # here, we want the defaultload() to go away on subsequent loads,
+        # becuase Parent.extension is propagate_to_loaders=False
+        query = select(Parent).options(
+            (
+                defaultload(Parent.extension).options(
+                    joinedload(Extension.child)
                 )
+                if load_as_option
+                else defaultload(Parent.extension).joinedload(Extension.child)
             ),
         )
-        q = fixture_session().query(m)
-        result = [None]
 
-        def go():
-            x = q.filter(User.id == 7).all()
-            x[0].addresses
-            result[0] = x
+        parents = session.scalars(query).all()
 
-        self.assert_sql_count(testing.db, go, 1)
-
-        self.assert_result(
-            result[0], User, {"id": 7, "addresses": (Address, [])}
+        eq_(
+            [(p.id, p.extension.id, p.extension.child.id) for p in parents],
+            [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
         )
 
-    def test_upgrade_o2m_noload_lazyload_option(self):
-        Address, addresses, users, User = (
-            self.classes.Address,
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
-        )
+        session.expire_all()
 
-        m = self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(
-                    self.mapper_registry.map_imperatively(Address, addresses),
-                    lazy="noload",
-                )
-            ),
-        )
-        q = fixture_session().query(m).options(sa.orm.lazyload(User.addresses))
-        result = [None]
-
-        def go():
-            x = q.filter(User.id == 7).all()
-            x[0].addresses
-            result[0] = x
-
-        self.sql_count_(2, go)
-
-        self.assert_result(
-            result[0], User, {"id": 7, "addresses": (Address, [{"id": 1}])}
-        )
-
-    def test_m2o_noload_option(self):
-        Address, addresses, users, User = (
-            self.classes.Address,
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
-        )
-        self.mapper_registry.map_imperatively(
-            Address, addresses, properties={"user": relationship(User)}
-        )
-        self.mapper_registry.map_imperatively(User, users)
-        s = fixture_session()
-        a1 = (
-            s.query(Address)
-            .filter_by(id=1)
-            .options(sa.orm.noload(Address.user))
-            .first()
-        )
-
-        def go():
-            eq_(a1.user, None)
-
-        self.sql_count_(0, go)
+        # this would be 9 without the joinedload
+        with self.assert_statement_count(testing.db, 6):
+            eq_(
+                [
+                    (p.id, p.extension.id, p.extension.child.id)
+                    for p in parents
+                ],
+                [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
+            )

@@ -1,0 +1,8 @@
+.. change::
+    :tags: schema
+    :tickets: 10247
+
+    Deprecate Oracle only parameters :paramref:`_schema.Sequence.order`,
+    :paramref:`_schema.Identity.order` and :paramref:`_schema.Identity.on_null`.
+    They should be configured using the dialect kwargs ``oracle_order`` and
+    ``oracle_on_null``.

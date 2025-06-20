@@ -26,6 +26,7 @@ already stored in the path itself. Updates require going through all
 descendants and changing the prefix.
 
 """
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import func

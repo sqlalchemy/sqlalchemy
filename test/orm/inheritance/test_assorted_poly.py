@@ -32,6 +32,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -40,6 +41,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_noload_deprecation
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
@@ -818,7 +820,7 @@ class RelationshipTest6(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        global people, managers, data
+        global people, managers
         people = Table(
             "people",
             metadata,
@@ -2354,7 +2356,8 @@ class CorrelateExceptWPolyAdaptTest(
     def test_poly_query_on_correlate(self):
         Common, Superclass = self._fixture(False)
 
-        poly = with_polymorphic(Superclass, "*")
+        with expect_noload_deprecation():
+            poly = with_polymorphic(Superclass, "*")
 
         s = fixture_session()
         q = (
@@ -2383,7 +2386,8 @@ class CorrelateExceptWPolyAdaptTest(
     def test_poly_query_on_correlate_except(self):
         Common, Superclass = self._fixture(True)
 
-        poly = with_polymorphic(Superclass, "*")
+        with expect_noload_deprecation():
+            poly = with_polymorphic(Superclass, "*")
 
         s = fixture_session()
         q = (
@@ -2476,9 +2480,9 @@ class Issue8168Test(AssertsCompiledSQL, fixtures.TestBase):
 
                 __mapper_args__ = {
                     "polymorphic_identity": "retailer",
-                    "polymorphic_load": "inline"
-                    if use_poly_on_retailer
-                    else None,
+                    "polymorphic_load": (
+                        "inline" if use_poly_on_retailer else None
+                    ),
                 }
 
             return Customer, Store, Retailer
@@ -3148,3 +3152,177 @@ class MultiOfTypeContainsEagerTest(fixtures.DeclarativeMappedTest):
             head,
             UnitHead(managers=expected_managers),
         )
+
+
+@testing.combinations(
+    (2,),
+    (3,),
+    id_="s",
+    argnames="num_levels",
+)
+@testing.combinations(
+    ("with_poly_star",),
+    ("inline",),
+    ("selectin",),
+    ("none",),
+    id_="s",
+    argnames="wpoly_type",
+)
+class SubclassWithPolyEagerLoadTest(fixtures.DeclarativeMappedTest):
+    """test #11446"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(10))
+            bs = relationship("B")
+
+            if cls.wpoly_type == "selectin":
+                __mapper_args__ = {"polymorphic_on": "type"}
+            elif cls.wpoly_type == "inline":
+                __mapper_args__ = {"polymorphic_on": "type"}
+            elif cls.wpoly_type == "with_poly_star":
+                __mapper_args__ = {
+                    "with_polymorphic": "*",
+                    "polymorphic_on": "type",
+                }
+            else:
+                __mapper_args__ = {"polymorphic_on": "type"}
+
+        class ASub(A):
+            __tablename__ = "asub"
+            id = Column(ForeignKey("a.id"), primary_key=True)
+            sub_data = Column(String(10))
+
+            if cls.wpoly_type == "selectin":
+                __mapper_args__ = {
+                    "polymorphic_load": "selectin",
+                    "polymorphic_identity": "asub",
+                }
+            elif cls.wpoly_type == "inline":
+                __mapper_args__ = {
+                    "polymorphic_load": "inline",
+                    "polymorphic_identity": "asub",
+                }
+            elif cls.wpoly_type == "with_poly_star":
+                __mapper_args__ = {
+                    "with_polymorphic": "*",
+                    "polymorphic_identity": "asub",
+                }
+            else:
+                __mapper_args__ = {"polymorphic_identity": "asub"}
+
+        if cls.num_levels == 3:
+
+            class ASubSub(ASub):
+                __tablename__ = "asubsub"
+                id = Column(ForeignKey("asub.id"), primary_key=True)
+                sub_sub_data = Column(String(10))
+
+                if cls.wpoly_type == "selectin":
+                    __mapper_args__ = {
+                        "polymorphic_load": "selectin",
+                        "polymorphic_identity": "asubsub",
+                    }
+                elif cls.wpoly_type == "inline":
+                    __mapper_args__ = {
+                        "polymorphic_load": "inline",
+                        "polymorphic_identity": "asubsub",
+                    }
+                elif cls.wpoly_type == "with_poly_star":
+                    __mapper_args__ = {
+                        "with_polymorphic": "*",
+                        "polymorphic_identity": "asubsub",
+                    }
+                else:
+                    __mapper_args__ = {"polymorphic_identity": "asubsub"}
+
+    @classmethod
+    def insert_data(cls, connection):
+        if cls.num_levels == 3:
+            ASubSub, B = cls.classes("ASubSub", "B")
+
+            with Session(connection) as sess:
+                sess.add_all(
+                    [
+                        ASubSub(
+                            sub_data="sub",
+                            sub_sub_data="subsub",
+                            bs=[B(), B(), B()],
+                        )
+                        for i in range(3)
+                    ]
+                )
+
+                sess.commit()
+        else:
+            ASub, B = cls.classes("ASub", "B")
+
+            with Session(connection) as sess:
+                sess.add_all(
+                    [
+                        ASub(sub_data="sub", bs=[B(), B(), B()])
+                        for i in range(3)
+                    ]
+                )
+                sess.commit()
+
+    @testing.variation("query_from", ["aliased_class", "class_", "parent"])
+    @testing.combinations(selectinload, subqueryload, argnames="loader_fn")
+    def test_thing(self, query_from, loader_fn):
+
+        A = self.classes.A
+
+        if self.num_levels == 2:
+            target = self.classes.ASub
+        elif self.num_levels == 3:
+            target = self.classes.ASubSub
+
+        if query_from.aliased_class:
+            asub_alias = aliased(target)
+            query = select(asub_alias).options(loader_fn(asub_alias.bs))
+        elif query_from.class_:
+            query = select(target).options(loader_fn(A.bs))
+        elif query_from.parent:
+            query = select(A).options(loader_fn(A.bs))
+
+        s = fixture_session()
+
+        # NOTE: this is likely a different bug - setting
+        # polymorphic_load to "inline" and loading from the parent does not
+        # descend to the ASubSub subclass; however "selectin" setting
+        # **does**.   this is inconsistent
+        if (
+            query_from.parent
+            and self.wpoly_type == "inline"
+            and self.num_levels == 3
+        ):
+            # this should ideally be "2"
+            expected_q = 5
+
+        elif query_from.parent and self.wpoly_type == "none":
+            expected_q = 5
+        elif query_from.parent and self.wpoly_type == "selectin":
+            expected_q = 3
+        else:
+            expected_q = 2
+
+        with self.assert_statement_count(testing.db, expected_q):
+            for obj in s.scalars(query):
+                # test both that with_polymorphic loaded
+                eq_(obj.sub_data, "sub")
+                if self.num_levels == 3:
+                    eq_(obj.sub_sub_data, "subsub")
+
+                # as well as the collection eagerly loaded
+                assert obj.bs

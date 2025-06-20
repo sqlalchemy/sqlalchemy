@@ -1,6 +1,4 @@
-"""Illustrate how to load some data, and cache the results.
-
-"""
+"""Illustrate how to load some data, and cache the results."""
 
 from sqlalchemy import select
 from .caching_query import FromCache

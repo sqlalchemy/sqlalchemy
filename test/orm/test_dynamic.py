@@ -16,7 +16,6 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import noload
 from sqlalchemy.orm import PassiveFlag
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
@@ -275,6 +274,33 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
+    @testing.combinations(
+        ("all", []),
+        ("one", exc.NoResultFound),
+        ("one_or_none", None),
+        argnames="method, expected",
+    )
+    @testing.variation("add_to_session", [True, False])
+    def test_transient_raise(
+        self, user_address_fixture, method, expected, add_to_session
+    ):
+        """test 11562"""
+        User, Address = user_address_fixture()
+
+        u1 = User(name="u1")
+        if add_to_session:
+            sess = fixture_session()
+            sess.add(u1)
+
+        meth = getattr(u1.addresses, method)
+        if expected is exc.NoResultFound:
+            with expect_raises_message(
+                exc.NoResultFound, "No row was found when one was required"
+            ):
+                meth()
+        else:
+            eq_(meth(), expected)
+
     def test_detached_raise(self, user_address_fixture):
         """so filtering on a detached dynamic list raises an error..."""
 
@@ -521,33 +547,6 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             [],
         )
 
-    @testing.combinations(("star",), ("attronly",), argnames="type_")
-    def test_noload_issue(self, type_, user_address_fixture):
-        """test #6420.   a noload that hits the dynamic loader
-        should have no effect.
-
-        """
-
-        User, Address = user_address_fixture()
-
-        s = fixture_session()
-
-        if type_ == "star":
-            u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
-            assert "name" not in u1.__dict__["name"]
-        elif type_ == "attronly":
-            u1 = (
-                s.query(User)
-                .filter_by(id=7)
-                .options(noload(User.addresses))
-                .first()
-            )
-
-            eq_(u1.__dict__["name"], "jack")
-
-        # noload doesn't affect a dynamic loader, because it has no state
-        eq_(list(u1.addresses), [Address(id=1)])
-
     def test_m2m(self, order_item_fixture):
         Order, Item = order_item_fixture(
             items_args={"backref": backref("orders", lazy="dynamic")}
@@ -771,30 +770,6 @@ class WriteOnlyTest(
     _WriteOnlyFixture, _fixtures.FixtureTest, AssertsCompiledSQL
 ):
     __dialect__ = "default"
-
-    @testing.combinations(("star",), ("attronly",), argnames="type_")
-    def test_noload_issue(self, type_, user_address_fixture):
-        """test #6420.   a noload that hits the dynamic loader
-        should have no effect.
-
-        """
-
-        User, Address = user_address_fixture()
-
-        s = fixture_session()
-
-        if type_ == "star":
-            u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
-            assert "name" not in u1.__dict__["name"]
-        elif type_ == "attronly":
-            u1 = (
-                s.query(User)
-                .filter_by(id=7)
-                .options(noload(User.addresses))
-                .first()
-            )
-
-            eq_(u1.__dict__["name"], "jack")
 
     def test_iteration_error(self, user_address_fixture):
         User, Address = user_address_fixture()
@@ -1444,9 +1419,11 @@ class DynamicUOWTest(
             addresses_args={
                 "order_by": addresses.c.id,
                 "backref": "user",
-                "cascade": "save-update"
-                if not delete_cascade_configured
-                else "all, delete",
+                "cascade": (
+                    "save-update"
+                    if not delete_cascade_configured
+                    else "all, delete"
+                ),
             }
         )
 
@@ -1519,9 +1496,11 @@ class WriteOnlyUOWTest(
                 data: Mapped[str]
                 bs: WriteOnlyMapped["B"] = relationship(  # noqa: F821
                     passive_deletes=passive_deletes,
-                    cascade="all, delete-orphan"
-                    if cascade_deletes
-                    else "save-update, merge",
+                    cascade=(
+                        "all, delete-orphan"
+                        if cascade_deletes
+                        else "save-update, merge"
+                    ),
                     order_by="B.id",
                 )
 
@@ -1986,9 +1965,11 @@ class _HistoryTest:
                     attributes.get_history(
                         obj,
                         attrname,
-                        PassiveFlag.PASSIVE_NO_FETCH
-                        if self.lazy == "write_only"
-                        else PassiveFlag.PASSIVE_OFF,
+                        (
+                            PassiveFlag.PASSIVE_NO_FETCH
+                            if self.lazy == "write_only"
+                            else PassiveFlag.PASSIVE_OFF
+                        ),
                     ),
                     compare,
                 )

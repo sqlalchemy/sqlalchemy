@@ -26,7 +26,9 @@ compliance suite" should be viewed as the primary target for new dialects.
 Dialect Layout
 ===============
 
-The file structure of a dialect is typically similar to the following::
+The file structure of a dialect is typically similar to the following:
+
+.. sourcecode:: text
 
     sqlalchemy-<dialect>/
                          setup.py
@@ -52,9 +54,9 @@ Key aspects of this file layout include:
   dialect to be usable from create_engine(), e.g.::
 
         entry_points = {
-         'sqlalchemy.dialects': [
-              'access.pyodbc = sqlalchemy_access.pyodbc:AccessDialect_pyodbc',
-              ]
+            "sqlalchemy.dialects": [
+                "access.pyodbc = sqlalchemy_access.pyodbc:AccessDialect_pyodbc",
+            ]
         }
 
   Above, the entrypoint ``access.pyodbc`` allow URLs to be used such as::
@@ -63,7 +65,9 @@ Key aspects of this file layout include:
 
 * setup.cfg - this file contains the traditional contents such as
   [tool:pytest] directives, but also contains new directives that are used
-  by SQLAlchemy's testing framework.  E.g. for Access::
+  by SQLAlchemy's testing framework.  E.g. for Access:
+
+  .. sourcecode:: text
 
     [tool:pytest]
     addopts= --tb native -v -r fxX --maxfail=25 -p no:warnings
@@ -129,6 +133,7 @@ Key aspects of this file layout include:
 
       from sqlalchemy.testing import exclusions
 
+
       class Requirements(SuiteRequirements):
           @property
           def nullable_booleans(self):
@@ -148,7 +153,9 @@ Key aspects of this file layout include:
   The requirements system can also be used when running SQLAlchemy's
   primary test suite against the external dialect.  In this use case,
   a ``--dburi`` as well as a ``--requirements`` flag are passed to SQLAlchemy's
-  test runner so that exclusions specific to the dialect take place::
+  test runner so that exclusions specific to the dialect take place:
+
+  .. sourcecode:: text
 
     cd /path/to/sqlalchemy
     pytest -v \
@@ -174,6 +181,7 @@ Key aspects of this file layout include:
       from sqlalchemy.testing.suite import *
 
       from sqlalchemy.testing.suite import IntegerTest as _IntegerTest
+
 
       class IntegerTest(_IntegerTest):
 

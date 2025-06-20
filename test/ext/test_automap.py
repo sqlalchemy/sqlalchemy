@@ -667,11 +667,14 @@ class ConcurrentAutomapTest(fixtures.TestBase):
                 m,
                 Column("id", Integer, primary_key=True),
                 Column("data", String(50)),
-                Column(
-                    "t_%d_id" % (i - 1), ForeignKey("table_%d.id" % (i - 1))
-                )
-                if i > 4
-                else None,
+                (
+                    Column(
+                        "t_%d_id" % (i - 1),
+                        ForeignKey("table_%d.id" % (i - 1)),
+                    )
+                    if i > 4
+                    else None
+                ),
             )
         m.drop_all(e)
         m.create_all(e)

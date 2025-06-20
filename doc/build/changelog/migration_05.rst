@@ -443,8 +443,7 @@ Schema/Types
 
   ::
 
-      class MyType(AdaptOldConvertMethods, TypeEngine):
-          ...
+      class MyType(AdaptOldConvertMethods, TypeEngine): ...
 
 * The ``quote`` flag on ``Column`` and ``Table`` as well as
   the ``quote_schema`` flag on ``Table`` now control quoting
@@ -589,8 +588,7 @@ Removed
   ::
 
        class MyQuery(Query):
-           def get(self, ident):
-               ...
+           def get(self, ident): ...
 
 
        session = sessionmaker(query_cls=MyQuery)()

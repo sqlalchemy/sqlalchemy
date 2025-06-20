@@ -75,12 +75,6 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "INCREMENT BY -2 MINVALUE 42",
         ),
         (
-            # remove this when the `order` parameter is removed
-            # issue #10207 - ensure ORDER does not render
-            Sequence("foo_seq", order=True),
-            "",
-        ),
-        (
             Sequence("foo_seq", minvalue=-42, increment=-2),
             "INCREMENT BY -2 MINVALUE -42",
         ),

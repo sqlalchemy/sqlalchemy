@@ -221,7 +221,7 @@ class LambdaElementTest(
 
         self.assert_compile(
             go("u1"),
-            "SELECT users.id FROM users " "WHERE users.name = 'u1'",
+            "SELECT users.id FROM users WHERE users.name = 'u1'",
             literal_binds=True,
         )
 
@@ -413,9 +413,11 @@ class LambdaElementTest(
             stmt = lambda_stmt(lambda: select(tab))
 
             stmt = stmt.add_criteria(
-                lambda s: s.where(tab.c.col > parameter)
-                if add_criteria
-                else s.where(tab.c.col == parameter),
+                lambda s: (
+                    s.where(tab.c.col > parameter)
+                    if add_criteria
+                    else s.where(tab.c.col == parameter)
+                ),
             )
 
             stmt += lambda s: s.order_by(tab.c.id)
@@ -437,9 +439,11 @@ class LambdaElementTest(
             stmt = lambda_stmt(lambda: select(tab))
 
             stmt = stmt.add_criteria(
-                lambda s: s.where(tab.c.col > parameter)
-                if add_criteria
-                else s.where(tab.c.col == parameter),
+                lambda s: (
+                    s.where(tab.c.col > parameter)
+                    if add_criteria
+                    else s.where(tab.c.col == parameter)
+                ),
                 track_on=[add_criteria],
             )
 
@@ -1885,6 +1889,47 @@ class LambdaElementTest(
                 (7, "foo"),
             )
 
+    def test_bindparam_not_cached(self, user_address_fixture, testing_engine):
+        """test #12084"""
+
+        users, addresses = user_address_fixture
+
+        engine = testing_engine(
+            share_pool=True, options={"query_cache_size": 0}
+        )
+        with engine.begin() as conn:
+            conn.execute(
+                users.insert(),
+                [{"id": 7, "name": "bar"}, {"id": 8, "name": "foo"}],
+            )
+
+        def make_query(stmt, *criteria):
+            for crit in criteria:
+                stmt += lambda s: s.where(crit)
+
+            return stmt
+
+        for i in range(2):
+            with engine.connect() as conn:
+                stmt = lambda_stmt(lambda: select(users))
+                # create a filter criterion that will never match anything
+                stmt1 = make_query(
+                    stmt,
+                    users.c.name == "bar",
+                    users.c.name == "foo",
+                )
+
+                assert len(conn.scalars(stmt1).all()) == 0
+
+                stmt2 = make_query(
+                    stmt,
+                    users.c.name == "bar",
+                    users.c.name == "bar",
+                    users.c.name == "foo",
+                )
+
+                assert len(conn.scalars(stmt2).all()) == 0
+
 
 class DeferredLambdaElementTest(
     fixtures.TestBase, testing.AssertsExecutionResults, AssertsCompiledSQL
@@ -1945,9 +1990,9 @@ class DeferredLambdaElementTest(
         # lambda produces either "t1 IN vv" or "t2 IN qq" based on the
         # argument.  will not produce a consistent cache key
         elem = lambdas.DeferredLambdaElement(
-            lambda tab: tab.c.q.in_(vv)
-            if tab.name == "t1"
-            else tab.c.q.in_(qq),
+            lambda tab: (
+                tab.c.q.in_(vv) if tab.name == "t1" else tab.c.q.in_(qq)
+            ),
             roles.WhereHavingRole,
             lambda_args=(t1,),
             opts=lambdas.LambdaOptions(track_closure_variables=False),

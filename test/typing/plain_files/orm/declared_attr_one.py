@@ -74,7 +74,7 @@ class Manager(Employee):
 def do_something_with_mapped_class(
     cls_: MappedClassProtocol[Employee],
 ) -> None:
-    # EXPECTED_TYPE: Select[Any]
+    # EXPECTED_TYPE: Select[Unpack[.*tuple[Any, ...]]]
     reveal_type(cls_.__table__.select())
 
     # EXPECTED_TYPE: Mapper[Employee]

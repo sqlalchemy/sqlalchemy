@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 
 def _get_version(conn):
     # this is the suggested way of finding the mode, from
-    # https://python-oracledb.readthedocs.io/en/latest/user_guide/tracing.html#vsessconinfo
+    # https://python-oracledb.readthedocs.io/en/latest/user_guide/tracing.html#finding-the-python-oracledb-mode
     sql = (
         "SELECT UNIQUE CLIENT_DRIVER "
         "FROM V$SESSION_CONNECT_INFO "

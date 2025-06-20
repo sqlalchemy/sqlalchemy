@@ -14,6 +14,7 @@ from sqlalchemy.sql import coercions
 from sqlalchemy.sql import column
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import roles
+from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -174,3 +175,12 @@ class MiscTest(fixtures.TestBase):
 
         for a, b in zip_longest(unwrapped, expected):
             assert a is not None and a.compare(b)
+
+    def test_column_collection_get(self):
+        col_id = column("id", Integer)
+        col_alt = column("alt", Integer)
+        table1 = table("mytable", col_id)
+
+        is_(table1.columns.get("id"), col_id)
+        is_(table1.columns.get("alt"), None)
+        is_(table1.columns.get("alt", col_alt), col_alt)

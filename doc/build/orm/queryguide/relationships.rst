@@ -828,10 +828,10 @@ will JOIN across all three tables to match rows from one side to the other.
 Things to know about this kind of loading include:
 
 * The strategy emits a SELECT for up to 500 parent primary key values at a
-  time, as the primary keys are rendered into a large IN expression in the
-  SQL statement.   Some databases like Oracle have a hard limit on how large
-  an IN expression can be, and overall the size of the SQL string shouldn't
-  be arbitrarily large.
+  time, as the primary keys are rendered into a large IN expression in the SQL
+  statement.  Some databases like Oracle Database have a hard limit on how
+  large an IN expression can be, and overall the size of the SQL string
+  shouldn't be arbitrarily large.
 
 * As "selectin" loading relies upon IN, for a mapping with composite primary
   keys, it must use the "tuple" form of IN, which looks like ``WHERE
@@ -1001,8 +1001,7 @@ Wildcard Loading Strategies
 ---------------------------
 
 Each of :func:`_orm.joinedload`, :func:`.subqueryload`, :func:`.lazyload`,
-:func:`.selectinload`,
-:func:`.noload`, and :func:`.raiseload` can be used to set the default
+:func:`.selectinload`, and :func:`.raiseload` can be used to set the default
 style of :func:`_orm.relationship` loading
 for a particular query, affecting all :func:`_orm.relationship` -mapped
 attributes not otherwise

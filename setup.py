@@ -29,34 +29,36 @@ if DISABLE_EXTENSION and REQUIRE_EXTENSION:
         "'REQUIRE_SQLALCHEMY_CEXT' environment variables"
     )
 
+# when adding a cython module, also update the imports in _has_cython
+# it is tested in test_setup_defines_all_files
+CYTHON_MODULES = (
+    "engine._processors_cy",
+    "engine._row_cy",
+    "engine._util_cy",
+    "sql._util_cy",
+    "util._collections_cy",
+    "util._immutabledict_cy",
+)
 
 if HAS_CYTHON and IS_CPYTHON and not DISABLE_EXTENSION:
     assert _cy_Extension is not None
     assert _cy_build_ext is not None
 
-    # when adding a cython module, also update the imports in _has_cy
-    cython_files = [
-        "collections.pyx",
-        "immutabledict.pyx",
-        "processors.pyx",
-        "resultproxy.pyx",
-        "util.pyx",
-    ]
     cython_directives = {"language_level": "3"}
 
-    module_prefix = "sqlalchemy.cyextension."
-    source_prefix = "lib/sqlalchemy/cyextension/"
+    module_prefix = "sqlalchemy."
+    source_prefix = "lib/sqlalchemy/"
 
     ext_modules = cast(
         "list[Extension]",
         [
             _cy_Extension(
-                f"{module_prefix}{os.path.splitext(file)[0]}",
-                sources=[f"{source_prefix}{file}"],
+                f"{module_prefix}{module}",
+                sources=[f"{source_prefix}{module.replace('.', '/')}.py"],
                 cython_directives=cython_directives,
                 optional=not REQUIRE_EXTENSION,
             )
-            for file in cython_files
+            for module in CYTHON_MODULES
         ],
     )
 

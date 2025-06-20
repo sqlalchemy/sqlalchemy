@@ -38,10 +38,12 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.types import TypeEngine
 
 
@@ -92,7 +94,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             parent.join(child),
-            "ed.parent JOIN ed.child ON ed.parent.id = " "ed.child.parent_id",
+            "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id",
         )
 
     def test_subquery(self):
@@ -308,6 +310,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "OFFSET __[POSTCOMPILE_param_1] ROWS "
             "FETCH FIRST __[POSTCOMPILE_param_2] ROWS ONLY",
             checkparams={"param_1": 20, "param_2": 10},
+        )
+
+    @testing.only_on("oracle>=23.4")
+    def test_fetch_type(self):
+        t = table("sometable", column("col1"), column("col2"))
+        s = select(t).fetch(2, oracle_fetch_approximate=True)
+        self.assert_compile(
+            s,
+            "SELECT sometable.col1, sometable.col2 FROM sometable "
+            "FETCH APPROX FIRST __[POSTCOMPILE_param_1] ROWS ONLY",
+            checkparams={"param_1": 2},
         )
 
     def test_limit_two(self):
@@ -810,8 +823,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_one_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -829,8 +842,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_two_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -849,8 +862,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_three_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -871,8 +884,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_one_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
@@ -890,8 +903,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_two_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
@@ -911,8 +924,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_three_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
@@ -1183,7 +1196,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         q = select(table1.c.name).where(table1.c.name == "foo")
         self.assert_compile(
             q,
-            "SELECT mytable.name FROM mytable WHERE " "mytable.name = :name_1",
+            "SELECT mytable.name FROM mytable WHERE mytable.name = :name_1",
             dialect=oracle.dialect(use_ansi=False),
         )
 
@@ -1416,7 +1429,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         with testing.expect_warnings(
-            "Computed columns don't work with Oracle UPDATE"
+            "Computed columns don't work with Oracle Database UPDATE"
         ):
             self.assert_compile(
                 t1.update().values(id=1, foo=5).returning(t1.c.bar),
@@ -1498,7 +1511,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl2),
-            "CREATE TABLE testtbl2 (data INTEGER) " "COMPRESS FOR OLTP",
+            "CREATE TABLE testtbl2 (data INTEGER) COMPRESS FOR OLTP",
         )
 
     def test_create_index_bitmap_compress(self):
@@ -1552,7 +1565,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         assert_raises_message(
             exc.CompileError,
-            r".*Oracle computed columns do not support 'stored' ",
+            r".*Oracle Database computed columns do not support 'stored' ",
             schema.CreateTable(t).compile,
             dialect=oracle.dialect(),
         )
@@ -1573,7 +1586,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     nominvalue=True,
                     nomaxvalue=True,
                     cycle=False,
-                    order=False,
                 ),
             ),
         )
@@ -1581,8 +1593,38 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t),
             "CREATE TABLE t (y INTEGER GENERATED ALWAYS AS IDENTITY "
             "(INCREMENT BY 7 START WITH 4 NOMINVALUE NOMAXVALUE "
-            "NOCYCLE NOORDER))",
+            "NOCYCLE))",
         )
+
+    def test_column_identity_dialect_args(self):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("y", Integer, Identity(cycle=True, oracle_order=False)),
+            Column("x", Integer, Identity(nomaxvalue=True, oracle_order=True)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t ("
+            "y INTEGER GENERATED BY DEFAULT AS IDENTITY (CYCLE NOORDER), "
+            "x INTEGER GENERATED BY DEFAULT AS IDENTITY (NOMAXVALUE ORDER)"
+            ")",
+        )
+
+    def test_deprecated_options(self):
+        with expect_deprecated(
+            ".+use ``oracle_on_null`` instead",
+            ".+use ``oracle_order`` instead",
+        ):
+            idx = Identity(order=False, on_null=True)
+        eq_(idx.dialect_options["oracle"]["order"], False)
+        eq_(idx.dialect_options["oracle"]["on_null"], True)
+
+    def test_deprecated_attrs(self):
+        idx = Identity(oracle_order=True, oracle_on_null=True)
+        eq_(idx.order, True)
+        eq_(idx.on_null, True)
 
     def test_column_identity_no_generated(self):
         m = MetaData()
@@ -1601,7 +1643,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_column_identity_on_null(self, always, on_null, text):
         m = MetaData()
         t = Table(
-            "t", m, Column("y", Integer, Identity(always, on_null=on_null))
+            "t",
+            m,
+            Column("y", Integer, Identity(always, oracle_on_null=on_null)),
         )
         self.assert_compile(
             schema.CreateTable(t),
@@ -1626,6 +1670,45 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             cast(column("foo"), d1), "CAST(foo AS DOUBLE PRECISION)"
         )
+
+    @testing.combinations(
+        ("TEST_TABLESPACE", 'TABLESPACE "TEST_TABLESPACE"'),
+        ("test_tablespace", "TABLESPACE test_tablespace"),
+        ("TestTableSpace", 'TABLESPACE "TestTableSpace"'),
+        argnames="tablespace, expected_sql",
+    )
+    def test_table_tablespace(self, tablespace, expected_sql):
+        m = MetaData()
+
+        t = Table(
+            "table1",
+            m,
+            Column("x", Integer),
+            oracle_tablespace=tablespace,
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            f"CREATE TABLE table1 (x INTEGER) {expected_sql}",
+        )
+
+    @testing.combinations(
+        (lambda t: t.c.a**t.c.b, "POWER(t.a, t.b)", {}),
+        (lambda t: t.c.a**3, "POWER(t.a, :pow_1)", {"pow_1": 3}),
+        (lambda t: t.c.c.match(t.c.d), "CONTAINS (t.c, t.d)", {}),
+        (lambda t: t.c.c.match("w"), "CONTAINS (t.c, :c_1)", {"c_1": "w"}),
+        (lambda t: func.pow(t.c.a, 3), "POWER(t.a, :pow_1)", {"pow_1": 3}),
+        (lambda t: func.power(t.c.a, t.c.b), "power(t.a, t.b)", {}),
+    )
+    def test_simple_compile(self, fn, string, params):
+        t = table(
+            "t",
+            column("a", Integer),
+            column("b", Integer),
+            column("c", String),
+            column("d", String),
+        )
+        expr = resolve_lambda(fn, t=t)
+        self.assert_compile(expr, string, params)
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1655,6 +1738,25 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE SEQUENCE my_seq NOMINVALUE NOMAXVALUE",
             dialect=oracle.OracleDialect(),
         )
+
+    def test_compile_dialect_args(self):
+        self.assert_compile(
+            ddl.CreateSequence(Sequence("my_seq", oracle_order=False)),
+            "CREATE SEQUENCE my_seq NOORDER",
+            dialect=oracle.OracleDialect(),
+        )
+        self.assert_compile(
+            ddl.CreateSequence(
+                Sequence("my_seq", nominvalue=True, oracle_order=True)
+            ),
+            "CREATE SEQUENCE my_seq NOMINVALUE ORDER",
+            dialect=oracle.OracleDialect(),
+        )
+
+    def test_deprecated_options(self):
+        with expect_deprecated(".+use ``oracle_order`` instead"):
+            seq = Sequence("foo", order=False)
+        eq_(seq.dialect_options["oracle"]["order"], False)
 
 
 class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -1831,4 +1933,16 @@ class TableValuedFunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             stmt,
             "SELECT anon_1.string1, anon_1.string2 "
             "FROM TABLE (three_pairs()) anon_1",
+        )
+
+    @testing.combinations(func.TABLE, func.table, func.Table)
+    def test_table_function(self, fn):
+        """Issue #12100 Use case is:
+        https://python-oracledb.readthedocs.io/en/latest/user_guide/bind.html#binding-a-large-number-of-items-in-an-in-list
+        """
+        fn_call = fn("simulate_name_array")
+        stmt = select(1).select_from(fn_call)
+        self.assert_compile(
+            stmt,
+            f"SELECT 1 FROM {fn_call.name}(:{fn_call.name}_1)",
         )

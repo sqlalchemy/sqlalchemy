@@ -75,6 +75,7 @@ from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import assert_warns_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_not_none
@@ -159,17 +160,10 @@ class MiscTest(QueryTest):
 
         q = Session().query(literal_column("1"))
 
-        if executor == "session":
-            with testing.expect_deprecated(
-                r"Object .*Query.* should not be used directly in a "
-                r"SQL statement context"
-            ):
-                meth(q)
-        else:
-            with testing.expect_raises_message(
-                sa_exc.ObjectNotExecutableError, "Not an executable object"
-            ):
-                meth(q)
+        with testing.expect_raises_message(
+            sa_exc.ObjectNotExecutableError, "Not an executable object: .*"
+        ):
+            meth(q)
 
 
 class OnlyReturnTuplesTest(QueryTest):
@@ -188,6 +182,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_single_entity_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User).tuples()
@@ -214,6 +209,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_multiple_entity_true_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User.id, User).tuples()
@@ -624,15 +620,11 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         eq_(q.column_descriptions, asserted)
 
-    def test_unhashable_type_legacy(self):
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = False
-            cache_ok = True
-
-            def process_result_value(self, value, dialect):
-                return [value]
-
+    @testing.variation("use_future", [True, False])
+    @testing.variation(
+        "type_style", ["unhashable", "unknown_hashable", "unknown_unhashable"]
+    )
+    def test_unhashable_types(self, use_future, type_style):
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
         self.mapper_registry.map_imperatively(
@@ -640,158 +632,74 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
-        s = fixture_session()
-        q = (
-            s.query(User, type_coerce(users.c.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
+        if type_style.unknown_hashable:
+            expression = type_coerce("Some Unique String", NullType)
+        else:
 
-        result = q.all()
+            class MyType(TypeDecorator):
+                impl = Integer
 
-        # uniquing basically does not occur because we can't hash on
-        # MyType
-        eq_(
-            result,
-            [
-                (User(id=7), [7]),
-                (User(id=8), [8]),
-                (User(id=8), [8]),
-                (User(id=8), [8]),
-            ],
-        )
+                if type_style.unhashable:
+                    hashable = False
+                elif type_style.unknown_unhashable:
+                    _isnull = True
+                cache_ok = True
 
-    def test_unhashable_type_future(self):
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = False
-            cache_ok = True
+                def process_result_value(self, value, dialect):
+                    return [value]
 
-            def process_result_value(self, value, dialect):
-                return [value]
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
+            expression = type_coerce(users.c.id, MyType)
 
         s = fixture_session()
 
-        stmt = (
-            select(User, type_coerce(users.c.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        with expect_raises_message(
-            sa_exc.InvalidRequestError,
-            r"Can't apply uniqueness to row tuple "
-            r"containing value of type MyType\(\)",
-        ):
-            result.all()
-
-    def test_unknown_type_assume_not_hashable_legacy(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        s = fixture_session()
+        if not use_future:
+            q = s.query(User, expression.label("foo"))
+        else:
+            q = select(User, expression.label("foo"))
 
         q = (
-            s.query(
-                User, type_coerce("Some Unique String", NullType).label("foo")
+            q.filter(User.id.in_([7, 8]))
+            .join(User.addresses)
+            .order_by(User.id)
+        )
+
+        if type_style.unknown_hashable:
+            if not use_future:
+                result = q.all()
+            else:
+                result = s.execute(q).unique().all()
+            eq_(
+                result,
+                [
+                    (User(id=7, name="jack"), "Some Unique String"),
+                    (User(id=8, name="ed"), "Some Unique String"),
+                ],
             )
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = q.all()
-
-        eq_(
-            result,
-            [
-                (User(id=7, name="jack"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-            ],
-        )
-
-    def test_unknown_type_assume_hashable_future(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        s = fixture_session()
-
-        # TODO: it's also unusual I need a label() for type_coerce
-        stmt = (
-            select(
-                User, type_coerce("Some Unique String", NullType).label("foo")
-            )
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        eq_(
-            result.all(),
-            [
-                (User(id=7, name="jack"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-            ],
-        )
-
-    def test_unknown_type_truly_not_hashable_future(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = True  # which is wrong
-            cache_ok = True
-
-            def process_result_value(self, value, dialect):
-                return [value]
-
-        s = fixture_session()
-
-        stmt = (
-            select(User, type_coerce(User.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        with expect_raises_message(TypeError, "unhashable type"):
-            result.all()
+        else:
+            uncertain = bool(type_style.unknown_unhashable)
+            if not use_future:
+                result = q.all()
+                eq_(
+                    result,
+                    [
+                        (User(id=7, name="jack"), [7]),
+                        (User(id=8, name="ed"), [8]),
+                        (User(id=8, name="ed"), [8]),
+                        (User(id=8, name="ed"), [8]),
+                    ],
+                )
+            else:
+                with expect_raises_message(
+                    sa_exc.InvalidRequestError,
+                    r"Can't apply uniqueness to row tuple "
+                    r"containing value of type MyType\(\); "
+                    rf"""{
+                        'the values returned appear to be'
+                        if uncertain else 'this datatype produces'
+                    } """
+                    r"non-hashable values",
+                ):
+                    result = s.execute(q).unique().all()
 
 
 class RowLabelingTest(QueryTest):
@@ -2063,6 +1971,15 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         assert_raises(NotImplementedError, Address.user.in_, [User(id=5)])
+
+    def test_in_instrumented_attribute(self):
+        """test #12019"""
+        User = self.classes.User
+
+        self._test(
+            User.id.in_([User.id, User.name]),
+            "users.id IN (users.id, users.name)",
+        )
 
     def test_neg(self):
         User = self.classes.User
@@ -3651,7 +3568,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             q1,
-            "SELECT users.id AS foo FROM users " "WHERE users.name = :name_1",
+            "SELECT users.id AS foo FROM users WHERE users.name = :name_1",
         )
 
     def test_empty_filters(self):
@@ -3831,7 +3748,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
             d = relationship(
                 "D",
-                secondary="join(B, C)",
+                secondary=join(B, C),
                 primaryjoin="A.b_id == B.id",
                 secondaryjoin="C.d_id == D.id",
                 uselist=False,
@@ -4436,7 +4353,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User)
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
         q2 = sess.query(User).filter(User.name == "fred")
@@ -4454,7 +4371,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User.id)
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_labeled_col_expression(self):
@@ -4464,7 +4381,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User.id.label("foo"))
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_arbitrary_col_expression(self):
@@ -4474,7 +4391,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(func.foo(User.id))
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_col_warning(self):
@@ -5057,36 +4974,6 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             "addresses_email_address FROM users, addresses) AS anon_1",
         )
 
-    def test_columns_augmented_sql_union_two(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-
-        q = (
-            sess.query(
-                User.id,
-                User.name.label("foo"),
-                Address.id,
-            )
-            .distinct(Address.email_address)
-            .order_by(User.id, User.name)
-        )
-        q2 = sess.query(User.id, User.name.label("foo"), Address.id)
-
-        self.assert_compile(
-            q.union(q2),
-            "SELECT anon_1.users_id AS anon_1_users_id, "
-            "anon_1.foo AS anon_1_foo, anon_1.addresses_id AS "
-            "anon_1_addresses_id FROM "
-            "((SELECT DISTINCT ON (addresses.email_address) users.id "
-            "AS users_id, users.name AS foo, "
-            "addresses.id AS addresses_id FROM users, addresses "
-            "ORDER BY users.id, users.name) "
-            "UNION SELECT users.id AS users_id, users.name AS foo, "
-            "addresses.id AS addresses_id FROM users, addresses) AS anon_1",
-            dialect="postgresql",
-        )
-
     def test_columns_augmented_sql_two(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -5122,14 +5009,112 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             "addresses_1.id",
         )
 
-    def test_columns_augmented_sql_three(self):
+
+class DistinctOnTest(
+    QueryTest, AssertsCompiledSQL, fixtures.DistinctOnFixture
+):
+    """a test suite that is obstensibly specific to the PostgreSQL-only
+    DISTINCT ON clause, however is actually testing a few things:
+
+    1. the legacy query.distinct() feature's handling of this directly
+    2. PostgreSQL's distinct_on() extension
+    3. the ability for Query to use statement extensions in general
+    4. ORM compilation of statement extensions, with or without adaptations
+
+    items 3 and 4 are universal to all statement extensions, with the PG
+    distinct_on() extension serving as the test case.
+
+    """
+
+    __dialect__ = "default"
+
+    @testing.fixture
+    def distinct_on_transform(self, distinct_on_fixture):
+
+        def go(expr):
+            def transform(query):
+                return distinct_on_fixture(query, expr)
+
+            return transform
+
+        return go
+
+    def test_distinct_on_definitely_adapted(self, distinct_on_transform):
+        """there are few cases where a query-wide adapter is used on
+        per-column expressions in SQLAlchemy 2 and greater.   however the
+        legacy query.union() case still relies on such an adapter, so make
+        use of this codepath to exercise column adaptation for edge features
+        such as "distinct_on"
+
+        """
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+
+        q = sess.query(
+            User.id,
+            User.name.label("foo"),
+            Address.email_address,
+        ).order_by(User.id, User.name)
+        q2 = sess.query(User.id, User.name.label("foo"), Address.email_address)
+
+        q3 = q.union(q2).with_transformation(
+            distinct_on_transform(Address.email_address)
+        )
+
+        self.assert_compile(
+            q3,
+            "SELECT DISTINCT ON (anon_1.addresses_email_address) "
+            "anon_1.users_id AS anon_1_users_id, anon_1.foo AS anon_1_foo, "
+            "anon_1.addresses_email_address AS anon_1_addresses_email_address "
+            "FROM ((SELECT users.id AS users_id, users.name AS foo, "
+            "addresses.email_address AS addresses_email_address FROM users, "
+            "addresses ORDER BY users.id, users.name) "
+            "UNION SELECT users.id AS users_id, users.name AS foo, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM users, addresses) AS anon_1",
+            dialect="postgresql",
+        )
+
+    def test_columns_augmented_sql_union_two(self, distinct_on_transform):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+
+        q = (
+            sess.query(
+                User.id,
+                User.name.label("foo"),
+                Address.id,
+            )
+            .with_transformation(distinct_on_transform(Address.email_address))
+            .order_by(User.id, User.name)
+        )
+
+        q2 = sess.query(User.id, User.name.label("foo"), Address.id)
+
+        self.assert_compile(
+            q.union(q2),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.foo AS anon_1_foo, anon_1.addresses_id AS "
+            "anon_1_addresses_id FROM "
+            "((SELECT DISTINCT ON (addresses.email_address) users.id "
+            "AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id FROM users, addresses "
+            "ORDER BY users.id, users.name) "
+            "UNION SELECT users.id AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id FROM users, addresses) AS anon_1",
+            dialect="postgresql",
+        )
+
+    def test_columns_augmented_three(self, distinct_on_transform):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
 
         q = (
             sess.query(User.id, User.name.label("foo"), Address.id)
-            .distinct(User.name)
+            .with_transformation(distinct_on_transform(User.name))
             .order_by(User.id, User.name, Address.email_address)
         )
 
@@ -5142,7 +5127,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_columns_augmented_distinct_on(self):
+    def test_columns_augmented_four(self, distinct_on_transform):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
@@ -5154,7 +5139,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
                 Address.id,
                 Address.email_address,
             )
-            .distinct(Address.email_address)
+            .with_transformation(distinct_on_transform(Address.email_address))
             .order_by(User.id, User.name, Address.email_address)
             .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
@@ -5181,16 +5166,17 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_columns_augmented_sql_three_using_label_reference(self):
+    def test_legacy_columns_augmented_sql_three_using_label_reference(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
 
-        q = (
-            sess.query(User.id, User.name.label("foo"), Address.id)
-            .distinct("name")
-            .order_by(User.id, User.name, Address.email_address)
-        )
+        with expect_deprecated("Passing expression to"):
+            q = (
+                sess.query(User.id, User.name.label("foo"), Address.id)
+                .distinct("name")
+                .order_by(User.id, User.name, Address.email_address)
+            )
 
         # no columns are added when DISTINCT ON is used
         self.assert_compile(
@@ -5201,14 +5187,15 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_columns_augmented_sql_illegal_label_reference(self):
+    def test_legacy_columns_augmented_sql_illegal_label_reference(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
 
-        q = sess.query(User.id, User.name.label("foo"), Address.id).distinct(
-            "not a label"
-        )
+        with expect_deprecated("Passing expression to"):
+            q = sess.query(
+                User.id, User.name.label("foo"), Address.id
+            ).distinct("not a label")
 
         from sqlalchemy.dialects import postgresql
 
@@ -5222,7 +5209,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
-    def test_columns_augmented_sql_four(self):
+    def test_columns_augmented_sql_four(self, distinct_on_transform):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
@@ -5230,7 +5217,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         q = (
             sess.query(User)
             .join(User.addresses)
-            .distinct(Address.email_address)
+            .with_transformation(distinct_on_transform(Address.email_address))
             .options(joinedload(User.addresses))
             .order_by(desc(Address.email_address))
             .limit(2)
@@ -5266,7 +5253,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1")
-        expected = "SELECT PREFIX_1 " "users.name AS users_name FROM users"
+        expected = "SELECT PREFIX_1 users.name AS users_name FROM users"
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
     def test_one_suffix(self):
@@ -5282,7 +5269,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1", "PREFIX_2")
         expected = (
-            "SELECT PREFIX_1 PREFIX_2 " "users.name AS users_name FROM users"
+            "SELECT PREFIX_1 PREFIX_2 users.name AS users_name FROM users"
         )
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
@@ -5624,6 +5611,25 @@ class YieldTest(_fixtures.FixtureTest):
             .yield_per(1)
         )
         eq_(len(q.all()), 4)
+
+    @testing.combinations(
+        "joined",
+        "subquery",
+        "selectin",
+        "select",
+        "immediate",
+        argnames="lazy",
+    )
+    def test_eagerload_config_disable(self, lazy):
+        self._eagerload_mappings(addresses_lazy=lazy)
+
+        User = self.classes.User
+        sess = fixture_session()
+        q = sess.query(User).enable_eagerloads(False).yield_per(1)
+        objs = q.all()
+        eq_(len(objs), 4)
+        for obj in objs:
+            assert "addresses" not in obj.__dict__
 
     def test_m2o_joinedload_not_others(self):
         self._eagerload_mappings(addresses_lazy="joined")

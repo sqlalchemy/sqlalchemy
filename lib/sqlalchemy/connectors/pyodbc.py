@@ -1,5 +1,5 @@
 # connectors/pyodbc.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import re
-from types import ModuleType
 import typing
 from typing import Any
 from typing import Dict
@@ -16,7 +15,6 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
-from urllib.parse import unquote_plus
 
 from . import Connector
 from .. import ExecutionContext
@@ -29,6 +27,7 @@ from ..engine import URL
 from ..sql.type_api import TypeEngine
 
 if typing.TYPE_CHECKING:
+    from ..engine.interfaces import DBAPIModule
     from ..engine.interfaces import IsolationLevel
 
 
@@ -48,15 +47,13 @@ class PyODBCConnector(Connector):
     # hold the desired driver name
     pyodbc_driver_name: Optional[str] = None
 
-    dbapi: ModuleType
-
     def __init__(self, use_setinputsizes: bool = False, **kw: Any):
         super().__init__(**kw)
         if use_setinputsizes:
             self.bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
     @classmethod
-    def import_dbapi(cls) -> ModuleType:
+    def import_dbapi(cls) -> DBAPIModule:
         return __import__("pyodbc")
 
     def create_connect_args(self, url: URL) -> ConnectArgsType:
@@ -75,7 +72,8 @@ class PyODBCConnector(Connector):
                 connect_args[param] = util.asbool(keys.pop(param))
 
         if "odbc_connect" in keys:
-            connectors = [unquote_plus(keys.pop("odbc_connect"))]
+            # (potential breaking change for issue #11250)
+            connectors = [keys.pop("odbc_connect")]
         else:
 
             def check_quote(token: str) -> str:
@@ -150,7 +148,7 @@ class PyODBCConnector(Connector):
         ],
         cursor: Optional[interfaces.DBAPICursor],
     ) -> bool:
-        if isinstance(e, self.dbapi.ProgrammingError):
+        if isinstance(e, self.loaded_dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(
                 e
             ) or "Attempt to use a closed connection." in str(e)
@@ -217,19 +215,19 @@ class PyODBCConnector(Connector):
 
         cursor.setinputsizes(
             [
-                (dbtype, None, None)
-                if not isinstance(dbtype, tuple)
-                else dbtype
+                (
+                    (dbtype, None, None)
+                    if not isinstance(dbtype, tuple)
+                    else dbtype
+                )
                 for key, dbtype, sqltype in list_of_tuples
             ]
         )
 
     def get_isolation_level_values(
-        self, dbapi_connection: interfaces.DBAPIConnection
+        self, dbapi_conn: interfaces.DBAPIConnection
     ) -> List[IsolationLevel]:
-        return super().get_isolation_level_values(dbapi_connection) + [
-            "AUTOCOMMIT"
-        ]
+        return [*super().get_isolation_level_values(dbapi_conn), "AUTOCOMMIT"]
 
     def set_isolation_level(
         self,

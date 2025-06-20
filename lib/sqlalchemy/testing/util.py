@@ -1,5 +1,5 @@
 # testing/util.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,13 +10,18 @@
 from __future__ import annotations
 
 from collections import deque
+from collections import namedtuple
+import contextlib
 import decimal
 import gc
 from itertools import chain
+import pickle
 import random
 import sys
 from sys import getsizeof
+import time
 import types
+from typing import Any
 
 from . import config
 from . import mock
@@ -52,15 +57,10 @@ else:
 
 
 def picklers():
-    picklers = set()
-    import pickle
+    nt = namedtuple("picklers", ["loads", "dumps"])
 
-    picklers.add(pickle)
-
-    # yes, this thing needs this much testing
-    for pickle_ in picklers:
-        for protocol in range(-2, pickle.HIGHEST_PROTOCOL + 1):
-            yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
+    for protocol in range(-2, pickle.HIGHEST_PROTOCOL + 1):
+        yield nt(pickle.loads, lambda d: pickle.dumps(d, protocol))
 
 
 def random_choices(population, k=1):
@@ -251,18 +251,19 @@ def flag_combinations(*combinations):
             dict(lazy=False, passive=True),
             dict(lazy=False, passive=True, raiseload=True),
         )
-
+        def test_fn(lazy, passive, raiseload): ...
 
     would result in::
 
         @testing.combinations(
-            ('', False, False, False),
-            ('lazy', True, False, False),
-            ('lazy_passive', True, True, False),
-            ('lazy_passive', True, True, True),
-            id_='iaaa',
-            argnames='lazy,passive,raiseload'
+            ("", False, False, False),
+            ("lazy", True, False, False),
+            ("lazy_passive", True, True, False),
+            ("lazy_passive", True, True, True),
+            id_="iaaa",
+            argnames="lazy,passive,raiseload",
         )
+        def test_fn(lazy, passive, raiseload): ...
 
     """
 
@@ -517,3 +518,18 @@ def count_cache_key_tuples(tup):
             if elem:
                 stack = list(elem) + [sentinel] + stack
     return num_elements
+
+
+@contextlib.contextmanager
+def skip_if_timeout(seconds: float, cleanup: Any = None):
+
+    now = time.time()
+    yield
+    sec = time.time() - now
+    if sec > seconds:
+        try:
+            cleanup()
+        finally:
+            config.skip_test(
+                f"test took too long ({sec:.4f} seconds > {seconds})"
+            )

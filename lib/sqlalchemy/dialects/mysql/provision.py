@@ -1,5 +1,10 @@
+# dialects/mysql/provision.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
-
 from ... import exc
 from ...testing.provision import configure_follower
 from ...testing.provision import create_db
@@ -33,6 +38,13 @@ def generate_driver_url(url, driver, query_str):
     new_url = url.set(
         drivername="%s+%s" % (backend, driver)
     ).update_query_string(query_str)
+
+    if driver == "mariadbconnector":
+        new_url = new_url.difference_update_query(["charset"])
+    elif driver == "mysqlconnector":
+        new_url = new_url.update_query_pairs(
+            [("collation", "utf8mb4_general_ci")]
+        )
 
     try:
         new_url.get_dialect()

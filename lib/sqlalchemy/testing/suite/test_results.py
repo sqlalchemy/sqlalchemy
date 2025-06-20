@@ -1,6 +1,13 @@
+# testing/suite/test_results.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 import datetime
+import re
 
 from .. import engines
 from .. import fixtures
@@ -11,6 +18,7 @@ from ..schema import Table
 from ... import DateTime
 from ... import func
 from ... import Integer
+from ... import quoted_name
 from ... import select
 from ... import sql
 from ... import String
@@ -110,6 +118,161 @@ class RowFetchTest(fixtures.TablesTest):
         row = connection.execute(s2).first()
 
         eq_(row.somelabel, datetime.datetime(2006, 5, 12, 12, 0, 0))
+
+
+class NameDenormalizeTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        cls.tables.denormalize_table = Table(
+            "denormalize_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("all_lowercase", Integer),
+            Column("ALL_UPPERCASE", Integer),
+            Column("MixedCase", Integer),
+            Column(quoted_name("all_lowercase_quoted", quote=True), Integer),
+            Column(quoted_name("ALL_UPPERCASE_QUOTED", quote=True), Integer),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.denormalize_table.insert(),
+            {
+                "id": 1,
+                "all_lowercase": 5,
+                "ALL_UPPERCASE": 6,
+                "MixedCase": 7,
+                "all_lowercase_quoted": 8,
+                "ALL_UPPERCASE_QUOTED": 9,
+            },
+        )
+
+    def _assert_row_mapping(self, row, mapping, include_cols=None):
+        eq_(row._mapping, mapping)
+
+        for k in mapping:
+            eq_(row._mapping[k], mapping[k])
+            eq_(getattr(row, k), mapping[k])
+
+        for idx, k in enumerate(mapping):
+            eq_(row[idx], mapping[k])
+
+        if include_cols:
+            for col, (idx, k) in zip(include_cols, enumerate(mapping)):
+                eq_(row._mapping[col], mapping[k])
+
+    @testing.variation(
+        "stmt_type", ["driver_sql", "text_star", "core_select", "text_cols"]
+    )
+    @testing.variation("use_driver_cols", [True, False])
+    def test_cols_driver_cols(self, connection, stmt_type, use_driver_cols):
+        if stmt_type.driver_sql or stmt_type.text_star or stmt_type.text_cols:
+            stmt = select("*").select_from(self.tables.denormalize_table)
+            text_stmt = str(stmt.compile(connection))
+
+            if stmt_type.text_star or stmt_type.text_cols:
+                stmt = text(text_stmt)
+
+                if stmt_type.text_cols:
+                    stmt = stmt.columns(*self.tables.denormalize_table.c)
+        elif stmt_type.core_select:
+            stmt = select(self.tables.denormalize_table)
+        else:
+            stmt_type.fail()
+
+        if use_driver_cols:
+            execution_options = {"driver_column_names": True}
+        else:
+            execution_options = {}
+
+        if stmt_type.driver_sql:
+            row = connection.exec_driver_sql(
+                text_stmt, execution_options=execution_options
+            ).one()
+        else:
+            row = connection.execute(
+                stmt,
+                execution_options=execution_options,
+            ).one()
+
+        if (
+            stmt_type.core_select and not use_driver_cols
+        ) or not testing.requires.denormalized_names.enabled:
+            self._assert_row_mapping(
+                row,
+                {
+                    "id": 1,
+                    "all_lowercase": 5,
+                    "ALL_UPPERCASE": 6,
+                    "MixedCase": 7,
+                    "all_lowercase_quoted": 8,
+                    "ALL_UPPERCASE_QUOTED": 9,
+                },
+            )
+
+        if testing.requires.denormalized_names.enabled:
+            # with driver column names, raw cursor.description
+            # is used.  this is clearly not useful for non-quoted names.
+            if use_driver_cols:
+                self._assert_row_mapping(
+                    row,
+                    {
+                        "ID": 1,
+                        "ALL_LOWERCASE": 5,
+                        "ALL_UPPERCASE": 6,
+                        "MixedCase": 7,
+                        "all_lowercase_quoted": 8,
+                        "ALL_UPPERCASE_QUOTED": 9,
+                    },
+                )
+            else:
+                if stmt_type.core_select or stmt_type.text_cols:
+                    self._assert_row_mapping(
+                        row,
+                        {
+                            "id": 1,
+                            "all_lowercase": 5,
+                            "ALL_UPPERCASE": 6,
+                            "MixedCase": 7,
+                            "all_lowercase_quoted": 8,
+                            "ALL_UPPERCASE_QUOTED": 9,
+                        },
+                        include_cols=self.tables.denormalize_table.c,
+                    )
+                else:
+                    self._assert_row_mapping(
+                        row,
+                        {
+                            "id": 1,
+                            "all_lowercase": 5,
+                            "all_uppercase": 6,
+                            "MixedCase": 7,
+                            "all_lowercase_quoted": 8,
+                            "all_uppercase_quoted": 9,
+                        },
+                        include_cols=None,
+                    )
+
+        else:
+            self._assert_row_mapping(
+                row,
+                {
+                    "id": 1,
+                    "all_lowercase": 5,
+                    "ALL_UPPERCASE": 6,
+                    "MixedCase": 7,
+                    "all_lowercase_quoted": 8,
+                    "ALL_UPPERCASE_QUOTED": 9,
+                },
+                include_cols=(
+                    self.tables.denormalize_table.c
+                    if stmt_type.core_select or stmt_type.text_cols
+                    else None
+                ),
+            )
 
 
 class PercentSchemaNamesTest(fixtures.TablesTest):
@@ -254,19 +417,23 @@ class ServerSideCursorsTest(
         elif self.engine.dialect.driver == "pymysql":
             sscursor = __import__("pymysql.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
-        elif self.engine.dialect.driver in ("aiomysql", "asyncmy"):
+        elif self.engine.dialect.driver in ("aiomysql", "asyncmy", "aioodbc"):
             return cursor.server_side
         elif self.engine.dialect.driver == "mysqldb":
             sscursor = __import__("MySQLdb.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
         elif self.engine.dialect.driver == "mariadbconnector":
             return not cursor.buffered
+        elif self.engine.dialect.driver == "mysqlconnector":
+            return "buffered" not in type(cursor).__name__.lower()
         elif self.engine.dialect.driver in ("asyncpg", "aiosqlite"):
             return cursor.server_side
         elif self.engine.dialect.driver == "pg8000":
             return getattr(cursor, "server_side", False)
         elif self.engine.dialect.driver == "psycopg":
             return bool(getattr(cursor, "name", False))
+        elif self.engine.dialect.driver == "oracledb":
+            return getattr(cursor, "server_side", False)
         else:
             return False
 
@@ -287,11 +454,26 @@ class ServerSideCursorsTest(
             )
         return self.engine
 
+    def stringify(self, str_):
+        return re.compile(r"SELECT (\d+)", re.I).sub(
+            lambda m: str(select(int(m.group(1))).compile(testing.db)), str_
+        )
+
     @testing.combinations(
-        ("global_string", True, "select 1", True),
-        ("global_text", True, text("select 1"), True),
+        ("global_string", True, lambda stringify: stringify("select 1"), True),
+        (
+            "global_text",
+            True,
+            lambda stringify: text(stringify("select 1")),
+            True,
+        ),
         ("global_expr", True, select(1), True),
-        ("global_off_explicit", False, text("select 1"), False),
+        (
+            "global_off_explicit",
+            False,
+            lambda stringify: text(stringify("select 1")),
+            False,
+        ),
         (
             "stmt_option",
             False,
@@ -309,15 +491,22 @@ class ServerSideCursorsTest(
         (
             "for_update_string",
             True,
-            "SELECT 1 FOR UPDATE",
+            lambda stringify: stringify("SELECT 1 FOR UPDATE"),
             True,
-            testing.skip_if("sqlite"),
+            testing.skip_if(["sqlite", "mssql"]),
         ),
-        ("text_no_ss", False, text("select 42"), False),
+        (
+            "text_no_ss",
+            False,
+            lambda stringify: text(stringify("select 42")),
+            False,
+        ),
         (
             "text_ss_option",
             False,
-            text("select 42").execution_options(stream_results=True),
+            lambda stringify: text(stringify("select 42")).execution_options(
+                stream_results=True
+            ),
             True,
         ),
         id_="iaaa",
@@ -328,6 +517,11 @@ class ServerSideCursorsTest(
     ):
         engine = self._fixture(engine_ss_arg)
         with engine.begin() as conn:
+            if callable(statement):
+                statement = testing.resolve_lambda(
+                    statement, stringify=self.stringify
+                )
+
             if isinstance(statement, str):
                 result = conn.exec_driver_sql(statement)
             else:
@@ -342,7 +536,7 @@ class ServerSideCursorsTest(
             # should be enabled for this one
             result = conn.execution_options(
                 stream_results=True
-            ).exec_driver_sql("select 1")
+            ).exec_driver_sql(self.stringify("select 1"))
             assert self._is_server_side(result.cursor)
 
             # the connection has autobegun, which means at the end of the
@@ -396,7 +590,9 @@ class ServerSideCursorsTest(
         test_table = Table(
             "test_table",
             md,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("data", String(50)),
         )
 
@@ -436,7 +632,9 @@ class ServerSideCursorsTest(
         test_table = Table(
             "test_table",
             md,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("data", String(50)),
         )
 

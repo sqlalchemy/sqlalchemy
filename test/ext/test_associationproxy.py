@@ -40,6 +40,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -734,6 +735,63 @@ class SetTest(_CollectionOperations):
             self.assert_(True)
 
         assert_raises(TypeError, set, [p1.children])
+
+    def test_special_binops_checks(self):
+        """test for #11349"""
+
+        Parent = self.classes.Parent
+
+        p1 = Parent("P1")
+        p1.children = ["a", "b", "c"]
+        control = {"a", "b", "c"}
+
+        with expect_raises(TypeError):
+            control | ["c", "d"]
+
+        with expect_raises(TypeError):
+            p1.children | ["c", "d"]
+
+        with expect_raises(TypeError):
+            control |= ["c", "d"]
+
+        with expect_raises(TypeError):
+            p1.children |= ["c", "d"]
+
+        with expect_raises(TypeError):
+            control & ["c", "d"]
+
+        with expect_raises(TypeError):
+            p1.children & ["c", "d"]
+
+        with expect_raises(TypeError):
+            control &= ["c", "d"]
+
+        with expect_raises(TypeError):
+            p1.children &= ["c", "d"]
+
+        with expect_raises(TypeError):
+            control ^ ["c", "d"]
+
+        with expect_raises(TypeError):
+            p1.children ^ ["c", "d"]
+
+        with expect_raises(TypeError):
+            control ^= ["c", "d"]
+
+        with expect_raises(TypeError):
+            p1.children ^= ["c", "d"]
+
+        with expect_raises(TypeError):
+            control - ["c", "d"]
+
+        with expect_raises(TypeError):
+            p1.children - ["c", "d"]
+
+        with expect_raises(TypeError):
+            control -= ["c", "d"]
+
+        with expect_raises(TypeError):
+            p1.children -= ["c", "d"]
 
     def test_set_comparisons(self):
         Parent = self.classes.Parent
@@ -3830,11 +3888,11 @@ class DeclOrmForms(fixtures.TestBase):
 
             id: Mapped[int] = mapped_column(primary_key=True)
 
-            user_keyword_associations: Mapped[
-                List[UserKeywordAssociation]
-            ] = relationship(
-                back_populates="user",
-                cascade="all, delete-orphan",
+            user_keyword_associations: Mapped[List[UserKeywordAssociation]] = (
+                relationship(
+                    back_populates="user",
+                    cascade="all, delete-orphan",
+                )
             )
 
             keywords: AssociationProxy[list[str]] = association_proxy(
@@ -3886,12 +3944,12 @@ class DeclOrmForms(fixtures.TestBase):
                 primary_key=True, repr=True, init=False
             )
 
-            user_keyword_associations: Mapped[
-                List[UserKeywordAssociation]
-            ] = relationship(
-                back_populates="user",
-                cascade="all, delete-orphan",
-                init=False,
+            user_keyword_associations: Mapped[List[UserKeywordAssociation]] = (
+                relationship(
+                    back_populates="user",
+                    cascade="all, delete-orphan",
+                    init=False,
+                )
             )
 
             if embed_in_field:

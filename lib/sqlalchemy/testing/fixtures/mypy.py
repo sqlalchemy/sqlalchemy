@@ -1,5 +1,5 @@
 # testing/fixtures/mypy.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -21,6 +21,17 @@ from .. import config
 from ..assertions import eq_
 from ... import util
 
+try:
+    from mypy import version
+
+    _mypy_vers_tuple = tuple(
+        int(x) for x in version.__version__.split(".") if x.isdecimal()
+    )
+except ImportError:
+    _mypy_vers_tuple = (0, 0, 0)
+
+mypy_14 = _mypy_vers_tuple >= (1, 4)
+
 
 @config.add_to_marker.mypy
 class MypyTest(TestBase):
@@ -39,22 +50,6 @@ class MypyTest(TestBase):
         mypy_path = ""
 
         with tempfile.TemporaryDirectory() as cachedir:
-            with open(
-                Path(cachedir) / "sqla_mypy_config.cfg", "w"
-            ) as config_file:
-                config_file.write(
-                    f"""
-                    [mypy]\n
-                    plugins = sqlalchemy.ext.mypy.plugin\n
-                    show_error_codes = True\n
-                    {mypy_path}
-                    disable_error_code = no-untyped-call
-
-                    [mypy-sqlalchemy.*]
-                    ignore_errors = True
-
-                    """
-                )
             with open(
                 Path(cachedir) / "plain_mypy_config.cfg", "w"
             ) as config_file:
@@ -75,7 +70,7 @@ class MypyTest(TestBase):
     def mypy_runner(self, cachedir):
         from mypy import api
 
-        def run(path, use_plugin=False, use_cachedir=None):
+        def run(path, use_cachedir=None):
             if use_cachedir is None:
                 use_cachedir = cachedir
             args = [
@@ -84,12 +79,7 @@ class MypyTest(TestBase):
                 "--cache-dir",
                 use_cachedir,
                 "--config-file",
-                os.path.join(
-                    use_cachedir,
-                    "sqla_mypy_config.cfg"
-                    if use_plugin
-                    else "plain_mypy_config.cfg",
-                ),
+                os.path.join(use_cachedir, "plain_mypy_config.cfg"),
             ]
 
             # mypy as of 0.990 is more aggressively blocking messaging
@@ -114,9 +104,9 @@ class MypyTest(TestBase):
 
     @config.fixture
     def mypy_typecheck_file(self, mypy_runner):
-        def run(path, use_plugin=False):
+        def run(path):
             expected_messages = self._collect_messages(path)
-            stdout, stderr, exitcode = mypy_runner(path, use_plugin=use_plugin)
+            stdout, stderr, exitcode = mypy_runner(path)
             self._check_output(
                 path, expected_messages, stdout, stderr, exitcode
             )
@@ -138,10 +128,10 @@ class MypyTest(TestBase):
         return files
 
     def _collect_messages(self, path):
-        from sqlalchemy.ext.mypy.util import mypy_14
-
         expected_messages = []
-        expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?(_RE)?(_TYPE)?: (.+)")
+        expected_re = re.compile(
+            r"\s*# EXPECTED(_MYPY)?(_RE)?(_ROW)?(_TYPE)?: (.+)"
+        )
         py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")
         with open(path) as file_:
             current_assert_messages = []
@@ -159,9 +149,24 @@ class MypyTest(TestBase):
                 if m:
                     is_mypy = bool(m.group(1))
                     is_re = bool(m.group(2))
-                    is_type = bool(m.group(3))
+                    is_row = bool(m.group(3))
+                    is_type = bool(m.group(4))
 
-                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(4))
+                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(5))
+                    if is_row:
+                        expected_msg = re.sub(
+                            r"Row\[([^\]]+)\]",
+                            lambda m: f"tuple[{m.group(1)}, fallback=s"
+                            f"qlalchemy.engine.row.{m.group(0)}]",
+                            expected_msg,
+                        )
+                        # For some reason it does not use or syntax (|)
+                        expected_msg = re.sub(
+                            r"Optional\[(.*)\]",
+                            lambda m: f"Union[{m.group(1)}, None]",
+                            expected_msg,
+                        )
+
                     if is_type:
                         if not is_re:
                             # the goal here is that we can cut-and-paste
@@ -201,20 +206,6 @@ class MypyTest(TestBase):
                         is_mypy = is_re = True
                         expected_msg = f'Revealed type is "{expected_msg}"'
 
-                    if mypy_14 and util.py39:
-                        # use_lowercase_names, py39 and above
-                        # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L363  # noqa: E501
-
-                        # skip first character which could be capitalized
-                        # "List item x not found" type of message
-                        expected_msg = expected_msg[0] + re.sub(
-                            r"\b(List|Tuple|Dict|Set)\b"
-                            if is_type
-                            else r"\b(List|Tuple|Dict|Set|Type)\b",
-                            lambda m: m.group(1).lower(),
-                            expected_msg[1:],
-                        )
-
                     if mypy_14 and util.py310:
                         # use_or_syntax, py310 and above
                         # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L368  # noqa: E501
@@ -239,7 +230,9 @@ class MypyTest(TestBase):
 
         return expected_messages
 
-    def _check_output(self, path, expected_messages, stdout, stderr, exitcode):
+    def _check_output(
+        self, path, expected_messages, stdout: str, stderr, exitcode
+    ):
         not_located = []
         filename = os.path.basename(path)
         if expected_messages:
@@ -259,7 +252,8 @@ class MypyTest(TestBase):
                 ):
                     while raw_lines:
                         ol = raw_lines.pop(0)
-                        if not re.match(r".+\.py:\d+: note: +def \[.*", ol):
+                        if not re.match(r".+\.py:\d+: note: +def .*", ol):
+                            raw_lines.insert(0, ol)
                             break
                 elif re.match(
                     r".+\.py:\d+: note: .*(?:perhaps|suggestion)", e, re.I

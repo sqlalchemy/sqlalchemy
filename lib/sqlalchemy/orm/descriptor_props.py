@@ -1,5 +1,5 @@
 # orm/descriptor_props.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -34,6 +34,7 @@ import weakref
 from . import attributes
 from . import util as orm_util
 from .base import _DeclarativeMapped
+from .base import DONT_SET
 from .base import LoaderCallableStatus
 from .base import Mapped
 from .base import PassiveFlag
@@ -52,10 +53,14 @@ from .. import sql
 from .. import util
 from ..sql import expression
 from ..sql import operators
+from ..sql.base import _NoArg
 from ..sql.elements import BindParameter
+from ..util.typing import get_args
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
-from ..util.typing import typing_get_args
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _InstanceDict
@@ -63,8 +68,9 @@ if typing.TYPE_CHECKING:
     from .attributes import History
     from .attributes import InstrumentedAttribute
     from .attributes import QueryableAttribute
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .decl_base import _ClassScanMapperConfig
+    from .interfaces import _DataclassArguments
     from .mapper import Mapper
     from .properties import ColumnProperty
     from .properties import MappedColumn
@@ -98,6 +104,11 @@ class DescriptorProperty(MapperProperty[_T]):
 
     descriptor: DescriptorReference[Any]
 
+    def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+        raise NotImplementedError(
+            "This MapperProperty does not implement column loader strategies"
+        )
+
     def get_history(
         self,
         state: InstanceState[Any],
@@ -109,7 +120,7 @@ class DescriptorProperty(MapperProperty[_T]):
     def instrument_class(self, mapper: Mapper[Any]) -> None:
         prop = self
 
-        class _ProxyImpl(attributes.AttributeImpl):
+        class _ProxyImpl(attributes._AttributeImpl):
             accepts_scalar_loader = False
             load_on_unexpire = True
             collection = False
@@ -147,7 +158,7 @@ class DescriptorProperty(MapperProperty[_T]):
 
             self.descriptor = property(fget=fget, fset=fset, fdel=fdel)
 
-        proxy_attr = attributes.create_proxied_attribute(self.descriptor)(
+        proxy_attr = attributes._create_proxied_attribute(self.descriptor)(
             self.parent.class_,
             self.key,
             self.descriptor,
@@ -155,6 +166,7 @@ class DescriptorProperty(MapperProperty[_T]):
             doc=self.doc,
             original_property=self,
         )
+
         proxy_attr.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
@@ -302,6 +314,9 @@ class CompositeProperty(
             return dict_.get(self.key, None)
 
         def fset(instance: Any, value: Any) -> None:
+            if value is LoaderCallableStatus.DONT_SET:
+                return
+
             dict_ = attributes.instance_dict(instance)
             state = attributes.instance_state(instance)
             attr = state.manager[self.key]
@@ -364,7 +379,7 @@ class CompositeProperty(
         argument = extracted_mapped_annotation
 
         if is_pep593(argument):
-            argument = typing_get_args(argument)[0]
+            argument = get_args(argument)[0]
 
         if argument and self.composite_class is None:
             if isinstance(argument, str) or is_fwd_ref(
@@ -419,13 +434,13 @@ class CompositeProperty(
             and self.composite_class not in _composite_getters
         ):
             if self._generated_composite_accessor is not None:
-                _composite_getters[
-                    self.composite_class
-                ] = self._generated_composite_accessor
+                _composite_getters[self.composite_class] = (
+                    self._generated_composite_accessor
+                )
             elif hasattr(self.composite_class, "__composite_values__"):
-                _composite_getters[
-                    self.composite_class
-                ] = lambda obj: obj.__composite_values__()
+                _composite_getters[self.composite_class] = (
+                    lambda obj: obj.__composite_values__()
+                )
 
     @util.preload_module("sqlalchemy.orm.properties")
     @util.preload_module("sqlalchemy.orm.decl_base")
@@ -499,6 +514,9 @@ class CompositeProperty(
             props.append(prop)
         return props
 
+    def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+        return self._comparable_elements
+
     @util.non_memoized_property
     @util.preload_module("orm.properties")
     def columns(self) -> Sequence[Column[Any]]:
@@ -541,13 +559,13 @@ class CompositeProperty(
         """Establish events that populate/expire the composite attribute."""
 
         def load_handler(
-            state: InstanceState[Any], context: ORMCompileState
+            state: InstanceState[Any], context: _ORMCompileState
         ) -> None:
             _load_refresh_handler(state, context, None, is_refresh=False)
 
         def refresh_handler(
             state: InstanceState[Any],
-            context: ORMCompileState,
+            context: _ORMCompileState,
             to_load: Optional[Sequence[str]],
         ) -> None:
             # note this corresponds to sqlalchemy.ext.mutable load_attrs()
@@ -559,7 +577,7 @@ class CompositeProperty(
 
         def _load_refresh_handler(
             state: InstanceState[Any],
-            context: ORMCompileState,
+            context: _ORMCompileState,
             to_load: Optional[Sequence[str]],
             is_refresh: bool,
         ) -> None:
@@ -713,11 +731,11 @@ class CompositeProperty(
 
         def create_row_processor(
             self,
-            query: Select[Any],
-            procs: Sequence[Callable[[Row[Any]], Any]],
+            query: Select[Unpack[TupleAny]],
+            procs: Sequence[Callable[[Row[Unpack[TupleAny]]], Any]],
             labels: Sequence[str],
-        ) -> Callable[[Row[Any]], Any]:
-            def proc(row: Row[Any]) -> Any:
+        ) -> Callable[[Row[Unpack[TupleAny]]], Any]:
+            def proc(row: Row[Unpack[TupleAny]]) -> Any:
                 return self.property.composite_class(
                     *[proc(row) for proc in procs]
                 )
@@ -781,7 +799,9 @@ class CompositeProperty(
             elif isinstance(self.prop.composite_class, type) and isinstance(
                 value, self.prop.composite_class
             ):
-                values = self.prop._composite_values_from_instance(value)
+                values = self.prop._composite_values_from_instance(
+                    value  # type: ignore[arg-type]
+                )
             else:
                 raise sa_exc.ArgumentError(
                     "Can't UPDATE composite attribute %s to %r"
@@ -996,6 +1016,9 @@ class SynonymProperty(DescriptorProperty[_T]):
             )
         return attr.property
 
+    def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+        return (getattr(self.parent.class_, self.name),)
+
     def _comparator_factory(self, mapper: Mapper[Any]) -> SQLORMOperations[_T]:
         prop = self._proxied_object
 
@@ -1016,6 +1039,39 @@ class SynonymProperty(DescriptorProperty[_T]):
     ) -> History:
         attr: QueryableAttribute[Any] = getattr(self.parent.class_, self.name)
         return attr.impl.get_history(state, dict_, passive=passive)
+
+    def _get_dataclass_setup_options(
+        self,
+        decl_scan: _ClassScanMapperConfig,
+        key: str,
+        dataclass_setup_arguments: _DataclassArguments,
+    ) -> _AttributeOptions:
+        dataclasses_default = self._attribute_options.dataclasses_default
+        if (
+            dataclasses_default is not _NoArg.NO_ARG
+            and not callable(dataclasses_default)
+            and not getattr(
+                decl_scan.cls, "_sa_disable_descriptor_defaults", False
+            )
+        ):
+            proxied = decl_scan.collected_attributes[self.name]
+            proxied_default = proxied._attribute_options.dataclasses_default
+            if proxied_default != dataclasses_default:
+                raise sa_exc.ArgumentError(
+                    f"Synonym {key!r} default argument "
+                    f"{dataclasses_default!r} must match the dataclasses "
+                    f"default value of proxied object {self.name!r}, "
+                    f"""currently {
+                        repr(proxied_default)
+                        if proxied_default is not _NoArg.NO_ARG
+                        else 'not set'}"""
+                )
+            self._default_scalar_value = dataclasses_default
+            return self._attribute_options._replace(
+                dataclasses_default=DONT_SET
+            )
+
+        return self._attribute_options
 
     @util.preload_module("sqlalchemy.orm.properties")
     def set_parent(self, parent: Mapper[Any], init: bool) -> None:

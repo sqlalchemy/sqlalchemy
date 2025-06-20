@@ -1,5 +1,5 @@
 # util/deprecations.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -203,12 +203,12 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
 
         @deprecated_params(
             weak_identity_map=(
-                "0.7",
+                "2.0",
                 "the :paramref:`.Session.weak_identity_map parameter "
-                "is deprecated."
+                "is deprecated.",
             )
-
         )
+        def some_function(**kwargs): ...
 
     """
 
@@ -280,7 +280,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
                     )
             return fn(*args, **kwargs)  # type: ignore[no-any-return]
 
-        doc = fn.__doc__ is not None and fn.__doc__ or ""
+        doc = fn.__doc__ if fn.__doc__ is not None else ""
         if doc:
             doc = inject_param_text(
                 doc,

@@ -1120,7 +1120,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("q", Integer),
         )
         with expect_warnings(
-            "Column 't.x' is marked as a member.*" "may not store NULL.$"
+            "Column 't.x' is marked as a member.*may not store NULL.$"
         ):
             self.assert_compile(
                 t.insert(), "INSERT INTO t (q) VALUES (:q)", params={"q": 5}
@@ -1136,7 +1136,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         d = postgresql.dialect()
         d.implicit_returning = True
         with expect_warnings(
-            "Column 't.x' is marked as a member.*" "may not store NULL.$"
+            "Column 't.x' is marked as a member.*may not store NULL.$"
         ):
             self.assert_compile(
                 t.insert(),
@@ -1156,7 +1156,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         d.implicit_returning = False
 
         with expect_warnings(
-            "Column 't.x' is marked as a member.*" "may not store NULL.$"
+            "Column 't.x' is marked as a member.*may not store NULL.$"
         ):
             self.assert_compile(
                 t.insert(),
@@ -1172,7 +1172,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("notpk", String(10), nullable=True),
         )
         with expect_warnings(
-            "Column 't.id' is marked as a member.*" "may not store NULL.$"
+            "Column 't.id' is marked as a member.*may not store NULL.$"
         ):
             self.assert_compile(
                 t.insert(),
@@ -1755,7 +1755,7 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "INSERT INTO sometable (id, data) VALUES " "(foobar(), ?)",
+            "INSERT INTO sometable (id, data) VALUES (foobar(), ?)",
             checkparams={"data": "foo"},
             params={"data": "foo"},
             dialect=dialect,

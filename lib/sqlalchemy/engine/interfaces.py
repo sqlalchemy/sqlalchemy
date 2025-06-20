@@ -1,5 +1,5 @@
 # engine/interfaces.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from types import ModuleType
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -23,34 +22,35 @@ from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
 from .. import util
 from ..event import EventTarget
 from ..pool import Pool
-from ..pool import PoolProxiedConnection
+from ..pool import PoolProxiedConnection as PoolProxiedConnection
 from ..sql.compiler import Compiled as Compiled
 from ..sql.compiler import Compiled  # noqa
 from ..sql.compiler import TypeCompiler as TypeCompiler
 from ..sql.compiler import TypeCompiler  # noqa
 from ..util import immutabledict
-from ..util.concurrency import await_only
+from ..util.concurrency import await_
 from ..util.typing import Literal
 from ..util.typing import NotRequired
-from ..util.typing import Protocol
-from ..util.typing import TypedDict
 
 if TYPE_CHECKING:
     from .base import Connection
     from .base import Engine
     from .cursor import CursorResult
     from .url import URL
+    from ..connectors.asyncio import AsyncIODBAPIConnection
     from ..event import _ListenerFnType
     from ..event import dispatcher
     from ..exc import StatementError
@@ -70,6 +70,7 @@ if TYPE_CHECKING:
     from ..sql.sqltypes import Integer
     from ..sql.type_api import _TypeMemoDict
     from ..sql.type_api import TypeEngine
+    from ..util.langhelpers import generic_fn_descriptor
 
 ConnectArgsType = Tuple[Sequence[str], MutableMapping[str, Any]]
 
@@ -106,6 +107,22 @@ class ExecuteStyle(Enum):
     """
 
 
+class DBAPIModule(Protocol):
+    class Error(Exception):
+        def __getattr__(self, key: str) -> Any: ...
+
+    class OperationalError(Error):
+        pass
+
+    class InterfaceError(Error):
+        pass
+
+    class IntegrityError(Error):
+        pass
+
+    def __getattr__(self, key: str) -> Any: ...
+
+
 class DBAPIConnection(Protocol):
     """protocol representing a :pep:`249` database connection.
 
@@ -118,19 +135,17 @@ class DBAPIConnection(Protocol):
 
     """  # noqa: E501
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
-    def commit(self) -> None:
-        ...
+    def commit(self) -> None: ...
 
-    def cursor(self) -> DBAPICursor:
-        ...
+    def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor: ...
 
-    def rollback(self) -> None:
-        ...
+    def rollback(self) -> None: ...
 
-    autocommit: bool
+    def __getattr__(self, key: str) -> Any: ...
+
+    def __setattr__(self, key: str, value: Any) -> None: ...
 
 
 class DBAPIType(Protocol):
@@ -174,53 +189,43 @@ class DBAPICursor(Protocol):
         ...
 
     @property
-    def rowcount(self) -> int:
-        ...
+    def rowcount(self) -> int: ...
 
     arraysize: int
 
     lastrowid: int
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
     def execute(
         self,
         operation: Any,
         parameters: Optional[_DBAPISingleExecuteParams] = None,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def executemany(
         self,
         operation: Any,
-        parameters: Sequence[_DBAPIMultiExecuteParams],
-    ) -> Any:
-        ...
+        parameters: _DBAPIMultiExecuteParams,
+    ) -> Any: ...
 
-    def fetchone(self) -> Optional[Any]:
-        ...
+    def fetchone(self) -> Optional[Any]: ...
 
-    def fetchmany(self, size: int = ...) -> Sequence[Any]:
-        ...
+    def fetchmany(self, size: int = ...) -> Sequence[Any]: ...
 
-    def fetchall(self) -> Sequence[Any]:
-        ...
+    def fetchall(self) -> Sequence[Any]: ...
 
-    def setinputsizes(self, sizes: Sequence[Any]) -> None:
-        ...
+    def setinputsizes(self, sizes: Sequence[Any]) -> None: ...
 
-    def setoutputsize(self, size: Any, column: Any) -> None:
-        ...
+    def setoutputsize(self, size: Any, column: Any) -> None: ...
 
-    def callproc(self, procname: str, parameters: Sequence[Any] = ...) -> Any:
-        ...
+    def callproc(
+        self, procname: str, parameters: Sequence[Any] = ...
+    ) -> Any: ...
 
-    def nextset(self) -> Optional[bool]:
-        ...
+    def nextset(self) -> Optional[bool]: ...
 
-    def __getattr__(self, key: str) -> Any:
-        ...
+    def __getattr__(self, key: str) -> Any: ...
 
 
 _CoreSingleExecuteParams = Mapping[str, Any]
@@ -284,6 +289,8 @@ class _CoreKnownExecutionOptions(TypedDict, total=False):
     yield_per: int
     insertmanyvalues_page_size: int
     schema_translate_map: Optional[SchemaTranslateMapType]
+    preserve_rowcount: bool
+    driver_column_names: bool
 
 
 _ExecuteOptions = immutabledict[str, Any]
@@ -398,8 +405,6 @@ class ReflectedColumn(TypedDict):
     computed: NotRequired[ReflectedComputed]
     """indicates that this column is computed by the database.
     Only some dialects return this key.
-
-    .. versionadded:: 1.3.16 - added support for computed reflection.
     """
 
     identity: NotRequired[ReflectedIdentity]
@@ -442,8 +447,6 @@ class ReflectedCheckConstraint(ReflectedConstraint):
 
     dialect_options: NotRequired[Dict[str, Any]]
     """Additional dialect-specific options detected for this check constraint
-
-    .. versionadded:: 1.3.8
     """
 
 
@@ -552,8 +555,6 @@ class ReflectedIndex(TypedDict):
     """optional dict mapping column names or expressions to tuple of sort
     keywords, which may include ``asc``, ``desc``, ``nulls_first``,
     ``nulls_last``.
-
-    .. versionadded:: 1.3.5
     """
 
     dialect_options: NotRequired[Dict[str, Any]]
@@ -593,8 +594,8 @@ class BindTyping(Enum):
     """Use the pep-249 setinputsizes method.
 
     This is only implemented for DBAPIs that support this method and for which
-    the SQLAlchemy dialect has the appropriate infrastructure for that
-    dialect set up.   Current dialects include cx_Oracle as well as
+    the SQLAlchemy dialect has the appropriate infrastructure for that dialect
+    set up.  Current dialects include python-oracledb, cx_Oracle as well as
     optional support for SQL Server using pyodbc.
 
     When using setinputsizes, dialects also have a means of only using the
@@ -671,7 +672,7 @@ class Dialect(EventTarget):
 
     dialect_description: str
 
-    dbapi: Optional[ModuleType]
+    dbapi: Optional[DBAPIModule]
     """A reference to the DBAPI module object itself.
 
     SQLAlchemy dialects import DBAPI modules using the classmethod
@@ -695,7 +696,7 @@ class Dialect(EventTarget):
     """
 
     @util.non_memoized_property
-    def loaded_dbapi(self) -> ModuleType:
+    def loaded_dbapi(self) -> DBAPIModule:
         """same as .dbapi, but is never None; will raise an error if no
         DBAPI was set up.
 
@@ -792,8 +793,14 @@ class Dialect(EventTarget):
 
     max_identifier_length: int
     """The maximum length of identifier names."""
+    max_index_name_length: Optional[int]
+    """The maximum length of index names if different from
+    ``max_identifier_length``."""
+    max_constraint_name_length: Optional[int]
+    """The maximum length of constraint names if different from
+    ``max_identifier_length``."""
 
-    supports_server_side_cursors: bool
+    supports_server_side_cursors: Union[generic_fn_descriptor[bool], bool]
     """indicates if the dialect supports server side cursors"""
 
     server_side_cursors: bool
@@ -884,12 +891,12 @@ class Dialect(EventTarget):
     the statement multiple times for a series of batches when large numbers
     of rows are given.
 
-    The parameter is False for the default dialect, and is set to
-    True for SQLAlchemy internal dialects SQLite, MySQL/MariaDB, PostgreSQL,
-    SQL Server.   It remains at False for Oracle, which provides native
-    "executemany with RETURNING" support and also does not support
-    ``supports_multivalues_insert``.    For MySQL/MariaDB, those MySQL
-    dialects that don't support RETURNING will not report
+    The parameter is False for the default dialect, and is set to True for
+    SQLAlchemy internal dialects SQLite, MySQL/MariaDB, PostgreSQL, SQL Server.
+    It remains at False for Oracle Database, which provides native "executemany
+    with RETURNING" support and also does not support
+    ``supports_multivalues_insert``.  For MySQL/MariaDB, those MySQL dialects
+    that don't support RETURNING will not report
     ``insert_executemany_returning`` as True.
 
     .. versionadded:: 2.0
@@ -1073,11 +1080,7 @@ class Dialect(EventTarget):
     To implement, establish as a series of tuples, as in::
 
         construct_arguments = [
-            (schema.Index, {
-                "using": False,
-                "where": None,
-                "ops": None
-            })
+            (schema.Index, {"using": False, "where": None, "ops": None}),
         ]
 
     If the above construct is established on the PostgreSQL dialect,
@@ -1106,7 +1109,8 @@ class Dialect(EventTarget):
     established on a :class:`.Table` object which will be passed as
     "reflection options" when using :paramref:`.Table.autoload_with`.
 
-    Current example is "oracle_resolve_synonyms" in the Oracle dialect.
+    Current example is "oracle_resolve_synonyms" in the Oracle Database
+    dialects.
 
     """
 
@@ -1130,7 +1134,7 @@ class Dialect(EventTarget):
     supports_constraint_comments: bool
     """Indicates if the dialect supports comment DDL on constraints.
 
-    .. versionadded: 2.0
+    .. versionadded:: 2.0
     """
 
     _has_events = False
@@ -1249,7 +1253,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     @classmethod
-    def import_dbapi(cls) -> ModuleType:
+    def import_dbapi(cls) -> DBAPIModule:
         """Import the DBAPI module that is used by this dialect.
 
         The Python module object returned here will be assigned as an
@@ -1266,8 +1270,7 @@ class Dialect(EventTarget):
         """
         raise NotImplementedError()
 
-    @classmethod
-    def type_descriptor(cls, typeobj: TypeEngine[_T]) -> TypeEngine[_T]:
+    def type_descriptor(self, typeobj: TypeEngine[_T]) -> TypeEngine[_T]:
         """Transform a generic type to a dialect-specific type.
 
         Dialect classes will usually use the
@@ -1299,12 +1302,9 @@ class Dialect(EventTarget):
 
         """
 
-        pass
-
     if TYPE_CHECKING:
 
-        def _overrides_default(self, method_name: str) -> bool:
-            ...
+        def _overrides_default(self, method_name: str) -> bool: ...
 
     def get_columns(
         self,
@@ -1330,6 +1330,7 @@ class Dialect(EventTarget):
     def get_multi_columns(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1378,6 +1379,7 @@ class Dialect(EventTarget):
     def get_multi_pk_constraint(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1424,6 +1426,7 @@ class Dialect(EventTarget):
     def get_multi_foreign_keys(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1583,6 +1586,7 @@ class Dialect(EventTarget):
     def get_multi_indexes(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1629,6 +1633,7 @@ class Dialect(EventTarget):
     def get_multi_unique_constraints(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1676,6 +1681,7 @@ class Dialect(EventTarget):
     def get_multi_check_constraints(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1718,6 +1724,7 @@ class Dialect(EventTarget):
     def get_multi_table_options(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1760,8 +1767,6 @@ class Dialect(EventTarget):
         :raise: ``NotImplementedError`` for dialects that don't support
          comments.
 
-        .. versionadded:: 1.2
-
         """
 
         raise NotImplementedError()
@@ -1769,6 +1774,7 @@ class Dialect(EventTarget):
     def get_multi_table_comment(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -2161,6 +2167,7 @@ class Dialect(EventTarget):
 
     def _deliver_insertmanyvalues_batches(
         self,
+        connection: Connection,
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPIMultiExecuteParams,
@@ -2214,7 +2221,7 @@ class Dialect(EventTarget):
 
     def is_disconnect(
         self,
-        e: Exception,
+        e: DBAPIModule.Error,
         connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
         cursor: Optional[DBAPICursor],
     ) -> bool:
@@ -2318,7 +2325,7 @@ class Dialect(EventTarget):
         """
         return self.on_connect()
 
-    def on_connect(self) -> Optional[Callable[[Any], Any]]:
+    def on_connect(self) -> Optional[Callable[[Any], None]]:
         """return a callable which sets up a newly created DBAPI connection.
 
         The callable should accept a single argument "conn" which is the
@@ -2484,14 +2491,12 @@ class Dialect(EventTarget):
         The method defaults to using the :meth:`.Dialect.get_isolation_level`
         method unless overridden by a dialect.
 
-        .. versionadded:: 1.3.22
-
         """
         raise NotImplementedError()
 
     def get_isolation_level_values(
         self, dbapi_conn: DBAPIConnection
-    ) -> List[IsolationLevel]:
+    ) -> Sequence[IsolationLevel]:
         """return a sequence of string isolation level names that are accepted
         by this dialect.
 
@@ -2504,7 +2509,7 @@ class Dialect(EventTarget):
           ``REPEATABLE READ``.  isolation level names will have underscores
           converted to spaces before being passed along to the dialect.
         * The names for the four standard isolation names to the extent that
-          they are supported by the backend should be ``READ UNCOMMITTED``
+          they are supported by the backend should be ``READ UNCOMMITTED``,
           ``READ COMMITTED``, ``REPEATABLE READ``, ``SERIALIZABLE``
         * if the dialect supports an autocommit option it should be provided
           using the isolation level name ``AUTOCOMMIT``.
@@ -2596,8 +2601,6 @@ class Dialect(EventTarget):
                 except ImportError:
                     pass
 
-        .. versionadded:: 1.3.14
-
         """
 
     @classmethod
@@ -2665,6 +2668,9 @@ class Dialect(EventTarget):
         """return a Pool class to use for a given URL"""
         raise NotImplementedError()
 
+    def validate_identifier(self, ident: str) -> None:
+        """Validates an identifier name, raising an exception if invalid"""
+
 
 class CreateEnginePlugin:
     """A set of hooks intended to augment the construction of an
@@ -2690,11 +2696,14 @@ class CreateEnginePlugin:
         from sqlalchemy.engine import CreateEnginePlugin
         from sqlalchemy import event
 
+
         class LogCursorEventsPlugin(CreateEnginePlugin):
             def __init__(self, url, kwargs):
                 # consume the parameter "log_cursor_logging_name" from the
                 # URL query
-                logging_name = url.query.get("log_cursor_logging_name", "log_cursor")
+                logging_name = url.query.get(
+                    "log_cursor_logging_name", "log_cursor"
+                )
 
                 self.log = logging.getLogger(logging_name)
 
@@ -2706,7 +2715,6 @@ class CreateEnginePlugin:
                 "attach an event listener after the new Engine is constructed"
                 event.listen(engine, "before_cursor_execute", self._log_event)
 
-
             def _log_event(
                 self,
                 conn,
@@ -2714,19 +2722,19 @@ class CreateEnginePlugin:
                 statement,
                 parameters,
                 context,
-                executemany):
+                executemany,
+            ):
 
                 self.log.info("Plugin logged cursor event: %s", statement)
-
-
 
     Plugins are registered using entry points in a similar way as that
     of dialects::
 
-        entry_points={
-            'sqlalchemy.plugins': [
-                'log_cursor_plugin = myapp.plugins:LogCursorEventsPlugin'
+        entry_points = {
+            "sqlalchemy.plugins": [
+                "log_cursor_plugin = myapp.plugins:LogCursorEventsPlugin"
             ]
+        }
 
     A plugin that uses the above names would be invoked from a database
     URL as in::
@@ -2743,18 +2751,16 @@ class CreateEnginePlugin:
     in the URL::
 
         engine = create_engine(
-          "mysql+pymysql://scott:tiger@localhost/test?"
-          "plugin=plugin_one&plugin=plugin_twp&plugin=plugin_three")
+            "mysql+pymysql://scott:tiger@localhost/test?"
+            "plugin=plugin_one&plugin=plugin_twp&plugin=plugin_three"
+        )
 
     The plugin names may also be passed directly to :func:`_sa.create_engine`
     using the :paramref:`_sa.create_engine.plugins` argument::
 
         engine = create_engine(
-          "mysql+pymysql://scott:tiger@localhost/test",
-          plugins=["myplugin"])
-
-    .. versionadded:: 1.2.3  plugin names can also be specified
-       to :func:`_sa.create_engine` as a list
+            "mysql+pymysql://scott:tiger@localhost/test", plugins=["myplugin"]
+        )
 
     A plugin may consume plugin-specific arguments from the
     :class:`_engine.URL` object as well as the ``kwargs`` dictionary, which is
@@ -2773,9 +2779,9 @@ class CreateEnginePlugin:
 
         class MyPlugin(CreateEnginePlugin):
             def __init__(self, url, kwargs):
-                self.my_argument_one = url.query['my_argument_one']
-                self.my_argument_two = url.query['my_argument_two']
-                self.my_argument_three = kwargs.pop('my_argument_three', None)
+                self.my_argument_one = url.query["my_argument_one"]
+                self.my_argument_two = url.query["my_argument_two"]
+                self.my_argument_three = kwargs.pop("my_argument_three", None)
 
             def update_url(self, url):
                 return url.difference_update_query(
@@ -2788,9 +2794,9 @@ class CreateEnginePlugin:
         from sqlalchemy import create_engine
 
         engine = create_engine(
-          "mysql+pymysql://scott:tiger@localhost/test?"
-          "plugin=myplugin&my_argument_one=foo&my_argument_two=bar",
-          my_argument_three='bat'
+            "mysql+pymysql://scott:tiger@localhost/test?"
+            "plugin=myplugin&my_argument_one=foo&my_argument_two=bar",
+            my_argument_three="bat",
         )
 
     .. versionchanged:: 1.4
@@ -2809,15 +2815,15 @@ class CreateEnginePlugin:
                 def __init__(self, url, kwargs):
                     if hasattr(CreateEnginePlugin, "update_url"):
                         # detect the 1.4 API
-                        self.my_argument_one = url.query['my_argument_one']
-                        self.my_argument_two = url.query['my_argument_two']
+                        self.my_argument_one = url.query["my_argument_one"]
+                        self.my_argument_two = url.query["my_argument_two"]
                     else:
                         # detect the 1.3 and earlier API - mutate the
                         # URL directly
-                        self.my_argument_one = url.query.pop('my_argument_one')
-                        self.my_argument_two = url.query.pop('my_argument_two')
+                        self.my_argument_one = url.query.pop("my_argument_one")
+                        self.my_argument_two = url.query.pop("my_argument_two")
 
-                    self.my_argument_three = kwargs.pop('my_argument_three', None)
+                    self.my_argument_three = kwargs.pop("my_argument_three", None)
 
                 def update_url(self, url):
                     # this method is only called in the 1.4 version
@@ -2991,6 +2997,9 @@ class ExecutionContext:
     """a list of Column objects for which a server-side default or
       inline SQL expression value was fired off.  Applies to inserts
       and updates."""
+
+    execution_options: _ExecuteOptions
+    """Execution options associated with the current statement execution"""
 
     @classmethod
     def _init_ddl(
@@ -3366,7 +3375,7 @@ class AdaptedConnection:
 
     __slots__ = ("_connection",)
 
-    _connection: Any
+    _connection: AsyncIODBAPIConnection
 
     @property
     def driver_connection(self) -> Any:
@@ -3385,11 +3394,14 @@ class AdaptedConnection:
 
             engine = create_async_engine(...)
 
+
             @event.listens_for(engine.sync_engine, "connect")
-            def register_custom_types(dbapi_connection, ...):
+            def register_custom_types(
+                dbapi_connection,  # ...
+            ):
                 dbapi_connection.run_async(
                     lambda connection: connection.set_type_codec(
-                        'MyCustomType', encoder, decoder, ...
+                        "MyCustomType", encoder, decoder, ...
                     )
                 )
 
@@ -3400,7 +3412,7 @@ class AdaptedConnection:
             :ref:`asyncio_events_run_async`
 
         """
-        return await_only(fn(self._connection))
+        return await_(fn(self._connection))
 
     def __repr__(self) -> str:
         return "<AdaptedConnection %s>" % self._connection

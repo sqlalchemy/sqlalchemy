@@ -286,7 +286,6 @@ class PoolTest(PoolTestBase):
     @testing.combinations(
         (pool.QueuePool, False),
         (pool.AsyncAdaptedQueuePool, True),
-        (pool.FallbackAsyncAdaptedQueuePool, True),
         (pool.NullPool, None),
         (pool.SingletonThreadPool, False),
         (pool.StaticPool, None),
@@ -307,7 +306,6 @@ class PoolTest(PoolTestBase):
     @testing.combinations(
         (pool.QueuePool, False),
         (pool.AsyncAdaptedQueuePool, True),
-        (pool.FallbackAsyncAdaptedQueuePool, True),
         (pool.NullPool, False),
         (pool.SingletonThreadPool, False),
         (pool.StaticPool, False),
@@ -460,8 +458,10 @@ class PoolEventsTest(PoolTestBase):
         @event.listens_for(p, "reset")
         def reset(conn, rec, state):
             canary.append(
-                f"""reset_{'rollback_ok'
-                if state.asyncio_safe else 'no_rollback'}"""
+                f"""reset_{
+                    'rollback_ok'
+                    if state.asyncio_safe else 'no_rollback'
+                }"""
             )
 
         @event.listens_for(p, "checkin")

@@ -19,6 +19,7 @@ The rest of what's here are standard SQLAlchemy and
 dogpile.cache constructs.
 
 """
+
 from dogpile.cache.api import NO_VALUE
 
 from sqlalchemy import event
@@ -28,7 +29,6 @@ from sqlalchemy.orm.interfaces import UserDefinedOption
 
 
 class ORMCache:
-
     """An add-on for an ORM :class:`.Session` optionally loads full results
     from a dogpile cache region.
 

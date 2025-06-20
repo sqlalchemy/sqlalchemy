@@ -1,5 +1,5 @@
-# postgresql/psycopg2.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/psycopg2.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -88,7 +88,6 @@ connection URI::
         "postgresql+psycopg2://scott:tiger@192.168.0.199:5432/test?sslmode=require"
     )
 
-
 Unix Domain Connections
 ------------------------
 
@@ -103,13 +102,17 @@ in ``/tmp``, or whatever socket directory was specified when PostgreSQL
 was built.  This value can be overridden by passing a pathname to psycopg2,
 using ``host`` as an additional keyword argument::
 
-    create_engine("postgresql+psycopg2://user:password@/dbname?host=/var/lib/postgresql")
+    create_engine(
+        "postgresql+psycopg2://user:password@/dbname?host=/var/lib/postgresql"
+    )
 
 .. warning::  The format accepted here allows for a hostname in the main URL
    in addition to the "host" query string argument.  **When using this URL
    format, the initial host is silently ignored**.  That is, this URL::
 
-        engine = create_engine("postgresql+psycopg2://user:password@myhost1/dbname?host=myhost2")
+        engine = create_engine(
+            "postgresql+psycopg2://user:password@myhost1/dbname?host=myhost2"
+        )
 
    Above, the hostname ``myhost1`` is **silently ignored and discarded.**  The
    host which is connected is the ``myhost2`` host.
@@ -168,9 +171,6 @@ For example, to indicate two hosts using the ``primary`` strategy::
    is repaired, previously ports were not correctly interpreted in this context.
    libpq comma-separated format is also now supported.
 
-.. versionadded:: 1.3.20 Support for multiple hosts in PostgreSQL connection
-   string.
-
 .. seealso::
 
     `libpq connection strings <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_ - please refer
@@ -190,12 +190,10 @@ any or all elements of the connection string.
 For this form, the URL can be passed without any elements other than the
 initial scheme::
 
-    engine = create_engine('postgresql+psycopg2://')
+    engine = create_engine("postgresql+psycopg2://")
 
 In the above form, a blank "dsn" string is passed to the ``psycopg2.connect()``
 function which in turn represents an empty DSN passed to libpq.
-
-.. versionadded:: 1.3.2 support for parameter-less connections with psycopg2.
 
 .. seealso::
 
@@ -242,7 +240,7 @@ Psycopg2 Fast Execution Helpers
 
 Modern versions of psycopg2 include a feature known as
 `Fast Execution Helpers \
-<https://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_, which
+<https://www.psycopg.org/docs/extras.html#fast-execution-helpers>`_, which
 have been shown in benchmarking to improve psycopg2's executemany()
 performance, primarily with INSERT statements, by at least
 an order of magnitude.
@@ -264,8 +262,8 @@ used feature.  The use of this extension may be enabled using the
 
     engine = create_engine(
         "postgresql+psycopg2://scott:tiger@host/dbname",
-        executemany_mode='values_plus_batch')
-
+        executemany_mode="values_plus_batch",
+    )
 
 Possible options for ``executemany_mode`` include:
 
@@ -311,8 +309,10 @@ is below::
 
     engine = create_engine(
         "postgresql+psycopg2://scott:tiger@host/dbname",
-        executemany_mode='values_plus_batch',
-        insertmanyvalues_page_size=5000, executemany_batch_page_size=500)
+        executemany_mode="values_plus_batch",
+        insertmanyvalues_page_size=5000,
+        executemany_batch_page_size=500,
+    )
 
 .. seealso::
 
@@ -338,7 +338,9 @@ in the following ways:
   passed in the database URL; this parameter is consumed by the underlying
   ``libpq`` PostgreSQL client library::
 
-    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname?client_encoding=utf8")
+    engine = create_engine(
+        "postgresql+psycopg2://user:pass@host/dbname?client_encoding=utf8"
+    )
 
   Alternatively, the above ``client_encoding`` value may be passed using
   :paramref:`_sa.create_engine.connect_args` for programmatic establishment with
@@ -346,7 +348,7 @@ in the following ways:
 
     engine = create_engine(
         "postgresql+psycopg2://user:pass@host/dbname",
-        connect_args={'client_encoding': 'utf8'}
+        connect_args={"client_encoding": "utf8"},
     )
 
 * For all PostgreSQL versions, psycopg2 supports a client-side encoding
@@ -355,8 +357,7 @@ in the following ways:
   ``client_encoding`` parameter passed to :func:`_sa.create_engine`::
 
       engine = create_engine(
-          "postgresql+psycopg2://user:pass@host/dbname",
-          client_encoding="utf8"
+          "postgresql+psycopg2://user:pass@host/dbname", client_encoding="utf8"
       )
 
   .. tip:: The above ``client_encoding`` parameter admittedly is very similar
@@ -375,10 +376,8 @@ in the following ways:
     # postgresql.conf file
 
     # client_encoding = sql_ascii # actually, defaults to database
-                                 # encoding
+    # encoding
     client_encoding = utf8
-
-
 
 Transactions
 ------------
@@ -426,15 +425,15 @@ is set to the ``logging.INFO`` level, notice messages will be logged::
 
     import logging
 
-    logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
+    logging.getLogger("sqlalchemy.dialects.postgresql").setLevel(logging.INFO)
 
 Above, it is assumed that logging is configured externally.  If this is not
 the case, configuration such as ``logging.basicConfig()`` must be utilized::
 
     import logging
 
-    logging.basicConfig()   # log messages to stdout
-    logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
+    logging.basicConfig()  # log messages to stdout
+    logging.getLogger("sqlalchemy.dialects.postgresql").setLevel(logging.INFO)
 
 .. seealso::
 
@@ -471,8 +470,10 @@ textual HSTORE expression.  If this behavior is not desired, disable the
 use of the hstore extension by setting ``use_native_hstore`` to ``False`` as
 follows::
 
-    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test",
-                use_native_hstore=False)
+    engine = create_engine(
+        "postgresql+psycopg2://scott:tiger@localhost/test",
+        use_native_hstore=False,
+    )
 
 The ``HSTORE`` type is **still supported** when the
 ``psycopg2.extensions.register_hstore()`` extension is not used.  It merely
@@ -513,7 +514,7 @@ class _PGJSONB(JSONB):
         return None
 
 
-class _Psycopg2Range(ranges.AbstractRangeImpl):
+class _Psycopg2Range(ranges.AbstractSingleRangeImpl):
     _psycopg2_range_cls = "none"
 
     def bind_processor(self, dialect):
@@ -844,33 +845,43 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
             # checks based on strings.  in the case that .closed
             # didn't cut it, fall back onto these.
             str_e = str(e).partition("\n")[0]
-            for msg in [
-                # these error messages from libpq: interfaces/libpq/fe-misc.c
-                # and interfaces/libpq/fe-secure.c.
-                "terminating connection",
-                "closed the connection",
-                "connection not open",
-                "could not receive data from server",
-                "could not send data to server",
-                # psycopg2 client errors, psycopg2/connection.h,
-                # psycopg2/cursor.h
-                "connection already closed",
-                "cursor already closed",
-                # not sure where this path is originally from, it may
-                # be obsolete.   It really says "losed", not "closed".
-                "losed the connection unexpectedly",
-                # these can occur in newer SSL
-                "connection has been closed unexpectedly",
-                "SSL error: decryption failed or bad record mac",
-                "SSL SYSCALL error: Bad file descriptor",
-                "SSL SYSCALL error: EOF detected",
-                "SSL SYSCALL error: Operation timed out",
-                "SSL SYSCALL error: Bad address",
-            ]:
+            for msg in self._is_disconnect_messages:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:
                     return True
         return False
+
+    @util.memoized_property
+    def _is_disconnect_messages(self):
+        return (
+            # these error messages from libpq: interfaces/libpq/fe-misc.c
+            # and interfaces/libpq/fe-secure.c.
+            "terminating connection",
+            "closed the connection",
+            "connection not open",
+            "could not receive data from server",
+            "could not send data to server",
+            # psycopg2 client errors, psycopg2/connection.h,
+            # psycopg2/cursor.h
+            "connection already closed",
+            "cursor already closed",
+            # not sure where this path is originally from, it may
+            # be obsolete.   It really says "losed", not "closed".
+            "losed the connection unexpectedly",
+            # these can occur in newer SSL
+            "connection has been closed unexpectedly",
+            "SSL error: decryption failed or bad record mac",
+            "SSL SYSCALL error: Bad file descriptor",
+            "SSL SYSCALL error: EOF detected",
+            "SSL SYSCALL error: Operation timed out",
+            "SSL SYSCALL error: Bad address",
+            # This can occur in OpenSSL 1 when an unexpected EOF occurs.
+            # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_error.html#BUGS
+            # It may also occur in newer OpenSSL for a non-recoverable I/O
+            # error as a result of a system call that does not set 'errno'
+            # in libc.
+            "SSL SYSCALL error: Success",
+        )
 
 
 dialect = PGDialect_psycopg2

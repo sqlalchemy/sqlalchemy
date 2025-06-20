@@ -1,5 +1,5 @@
-# sqlalchemy/ext/baked.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# ext/baked.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -38,9 +38,6 @@ class Bakery:
     This object is returned by the class method
     :meth:`.BakedQuery.bakery`.  It exists as an object
     so that the "cache" can be easily inspected.
-
-    .. versionadded:: 1.2
-
 
     """
 
@@ -258,34 +255,26 @@ class BakedQuery:
         is passed to the lambda::
 
             sub_bq = self.bakery(lambda s: s.query(User.name))
-            sub_bq += lambda q: q.filter(
-                User.id == Address.user_id).correlate(Address)
+            sub_bq += lambda q: q.filter(User.id == Address.user_id).correlate(Address)
 
             main_bq = self.bakery(lambda s: s.query(Address))
-            main_bq += lambda q: q.filter(
-                sub_bq.to_query(q).exists())
+            main_bq += lambda q: q.filter(sub_bq.to_query(q).exists())
 
         In the case where the subquery is used in the first callable against
         a :class:`.Session`, the :class:`.Session` is also accepted::
 
             sub_bq = self.bakery(lambda s: s.query(User.name))
-            sub_bq += lambda q: q.filter(
-                User.id == Address.user_id).correlate(Address)
+            sub_bq += lambda q: q.filter(User.id == Address.user_id).correlate(Address)
 
             main_bq = self.bakery(
-                lambda s: s.query(
-                Address.id, sub_bq.to_query(q).scalar_subquery())
+                lambda s: s.query(Address.id, sub_bq.to_query(q).scalar_subquery())
             )
 
         :param query_or_session: a :class:`_query.Query` object or a class
          :class:`.Session` object, that is assumed to be within the context
          of an enclosing :class:`.BakedQuery` callable.
 
-
-         .. versionadded:: 1.3
-
-
-        """
+        """  # noqa: E501
 
         if isinstance(query_or_session, Session):
             session = query_or_session
@@ -363,10 +352,6 @@ class Result:
            :meth:`_query.Query.params` and
            :meth:`_query.Query.execution_options`
            methods should be used.
-
-
-        .. versionadded:: 1.2
-
 
         """
         return self._using_post_criteria([fn])

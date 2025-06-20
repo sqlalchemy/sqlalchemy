@@ -1,5 +1,5 @@
-# sqlite/pysqlcipher.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/sqlite/pysqlcipher.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -39,7 +39,7 @@ Current dialect selection logic is:
 
         e = create_engine(
             "sqlite+pysqlcipher://:password@/dbname.db",
-            module=sqlcipher_compatible_driver
+            module=sqlcipher_compatible_driver,
         )
 
 These drivers make use of the SQLCipher engine. This system essentially
@@ -55,12 +55,12 @@ The format of the connect string is in every way the same as that
 of the :mod:`~sqlalchemy.dialects.sqlite.pysqlite` driver, except that the
 "password" field is now accepted, which should contain a passphrase::
 
-    e = create_engine('sqlite+pysqlcipher://:testing@/foo.db')
+    e = create_engine("sqlite+pysqlcipher://:testing@/foo.db")
 
 For an absolute file path, two leading slashes should be used for the
 database name::
 
-    e = create_engine('sqlite+pysqlcipher://:testing@//path/to/foo.db')
+    e = create_engine("sqlite+pysqlcipher://:testing@//path/to/foo.db")
 
 A selection of additional encryption-related pragmas supported by SQLCipher
 as documented at https://www.zetetic.net/sqlcipher/sqlcipher-api/ can be passed
@@ -68,7 +68,9 @@ in the query string, and will result in that PRAGMA being called for each
 new connection.  Currently, ``cipher``, ``kdf_iter``
 ``cipher_page_size`` and ``cipher_use_hmac`` are supported::
 
-    e = create_engine('sqlite+pysqlcipher://:testing@/foo.db?cipher=aes-256-cfb&kdf_iter=64000')
+    e = create_engine(
+        "sqlite+pysqlcipher://:testing@/foo.db?cipher=aes-256-cfb&kdf_iter=64000"
+    )
 
 .. warning:: Previous versions of sqlalchemy did not take into consideration
    the encryption-related pragmas passed in the url string, that were silently

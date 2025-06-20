@@ -893,14 +893,12 @@ class TransactionContextLoggingTest(fixtures.TestBase):
             ]
         )
 
-    @testing.requires.python38
     def test_log_messages_have_correct_metadata_plain(
         self, plain_logging_engine
     ):
         """test #7612"""
         self._test_log_messages_have_correct_metadata(plain_logging_engine)
 
-    @testing.requires.python38
     def test_log_messages_have_correct_metadata_echo(self, logging_engine):
         """test #7612"""
         self._test_log_messages_have_correct_metadata(logging_engine)
@@ -989,6 +987,43 @@ class LoggingTokenTest(fixtures.TestBase):
         c1.close()
         c2.close()
         c3.close()
+
+    def test_logging_token_option_connection_updates(self, token_engine):
+        """test #11210"""
+
+        eng = token_engine
+
+        c1 = eng.connect().execution_options(logging_token="my_name_1")
+
+        self._assert_token_in_execute(c1, "my_name_1")
+
+        c1.execution_options(logging_token="my_name_2")
+
+        self._assert_token_in_execute(c1, "my_name_2")
+
+        c1.execution_options(logging_token=None)
+
+        self._assert_no_tokens_in_execute(c1)
+
+        c1.close()
+
+    def test_logging_token_option_not_transactional(self, token_engine):
+        """test #11210"""
+
+        eng = token_engine
+
+        c1 = eng.connect()
+
+        with c1.begin():
+            self._assert_no_tokens_in_execute(c1)
+
+            c1.execution_options(logging_token="my_name_1")
+
+            self._assert_token_in_execute(c1, "my_name_1")
+
+        self._assert_token_in_execute(c1, "my_name_1")
+
+        c1.close()
 
     def test_logging_token_option_engine(self, token_engine):
         eng = token_engine

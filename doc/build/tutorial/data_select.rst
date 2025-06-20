@@ -130,7 +130,7 @@ for a :func:`_sql.select` by using a tuple of string names::
     FROM user_account
 
 .. versionadded:: 2.0 Added tuple-accessor capability to the
-   :attr`.FromClause.c` collection
+   :attr:`.FromClause.c` collection
 
 
 .. _tutorial_selecting_orm_entities:
@@ -447,7 +447,7 @@ explicitly::
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 
-The other is the the :meth:`_sql.Select.join` method, which indicates only the
+The other is the :meth:`_sql.Select.join` method, which indicates only the
 right side of the JOIN, the left hand-side is inferred::
 
     >>> print(select(user_table.c.name, address_table.c.email_address).join(address_table))
@@ -1124,7 +1124,7 @@ When using :meth:`_expression.Select.lateral`, the behavior of
 UNION, UNION ALL and other set operations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In SQL,SELECT statements can be merged together using the UNION or UNION ALL
+In SQL, SELECT statements can be merged together using the UNION or UNION ALL
 SQL operation, which produces the set of all rows produced by one or more
 statements together.  Other set operations such as INTERSECT [ALL] and
 EXCEPT [ALL] are also possible.
@@ -1236,7 +1236,7 @@ organized into a subquery using :meth:`_sql.CompoundSelect.subquery`, which
 then links to ORM objects using the :func:`_orm.aliased` function. This works
 in the same way introduced at :ref:`tutorial_subqueries_orm_aliased`, to first
 create an ad-hoc "mapping" of our desired entity to the subquery, then
-selecting from that that new entity as though it were any other mapped class.
+selecting from that new entity as though it were any other mapped class.
 In the example below, we are able to add additional criteria such as ORDER BY
 outside of the UNION itself, as we can filter or order by the columns exported
 by the subquery::
@@ -1387,8 +1387,8 @@ At the same time, a relatively small set of extremely common SQL functions such
 as :class:`_functions.count`, :class:`_functions.now`, :class:`_functions.max`,
 :class:`_functions.concat` include pre-packaged versions of themselves which
 provide for proper typing information as well as backend-specific SQL
-generation in some cases.  The example below contrasts the SQL generation
-that occurs for the PostgreSQL dialect compared to the Oracle dialect for
+generation in some cases.  The example below contrasts the SQL generation that
+occurs for the PostgreSQL dialect compared to the Oracle Database dialect for
 the :class:`_functions.now` function::
 
     >>> from sqlalchemy.dialects import postgresql
@@ -1410,10 +1410,17 @@ as opposed to the "return type" of a Python function.
 
 The SQL return type of any SQL function may be accessed, typically for
 debugging purposes, by referring to the :attr:`_functions.Function.type`
-attribute::
+attribute; this will be pre-configured for a **select few** of extremely
+common SQL functions, but for most SQL functions is the "null" datatype
+if not otherwise specified::
 
+    >>> # pre-configured SQL function (only a few dozen of these)
     >>> func.now().type
     DateTime()
+
+    >>> # arbitrary SQL function (all other SQL functions)
+    >>> func.run_some_calculation().type
+    NullType()
 
 These SQL return types are significant when making
 use of the function expression in the context of a larger expression; that is,
@@ -1676,10 +1683,10 @@ Table-Valued Functions
 Table-valued SQL functions support a scalar representation that contains named
 sub-elements. Often used for JSON and ARRAY-oriented functions as well as
 functions like ``generate_series()``, the table-valued function is specified in
-the FROM clause, and is then referenced as a table, or sometimes even as
-a column. Functions of this form are prominent within the PostgreSQL database,
+the FROM clause, and is then referenced as a table, or sometimes even as a
+column. Functions of this form are prominent within the PostgreSQL database,
 however some forms of table valued functions are also supported by SQLite,
-Oracle, and SQL Server.
+Oracle Database, and SQL Server.
 
 .. seealso::
 
@@ -1728,9 +1735,9 @@ towards as ``value``, and then selected two of its three rows.
 Column Valued Functions - Table Valued Function as a Scalar Column
 ##################################################################
 
-A special syntax supported by PostgreSQL and Oracle is that of referring
-towards a function in the FROM clause, which then delivers itself as a
-single column in the columns clause of a SELECT statement or other column
+A special syntax supported by PostgreSQL and Oracle Database is that of
+referring towards a function in the FROM clause, which then delivers itself as
+a single column in the columns clause of a SELECT statement or other column
 expression context.  PostgreSQL makes great use of this syntax for such
 functions as ``json_array_elements()``, ``json_object_keys()``,
 ``json_each_text()``, ``json_each()``, etc.
@@ -1745,8 +1752,8 @@ to a :class:`_functions.Function` construct::
     {printsql}SELECT x
     FROM json_array_elements(:json_array_elements_1) AS x
 
-The "column valued" form is also supported by the Oracle dialect, where
-it is usable for custom SQL functions::
+The "column valued" form is also supported by the Oracle Database dialects,
+where it is usable for custom SQL functions::
 
     >>> from sqlalchemy.dialects import oracle
     >>> stmt = select(func.scalar_strings(5).column_valued("s"))

@@ -108,7 +108,7 @@ further at :ref:`orm_declarative_metadata`.
 
 The :func:`_orm.mapped_column` construct accepts all arguments that are
 accepted by the :class:`_schema.Column` construct, as well as additional
-ORM-specific arguments. The :paramref:`_orm.mapped_column.__name` field,
+ORM-specific arguments. The :paramref:`_orm.mapped_column.__name` positional parameter,
 indicating the name of the database column, is typically omitted, as the
 Declarative process will make use of the attribute name given to the construct
 and assign this as the name of the column (in the above example, this refers to
@@ -133,22 +133,19 @@ itself (more on this at :ref:`mapper_column_distinct_names`).
     :ref:`mapping_columns_toplevel` - contains additional notes on affecting
     how :class:`_orm.Mapper` interprets incoming :class:`.Column` objects.
 
-.. _orm_declarative_mapped_column:
+ORM Annotated Declarative - Automated Mapping with Type Annotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Using Annotated Declarative Table (Type Annotated Forms for ``mapped_column()``)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The :func:`_orm.mapped_column` construct in modern Python is normally augmented
+by the use of :pep:`484` Python type annotations, where it is capable of
+deriving its column-configuration information from type annotations associated
+with the attribute as declared in the Declarative mapped class. These type
+annotations, if used, must be present within a special SQLAlchemy type called
+:class:`.Mapped`, which is a generic type that indicates a specific Python type
+within it.
 
-The :func:`_orm.mapped_column` construct is capable of deriving its column-configuration
-information from :pep:`484` type annotations associated with the attribute
-as declared in the Declarative mapped class.   These type annotations,
-if used,  **must**
-be present within a special SQLAlchemy type called :class:`_orm.Mapped`, which
-is a generic_ type that then indicates a specific Python type within it.
-
-Below illustrates the mapping from the previous section, adding the use of
-:class:`_orm.Mapped`::
-
-    from typing import Optional
+Using this technique, the example in the previous section can be written
+more succinctly as below::
 
     from sqlalchemy import String
     from sqlalchemy.orm import DeclarativeBase
@@ -165,732 +162,32 @@ Below illustrates the mapping from the previous section, adding the use of
 
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(50))
-        fullname: Mapped[Optional[str]]
-        nickname: Mapped[Optional[str]] = mapped_column(String(30))
-
-Above, when Declarative processes each class attribute, each
-:func:`_orm.mapped_column` will derive additional arguments from the
-corresponding :class:`_orm.Mapped` type annotation on the left side, if
-present.   Additionally, Declarative will generate an empty
-:func:`_orm.mapped_column` directive implicitly, whenever a
-:class:`_orm.Mapped` type annotation is encountered that does not have
-a value assigned to the attribute (this form is inspired by the similar
-style used in Python dataclasses_); this :func:`_orm.mapped_column` construct
-proceeds to derive its configuration from the :class:`_orm.Mapped`
-annotation present.
-
-.. _orm_declarative_mapped_column_nullability:
-
-``mapped_column()`` derives the datatype and nullability from the ``Mapped`` annotation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The two qualities that :func:`_orm.mapped_column` derives from the
-:class:`_orm.Mapped` annotation are:
-
-* **datatype** - the Python type given inside :class:`_orm.Mapped`, as contained
-  within the ``typing.Optional`` construct if present, is associated with a
-  :class:`_sqltypes.TypeEngine` subclass such as :class:`.Integer`, :class:`.String`,
-  :class:`.DateTime`, or :class:`.Uuid`, to name a few common types.
-
-  The datatype is determined based on a dictionary of Python type to
-  SQLAlchemy datatype.   This dictionary is completely customizable,
-  as detailed in the next section :ref:`orm_declarative_mapped_column_type_map`.
-  The default type map is implemented as in the code example below::
-
-      from typing import Any
-      from typing import Dict
-      from typing import Type
-
-      import datetime
-      import decimal
-      import uuid
-
-      from sqlalchemy import types
-
-      # default type mapping, deriving the type for mapped_column()
-      # from a Mapped[] annotation
-      type_map: Dict[Type[Any], TypeEngine[Any]] = {
-          bool: types.Boolean(),
-          bytes: types.LargeBinary(),
-          datetime.date: types.Date(),
-          datetime.datetime: types.DateTime(),
-          datetime.time: types.Time(),
-          datetime.timedelta: types.Interval(),
-          decimal.Decimal: types.Numeric(),
-          float: types.Float(),
-          int: types.Integer(),
-          str: types.String(),
-          uuid.UUID: types.Uuid(),
-      }
-
-  If the :func:`_orm.mapped_column` construct indicates an explicit type
-  as passed to the :paramref:`_orm.mapped_column.__type` argument, then
-  the given Python type is disregarded.
-
-* **nullability** - The :func:`_orm.mapped_column` construct will indicate
-  its :class:`_schema.Column` as ``NULL`` or ``NOT NULL`` first and foremost by
-  the presence of the :paramref:`_orm.mapped_column.nullable` parameter, passed
-  either as ``True`` or ``False``. Additionally , if the
-  :paramref:`_orm.mapped_column.primary_key` parameter is present and set to
-  ``True``, that will also imply that the column should be ``NOT NULL``.
-
-  In the absence of **both** of these parameters, the presence of
-  ``typing.Optional[]`` within the :class:`_orm.Mapped` type annotation will be
-  used to determine nullability, where ``typing.Optional[]`` means ``NULL``,
-  and the absense of ``typing.Optional[]`` means ``NOT NULL``. If there is no
-  ``Mapped[]`` annotation present at all, and there is no
-  :paramref:`_orm.mapped_column.nullable` or
-  :paramref:`_orm.mapped_column.primary_key` parameter, then SQLAlchemy's usual
-  default for :class:`_schema.Column` of ``NULL`` is used.
-
-  In the example below, the ``id`` and ``data`` columns will be ``NOT NULL``,
-  and the ``additional_info`` column will be ``NULL``::
-
-      from typing import Optional
-
-      from sqlalchemy.orm import DeclarativeBase
-      from sqlalchemy.orm import Mapped
-      from sqlalchemy.orm import mapped_column
-
-
-      class Base(DeclarativeBase):
-          pass
-
-
-      class SomeClass(Base):
-          __tablename__ = "some_table"
-
-          # primary_key=True, therefore will be NOT NULL
-          id: Mapped[int] = mapped_column(primary_key=True)
-
-          # not Optional[], therefore will be NOT NULL
-          data: Mapped[str]
-
-          # Optional[], therefore will be NULL
-          additional_info: Mapped[Optional[str]]
-
-  It is also perfectly valid to have a :func:`_orm.mapped_column` whose
-  nullability is **different** from what would be implied by the annotation.
-  For example, an ORM mapped attribute may be annotated as allowing ``None``
-  within Python code that works with the object as it is first being created
-  and populated, however the value will ultimately be written to a database
-  column that is ``NOT NULL``.   The :paramref:`_orm.mapped_column.nullable`
-  parameter, when present, will always take precedence::
-
-      class SomeClass(Base):
-          # ...
-
-          # will be String() NOT NULL, but can be None in Python
-          data: Mapped[Optional[str]] = mapped_column(nullable=False)
-
-  Similarly, a non-None attribute that's written to a database column that
-  for whatever reason needs to be NULL at the schema level,
-  :paramref:`_orm.mapped_column.nullable` may be set to ``True``::
-
-      class SomeClass(Base):
-          # ...
-
-          # will be String() NULL, but type checker will not expect
-          # the attribute to be None
-          data: Mapped[str] = mapped_column(nullable=True)
-
-.. _orm_declarative_mapped_column_type_map:
-
-Customizing the Type Map
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-The mapping of Python types to SQLAlchemy :class:`_types.TypeEngine` types
-described in the previous section defaults to a hardcoded dictionary
-present in the ``sqlalchemy.sql.sqltypes`` module.  However, the :class:`_orm.registry`
-object that coordinates the Declarative mapping process will first consult
-a local, user defined dictionary of types which may be passed
-as the :paramref:`_orm.registry.type_annotation_map` parameter when
-constructing the :class:`_orm.registry`, which may be associated with
-the :class:`_orm.DeclarativeBase` superclass when first used.
-
-As an example, if we wish to make use of the :class:`_sqltypes.BIGINT` datatype for
-``int``, the :class:`_sqltypes.TIMESTAMP` datatype with ``timezone=True`` for
-``datetime.datetime``, and then only on Microsoft SQL Server we'd like to use
-:class:`_sqltypes.NVARCHAR` datatype when Python ``str`` is used,
-the registry and Declarative base could be configured as::
-
-    import datetime
-
-    from sqlalchemy import BIGINT, Integer, NVARCHAR, String, TIMESTAMP
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import Mapped, mapped_column, registry
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {
-            int: BIGINT,
-            datetime.datetime: TIMESTAMP(timezone=True),
-            str: String().with_variant(NVARCHAR, "mssql"),
-        }
-
-
-    class SomeClass(Base):
-        __tablename__ = "some_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        date: Mapped[datetime.datetime]
-        status: Mapped[str]
-
-Below illustrates the CREATE TABLE statement generated for the above mapping,
-first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatype:
-
-.. sourcecode:: pycon+sql
-
-    >>> from sqlalchemy.schema import CreateTable
-    >>> from sqlalchemy.dialects import mssql, postgresql
-    >>> print(CreateTable(SomeClass.__table__).compile(dialect=mssql.dialect()))
-    {printsql}CREATE TABLE some_table (
-      id BIGINT NOT NULL IDENTITY,
-      date TIMESTAMP NOT NULL,
-      status NVARCHAR(max) NOT NULL,
-      PRIMARY KEY (id)
-    )
-
-Then on the PostgreSQL backend, illustrating ``TIMESTAMP WITH TIME ZONE``:
-
-.. sourcecode:: pycon+sql
-
-    >>> print(CreateTable(SomeClass.__table__).compile(dialect=postgresql.dialect()))
-    {printsql}CREATE TABLE some_table (
-      id BIGSERIAL NOT NULL,
-      date TIMESTAMP WITH TIME ZONE NOT NULL,
-      status VARCHAR NOT NULL,
-      PRIMARY KEY (id)
-    )
-
-By making use of methods such as :meth:`.TypeEngine.with_variant`, we're able
-to build up a type map that's customized to what we need for different backends,
-while still being able to use succinct annotation-only :func:`_orm.mapped_column`
-configurations.  There are two more levels of Python-type configurability
-available beyond this, described in the next two sections.
-
-.. _orm_declarative_mapped_column_type_map_pep593:
-
-Mapping Multiple Type Configurations to Python Types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-As individual Python types may be associated with :class:`_types.TypeEngine`
-configurations of any variety by using the :paramref:`_orm.registry.type_annotation_map`
-parameter, an additional
-capability is the ability to associate a single Python type with different
-variants of a SQL type based on additional type qualifiers.  One typical
-example of this is mapping the Python ``str`` datatype to ``VARCHAR``
-SQL types of different lengths.  Another is mapping different varieties of
-``decimal.Decimal`` to differently sized ``NUMERIC`` columns.
-
-Python's typing system provides a great way to add additional metadata to a
-Python type which is by using the :pep:`593` ``Annotated`` generic type, which
-allows additional information to be bundled along with a Python type. The
-:func:`_orm.mapped_column` construct will correctly interpret an ``Annotated``
-object by identity when resolving it in the
-:paramref:`_orm.registry.type_annotation_map`, as in the example below where we
-declare two variants of :class:`.String` and :class:`.Numeric`::
-
-    from decimal import Decimal
-
-    from typing_extensions import Annotated
-
-    from sqlalchemy import Numeric
-    from sqlalchemy import String
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import mapped_column
-    from sqlalchemy.orm import registry
-
-    str_30 = Annotated[str, 30]
-    str_50 = Annotated[str, 50]
-    num_12_4 = Annotated[Decimal, 12]
-    num_6_2 = Annotated[Decimal, 6]
-
-
-    class Base(DeclarativeBase):
-        registry = registry(
-            type_annotation_map={
-                str_30: String(30),
-                str_50: String(50),
-                num_12_4: Numeric(12, 4),
-                num_6_2: Numeric(6, 2),
-            }
-        )
-
-The Python type passed to the ``Annotated`` container, in the above example the
-``str`` and ``Decimal`` types, is important only for the benefit of typing
-tools; as far as the :func:`_orm.mapped_column` construct is concerned, it will only need
-perform a lookup of each type object in the
-:paramref:`_orm.registry.type_annotation_map` dictionary without actually
-looking inside of the ``Annotated`` object, at least in this particular
-context. Similarly, the arguments passed to ``Annotated`` beyond the underlying
-Python type itself are also not important, it's only that at least one argument
-must be present for the ``Annotated`` construct to be valid. We can then use
-these augmented types directly in our mapping where they will be matched to the
-more specific type constructions, as in the following example::
-
-    class SomeClass(Base):
-        __tablename__ = "some_table"
-
-        short_name: Mapped[str_30] = mapped_column(primary_key=True)
-        long_name: Mapped[str_50]
-        num_value: Mapped[num_12_4]
-        short_num_value: Mapped[num_6_2]
-
-a CREATE TABLE for the above mapping will illustrate the different variants
-of ``VARCHAR`` and ``NUMERIC`` we've configured, and looks like:
-
-.. sourcecode:: pycon+sql
-
-    >>> from sqlalchemy.schema import CreateTable
-    >>> print(CreateTable(SomeClass.__table__))
-    {printsql}CREATE TABLE some_table (
-      short_name VARCHAR(30) NOT NULL,
-      long_name VARCHAR(50) NOT NULL,
-      num_value NUMERIC(12, 4) NOT NULL,
-      short_num_value NUMERIC(6, 2) NOT NULL,
-      PRIMARY KEY (short_name)
-    )
-
-While variety in linking ``Annotated`` types to different SQL types grants
-us a wide degree of flexibility, the next section illustrates a second
-way in which ``Annotated`` may be used with Declarative that is even
-more open ended.
-
-.. _orm_declarative_mapped_column_pep593:
-
-Mapping Whole Column Declarations to Python Types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The previous section illustrated using :pep:`593` ``Annotated`` type
-instances as keys within the :paramref:`_orm.registry.type_annotation_map`
-dictionary.  In this form, the :func:`_orm.mapped_column` construct does not
-actually look inside the ``Annotated`` object itself, it's instead
-used only as a dictionary key.  However, Declarative also has the ability to extract
-an entire pre-established :func:`_orm.mapped_column` construct from
-an ``Annotated`` object directly.  Using this form, we can define not only
-different varieties of SQL datatypes linked to Python types without using
-the :paramref:`_orm.registry.type_annotation_map` dictionary, we can also
-set up any number of arguments such as nullability, column defaults,
-and constraints in a reusable fashion.
-
-A set of ORM models will usually have some kind of primary
-key style that is common to all mapped classes.   There also may be
-common column configurations such as timestamps with defaults and other fields of
-pre-established sizes and configurations.   We can compose these configurations
-into :func:`_orm.mapped_column` instances that we then bundle directly into
-instances of ``Annotated``, which are then re-used in any number of class
-declarations.  Declarative will unpack an ``Annotated`` object
-when provided in this manner, skipping over any other directives that don't
-apply to SQLAlchemy and searching only for SQLAlchemy ORM constructs.
-
-The example below illustrates a variety of pre-configured field types used
-in this way, where we define ``intpk`` that represents an :class:`.Integer` primary
-key column, ``timestamp`` that represents a :class:`.DateTime` type
-which will use ``CURRENT_TIMESTAMP`` as a DDL level column default,
-and ``required_name`` which is a :class:`.String` of length 30 that's
-``NOT NULL``::
-
-    import datetime
-
-    from typing_extensions import Annotated
-
-    from sqlalchemy import func
-    from sqlalchemy import String
-    from sqlalchemy.orm import mapped_column
-
-
-    intpk = Annotated[int, mapped_column(primary_key=True)]
-    timestamp = Annotated[
-        datetime.datetime,
-        mapped_column(nullable=False, server_default=func.CURRENT_TIMESTAMP()),
-    ]
-    required_name = Annotated[str, mapped_column(String(30), nullable=False)]
-
-The above ``Annotated`` objects can then be used directly within
-:class:`_orm.Mapped`, where the pre-configured :func:`_orm.mapped_column`
-constructs will be extracted and copied to a new instance that will be
-specific to each attribute::
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    class SomeClass(Base):
-        __tablename__ = "some_table"
-
-        id: Mapped[intpk]
-        name: Mapped[required_name]
-        created_at: Mapped[timestamp]
-
-``CREATE TABLE`` for our above mapping looks like:
-
-.. sourcecode:: pycon+sql
-
-    >>> from sqlalchemy.schema import CreateTable
-    >>> print(CreateTable(SomeClass.__table__))
-    {printsql}CREATE TABLE some_table (
-      id INTEGER NOT NULL,
-      name VARCHAR(30) NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-      PRIMARY KEY (id)
-    )
-
-When using ``Annotated`` types in this way, the configuration of the type
-may also be affected on a per-attribute basis.  For the types in the above
-example that feature explcit use of :paramref:`_orm.mapped_column.nullable`,
-we can apply the ``Optional[]`` generic modifier to any of our types so that
-the field is optional or not at the Python level, which will be independent
-of the ``NULL`` / ``NOT NULL`` setting that takes place in the database::
-
-    from typing_extensions import Annotated
-
-    import datetime
-    from typing import Optional
-
-    from sqlalchemy.orm import DeclarativeBase
-
-    timestamp = Annotated[
-        datetime.datetime,
-        mapped_column(nullable=False),
-    ]
-
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    class SomeClass(Base):
-        # ...
-
-        # pep-484 type will be Optional, but column will be
-        # NOT NULL
-        created_at: Mapped[Optional[timestamp]]
-
-The :func:`_orm.mapped_column` construct is also reconciled with an explicitly
-passed :func:`_orm.mapped_column` construct, whose arguments will take precedence
-over those of the ``Annotated`` construct.   Below we add a :class:`.ForeignKey`
-constraint to our integer primary key and also use an alternate server
-default for the ``created_at`` column::
-
-    import datetime
-
-    from typing_extensions import Annotated
-
-    from sqlalchemy import ForeignKey
-    from sqlalchemy import func
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import mapped_column
-    from sqlalchemy.schema import CreateTable
-
-    intpk = Annotated[int, mapped_column(primary_key=True)]
-    timestamp = Annotated[
-        datetime.datetime,
-        mapped_column(nullable=False, server_default=func.CURRENT_TIMESTAMP()),
-    ]
-
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    class Parent(Base):
-        __tablename__ = "parent"
-
-        id: Mapped[intpk]
-
-
-    class SomeClass(Base):
-        __tablename__ = "some_table"
-
-        # add ForeignKey to mapped_column(Integer, primary_key=True)
-        id: Mapped[intpk] = mapped_column(ForeignKey("parent.id"))
-
-        # change server default from CURRENT_TIMESTAMP to UTC_TIMESTAMP
-        created_at: Mapped[timestamp] = mapped_column(server_default=func.UTC_TIMESTAMP())
-
-The CREATE TABLE statement illustrates these per-attribute settings,
-adding a ``FOREIGN KEY`` constraint as well as substituting
-``UTC_TIMESTAMP`` for ``CURRENT_TIMESTAMP``:
-
-.. sourcecode:: pycon+sql
-
-    >>> from sqlalchemy.schema import CreateTable
-    >>> print(CreateTable(SomeClass.__table__))
-    {printsql}CREATE TABLE some_table (
-      id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT UTC_TIMESTAMP() NOT NULL,
-      PRIMARY KEY (id),
-      FOREIGN KEY(id) REFERENCES parent (id)
-    )
-
-.. note:: The feature of :func:`_orm.mapped_column` just described, where
-   a fully constructed set of column arguments may be indicated using
-   :pep:`593` ``Annotated`` objects that contain a "template"
-   :func:`_orm.mapped_column` object to be copied into the attribute, is
-   currently not implemented for other ORM constructs such as
-   :func:`_orm.relationship` and :func:`_orm.composite`.   While this functionality
-   is in theory possible, for the moment attempting to use ``Annotated``
-   to indicate further arguments for :func:`_orm.relationship` and similar
-   will raise a ``NotImplementedError`` exception at runtime, but
-   may be implemented in future releases.
-
-.. _orm_declarative_mapped_column_enums:
-
-Using Python ``Enum`` or pep-586 ``Literal`` types in the type map
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. versionadded:: 2.0.0b4 - Added ``Enum`` support
-
-.. versionadded:: 2.0.1 - Added ``Literal`` support
-
-User-defined Python types which derive from the Python built-in ``enum.Enum``
-as well as the ``typing.Literal``
-class are automatically linked to the SQLAlchemy :class:`.Enum` datatype
-when used in an ORM declarative mapping.  The example below uses
-a custom ``enum.Enum`` within the ``Mapped[]`` constructor::
-
-    import enum
-
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import mapped_column
-
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    class Status(enum.Enum):
-        PENDING = "pending"
-        RECEIVED = "received"
-        COMPLETED = "completed"
-
-
-    class SomeClass(Base):
-        __tablename__ = "some_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        status: Mapped[Status]
-
-In the above example, the mapped attribute ``SomeClass.status`` will be
-linked to a :class:`.Column` with the datatype of ``Enum(Status)``.
-We can see this for example in the CREATE TABLE output for the PostgreSQL
-database:
-
-.. sourcecode:: sql
-
-  CREATE TYPE status AS ENUM ('PENDING', 'RECEIVED', 'COMPLETED')
-
-  CREATE TABLE some_table (
-    id SERIAL NOT NULL,
-    status status NOT NULL,
-    PRIMARY KEY (id)
-  )
-
-In a similar way, ``typing.Literal`` may be used instead, using
-a ``typing.Literal`` that consists of all strings::
-
-
-    from typing import Literal
-
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import mapped_column
-
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    Status = Literal["pending", "received", "completed"]
-
-
-    class SomeClass(Base):
-        __tablename__ = "some_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        status: Mapped[Status]
-
-The entries used in :paramref:`_orm.registry.type_annotation_map` link the base
-``enum.Enum`` Python type as well as the ``typing.Literal`` type to the
-SQLAlchemy :class:`.Enum` SQL type, using a special form which indicates to the
-:class:`.Enum` datatype that it should automatically configure itself against
-an arbitrary enumerated type. This configuration, which is implicit by default,
-would be indicated explicitly as::
-
-    import enum
-    import typing
-
-    import sqlalchemy
-    from sqlalchemy.orm import DeclarativeBase
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {
-            enum.Enum: sqlalchemy.Enum(enum.Enum),
-            typing.Literal: sqlalchemy.Enum(enum.Enum),
-        }
-
-The resolution logic within Declarative is able to resolve subclasses
-of ``enum.Enum`` as well as instances of ``typing.Literal`` to match the
-``enum.Enum`` or ``typing.Literal`` entry in the
-:paramref:`_orm.registry.type_annotation_map` dictionary.  The :class:`.Enum`
-SQL type then knows how to produce a configured version of itself with the
-appropriate settings, including default string length.   If a ``typing.Literal``
-that does not consist of only string values is passed, an informative
-error is raised.
-
-Native Enums and Naming
-+++++++++++++++++++++++
-
-The :paramref:`.sqltypes.Enum.native_enum` parameter refers to if the
-:class:`.sqltypes.Enum` datatype should create a so-called "native"
-enum, which on MySQL/MariaDB is the ``ENUM`` datatype and on PostgreSQL is
-a new ``TYPE`` object created by ``CREATE TYPE``, or a "non-native" enum,
-which means that ``VARCHAR`` will be used to create the datatype.  For
-backends other than MySQL/MariaDB or PostgreSQL, ``VARCHAR`` is used in
-all cases (third party dialects may have their own behaviors).
-
-Because PostgreSQL's ``CREATE TYPE`` requires that there's an explicit name
-for the type to be created, special fallback logic exists when working
-with implicitly generated :class:`.sqltypes.Enum` without specifying an
-explicit :class:`.sqltypes.Enum` datatype within a mapping:
-
-1. If the :class:`.sqltypes.Enum` is linked to an ``enum.Enum`` object,
-   the :paramref:`.sqltypes.Enum.native_enum` parameter defaults to
-   ``True`` and the name of the enum will be taken from the name of the
-   ``enum.Enum`` datatype.  The PostgreSQL backend will assume ``CREATE TYPE``
-   with this name.
-2. If the :class:`.sqltypes.Enum` is linked to a ``typing.Literal`` object,
-   the :paramref:`.sqltypes.Enum.native_enum` parameter defaults to
-   ``False``; no name is generated and ``VARCHAR`` is assumed.
-
-To use ``typing.Literal`` with a PostgreSQL ``CREATE TYPE`` type, an
-explicit :class:`.sqltypes.Enum` must be used, either within the
-type map::
-
-    import enum
-    import typing
-
-    import sqlalchemy
-    from sqlalchemy.orm import DeclarativeBase
-
-    Status = Literal["pending", "received", "completed"]
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {
-            Status: sqlalchemy.Enum("pending", "received", "completed", name="status_enum"),
-        }
-
-Or alternatively within :func:`_orm.mapped_column`::
-
-    import enum
-    import typing
-
-    import sqlalchemy
-    from sqlalchemy.orm import DeclarativeBase
-
-    Status = Literal["pending", "received", "completed"]
-
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    class SomeClass(Base):
-        __tablename__ = "some_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        status: Mapped[Status] = mapped_column(
-            sqlalchemy.Enum("pending", "received", "completed", name="status_enum")
-        )
-
-Altering the Configuration of the Default Enum
-+++++++++++++++++++++++++++++++++++++++++++++++
-
-In order to modify the fixed configuration of the :class:`.enum.Enum` datatype
-that's generated implicitly, specify new entries in the
-:paramref:`_orm.registry.type_annotation_map`, indicating additional arguments.
-For example, to use "non native enumerations" unconditionally, the
-:paramref:`.Enum.native_enum` parameter may be set to False for all types::
-
-    import enum
-    import typing
-    import sqlalchemy
-    from sqlalchemy.orm import DeclarativeBase
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {
-            enum.Enum: sqlalchemy.Enum(enum.Enum, native_enum=False),
-            typing.Literal: sqlalchemy.Enum(enum.Enum, native_enum=False),
-        }
-
-.. versionchanged:: 2.0.1  Implemented support for overriding parameters
-   such as :paramref:`_sqltypes.Enum.native_enum` within the
-   :class:`_sqltypes.Enum` datatype when establishing the
-   :paramref:`_orm.registry.type_annotation_map`.  Previously, this
-   functionality was not working.
-
-To use a specific configuration for a specific ``enum.Enum`` subtype, such
-as setting the string length to 50 when using the example ``Status``
-datatype::
-
-    import enum
-    import sqlalchemy
-    from sqlalchemy.orm import DeclarativeBase
-
-
-    class Status(enum.Enum):
-        PENDING = "pending"
-        RECEIVED = "received"
-        COMPLETED = "completed"
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {
-            Status: sqlalchemy.Enum(Status, length=50, native_enum=False)
-        }
-
-Linking Specific ``enum.Enum`` or ``typing.Literal`` to other datatypes
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-The above examples feature the use of an :class:`_sqltypes.Enum` that is
-automatically configuring itself to the arguments / attributes present on
-an ``enum.Enum`` or ``typing.Literal`` type object.    For use cases where
-specific kinds of ``enum.Enum`` or ``typing.Literal`` should be linked to
-other types, these specific types may be placed in the type map also.
-In the example below, an entry for ``Literal[]`` that contains non-string
-types is linked to the :class:`_sqltypes.JSON` datatype::
-
-
-    from typing import Literal
-
-    from sqlalchemy import JSON
-    from sqlalchemy.orm import DeclarativeBase
-
-    my_literal = Literal[0, 1, True, False, "true", "false"]
-
-
-    class Base(DeclarativeBase):
-        type_annotation_map = {my_literal: JSON}
-
-In the above configuration, the ``my_literal`` datatype will resolve to a
-:class:`._sqltypes.JSON` instance.  Other ``Literal`` variants will continue
-to resolve to :class:`_sqltypes.Enum` datatypes.
-
+        fullname: Mapped[str | None]
+        nickname: Mapped[str | None] = mapped_column(String(30))
+
+The example above demonstrates that if a class attribute is type-hinted with
+:class:`.Mapped` but doesn't have an explicit :func:`_orm.mapped_column` assigned
+to it, SQLAlchemy will automatically create one. Furthermore, details like the
+column's datatype and whether it can be null (nullability) are inferred from
+the :class:`.Mapped` annotation. However, you can always explicitly provide these
+arguments to :func:`_orm.mapped_column` to override these automatically-derived
+settings.
+
+For complete details on using the ORM Annotated Declarative system, see
+:ref:`orm_declarative_mapped_column` later in this chapter.
+
+.. seealso::
+
+    :ref:`orm_declarative_mapped_column` - complete reference for ORM Annotated Declarative
 
 Dataclass features in ``mapped_column()``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :func:`_orm.mapped_column` construct integrates with SQLAlchemy's
 "native dataclasses" feature, discussed at
 :ref:`orm_declarative_native_dataclasses`.   See that section for current
 background on additional directives supported by :func:`_orm.mapped_column`.
+
 
 
 
@@ -1143,6 +440,10 @@ additional columns are present on mapped subclasses that have
 no :class:`.Table` of their own.  This is illustrated in the section
 :ref:`single_inheritance`.
 
+.. seealso::
+
+   :ref:`orm_declarative_table_adding_relationship` - similar examples for :func:`_orm.relationship`
+
 .. note:: Assignment of mapped
     properties to an already mapped class will only
     function correctly if the "declarative base" class is used, meaning
@@ -1155,6 +456,1044 @@ no :class:`.Table` of their own.  This is illustrated in the section
     Runtime assignment of class-mapped attributes to a mapped class will **not** work
     if the class is mapped using decorators like :meth:`_orm.registry.mapped`
     or imperative functions like :meth:`_orm.registry.map_imperatively`.
+
+
+.. _orm_declarative_mapped_column:
+
+ORM Annotated Declarative - Complete Guide
+------------------------------------------
+
+The :func:`_orm.mapped_column` construct is capable of deriving its
+column-configuration information from :pep:`484` type annotations associated
+with the attribute as declared in the Declarative mapped class.   These type
+annotations, if used,  must be present within a special SQLAlchemy type called
+:class:`_orm.Mapped`, which is a generic_ type that then indicates a specific
+Python type within it.
+
+Using this technique, the ``User`` example from previous sections may be
+written as below::
+
+    from sqlalchemy import String
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class User(Base):
+        __tablename__ = "user"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str] = mapped_column(String(50))
+        fullname: Mapped[str | None]
+        nickname: Mapped[str | None] = mapped_column(String(30))
+
+Above, when Declarative processes each class attribute, each
+:func:`_orm.mapped_column` will derive additional arguments from the
+corresponding :class:`_orm.Mapped` type annotation on the left side, if
+present.   Additionally, Declarative will generate an empty
+:func:`_orm.mapped_column` directive implicitly, whenever a
+:class:`_orm.Mapped` type annotation is encountered that does not have
+a value assigned to the attribute (this form is inspired by the similar
+style used in Python dataclasses_); this :func:`_orm.mapped_column` construct
+proceeds to derive its configuration from the :class:`_orm.Mapped`
+annotation present.
+
+.. _orm_declarative_mapped_column_nullability:
+
+``mapped_column()`` derives the datatype and nullability from the ``Mapped`` annotation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The two qualities that :func:`_orm.mapped_column` derives from the
+:class:`_orm.Mapped` annotation are:
+
+* **datatype** - the Python type given inside :class:`_orm.Mapped`, as contained
+  within the ``typing.Optional`` construct if present, is associated with a
+  :class:`_sqltypes.TypeEngine` subclass such as :class:`.Integer`, :class:`.String`,
+  :class:`.DateTime`, or :class:`.Uuid`, to name a few common types.
+
+  The datatype is determined based on a dictionary of Python type to
+  SQLAlchemy datatype.   This dictionary is completely customizable,
+  as detailed in the next section :ref:`orm_declarative_mapped_column_type_map`.
+  The default type map is implemented as in the code example below::
+
+      from typing import Any
+      from typing import Dict
+      from typing import Type
+
+      import datetime
+      import decimal
+      import uuid
+
+      from sqlalchemy import types
+
+      # default type mapping, deriving the type for mapped_column()
+      # from a Mapped[] annotation
+      type_map: Dict[Type[Any], TypeEngine[Any]] = {
+          bool: types.Boolean(),
+          bytes: types.LargeBinary(),
+          datetime.date: types.Date(),
+          datetime.datetime: types.DateTime(),
+          datetime.time: types.Time(),
+          datetime.timedelta: types.Interval(),
+          decimal.Decimal: types.Numeric(),
+          float: types.Float(),
+          int: types.Integer(),
+          str: types.String(),
+          uuid.UUID: types.Uuid(),
+      }
+
+  If the :func:`_orm.mapped_column` construct indicates an explicit type
+  as passed to the :paramref:`_orm.mapped_column.__type` argument, then
+  the given Python type is disregarded.
+
+* **nullability** - The :func:`_orm.mapped_column` construct will indicate
+  its :class:`_schema.Column` as ``NULL`` or ``NOT NULL`` first and foremost by
+  the presence of the :paramref:`_orm.mapped_column.nullable` parameter, passed
+  either as ``True`` or ``False``. Additionally , if the
+  :paramref:`_orm.mapped_column.primary_key` parameter is present and set to
+  ``True``, that will also imply that the column should be ``NOT NULL``.
+
+  In the absence of **both** of these parameters, the presence of
+  ``typing.Optional[]`` within the :class:`_orm.Mapped` type annotation will be
+  used to determine nullability, where ``typing.Optional[]`` means ``NULL``,
+  and the absence of ``typing.Optional[]`` means ``NOT NULL``. If there is no
+  ``Mapped[]`` annotation present at all, and there is no
+  :paramref:`_orm.mapped_column.nullable` or
+  :paramref:`_orm.mapped_column.primary_key` parameter, then SQLAlchemy's usual
+  default for :class:`_schema.Column` of ``NULL`` is used.
+
+  In the example below, the ``id`` and ``data`` columns will be ``NOT NULL``,
+  and the ``additional_info`` column will be ``NULL``::
+
+      from typing import Optional
+
+      from sqlalchemy.orm import DeclarativeBase
+      from sqlalchemy.orm import Mapped
+      from sqlalchemy.orm import mapped_column
+
+
+      class Base(DeclarativeBase):
+          pass
+
+
+      class SomeClass(Base):
+          __tablename__ = "some_table"
+
+          # primary_key=True, therefore will be NOT NULL
+          id: Mapped[int] = mapped_column(primary_key=True)
+
+          # not Optional[], therefore will be NOT NULL
+          data: Mapped[str]
+
+          # Optional[], therefore will be NULL
+          additional_info: Mapped[Optional[str]]
+
+  It is also perfectly valid to have a :func:`_orm.mapped_column` whose
+  nullability is **different** from what would be implied by the annotation.
+  For example, an ORM mapped attribute may be annotated as allowing ``None``
+  within Python code that works with the object as it is first being created
+  and populated, however the value will ultimately be written to a database
+  column that is ``NOT NULL``.   The :paramref:`_orm.mapped_column.nullable`
+  parameter, when present, will always take precedence::
+
+      class SomeClass(Base):
+          # ...
+
+          # will be String() NOT NULL, but can be None in Python
+          data: Mapped[Optional[str]] = mapped_column(nullable=False)
+
+  Similarly, a non-None attribute that's written to a database column that
+  for whatever reason needs to be NULL at the schema level,
+  :paramref:`_orm.mapped_column.nullable` may be set to ``True``::
+
+      class SomeClass(Base):
+          # ...
+
+          # will be String() NULL, but type checker will not expect
+          # the attribute to be None
+          data: Mapped[str] = mapped_column(nullable=True)
+
+.. _orm_declarative_mapped_column_type_map:
+
+Customizing the Type Map
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+The mapping of Python types to SQLAlchemy :class:`_types.TypeEngine` types
+described in the previous section defaults to a hardcoded dictionary
+present in the ``sqlalchemy.sql.sqltypes`` module.  However, the :class:`_orm.registry`
+object that coordinates the Declarative mapping process will first consult
+a local, user defined dictionary of types which may be passed
+as the :paramref:`_orm.registry.type_annotation_map` parameter when
+constructing the :class:`_orm.registry`, which may be associated with
+the :class:`_orm.DeclarativeBase` superclass when first used.
+
+As an example, if we wish to make use of the :class:`_sqltypes.BIGINT` datatype for
+``int``, the :class:`_sqltypes.TIMESTAMP` datatype with ``timezone=True`` for
+``datetime.datetime``, and then only on Microsoft SQL Server we'd like to use
+:class:`_sqltypes.NVARCHAR` datatype when Python ``str`` is used,
+the registry and Declarative base could be configured as::
+
+    import datetime
+
+    from sqlalchemy import BIGINT, NVARCHAR, String, TIMESTAMP
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            int: BIGINT,
+            datetime.datetime: TIMESTAMP(timezone=True),
+            str: String().with_variant(NVARCHAR, "mssql"),
+        }
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        date: Mapped[datetime.datetime]
+        status: Mapped[str]
+
+Below illustrates the CREATE TABLE statement generated for the above mapping,
+first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatype:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy.schema import CreateTable
+    >>> from sqlalchemy.dialects import mssql, postgresql
+    >>> print(CreateTable(SomeClass.__table__).compile(dialect=mssql.dialect()))
+    {printsql}CREATE TABLE some_table (
+      id BIGINT NOT NULL IDENTITY,
+      date TIMESTAMP NOT NULL,
+      status NVARCHAR(max) NOT NULL,
+      PRIMARY KEY (id)
+    )
+
+Then on the PostgreSQL backend, illustrating ``TIMESTAMP WITH TIME ZONE``:
+
+.. sourcecode:: pycon+sql
+
+    >>> print(CreateTable(SomeClass.__table__).compile(dialect=postgresql.dialect()))
+    {printsql}CREATE TABLE some_table (
+      id BIGSERIAL NOT NULL,
+      date TIMESTAMP WITH TIME ZONE NOT NULL,
+      status VARCHAR NOT NULL,
+      PRIMARY KEY (id)
+    )
+
+By making use of methods such as :meth:`.TypeEngine.with_variant`, we're able
+to build up a type map that's customized to what we need for different backends,
+while still being able to use succinct annotation-only :func:`_orm.mapped_column`
+configurations.  There are two more levels of Python-type configurability
+available beyond this, described in the next two sections.
+
+.. _orm_declarative_type_map_union_types:
+
+Union types inside the Type Map
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. versionchanged:: 2.0.37 The features described in this section have been
+   repaired and enhanced to work consistently.  Prior to this change, union
+   types were supported in ``type_annotation_map``, however the feature
+   exhibited inconsistent behaviors between union syntaxes as well as in how
+   ``None`` was handled.   Please ensure SQLAlchemy is up to date before
+   attempting to use the features described in this section.
+
+SQLAlchemy supports mapping union types inside the ``type_annotation_map`` to
+allow mapping database types that can support multiple Python types, such as
+:class:`_types.JSON` or :class:`_postgresql.JSONB`::
+
+    from typing import Union
+    from sqlalchemy import JSON
+    from sqlalchemy.dialects import postgresql
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    from sqlalchemy.schema import CreateTable
+
+    # new style Union using a pipe operator
+    json_list = list[int] | list[str]
+
+    # old style Union using Union explicitly
+    json_scalar = Union[float, str, bool]
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            json_list: postgresql.JSONB,
+            json_scalar: JSON,
+        }
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        list_col: Mapped[list[str] | list[int]]
+
+        # uses JSON
+        scalar_col: Mapped[json_scalar]
+
+        # uses JSON and is also nullable=True
+        scalar_col_nullable: Mapped[json_scalar | None]
+
+        # these forms all use JSON as well due to the json_scalar entry
+        scalar_col_newstyle: Mapped[float | str | bool]
+        scalar_col_oldstyle: Mapped[Union[float, str, bool]]
+        scalar_col_mixedstyle: Mapped[Optional[float | str | bool]]
+
+The above example maps the union of ``list[int]`` and ``list[str]`` to the Postgresql
+:class:`_postgresql.JSONB` datatype, while naming a union of ``float,
+str, bool`` will match to the :class:`_types.JSON` datatype.   An equivalent
+union, stated in the :class:`_orm.Mapped` construct, will match into the
+corresponding entry in the type map.
+
+The matching of a union type is based on the contents of the union regardless
+of how the individual types are named, and additionally excluding the use of
+the ``None`` type.  That is, ``json_scalar`` will also match to ``str | bool |
+float | None``.   It will **not** match to a union that is a subset or superset
+of this union; that is, ``str | bool`` would not match, nor would ``str | bool
+| float | int``.  The individual contents of the union excluding ``None`` must
+be an exact match.
+
+The ``None`` value is never significant as far as matching
+from ``type_annotation_map`` to :class:`_orm.Mapped`, however is significant
+as an indicator for nullability of the :class:`_schema.Column`. When ``None`` is present in the
+union either as it is placed in the :class:`_orm.Mapped` construct.  When
+present in :class:`_orm.Mapped`, it indicates the :class:`_schema.Column`
+would be nullable, in the absense of more specific indicators.  This logic works
+in the same way as indicating an ``Optional`` type as described at
+:ref:`orm_declarative_mapped_column_nullability`.
+
+The CREATE TABLE statement for the above mapping will look as below:
+
+.. sourcecode:: pycon+sql
+
+    >>> print(CreateTable(SomeClass.__table__).compile(dialect=postgresql.dialect()))
+    {printsql}CREATE TABLE some_table (
+        id SERIAL NOT NULL,
+        list_col JSONB NOT NULL,
+        scalar_col JSON,
+        scalar_col_not_null JSON NOT NULL,
+        PRIMARY KEY (id)
+    )
+
+While union types use a "loose" matching approach that matches on any equivalent
+set of subtypes, Python typing also features a way to create "type aliases"
+that are treated as distinct types that are non-equivalent to another type that
+includes the same composition.   Integration of these types with ``type_annotation_map``
+is described in the next section, :ref:`orm_declarative_type_map_pep695_types`.
+
+.. _orm_declarative_type_map_pep695_types:
+
+Support for Type Alias Types (defined by PEP 695) and NewType
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+In contrast to the typing lookup described in
+:ref:`orm_declarative_type_map_union_types`, Python typing also includes two
+ways to create a composed type in a more formal way, using ``typing.NewType`` as
+well as the ``type`` keyword introduced in :pep:`695`.  These types behave
+differently from ordinary type aliases (i.e. assigning a type to a variable
+name), and this difference is honored in how SQLAlchemy resolves these
+types from the type map.
+
+.. versionchanged:: 2.0.37  The behaviors described in this section for ``typing.NewType``
+   as well as :pep:`695` ``type`` have been formalized and corrected.
+   Deprecation warnings are now emitted for "loose matching" patterns that have
+   worked in some 2.0 releases, but are to be removed in SQLAlchemy 2.1.
+   Please ensure SQLAlchemy is up to date before attempting to use the features
+   described in this section.
+
+The typing module allows the creation of "new types" using ``typing.NewType``::
+
+    from typing import NewType
+
+    nstr30 = NewType("nstr30", str)
+    nstr50 = NewType("nstr50", str)
+
+Additionally, in Python 3.12, a new feature defined by :pep:`695` was introduced which
+provides the ``type`` keyword to accomplish a similar task; using
+``type`` produces an object that is similar in many ways to ``typing.NewType``
+which is internally referred to as ``typing.TypeAliasType``::
+
+    type SmallInt = int
+    type BigInt = int
+    type JsonScalar = str | float | bool | None
+
+For the purposes of how SQLAlchemy treats these type objects when used
+for SQL type lookup inside of :class:`_orm.Mapped`, it's important to note
+that Python does not consider two equivalent ``typing.TypeAliasType``
+or ``typing.NewType`` objects to be equal::
+
+    # two typing.NewType objects are not equal even if they are both str
+    >>> nstr50 == nstr30
+    False
+
+    # two TypeAliasType objects are not equal even if they are both int
+    >>> SmallInt == BigInt
+    False
+
+    # an equivalent union is not equal to JsonScalar
+    >>> JsonScalar == str | float | bool | None
+    False
+
+This is the opposite behavior from how ordinary unions are compared, and
+informs the correct behavior for SQLAlchemy's ``type_annotation_map``. When
+using ``typing.NewType`` or :pep:`695` ``type`` objects, the type object is
+expected to be explicit within the ``type_annotation_map`` for it to be matched
+from a :class:`_orm.Mapped` type, where the same object must be stated in order
+for a match to be made (excluding whether or not the type inside of
+:class:`_orm.Mapped` also unions on ``None``). This is distinct from the
+behavior described at :ref:`orm_declarative_type_map_union_types`, where a
+plain ``Union`` that is referenced directly will match to other ``Unions``
+based on the composition, rather than the object identity, of a particular type
+in ``type_annotation_map``.
+
+In the example below, the composed types for ``nstr30``, ``nstr50``,
+``SmallInt``, ``BigInt``, and ``JsonScalar`` have no overlap with each other
+and can be named distinctly within each :class:`_orm.Mapped` construct, and
+are also all explicit in ``type_annotation_map``.   Any of these types may
+also be unioned with ``None`` or declared as ``Optional[]`` without affecting
+the lookup, only deriving column nullability::
+
+    from typing import NewType
+
+    from sqlalchemy import SmallInteger, BigInteger, JSON, String
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    from sqlalchemy.schema import CreateTable
+
+    nstr30 = NewType("nstr30", str)
+    nstr50 = NewType("nstr50", str)
+    type SmallInt = int
+    type BigInt = int
+    type JsonScalar = str | float | bool | None
+
+
+    class TABase(DeclarativeBase):
+        type_annotation_map = {
+            nstr30: String(30),
+            nstr50: String(50),
+            SmallInt: SmallInteger,
+            BigInteger: BigInteger,
+            JsonScalar: JSON,
+        }
+
+
+    class SomeClass(TABase):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        normal_str: Mapped[str]
+
+        short_str: Mapped[nstr30]
+        long_str_nullable: Mapped[nstr50 | None]
+
+        small_int: Mapped[SmallInt]
+        big_int: Mapped[BigInteger]
+        scalar_col: Mapped[JsonScalar]
+
+a CREATE TABLE for the above mapping will illustrate the different variants
+of integer and string we've configured, and looks like:
+
+.. sourcecode:: pycon+sql
+
+    >>> print(CreateTable(SomeClass.__table__))
+    {printsql}CREATE TABLE some_table (
+        id INTEGER NOT NULL,
+        normal_str VARCHAR NOT NULL,
+        short_str VARCHAR(30) NOT NULL,
+        long_str_nullable VARCHAR(50),
+        small_int SMALLINT NOT NULL,
+        big_int BIGINT NOT NULL,
+        scalar_col JSON,
+        PRIMARY KEY (id)
+    )
+
+Regarding nullability, the ``JsonScalar`` type includes ``None`` in its
+definition, which indicates a nullable column.   Similarly the
+``long_str_nullable`` column applies a union of ``None`` to ``nstr50``,
+which matches to the ``nstr50`` type in the ``type_annotation_map`` while
+also applying nullability to the mapped column.  The other columns all remain
+NOT NULL as they are not indicated as optional.
+
+
+.. _orm_declarative_mapped_column_type_map_pep593:
+
+Mapping Multiple Type Configurations to Python Types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+As individual Python types may be associated with :class:`_types.TypeEngine`
+configurations of any variety by using the :paramref:`_orm.registry.type_annotation_map`
+parameter, an additional
+capability is the ability to associate a single Python type with different
+variants of a SQL type based on additional type qualifiers.  One typical
+example of this is mapping the Python ``str`` datatype to ``VARCHAR``
+SQL types of different lengths.  Another is mapping different varieties of
+``decimal.Decimal`` to differently sized ``NUMERIC`` columns.
+
+Python's typing system provides a great way to add additional metadata to a
+Python type which is by using the :pep:`593` ``Annotated`` generic type, which
+allows additional information to be bundled along with a Python type. The
+:func:`_orm.mapped_column` construct will correctly interpret an ``Annotated``
+object by identity when resolving it in the
+:paramref:`_orm.registry.type_annotation_map`, as in the example below where we
+declare two variants of :class:`.String` and :class:`.Numeric`::
+
+    from decimal import Decimal
+
+    from typing_extensions import Annotated
+
+    from sqlalchemy import Numeric
+    from sqlalchemy import String
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+    str_30 = Annotated[str, 30]
+    str_50 = Annotated[str, 50]
+    num_12_4 = Annotated[Decimal, 12]
+    num_6_2 = Annotated[Decimal, 6]
+
+
+    class Base(DeclarativeBase):
+        registry = registry(
+            type_annotation_map={
+                str_30: String(30),
+                str_50: String(50),
+                num_12_4: Numeric(12, 4),
+                num_6_2: Numeric(6, 2),
+            }
+        )
+
+The Python type passed to the ``Annotated`` container, in the above example the
+``str`` and ``Decimal`` types, is important only for the benefit of typing
+tools; as far as the :func:`_orm.mapped_column` construct is concerned, it will only need
+perform a lookup of each type object in the
+:paramref:`_orm.registry.type_annotation_map` dictionary without actually
+looking inside of the ``Annotated`` object, at least in this particular
+context. Similarly, the arguments passed to ``Annotated`` beyond the underlying
+Python type itself are also not important, it's only that at least one argument
+must be present for the ``Annotated`` construct to be valid. We can then use
+these augmented types directly in our mapping where they will be matched to the
+more specific type constructions, as in the following example::
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        short_name: Mapped[str_30] = mapped_column(primary_key=True)
+        long_name: Mapped[str_50]
+        num_value: Mapped[num_12_4]
+        short_num_value: Mapped[num_6_2]
+
+a CREATE TABLE for the above mapping will illustrate the different variants
+of ``VARCHAR`` and ``NUMERIC`` we've configured, and looks like:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy.schema import CreateTable
+    >>> print(CreateTable(SomeClass.__table__))
+    {printsql}CREATE TABLE some_table (
+      short_name VARCHAR(30) NOT NULL,
+      long_name VARCHAR(50) NOT NULL,
+      num_value NUMERIC(12, 4) NOT NULL,
+      short_num_value NUMERIC(6, 2) NOT NULL,
+      PRIMARY KEY (short_name)
+    )
+
+While variety in linking ``Annotated`` types to different SQL types grants
+us a wide degree of flexibility, the next section illustrates a second
+way in which ``Annotated`` may be used with Declarative that is even
+more open ended.
+
+
+.. note::  While a ``typing.TypeAliasType`` can be assigned to unions, like in the
+   case of ``JsonScalar`` defined above, it has a different behavior than normal
+   unions defined without the ``type ...`` syntax.
+   The following mapping includes unions that are compatible with ``JsonScalar``,
+   but they will not be recognized::
+
+        class SomeClass(TABase):
+            __tablename__ = "some_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            col_a: Mapped[str | float | bool | None]
+            col_b: Mapped[str | float | bool]
+
+    This raises an error since the union types used by ``col_a`` or ``col_b``,
+    are not found in ``TABase`` type map and ``JsonScalar`` must be referenced
+    directly.
+
+.. _orm_declarative_mapped_column_pep593:
+
+Mapping Whole Column Declarations to Python Types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+The previous section illustrated using :pep:`593` ``Annotated`` type
+instances as keys within the :paramref:`_orm.registry.type_annotation_map`
+dictionary.  In this form, the :func:`_orm.mapped_column` construct does not
+actually look inside the ``Annotated`` object itself, it's instead
+used only as a dictionary key.  However, Declarative also has the ability to extract
+an entire pre-established :func:`_orm.mapped_column` construct from
+an ``Annotated`` object directly.  Using this form, we can define not only
+different varieties of SQL datatypes linked to Python types without using
+the :paramref:`_orm.registry.type_annotation_map` dictionary, we can also
+set up any number of arguments such as nullability, column defaults,
+and constraints in a reusable fashion.
+
+A set of ORM models will usually have some kind of primary
+key style that is common to all mapped classes.   There also may be
+common column configurations such as timestamps with defaults and other fields of
+pre-established sizes and configurations.   We can compose these configurations
+into :func:`_orm.mapped_column` instances that we then bundle directly into
+instances of ``Annotated``, which are then re-used in any number of class
+declarations.  Declarative will unpack an ``Annotated`` object
+when provided in this manner, skipping over any other directives that don't
+apply to SQLAlchemy and searching only for SQLAlchemy ORM constructs.
+
+The example below illustrates a variety of pre-configured field types used
+in this way, where we define ``intpk`` that represents an :class:`.Integer` primary
+key column, ``timestamp`` that represents a :class:`.DateTime` type
+which will use ``CURRENT_TIMESTAMP`` as a DDL level column default,
+and ``required_name`` which is a :class:`.String` of length 30 that's
+``NOT NULL``::
+
+    import datetime
+
+    from typing_extensions import Annotated
+
+    from sqlalchemy import func
+    from sqlalchemy import String
+    from sqlalchemy.orm import mapped_column
+
+
+    intpk = Annotated[int, mapped_column(primary_key=True)]
+    timestamp = Annotated[
+        datetime.datetime,
+        mapped_column(nullable=False, server_default=func.CURRENT_TIMESTAMP()),
+    ]
+    required_name = Annotated[str, mapped_column(String(30), nullable=False)]
+
+The above ``Annotated`` objects can then be used directly within
+:class:`_orm.Mapped`, where the pre-configured :func:`_orm.mapped_column`
+constructs will be extracted and copied to a new instance that will be
+specific to each attribute::
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[intpk]
+        name: Mapped[required_name]
+        created_at: Mapped[timestamp]
+
+``CREATE TABLE`` for our above mapping looks like:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy.schema import CreateTable
+    >>> print(CreateTable(SomeClass.__table__))
+    {printsql}CREATE TABLE some_table (
+      id INTEGER NOT NULL,
+      name VARCHAR(30) NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+      PRIMARY KEY (id)
+    )
+
+When using ``Annotated`` types in this way, the configuration of the type
+may also be affected on a per-attribute basis.  For the types in the above
+example that feature explicit use of :paramref:`_orm.mapped_column.nullable`,
+we can apply the ``Optional[]`` generic modifier to any of our types so that
+the field is optional or not at the Python level, which will be independent
+of the ``NULL`` / ``NOT NULL`` setting that takes place in the database::
+
+    from typing_extensions import Annotated
+
+    import datetime
+    from typing import Optional
+
+    from sqlalchemy.orm import DeclarativeBase
+
+    timestamp = Annotated[
+        datetime.datetime,
+        mapped_column(nullable=False),
+    ]
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class SomeClass(Base):
+        # ...
+
+        # pep-484 type will be Optional, but column will be
+        # NOT NULL
+        created_at: Mapped[Optional[timestamp]]
+
+The :func:`_orm.mapped_column` construct is also reconciled with an explicitly
+passed :func:`_orm.mapped_column` construct, whose arguments will take precedence
+over those of the ``Annotated`` construct.   Below we add a :class:`.ForeignKey`
+constraint to our integer primary key and also use an alternate server
+default for the ``created_at`` column::
+
+    import datetime
+
+    from typing_extensions import Annotated
+
+    from sqlalchemy import ForeignKey
+    from sqlalchemy import func
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.schema import CreateTable
+
+    intpk = Annotated[int, mapped_column(primary_key=True)]
+    timestamp = Annotated[
+        datetime.datetime,
+        mapped_column(nullable=False, server_default=func.CURRENT_TIMESTAMP()),
+    ]
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Parent(Base):
+        __tablename__ = "parent"
+
+        id: Mapped[intpk]
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        # add ForeignKey to mapped_column(Integer, primary_key=True)
+        id: Mapped[intpk] = mapped_column(ForeignKey("parent.id"))
+
+        # change server default from CURRENT_TIMESTAMP to UTC_TIMESTAMP
+        created_at: Mapped[timestamp] = mapped_column(server_default=func.UTC_TIMESTAMP())
+
+The CREATE TABLE statement illustrates these per-attribute settings,
+adding a ``FOREIGN KEY`` constraint as well as substituting
+``UTC_TIMESTAMP`` for ``CURRENT_TIMESTAMP``:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy.schema import CreateTable
+    >>> print(CreateTable(SomeClass.__table__))
+    {printsql}CREATE TABLE some_table (
+      id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT UTC_TIMESTAMP() NOT NULL,
+      PRIMARY KEY (id),
+      FOREIGN KEY(id) REFERENCES parent (id)
+    )
+
+.. note:: The feature of :func:`_orm.mapped_column` just described, where
+   a fully constructed set of column arguments may be indicated using
+   :pep:`593` ``Annotated`` objects that contain a "template"
+   :func:`_orm.mapped_column` object to be copied into the attribute, is
+   currently not implemented for other ORM constructs such as
+   :func:`_orm.relationship` and :func:`_orm.composite`.   While this functionality
+   is in theory possible, for the moment attempting to use ``Annotated``
+   to indicate further arguments for :func:`_orm.relationship` and similar
+   will raise a ``NotImplementedError`` exception at runtime, but
+   may be implemented in future releases.
+
+.. _orm_declarative_mapped_column_enums:
+
+Using Python ``Enum`` or pep-586 ``Literal`` types in the type map
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. versionadded:: 2.0.0b4 - Added ``Enum`` support
+
+.. versionadded:: 2.0.1 - Added ``Literal`` support
+
+User-defined Python types which derive from the Python built-in ``enum.Enum``
+as well as the ``typing.Literal``
+class are automatically linked to the SQLAlchemy :class:`.Enum` datatype
+when used in an ORM declarative mapping.  The example below uses
+a custom ``enum.Enum`` within the ``Mapped[]`` constructor::
+
+    import enum
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Status(enum.Enum):
+        PENDING = "pending"
+        RECEIVED = "received"
+        COMPLETED = "completed"
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        status: Mapped[Status]
+
+In the above example, the mapped attribute ``SomeClass.status`` will be
+linked to a :class:`.Column` with the datatype of ``Enum(Status)``.
+We can see this for example in the CREATE TABLE output for the PostgreSQL
+database:
+
+.. sourcecode:: sql
+
+  CREATE TYPE status AS ENUM ('PENDING', 'RECEIVED', 'COMPLETED')
+
+  CREATE TABLE some_table (
+    id SERIAL NOT NULL,
+    status status NOT NULL,
+    PRIMARY KEY (id)
+  )
+
+In a similar way, ``typing.Literal`` may be used instead, using
+a ``typing.Literal`` that consists of all strings::
+
+
+    from typing import Literal
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    Status = Literal["pending", "received", "completed"]
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        status: Mapped[Status]
+
+The entries used in :paramref:`_orm.registry.type_annotation_map` link the base
+``enum.Enum`` Python type as well as the ``typing.Literal`` type to the
+SQLAlchemy :class:`.Enum` SQL type, using a special form which indicates to the
+:class:`.Enum` datatype that it should automatically configure itself against
+an arbitrary enumerated type. This configuration, which is implicit by default,
+would be indicated explicitly as::
+
+    import enum
+    import typing
+
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            enum.Enum: sqlalchemy.Enum(enum.Enum),
+            typing.Literal: sqlalchemy.Enum(enum.Enum),
+        }
+
+The resolution logic within Declarative is able to resolve subclasses
+of ``enum.Enum`` as well as instances of ``typing.Literal`` to match the
+``enum.Enum`` or ``typing.Literal`` entry in the
+:paramref:`_orm.registry.type_annotation_map` dictionary.  The :class:`.Enum`
+SQL type then knows how to produce a configured version of itself with the
+appropriate settings, including default string length.   If a ``typing.Literal``
+that does not consist of only string values is passed, an informative
+error is raised.
+
+``typing.TypeAliasType`` can also be used to create enums, by assigning them
+to a ``typing.Literal`` of strings::
+
+    from typing import Literal
+
+    type Status = Literal["on", "off", "unknown"]
+
+Since this is a ``typing.TypeAliasType``, it represents a unique type object,
+so it must be placed in the ``type_annotation_map`` for it to be looked up
+successfully, keyed to the :class:`.Enum` type as follows::
+
+    import enum
+    import sqlalchemy
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {Status: sqlalchemy.Enum(enum.Enum)}
+
+Since SQLAlchemy supports mapping different ``typing.TypeAliasType``
+objects that are otherwise structurally equivalent individually,
+these must be present in ``type_annotation_map`` to avoid ambiguity.
+
+Native Enums and Naming
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :paramref:`.sqltypes.Enum.native_enum` parameter refers to if the
+:class:`.sqltypes.Enum` datatype should create a so-called "native"
+enum, which on MySQL/MariaDB is the ``ENUM`` datatype and on PostgreSQL is
+a new ``TYPE`` object created by ``CREATE TYPE``, or a "non-native" enum,
+which means that ``VARCHAR`` will be used to create the datatype.  For
+backends other than MySQL/MariaDB or PostgreSQL, ``VARCHAR`` is used in
+all cases (third party dialects may have their own behaviors).
+
+Because PostgreSQL's ``CREATE TYPE`` requires that there's an explicit name
+for the type to be created, special fallback logic exists when working
+with implicitly generated :class:`.sqltypes.Enum` without specifying an
+explicit :class:`.sqltypes.Enum` datatype within a mapping:
+
+1. If the :class:`.sqltypes.Enum` is linked to an ``enum.Enum`` object,
+   the :paramref:`.sqltypes.Enum.native_enum` parameter defaults to
+   ``True`` and the name of the enum will be taken from the name of the
+   ``enum.Enum`` datatype.  The PostgreSQL backend will assume ``CREATE TYPE``
+   with this name.
+2. If the :class:`.sqltypes.Enum` is linked to a ``typing.Literal`` object,
+   the :paramref:`.sqltypes.Enum.native_enum` parameter defaults to
+   ``False``; no name is generated and ``VARCHAR`` is assumed.
+
+To use ``typing.Literal`` with a PostgreSQL ``CREATE TYPE`` type, an
+explicit :class:`.sqltypes.Enum` must be used, either within the
+type map::
+
+    import enum
+    import typing
+
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+    Status = Literal["pending", "received", "completed"]
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            Status: sqlalchemy.Enum("pending", "received", "completed", name="status_enum"),
+        }
+
+Or alternatively within :func:`_orm.mapped_column`::
+
+    import enum
+    import typing
+
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+    Status = Literal["pending", "received", "completed"]
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        status: Mapped[Status] = mapped_column(
+            sqlalchemy.Enum("pending", "received", "completed", name="status_enum")
+        )
+
+Altering the Configuration of the Default Enum
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to modify the fixed configuration of the :class:`.enum.Enum` datatype
+that's generated implicitly, specify new entries in the
+:paramref:`_orm.registry.type_annotation_map`, indicating additional arguments.
+For example, to use "non native enumerations" unconditionally, the
+:paramref:`.Enum.native_enum` parameter may be set to False for all types::
+
+    import enum
+    import typing
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            enum.Enum: sqlalchemy.Enum(enum.Enum, native_enum=False),
+            typing.Literal: sqlalchemy.Enum(enum.Enum, native_enum=False),
+        }
+
+.. versionchanged:: 2.0.1  Implemented support for overriding parameters
+   such as :paramref:`_sqltypes.Enum.native_enum` within the
+   :class:`_sqltypes.Enum` datatype when establishing the
+   :paramref:`_orm.registry.type_annotation_map`.  Previously, this
+   functionality was not working.
+
+To use a specific configuration for a specific ``enum.Enum`` subtype, such
+as setting the string length to 50 when using the example ``Status``
+datatype::
+
+    import enum
+    import sqlalchemy
+    from sqlalchemy.orm import DeclarativeBase
+
+
+    class Status(enum.Enum):
+        PENDING = "pending"
+        RECEIVED = "received"
+        COMPLETED = "completed"
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            Status: sqlalchemy.Enum(Status, length=50, native_enum=False)
+        }
+
+By default :class:`_sqltypes.Enum` that are automatically generated are not
+associated with the :class:`_sql.MetaData` instance used by the ``Base``, so if
+the metadata defines a schema it will not be automatically associated with the
+enum. To automatically associate the enum with the schema in the metadata or
+table they belong to the :paramref:`_sqltypes.Enum.inherit_schema` can be set::
+
+    from enum import Enum
+    import sqlalchemy as sa
+    from sqlalchemy.orm import DeclarativeBase
+
+
+    class Base(DeclarativeBase):
+        metadata = sa.MetaData(schema="my_schema")
+        type_annotation_map = {Enum: sa.Enum(Enum, inherit_schema=True)}
+
+Linking Specific ``enum.Enum`` or ``typing.Literal`` to other datatypes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The above examples feature the use of an :class:`_sqltypes.Enum` that is
+automatically configuring itself to the arguments / attributes present on
+an ``enum.Enum`` or ``typing.Literal`` type object.    For use cases where
+specific kinds of ``enum.Enum`` or ``typing.Literal`` should be linked to
+other types, these specific types may be placed in the type map also.
+In the example below, an entry for ``Literal[]`` that contains non-string
+types is linked to the :class:`_sqltypes.JSON` datatype::
+
+
+    from typing import Literal
+
+    from sqlalchemy import JSON
+    from sqlalchemy.orm import DeclarativeBase
+
+    my_literal = Literal[0, 1, True, False, "true", "false"]
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {my_literal: JSON}
+
+In the above configuration, the ``my_literal`` datatype will resolve to a
+:class:`._sqltypes.JSON` instance.  Other ``Literal`` variants will continue
+to resolve to :class:`_sqltypes.Enum` datatypes.
+
 
 
 .. _orm_imperative_table_configuration:
@@ -1233,7 +1572,7 @@ mapper configuration::
 
         __mapper_args__ = {
             "polymorphic_on": __table__.c.type,
-            "polymorhpic_identity": "person",
+            "polymorphic_identity": "person",
         }
 
 The "imperative table" form is also used when a non-:class:`_schema.Table`

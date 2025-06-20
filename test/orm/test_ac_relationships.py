@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_noload_deprecation
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
@@ -142,7 +143,8 @@ class AliasedClassRelationshipTest(
                 for b in a1.partitioned_bs:
                     eq_(b.cs, [])
 
-        self.assert_sql_count(testing.db, go, 2)
+        with expect_noload_deprecation():
+            self.assert_sql_count(testing.db, go, 2)
 
     @testing.combinations("ac_attribute", "ac_attr_w_of_type")
     def test_selectinload_w_joinedload_after(self, calling_style):

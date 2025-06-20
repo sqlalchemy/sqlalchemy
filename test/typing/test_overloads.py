@@ -9,6 +9,7 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.sql.base import Executable
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.util.typing import is_fwd_ref
 
 engine_execution_options = {
     "compiled_cache": "Optional[CompiledCacheType]",
@@ -24,6 +25,8 @@ core_execution_options = {
     "stream_results": "bool",
     "max_row_buffer": "int",
     "yield_per": "int",
+    "preserve_rowcount": "bool",
+    "driver_column_names": "bool",
 }
 
 orm_dql_execution_options = {
@@ -37,6 +40,7 @@ orm_dml_execution_options = {
     "dml_strategy": "DMLStrategyArgument",
     "is_delete_using": "bool",
     "is_update_from": "bool",
+    "render_nulls": "bool",
 }
 
 orm_execution_options = {
@@ -76,6 +80,9 @@ class OverloadTest(fixtures.TestBase):
 
     @testing.combinations(
         (CoreExecuteOptionsParameter, core_execution_options),
+        # note: this failed on python 3.14.0b1
+        # due to https://github.com/python/cpython/issues/133701.
+        # something to keep in mind in case it breaks again
         (OrmExecuteOptionsParameter, orm_execution_options),
     )
     def test_typed_dicts(self, typ, expected):
@@ -88,7 +95,7 @@ class OverloadTest(fixtures.TestBase):
         expected.pop("opt")
 
         assert_annotations = {
-            key: fwd_ref.__forward_arg__
+            key: fwd_ref.__forward_arg__ if is_fwd_ref(fwd_ref) else fwd_ref
             for key, fwd_ref in typed_dict.__annotations__.items()
         }
         eq_(assert_annotations, expected)

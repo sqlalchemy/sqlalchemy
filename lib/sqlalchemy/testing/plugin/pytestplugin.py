@@ -1,3 +1,9 @@
+# testing/plugin/pytestplugin.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from __future__ import annotations
@@ -130,7 +136,7 @@ def _log_sqlalchemy_info(session):
     import sqlalchemy
     from sqlalchemy import __version__
     from sqlalchemy.util import has_compiled_ext
-    from sqlalchemy.util._has_cy import _CYEXTENSION_MSG
+    from sqlalchemy.util._has_cython import _CYEXTENSION_MSG
 
     greet = "sqlalchemy installation"
     site = "no user site" if sys.flags.no_user_site else "user site loaded"
@@ -140,9 +146,9 @@ def _log_sqlalchemy_info(session):
     ]
 
     if has_compiled_ext():
-        from sqlalchemy.cyextension import util
+        from sqlalchemy.engine import _util_cy
 
-        msgs.append(f"compiled extension enabled, e.g. {util.__file__} ")
+        msgs.append(f"compiled extension enabled, e.g. {_util_cy.__file__} ")
     else:
         msgs.append(f"compiled extension not enabled; {_CYEXTENSION_MSG}")
 
@@ -174,6 +180,12 @@ def pytest_sessionfinish(session):
         from pyannotate_runtime import collect_types
 
         collect_types.dump_stats(session.config.option.dump_pyannotate)
+
+
+def pytest_unconfigure(config):
+    from sqlalchemy.testing import asyncio
+
+    asyncio._shutdown()
 
 
 def pytest_collection_finish(session):
@@ -258,7 +270,6 @@ def pytest_collection_modifyitems(session, config, items):
         for test_class in test_classes:
             # transfer legacy __backend__ and __sparse_backend__ symbols
             # to be markers
-            add_markers = set()
             if getattr(test_class.cls, "__backend__", False) or getattr(
                 test_class.cls, "__only_on__", False
             ):
@@ -663,9 +674,9 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
         "i": lambda obj: obj,
         "r": repr,
         "s": str,
-        "n": lambda obj: obj.__name__
-        if hasattr(obj, "__name__")
-        else type(obj).__name__,
+        "n": lambda obj: (
+            obj.__name__ if hasattr(obj, "__name__") else type(obj).__name__
+        ),
     }
 
     def combinations(self, *arg_sets, **kw):

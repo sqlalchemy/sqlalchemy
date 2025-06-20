@@ -542,7 +542,7 @@ class _MutableListTestBase(_MutableListTestFixture):
             data={1, 2, 3},
         )
 
-    def test_in_place_mutation(self):
+    def test_in_place_mutation_int(self):
         sess = fixture_session()
 
         f1 = Foo(data=[1, 2])
@@ -554,7 +554,19 @@ class _MutableListTestBase(_MutableListTestFixture):
 
         eq_(f1.data, [3, 2])
 
-    def test_in_place_slice_mutation(self):
+    def test_in_place_mutation_str(self):
+        sess = fixture_session()
+
+        f1 = Foo(data=["one", "two"])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data[0] = "three"
+        sess.commit()
+
+        eq_(f1.data, ["three", "two"])
+
+    def test_in_place_slice_mutation_int(self):
         sess = fixture_session()
 
         f1 = Foo(data=[1, 2, 3, 4])
@@ -565,6 +577,18 @@ class _MutableListTestBase(_MutableListTestFixture):
         sess.commit()
 
         eq_(f1.data, [1, 5, 6, 4])
+
+    def test_in_place_slice_mutation_str(self):
+        sess = fixture_session()
+
+        f1 = Foo(data=["one", "two", "three", "four"])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data[1:3] = "five", "six"
+        sess.commit()
+
+        eq_(f1.data, ["one", "five", "six", "four"])
 
     def test_del_slice(self):
         sess = fixture_session()
@@ -1239,6 +1263,12 @@ class MutableColumnCopyArrayTest(_MutableListTestBase, fixtures.MappedTest):
         class Foo(Mixin, Base):
             __tablename__ = "foo"
             id = Column(Integer, primary_key=True)
+
+    def test_in_place_mutation_str(self):
+        """this test is hardcoded to integer, skip strings"""
+
+    def test_in_place_slice_mutation_str(self):
+        """this test is hardcoded to integer, skip strings"""
 
 
 class MutableListWithScalarPickleTest(

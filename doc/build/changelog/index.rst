@@ -17,8 +17,7 @@ capabilities and behaviors in SQLAlchemy 2.0.
 .. toctree::
    :titlesonly:
 
-   migration_20
-   whatsnew_20
+   migration_21
 
 Change logs
 -----------
@@ -26,6 +25,7 @@ Change logs
 .. toctree::
    :titlesonly:
 
+   changelog_21
    changelog_20
    changelog_14
    changelog_13
@@ -49,6 +49,8 @@ Older Migration Guides
 .. toctree::
    :titlesonly:
 
+   migration_20
+   whatsnew_20
    migration_14
    migration_13
    migration_12

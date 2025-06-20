@@ -60,7 +60,7 @@ or rolled back::
     session.commit()  # commits
 
     # will automatically begin again
-    result = session.execute("< some select statement >")
+    result = session.execute(text("< some select statement >"))
     session.add_all([more_objects, ...])
     session.commit()  # commits
 
@@ -100,7 +100,7 @@ first::
 
         session.commit()  # commits
 
-        result = session.execute("<some SELECT statement>")
+        result = session.execute(text("<some SELECT statement>"))
 
     # remaining transactional state from the .execute() call is
     # discarded
@@ -529,8 +529,8 @@ used in a read-only fashion**, that is::
 
 
     with autocommit_session() as session:
-        some_objects = session.execute("<statement>")
-        some_other_objects = session.execute("<statement>")
+        some_objects = session.execute(text("<statement>"))
+        some_other_objects = session.execute(text("<statement>"))
 
     # closes connection
 

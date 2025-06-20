@@ -3,6 +3,7 @@ import contextlib
 import inspect as stdlib_inspect
 from unittest.mock import patch
 
+from sqlalchemy import AssertionPool
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import delete
@@ -11,11 +12,16 @@ from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import NullPool
+from sqlalchemy import QueuePool
 from sqlalchemy import select
+from sqlalchemy import SingletonThreadPool
+from sqlalchemy import StaticPool
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import union_all
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -263,9 +269,16 @@ class AsyncEngineTest(EngineFixture):
 
         is_false(async_engine == None)
 
-    @async_test
-    async def test_no_attach_to_event_loop(self, testing_engine):
-        """test #6409"""
+    def test_no_attach_to_event_loop(self, testing_engine):
+        """test #6409
+
+        note this test does not seem to trigger the bug that was originally
+        fixed in #6409, when using python 3.10 and higher (the original issue
+        can repro in 3.8 at least, based on my testing).  It's been simplified
+        to no longer explicitly create a new loop, asyncio.run() already
+        creates a new loop.
+
+        """
 
         import asyncio
         import threading
@@ -273,9 +286,6 @@ class AsyncEngineTest(EngineFixture):
         errs = []
 
         def go():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
             async def main():
                 tasks = [task() for _ in range(2)]
 
@@ -351,9 +361,9 @@ class AsyncEngineTest(EngineFixture):
             pool_connection = await conn.get_raw_connection()
             return pool_connection
 
-        from sqlalchemy.util.concurrency import await_only
+        from sqlalchemy.util.concurrency import await_
 
-        pool_connection = await_only(go())
+        pool_connection = await_(go())
 
         rec = pool_connection._connection_record
         ref = rec.fairy_ref
@@ -366,11 +376,14 @@ class AsyncEngineTest(EngineFixture):
             # the thing here that emits the warning is the correct path
             from sqlalchemy.pool.base import _finalize_fairy
 
-            with mock.patch.object(
-                pool._dialect,
-                "do_rollback",
-                mock.Mock(side_effect=Exception("can't run rollback")),
-            ), mock.patch("sqlalchemy.util.warn") as m:
+            with (
+                mock.patch.object(
+                    pool._dialect,
+                    "do_rollback",
+                    mock.Mock(side_effect=Exception("can't run rollback")),
+                ),
+                mock.patch("sqlalchemy.util.warn") as m,
+            ):
                 _finalize_fairy(
                     None, rec, pool, ref, echo, transaction_was_reset=False
                 )
@@ -397,6 +410,12 @@ class AsyncEngineTest(EngineFixture):
                 pool_connection.close()
 
             eq_(m.mock_calls, [])
+
+    @async_test
+    async def test_statement_compile(self, async_engine):
+        stmt = str(select(1).compile(async_engine))
+        async with async_engine.connect() as conn:
+            eq_(str(select(1).compile(conn)), stmt)
 
     def test_clear_compiled_cache(self, async_engine):
         async_engine.sync_engine._compiled_cache["foo"] = "bar"
@@ -519,6 +538,77 @@ class AsyncEngineTest(EngineFixture):
         isolation_level = await conn.get_isolation_level()
 
         eq_(isolation_level, "SERIALIZABLE")
+
+    @testing.combinations(
+        (
+            AsyncAdaptedQueuePool,
+            True,
+        ),
+        (
+            QueuePool,
+            False,
+        ),
+        (NullPool, True),
+        (SingletonThreadPool, False),
+        (StaticPool, True),
+        (AssertionPool, True),
+        argnames="pool_cls,should_work",
+    )
+    @testing.variation("instantiate", [True, False])
+    @async_test
+    async def test_pool_classes(
+        self, async_testing_engine, pool_cls, instantiate, should_work
+    ):
+        """test #8771"""
+        if instantiate:
+            if pool_cls in (QueuePool, AsyncAdaptedQueuePool):
+                pool = pool_cls(creator=testing.db.pool._creator, timeout=10)
+            else:
+                pool = pool_cls(
+                    creator=testing.db.pool._creator,
+                )
+
+            options = {"pool": pool}
+        else:
+            if pool_cls in (QueuePool, AsyncAdaptedQueuePool):
+                options = {"poolclass": pool_cls, "pool_timeout": 10}
+            else:
+                options = {"poolclass": pool_cls}
+
+        if not should_work:
+            with expect_raises_message(
+                exc.ArgumentError,
+                f"Pool class {pool_cls.__name__} "
+                "cannot be used with asyncio engine",
+            ):
+                async_testing_engine(options=options)
+            return
+
+        e = async_testing_engine(options=options)
+
+        if pool_cls is AssertionPool:
+            async with e.connect() as conn:
+                result = await conn.scalar(select(1))
+                eq_(result, 1)
+            return
+
+        async def go():
+            async with e.connect() as conn:
+                result = await conn.scalar(select(1))
+                eq_(result, 1)
+                return result
+
+        eq_(await asyncio.gather(*[go() for i in range(10)]), [1] * 10)
+
+    def test_cant_use_async_pool_w_create_engine(self):
+        """supplemental test for #8771"""
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Pool class AsyncAdaptedQueuePool "
+            "cannot be used with non-asyncio engine",
+        ):
+            create_engine("sqlite://", poolclass=AsyncAdaptedQueuePool)
 
     @testing.requires.queue_pool
     @async_test
@@ -785,6 +875,27 @@ class AsyncEngineTest(EngineFixture):
         finally:
             await greenlet_spawn(conn.close)
 
+    @testing.combinations("stream", "stream_scalars", argnames="method")
+    @async_test
+    async def test_server_side_required_for_scalars(
+        self, async_engine, method
+    ):
+        with mock.patch.object(
+            async_engine.dialect, "supports_server_side_cursors", False
+        ):
+            async with async_engine.connect() as c:
+                with expect_raises_message(
+                    exc.InvalidRequestError,
+                    "Cant use `stream` or `stream_scalars` with the current "
+                    "dialect since it does not support server side cursors.",
+                ):
+                    if method == "stream":
+                        await c.stream(select(1))
+                    elif method == "stream_scalars":
+                        await c.stream_scalars(select(1))
+                    else:
+                        testing.fail(method)
+
 
 class AsyncCreatePoolTest(fixtures.TestBase):
     @config.fixture
@@ -865,15 +976,12 @@ class AsyncEventTest(EngineFixture):
 
         async with async_engine.connect() as conn:
             sync_conn = conn.sync_connection
-            await conn.execute(text("select 1"))
+            await conn.execute(select(1))
 
+        s1 = str(select(1).compile(async_engine))
         eq_(
             canary.mock_calls,
-            [
-                mock.call(
-                    sync_conn, mock.ANY, "select 1", mock.ANY, mock.ANY, False
-                )
-            ],
+            [mock.call(sync_conn, mock.ANY, s1, mock.ANY, mock.ANY, False)],
         )
 
     @async_test
@@ -886,15 +994,12 @@ class AsyncEventTest(EngineFixture):
             event.listen(
                 async_engine.sync_engine, "before_cursor_execute", canary
             )
-            await conn.execute(text("select 1"))
+            await conn.execute(select(1))
 
+        s1 = str(select(1).compile(async_engine))
         eq_(
             canary.mock_calls,
-            [
-                mock.call(
-                    sync_conn, mock.ANY, "select 1", mock.ANY, mock.ANY, False
-                )
-            ],
+            [mock.call(sync_conn, mock.ANY, s1, mock.ANY, mock.ANY, False)],
         )
 
     @async_test
@@ -932,6 +1037,9 @@ class AsyncInspection(EngineFixture):
 
 
 class AsyncResultTest(EngineFixture):
+    __backend__ = True
+    __requires__ = ("server_side_cursors", "async_dialect")
+
     @async_test
     async def test_no_ss_cursor_w_execute(self, async_engine):
         users = self.tables.users
@@ -1230,19 +1338,71 @@ class AsyncResultTest(EngineFixture):
             ):
                 await result.one()
 
-    @testing.combinations(
-        ("scalars",), ("stream_scalars",), argnames="filter_"
-    )
+    @testing.combinations(("scalars",), ("stream_scalars",), argnames="case")
     @async_test
-    async def test_scalars(self, async_engine, filter_):
+    async def test_scalars(self, async_engine, case):
         users = self.tables.users
+        stmt = select(users).order_by(users.c.user_id)
         async with async_engine.connect() as conn:
-            if filter_ == "scalars":
-                result = (await conn.scalars(select(users))).all()
-            elif filter_ == "stream_scalars":
-                result = await (await conn.stream_scalars(select(users))).all()
+            if case == "scalars":
+                result = (await conn.scalars(stmt)).all()
+            elif case == "stream_scalars":
+                result = await (await conn.stream_scalars(stmt)).all()
 
         eq_(result, list(range(1, 20)))
+
+    @async_test
+    @testing.combinations(("stream",), ("stream_scalars",), argnames="case")
+    async def test_stream_fetch_many_not_complete(self, async_engine, case):
+        users = self.tables.users
+        big_query = select(users).join(users.alias("other"), true())
+        async with async_engine.connect() as conn:
+            if case == "stream":
+                result = await conn.stream(big_query)
+            elif case == "stream_scalars":
+                result = await conn.stream_scalars(big_query)
+
+            f1 = await result.fetchmany(5)
+            f2 = await result.fetchmany(10)
+            f3 = await result.fetchmany(7)
+            eq_(len(f1) + len(f2) + len(f3), 22)
+
+            res = await result.fetchall()
+            eq_(len(res), 19 * 19 - 22)
+
+    @async_test
+    @testing.combinations(("stream",), ("execute",), argnames="case")
+    async def test_cursor_close(self, async_engine, case):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            if case == "stream":
+                result = await conn.stream(select(users))
+                cursor = result._real_result.cursor
+            elif case == "execute":
+                result = await conn.execute(select(users))
+                cursor = result.cursor
+
+            await conn.run_sync(lambda _: cursor.close())
+
+    @async_test
+    @testing.variation("case", ["scalar_one", "scalar_one_or_none", "scalar"])
+    async def test_stream_scalar(self, async_engine, case: testing.Variation):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            result = await conn.stream(
+                select(users).limit(1).order_by(users.c.user_name)
+            )
+
+            if case.scalar_one:
+                u1 = await result.scalar_one()
+            elif case.scalar_one_or_none:
+                u1 = await result.scalar_one_or_none()
+            elif case.scalar:
+                u1 = await result.scalar()
+            else:
+                case.fail()
+
+            eq_(u1, 1)
 
 
 class TextSyncDBAPI(fixtures.TestBase):
@@ -1259,7 +1419,13 @@ class TextSyncDBAPI(fixtures.TestBase):
     def async_engine(self):
         engine = create_engine("sqlite:///:memory:", future=True)
         engine.dialect.is_async = True
-        return _async_engine.AsyncEngine(engine)
+        engine.dialect.supports_server_side_cursors = True
+        with mock.patch.object(
+            engine.dialect.execution_ctx_cls,
+            "create_server_side_cursor",
+            engine.dialect.execution_ctx_cls.create_default_cursor,
+        ):
+            yield _async_engine.AsyncEngine(engine)
 
     @async_test
     @combinations(
@@ -1396,3 +1562,23 @@ class AsyncProxyTest(EngineFixture, fixtures.TestBase):
 
         async_t2 = async_conn.get_transaction()
         is_(async_t1, async_t2)
+
+
+class PoolRegenTest(EngineFixture):
+    @testing.requires.queue_pool
+    @async_test
+    @testing.variation("do_dispose", [True, False])
+    async def test_gather_after_dispose(self, testing_engine, do_dispose):
+        engine = testing_engine(
+            asyncio=True, options=dict(pool_size=10, max_overflow=10)
+        )
+
+        async def thing(engine):
+            async with engine.connect() as conn:
+                await conn.exec_driver_sql(str(select(1).compile(engine)))
+
+        if do_dispose:
+            await engine.dispose()
+
+        tasks = [thing(engine) for _ in range(10)]
+        await asyncio.gather(*tasks)

@@ -595,7 +595,7 @@ by default not loadable::
     ...
     sqlalchemy.exc.InvalidRequestError: 'Book.summary' is not available due to raiseload=True
 
-Only by overridding their behavior at query time, typically using
+Only by overriding their behavior at query time, typically using
 :func:`_orm.undefer` or :func:`_orm.undefer_group`, or less commonly
 :func:`_orm.defer`, may the attributes be loaded.  The example below applies
 ``undefer('*')`` to undefer all attributes, also making use of

@@ -1,3 +1,9 @@
+# testing/suite/test_types.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 
@@ -26,8 +32,10 @@ from ... import case
 from ... import cast
 from ... import Date
 from ... import DateTime
+from ... import Enum
 from ... import Float
 from ... import Integer
+from ... import Interval
 from ... import JSON
 from ... import literal
 from ... import literal_column
@@ -82,6 +90,11 @@ class _LiteralRoundTripFixture:
                 )
                 connection.execute(ins)
 
+            ins = t.insert().values(
+                x=literal(None, type_, literal_execute=True)
+            )
+            connection.execute(ins)
+
             if support_whereclause and self.supports_whereclause:
                 if compare:
                     stmt = t.select().where(
@@ -108,7 +121,7 @@ class _LiteralRoundTripFixture:
                         )
                     )
             else:
-                stmt = t.select()
+                stmt = t.select().where(t.c.x.is_not(None))
 
             rows = connection.execute(stmt).all()
             assert rows, "No rows returned"
@@ -117,6 +130,10 @@ class _LiteralRoundTripFixture:
                 if filter_ is not None:
                     value = filter_(value)
                 assert value in output
+
+            stmt = t.select().where(t.c.x.is_(None))
+            rows = connection.execute(stmt).all()
+            eq_(rows, [(None,)])
 
         return run
 
@@ -282,6 +299,7 @@ class ArrayTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
 class BinaryTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     __backend__ = True
+    __requires__ = ("binary_literals",)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -450,6 +468,102 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
             connection.scalar(select(literal("a") + "b" + "c" + "d" + "e")),
             "abcde",
         )
+
+
+class IntervalTest(_LiteralRoundTripFixture, fixtures.TestBase):
+    __requires__ = ("datetime_interval",)
+    __backend__ = True
+
+    datatype = Interval
+    data = datetime.timedelta(days=1, seconds=4)
+
+    def test_literal(self, literal_round_trip):
+        literal_round_trip(self.datatype, [self.data], [self.data])
+
+    def test_select_direct_literal_interval(self, connection):
+        row = connection.execute(select(literal(self.data))).first()
+        eq_(row, (self.data,))
+
+    def test_arithmetic_operation_literal_interval(self, connection):
+        now = datetime.datetime.now().replace(microsecond=0)
+        # Able to subtract
+        row = connection.execute(
+            select(literal(now) - literal(self.data))
+        ).scalar()
+        eq_(row, now - self.data)
+
+        # Able to Add
+        row = connection.execute(
+            select(literal(now) + literal(self.data))
+        ).scalar()
+        eq_(row, now + self.data)
+
+    @testing.fixture
+    def arithmetic_table_fixture(cls, metadata, connection):
+        class Decorated(TypeDecorator):
+            impl = cls.datatype
+            cache_ok = True
+
+        it = Table(
+            "interval_table",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("interval_data", cls.datatype),
+            Column("date_data", DateTime),
+            Column("decorated_interval_data", Decorated),
+        )
+        it.create(connection)
+        return it
+
+    def test_arithmetic_operation_table_interval_and_literal_interval(
+        self, connection, arithmetic_table_fixture
+    ):
+        interval_table = arithmetic_table_fixture
+        data = datetime.timedelta(days=2, seconds=5)
+        connection.execute(
+            interval_table.insert(), {"id": 1, "interval_data": data}
+        )
+        # Subtraction Operation
+        value = connection.execute(
+            select(interval_table.c.interval_data - literal(self.data))
+        ).scalar()
+        eq_(value, data - self.data)
+
+        # Addition Operation
+        value = connection.execute(
+            select(interval_table.c.interval_data + literal(self.data))
+        ).scalar()
+        eq_(value, data + self.data)
+
+    def test_arithmetic_operation_table_date_and_literal_interval(
+        self, connection, arithmetic_table_fixture
+    ):
+        interval_table = arithmetic_table_fixture
+        now = datetime.datetime.now().replace(microsecond=0)
+        connection.execute(
+            interval_table.insert(), {"id": 1, "date_data": now}
+        )
+        # Subtraction Operation
+        value = connection.execute(
+            select(interval_table.c.date_data - literal(self.data))
+        ).scalar()
+        eq_(value, (now - self.data))
+
+        # Addition Operation
+        value = connection.execute(
+            select(interval_table.c.date_data + literal(self.data))
+        ).scalar()
+        eq_(value, (now + self.data))
+
+
+class PrecisionIntervalTest(IntervalTest):
+    __requires__ = ("datetime_interval",)
+    __backend__ = True
+
+    datatype = Interval(day_precision=9, second_precision=9)
+    data = datetime.timedelta(days=103, seconds=4)
 
 
 class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
@@ -1370,6 +1484,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         return datatype, compare_value, p_s
 
+    @testing.requires.legacy_unconditional_json_extract
     @_index_fixtures(False)
     def test_index_typed_access(self, datatype, value):
         data_table = self.tables.data_table
@@ -1391,6 +1506,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             eq_(roundtrip, compare_value)
             is_(type(roundtrip), type(compare_value))
 
+    @testing.requires.legacy_unconditional_json_extract
     @_index_fixtures(True)
     def test_index_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
@@ -1415,6 +1531,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             # make sure we get a row even if value is None
             eq_(row, (compare_value,))
 
+    @testing.requires.legacy_unconditional_json_extract
     @_index_fixtures(True)
     def test_path_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
@@ -1806,6 +1923,74 @@ class JSONLegacyStringCastIndexTest(
         )
 
 
+class EnumTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    __backend__ = True
+
+    enum_values = "a", "b", "a%", "b%percent", "réveillé"
+
+    datatype = Enum(*enum_values, name="myenum")
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "enum_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("enum_data", cls.datatype),
+        )
+
+    @testing.combinations(*enum_values, argnames="data")
+    def test_round_trip(self, data, connection):
+        connection.execute(
+            self.tables.enum_table.insert(), {"id": 1, "enum_data": data}
+        )
+
+        eq_(
+            connection.scalar(
+                select(self.tables.enum_table.c.enum_data).where(
+                    self.tables.enum_table.c.id == 1
+                )
+            ),
+            data,
+        )
+
+    def test_round_trip_executemany(self, connection):
+        connection.execute(
+            self.tables.enum_table.insert(),
+            [
+                {"id": 1, "enum_data": "b%percent"},
+                {"id": 2, "enum_data": "réveillé"},
+                {"id": 3, "enum_data": "b"},
+                {"id": 4, "enum_data": "a%"},
+            ],
+        )
+
+        eq_(
+            connection.scalars(
+                select(self.tables.enum_table.c.enum_data).order_by(
+                    self.tables.enum_table.c.id
+                )
+            ).all(),
+            ["b%percent", "réveillé", "b", "a%"],
+        )
+
+    @testing.requires.insert_executemany_returning
+    def test_round_trip_executemany_returning(self, connection):
+        result = connection.execute(
+            self.tables.enum_table.insert().returning(
+                self.tables.enum_table.c.enum_data
+            ),
+            [
+                {"id": 1, "enum_data": "b%percent"},
+                {"id": 2, "enum_data": "réveillé"},
+                {"id": 3, "enum_data": "b"},
+                {"id": 4, "enum_data": "a%"},
+            ],
+        )
+
+        eq_(result.scalars().all(), ["b%percent", "réveillé", "b", "a%"])
+
+
 class UuidTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     __backend__ = True
 
@@ -1940,6 +2125,8 @@ __all__ = (
     "TextTest",
     "NumericTest",
     "IntegerTest",
+    "IntervalTest",
+    "PrecisionIntervalTest",
     "CastTypeDecoratorTest",
     "DateTimeHistoricTest",
     "DateTimeCoercedToDateTimeTest",
@@ -1952,6 +2139,7 @@ __all__ = (
     "DateHistoricTest",
     "StringTest",
     "BooleanTest",
+    "EnumTest",
     "UuidTest",
     "NativeUUIDTest",
 )

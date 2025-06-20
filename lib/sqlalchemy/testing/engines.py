@@ -1,5 +1,5 @@
 # testing/engines.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -23,7 +23,7 @@ from .util import decorator
 from .util import gc_collect
 from .. import event
 from .. import pool
-from ..util import await_only
+from ..util import await_
 from ..util.typing import Literal
 
 
@@ -112,7 +112,7 @@ class ConnectionKiller:
                         self._safe(proxy_ref._checkin)
 
             if hasattr(rec, "sync_engine"):
-                await_only(rec.dispose())
+                await_(rec.dispose())
             else:
                 rec.dispose()
         eng.clear()
@@ -289,8 +289,7 @@ def testing_engine(
     options: Optional[Dict[str, Any]] = None,
     asyncio: Literal[False] = False,
     transfer_staticpool: bool = False,
-) -> Engine:
-    ...
+) -> Engine: ...
 
 
 @typing.overload
@@ -299,8 +298,7 @@ def testing_engine(
     options: Optional[Dict[str, Any]] = None,
     asyncio: Literal[True] = True,
     transfer_staticpool: bool = False,
-) -> AsyncEngine:
-    ...
+) -> AsyncEngine: ...
 
 
 def testing_engine(
@@ -332,16 +330,18 @@ def testing_engine(
     url = url or config.db.url
 
     url = make_url(url)
-    if options is None:
-        if config.db is None or url.drivername == config.db.url.drivername:
-            options = config.db_opts
-        else:
-            options = {}
-    elif config.db is not None and url.drivername == config.db.url.drivername:
-        default_opt = config.db_opts.copy()
-        default_opt.update(options)
 
-    engine = create_engine(url, **options)
+    if (
+        config.db is None or url.drivername == config.db.url.drivername
+    ) and config.db_opts:
+        use_options = config.db_opts.copy()
+    else:
+        use_options = {}
+
+    if options is not None:
+        use_options.update(options)
+
+    engine = create_engine(url, **use_options)
 
     if sqlite_savepoint and engine.name == "sqlite":
         # apply SQLite savepoint workaround
@@ -370,7 +370,12 @@ def testing_engine(
                 True  # enable event blocks, helps with profiling
             )
 
-    if isinstance(engine.pool, pool.QueuePool):
+    if (
+        isinstance(engine.pool, pool.QueuePool)
+        and "pool" not in use_options
+        and "pool_timeout" not in use_options
+        and "max_overflow" not in use_options
+    ):
         engine.pool._timeout = 0
         engine.pool._max_overflow = 0
     if use_reaper:

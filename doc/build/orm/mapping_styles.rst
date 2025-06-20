@@ -370,6 +370,13 @@ An object of type ``User`` above will have a constructor which allows
     Python dataclasses, and allows for a highly configurable constructor
     form.
 
+.. warning::
+
+    The ``__init__()`` method of the class is called only when the object is
+    constructed in Python code, and **not when an object is loaded or refreshed
+    from the database**.  See the next section :ref:`mapped_class_load_events`
+    for a primer on how to invoke special logic when objects are loaded.
+
 A class that includes an explicit ``__init__()`` method will maintain
 that method, and no default constructor will be applied.
 
@@ -403,6 +410,99 @@ will also feature the default constructor associated with the :class:`_orm.regis
 .. versionadded:: 1.4  classical mappings now support a standard configuration-level
    constructor when they are mapped via the :meth:`_orm.registry.map_imperatively`
    method.
+
+.. _mapped_class_load_events:
+
+Maintaining Non-Mapped State Across Loads
+------------------------------------------
+
+The ``__init__()`` method of the mapped class is invoked when the object
+is constructed directly in Python code::
+
+    u1 = User(name="some name", fullname="some fullname")
+
+However, when an object is loaded using the ORM :class:`_orm.Session`,
+the ``__init__()`` method is **not** called::
+
+    u1 = session.scalars(select(User).where(User.name == "some name")).first()
+
+The reason for this is that when loaded from the database, the operation
+used to construct the object, in the above example the ``User``, is more
+analogous to **deserialization**, such as unpickling, rather than initial
+construction.  The majority of the object's important state is not being
+assembled for the first time, it's being re-loaded from database rows.
+
+Therefore to maintain state within the object that is not part of the data
+that's stored to the database, such that this state is present when objects
+are loaded as well as constructed, there are two general approaches detailed
+below.
+
+1. Use Python descriptors like ``@property``, rather than state, to dynamically
+   compute attributes as needed.
+
+   For simple attributes, this is the simplest approach and the least error prone.
+   For example if an object ``Point`` with ``Point.x`` and ``Point.y`` wanted
+   an attribute with the sum of these attributes::
+
+      class Point(Base):
+          __tablename__ = "point"
+          id: Mapped[int] = mapped_column(primary_key=True)
+          x: Mapped[int]
+          y: Mapped[int]
+
+          @property
+          def x_plus_y(self):
+              return self.x + self.y
+
+   An advantage of using dynamic descriptors is that the value is computed
+   every time, meaning it maintains the correct value as the underlying
+   attributes (``x`` and ``y`` in this case) might change.
+
+   Other forms of the above pattern include Python standard library
+   `cached_property <https://docs.python.org/3/library/functools.html#functools.cached_property>`_
+   decorator (which is cached, and not re-computed each time), as well as SQLAlchemy's :class:`.hybrid_property` decorator which
+   allows for attributes that can work for SQL querying as well.
+
+
+2. Establish state on-load using :meth:`.InstanceEvents.load`, and optionally
+   supplemental methods :meth:`.InstanceEvents.refresh` and :meth:`.InstanceEvents.refresh_flush`.
+
+   These are event hooks that are invoked whenever the object is loaded
+   from the database, or when it is refreshed after being expired.   Typically
+   only the :meth:`.InstanceEvents.load` is needed, since non-mapped local object
+   state is not affected by expiration operations.   To revise the ``Point``
+   example above looks like::
+
+      from sqlalchemy import event
+
+
+      class Point(Base):
+          __tablename__ = "point"
+          id: Mapped[int] = mapped_column(primary_key=True)
+          x: Mapped[int]
+          y: Mapped[int]
+
+          def __init__(self, x, y, **kw):
+              super().__init__(x=x, y=y, **kw)
+              self.x_plus_y = x + y
+
+
+      @event.listens_for(Point, "load")
+      def receive_load(target, context):
+          target.x_plus_y = target.x + target.y
+
+   If using the refresh events as well, the event hooks can be stacked on
+   top of one callable if needed, as::
+
+      @event.listens_for(Point, "load")
+      @event.listens_for(Point, "refresh")
+      @event.listens_for(Point, "refresh_flush")
+      def receive_load(target, context, attrs=None):
+          target.x_plus_y = target.x + target.y
+
+   Above, the ``attrs`` attribute will be present for the ``refresh`` and
+   ``refresh_flush`` events and indicate a list of attribute names that are
+   being refreshed.
 
 .. _orm_mapper_inspection:
 

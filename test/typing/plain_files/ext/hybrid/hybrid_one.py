@@ -87,5 +87,5 @@ if typing.TYPE_CHECKING:
     # EXPECTED_TYPE: SQLCoreOperations[bool]
     reveal_type(expr4)
 
-    # EXPECTED_TYPE: Select[Tuple[bool]]
+    # EXPECTED_TYPE: Select[bool]
     reveal_type(stmt2)

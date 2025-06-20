@@ -1,5 +1,6 @@
 """Illustrates sharding using a single SQLite database, that will however
 have multiple tables using a naming convention."""
+
 from __future__ import annotations
 
 import datetime

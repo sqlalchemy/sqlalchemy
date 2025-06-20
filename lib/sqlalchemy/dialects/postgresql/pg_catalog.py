@@ -1,10 +1,16 @@
-# postgresql/pg_catalog.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# dialects/postgresql/pg_catalog.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+
+from __future__ import annotations
+
+from typing import Any
+from typing import Optional
+from typing import Sequence
+from typing import TYPE_CHECKING
 
 from .array import ARRAY
 from .types import OID
@@ -23,31 +29,37 @@ from ...types import String
 from ...types import Text
 from ...types import TypeDecorator
 
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _ResultProcessorType
+
 
 # types
-class NAME(TypeDecorator):
+class NAME(TypeDecorator[str]):
     impl = String(64, collation="C")
     cache_ok = True
 
 
-class PG_NODE_TREE(TypeDecorator):
+class PG_NODE_TREE(TypeDecorator[str]):
     impl = Text(collation="C")
     cache_ok = True
 
 
-class INT2VECTOR(TypeDecorator):
+class INT2VECTOR(TypeDecorator[Sequence[int]]):
     impl = ARRAY(SmallInteger)
     cache_ok = True
 
 
-class OIDVECTOR(TypeDecorator):
+class OIDVECTOR(TypeDecorator[Sequence[int]]):
     impl = ARRAY(OID)
     cache_ok = True
 
 
 class _SpaceVector:
-    def result_processor(self, dialect, coltype):
-        def process(value):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> _ResultProcessorType[list[int]]:
+        def process(value: Any) -> Optional[list[int]]:
             if value is None:
                 return value
             return [int(p) for p in value.split(" ")]
@@ -77,7 +89,7 @@ RELKINDS_MAT_VIEW = ("m",)
 RELKINDS_ALL_TABLE_LIKE = RELKINDS_TABLE + RELKINDS_VIEW + RELKINDS_MAT_VIEW
 
 # tables
-pg_catalog_meta = MetaData()
+pg_catalog_meta = MetaData(schema="pg_catalog")
 
 pg_namespace = Table(
     "pg_namespace",
@@ -85,7 +97,6 @@ pg_namespace = Table(
     Column("oid", OID),
     Column("nspname", NAME),
     Column("nspowner", OID),
-    schema="pg_catalog",
 )
 
 pg_class = Table(
@@ -120,7 +131,6 @@ pg_class = Table(
     Column("relispartition", Boolean, info={"server_version": (10,)}),
     Column("relrewrite", OID, info={"server_version": (11,)}),
     Column("reloptions", ARRAY(Text)),
-    schema="pg_catalog",
 )
 
 pg_type = Table(
@@ -155,7 +165,6 @@ pg_type = Table(
     Column("typndims", Integer),
     Column("typcollation", OID, info={"server_version": (9, 1)}),
     Column("typdefault", Text),
-    schema="pg_catalog",
 )
 
 pg_index = Table(
@@ -182,7 +191,6 @@ pg_index = Table(
     Column("indoption", INT2VECTOR),
     Column("indexprs", PG_NODE_TREE),
     Column("indpred", PG_NODE_TREE),
-    schema="pg_catalog",
 )
 
 pg_attribute = Table(
@@ -209,7 +217,6 @@ pg_attribute = Table(
     Column("attislocal", Boolean),
     Column("attinhcount", Integer),
     Column("attcollation", OID, info={"server_version": (9, 1)}),
-    schema="pg_catalog",
 )
 
 pg_constraint = Table(
@@ -235,7 +242,6 @@ pg_constraint = Table(
     Column("connoinherit", Boolean, info={"server_version": (9, 2)}),
     Column("conkey", ARRAY(SmallInteger)),
     Column("confkey", ARRAY(SmallInteger)),
-    schema="pg_catalog",
 )
 
 pg_sequence = Table(
@@ -249,7 +255,6 @@ pg_sequence = Table(
     Column("seqmin", BigInteger),
     Column("seqcache", BigInteger),
     Column("seqcycle", Boolean),
-    schema="pg_catalog",
     info={"server_version": (10,)},
 )
 
@@ -260,7 +265,6 @@ pg_attrdef = Table(
     Column("adrelid", OID),
     Column("adnum", SmallInteger),
     Column("adbin", PG_NODE_TREE),
-    schema="pg_catalog",
 )
 
 pg_description = Table(
@@ -270,7 +274,6 @@ pg_description = Table(
     Column("classoid", OID),
     Column("objsubid", Integer),
     Column("description", Text(collation="C")),
-    schema="pg_catalog",
 )
 
 pg_enum = Table(
@@ -280,7 +283,6 @@ pg_enum = Table(
     Column("enumtypid", OID),
     Column("enumsortorder", Float(), info={"server_version": (9, 1)}),
     Column("enumlabel", NAME),
-    schema="pg_catalog",
 )
 
 pg_am = Table(
@@ -290,5 +292,35 @@ pg_am = Table(
     Column("amname", NAME),
     Column("amhandler", REGPROC, info={"server_version": (9, 6)}),
     Column("amtype", CHAR, info={"server_version": (9, 6)}),
-    schema="pg_catalog",
+)
+
+pg_collation = Table(
+    "pg_collation",
+    pg_catalog_meta,
+    Column("oid", OID, info={"server_version": (9, 3)}),
+    Column("collname", NAME),
+    Column("collnamespace", OID),
+    Column("collowner", OID),
+    Column("collprovider", CHAR, info={"server_version": (10,)}),
+    Column("collisdeterministic", Boolean, info={"server_version": (12,)}),
+    Column("collencoding", Integer),
+    Column("collcollate", Text),
+    Column("collctype", Text),
+    Column("colliculocale", Text),
+    Column("collicurules", Text, info={"server_version": (16,)}),
+    Column("collversion", Text, info={"server_version": (10,)}),
+)
+
+pg_opclass = Table(
+    "pg_opclass",
+    pg_catalog_meta,
+    Column("oid", OID, info={"server_version": (9, 3)}),
+    Column("opcmethod", NAME),
+    Column("opcname", NAME),
+    Column("opsnamespace", OID),
+    Column("opsowner", OID),
+    Column("opcfamily", OID),
+    Column("opcintype", OID),
+    Column("opcdefault", Boolean),
+    Column("opckeytype", OID),
 )

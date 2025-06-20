@@ -1,15 +1,22 @@
+from __future__ import annotations
+
+import uuid
+
 from sqlalchemy import Boolean
 from sqlalchemy import case
 from sqlalchemy import column
+from sqlalchemy import Computed
 from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import lambda_stmt
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
@@ -21,9 +28,12 @@ from sqlalchemy import update
 from sqlalchemy import values
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -35,6 +45,7 @@ from sqlalchemy.sql.dml import Update
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
@@ -42,6 +53,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -66,6 +78,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             metadata,
             Column("id", Integer, primary_key=True),
             Column("user_id", ForeignKey("users.id")),
+            Column("email_address", String(50)),
         )
 
         m = MetaData()
@@ -105,6 +118,24 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 dict(id=4, name="jane", age_int=37),
             ],
         )
+
+    @testing.fixture
+    def addresses_data(
+        self,
+    ):
+        addresses = self.tables.addresses
+
+        with testing.db.begin() as connection:
+            connection.execute(
+                addresses.insert(),
+                [
+                    dict(id=1, user_id=1, email_address="jo1"),
+                    dict(id=2, user_id=1, email_address="jo2"),
+                    dict(id=3, user_id=2, email_address="ja1"),
+                    dict(id=4, user_id=3, email_address="ji1"),
+                    dict(id=5, user_id=4, email_address="jan1"),
+                ],
+            )
 
     @classmethod
     def setup_mappers(cls):
@@ -1312,6 +1343,52 @@ class UpdateDeleteTest(fixtures.MappedTest):
             ),
         )
 
+    @testing.requires.update_from_returning
+    # can't use evaluate because it can't match the col->col in the WHERE
+    @testing.combinations("fetch", "auto", argnames="synchronize_session")
+    def test_update_from_multi_returning(
+        self, synchronize_session, addresses_data
+    ):
+        """test #12327"""
+        User = self.classes.User
+        Address = self.classes.Address
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        with self.sql_execution_asserter() as asserter:
+            stmt = (
+                update(User)
+                .where(User.id == Address.user_id)
+                .filter(User.age > 29)
+                .values({"age": User.age - 10})
+                .returning(
+                    User.id, Address.email_address, func.char_length(User.name)
+                )
+                .execution_options(synchronize_session=synchronize_session)
+            )
+
+            rows = sess.execute(stmt).all()
+            eq_(set(rows), {(2, "ja1", 4), (4, "jan1", 4)})
+
+            # these are simple values, these are now evaluated even with
+            # the "fetch" strategy, new in 1.4, so there is no expiry
+            eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE users SET age_int=(users.age_int - %(age_int_1)s) "
+                "FROM addresses "
+                "WHERE users.id = addresses.user_id AND "
+                "users.age_int > %(age_int_2)s "
+                "RETURNING users.id, addresses.email_address, "
+                "char_length(users.name) AS char_length_1",
+                [{"age_int_1": 10, "age_int_2": 29}],
+                dialect="postgresql",
+            ),
+        )
+
     @testing.requires.update_returning
     @testing.combinations("update", "delete", argnames="crud_type")
     def test_fetch_w_explicit_returning(self, crud_type):
@@ -1349,6 +1426,45 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         # note that ComparableEntity sets up __hash__ for mapped objects
         # to point to the class, so you can test eq with sets
+        eq_(set(result.all()), expected)
+
+    @testing.requires.update_returning
+    @testing.variation("crud_type", ["update", "delete"])
+    @testing.combinations(
+        "auto",
+        "evaluate",
+        "fetch",
+        False,
+        argnames="synchronize_session",
+    )
+    def test_crud_returning_bundle(self, crud_type, synchronize_session):
+        """test #10776"""
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        if crud_type.update:
+            stmt = (
+                update(User)
+                .filter(User.age > 29)
+                .values({"age": User.age - 10})
+                .execution_options(synchronize_session=synchronize_session)
+                .returning(Bundle("mybundle", User.id, User.age), User.name)
+            )
+            expected = {((4, 27), "jane"), ((2, 37), "jack")}
+        elif crud_type.delete:
+            stmt = (
+                delete(User)
+                .filter(User.age > 29)
+                .execution_options(synchronize_session=synchronize_session)
+                .returning(Bundle("mybundle", User.id, User.age), User.name)
+            )
+            expected = {((2, 47), "jack"), ((4, 37), "jane")}
+        else:
+            crud_type.fail()
+
+        result = sess.execute(stmt)
+
         eq_(set(result.all()), expected)
 
     @testing.requires.delete_returning
@@ -1907,10 +2023,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
         def do_orm_execute(bulk_ud):
             cols = [
                 c.key
-                for c, v in (
+                for c in (
                     (
                         bulk_ud.result.context
-                    ).compiled.compile_state.statement._ordered_values
+                    ).compiled.compile_state.statement._values
                 )
             ]
             m1(cols)
@@ -1965,10 +2081,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
         result = session.execute(stmt)
         cols = [
             c.key
-            for c, v in (
-                (
-                    result.context
-                ).compiled.compile_state.statement._ordered_values
+            for c in (
+                (result.context).compiled.compile_state.statement._values
             )
         ]
         eq_(["age_int", "name"], cols)
@@ -1986,9 +2100,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         result = session.execute(stmt)
         cols = [
             c.key
-            for c, v in (
-                result.context
-            ).compiled.compile_state.statement._ordered_values
+            for c in (result.context).compiled.compile_state.statement._values
         ]
         eq_(["name", "age_int"], cols)
 
@@ -2535,7 +2647,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
         )
 
 
-class ExpressionUpdateTest(fixtures.MappedTest):
+class ExpressionUpdateDeleteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -2600,6 +2712,27 @@ class ExpressionUpdateTest(fixtures.MappedTest):
         update_stmt = m1.mock_calls[0][1][0]
 
         eq_(update_stmt.dialect_kwargs, update_args)
+
+    def test_delete_args(self):
+        Data = self.classes.Data
+        session = fixture_session()
+        delete_args = {"mysql_limit": 1}
+
+        m1 = testing.mock.Mock()
+
+        @event.listens_for(session, "after_bulk_delete")
+        def do_orm_execute(bulk_ud):
+            delete_stmt = (
+                bulk_ud.result.context.compiled.compile_state.statement
+            )
+            m1(delete_stmt)
+
+        q = session.query(Data)
+        q.delete(delete_args=delete_args)
+
+        delete_stmt = m1.mock_calls[0][1][0]
+
+        eq_(delete_stmt.dialect_kwargs, delete_args)
 
 
 class InheritTest(fixtures.DeclarativeMappedTest):
@@ -2924,6 +3057,54 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         )
 
 
+class InheritWPolyTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.fixture
+    def inherit_fixture(self, decl_base):
+        def go(poly_type):
+
+            class Person(decl_base):
+                __tablename__ = "person"
+                id = Column(Integer, primary_key=True)
+                type = Column(String(50))
+                name = Column(String(50))
+
+                if poly_type.wpoly:
+                    __mapper_args__ = {"with_polymorphic": "*"}
+
+            class Engineer(Person):
+                __tablename__ = "engineer"
+                id = Column(Integer, ForeignKey("person.id"), primary_key=True)
+                engineer_name = Column(String(50))
+
+                if poly_type.inline:
+                    __mapper_args__ = {"polymorphic_load": "inline"}
+
+            return Person, Engineer
+
+        return go
+
+    @testing.variation("poly_type", ["wpoly", "inline", "none"])
+    def test_update_base_only(self, poly_type, inherit_fixture):
+        Person, Engineer = inherit_fixture(poly_type)
+
+        self.assert_compile(
+            update(Person).values(name="n1"), "UPDATE person SET name=:name"
+        )
+
+    @testing.variation("poly_type", ["wpoly", "inline", "none"])
+    def test_delete_base_only(self, poly_type, inherit_fixture):
+        Person, Engineer = inherit_fixture(poly_type)
+
+        self.assert_compile(delete(Person), "DELETE FROM person")
+
+        self.assert_compile(
+            delete(Person).where(Person.id == 7),
+            "DELETE FROM person WHERE person.id = :id_1",
+        )
+
+
 class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
     __backend__ = True
 
@@ -3205,3 +3386,263 @@ class LoadFromReturningTest(fixtures.MappedTest):
             )
 
             # TODO: state of above objects should be "deleted"
+
+
+class OnUpdatePopulationTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.variation("populate_existing", [True, False])
+    @testing.variation(
+        "use_onupdate",
+        [
+            "none",
+            "server",
+            "callable",
+            "clientsql",
+            ("computed", testing.requires.computed_columns),
+        ],
+    )
+    @testing.variation(
+        "use_returning",
+        [
+            ("returning", testing.requires.update_returning),
+            ("defaults", testing.requires.update_returning),
+            "none",
+        ],
+    )
+    @testing.variation("synchronize", ["auto", "fetch", "evaluate"])
+    @testing.variation("pk_order", ["first", "middle"])
+    def test_update_populate_existing(
+        self,
+        decl_base,
+        populate_existing,
+        use_onupdate,
+        use_returning,
+        synchronize,
+        pk_order,
+    ):
+        """test #11912 and #11917"""
+
+        class Employee(ComparableEntity, decl_base):
+            __tablename__ = "employee"
+
+            if pk_order.first:
+                uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+            user_name: Mapped[str] = mapped_column(String(200), nullable=False)
+
+            if pk_order.middle:
+                uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+
+            if use_onupdate.server:
+                some_server_value: Mapped[str] = mapped_column(
+                    server_onupdate=FetchedValue()
+                )
+            elif use_onupdate.callable:
+                some_server_value: Mapped[str] = mapped_column(
+                    onupdate=lambda: "value 2"
+                )
+            elif use_onupdate.clientsql:
+                some_server_value: Mapped[str] = mapped_column(
+                    onupdate=literal("value 2")
+                )
+            elif use_onupdate.computed:
+                some_server_value: Mapped[str] = mapped_column(
+                    String(255),
+                    Computed(user_name + " computed value"),
+                    nullable=True,
+                )
+            else:
+                some_server_value: Mapped[str]
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        uuid1 = uuid.uuid4()
+
+        if use_onupdate.computed:
+            server_old_value, server_new_value = (
+                "e1 old name computed value",
+                "e1 new name computed value",
+            )
+            e1 = Employee(uuid=uuid1, user_name="e1 old name")
+        else:
+            server_old_value, server_new_value = ("value 1", "value 2")
+            e1 = Employee(
+                uuid=uuid1,
+                user_name="e1 old name",
+                some_server_value="value 1",
+            )
+        s.add(e1)
+        s.flush()
+
+        stmt = (
+            update(Employee)
+            .values(user_name="e1 new name")
+            .where(Employee.uuid == uuid1)
+        )
+
+        if use_returning.returning:
+            stmt = stmt.returning(Employee)
+        elif use_returning.defaults:
+            # NOTE: the return_defaults case here has not been analyzed for
+            # #11912 or #11917.   future enhancements may change its behavior
+            stmt = stmt.return_defaults()
+
+        # perform out of band UPDATE on server value to simulate
+        # a computed col
+        if use_onupdate.none or use_onupdate.server:
+            s.connection().execute(
+                update(Employee.__table__).values(some_server_value="value 2")
+            )
+
+        execution_options = {}
+
+        if populate_existing:
+            execution_options["populate_existing"] = True
+
+        if synchronize.evaluate:
+            execution_options["synchronize_session"] = "evaluate"
+        if synchronize.fetch:
+            execution_options["synchronize_session"] = "fetch"
+
+        if use_returning.returning:
+            rows = s.scalars(stmt, execution_options=execution_options)
+        else:
+            s.execute(stmt, execution_options=execution_options)
+
+        if (
+            use_onupdate.clientsql
+            or use_onupdate.server
+            or use_onupdate.computed
+        ):
+            if not use_returning.defaults:
+                # if server-side onupdate was generated, the col should have
+                # been expired
+                assert "some_server_value" not in e1.__dict__
+
+                # and refreshes when called.  this is even if we have RETURNING
+                # rows we didn't fetch yet.
+                eq_(e1.some_server_value, server_new_value)
+            else:
+                # using return defaults here is not expiring.   have not
+                # researched why, it may be because the explicit
+                # return_defaults interferes with the ORMs call
+                assert "some_server_value" in e1.__dict__
+                eq_(e1.some_server_value, server_old_value)
+
+        elif use_onupdate.callable:
+            if not use_returning.defaults or not synchronize.fetch:
+                # for python-side onupdate, col is populated with local value
+                assert "some_server_value" in e1.__dict__
+
+                # and is refreshed
+                eq_(e1.some_server_value, server_new_value)
+            else:
+                assert "some_server_value" in e1.__dict__
+
+                # and is not refreshed
+                eq_(e1.some_server_value, server_old_value)
+
+        else:
+            # no onupdate, then the value was not touched yet,
+            # even if we used RETURNING with populate_existing, because
+            # we did not fetch the rows yet
+            assert "some_server_value" in e1.__dict__
+            eq_(e1.some_server_value, server_old_value)
+
+        # now see if we can fetch rows
+        if use_returning.returning:
+
+            if populate_existing or not use_onupdate.none:
+                eq_(
+                    set(rows),
+                    {
+                        Employee(
+                            uuid=uuid1,
+                            user_name="e1 new name",
+                            some_server_value=server_new_value,
+                        ),
+                    },
+                )
+
+            else:
+                # if no populate existing and no server default, that column
+                # is not touched at all
+                eq_(
+                    set(rows),
+                    {
+                        Employee(
+                            uuid=uuid1,
+                            user_name="e1 new name",
+                            some_server_value=server_old_value,
+                        ),
+                    },
+                )
+
+        if use_returning.defaults:
+            # as mentioned above, the return_defaults() case here remains
+            # unanalyzed.
+            if synchronize.fetch or (
+                use_onupdate.clientsql
+                or use_onupdate.server
+                or use_onupdate.computed
+                or use_onupdate.none
+            ):
+                eq_(e1.some_server_value, server_old_value)
+            else:
+                eq_(e1.some_server_value, server_new_value)
+
+        elif (
+            populate_existing and use_returning.returning
+        ) or not use_onupdate.none:
+            eq_(e1.some_server_value, server_new_value)
+        else:
+            # no onupdate specified, and no populate existing with returning,
+            # the attribute is not refreshed
+            eq_(e1.some_server_value, server_old_value)
+
+        # do a full expire, now the new value is definitely there
+        s.commit()
+        s.expire_all()
+        eq_(e1.some_server_value, server_new_value)
+
+
+class PGIssue11849Test(fixtures.DeclarativeMappedTest):
+    __backend__ = True
+    __only_on__ = ("postgresql",)
+
+    @classmethod
+    def setup_classes(cls):
+
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        Base = cls.DeclarativeBasic
+
+        class TestTbl(Base):
+            __tablename__ = "testtbl"
+
+            test_id = Column(Integer, primary_key=True)
+            test_field = Column(JSONB)
+
+    def test_issue_11849(self):
+        TestTbl = self.classes.TestTbl
+
+        session = fixture_session()
+
+        obj = TestTbl(
+            test_id=1, test_field={"test1": 1, "test2": "2", "test3": [3, "3"]}
+        )
+        session.add(obj)
+
+        query = (
+            update(TestTbl)
+            .where(TestTbl.test_id == 1)
+            .values(test_field=TestTbl.test_field + {"test3": {"test4": 4}})
+        )
+        session.execute(query)
+
+        # not loaded
+        assert "test_field" not in obj.__dict__
+
+        # synchronizes on load
+        eq_(obj.test_field, {"test1": 1, "test2": "2", "test3": {"test4": 4}})

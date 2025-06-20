@@ -2129,7 +2129,7 @@ table to an integer "id" column on the other::
         pets = relationship(
             "Pets",
             primaryjoin=(
-                "foreign(Pets.person_id)" "==cast(type_coerce(Person.id, Integer), Integer)"
+                "foreign(Pets.person_id)==cast(type_coerce(Person.id, Integer), Integer)"
             ),
         )
 

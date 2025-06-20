@@ -129,15 +129,15 @@ we can create a file ``test_loads.py``, with the following content::
 
 
     class Parent(Base):
-        __tablename__ = 'parent'
+        __tablename__ = "parent"
         id = Column(Integer, primary_key=True)
         children = relationship("Child")
 
 
     class Child(Base):
-        __tablename__ = 'child'
+        __tablename__ = "child"
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent_id = Column(Integer, ForeignKey("parent.id"))
 
 
     # Init with name of file, default number of items
@@ -152,10 +152,12 @@ we can create a file ``test_loads.py``, with the following content::
         Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
         sess = Session(engine)
-        sess.add_all([
-            Parent(children=[Child() for j in range(100)])
-            for i in range(num)
-        ])
+        sess.add_all(
+            [
+                Parent(children=[Child() for j in range(100)])
+                for i in range(num)
+            ]
+        )
         sess.commit()
 
 
@@ -191,7 +193,8 @@ we can create a file ``test_loads.py``, with the following content::
         for parent in session.query(Parent).options(subqueryload("children")):
             parent.children
 
-    if __name__ == '__main__':
+
+    if __name__ == "__main__":
         Profiler.main()
 
 We can run our new script directly::
@@ -205,6 +208,7 @@ We can run our new script directly::
 
 
 """  # noqa
+
 import argparse
 import cProfile
 import gc

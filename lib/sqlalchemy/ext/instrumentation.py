@@ -1,5 +1,5 @@
 # ext/instrumentation.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -214,9 +214,9 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
         )(instance)
 
 
-orm_instrumentation._instrumentation_factory = (
-    _instrumentation_factory
-) = ExtendedInstrumentationRegistry()
+orm_instrumentation._instrumentation_factory = _instrumentation_factory = (
+    ExtendedInstrumentationRegistry()
+)
 orm_instrumentation.instrumentation_finders = instrumentation_finders
 
 
@@ -275,7 +275,7 @@ class InstrumentationManager:
         delattr(class_, key)
 
     def instrument_collection_class(self, class_, key, collection_class):
-        return collections.prepare_instrumentation(collection_class)
+        return collections._prepare_instrumentation(collection_class)
 
     def get_instance_dict(self, class_, instance):
         return instance.__dict__
@@ -436,17 +436,15 @@ def _install_lookups(lookups):
     instance_dict = lookups["instance_dict"]
     manager_of_class = lookups["manager_of_class"]
     opt_manager_of_class = lookups["opt_manager_of_class"]
-    orm_base.instance_state = (
-        attributes.instance_state
-    ) = orm_instrumentation.instance_state = instance_state
-    orm_base.instance_dict = (
-        attributes.instance_dict
-    ) = orm_instrumentation.instance_dict = instance_dict
-    orm_base.manager_of_class = (
-        attributes.manager_of_class
-    ) = orm_instrumentation.manager_of_class = manager_of_class
-    orm_base.opt_manager_of_class = (
-        orm_util.opt_manager_of_class
-    ) = (
+    orm_base.instance_state = attributes.instance_state = (
+        orm_instrumentation.instance_state
+    ) = instance_state
+    orm_base.instance_dict = attributes.instance_dict = (
+        orm_instrumentation.instance_dict
+    ) = instance_dict
+    orm_base.manager_of_class = attributes.manager_of_class = (
+        orm_instrumentation.manager_of_class
+    ) = manager_of_class
+    orm_base.opt_manager_of_class = orm_util.opt_manager_of_class = (
         attributes.opt_manager_of_class
     ) = orm_instrumentation.opt_manager_of_class = opt_manager_of_class

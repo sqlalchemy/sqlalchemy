@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, engine
+    :tickets: 10789
+
+    Added new execution option
+    :paramref:`_engine.Connection.execution_options.driver_column_names`. This
+    option disables the "name normalize" step that takes place against the
+    DBAPI ``cursor.description`` for uppercase-default backends like Oracle,
+    and will cause the keys of a result set (e.g. named tuple names, dictionary
+    keys in :attr:`.Row._mapping`, etc.) to be exactly what was delivered in
+    cursor.description.   This is mostly useful for plain textual statements
+    using :func:`_sql.text` or :meth:`_engine.Connection.exec_driver_sql`.

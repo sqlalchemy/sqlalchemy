@@ -1,4 +1,5 @@
 """test the current state of the hasparent() flag."""
+
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import testing

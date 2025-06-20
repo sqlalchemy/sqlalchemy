@@ -1,5 +1,5 @@
 # orm/identity.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -123,7 +123,7 @@ class IdentityMap:
         return len(self._dict)
 
 
-class WeakInstanceDict(IdentityMap):
+class _WeakInstanceDict(IdentityMap):
     _dict: Dict[_IdentityKeyType[Any], InstanceState[Any]]
 
     def __getitem__(self, key: _IdentityKeyType[_O]) -> _O:

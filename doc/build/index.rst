@@ -18,9 +18,11 @@ SQLAlchemy Documentation
 
     New to SQLAlchemy?   Start here:
 
-    * **For Python Beginners:** :ref:`Installation Guide <installation>` - basic guidance on installing with pip and similar
+    * **For Python Beginners:** :ref:`Installation Guide <installation>` - Basic
+      guidance on installing with pip and similar tools
 
-    * **For Python Veterans:** :doc:`SQLAlchemy Overview <intro>` - brief architectural overview
+    * **For Python Veterans:** :doc:`SQLAlchemy Overview <intro>` - A brief
+      architectural overview of SQLAlchemy
 
 .. container:: left_right_container
 
@@ -37,10 +39,11 @@ SQLAlchemy Documentation
     :doc:`/tutorial/index`, which covers everything an Alchemist needs
     to know when using the ORM or just Core.
 
-    * **For a quick glance:** :doc:`/orm/quickstart` - a glimpse at what working with the ORM looks like
+    * **For a quick glance:** :doc:`/orm/quickstart` - A brief overview of
+      what working with the ORM looks like
 
-    * **For all users:** :doc:`/tutorial/index` - In depth tutorial for Core and ORM
-
+    * **For all users:** :doc:`/tutorial/index` - In-depth tutorial for
+      both Core and ORM usage
 
 .. container:: left_right_container
 
@@ -52,12 +55,26 @@ SQLAlchemy Documentation
 
   .. container::
 
-    Users coming from older versions of SQLAlchemy, especially those transitioning
-    from the 1.x style of working, will want to review this documentation.
+    Users upgrading to SQLAlchemy version 2.0 will want to read:
 
-    * :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete background on migrating from 1.3 or 1.4 to 2.0
-    * :doc:`What's New in SQLAlchemy 2.0? <changelog/whatsnew_20>` - New 2.0 features and behaviors beyond the 1.x migration
-    * :doc:`Changelog catalog <changelog/index>` - Detailed changelogs for all SQLAlchemy Versions
+    * :doc:`What's New in SQLAlchemy 2.1? <changelog/migration_21>` - New
+      features and behaviors in version 2.1
+
+    Users transitioning from version 1.x of SQLAlchemy (e.g., version 1.4)
+    should first transition to version 2.0 before making any additional
+    changes needed for the smaller transition from 2.0 to 2.1.
+    Key documentation for the 1.x to 2.x transition:
+
+    * :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete
+      background on migrating from 1.3 or 1.4 to 2.0
+    * :doc:`What's New in SQLAlchemy 2.0? <changelog/whatsnew_20>` - New
+      features and behaviors introduced in version 2.0 beyond the 1.x
+      migration
+
+    An index of all changelogs and migration documentation is available at:
+
+    * :doc:`Changelog catalog <changelog/index>` - Detailed
+      changelogs for all SQLAlchemy Versions
 
 
 .. container:: left_right_container
@@ -145,13 +162,15 @@ SQLAlchemy Documentation
 
     .. container::
 
-      The **dialect** is the system SQLAlchemy uses to communicate with various types of DBAPIs and databases.
-      This section describes notes, options, and usage patterns regarding individual dialects.
+      The **dialect** is the system SQLAlchemy uses to communicate with
+      various types of DBAPIs and databases.
+      This section describes notes, options, and usage patterns regarding
+      individual dialects.
 
       :doc:`PostgreSQL <dialects/postgresql>` |
-      :doc:`MySQL <dialects/mysql>` |
+      :doc:`MySQL and MariaDB <dialects/mysql>` |
       :doc:`SQLite <dialects/sqlite>` |
-      :doc:`Oracle <dialects/oracle>` |
+      :doc:`Oracle Database <dialects/oracle>` |
       :doc:`Microsoft SQL Server <dialects/mssql>`
 
       :doc:`More Dialects ... <dialects/index>`
@@ -166,9 +185,12 @@ SQLAlchemy Documentation
 
   .. container::
 
-    * :doc:`Frequently Asked Questions <faq/index>` - A collection of common problems and solutions
-    * :doc:`Glossary <glossary>` - Terms used in SQLAlchemy's documentation
-    * :doc:`Error Message Guide <errors>` - Explainations of many SQLAlchemy Errors
-    * :doc:`Complete table of of contents <contents>`
-    * :ref:`Index <genindex>`
-
+    * :doc:`Frequently Asked Questions <faq/index>` - A collection of common
+      problems and solutions
+    * :doc:`Glossary <glossary>` - Definitions of terms used in SQLAlchemy
+      documentation
+    * :doc:`Error Message Guide <errors>` - Explanations of many SQLAlchemy
+      errors
+    * :doc:`Complete table of of contents <contents>` - Full list of available
+      documentation
+    * :ref:`Index <genindex>` - Index for easy lookup of documentation topics

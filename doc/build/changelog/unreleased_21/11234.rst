@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 11234
+
+    Adjusted URL parsing and stringification to apply url quoting to the
+    "database" portion of the URL.  This allows a URL where the "database"
+    portion includes special characters such as question marks to be
+    accommodated.
+
+    .. seealso::
+
+        :ref:`change_11234`

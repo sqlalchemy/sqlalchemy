@@ -1,5 +1,5 @@
 # orm/context.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import collections
 import itertools
 from typing import Any
 from typing import cast
@@ -46,7 +47,6 @@ from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
-from ..sql._typing import _TP
 from ..sql._typing import is_dml
 from ..sql._typing import is_insert_update
 from ..sql._typing import is_select_base
@@ -68,11 +68,15 @@ from ..sql.selectable import SelectLabelStyle
 from ..sql.selectable import SelectState
 from ..sql.selectable import TypedReturnsRows
 from ..sql.visitors import InternalTraversal
+from ..util.typing import TupleAny
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
+
 
 if TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from ._typing import OrmExecuteOptionsParameter
-    from .loading import PostLoad
+    from .loading import _PostLoad
     from .mapper import Mapper
     from .query import Query
     from .session import _BindArguments
@@ -91,6 +95,7 @@ if TYPE_CHECKING:
     from ..sql.type_api import TypeEngine
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 _path_registry = PathRegistry.root
 
 _EMPTY_DICT = util.immutabledict()
@@ -104,6 +109,7 @@ class QueryContext:
         "top_level_context",
         "compile_state",
         "query",
+        "user_passed_query",
         "params",
         "load_options",
         "bind_arguments",
@@ -127,8 +133,8 @@ class QueryContext:
     )
 
     runid: int
-    post_load_paths: Dict[PathRegistry, PostLoad]
-    compile_state: ORMCompileState
+    post_load_paths: Dict[PathRegistry, _PostLoad]
+    compile_state: _ORMCompileState
 
     class default_load_options(Options):
         _only_return_tuples = False
@@ -147,7 +153,16 @@ class QueryContext:
     def __init__(
         self,
         compile_state: CompileState,
-        statement: Union[Select[Any], FromStatement[Any]],
+        statement: Union[
+            Select[Unpack[TupleAny]],
+            FromStatement[Unpack[TupleAny]],
+            UpdateBase,
+        ],
+        user_passed_query: Union[
+            Select[Unpack[TupleAny]],
+            FromStatement[Unpack[TupleAny]],
+            UpdateBase,
+        ],
         params: _CoreSingleExecuteParams,
         session: Session,
         load_options: Union[
@@ -162,6 +177,13 @@ class QueryContext:
         self.bind_arguments = bind_arguments or _EMPTY_DICT
         self.compile_state = compile_state
         self.query = statement
+
+        # the query that the end user passed to Session.execute() or similar.
+        # this is usually the same as .query, except in the bulk_persistence
+        # routines where a separate FromStatement is manufactured in the
+        # compile stage; this allows differentiation in that case.
+        self.user_passed_query = user_passed_query
+
         self.session = session
         self.loaders_require_buffering = False
         self.loaders_require_uniquing = False
@@ -169,7 +191,7 @@ class QueryContext:
         self.top_level_context = load_options._sa_top_level_orm_context
 
         cached_options = compile_state.select_statement._with_options
-        uncached_options = statement._with_options
+        uncached_options = user_passed_query._with_options
 
         # see issue #7447 , #8399 for some background
         # propagated loader options will be present on loaded InstanceState
@@ -207,7 +229,7 @@ _orm_load_exec_options = util.immutabledict(
 )
 
 
-class AbstractORMCompileState(CompileState):
+class _AbstractORMCompileState(CompileState):
     is_dml_returning = False
 
     def _init_global_attributes(
@@ -218,7 +240,7 @@ class AbstractORMCompileState(CompileState):
         if compiler is None:
             # this is the legacy / testing only ORM _compile_state() use case.
             # there is no need to apply criteria options for this.
-            self.global_attributes = ga = {}
+            self.global_attributes = {}
             assert toplevel
             return
         else:
@@ -252,10 +274,10 @@ class AbstractORMCompileState(CompileState):
     @classmethod
     def create_for_statement(
         cls,
-        statement: Union[Select, FromStatement],
-        compiler: Optional[SQLCompiler],
+        statement: Executable,
+        compiler: SQLCompiler,
         **kw: Any,
-    ) -> AbstractORMCompileState:
+    ) -> CompileState:
         """Create a context for a statement given a :class:`.Compiler`.
 
         This method is always invoked in the context of SQLCompiler.process().
@@ -315,7 +337,7 @@ class AbstractORMCompileState(CompileState):
         raise NotImplementedError()
 
 
-class AutoflushOnlyORMCompileState(AbstractORMCompileState):
+class _AutoflushOnlyORMCompileState(_AbstractORMCompileState):
     """ORM compile state that is a passthrough, except for autoflush."""
 
     @classmethod
@@ -360,7 +382,7 @@ class AutoflushOnlyORMCompileState(AbstractORMCompileState):
         return result
 
 
-class ORMCompileState(AbstractORMCompileState):
+class _ORMCompileState(_AbstractORMCompileState):
     class default_compile_options(CacheableOptions):
         _cache_key_traversal = [
             ("_use_legacy_query_style", InternalTraversal.dp_boolean),
@@ -401,8 +423,12 @@ class ORMCompileState(AbstractORMCompileState):
     attributes: Dict[Any, Any]
     global_attributes: Dict[Any, Any]
 
-    statement: Union[Select[Any], FromStatement[Any]]
-    select_statement: Union[Select[Any], FromStatement[Any]]
+    statement: Union[
+        Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]], UpdateBase
+    ]
+    select_statement: Union[
+        Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]
+    ]
     _entities: List[_QueryEntity]
     _polymorphic_adapters: Dict[_InternalEntityType, ORMAdapter]
     compile_options: Union[
@@ -416,7 +442,7 @@ class ORMCompileState(AbstractORMCompileState):
     dedupe_columns: Set[ColumnElement[Any]]
     create_eager_joins: List[
         # TODO: this structure is set up by JoinedLoader
-        Tuple[Any, ...]
+        TupleAny
     ]
     current_path: PathRegistry = _path_registry
     _has_mapper_entities = False
@@ -424,16 +450,30 @@ class ORMCompileState(AbstractORMCompileState):
     def __init__(self, *arg, **kw):
         raise NotImplementedError()
 
-    if TYPE_CHECKING:
+    @classmethod
+    def create_for_statement(
+        cls,
+        statement: Executable,
+        compiler: SQLCompiler,
+        **kw: Any,
+    ) -> _ORMCompileState:
+        return cls._create_orm_context(
+            cast("Union[Select, FromStatement]", statement),
+            toplevel=not compiler.stack,
+            compiler=compiler,
+            **kw,
+        )
 
-        @classmethod
-        def create_for_statement(
-            cls,
-            statement: Union[Select, FromStatement],
-            compiler: Optional[SQLCompiler],
-            **kw: Any,
-        ) -> ORMCompileState:
-            ...
+    @classmethod
+    def _create_orm_context(
+        cls,
+        statement: Union[Select, FromStatement],
+        *,
+        toplevel: bool,
+        compiler: Optional[SQLCompiler],
+        **kw: Any,
+    ) -> _ORMCompileState:
+        raise NotImplementedError()
 
     def _append_dedupe_col_collection(self, obj, col_collection):
         dedupe = self.dedupe_columns
@@ -517,15 +557,14 @@ class ORMCompileState(AbstractORMCompileState):
             and len(statement._compile_options._current_path) > 10
             and execution_options.get("compiled_cache", True) is not None
         ):
-            util.warn(
-                "Loader depth for query is excessively deep; caching will "
-                "be disabled for additional loaders.  Consider using the "
-                "recursion_depth feature for deeply nested recursive eager "
-                "loaders.  Use the compiled_cache=None execution option to "
-                "skip this warning."
-            )
-            execution_options = execution_options.union(
-                {"compiled_cache": None}
+            execution_options: util.immutabledict[str, Any] = (
+                execution_options.union(
+                    {
+                        "compiled_cache": None,
+                        "_cache_disable_reason": "excess depth for "
+                        "ORM loader options",
+                    }
+                )
             )
 
         bind_arguments["clause"] = statement
@@ -580,6 +619,7 @@ class ORMCompileState(AbstractORMCompileState):
         querycontext = QueryContext(
             compile_state,
             statement,
+            statement,
             params,
             session,
             load_options,
@@ -612,6 +652,10 @@ class ORMCompileState(AbstractORMCompileState):
         passed to with_polymorphic (which is completely unnecessary in modern
         use).
 
+        TODO: What is a "quasi-legacy" case?   Do we need this method with
+        2.0 style select() queries or not?   Why is with_polymorphic referring
+        to an alias or subquery "legacy" ?
+
         """
         if (
             not ext_info.is_aliased_class
@@ -643,8 +687,8 @@ class ORMCompileState(AbstractORMCompileState):
         )
 
 
-class DMLReturningColFilter:
-    """an adapter used for the DML RETURNING case.
+class _DMLReturningColFilter:
+    """a base for an adapter used for the DML RETURNING cases
 
     Has a subset of the interface used by
     :class:`.ORMAdapter` and is used for :class:`._QueryEntity`
@@ -679,6 +723,21 @@ class DMLReturningColFilter:
             return None
 
     def adapt_check_present(self, col):
+        raise NotImplementedError()
+
+
+class _DMLBulkInsertReturningColFilter(_DMLReturningColFilter):
+    """an adapter used for the DML RETURNING case specifically
+    for ORM bulk insert (or any hypothetical DML that is splitting out a class
+    hierarchy among multiple DML statements....ORM bulk insert is the only
+    example right now)
+
+    its main job is to limit the columns in a RETURNING to only a specific
+    mapped table in a hierarchy.
+
+    """
+
+    def adapt_check_present(self, col):
         mapper = self.mapper
         prop = mapper._columntoproperty.get(col, None)
         if prop is None:
@@ -686,8 +745,32 @@ class DMLReturningColFilter:
         return mapper.local_table.c.corresponding_column(col)
 
 
+class _DMLUpdateDeleteReturningColFilter(_DMLReturningColFilter):
+    """an adapter used for the DML RETURNING case specifically
+    for ORM enabled UPDATE/DELETE
+
+    its main job is to limit the columns in a RETURNING to include
+    only direct persisted columns from the immediate selectable, not
+    expressions like column_property(), or to also allow columns from other
+    mappers for the UPDATE..FROM use case.
+
+    """
+
+    def adapt_check_present(self, col):
+        mapper = self.mapper
+        prop = mapper._columntoproperty.get(col, None)
+        if prop is not None:
+            # if the col is from the immediate mapper, only return a persisted
+            # column, not any kind of column_property expression
+            return mapper.persist_selectable.c.corresponding_column(col)
+
+        # if the col is from some other mapper, just return it, assume the
+        # user knows what they are doing
+        return col
+
+
 @sql.base.CompileState.plugin_for("orm", "orm_from_statement")
-class ORMFromStatementCompileState(ORMCompileState):
+class _ORMFromStatementCompileState(_ORMCompileState):
     _from_obj_alias = None
     _has_mapper_entities = False
 
@@ -704,12 +787,16 @@ class ORMFromStatementCompileState(ORMCompileState):
     eager_joins = _EMPTY_DICT
 
     @classmethod
-    def create_for_statement(
+    def _create_orm_context(
         cls,
-        statement_container: Union[Select, FromStatement],
+        statement: Union[Select, FromStatement],
+        *,
+        toplevel: bool,
         compiler: Optional[SQLCompiler],
         **kw: Any,
-    ) -> ORMFromStatementCompileState:
+    ) -> _ORMFromStatementCompileState:
+        statement_container = statement
+
         assert isinstance(statement_container, FromStatement)
 
         if compiler is not None and compiler.stack:
@@ -751,9 +838,11 @@ class ORMFromStatementCompileState(ORMCompileState):
             self.statement = statement
 
         self._label_convention = self._column_naming_convention(
-            statement._label_style
-            if not statement._is_textual and not statement.is_dml
-            else LABEL_STYLE_NONE,
+            (
+                statement._label_style
+                if not statement._is_textual and not statement.is_dml
+                else LABEL_STYLE_NONE
+            ),
             self.use_legacy_query_style,
         )
 
@@ -778,8 +867,8 @@ class ORMFromStatementCompileState(ORMCompileState):
                 if opt._is_compile_state:
                     opt.process_compile_state(self)
 
-        if statement_container._with_context_options:
-            for fn, key in statement_container._with_context_options:
+        if statement_container._compile_state_funcs:
+            for fn, key in statement_container._compile_state_funcs:
                 fn(self)
 
         self.primary_columns = []
@@ -799,9 +888,9 @@ class ORMFromStatementCompileState(ORMCompileState):
             for entity in self._entities:
                 entity.setup_compile_state(self)
 
-            compiler._ordered_columns = (
-                compiler._textual_ordered_columns
-            ) = False
+            compiler._ordered_columns = compiler._textual_ordered_columns = (
+                False
+            )
 
             # enable looser result column matching.  this is shown to be
             # needed by test_query.py::TextTest
@@ -838,14 +927,24 @@ class ORMFromStatementCompileState(ORMCompileState):
         return None
 
     def setup_dml_returning_compile_state(self, dml_mapper):
-        """used by BulkORMInsert (and Update / Delete?) to set up a handler
+        """used by BulkORMInsert, Update, Delete to set up a handler
         for RETURNING to return ORM objects and expressions
 
         """
         target_mapper = self.statement._propagate_attrs.get(
             "plugin_subject", None
         )
-        adapter = DMLReturningColFilter(target_mapper, dml_mapper)
+
+        if self.statement.is_insert:
+            adapter = _DMLBulkInsertReturningColFilter(
+                target_mapper, dml_mapper
+            )
+        elif self.statement.is_update or self.statement.is_delete:
+            adapter = _DMLUpdateDeleteReturningColFilter(
+                target_mapper, dml_mapper
+            )
+        else:
+            adapter = None
 
         if self.compile_options._is_star and (len(self._entities) != 1):
             raise sa_exc.CompileError(
@@ -857,7 +956,7 @@ class ORMFromStatementCompileState(ORMCompileState):
             entity.setup_dml_returning_compile_state(self, adapter)
 
 
-class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
+class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
     """Core construct that represents a load of ORM objects from various
     :class:`.ReturnsRows` and other classes including:
 
@@ -869,9 +968,9 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
 
     __visit_name__ = "orm_from_statement"
 
-    _compile_options = ORMFromStatementCompileState.default_compile_options
+    _compile_options = _ORMFromStatementCompileState.default_compile_options
 
-    _compile_state_factory = ORMFromStatementCompileState.create_for_statement
+    _compile_state_factory = _ORMFromStatementCompileState.create_for_statement
 
     _for_update_arg = None
 
@@ -887,6 +986,8 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
     _cache_key_traversal = _traverse_internals + [
         ("_compile_options", InternalTraversal.dp_has_cache_key)
     ]
+
+    is_from_statement = True
 
     def __init__(
         self,
@@ -905,6 +1006,10 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
         ]
         self.element = element
         self.is_dml = element.is_dml
+        self.is_select = element.is_select
+        self.is_delete = element.is_delete
+        self.is_insert = element.is_insert
+        self.is_update = element.is_update
         self._label_style = (
             element._label_style if is_select_base(element) else None
         )
@@ -941,7 +1046,7 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
 
         """
         meth = cast(
-            ORMSelectCompileState, SelectState.get_plugin_class(self)
+            _ORMSelectCompileState, SelectState.get_plugin_class(self)
         ).get_column_descriptions
         return meth(self)
 
@@ -972,14 +1077,14 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
 
 
 @sql.base.CompileState.plugin_for("orm", "compound_select")
-class CompoundSelectCompileState(
-    AutoflushOnlyORMCompileState, CompoundSelectState
+class _CompoundSelectCompileState(
+    _AutoflushOnlyORMCompileState, CompoundSelectState
 ):
     pass
 
 
 @sql.base.CompileState.plugin_for("orm", "select")
-class ORMSelectCompileState(ORMCompileState, SelectState):
+class _ORMSelectCompileState(_ORMCompileState, SelectState):
     _already_joined_edges = ()
 
     _memoized_entities = _EMPTY_DICT
@@ -998,20 +1103,16 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     _having_criteria = ()
 
     @classmethod
-    def create_for_statement(
+    def _create_orm_context(
         cls,
         statement: Union[Select, FromStatement],
+        *,
+        toplevel: bool,
         compiler: Optional[SQLCompiler],
         **kw: Any,
-    ) -> ORMSelectCompileState:
-        """compiler hook, we arrive here from compiler.visit_select() only."""
+    ) -> _ORMSelectCompileState:
 
         self = cls.__new__(cls)
-
-        if compiler is not None:
-            toplevel = not compiler.stack
-        else:
-            toplevel = True
 
         select_statement = statement
 
@@ -1134,8 +1235,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         # after it's been set up above
         # self._dump_option_struct()
 
-        if select_statement._with_context_options:
-            for fn, key in select_statement._with_context_options:
+        if select_statement._compile_state_funcs:
+            for fn, key in select_statement._compile_state_funcs:
                 fn(self)
 
         self.primary_columns = []
@@ -1242,6 +1343,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             self.distinct_on = ()
 
         self.distinct = query._distinct
+
+        self.syntax_extensions = {
+            key: current_adapter(value, True) if current_adapter else value
+            for key, value in query._get_syntax_extensions_as_dict().items()
+        }
 
         if query._correlate:
             # ORM mapped entities that are mapped to joins can be passed
@@ -1368,11 +1474,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     def get_columns_clause_froms(cls, statement):
         return cls._normalize_froms(
             itertools.chain.from_iterable(
-                element._from_objects
-                if "parententity" not in element._annotations
-                else [
-                    element._annotations["parententity"].__clause_element__()
-                ]
+                (
+                    element._from_objects
+                    if "parententity" not in element._annotations
+                    else [
+                        element._annotations[
+                            "parententity"
+                        ].__clause_element__()
+                    ]
+                )
                 for element in statement._raw_columns
             )
         )
@@ -1389,7 +1499,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         stmt.__dict__.update(
             _with_options=statement._with_options,
-            _with_context_options=statement._with_context_options,
+            _compile_state_funcs=statement._compile_state_funcs,
             _execution_options=statement._execution_options,
             _propagate_attrs=statement._propagate_attrs,
         )
@@ -1501,9 +1611,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # the original expressions outside of the label references
             # in order to have them render.
             unwrapped_order_by = [
-                elem.element
-                if isinstance(elem, sql.elements._label_reference)
-                else elem
+                (
+                    elem.element
+                    if isinstance(elem, sql.elements._label_reference)
+                    else elem
+                )
                 for elem in self.order_by
             ]
 
@@ -1545,10 +1657,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         )
         statement._label_style = self.label_style
 
-        # Oracle however does not allow FOR UPDATE on the subquery,
-        # and the Oracle dialect ignores it, plus for PostgreSQL, MySQL
-        # we expect that all elements of the row are locked, so also put it
-        # on the outside (except in the case of PG when OF is used)
+        # Oracle Database however does not allow FOR UPDATE on the subquery,
+        # and the Oracle Database dialects ignore it, plus for PostgreSQL,
+        # MySQL we expect that all elements of the row are locked, so also put
+        # it on the outside (except in the case of PG when OF is used)
         if (
             self._for_update_arg is not None
             and self._for_update_arg.of is None
@@ -1621,6 +1733,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         group_by,
         independent_ctes,
         independent_ctes_opts,
+        syntax_extensions,
     ):
         statement = Select._create_raw_select(
             _raw_columns=raw_columns,
@@ -1637,9 +1750,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             statement._order_by_clauses += tuple(order_by)
 
         if distinct_on:
-            statement.distinct.non_generative(statement, *distinct_on)
+            statement._distinct = True
+            statement._distinct_on = distinct_on
         elif distinct:
-            statement.distinct.non_generative(statement)
+            statement._distinct = True
 
         if group_by:
             statement._group_by_clauses += tuple(group_by)
@@ -1650,6 +1764,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         statement._fetch_clause_options = fetch_clause_options
         statement._independent_ctes = independent_ctes
         statement._independent_ctes_opts = independent_ctes_opts
+        if syntax_extensions:
+            statement._set_syntax_extensions(**syntax_extensions)
 
         if prefixes:
             statement._prefixes = prefixes
@@ -1773,8 +1889,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                         "Expected mapped entity or "
                         "selectable/table as join target"
                     )
-
-            of_type = None
 
             if isinstance(onclause, interfaces.PropComparator):
                 # descriptor/property given (or determined); this tells us
@@ -2319,6 +2433,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             "independent_ctes_opts": (
                 self.select_statement._independent_ctes_opts
             ),
+            "syntax_extensions": self.syntax_extensions,
         }
 
     @property
@@ -2379,40 +2494,92 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     ext_info._adapter if ext_info.is_aliased_class else None,
                 )
 
-        search = set(self.extra_criteria_entities.values())
+        _where_criteria_to_add = ()
 
-        for ext_info, adapter in search:
+        merged_single_crit = collections.defaultdict(
+            lambda: (util.OrderedSet(), set())
+        )
+
+        for ext_info, adapter in util.OrderedSet(
+            self.extra_criteria_entities.values()
+        ):
             if ext_info in self._join_entities:
                 continue
 
-            single_crit = ext_info.mapper._single_table_criterion
-
-            if self.compile_options._for_refresh_state:
-                additional_entity_criteria = []
+            # assemble single table inheritance criteria.
+            if (
+                ext_info.is_aliased_class
+                and ext_info._base_alias()._is_with_polymorphic
+            ):
+                # for a with_polymorphic(), we always include the full
+                # hierarchy from what's given as the base class for the wpoly.
+                # this is new in 2.1 for #12395 so that it matches the behavior
+                # of joined inheritance.
+                hierarchy_root = ext_info._base_alias()
             else:
-                additional_entity_criteria = self._get_extra_criteria(ext_info)
+                hierarchy_root = ext_info
 
-            if single_crit is not None:
-                additional_entity_criteria += (single_crit,)
+            single_crit_component = (
+                hierarchy_root.mapper._single_table_criteria_component
+            )
 
-            current_adapter = self._get_current_adapter()
-            for crit in additional_entity_criteria:
+            if single_crit_component is not None:
+                polymorphic_on, criteria = single_crit_component
+
+                polymorphic_on = polymorphic_on._annotate(
+                    {
+                        "parententity": hierarchy_root,
+                        "parentmapper": hierarchy_root.mapper,
+                    }
+                )
+
+                list_of_single_crits, adapters = merged_single_crit[
+                    (hierarchy_root, polymorphic_on)
+                ]
+                list_of_single_crits.update(criteria)
                 if adapter:
-                    crit = adapter.traverse(crit)
+                    adapters.add(adapter)
 
-                if current_adapter:
-                    crit = sql_util._deep_annotate(crit, {"_orm_adapt": True})
-                    crit = current_adapter(crit, False)
+            # assemble "additional entity criteria", which come from
+            # with_loader_criteria() options
+            if not self.compile_options._for_refresh_state:
+                additional_entity_criteria = self._get_extra_criteria(ext_info)
+                _where_criteria_to_add += tuple(
+                    adapter.traverse(crit) if adapter else crit
+                    for crit in additional_entity_criteria
+                )
+
+        # merge together single table inheritance criteria keyed to
+        # top-level mapper / aliasedinsp (which may be a with_polymorphic())
+        for (ext_info, polymorphic_on), (
+            merged_crit,
+            adapters,
+        ) in merged_single_crit.items():
+            new_crit = polymorphic_on.in_(merged_crit)
+            for adapter in adapters:
+                new_crit = adapter.traverse(new_crit)
+            _where_criteria_to_add += (new_crit,)
+
+        current_adapter = self._get_current_adapter()
+        if current_adapter:
+            # finally run all the criteria through the "main" adapter, if we
+            # have one, and concatenate to final WHERE criteria
+            for crit in _where_criteria_to_add:
+                crit = sql_util._deep_annotate(crit, {"_orm_adapt": True})
+                crit = current_adapter(crit, False)
                 self._where_criteria += (crit,)
+        else:
+            # else just concatenate our criteria to the final WHERE criteria
+            self._where_criteria += _where_criteria_to_add
 
 
 def _column_descriptions(
     query_or_select_stmt: Union[Query, Select, FromStatement],
-    compile_state: Optional[ORMSelectCompileState] = None,
+    compile_state: Optional[_ORMSelectCompileState] = None,
     legacy: bool = False,
 ) -> List[ORMColumnDescription]:
     if compile_state is None:
-        compile_state = ORMSelectCompileState._create_entities_collection(
+        compile_state = _ORMSelectCompileState._create_entities_collection(
             query_or_select_stmt, legacy=legacy
         )
     ctx = compile_state
@@ -2422,9 +2589,12 @@ def _column_descriptions(
             "type": ent.type,
             "aliased": getattr(insp_ent, "is_aliased_class", False),
             "expr": ent.expr,
-            "entity": getattr(insp_ent, "entity", None)
-            if ent.entity_zero is not None and not insp_ent.is_clause_element
-            else None,
+            "entity": (
+                getattr(insp_ent, "entity", None)
+                if ent.entity_zero is not None
+                and not insp_ent.is_clause_element
+                else None
+            ),
         }
         for ent, insp_ent in [
             (_ent, _ent.entity_zero) for _ent in ctx._entities
@@ -2434,7 +2604,7 @@ def _column_descriptions(
 
 
 def _legacy_filter_by_entity_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Any]]
+    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]],
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if self._setup_joins:
@@ -2449,7 +2619,7 @@ def _legacy_filter_by_entity_zero(
 
 
 def _entity_from_pre_ent_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Any]]
+    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]],
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if not self._raw_columns:
@@ -2501,13 +2671,13 @@ class _QueryEntity:
     expr: Union[_InternalEntityType, ColumnElement[Any]]
     entity_zero: Optional[_InternalEntityType]
 
-    def setup_compile_state(self, compile_state: ORMCompileState) -> None:
+    def setup_compile_state(self, compile_state: _ORMCompileState) -> None:
         raise NotImplementedError()
 
     def setup_dml_returning_compile_state(
         self,
-        compile_state: ORMCompileState,
-        adapter: DMLReturningColFilter,
+        compile_state: _ORMCompileState,
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
         raise NotImplementedError()
 
@@ -2708,8 +2878,8 @@ class _MapperEntity(_QueryEntity):
 
     def setup_dml_returning_compile_state(
         self,
-        compile_state: ORMCompileState,
-        adapter: DMLReturningColFilter,
+        compile_state: _ORMCompileState,
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
         loading._setup_entity_query(
             compile_state,
@@ -2864,6 +3034,13 @@ class _BundleEntity(_QueryEntity):
     def setup_compile_state(self, compile_state):
         for ent in self._entities:
             ent.setup_compile_state(compile_state)
+
+    def setup_dml_returning_compile_state(
+        self,
+        compile_state: _ORMCompileState,
+        adapter: Optional[_DMLReturningColFilter],
+    ) -> None:
+        return self.setup_compile_state(compile_state)
 
     def row_processor(self, context, result):
         procs, labels, extra = zip(
@@ -3028,7 +3205,10 @@ class _RawColumnEntity(_ColumnEntity):
         if not is_current_entities or column._is_text_clause:
             self._label_name = None
         else:
-            self._label_name = compile_state._label_convention(column)
+            if parent_bundle:
+                self._label_name = column._proxy_key
+            else:
+                self._label_name = compile_state._label_convention(column)
 
         if parent_bundle:
             parent_bundle._entities.append(self)
@@ -3047,8 +3227,8 @@ class _RawColumnEntity(_ColumnEntity):
 
     def setup_dml_returning_compile_state(
         self,
-        compile_state: ORMCompileState,
-        adapter: DMLReturningColFilter,
+        compile_state: _ORMCompileState,
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
         return self.setup_compile_state(compile_state)
 
@@ -3122,9 +3302,12 @@ class _ORMColumnEntity(_ColumnEntity):
         self.raw_column_index = raw_column_index
 
         if is_current_entities:
-            self._label_name = compile_state._label_convention(
-                column, col_name=orm_key
-            )
+            if parent_bundle:
+                self._label_name = orm_key if orm_key else column._proxy_key
+            else:
+                self._label_name = compile_state._label_convention(
+                    column, col_name=orm_key
+                )
         else:
             self._label_name = None
 
@@ -3161,11 +3344,14 @@ class _ORMColumnEntity(_ColumnEntity):
 
     def setup_dml_returning_compile_state(
         self,
-        compile_state: ORMCompileState,
-        adapter: DMLReturningColFilter,
+        compile_state: _ORMCompileState,
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
-        self._fetch_column = self.column
-        column = adapter(self.column, False)
+
+        self._fetch_column = column = self.column
+        if adapter:
+            column = adapter(column, False)
+
         if column is not None:
             compile_state.dedupe_columns.add(column)
             compile_state.primary_columns.append(column)

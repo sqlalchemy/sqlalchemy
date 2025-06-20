@@ -1,7 +1,5 @@
-"""traditional relationship patterns with explicit uselist.
+"""traditional relationship patterns with explicit uselist."""
 
-
-"""
 import typing
 from typing import cast
 from typing import Dict

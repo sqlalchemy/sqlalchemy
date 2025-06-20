@@ -1581,9 +1581,9 @@ class ReconnectRecipeTest(fixtures.TestBase):
                         connection.rollback()
 
                         time.sleep(retry_interval)
-                        context.cursor = (
-                            cursor
-                        ) = connection.connection.cursor()
+                        context.cursor = cursor = (
+                            connection.connection.cursor()
+                        )
                     else:
                         raise
                 else:

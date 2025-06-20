@@ -1,13 +1,11 @@
 # orm/state_changes.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""State tracking utilities used by :class:`_orm.Session`.
-
-"""
+"""State tracking utilities used by :class:`_orm.Session`."""
 
 from __future__ import annotations
 

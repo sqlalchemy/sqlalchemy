@@ -319,7 +319,7 @@ known values are passed.   "Expanding" parameters are used for
 string can be safely cached independently of the actual lists of values
 being passed to a particular invocation of :meth:`_sql.ColumnOperators.in_`::
 
-  >>> stmt = select(A).where(A.id.in_[1, 2, 3])
+  >>> stmt = select(A).where(A.id.in_([1, 2, 3]))
 
 To render the IN clause with real bound parameter symbols, use the
 ``render_postcompile=True`` flag with :meth:`_sql.ClauseElement.compile`:

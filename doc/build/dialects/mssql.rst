@@ -155,6 +155,7 @@ construction arguments, are as follows:
 .. autoclass:: XML
    :members: __init__
 
+.. _mssql_pyodbc:
 
 PyODBC
 ------
@@ -164,3 +165,10 @@ pymssql
 -------
 .. automodule:: sqlalchemy.dialects.mssql.pymssql
 
+
+.. _mssql_aioodbc:
+
+aioodbc
+-------
+
+.. automodule:: sqlalchemy.dialects.mssql.aioodbc

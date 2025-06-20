@@ -1,5 +1,5 @@
 # sql/ddl.py
-# Copyright (C) 2009-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2009-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -17,11 +17,15 @@ import contextlib
 import typing
 from typing import Any
 from typing import Callable
+from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Sequence as typing_Sequence
 from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 from . import roles
 from .base import _generative
@@ -31,17 +35,18 @@ from .elements import ClauseElement
 from .. import exc
 from .. import util
 from ..util import topological
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .elements import BindParameter
+    from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
+    from .schema import Index
     from .schema import SchemaItem
-    from .schema import Sequence
+    from .schema import Sequence as Sequence  # noqa: F401
     from .schema import Table
     from .selectable import TableClause
     from ..engine.base import Connection
@@ -49,6 +54,8 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CompiledCacheType
     from ..engine.interfaces import Dialect
     from ..engine.interfaces import SchemaTranslateMapType
+
+_SI = TypeVar("_SI", bound=Union["SchemaItem", str])
 
 
 class BaseDDLElement(ClauseElement):
@@ -87,7 +94,7 @@ class DDLIfCallable(Protocol):
     def __call__(
         self,
         ddl: BaseDDLElement,
-        target: SchemaItem,
+        target: Union[SchemaItem, str],
         bind: Optional[Connection],
         tables: Optional[List[Table]] = None,
         state: Optional[Any] = None,
@@ -95,8 +102,7 @@ class DDLIfCallable(Protocol):
         dialect: Dialect,
         compiler: Optional[DDLCompiler] = ...,
         checkfirst: bool,
-    ) -> bool:
-        ...
+    ) -> bool: ...
 
 
 class DDLIf(typing.NamedTuple):
@@ -107,7 +113,7 @@ class DDLIf(typing.NamedTuple):
     def _should_execute(
         self,
         ddl: BaseDDLElement,
-        target: SchemaItem,
+        target: Union[SchemaItem, str],
         bind: Optional[Connection],
         compiler: Optional[DDLCompiler] = None,
         **kw: Any,
@@ -156,8 +162,8 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
 
         event.listen(
             users,
-            'after_create',
-            AddConstraint(constraint).execute_if(dialect='postgresql')
+            "after_create",
+            AddConstraint(constraint).execute_if(dialect="postgresql"),
         )
 
     .. seealso::
@@ -173,7 +179,7 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
     """
 
     _ddl_if: Optional[DDLIf] = None
-    target: Optional[SchemaItem] = None
+    target: Union[SchemaItem, str, None] = None
 
     def _execute_on_connection(
         self, connection, distilled_params, execution_options
@@ -232,20 +238,20 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
         Used to provide a wrapper for event listening::
 
             event.listen(
-                        metadata,
-                        'before_create',
-                        DDL("my_ddl").execute_if(dialect='postgresql')
-                    )
+                metadata,
+                "before_create",
+                DDL("my_ddl").execute_if(dialect="postgresql"),
+            )
 
         :param dialect: May be a string or tuple of strings.
           If a string, it will be compared to the name of the
           executing database dialect::
 
-            DDL('something').execute_if(dialect='postgresql')
+            DDL("something").execute_if(dialect="postgresql")
 
           If a tuple, specifies multiple dialect names::
 
-            DDL('something').execute_if(dialect=('postgresql', 'mysql'))
+            DDL("something").execute_if(dialect=("postgresql", "mysql"))
 
         :param callable\_: A callable, which will be invoked with
           three positional arguments as well as optional keyword
@@ -343,17 +349,19 @@ class DDL(ExecutableDDLElement):
 
       from sqlalchemy import event, DDL
 
-      tbl = Table('users', metadata, Column('uid', Integer))
-      event.listen(tbl, 'before_create', DDL('DROP TRIGGER users_trigger'))
+      tbl = Table("users", metadata, Column("uid", Integer))
+      event.listen(tbl, "before_create", DDL("DROP TRIGGER users_trigger"))
 
-      spow = DDL('ALTER TABLE %(table)s SET secretpowers TRUE')
-      event.listen(tbl, 'after_create', spow.execute_if(dialect='somedb'))
+      spow = DDL("ALTER TABLE %(table)s SET secretpowers TRUE")
+      event.listen(tbl, "after_create", spow.execute_if(dialect="somedb"))
 
-      drop_spow = DDL('ALTER TABLE users SET secretpowers FALSE')
+      drop_spow = DDL("ALTER TABLE users SET secretpowers FALSE")
       connection.execute(drop_spow)
 
     When operating on Table events, the following ``statement``
-    string substitutions are available::
+    string substitutions are available:
+
+    .. sourcecode:: text
 
       %(table)s  - the Table name, with any required quoting applied
       %(schema)s - the schema name, with any required quoting applied
@@ -414,7 +422,7 @@ class DDL(ExecutableDDLElement):
         )
 
 
-class _CreateDropBase(ExecutableDDLElement):
+class _CreateDropBase(ExecutableDDLElement, Generic[_SI]):
     """Base class for DDL constructs that represent CREATE and DROP or
     equivalents.
 
@@ -424,15 +432,15 @@ class _CreateDropBase(ExecutableDDLElement):
 
     """
 
-    def __init__(
-        self,
-        element,
-    ):
+    element: _SI
+
+    def __init__(self, element: _SI) -> None:
         self.element = self.target = element
         self._ddl_if = getattr(element, "_ddl_if", None)
 
     @property
-    def stringify_dialect(self):
+    def stringify_dialect(self):  # type: ignore[override]
+        assert not isinstance(self.element, str)
         return self.element.create_drop_stringify_dialect
 
     def _create_rule_disable(self, compiler):
@@ -446,19 +454,19 @@ class _CreateDropBase(ExecutableDDLElement):
         return False
 
 
-class _CreateBase(_CreateDropBase):
-    def __init__(self, element, if_not_exists=False):
+class _CreateBase(_CreateDropBase[_SI]):
+    def __init__(self, element: _SI, if_not_exists: bool = False) -> None:
         super().__init__(element)
         self.if_not_exists = if_not_exists
 
 
-class _DropBase(_CreateDropBase):
-    def __init__(self, element, if_exists=False):
+class _DropBase(_CreateDropBase[_SI]):
+    def __init__(self, element: _SI, if_exists: bool = False) -> None:
         super().__init__(element)
         self.if_exists = if_exists
 
 
-class CreateSchema(_CreateBase):
+class CreateSchema(_CreateBase[str]):
     """Represent a CREATE SCHEMA statement.
 
     The argument here is the string name of the schema.
@@ -471,15 +479,15 @@ class CreateSchema(_CreateBase):
 
     def __init__(
         self,
-        name,
-        if_not_exists=False,
-    ):
+        name: str,
+        if_not_exists: bool = False,
+    ) -> None:
         """Create a new :class:`.CreateSchema` construct."""
 
         super().__init__(element=name, if_not_exists=if_not_exists)
 
 
-class DropSchema(_DropBase):
+class DropSchema(_DropBase[str]):
     """Represent a DROP SCHEMA statement.
 
     The argument here is the string name of the schema.
@@ -492,17 +500,17 @@ class DropSchema(_DropBase):
 
     def __init__(
         self,
-        name,
-        cascade=False,
-        if_exists=False,
-    ):
+        name: str,
+        cascade: bool = False,
+        if_exists: bool = False,
+    ) -> None:
         """Create a new :class:`.DropSchema` construct."""
 
         super().__init__(element=name, if_exists=if_exists)
         self.cascade = cascade
 
 
-class CreateTable(_CreateBase):
+class CreateTable(_CreateBase["Table"]):
     """Represent a CREATE TABLE statement."""
 
     __visit_name__ = "create_table"
@@ -514,7 +522,7 @@ class CreateTable(_CreateBase):
             typing_Sequence[ForeignKeyConstraint]
         ] = None,
         if_not_exists: bool = False,
-    ):
+    ) -> None:
         """Create a :class:`.CreateTable` construct.
 
         :param element: a :class:`_schema.Table` that's the subject
@@ -536,7 +544,7 @@ class CreateTable(_CreateBase):
         self.include_foreign_key_constraints = include_foreign_key_constraints
 
 
-class _DropView(_DropBase):
+class _DropView(_DropBase["Table"]):
     """Semi-public 'DROP VIEW' construct.
 
     Used by the test suite for dialect-agnostic drops of views.
@@ -548,7 +556,9 @@ class _DropView(_DropBase):
 
 
 class CreateConstraint(BaseDDLElement):
-    def __init__(self, element: Constraint):
+    element: Constraint
+
+    def __init__(self, element: Constraint) -> None:
         self.element = element
 
 
@@ -569,6 +579,7 @@ class CreateColumn(BaseDDLElement):
         from sqlalchemy import schema
         from sqlalchemy.ext.compiler import compiles
 
+
         @compiles(schema.CreateColumn)
         def compile(element, compiler, **kw):
             column = element.element
@@ -577,9 +588,9 @@ class CreateColumn(BaseDDLElement):
                 return compiler.visit_create_column(element, **kw)
 
             text = "%s SPECIAL DIRECTIVE %s" % (
-                    column.name,
-                    compiler.type_compiler.process(column.type)
-                )
+                column.name,
+                compiler.type_compiler.process(column.type),
+            )
             default = compiler.get_column_default_string(column)
             if default is not None:
                 text += " DEFAULT " + default
@@ -589,8 +600,8 @@ class CreateColumn(BaseDDLElement):
 
             if column.constraints:
                 text += " ".join(
-                            compiler.process(const)
-                            for const in column.constraints)
+                    compiler.process(const) for const in column.constraints
+                )
             return text
 
     The above construct can be applied to a :class:`_schema.Table`
@@ -601,17 +612,21 @@ class CreateColumn(BaseDDLElement):
 
         metadata = MetaData()
 
-        table = Table('mytable', MetaData(),
-                Column('x', Integer, info={"special":True}, primary_key=True),
-                Column('y', String(50)),
-                Column('z', String(20), info={"special":True})
-            )
+        table = Table(
+            "mytable",
+            MetaData(),
+            Column("x", Integer, info={"special": True}, primary_key=True),
+            Column("y", String(50)),
+            Column("z", String(20), info={"special": True}),
+        )
 
         metadata.create_all(conn)
 
     Above, the directives we've added to the :attr:`_schema.Column.info`
     collection
-    will be detected by our custom compilation scheme::
+    will be detected by our custom compilation scheme:
+
+    .. sourcecode:: sql
 
         CREATE TABLE mytable (
                 x SPECIAL DIRECTIVE INTEGER NOT NULL,
@@ -636,18 +651,21 @@ class CreateColumn(BaseDDLElement):
 
         from sqlalchemy.schema import CreateColumn
 
+
         @compiles(CreateColumn, "postgresql")
         def skip_xmin(element, compiler, **kw):
-            if element.element.name == 'xmin':
+            if element.element.name == "xmin":
                 return None
             else:
                 return compiler.visit_create_column(element, **kw)
 
 
-        my_table = Table('mytable', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('xmin', Integer)
-                )
+        my_table = Table(
+            "mytable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("xmin", Integer),
+        )
 
     Above, a :class:`.CreateTable` construct will generate a ``CREATE TABLE``
     which only includes the ``id`` column in the string; the ``xmin`` column
@@ -657,16 +675,18 @@ class CreateColumn(BaseDDLElement):
 
     __visit_name__ = "create_column"
 
-    def __init__(self, element):
+    element: Column[Any]
+
+    def __init__(self, element: Column[Any]) -> None:
         self.element = element
 
 
-class DropTable(_DropBase):
+class DropTable(_DropBase["Table"]):
     """Represent a DROP TABLE statement."""
 
     __visit_name__ = "drop_table"
 
-    def __init__(self, element: Table, if_exists: bool = False):
+    def __init__(self, element: Table, if_exists: bool = False) -> None:
         """Create a :class:`.DropTable` construct.
 
         :param element: a :class:`_schema.Table` that's the subject
@@ -681,30 +701,24 @@ class DropTable(_DropBase):
         super().__init__(element, if_exists=if_exists)
 
 
-class CreateSequence(_CreateBase):
+class CreateSequence(_CreateBase["Sequence"]):
     """Represent a CREATE SEQUENCE statement."""
 
     __visit_name__ = "create_sequence"
 
-    def __init__(self, element: Sequence, if_not_exists: bool = False):
-        super().__init__(element, if_not_exists=if_not_exists)
 
-
-class DropSequence(_DropBase):
+class DropSequence(_DropBase["Sequence"]):
     """Represent a DROP SEQUENCE statement."""
 
     __visit_name__ = "drop_sequence"
 
-    def __init__(self, element: Sequence, if_exists: bool = False):
-        super().__init__(element, if_exists=if_exists)
 
-
-class CreateIndex(_CreateBase):
+class CreateIndex(_CreateBase["Index"]):
     """Represent a CREATE INDEX statement."""
 
     __visit_name__ = "create_index"
 
-    def __init__(self, element, if_not_exists=False):
+    def __init__(self, element: Index, if_not_exists: bool = False) -> None:
         """Create a :class:`.Createindex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -718,12 +732,12 @@ class CreateIndex(_CreateBase):
         super().__init__(element, if_not_exists=if_not_exists)
 
 
-class DropIndex(_DropBase):
+class DropIndex(_DropBase["Index"]):
     """Represent a DROP INDEX statement."""
 
     __visit_name__ = "drop_index"
 
-    def __init__(self, element, if_exists=False):
+    def __init__(self, element: Index, if_exists: bool = False) -> None:
         """Create a :class:`.DropIndex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -737,38 +751,84 @@ class DropIndex(_DropBase):
         super().__init__(element, if_exists=if_exists)
 
 
-class AddConstraint(_CreateBase):
+class AddConstraint(_CreateBase["Constraint"]):
     """Represent an ALTER TABLE ADD CONSTRAINT statement."""
 
     __visit_name__ = "add_constraint"
 
-    def __init__(self, element):
+    def __init__(
+        self,
+        element: Constraint,
+        *,
+        isolate_from_table: bool = True,
+    ) -> None:
+        """Construct a new :class:`.AddConstraint` construct.
+
+        :param element: a :class:`.Constraint` object
+
+        :param isolate_from_table: optional boolean, defaults to True.  Has
+         the effect of the incoming constraint being isolated from being
+         included in a CREATE TABLE sequence when associated with a
+         :class:`.Table`.
+
+         .. versionadded:: 2.0.39 - added
+            :paramref:`.AddConstraint.isolate_from_table`, defaulting
+            to True.  Previously, the behavior of this parameter was implicitly
+            turned on in all cases.
+
+        """
         super().__init__(element)
-        element._create_rule = util.portable_instancemethod(
-            self._create_rule_disable
-        )
+
+        if isolate_from_table:
+            element._create_rule = self._create_rule_disable
 
 
-class DropConstraint(_DropBase):
+class DropConstraint(_DropBase["Constraint"]):
     """Represent an ALTER TABLE DROP CONSTRAINT statement."""
 
     __visit_name__ = "drop_constraint"
 
-    def __init__(self, element, cascade=False, if_exists=False, **kw):
+    def __init__(
+        self,
+        element: Constraint,
+        *,
+        cascade: bool = False,
+        if_exists: bool = False,
+        isolate_from_table: bool = True,
+        **kw: Any,
+    ) -> None:
+        """Construct a new :class:`.DropConstraint` construct.
+
+        :param element: a :class:`.Constraint` object
+        :param cascade: optional boolean, indicates backend-specific
+         "CASCADE CONSTRAINT" directive should be rendered if available
+        :param if_exists: optional boolean, indicates backend-specific
+         "IF EXISTS" directive should be rendered if available
+        :param isolate_from_table: optional boolean, defaults to True.  Has
+         the effect of the incoming constraint being isolated from being
+         included in a CREATE TABLE sequence when associated with a
+         :class:`.Table`.
+
+         .. versionadded:: 2.0.39 - added
+            :paramref:`.DropConstraint.isolate_from_table`, defaulting
+            to True.  Previously, the behavior of this parameter was implicitly
+            turned on in all cases.
+
+        """
         self.cascade = cascade
         super().__init__(element, if_exists=if_exists, **kw)
-        element._create_rule = util.portable_instancemethod(
-            self._create_rule_disable
-        )
+
+        if isolate_from_table:
+            element._create_rule = self._create_rule_disable
 
 
-class SetTableComment(_CreateDropBase):
+class SetTableComment(_CreateDropBase["Table"]):
     """Represent a COMMENT ON TABLE IS statement."""
 
     __visit_name__ = "set_table_comment"
 
 
-class DropTableComment(_CreateDropBase):
+class DropTableComment(_CreateDropBase["Table"]):
     """Represent a COMMENT ON TABLE '' statement.
 
     Note this varies a lot across database backends.
@@ -778,33 +838,34 @@ class DropTableComment(_CreateDropBase):
     __visit_name__ = "drop_table_comment"
 
 
-class SetColumnComment(_CreateDropBase):
+class SetColumnComment(_CreateDropBase["Column[Any]"]):
     """Represent a COMMENT ON COLUMN IS statement."""
 
     __visit_name__ = "set_column_comment"
 
 
-class DropColumnComment(_CreateDropBase):
+class DropColumnComment(_CreateDropBase["Column[Any]"]):
     """Represent a COMMENT ON COLUMN IS NULL statement."""
 
     __visit_name__ = "drop_column_comment"
 
 
-class SetConstraintComment(_CreateDropBase):
+class SetConstraintComment(_CreateDropBase["Constraint"]):
     """Represent a COMMENT ON CONSTRAINT IS statement."""
 
     __visit_name__ = "set_constraint_comment"
 
 
-class DropConstraintComment(_CreateDropBase):
+class DropConstraintComment(_CreateDropBase["Constraint"]):
     """Represent a COMMENT ON CONSTRAINT IS NULL statement."""
 
     __visit_name__ = "drop_constraint_comment"
 
 
 class InvokeDDLBase(SchemaVisitor):
-    def __init__(self, connection):
+    def __init__(self, connection, **kw):
         self.connection = connection
+        assert not kw, f"Unexpected keywords: {kw.keys()}"
 
     @contextlib.contextmanager
     def with_ddl_events(self, target, **kw):
@@ -1021,10 +1082,12 @@ class SchemaDropper(InvokeDropDDLBase):
                 reversed(
                     sort_tables_and_constraints(
                         unsorted_tables,
-                        filter_fn=lambda constraint: False
-                        if not self.dialect.supports_alter
-                        or constraint.name is None
-                        else None,
+                        filter_fn=lambda constraint: (
+                            False
+                            if not self.dialect.supports_alter
+                            or constraint.name is None
+                            else None
+                        ),
                     )
                 )
             )
@@ -1204,13 +1267,6 @@ def sort_tables(
         automatically return foreign key constraints in a separate
         collection when cycles are detected so that they may be applied
         to a schema separately.
-
-        .. versionchanged:: 1.3.17 - a warning is emitted when
-           :func:`_schema.sort_tables` cannot perform a proper sort due to
-           cyclical dependencies.  This will be an exception in a future
-           release.  Additionally, the sort will continue to return
-           other tables not involved in the cycle in dependency order
-           which was not the case previously.
 
     :param tables: a sequence of :class:`_schema.Table` objects.
 

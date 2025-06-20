@@ -59,16 +59,38 @@ class URLTest(fixtures.TestBase):
         "/database?foo=bar",
         "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80"
         "/database?foo=bar",
-        "dbtype://username:password@hostspec/test database with@atsign",
+        "dbtype://username:password@hostspec/test+database with%40atsign",
+        "dbtype://username:password@hostspec/db%3Fwith%3Dqmark",
+        "dbtype://username:password@hostspec/test database with spaces",
         "dbtype://username:password@hostspec?query=but_no_db",
         "dbtype://username:password@hostspec:450?query=but_no_db",
+        "dbtype://username:password with spaces@hostspec:450?query=but_no_db",
+        "dbtype+apitype://username with space+and+plus:"
+        "password with space+and+plus@"
+        "hostspec:450?query=but_no_db",
+        "dbtype://user%25%26%7C:pass%25%26%7C@hostspec:499?query=but_no_db",
+        "dbtype://user🐍測試:pass🐍測試@hostspec:499?query=but_no_db",
     )
     def test_rfc1738(self, text):
         u = url.make_url(text)
 
         assert u.drivername in ("dbtype", "dbtype+apitype")
-        assert u.username in ("username", None)
-        assert u.password in ("password", "apples/oranges", None)
+        assert u.username in (
+            "username",
+            "user%&|",
+            "username with space+and+plus",
+            "user🐍測試",
+            None,
+        )
+        assert u.password in (
+            "password",
+            "password with spaces",
+            "password with space+and+plus",
+            "apples/oranges",
+            "pass%&|",
+            "pass🐍測試",
+            None,
+        )
         assert u.host in (
             "hostspec",
             "127.0.0.1",
@@ -78,16 +100,28 @@ class URLTest(fixtures.TestBase):
         ), u.host
         assert u.database in (
             "database",
-            "test database with@atsign",
+            "test+database with@atsign",
+            "test database with spaces",
             "/usr/local/_xtest@example.com/members.db",
             "/usr/db_file.db",
             ":memory:",
             "",
             "foo/bar/im/a/file",
             "E:/work/src/LEM/db/hello.db",
+            "db?with=qmark",
             None,
         ), u.database
-        eq_(u.render_as_string(hide_password=False), text)
+
+        eq_(url.make_url(u.render_as_string(hide_password=False)), u)
+
+    def test_dont_urlescape_slashes(self):
+        """supplemental test for #11234 where we want to not escape slashes
+        as this causes problems for alembic tests that deliver paths into
+        configparser format"""
+
+        u = url.make_url("dbtype:///path/with/slashes")
+        eq_(str(u), "dbtype:///path/with/slashes")
+        eq_(u.database, "path/with/slashes")
 
     def test_rfc1738_password(self):
         u = url.make_url("dbtype://user:pass word + other%3Awords@host/dbname")
@@ -352,7 +386,7 @@ class URLTest(fixtures.TestBase):
         (
             "foo1=bar1&foo2=bar21&foo2=bar22&foo3=bar31",
             "foo2=bar23&foo3=bar32&foo3=bar33",
-            "foo1=bar1&foo2=bar23&" "foo3=bar32&foo3=bar33",
+            "foo1=bar1&foo2=bar23&foo3=bar32&foo3=bar33",
             False,
         ),
     )
@@ -552,7 +586,7 @@ class CreateEngineTest(fixtures.TestBase):
         e = engine_from_config(config, module=dbapi, _initialize=False)
         assert e.pool._recycle == 50
         assert e.url == url.make_url(
-            "postgresql+psycopg2://scott:tiger@somehost/test?foo" "z=somevalue"
+            "postgresql+psycopg2://scott:tiger@somehost/test?fooz=somevalue"
         )
         assert e.echo is True
 
@@ -769,6 +803,13 @@ class CreateEngineTest(fixtures.TestBase):
             use_unicode=True,
             module=mock_dbapi,
         )
+
+    def test_cant_parse_str(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"^Could not parse SQLAlchemy URL from given URL string$",
+        ):
+            create_engine("notarealurl")
 
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""

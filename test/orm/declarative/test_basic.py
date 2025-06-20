@@ -10,6 +10,7 @@ from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import join
 from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import String
@@ -35,6 +36,7 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import MappedColumn
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import registry
@@ -930,6 +932,42 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
         # Check to see if __init_subclass__ works in supported versions
         eq_(UserType._set_random_keyword_used_here, True)
 
+    @testing.variation(
+        "basetype",
+        ["DeclarativeBase", "DeclarativeBaseNoMeta", "MappedAsDataclass"],
+    )
+    def test_kw_support_in_declarative_base(self, basetype):
+        """test #10732"""
+
+        if basetype.DeclarativeBase:
+
+            class Base(DeclarativeBase):
+                pass
+
+        elif basetype.DeclarativeBaseNoMeta:
+
+            class Base(DeclarativeBaseNoMeta):
+                pass
+
+        elif basetype.MappedAsDataclass:
+
+            class Base(MappedAsDataclass):
+                pass
+
+        else:
+            basetype.fail()
+
+        class Mixin:
+            def __init_subclass__(cls, random_keyword: bool, **kw) -> None:
+                super().__init_subclass__(**kw)
+                cls._set_random_keyword_used_here = random_keyword
+
+        class User(Base, Mixin, random_keyword=True):
+            __tablename__ = "user"
+            id_ = Column(Integer, primary_key=True)
+
+        eq_(User._set_random_keyword_used_here, True)
+
     def test_declarative_base_bad_registry(self):
         with assertions.expect_raises_message(
             exc.InvalidRequestError,
@@ -1350,7 +1388,7 @@ class DeclarativeMultiBaseTest(
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Can't add additional column 'foo' when " "specifying __table__",
+            "Can't add additional column 'foo' when specifying __table__",
             go,
         )
 
@@ -1539,11 +1577,14 @@ class DeclarativeMultiBaseTest(
             attr_type.fail()
 
     def test_column_named_twice(self):
-        with expect_warnings(
-            "On class 'Foo', Column object 'x' named directly multiple "
-            "times, only one will be used: x, y. Consider using "
-            "orm.synonym instead"
-        ), expect_raises(exc.DuplicateColumnError):
+        with (
+            expect_warnings(
+                "On class 'Foo', Column object 'x' named directly multiple "
+                "times, only one will be used: x, y. Consider using "
+                "orm.synonym instead"
+            ),
+            expect_raises(exc.DuplicateColumnError),
+        ):
 
             class Foo(Base):
                 __tablename__ = "foo"
@@ -1554,11 +1595,14 @@ class DeclarativeMultiBaseTest(
 
     @testing.variation("style", ["old", "new"])
     def test_column_repeated_under_prop(self, style):
-        with expect_warnings(
-            "On class 'Foo', Column object 'x' named directly multiple "
-            "times, only one will be used: x, y, z. Consider using "
-            "orm.synonym instead"
-        ), expect_raises(exc.DuplicateColumnError):
+        with (
+            expect_warnings(
+                "On class 'Foo', Column object 'x' named directly multiple "
+                "times, only one will be used: x, y, z. Consider using "
+                "orm.synonym instead"
+            ),
+            expect_raises(exc.DuplicateColumnError),
+        ):
             if style.old:
 
                 class Foo(Base):
@@ -1788,7 +1832,7 @@ class DeclarativeMultiBaseTest(
 
         assert_raises_message(
             exc.InvalidRequestError,
-            "'addresses' is not an instance of " "ColumnProperty",
+            "'addresses' is not an instance of ColumnProperty",
             configure_mappers,
         )
 
@@ -1869,8 +1913,9 @@ class DeclarativeMultiBaseTest(
 
             d = relationship(
                 "D",
-                secondary="join(B, D, B.d_id == D.id)."
-                "join(C, C.d_id == D.id)",
+                secondary=lambda: join(B, D, B.d_id == D.id).join(
+                    C, C.d_id == D.id
+                ),
                 primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
                 secondaryjoin="D.id == B.d_id",
             )
@@ -1917,7 +1962,7 @@ class DeclarativeMultiBaseTest(
 
         assert_raises_message(
             AttributeError,
-            "does not have a mapped column named " "'__table__'",
+            "does not have a mapped column named '__table__'",
             configure_mappers,
         )
 
@@ -2471,7 +2516,7 @@ class DeclarativeMultiBaseTest(
 
     def test_oops(self):
         with testing.expect_warnings(
-            "Ignoring declarative-like tuple value of " "attribute 'name'"
+            "Ignoring declarative-like tuple value of attribute 'name'"
         ):
 
             class User(Base, ComparableEntity):

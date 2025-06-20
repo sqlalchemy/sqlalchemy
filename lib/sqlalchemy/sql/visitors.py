@@ -1,14 +1,11 @@
 # sql/visitors.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Visitor/traversal interface and library functions.
-
-
-"""
+"""Visitor/traversal interface and library functions."""
 
 from __future__ import annotations
 
@@ -28,34 +25,24 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from ._util_cy import anon_map as anon_map
+from ._util_cy import prefix_anon_map as prefix_anon_map  # noqa: F401
 from .. import exc
 from .. import util
 from ..util import langhelpers
-from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 if TYPE_CHECKING:
     from .annotation import _AnnotationDict
     from .elements import ColumnElement
-
-if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_util import prefix_anon_map as prefix_anon_map
-    from ._py_util import cache_anon_map as anon_map
-else:
-    from sqlalchemy.cyextension.util import (  # noqa: F401,E501
-        prefix_anon_map as prefix_anon_map,
-    )
-    from sqlalchemy.cyextension.util import (  # noqa: F401,E501
-        cache_anon_map as anon_map,
-    )
 
 
 __all__ = [
@@ -72,8 +59,7 @@ __all__ = [
 
 
 class _CompilerDispatchType(Protocol):
-    def __call__(_self, self: Visitable, visitor: Any, **kw: Any) -> Any:
-        ...
+    def __call__(_self, self: Visitable, visitor: Any, **kw: Any) -> Any: ...
 
 
 class Visitable:
@@ -100,8 +86,7 @@ class Visitable:
 
     if typing.TYPE_CHECKING:
 
-        def _compiler_dispatch(self, visitor: Any, **kw: Any) -> str:
-            ...
+        def _compiler_dispatch(self, visitor: Any, **kw: Any) -> str: ...
 
     def __init_subclass__(cls) -> None:
         if "__visit_name__" in cls.__dict__:
@@ -230,7 +215,7 @@ class InternalTraversal(Enum):
 
     dp_executable_options = "EO"
 
-    dp_with_context_options = "WC"
+    dp_compile_state_funcs = "WC"
 
     dp_fromclause_ordered_set = "CO"
     """Visit an ordered set of :class:`_expression.FromClause` objects. """
@@ -493,8 +478,7 @@ class HasTraverseInternals:
 
 
 class _InternalTraversalDispatchType(Protocol):
-    def __call__(s, self: object, visitor: HasTraversalDispatch) -> Any:
-        ...
+    def __call__(s, self: object, visitor: HasTraversalDispatch) -> Any: ...
 
 
 class HasTraversalDispatch:
@@ -602,13 +586,11 @@ class ExternallyTraversible(HasTraverseInternals, Visitable):
 
     if typing.TYPE_CHECKING:
 
-        def _annotate(self, values: _AnnotationDict) -> Self:
-            ...
+        def _annotate(self, values: _AnnotationDict) -> Self: ...
 
         def get_children(
             self, *, omit_attrs: Tuple[str, ...] = (), **kw: Any
-        ) -> Iterable[ExternallyTraversible]:
-            ...
+        ) -> Iterable[ExternallyTraversible]: ...
 
     def _clone(self, **kw: Any) -> Self:
         """clone this element"""
@@ -638,13 +620,11 @@ _TraverseCallableType = Callable[[_ET], None]
 
 
 class _CloneCallableType(Protocol):
-    def __call__(self, element: _ET, **kw: Any) -> _ET:
-        ...
+    def __call__(self, element: _ET, **kw: Any) -> _ET: ...
 
 
 class _TraverseTransformCallableType(Protocol[_ET]):
-    def __call__(self, element: _ET, **kw: Any) -> Optional[_ET]:
-        ...
+    def __call__(self, element: _ET, **kw: Any) -> Optional[_ET]: ...
 
 
 _ExtT = TypeVar("_ExtT", bound="ExternalTraversal")
@@ -680,12 +660,12 @@ class ExternalTraversal(util.MemoizedSlots):
         return iterate(obj, self.__traverse_options__)
 
     @overload
-    def traverse(self, obj: Literal[None]) -> None:
-        ...
+    def traverse(self, obj: Literal[None]) -> None: ...
 
     @overload
-    def traverse(self, obj: ExternallyTraversible) -> ExternallyTraversible:
-        ...
+    def traverse(
+        self, obj: ExternallyTraversible
+    ) -> ExternallyTraversible: ...
 
     def traverse(
         self, obj: Optional[ExternallyTraversible]
@@ -746,12 +726,12 @@ class CloningExternalTraversal(ExternalTraversal):
         return [self.traverse(x) for x in list_]
 
     @overload
-    def traverse(self, obj: Literal[None]) -> None:
-        ...
+    def traverse(self, obj: Literal[None]) -> None: ...
 
     @overload
-    def traverse(self, obj: ExternallyTraversible) -> ExternallyTraversible:
-        ...
+    def traverse(
+        self, obj: ExternallyTraversible
+    ) -> ExternallyTraversible: ...
 
     def traverse(
         self, obj: Optional[ExternallyTraversible]
@@ -786,12 +766,12 @@ class ReplacingExternalTraversal(CloningExternalTraversal):
         return None
 
     @overload
-    def traverse(self, obj: Literal[None]) -> None:
-        ...
+    def traverse(self, obj: Literal[None]) -> None: ...
 
     @overload
-    def traverse(self, obj: ExternallyTraversible) -> ExternallyTraversible:
-        ...
+    def traverse(
+        self, obj: ExternallyTraversible
+    ) -> ExternallyTraversible: ...
 
     def traverse(
         self, obj: Optional[ExternallyTraversible]
@@ -866,8 +846,7 @@ def traverse_using(
     iterator: Iterable[ExternallyTraversible],
     obj: Literal[None],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
@@ -875,8 +854,7 @@ def traverse_using(
     iterator: Iterable[ExternallyTraversible],
     obj: ExternallyTraversible,
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> ExternallyTraversible:
-    ...
+) -> ExternallyTraversible: ...
 
 
 def traverse_using(
@@ -920,8 +898,7 @@ def traverse(
     obj: Literal[None],
     opts: Mapping[str, Any],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
@@ -929,8 +906,7 @@ def traverse(
     obj: ExternallyTraversible,
     opts: Mapping[str, Any],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> ExternallyTraversible:
-    ...
+) -> ExternallyTraversible: ...
 
 
 def traverse(
@@ -945,10 +921,12 @@ def traverse(
 
         from sqlalchemy.sql import visitors
 
-        stmt = select(some_table).where(some_table.c.foo == 'bar')
+        stmt = select(some_table).where(some_table.c.foo == "bar")
+
 
         def visit_bindparam(bind_param):
             print("found bound value: %s" % bind_param.value)
+
 
         visitors.traverse(stmt, {}, {"bindparam": visit_bindparam})
 
@@ -975,8 +953,7 @@ def cloned_traverse(
     obj: Literal[None],
     opts: Mapping[str, Any],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> None:
-    ...
+) -> None: ...
 
 
 # a bit of controversy here, as the clone of the lead element
@@ -988,8 +965,7 @@ def cloned_traverse(
     obj: _ET,
     opts: Mapping[str, Any],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> _ET:
-    ...
+) -> _ET: ...
 
 
 def cloned_traverse(
@@ -1088,8 +1064,7 @@ def replacement_traverse(
     obj: Literal[None],
     opts: Mapping[str, Any],
     replace: _TraverseTransformCallableType[Any],
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
@@ -1097,8 +1072,7 @@ def replacement_traverse(
     obj: _CE,
     opts: Mapping[str, Any],
     replace: _TraverseTransformCallableType[Any],
-) -> _CE:
-    ...
+) -> _CE: ...
 
 
 @overload
@@ -1106,8 +1080,7 @@ def replacement_traverse(
     obj: ExternallyTraversible,
     opts: Mapping[str, Any],
     replace: _TraverseTransformCallableType[Any],
-) -> ExternallyTraversible:
-    ...
+) -> ExternallyTraversible: ...
 
 
 def replacement_traverse(

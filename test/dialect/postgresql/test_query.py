@@ -26,6 +26,8 @@ from sqlalchemy import text
 from sqlalchemy import Time
 from sqlalchemy import true
 from sqlalchemy import tuple_
+from sqlalchemy import Uuid
+from sqlalchemy import values
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import REGCONFIG
@@ -977,7 +979,7 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         if self._strs_render_bind_casts(connection):
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
-                "matchtable.title @@ " "plainto_tsquery(%(title_1)s::VARCHAR)",
+                "matchtable.title @@ plainto_tsquery(%(title_1)s::VARCHAR)",
             )
         else:
             self.assert_compile(
@@ -1005,7 +1007,7 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         (func.to_tsquery,),
         (func.plainto_tsquery,),
         (func.phraseto_tsquery,),
-        (func.websearch_to_tsquery,),
+        (func.websearch_to_tsquery, testing.skip_if("postgresql < 11")),
         argnames="to_ts_func",
     )
     @testing.variation("use_regconfig", [True, False, "literal"])
@@ -1238,10 +1240,9 @@ class TupleTest(fixtures.TestBase):
 
 
 class ExtractTest(fixtures.TablesTest):
-
     """The rationale behind this test is that for many years we've had a system
     of embedding type casts into the expressions rendered by visit_extract()
-    on the postgreql platform.  The reason for this cast is not clear.
+    on the postgresql platform.  The reason for this cast is not clear.
     So here we try to produce a wide range of cases to ensure that these casts
     are not needed; see [ticket:2740].
 
@@ -1639,6 +1640,10 @@ class TableValuedRoundTripTest(fixtures.TestBase):
 
         eq_(connection.execute(stmt).all(), [(4, 1), (3, 2), (2, 3), (1, 4)])
 
+    def test_array_empty_with_type(self, connection):
+        stmt = select(postgresql.array([], type_=Integer))
+        eq_(connection.execute(stmt).all(), [([],)])
+
     def test_plain_old_unnest(self, connection):
         fn = func.unnest(
             postgresql.array(["one", "two", "three", "four"])
@@ -1792,3 +1797,59 @@ class TableValuedRoundTripTest(fixtures.TestBase):
         stmt = select(fn.c.CaseSensitive, fn.c["the % value"])
 
         eq_(connection.execute(stmt).all(), [(1, "foo"), (2, "bar")])
+
+
+class RequiresCastTest(fixtures.TablesTest):
+    __only_on__ = "postgresql"
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("uuid", Uuid),
+            Column("j", JSON),
+            Column("jb", JSONB),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables["t"].insert(),
+            [
+                {"id": 1, "uuid": "d24587a1-06d9-41df-b1c3-3f423b97a755"},
+                {"id": 2, "uuid": "4b07e1c8-d60c-4ea8-9d01-d7cd01362224"},
+            ],
+        )
+
+    def test_update_values(self, connection):
+        value = values(
+            Column("id", Integer),
+            Column("uuid", Uuid),
+            Column("j", JSON),
+            Column("jb", JSONB),
+            name="update_data",
+        ).data(
+            [
+                (
+                    1,
+                    "8b6ec1ec-b979-4d0b-b2ce-9acc6e4c2943",
+                    {"foo": 1},
+                    {"foo_jb": 1},
+                ),
+                (
+                    2,
+                    "a2123bcb-7ea3-420a-8284-1db4b2759d79",
+                    {"bar": 2},
+                    {"bar_jb": 2},
+                ),
+            ]
+        )
+        connection.execute(
+            self.tables["t"]
+            .update()
+            .values(uuid=value.c.uuid, j=value.c.j, jb=value.c.jb)
+            .where(self.tables["t"].c.id == value.c.id)
+        )

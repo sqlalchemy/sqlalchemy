@@ -1,5 +1,5 @@
 # ext/asyncio/scoping.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -31,6 +31,9 @@ from ...util import create_proxy_methods
 from ...util import ScopedRegistry
 from ...util import warn
 from ...util import warn_deprecated
+from ...util.typing import TupleAny
+from ...util.typing import TypeVarTuple
+from ...util.typing import Unpack
 
 if TYPE_CHECKING:
     from .engine import AsyncConnection
@@ -61,6 +64,7 @@ if TYPE_CHECKING:
     from ...sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 @create_proxy_methods(
@@ -81,6 +85,7 @@ _T = TypeVar("_T", bound=Any)
         "commit",
         "connection",
         "delete",
+        "delete_all",
         "execute",
         "expire",
         "expire_all",
@@ -91,6 +96,7 @@ _T = TypeVar("_T", bound=Any)
         "is_modified",
         "invalidate",
         "merge",
+        "merge_all",
         "refresh",
         "rollback",
         "scalar",
@@ -283,7 +289,7 @@ class async_scoped_session(Generic[_AS]):
 
         return await self._proxied.aclose()
 
-    def add(self, instance: object, _warn: bool = True) -> None:
+    def add(self, instance: object, *, _warn: bool = True) -> None:
         r"""Place an object into this :class:`_orm.Session`.
 
         .. container:: class_bases
@@ -364,7 +370,7 @@ class async_scoped_session(Generic[_AS]):
         object is entered::
 
             async with async_session.begin():
-                # .. ORM transaction is begun
+                ...  # ORM transaction is begun
 
         Note that database IO will not normally occur when the session-level
         transaction is begun, as database transactions begin on an
@@ -393,6 +399,12 @@ class async_scoped_session(Generic[_AS]):
 
         For a general description of ORM begin nested, see
         :meth:`_orm.Session.begin_nested`.
+
+        .. seealso::
+
+            :ref:`aiosqlite_serializable` - special workarounds required
+            with the SQLite asyncio driver in order for SAVEPOINT to work
+            correctly.
 
 
         """  # noqa: E501
@@ -520,18 +532,34 @@ class async_scoped_session(Generic[_AS]):
 
         return await self._proxied.delete(instance)
 
+    async def delete_all(self, instances: Iterable[object]) -> None:
+        r"""Calls :meth:`.AsyncSession.delete` on multiple instances.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class on
+            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. seealso::
+
+            :meth:`_orm.Session.delete_all` - main documentation for delete_all
+
+
+        """  # noqa: E501
+
+        return await self._proxied.delete_all(instances)
+
     @overload
     async def execute(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[_T]:
-        ...
+    ) -> Result[Unpack[_Ts]]: ...
 
     @overload
     async def execute(
@@ -543,8 +571,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Any]:
-        ...
+    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     async def execute(
@@ -556,8 +583,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
-        ...
+    ) -> Result[Unpack[TupleAny]]: ...
 
     async def execute(
         self,
@@ -567,7 +593,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[TupleAny]]:
         r"""Execute a statement and return a buffered
         :class:`_engine.Result` object.
 
@@ -805,28 +831,28 @@ class async_scoped_session(Generic[_AS]):
 
             # construct async engines w/ async drivers
             engines = {
-                'leader':create_async_engine("sqlite+aiosqlite:///leader.db"),
-                'other':create_async_engine("sqlite+aiosqlite:///other.db"),
-                'follower1':create_async_engine("sqlite+aiosqlite:///follower1.db"),
-                'follower2':create_async_engine("sqlite+aiosqlite:///follower2.db"),
+                "leader": create_async_engine("sqlite+aiosqlite:///leader.db"),
+                "other": create_async_engine("sqlite+aiosqlite:///other.db"),
+                "follower1": create_async_engine("sqlite+aiosqlite:///follower1.db"),
+                "follower2": create_async_engine("sqlite+aiosqlite:///follower2.db"),
             }
+
 
             class RoutingSession(Session):
                 def get_bind(self, mapper=None, clause=None, **kw):
                     # within get_bind(), return sync engines
                     if mapper and issubclass(mapper.class_, MyOtherClass):
-                        return engines['other'].sync_engine
+                        return engines["other"].sync_engine
                     elif self._flushing or isinstance(clause, (Update, Delete)):
-                        return engines['leader'].sync_engine
+                        return engines["leader"].sync_engine
                     else:
                         return engines[
-                            random.choice(['follower1','follower2'])
+                            random.choice(["follower1", "follower2"])
                         ].sync_engine
 
+
             # apply to AsyncSession using sync_session_class
-            AsyncSessionMaker = async_sessionmaker(
-                sync_session_class=RoutingSession
-            )
+            AsyncSessionMaker = async_sessionmaker(sync_session_class=RoutingSession)
 
         The :meth:`_orm.Session.get_bind` method is called in a non-asyncio,
         implicitly non-blocking context in the same manner as ORM event hooks
@@ -861,7 +887,7 @@ class async_scoped_session(Generic[_AS]):
 
         This method retrieves the history for each instrumented
         attribute on the instance and performs a comparison of the current
-        value to its previously committed value, if any.
+        value to its previously flushed or committed value, if any.
 
         It is in effect a more expensive and accurate
         version of checking for the given instance in the
@@ -951,6 +977,31 @@ class async_scoped_session(Generic[_AS]):
 
         return await self._proxied.merge(instance, load=load, options=options)
 
+    async def merge_all(
+        self,
+        instances: Iterable[_O],
+        *,
+        load: bool = True,
+        options: Optional[Sequence[ORMOption]] = None,
+    ) -> Sequence[_O]:
+        r"""Calls :meth:`.AsyncSession.merge` on multiple instances.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class on
+            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. seealso::
+
+            :meth:`_orm.Session.merge_all` - main documentation for merge_all
+
+
+        """  # noqa: E501
+
+        return await self._proxied.merge_all(
+            instances, load=load, options=options
+        )
+
     async def refresh(
         self,
         instance: object,
@@ -1003,14 +1054,13 @@ class async_scoped_session(Generic[_AS]):
     @overload
     async def scalar(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
     async def scalar(
@@ -1021,8 +1071,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     async def scalar(
         self,
@@ -1058,14 +1107,13 @@ class async_scoped_session(Generic[_AS]):
     @overload
     async def scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
     async def scalars(
@@ -1076,8 +1124,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[Any]:
-        ...
+    ) -> ScalarResult[Any]: ...
 
     async def scalars(
         self,
@@ -1176,8 +1223,7 @@ class async_scoped_session(Generic[_AS]):
             Proxied for the :class:`_asyncio.AsyncSession` class on
             behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
-        no rows.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
         ..versionadded: 2.0.22
 
@@ -1201,14 +1247,13 @@ class async_scoped_session(Generic[_AS]):
     @overload
     async def stream(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[_T]:
-        ...
+    ) -> AsyncResult[Unpack[_Ts]]: ...
 
     @overload
     async def stream(
@@ -1219,8 +1264,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Any]:
-        ...
+    ) -> AsyncResult[Unpack[TupleAny]]: ...
 
     async def stream(
         self,
@@ -1230,7 +1274,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Any]:
+    ) -> AsyncResult[Unpack[TupleAny]]:
         r"""Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object.
 
@@ -1253,14 +1297,13 @@ class async_scoped_session(Generic[_AS]):
     @overload
     async def stream_scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncScalarResult[_T]:
-        ...
+    ) -> AsyncScalarResult[_T]: ...
 
     @overload
     async def stream_scalars(
@@ -1271,8 +1314,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncScalarResult[Any]:
-        ...
+    ) -> AsyncScalarResult[Any]: ...
 
     async def stream_scalars(
         self,
@@ -1544,13 +1586,15 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.info
 
     @classmethod
-    async def close_all(self) -> None:
+    async def close_all(cls) -> None:
         r"""Close all :class:`_asyncio.AsyncSession` sessions.
 
         .. container:: class_bases
 
             Proxied for the :class:`_asyncio.AsyncSession` class on
             behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. deprecated:: 2.0 The :meth:`.AsyncSession.close_all` method is deprecated and will be removed in a future release.  Please refer to :func:`_asyncio.close_all_sessions`.
 
         """  # noqa: E501
 
@@ -1585,7 +1629,7 @@ class async_scoped_session(Generic[_AS]):
         ident: Union[Any, Tuple[Any, ...]] = None,
         *,
         instance: Optional[Any] = None,
-        row: Optional[Union[Row[Any], RowMapping]] = None,
+        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
         identity_token: Optional[Any] = None,
     ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.

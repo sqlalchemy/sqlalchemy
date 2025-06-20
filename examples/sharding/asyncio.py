@@ -8,6 +8,7 @@ in exactly the same way.   The main change is how the
 the routine that generates new primary keys.
 
 """
+
 from __future__ import annotations
 
 import asyncio

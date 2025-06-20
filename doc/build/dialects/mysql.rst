@@ -56,7 +56,14 @@ valid with MySQL are importable from the top level dialect::
         YEAR,
     )
 
-Types which are specific to MySQL, or have MySQL-specific
+In addition to the above types, MariaDB also supports the following::
+
+    from sqlalchemy.dialects.mysql import (
+        INET4,
+        INET6,
+    )
+
+Types which are specific to MySQL or MariaDB, or have specific
 construction arguments, are as follows:
 
 .. note: where :noindex: is used, indicates a type that is not redefined
@@ -116,6 +123,10 @@ construction arguments, are as follows:
 .. autoclass:: FLOAT
     :members: __init__
 
+
+.. autoclass:: INET4
+
+.. autoclass:: INET6
 
 .. autoclass:: INTEGER
     :members: __init__
@@ -211,6 +222,8 @@ MySQL DML Constructs
 
 .. autoclass:: sqlalchemy.dialects.mysql.Insert
   :members:
+
+.. autofunction:: sqlalchemy.dialects.mysql.limit
 
 
 

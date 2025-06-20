@@ -1,11 +1,9 @@
-# mysql/mysqldb.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/mysqldb.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
-
 
 """
 
@@ -48,9 +46,9 @@ key "ssl", which may be specified using the
             "ssl": {
                 "ca": "/home/gord/client-ssl/ca.pem",
                 "cert": "/home/gord/client-ssl/client-cert.pem",
-                "key": "/home/gord/client-ssl/client-key.pem"
+                "key": "/home/gord/client-ssl/client-key.pem",
             }
-        }
+        },
     )
 
 For convenience, the following keys may also be specified inline within the URL
@@ -74,7 +72,9 @@ Using MySQLdb with Google Cloud SQL
 -----------------------------------
 
 Google Cloud SQL now recommends use of the MySQLdb dialect.  Connect
-using a URL like the following::
+using a URL like the following:
+
+.. sourcecode:: text
 
     mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>
 
@@ -84,25 +84,37 @@ Server Side Cursors
 The mysqldb dialect supports server-side cursors. See :ref:`mysql_ss_cursors`.
 
 """
+from __future__ import annotations
 
 import re
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Literal
+from typing import Optional
+from typing import TYPE_CHECKING
 
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
 from .base import MySQLIdentifierPreparer
-from .base import TEXT
-from ... import sql
 from ... import util
+
+if TYPE_CHECKING:
+
+    from ...engine.base import Connection
+    from ...engine.interfaces import _DBAPIMultiExecuteParams
+    from ...engine.interfaces import ConnectArgsType
+    from ...engine.interfaces import DBAPIConnection
+    from ...engine.interfaces import DBAPICursor
+    from ...engine.interfaces import DBAPIModule
+    from ...engine.interfaces import ExecutionContext
+    from ...engine.interfaces import IsolationLevel
+    from ...engine.url import URL
 
 
 class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
-    @property
-    def rowcount(self):
-        if hasattr(self, "_rowcount"):
-            return self._rowcount
-        else:
-            return self.cursor.rowcount
+    pass
 
 
 class MySQLCompiler_mysqldb(MySQLCompiler):
@@ -122,8 +134,9 @@ class MySQLDialect_mysqldb(MySQLDialect):
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer
+    server_version_info: tuple[int, ...]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
         self._mysql_dbapi_version = (
             self._parse_dbapi_version(self.dbapi.__version__)
@@ -131,7 +144,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             else (0, 0, 0)
         )
 
-    def _parse_dbapi_version(self, version):
+    def _parse_dbapi_version(self, version: str) -> tuple[int, ...]:
         m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", version)
         if m:
             return tuple(int(x) for x in m.group(1, 2, 3) if x is not None)
@@ -139,7 +152,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             return (0, 0, 0)
 
     @util.langhelpers.memoized_property
-    def supports_server_side_cursors(self):
+    def supports_server_side_cursors(self) -> bool:
         try:
             cursors = __import__("MySQLdb.cursors").cursors
             self._sscursor = cursors.SSCursor
@@ -148,13 +161,13 @@ class MySQLDialect_mysqldb(MySQLDialect):
             return False
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> DBAPIModule:
         return __import__("MySQLdb")
 
-    def on_connect(self):
+    def on_connect(self) -> Callable[[DBAPIConnection], None]:
         super_ = super().on_connect()
 
-        def on_connect(conn):
+        def on_connect(conn: DBAPIConnection) -> None:
             if super_ is not None:
                 super_(conn)
 
@@ -167,43 +180,24 @@ class MySQLDialect_mysqldb(MySQLDialect):
 
         return on_connect
 
-    def do_ping(self, dbapi_connection):
-        dbapi_connection.ping(False)
+    def do_ping(self, dbapi_connection: DBAPIConnection) -> Literal[True]:
+        dbapi_connection.ping()
         return True
 
-    def do_executemany(self, cursor, statement, parameters, context=None):
+    def do_executemany(
+        self,
+        cursor: DBAPICursor,
+        statement: str,
+        parameters: _DBAPIMultiExecuteParams,
+        context: Optional[ExecutionContext] = None,
+    ) -> None:
         rowcount = cursor.executemany(statement, parameters)
         if context is not None:
-            context._rowcount = rowcount
+            cast(MySQLExecutionContext, context)._rowcount = rowcount
 
-    def _check_unicode_returns(self, connection):
-        # work around issue fixed in
-        # https://github.com/farcepest/MySQLdb1/commit/cd44524fef63bd3fcb71947392326e9742d520e8
-        # specific issue w/ the utf8mb4_bin collation and unicode returns
-
-        collation = connection.exec_driver_sql(
-            "show collation where %s = 'utf8mb4' and %s = 'utf8mb4_bin'"
-            % (
-                self.identifier_preparer.quote("Charset"),
-                self.identifier_preparer.quote("Collation"),
-            )
-        ).scalar()
-        has_utf8mb4_bin = self.server_version_info > (5,) and collation
-        if has_utf8mb4_bin:
-            additional_tests = [
-                sql.collate(
-                    sql.cast(
-                        sql.literal_column("'test collated returns'"),
-                        TEXT(charset="utf8mb4"),
-                    ),
-                    "utf8mb4_bin",
-                )
-            ]
-        else:
-            additional_tests = []
-        return super()._check_unicode_returns(connection, additional_tests)
-
-    def create_connect_args(self, url, _translate_args=None):
+    def create_connect_args(
+        self, url: URL, _translate_args: Optional[dict[str, Any]] = None
+    ) -> ConnectArgsType:
         if _translate_args is None:
             _translate_args = dict(
                 database="db", username="user", password="passwd"
@@ -217,7 +211,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
         util.coerce_kw_type(opts, "read_timeout", int)
         util.coerce_kw_type(opts, "write_timeout", int)
         util.coerce_kw_type(opts, "client_flag", int)
-        util.coerce_kw_type(opts, "local_infile", int)
+        util.coerce_kw_type(opts, "local_infile", bool)
         # Note: using either of the below will cause all strings to be
         # returned as Unicode, both in raw SQL operations and with column
         # types like String and MSString.
@@ -252,9 +246,9 @@ class MySQLDialect_mysqldb(MySQLDialect):
         if client_flag_found_rows is not None:
             client_flag |= client_flag_found_rows
             opts["client_flag"] = client_flag
-        return [[], opts]
+        return [], opts
 
-    def _found_rows_client_flag(self):
+    def _found_rows_client_flag(self) -> Optional[int]:
         if self.dbapi is not None:
             try:
                 CLIENT_FLAGS = __import__(
@@ -263,20 +257,23 @@ class MySQLDialect_mysqldb(MySQLDialect):
             except (AttributeError, ImportError):
                 return None
             else:
-                return CLIENT_FLAGS.FOUND_ROWS
+                return CLIENT_FLAGS.FOUND_ROWS  # type: ignore
         else:
             return None
 
-    def _extract_error_code(self, exception):
-        return exception.args[0]
+    def _extract_error_code(self, exception: DBAPIModule.Error) -> int:
+        return exception.args[0]  # type: ignore[no-any-return]
 
-    def _detect_charset(self, connection):
+    def _detect_charset(self, connection: Connection) -> str:
         """Sniff out the character set in use for connection results."""
 
         try:
             # note: the SQL here would be
             # "SHOW VARIABLES LIKE 'character_set%%'"
-            cset_name = connection.connection.character_set_name
+
+            cset_name: Callable[[], str] = (
+                connection.connection.character_set_name
+            )
         except AttributeError:
             util.warn(
                 "No 'character_set_name' can be detected with "
@@ -288,7 +285,9 @@ class MySQLDialect_mysqldb(MySQLDialect):
         else:
             return cset_name()
 
-    def get_isolation_level_values(self, dbapi_connection):
+    def get_isolation_level_values(
+        self, dbapi_conn: DBAPIConnection
+    ) -> tuple[IsolationLevel, ...]:
         return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
@@ -297,7 +296,9 @@ class MySQLDialect_mysqldb(MySQLDialect):
             "AUTOCOMMIT",
         )
 
-    def set_isolation_level(self, dbapi_connection, level):
+    def set_isolation_level(
+        self, dbapi_connection: DBAPIConnection, level: IsolationLevel
+    ) -> None:
         if level == "AUTOCOMMIT":
             dbapi_connection.autocommit(True)
         else:

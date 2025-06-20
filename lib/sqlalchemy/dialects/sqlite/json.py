@@ -1,3 +1,9 @@
+# dialects/sqlite/json.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from ... import types as sqltypes
@@ -25,9 +31,6 @@ class JSON(sqltypes.JSON):
     function wrapped in the ``JSON_QUOTE`` function at the database level.
     Extracted values are quoted in order to ensure that the results are
     always JSON string values.
-
-
-    .. versionadded:: 1.3
 
 
     .. _JSON1: https://www.sqlite.org/json1.html

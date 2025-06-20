@@ -3222,7 +3222,7 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
             name = Column(String(20))
 
             children = relationship(
-                "Child", back_populates="parent", lazy="noload"
+                "Child", back_populates="parent", lazy="raise"
             )
 
         class Child(ComparableEntity, Base):
@@ -3759,3 +3759,81 @@ class Issue6149Test(fixtures.DeclarativeMappedTest):
                 ),
             )
             s.close()
+
+
+class Issue11173Test(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class SubItem(Base):
+            __tablename__ = "sub_items"
+
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            item_id = Column(Integer, ForeignKey("items.id"))
+            name = Column(String(50))
+            number = Column(Integer)
+
+        class Item(Base):
+            __tablename__ = "items"
+
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            name = Column(String(50))
+            number = Column(Integer)
+            sub_items = relationship("SubItem", backref="item")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Item, SubItem = cls.classes("Item", "SubItem")
+
+        with Session(connection) as sess:
+            number_of_items = 50
+            number_of_sub_items = 5
+
+            items = [
+                Item(name=f"Item:{i}", number=i)
+                for i in range(number_of_items)
+            ]
+            sess.add_all(items)
+            for item in items:
+                item.sub_items = [
+                    SubItem(name=f"SubItem:{item.id}:{i}", number=i)
+                    for i in range(number_of_sub_items)
+                ]
+            sess.commit()
+
+    @testing.variation("use_in", [True, False])
+    def test_multiple_queries(self, use_in):
+        Item, SubItem = self.classes("Item", "SubItem")
+
+        for sub_item_number in (1, 2, 3):
+            s = fixture_session()
+            base_query = s.query(Item)
+
+            base_query = base_query.filter(Item.number > 5, Item.number <= 10)
+
+            if use_in:
+                base_query = base_query.options(
+                    subqueryload(
+                        Item.sub_items.and_(
+                            SubItem.number.in_([sub_item_number, 18, 12])
+                        )
+                    )
+                )
+            else:
+                base_query = base_query.options(
+                    subqueryload(
+                        Item.sub_items.and_(SubItem.number == sub_item_number)
+                    )
+                )
+
+            items = list(base_query)
+
+            eq_(len(items), 5)
+
+            for item in items:
+                sub_items = list(item.sub_items)
+                eq_(len(sub_items), 1)
+
+                for sub_item in sub_items:
+                    eq_(sub_item.number, sub_item_number)

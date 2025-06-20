@@ -1,5 +1,5 @@
 # orm/unitofwork.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -32,7 +32,7 @@ from ..util import topological
 
 
 if TYPE_CHECKING:
-    from .dependency import DependencyProcessor
+    from .dependency import _DependencyProcessor
     from .interfaces import MapperProperty
     from .mapper import Mapper
     from .session import Session
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from .state import InstanceState
 
 
-def track_cascade_events(descriptor, prop):
+def _track_cascade_events(descriptor, prop):
     """Establish event listeners on object attributes which handle
     cascade-on-set/append.
 
@@ -155,10 +155,12 @@ def track_cascade_events(descriptor, prop):
 
 
 class UOWTransaction:
+    """Manages the internal state of a unit of work flush operation."""
+
     session: Session
     transaction: SessionTransaction
     attributes: Dict[str, Any]
-    deps: util.defaultdict[Mapper[Any], Set[DependencyProcessor]]
+    deps: util.defaultdict[Mapper[Any], Set[_DependencyProcessor]]
     mappers: util.defaultdict[Mapper[Any], Set[InstanceState[Any]]]
 
     def __init__(self, session: Session):
@@ -301,7 +303,7 @@ class UOWTransaction:
     def register_preprocessor(self, processor, fromparent):
         key = (processor, fromparent)
         if key not in self.presort_actions:
-            self.presort_actions[key] = Preprocess(processor, fromparent)
+            self.presort_actions[key] = _Preprocess(processor, fromparent)
 
     def register_object(
         self,
@@ -344,8 +346,8 @@ class UOWTransaction:
         cols.update(post_update_cols)
 
     def _per_mapper_flush_actions(self, mapper):
-        saves = SaveUpdateAll(self, mapper.base_mapper)
-        deletes = DeleteAll(self, mapper.base_mapper)
+        saves = _SaveUpdateAll(self, mapper.base_mapper)
+        deletes = _DeleteAll(self, mapper.base_mapper)
         self.dependencies.add((saves, deletes))
 
         for dep in mapper._dependency_processors:
@@ -487,7 +489,7 @@ class UOWTransaction:
             self.session._register_persistent(other)
 
 
-class IterateMappersMixin:
+class _IterateMappersMixin:
     __slots__ = ()
 
     def _mappers(self, uow):
@@ -501,7 +503,7 @@ class IterateMappersMixin:
             return self.dependency_processor.mapper.self_and_descendants
 
 
-class Preprocess(IterateMappersMixin):
+class _Preprocess(_IterateMappersMixin):
     __slots__ = (
         "dependency_processor",
         "fromparent",
@@ -551,7 +553,7 @@ class Preprocess(IterateMappersMixin):
             return False
 
 
-class PostSortRec:
+class _PostSortRec:
     __slots__ = ("disabled",)
 
     def __new__(cls, uow, *args):
@@ -567,7 +569,7 @@ class PostSortRec:
         self.execute(uow)
 
 
-class ProcessAll(IterateMappersMixin, PostSortRec):
+class _ProcessAll(_IterateMappersMixin, _PostSortRec):
     __slots__ = "dependency_processor", "isdelete", "fromparent", "sort_key"
 
     def __init__(self, uow, dependency_processor, isdelete, fromparent):
@@ -612,7 +614,7 @@ class ProcessAll(IterateMappersMixin, PostSortRec):
                     yield state
 
 
-class PostUpdateAll(PostSortRec):
+class _PostUpdateAll(_PostSortRec):
     __slots__ = "mapper", "isdelete", "sort_key"
 
     def __init__(self, uow, mapper, isdelete):
@@ -626,10 +628,10 @@ class PostUpdateAll(PostSortRec):
         states, cols = uow.post_update_states[self.mapper]
         states = [s for s in states if uow.states[s][0] == self.isdelete]
 
-        persistence.post_update(self.mapper, states, uow, cols)
+        persistence._post_update(self.mapper, states, uow, cols)
 
 
-class SaveUpdateAll(PostSortRec):
+class _SaveUpdateAll(_PostSortRec):
     __slots__ = ("mapper", "sort_key")
 
     def __init__(self, uow, mapper):
@@ -639,7 +641,7 @@ class SaveUpdateAll(PostSortRec):
 
     @util.preload_module("sqlalchemy.orm.persistence")
     def execute(self, uow):
-        util.preloaded.orm_persistence.save_obj(
+        util.preloaded.orm_persistence._save_obj(
             self.mapper,
             uow.states_for_mapper_hierarchy(self.mapper, False, False),
             uow,
@@ -650,11 +652,11 @@ class SaveUpdateAll(PostSortRec):
             uow.states_for_mapper_hierarchy(self.mapper, False, False)
         )
         base_mapper = self.mapper.base_mapper
-        delete_all = DeleteAll(uow, base_mapper)
+        delete_all = _DeleteAll(uow, base_mapper)
         for state in states:
             # keep saves before deletes -
             # this ensures 'row switch' operations work
-            action = SaveUpdateState(uow, state)
+            action = _SaveUpdateState(uow, state)
             uow.dependencies.add((action, delete_all))
             yield action
 
@@ -666,7 +668,7 @@ class SaveUpdateAll(PostSortRec):
         return "%s(%s)" % (self.__class__.__name__, self.mapper)
 
 
-class DeleteAll(PostSortRec):
+class _DeleteAll(_PostSortRec):
     __slots__ = ("mapper", "sort_key")
 
     def __init__(self, uow, mapper):
@@ -676,7 +678,7 @@ class DeleteAll(PostSortRec):
 
     @util.preload_module("sqlalchemy.orm.persistence")
     def execute(self, uow):
-        util.preloaded.orm_persistence.delete_obj(
+        util.preloaded.orm_persistence._delete_obj(
             self.mapper,
             uow.states_for_mapper_hierarchy(self.mapper, True, False),
             uow,
@@ -687,11 +689,11 @@ class DeleteAll(PostSortRec):
             uow.states_for_mapper_hierarchy(self.mapper, True, False)
         )
         base_mapper = self.mapper.base_mapper
-        save_all = SaveUpdateAll(uow, base_mapper)
+        save_all = _SaveUpdateAll(uow, base_mapper)
         for state in states:
             # keep saves before deletes -
             # this ensures 'row switch' operations work
-            action = DeleteState(uow, state)
+            action = _DeleteState(uow, state)
             uow.dependencies.add((save_all, action))
             yield action
 
@@ -703,7 +705,7 @@ class DeleteAll(PostSortRec):
         return "%s(%s)" % (self.__class__.__name__, self.mapper)
 
 
-class ProcessState(PostSortRec):
+class _ProcessState(_PostSortRec):
     __slots__ = "dependency_processor", "isdelete", "state", "sort_key"
 
     def __init__(self, uow, dependency_processor, isdelete, state):
@@ -739,7 +741,7 @@ class ProcessState(PostSortRec):
         )
 
 
-class SaveUpdateState(PostSortRec):
+class _SaveUpdateState(_PostSortRec):
     __slots__ = "state", "mapper", "sort_key"
 
     def __init__(self, uow, state):
@@ -756,7 +758,7 @@ class SaveUpdateState(PostSortRec):
             r for r in recs if r.__class__ is cls_ and r.mapper is mapper
         ]
         recs.difference_update(our_recs)
-        persistence.save_obj(
+        persistence._save_obj(
             mapper, [self.state] + [r.state for r in our_recs], uow
         )
 
@@ -767,7 +769,7 @@ class SaveUpdateState(PostSortRec):
         )
 
 
-class DeleteState(PostSortRec):
+class _DeleteState(_PostSortRec):
     __slots__ = "state", "mapper", "sort_key"
 
     def __init__(self, uow, state):
@@ -785,7 +787,7 @@ class DeleteState(PostSortRec):
         ]
         recs.difference_update(our_recs)
         states = [self.state] + [r.state for r in our_recs]
-        persistence.delete_obj(
+        persistence._delete_obj(
             mapper, [s for s in states if uow.states[s][0]], uow
         )
 

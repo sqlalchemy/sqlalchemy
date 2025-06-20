@@ -141,7 +141,7 @@ attribute is used on the newly defined class.
    :func:`_orm.mapped_column`.
 
 .. versionchanged:: 2.0 For users coming from the 1.4 series of SQLAlchemy
-   who may have been using the :ref:`mypy plugin <mypy_toplevel>`, the
+   who may have been using the ``mypy plugin``, the
    :func:`_orm.declarative_mixin` class decorator is no longer needed
    to mark declarative mixins, assuming the mypy plugin is no longer in use.
 
@@ -152,7 +152,7 @@ Augmenting the Base
 In addition to using a pure mixin, most of the techniques in this
 section can also be applied to the base class directly, for patterns that
 should apply to all classes derived from a particular base.  The example
-below illustrates some of the the previous section's example in terms of the
+below illustrates some of the previous section's example in terms of the
 ``Base`` class::
 
     from sqlalchemy import ForeignKey
@@ -724,7 +724,7 @@ define on the class itself. The
 here to create user-defined collation routines that pull
 from multiple collections::
 
-    from sqlalchemy.orm import declarative_mixin, declared_attr
+    from sqlalchemy.orm import declared_attr
 
 
     class MySQLSettings:

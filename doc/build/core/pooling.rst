@@ -50,6 +50,13 @@ queued up - the pool would only grow to that size if the application
 actually used five connections concurrently, in which case the usage of a
 small pool is an entirely appropriate default behavior.
 
+.. note:: The :class:`.QueuePool` class is **not compatible with asyncio**.
+   When using :class:`_asyncio.create_async_engine` to create an instance of
+   :class:`.AsyncEngine`, the :class:`_pool.AsyncAdaptedQueuePool` class,
+   which makes use of an asyncio-compatible queue implementation, is used
+   instead.
+
+
 .. _pool_switching:
 
 Switching Pool Implementations
@@ -502,30 +509,32 @@ particular error should be considered a "disconnect" situation or not, as well
 as if this disconnect should cause the entire connection pool to be invalidated
 or not.
 
-For example, to add support to consider the Oracle error codes
-``DPY-1001`` and ``DPY-4011`` to be handled as disconnect codes, apply an
-event handler to the engine after creation::
+For example, to add support to consider the Oracle Database driver error codes
+``DPY-1001`` and ``DPY-4011`` to be handled as disconnect codes, apply an event
+handler to the engine after creation::
 
     import re
 
     from sqlalchemy import create_engine
 
-    engine = create_engine("oracle://scott:tiger@dnsname")
+    engine = create_engine(
+        "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1"
+    )
 
 
     @event.listens_for(engine, "handle_error")
     def handle_exception(context: ExceptionContext) -> None:
         if not context.is_disconnect and re.match(
-            r"^(?:DPI-1001|DPI-4011)", str(context.original_exception)
+            r"^(?:DPY-1001|DPY-4011)", str(context.original_exception)
         ):
             context.is_disconnect = True
 
         return None
 
-The above error processing function will be invoked for all Oracle errors
-raised, including those caught when using the
-:ref:`pool pre ping <pool_disconnects_pessimistic>` feature for those backends
-that rely upon disconnect error handling (new in 2.0).
+The above error processing function will be invoked for all Oracle Database
+errors raised, including those caught when using the :ref:`pool pre ping
+<pool_disconnects_pessimistic>` feature for those backends that rely upon
+disconnect error handling (new in 2.0).
 
 .. seealso::
 
@@ -549,15 +558,13 @@ close these connections out.   The difference between FIFO and LIFO is
 basically whether or not its desirable for the pool to keep a full set of
 connections ready to go even during idle periods::
 
-    engine = create_engine("postgreql://", pool_use_lifo=True, pool_pre_ping=True)
+    engine = create_engine("postgresql://", pool_use_lifo=True, pool_pre_ping=True)
 
 Above, we also make use of the :paramref:`_sa.create_engine.pool_pre_ping` flag
 so that connections which are closed from the server side are gracefully
 handled by the connection pool and replaced with a new connection.
 
 Note that the flag only applies to :class:`.QueuePool` use.
-
-.. versionadded:: 1.3
 
 .. seealso::
 
@@ -713,6 +720,8 @@ like in the following example::
 
     my_pool = create_pool_from_url("mysql+mysqldb://", poolclass=NullPool)
 
+.. _pool_api:
+
 API Documentation - Available Pool Implementations
 --------------------------------------------------
 
@@ -720,6 +729,9 @@ API Documentation - Available Pool Implementations
     :members:
 
 .. autoclass:: sqlalchemy.pool.QueuePool
+    :members:
+
+.. autoclass:: sqlalchemy.pool.AsyncAdaptedQueuePool
     :members:
 
 .. autoclass:: SingletonThreadPool
@@ -748,4 +760,3 @@ API Documentation - Available Pool Implementations
 .. autoclass:: _ConnectionFairy
 
 .. autoclass:: _ConnectionRecord
-

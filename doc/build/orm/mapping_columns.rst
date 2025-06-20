@@ -4,6 +4,6 @@ Mapping Table Columns
 =====================
 
 This section has been integrated into the
-:ref:`orm_declarative_table_config_toplevel` Declarative section.
+:ref:`orm_declarative_table_config_toplevel` section.
 
 

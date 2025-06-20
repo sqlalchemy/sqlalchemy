@@ -1,5 +1,5 @@
 # event/registry.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -66,9 +66,9 @@ _RefCollectionToListenerType = Dict[
     "weakref.ref[_ListenerFnType]",
 ]
 
-_key_to_collection: Dict[
-    _EventKeyTupleType, _RefCollectionToListenerType
-] = collections.defaultdict(dict)
+_key_to_collection: Dict[_EventKeyTupleType, _RefCollectionToListenerType] = (
+    collections.defaultdict(dict)
+)
 """
 Given an original listen() argument, can locate all
 listener collections and the listener fn contained
@@ -154,7 +154,11 @@ def _removed_from_collection(
 
     if owner_ref in _collection_to_key:
         listener_to_key = _collection_to_key[owner_ref]
-        listener_to_key.pop(listen_ref)
+        # see #12216 - this guards against a removal that already occurred
+        # here. however, I cannot come up with a test that shows any negative
+        # side effects occurring from this removal happening, even though an
+        # event key may still be referenced from a clsleveldispatch here
+        listener_to_key.pop(listen_ref, None)
 
 
 def _stored_in_collection_multi(

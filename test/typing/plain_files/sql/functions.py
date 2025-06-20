@@ -2,124 +2,168 @@
 
 from sqlalchemy import column
 from sqlalchemy import func
+from sqlalchemy import Integer
+from sqlalchemy import Select
 from sqlalchemy import select
+from sqlalchemy import Sequence
+from sqlalchemy import String
 
 # START GENERATED FUNCTION TYPING TESTS
 
 # code within this block is **programmatically,
 # statically generated** by tools/generate_sql_functions.py
 
-stmt1 = select(func.aggregate_strings(column("x"), column("x")))
+stmt1 = select(func.aggregate_strings(column("x", String), ","))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*str\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
 reveal_type(stmt1)
 
 
-stmt2 = select(func.char_length(column("x")))
+stmt2 = select(func.array_agg(column("x", Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*int\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*Sequence\[.*int\]\]
 reveal_type(stmt2)
 
 
-stmt3 = select(func.concat())
+stmt3 = select(func.char_length(column("x")))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*str\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt3)
 
 
-stmt4 = select(func.count(column("x")))
+stmt4 = select(func.coalesce(column("x", Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*int\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt4)
 
 
-stmt5 = select(func.cume_dist())
+stmt5 = select(func.concat())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*Decimal\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
 reveal_type(stmt5)
 
 
-stmt6 = select(func.current_date())
+stmt6 = select(func.count(column("x")))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*date\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt6)
 
 
-stmt7 = select(func.current_time())
+stmt7 = select(func.cume_dist())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*time\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*Decimal\]
 reveal_type(stmt7)
 
 
-stmt8 = select(func.current_timestamp())
+stmt8 = select(func.current_date())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*datetime\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*date\]
 reveal_type(stmt8)
 
 
-stmt9 = select(func.current_user())
+stmt9 = select(func.current_time())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*str\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*time\]
 reveal_type(stmt9)
 
 
-stmt10 = select(func.dense_rank())
+stmt10 = select(func.current_timestamp())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*int\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*datetime\]
 reveal_type(stmt10)
 
 
-stmt11 = select(func.localtime())
+stmt11 = select(func.current_user())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*datetime\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
 reveal_type(stmt11)
 
 
-stmt12 = select(func.localtimestamp())
+stmt12 = select(func.dense_rank())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*datetime\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt12)
 
 
-stmt13 = select(func.next_value(column("x")))
+stmt13 = select(func.localtime())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*int\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*datetime\]
 reveal_type(stmt13)
 
 
-stmt14 = select(func.now())
+stmt14 = select(func.localtimestamp())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*datetime\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*datetime\]
 reveal_type(stmt14)
 
 
-stmt15 = select(func.percent_rank())
+stmt15 = select(func.max(column("x", Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*Decimal\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt15)
 
 
-stmt16 = select(func.rank())
+stmt16 = select(func.min(column("x", Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*int\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt16)
 
 
-stmt17 = select(func.session_user())
+stmt17 = select(func.next_value(Sequence("x_seq")))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*str\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt17)
 
 
-stmt18 = select(func.sysdate())
+stmt18 = select(func.now())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*datetime\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*datetime\]
 reveal_type(stmt18)
 
 
-stmt19 = select(func.user())
+stmt19 = select(func.percent_rank())
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*str\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*Decimal\]
 reveal_type(stmt19)
 
+
+stmt20 = select(func.pow(column("x", Integer)))
+
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
+reveal_type(stmt20)
+
+
+stmt21 = select(func.rank())
+
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
+reveal_type(stmt21)
+
+
+stmt22 = select(func.session_user())
+
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
+reveal_type(stmt22)
+
+
+stmt23 = select(func.sum(column("x", Integer)))
+
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
+reveal_type(stmt23)
+
+
+stmt24 = select(func.sysdate())
+
+# EXPECTED_RE_TYPE: .*Select\[.*datetime\]
+reveal_type(stmt24)
+
+
+stmt25 = select(func.user())
+
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
+reveal_type(stmt25)
+
 # END GENERATED FUNCTION TYPING TESTS
+
+stmt_count: Select[int, int, int] = select(
+    func.count(), func.count("*"), func.count(1)
+)

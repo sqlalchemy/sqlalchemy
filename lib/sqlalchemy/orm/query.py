@@ -1,5 +1,5 @@
 # orm/query.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -49,8 +49,8 @@ from .base import _assertions
 from .context import _column_descriptions
 from .context import _determine_last_joined_entity
 from .context import _legacy_filter_by_entity_zero
+from .context import _ORMCompileState
 from .context import FromStatement
-from .context import ORMCompileState
 from .context import QueryContext
 from .interfaces import ORMColumnDescription
 from .interfaces import ORMColumnsClauseRole
@@ -74,7 +74,6 @@ from ..sql import Select
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql._typing import _FromClauseArgument
-from ..sql._typing import _TP
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
@@ -91,8 +90,13 @@ from ..sql.selectable import HasPrefixes
 from ..sql.selectable import HasSuffixes
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectLabelStyle
+from ..util import deprecated
+from ..util import warn_deprecated
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TupleAny
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 
 if TYPE_CHECKING:
@@ -134,6 +138,8 @@ if TYPE_CHECKING:
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import CacheableOptions
     from ..sql.base import ExecutableOption
+    from ..sql.base import SyntaxExtension
+    from ..sql.dml import UpdateBase
     from ..sql.elements import ColumnElement
     from ..sql.elements import Label
     from ..sql.selectable import _ForUpdateOfArgument
@@ -150,6 +156,7 @@ if TYPE_CHECKING:
 __all__ = ["Query", "QueryContext"]
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 @inspection._self_inspects
@@ -166,7 +173,6 @@ class Query(
     Executable,
     Generic[_T],
 ):
-
     """ORM-level SQL construction object.
 
     .. legacy:: The ORM :class:`.Query` object is a legacy construct
@@ -205,9 +211,11 @@ class Query(
 
     _memoized_select_entities = ()
 
-    _compile_options: Union[
-        Type[CacheableOptions], CacheableOptions
-    ] = ORMCompileState.default_compile_options
+    _syntax_extensions: Tuple[SyntaxExtension, ...] = ()
+
+    _compile_options: Union[Type[CacheableOptions], CacheableOptions] = (
+        _ORMCompileState.default_compile_options
+    )
 
     _with_options: Tuple[ExecutableOption, ...]
     load_options = QueryContext.default_load_options + {
@@ -295,6 +303,11 @@ class Query(
             for ent in util.to_list(entities)
         ]
 
+    @deprecated(
+        "2.1.0",
+        "The :meth:`.Query.tuples` method is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
     def tuples(self: Query[_O]) -> Query[Tuple[_O]]:
         """return a tuple-typed form of this :class:`.Query`.
 
@@ -315,6 +328,9 @@ class Query(
         .. versionadded:: 2.0
 
         .. seealso::
+
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
 
             :meth:`.Result.tuples` - v2 equivalent method.
 
@@ -357,9 +373,8 @@ class Query(
     ) -> None:
         fa = [
             coercions.expect(
-                roles.StrictFromClauseRole,
+                roles.FromClauseRole,
                 elem,
-                allow_select=True,
                 apply_propagate_attrs=self,
             )
             for elem in obj
@@ -493,7 +508,7 @@ class Query(
         return cast("Select[_T]", self.statement)
 
     @property
-    def statement(self) -> Union[Select[_T], FromStatement[_T]]:
+    def statement(self) -> Union[Select[_T], FromStatement[_T], UpdateBase]:
         """The full SELECT statement represented by this Query.
 
         The statement by default will not have disambiguating labels
@@ -521,6 +536,8 @@ class Query(
         # from there, it starts to look much like Query itself won't be
         # passed into the execute process and won't generate its own cache
         # key; this will all occur in terms of the ORM-enabled Select.
+        stmt: Union[Select[_T], FromStatement[_T], UpdateBase]
+
         if not self._compile_options._set_base_alias:
             # if we don't have legacy top level aliasing features in use
             # then convert to a future select() directly
@@ -533,7 +550,9 @@ class Query(
 
         return stmt
 
-    def _final_statement(self, legacy_query_style: bool = True) -> Select[Any]:
+    def _final_statement(
+        self, legacy_query_style: bool = True
+    ) -> Select[Unpack[TupleAny]]:
         """Return the 'final' SELECT statement for this :class:`.Query`.
 
         This is used by the testing suite only and is fairly inefficient.
@@ -577,7 +596,7 @@ class Query(
             stmt = FromStatement(self._raw_columns, self._statement)
             stmt.__dict__.update(
                 _with_options=self._with_options,
-                _with_context_options=self._with_context_options,
+                _with_context_options=self._compile_state_funcs,
                 _compile_options=compile_options,
                 _execution_options=self._execution_options,
                 _propagate_attrs=self._propagate_attrs,
@@ -585,11 +604,14 @@ class Query(
         else:
             # Query / select() internal attributes are 99% cross-compatible
             stmt = Select._create_raw_select(**self.__dict__)
+
             stmt.__dict__.update(
                 _label_style=self._label_style,
                 _compile_options=compile_options,
                 _propagate_attrs=self._propagate_attrs,
             )
+            for ext in self._syntax_extensions:
+                stmt._apply_syntax_extension_to_self(ext)
             stmt.__dict__.pop("session", None)
 
         # ensure the ORM context is used to compile the statement, even
@@ -673,41 +695,38 @@ class Query(
 
             from sqlalchemy.orm import aliased
 
+
             class Part(Base):
-                __tablename__ = 'part'
+                __tablename__ = "part"
                 part = Column(String, primary_key=True)
                 sub_part = Column(String, primary_key=True)
                 quantity = Column(Integer)
 
-            included_parts = session.query(
-                            Part.sub_part,
-                            Part.part,
-                            Part.quantity).\
-                                filter(Part.part=="our part").\
-                                cte(name="included_parts", recursive=True)
+
+            included_parts = (
+                session.query(Part.sub_part, Part.part, Part.quantity)
+                .filter(Part.part == "our part")
+                .cte(name="included_parts", recursive=True)
+            )
 
             incl_alias = aliased(included_parts, name="pr")
             parts_alias = aliased(Part, name="p")
             included_parts = included_parts.union_all(
                 session.query(
-                    parts_alias.sub_part,
-                    parts_alias.part,
-                    parts_alias.quantity).\
-                        filter(parts_alias.part==incl_alias.c.sub_part)
-                )
+                    parts_alias.sub_part, parts_alias.part, parts_alias.quantity
+                ).filter(parts_alias.part == incl_alias.c.sub_part)
+            )
 
             q = session.query(
-                    included_parts.c.sub_part,
-                    func.sum(included_parts.c.quantity).
-                        label('total_quantity')
-                ).\
-                group_by(included_parts.c.sub_part)
+                included_parts.c.sub_part,
+                func.sum(included_parts.c.quantity).label("total_quantity"),
+            ).group_by(included_parts.c.sub_part)
 
         .. seealso::
 
             :meth:`_sql.Select.cte` - v2 equivalent method.
 
-        """
+        """  # noqa: E501
         return (
             self.enable_eagerloads(False)
             ._get_select_statement_only()
@@ -732,20 +751,17 @@ class Query(
         )
 
     @overload
-    def as_scalar(
+    def as_scalar(  # type: ignore[overload-overlap]
         self: Query[Tuple[_MAYBE_ENTITY]],
-    ) -> ScalarSelect[_MAYBE_ENTITY]:
-        ...
+    ) -> ScalarSelect[_MAYBE_ENTITY]: ...
 
     @overload
     def as_scalar(
         self: Query[Tuple[_NOT_ENTITY]],
-    ) -> ScalarSelect[_NOT_ENTITY]:
-        ...
+    ) -> ScalarSelect[_NOT_ENTITY]: ...
 
     @overload
-    def as_scalar(self) -> ScalarSelect[Any]:
-        ...
+    def as_scalar(self) -> ScalarSelect[Any]: ...
 
     @util.deprecated(
         "1.4",
@@ -763,18 +779,15 @@ class Query(
     @overload
     def scalar_subquery(
         self: Query[Tuple[_MAYBE_ENTITY]],
-    ) -> ScalarSelect[Any]:
-        ...
+    ) -> ScalarSelect[Any]: ...
 
     @overload
     def scalar_subquery(
         self: Query[Tuple[_NOT_ENTITY]],
-    ) -> ScalarSelect[_NOT_ENTITY]:
-        ...
+    ) -> ScalarSelect[_NOT_ENTITY]: ...
 
     @overload
-    def scalar_subquery(self) -> ScalarSelect[Any]:
-        ...
+    def scalar_subquery(self) -> ScalarSelect[Any]: ...
 
     def scalar_subquery(self) -> ScalarSelect[Any]:
         """Return the full SELECT statement represented by this
@@ -799,7 +812,7 @@ class Query(
         )
 
     @property
-    def selectable(self) -> Union[Select[_T], FromStatement[_T]]:
+    def selectable(self) -> Union[Select[_T], FromStatement[_T], UpdateBase]:
         """Return the :class:`_expression.Select` object emitted by this
         :class:`_query.Query`.
 
@@ -810,7 +823,9 @@ class Query(
         """
         return self.__clause_element__()
 
-    def __clause_element__(self) -> Union[Select[_T], FromStatement[_T]]:
+    def __clause_element__(
+        self,
+    ) -> Union[Select[_T], FromStatement[_T], UpdateBase]:
         return (
             self._with_compile_options(
                 _enable_eagerloads=False, _render_for_subquery=True
@@ -822,14 +837,12 @@ class Query(
     @overload
     def only_return_tuples(
         self: Query[_O], value: Literal[True]
-    ) -> RowReturningQuery[Tuple[_O]]:
-        ...
+    ) -> RowReturningQuery[_O]: ...
 
     @overload
     def only_return_tuples(
         self: Query[_O], value: Literal[False]
-    ) -> Query[_O]:
-        ...
+    ) -> Query[_O]: ...
 
     @_generative
     def only_return_tuples(self, value: bool) -> Query[Any]:
@@ -860,8 +873,6 @@ class Query(
         Returns True if this query returns a single entity for each instance
         in its result list, and False if this query returns a tuple of entities
         for each result.
-
-        .. versionadded:: 1.3.11
 
         .. seealso::
 
@@ -950,9 +961,7 @@ class Query(
            :attr:`_query.Query.statement` using :meth:`.Session.execute`::
 
                 result = session.execute(
-                    query
-                    .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-                    .statement
+                    query.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).statement
                 )
 
         .. versionadded:: 1.4
@@ -1061,8 +1070,7 @@ class Query(
 
             some_object = session.query(VersionedFoo).get((5, 10))
 
-            some_object = session.query(VersionedFoo).get(
-                {"id": 5, "version_id": 10})
+            some_object = session.query(VersionedFoo).get({"id": 5, "version_id": 10})
 
         :meth:`_query.Query.get` is special in that it provides direct
         access to the identity map of the owning :class:`.Session`.
@@ -1120,20 +1128,14 @@ class Query(
 
             my_object = query.get({"id": 5, "version_id": 10})
 
-         .. versionadded:: 1.3 the :meth:`_query.Query.get`
-            method now optionally
-            accepts a dictionary of attribute names to values in order to
-            indicate a primary key identifier.
-
-
         :return: The object instance, or ``None``.
 
-        """
+        """  # noqa: E501
         self._no_criterion_assertion("get", order_by=False, distinct=False)
 
         # we still implement _get_impl() so that baked query can override
         # it
-        return self._get_impl(ident, loading.load_on_pk_identity)
+        return self._get_impl(ident, loading._load_on_pk_identity)
 
     def _get_impl(
         self,
@@ -1422,6 +1424,7 @@ class Query(
             "_having_criteria",
             "_prefixes",
             "_suffixes",
+            "_syntax_extensions",
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from([fromclause], set_entity_from)
@@ -1475,15 +1478,13 @@ class Query(
             return None
 
     @overload
-    def with_entities(self, _entity: _EntityType[_O]) -> Query[_O]:
-        ...
+    def with_entities(self, _entity: _EntityType[_O]) -> Query[_O]: ...
 
     @overload
     def with_entities(
         self,
         _colexpr: roles.TypedColumnsClauseRole[_T],
-    ) -> RowReturningQuery[Tuple[_T]]:
-        ...
+    ) -> RowReturningQuery[Tuple[_T]]: ...
 
     # START OVERLOADED FUNCTIONS self.with_entities RowReturningQuery 2-8
 
@@ -1492,15 +1493,13 @@ class Query(
 
     @overload
     def with_entities(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
-    ) -> RowReturningQuery[Tuple[_T0, _T1]]:
-        ...
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
+    ) -> RowReturningQuery[_T0, _T1]: ...
 
     @overload
     def with_entities(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2]]:
-        ...
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
+    ) -> RowReturningQuery[_T0, _T1, _T2]: ...
 
     @overload
     def with_entities(
@@ -1509,8 +1508,8 @@ class Query(
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3]]:
-        ...
+        /,
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3]: ...
 
     @overload
     def with_entities(
@@ -1520,8 +1519,8 @@ class Query(
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4]]:
-        ...
+        /,
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]: ...
 
     @overload
     def with_entities(
@@ -1532,8 +1531,8 @@ class Query(
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
-        ...
+        /,
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
     @overload
     def with_entities(
@@ -1545,8 +1544,8 @@ class Query(
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
-        ...
+        /,
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
     @overload
     def with_entities(
@@ -1559,16 +1558,18 @@ class Query(
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
-        ...
+        /,
+        *entities: _ColumnsClauseArgument[Any],
+    ) -> RowReturningQuery[
+        _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+    ]: ...
 
     # END OVERLOADED FUNCTIONS self.with_entities
 
     @overload
     def with_entities(
         self, *entities: _ColumnsClauseArgument[Any]
-    ) -> Query[Any]:
-        ...
+    ) -> Query[Any]: ...
 
     @_generative
     def with_entities(
@@ -1582,19 +1583,22 @@ class Query(
 
             # Users, filtered on some arbitrary criterion
             # and then ordered by related email address
-            q = session.query(User).\
-                        join(User.address).\
-                        filter(User.name.like('%ed%')).\
-                        order_by(Address.email)
+            q = (
+                session.query(User)
+                .join(User.address)
+                .filter(User.name.like("%ed%"))
+                .order_by(Address.email)
+            )
 
             # given *only* User.id==5, Address.email, and 'q', what
             # would the *next* User in the result be ?
-            subq = q.with_entities(Address.email).\
-                        order_by(None).\
-                        filter(User.id==5).\
-                        subquery()
-            q = q.join((subq, subq.c.email < Address.email)).\
-                        limit(1)
+            subq = (
+                q.with_entities(Address.email)
+                .order_by(None)
+                .filter(User.id == 5)
+                .subquery()
+            )
+            q = q.join((subq, subq.c.email < Address.email)).limit(1)
 
         .. seealso::
 
@@ -1690,9 +1694,11 @@ class Query(
             def filter_something(criterion):
                 def transform(q):
                     return q.filter(criterion)
+
                 return transform
 
-            q = q.with_transformation(filter_something(x==5))
+
+            q = q.with_transformation(filter_something(x == 5))
 
         This allows ad-hoc recipes to be created for :class:`_query.Query`
         objects.
@@ -1702,8 +1708,6 @@ class Query(
 
     def get_execution_options(self) -> _ImmutableExecuteOptions:
         """Get the non-SQL options which will take effect during execution.
-
-        .. versionadded:: 1.3
 
         .. seealso::
 
@@ -1725,17 +1729,17 @@ class Query(
         stream_results: bool = False,
         max_row_buffer: int = ...,
         yield_per: int = ...,
+        driver_column_names: bool = ...,
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         populate_existing: bool = False,
         autoflush: bool = False,
+        preserve_rowcount: bool = False,
         **opt: Any,
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     @overload
-    def execution_options(self, **opt: Any) -> Self:
-        ...
+    def execution_options(self, **opt: Any) -> Self: ...
 
     @_generative
     def execution_options(self, **kwargs: Any) -> Self:
@@ -1810,9 +1814,15 @@ class Query(
 
         E.g.::
 
-            q = sess.query(User).populate_existing().with_for_update(nowait=True, of=User)
+            q = (
+                sess.query(User)
+                .populate_existing()
+                .with_for_update(nowait=True, of=User)
+            )
 
-        The above query on a PostgreSQL backend will render like::
+        The above query on a PostgreSQL backend will render like:
+
+        .. sourcecode:: sql
 
             SELECT users.id AS users_id FROM users FOR UPDATE OF users NOWAIT
 
@@ -1854,7 +1864,7 @@ class Query(
 
     @_generative
     def params(
-        self, __params: Optional[Dict[str, Any]] = None, **kw: Any
+        self, __params: Optional[Dict[str, Any]] = None, /, **kw: Any
     ) -> Self:
         r"""Add values for bind parameters which may have been
         specified in filter().
@@ -1890,14 +1900,13 @@ class Query(
 
         e.g.::
 
-            session.query(MyClass).filter(MyClass.name == 'some name')
+            session.query(MyClass).filter(MyClass.name == "some name")
 
         Multiple criteria may be specified as comma separated; the effect
         is that they will be joined together using the :func:`.and_`
         function::
 
-            session.query(MyClass).\
-                filter(MyClass.name == 'some name', MyClass.id > 5)
+            session.query(MyClass).filter(MyClass.name == "some name", MyClass.id > 5)
 
         The criterion is any SQL expression object applicable to the
         WHERE clause of a select.   String expressions are coerced
@@ -1910,7 +1919,7 @@ class Query(
 
             :meth:`_sql.Select.where` - v2 equivalent method.
 
-        """
+        """  # noqa: E501
         for crit in list(criterion):
             crit = coercions.expect(
                 roles.WhereHavingRole, crit, apply_propagate_attrs=self
@@ -1978,14 +1987,13 @@ class Query(
 
         e.g.::
 
-            session.query(MyClass).filter_by(name = 'some name')
+            session.query(MyClass).filter_by(name="some name")
 
         Multiple criteria may be specified as comma separated; the effect
         is that they will be joined together using the :func:`.and_`
         function::
 
-            session.query(MyClass).\
-                filter_by(name = 'some name', id = 5)
+            session.query(MyClass).filter_by(name="some name", id=5)
 
         The keyword expressions are extracted from the primary
         entity of the query, or the last entity that was the
@@ -2013,6 +2021,7 @@ class Query(
             Literal[None, False, _NoArg.NO_ARG],
             _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
+        /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
         """Apply one or more ORDER BY criteria to the query and return
@@ -2064,6 +2073,7 @@ class Query(
             Literal[None, False, _NoArg.NO_ARG],
             _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
+        /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
         """Apply one or more GROUP BY criterion to the query and return
@@ -2112,10 +2122,12 @@ class Query(
         HAVING criterion makes it possible to use filters on aggregate
         functions like COUNT, SUM, AVG, MAX, and MIN, eg.::
 
-            q = session.query(User.id).\
-                        join(User.addresses).\
-                        group_by(User.id).\
-                        having(func.count(Address.id) > 2)
+            q = (
+                session.query(User.id)
+                .join(User.addresses)
+                .group_by(User.id)
+                .having(func.count(Address.id) > 2)
+            )
 
         .. seealso::
 
@@ -2139,8 +2151,8 @@ class Query(
 
         e.g.::
 
-            q1 = sess.query(SomeClass).filter(SomeClass.foo=='bar')
-            q2 = sess.query(SomeClass).filter(SomeClass.bar=='foo')
+            q1 = sess.query(SomeClass).filter(SomeClass.foo == "bar")
+            q2 = sess.query(SomeClass).filter(SomeClass.bar == "foo")
 
             q3 = q1.union(q2)
 
@@ -2149,7 +2161,9 @@ class Query(
 
             x.union(y).union(z).all()
 
-        will nest on each ``union()``, and produces::
+        will nest on each ``union()``, and produces:
+
+        .. sourcecode:: sql
 
             SELECT * FROM (SELECT * FROM (SELECT * FROM X UNION
                             SELECT * FROM y) UNION SELECT * FROM Z)
@@ -2158,7 +2172,9 @@ class Query(
 
             x.union(y, z).all()
 
-        produces::
+        produces:
+
+        .. sourcecode:: sql
 
             SELECT * FROM (SELECT * FROM X UNION SELECT * FROM y UNION
                             SELECT * FROM Z)
@@ -2270,7 +2286,9 @@ class Query(
             q = session.query(User).join(User.addresses)
 
         Where above, the call to :meth:`_query.Query.join` along
-        ``User.addresses`` will result in SQL approximately equivalent to::
+        ``User.addresses`` will result in SQL approximately equivalent to:
+
+        .. sourcecode:: sql
 
             SELECT user.id, user.name
             FROM user JOIN address ON user.id = address.user_id
@@ -2283,10 +2301,12 @@ class Query(
         calls may be used.  The relationship-bound attribute implies both
         the left and right side of the join at once::
 
-            q = session.query(User).\
-                    join(User.orders).\
-                    join(Order.items).\
-                    join(Item.keywords)
+            q = (
+                session.query(User)
+                .join(User.orders)
+                .join(Order.items)
+                .join(Item.keywords)
+            )
 
         .. note:: as seen in the above example, **the order in which each
            call to the join() method occurs is important**.    Query would not,
@@ -2325,7 +2345,7 @@ class Query(
         as the ON clause to be passed explicitly.    A example that includes
         a SQL expression as the ON clause is as follows::
 
-            q = session.query(User).join(Address, User.id==Address.user_id)
+            q = session.query(User).join(Address, User.id == Address.user_id)
 
         The above form may also use a relationship-bound attribute as the
         ON clause as well::
@@ -2340,11 +2360,13 @@ class Query(
             a1 = aliased(Address)
             a2 = aliased(Address)
 
-            q = session.query(User).\
-                    join(a1, User.addresses).\
-                    join(a2, User.addresses).\
-                    filter(a1.email_address=='ed@foo.com').\
-                    filter(a2.email_address=='ed@bar.com')
+            q = (
+                session.query(User)
+                .join(a1, User.addresses)
+                .join(a2, User.addresses)
+                .filter(a1.email_address == "ed@foo.com")
+                .filter(a2.email_address == "ed@bar.com")
+            )
 
         The relationship-bound calling form can also specify a target entity
         using the :meth:`_orm.PropComparator.of_type` method; a query
@@ -2353,11 +2375,13 @@ class Query(
             a1 = aliased(Address)
             a2 = aliased(Address)
 
-            q = session.query(User).\
-                    join(User.addresses.of_type(a1)).\
-                    join(User.addresses.of_type(a2)).\
-                    filter(a1.email_address == 'ed@foo.com').\
-                    filter(a2.email_address == 'ed@bar.com')
+            q = (
+                session.query(User)
+                .join(User.addresses.of_type(a1))
+                .join(User.addresses.of_type(a2))
+                .filter(a1.email_address == "ed@foo.com")
+                .filter(a2.email_address == "ed@bar.com")
+            )
 
         **Augmenting Built-in ON Clauses**
 
@@ -2368,7 +2392,7 @@ class Query(
         with the default criteria using AND::
 
             q = session.query(User).join(
-                User.addresses.and_(Address.email_address != 'foo@bar.com')
+                User.addresses.and_(Address.email_address != "foo@bar.com")
             )
 
         .. versionadded:: 1.4
@@ -2381,29 +2405,28 @@ class Query(
         appropriate ``.subquery()`` method in order to make a subquery
         out of a query::
 
-            subq = session.query(Address).\
-                filter(Address.email_address == 'ed@foo.com').\
-                subquery()
-
-
-            q = session.query(User).join(
-                subq, User.id == subq.c.user_id
+            subq = (
+                session.query(Address)
+                .filter(Address.email_address == "ed@foo.com")
+                .subquery()
             )
+
+
+            q = session.query(User).join(subq, User.id == subq.c.user_id)
 
         Joining to a subquery in terms of a specific relationship and/or
         target entity may be achieved by linking the subquery to the
         entity using :func:`_orm.aliased`::
 
-            subq = session.query(Address).\
-                filter(Address.email_address == 'ed@foo.com').\
-                subquery()
+            subq = (
+                session.query(Address)
+                .filter(Address.email_address == "ed@foo.com")
+                .subquery()
+            )
 
             address_subq = aliased(Address, subq)
 
-            q = session.query(User).join(
-                User.addresses.of_type(address_subq)
-            )
-
+            q = session.query(User).join(User.addresses.of_type(address_subq))
 
         **Controlling what to Join From**
 
@@ -2411,11 +2434,16 @@ class Query(
         :class:`_query.Query` is not in line with what we want to join from,
         the :meth:`_query.Query.select_from` method may be used::
 
-            q = session.query(Address).select_from(User).\
-                            join(User.addresses).\
-                            filter(User.name == 'ed')
+            q = (
+                session.query(Address)
+                .select_from(User)
+                .join(User.addresses)
+                .filter(User.name == "ed")
+            )
 
-        Which will produce SQL similar to::
+        Which will produce SQL similar to:
+
+        .. sourcecode:: sql
 
             SELECT address.* FROM user
                 JOIN address ON user.id=address.user_id
@@ -2519,11 +2547,16 @@ class Query(
 
         A typical example::
 
-            q = session.query(Address).select_from(User).\
-                join(User.addresses).\
-                filter(User.name == 'ed')
+            q = (
+                session.query(Address)
+                .select_from(User)
+                .join(User.addresses)
+                .filter(User.name == "ed")
+            )
 
-        Which produces SQL equivalent to::
+        Which produces SQL equivalent to:
+
+        .. sourcecode:: sql
 
             SELECT address.* FROM user
             JOIN address ON user.id=address.user_id
@@ -2655,17 +2688,44 @@ class Query(
          the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>)``
          construct.
 
-         .. deprecated:: 1.4 Using \*expr in other dialects is deprecated
-            and will raise :class:`_exc.CompileError` in a future version.
+         .. deprecated:: 2.1 Passing expressions to
+           :meth:`_orm.Query.distinct` is deprecated, use
+           :func:`_postgresql.distinct_on` instead.
 
         """
         if expr:
+            warn_deprecated(
+                "Passing expression to ``distinct`` to generate a DISTINCT "
+                "ON clause is deprecated. Use instead the "
+                "``postgresql.distinct_on`` function as an extension.",
+                "2.1",
+            )
             self._distinct = True
             self._distinct_on = self._distinct_on + tuple(
                 coercions.expect(roles.ByOfRole, e) for e in expr
             )
         else:
             self._distinct = True
+        return self
+
+    @_generative
+    def ext(self, extension: SyntaxExtension) -> Self:
+        """Applies a SQL syntax extension to this statement.
+
+        .. seealso::
+
+            :ref:`examples_syntax_extensions`
+
+            :func:`_mysql.limit` - DML LIMIT for MySQL
+
+            :func:`_postgresql.distinct_on` - DISTINCT ON for PostgreSQL
+
+        .. versionadded:: 2.1
+
+        """
+
+        extension = coercions.expect(roles.SyntaxExtensionRole, extension)
+        self._syntax_extensions += (extension,)
         return self
 
     def all(self) -> List[_T]:
@@ -2776,11 +2836,10 @@ class Query(
     def one(self) -> _T:
         """Return exactly one result or raise an exception.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
-        no rows.  Raises ``sqlalchemy.orm.exc.MultipleResultsFound``
-        if multiple object identities are returned, or if multiple
-        rows are returned for a query that returns only scalar values
-        as opposed to full identity-mapped entities.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
+        Raises :class:`_exc.MultipleResultsFound` if multiple object identities
+        are returned, or if multiple rows are returned for a query that returns
+        only scalar values as opposed to full identity-mapped entities.
 
         Calling :meth:`.one` results in an execution of the underlying query.
 
@@ -2800,7 +2859,7 @@ class Query(
     def scalar(self) -> Any:
         """Return the first element of the first result or None
         if no rows present.  If multiple rows are returned,
-        raises MultipleResultsFound.
+        raises :class:`_exc.MultipleResultsFound`.
 
           >>> session.query(Item).scalar()
           <Item>
@@ -2867,7 +2926,7 @@ class Query(
 
         try:
             bind = (
-                self._get_bind_args(statement, self.session.get_bind)
+                self.session.get_bind(clause=statement)
                 if self.session
                 else None
             )
@@ -2876,9 +2935,6 @@ class Query(
 
         return str(statement.compile(bind))
 
-    def _get_bind_args(self, statement: Any, fn: Any, **kw: Any) -> Any:
-        return fn(clause=statement, **kw)
-
     @property
     def column_descriptions(self) -> List[ORMColumnDescription]:
         """Return metadata about the columns which would be
@@ -2886,7 +2942,7 @@ class Query(
 
         Format is a list of dictionaries::
 
-            user_alias = aliased(User, name='user2')
+            user_alias = aliased(User, name="user2")
             q = sess.query(User, User.id, user_alias)
 
             # this expression:
@@ -2895,26 +2951,26 @@ class Query(
             # would return:
             [
                 {
-                    'name':'User',
-                    'type':User,
-                    'aliased':False,
-                    'expr':User,
-                    'entity': User
+                    "name": "User",
+                    "type": User,
+                    "aliased": False,
+                    "expr": User,
+                    "entity": User,
                 },
                 {
-                    'name':'id',
-                    'type':Integer(),
-                    'aliased':False,
-                    'expr':User.id,
-                    'entity': User
+                    "name": "id",
+                    "type": Integer(),
+                    "aliased": False,
+                    "expr": User.id,
+                    "entity": User,
                 },
                 {
-                    'name':'user2',
-                    'type':User,
-                    'aliased':True,
-                    'expr':user_alias,
-                    'entity': user_alias
-                }
+                    "name": "user2",
+                    "type": User,
+                    "aliased": True,
+                    "expr": user_alias,
+                    "entity": user_alias,
+                },
             ]
 
         .. seealso::
@@ -2958,6 +3014,7 @@ class Query(
 
             context = QueryContext(
                 compile_state,
+                compile_state.statement,
                 compile_state.statement,
                 self._params,
                 self.session,
@@ -3022,10 +3079,12 @@ class Query(
 
         e.g.::
 
-            q = session.query(User).filter(User.name == 'fred')
+            q = session.query(User).filter(User.name == "fred")
             session.query(q.exists())
 
-        Producing SQL similar to::
+        Producing SQL similar to:
+
+        .. sourcecode:: sql
 
             SELECT EXISTS (
                 SELECT 1 FROM users WHERE users.name = :name_1
@@ -3074,7 +3133,9 @@ class Query(
         r"""Return a count of rows this the SQL formed by this :class:`Query`
         would return.
 
-        This generates the SQL for this Query as follows::
+        This generates the SQL for this Query as follows:
+
+        .. sourcecode:: sql
 
             SELECT count(1) AS count_1 FROM (
                 SELECT <rest of query follows...>
@@ -3114,8 +3175,7 @@ class Query(
 
             # return count of user "id" grouped
             # by "name"
-            session.query(func.count(User.id)).\
-                    group_by(User.name)
+            session.query(func.count(User.id)).group_by(User.name)
 
             from sqlalchemy import distinct
 
@@ -3133,7 +3193,9 @@ class Query(
         )
 
     def delete(
-        self, synchronize_session: SynchronizeSessionArgument = "auto"
+        self,
+        synchronize_session: SynchronizeSessionArgument = "auto",
+        delete_args: Optional[Dict[Any, Any]] = None,
     ) -> int:
         r"""Perform a DELETE with an arbitrary WHERE clause.
 
@@ -3141,11 +3203,11 @@ class Query(
 
         E.g.::
 
-            sess.query(User).filter(User.age == 25).\
-                delete(synchronize_session=False)
+            sess.query(User).filter(User.age == 25).delete(synchronize_session=False)
 
-            sess.query(User).filter(User.age == 25).\
-                delete(synchronize_session='evaluate')
+            sess.query(User).filter(User.age == 25).delete(
+                synchronize_session="evaluate"
+            )
 
         .. warning::
 
@@ -3158,6 +3220,13 @@ class Query(
          :ref:`orm_expression_update_delete` for a discussion of these
          strategies.
 
+        :param delete_args: Optional dictionary, if present will be passed
+         to the underlying :func:`_expression.delete` construct as the ``**kw``
+         for the object.  May be used to pass dialect-specific arguments such
+         as ``mysql_limit``.
+
+         .. versionadded:: 2.0.37
+
         :return: the count of rows matched as returned by the database's
           "row count" feature.
 
@@ -3165,9 +3234,9 @@ class Query(
 
             :ref:`orm_expression_update_delete`
 
-        """
+        """  # noqa: E501
 
-        bulk_del = BulkDelete(self)
+        bulk_del = BulkDelete(self, delete_args)
         if self.dispatch.before_compile_delete:
             for fn in self.dispatch.before_compile_delete:
                 new_query = fn(bulk_del.query, bulk_del)
@@ -3177,7 +3246,15 @@ class Query(
                 self = bulk_del.query
 
         delete_ = sql.delete(*self._raw_columns)  # type: ignore
+
+        if delete_args:
+            delete_ = delete_.with_dialect_options(**delete_args)
+
         delete_._where_criteria = self._where_criteria
+
+        for ext in self._syntax_extensions:
+            delete_._apply_syntax_extension_to_self(ext)
+
         result: CursorResult[Any] = self.session.execute(
             delete_,
             self._params,
@@ -3203,11 +3280,13 @@ class Query(
 
         E.g.::
 
-            sess.query(User).filter(User.age == 25).\
-                update({User.age: User.age - 10}, synchronize_session=False)
+            sess.query(User).filter(User.age == 25).update(
+                {User.age: User.age - 10}, synchronize_session=False
+            )
 
-            sess.query(User).filter(User.age == 25).\
-                update({"age": User.age - 10}, synchronize_session='evaluate')
+            sess.query(User).filter(User.age == 25).update(
+                {"age": User.age - 10}, synchronize_session="evaluate"
+            )
 
         .. warning::
 
@@ -3230,9 +3309,8 @@ class Query(
          strategies.
 
         :param update_args: Optional dictionary, if present will be passed
-         to the underlying :func:`_expression.update`
-         construct as the ``**kw`` for
-         the object.  May be used to pass dialect-specific arguments such
+         to the underlying :func:`_expression.update` construct as the ``**kw``
+         for the object.  May be used to pass dialect-specific arguments such
          as ``mysql_limit``, as well as other special arguments such as
          :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`.
 
@@ -3268,6 +3346,10 @@ class Query(
             upd = upd.with_dialect_options(**update_args)
 
         upd._where_criteria = self._where_criteria
+
+        for ext in self._syntax_extensions:
+            upd._apply_syntax_extension_to_self(ext)
+
         result: CursorResult[Any] = self.session.execute(
             upd,
             self._params,
@@ -3282,7 +3364,7 @@ class Query(
 
     def _compile_state(
         self, for_statement: bool = False, **kw: Any
-    ) -> ORMCompileState:
+    ) -> _ORMCompileState:
         """Create an out-of-compiler ORMCompileState object.
 
         The ORMCompileState object is normally created directly as a result
@@ -3307,16 +3389,19 @@ class Query(
         # query._statement is not None as we have the ORM Query here
         # however this is the more general path.
         compile_state_cls = cast(
-            ORMCompileState,
-            ORMCompileState._get_plugin_class_for_plugin(stmt, "orm"),
+            _ORMCompileState,
+            _ORMCompileState._get_plugin_class_for_plugin(stmt, "orm"),
         )
 
-        return compile_state_cls.create_for_statement(stmt, None)
+        return compile_state_cls._create_orm_context(
+            stmt, toplevel=True, compiler=None
+        )
 
     def _compile_context(self, for_statement: bool = False) -> QueryContext:
         compile_state = self._compile_state(for_statement=for_statement)
         context = QueryContext(
             compile_state,
+            compile_state.statement,
             compile_state.statement,
             self._params,
             self.session,
@@ -3342,7 +3427,7 @@ class AliasOption(interfaces.LoaderOption):
 
         """
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         pass
 
 
@@ -3406,9 +3491,17 @@ class BulkUpdate(BulkUD):
 class BulkDelete(BulkUD):
     """BulkUD which handles DELETEs."""
 
+    def __init__(
+        self,
+        query: Query[Any],
+        delete_kwargs: Optional[Dict[Any, Any]],
+    ):
+        super().__init__(query)
+        self.delete_kwargs = delete_kwargs
 
-class RowReturningQuery(Query[Row[_TP]]):
+
+class RowReturningQuery(Query[Row[Unpack[_Ts]]]):
     if TYPE_CHECKING:
 
-        def tuples(self) -> Query[_TP]:  # type: ignore
+        def tuples(self) -> Query[Tuple[Unpack[_Ts]]]:  # type: ignore
             ...

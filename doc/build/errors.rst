@@ -136,7 +136,7 @@ What causes an application to use up all the connections that it has available?
   upon to release resources in a timely manner.
 
   A common reason this can occur is that the application uses ORM sessions and
-  does not call :meth:`.Session.close` upon them one the work involving that
+  does not call :meth:`.Session.close` upon them once the work involving that
   session is complete. Solution is to make sure ORM sessions if using the ORM,
   or engine-bound :class:`_engine.Connection` objects if using Core, are explicitly
   closed at the end of the work being done, either via the appropriate
@@ -188,6 +188,28 @@ sooner.
 
  :ref:`connections_toplevel`
 
+.. _error_pcls:
+
+Pool class cannot be used with asyncio engine (or vice versa)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`_pool.QueuePool` pool class uses a ``thread.Lock`` object internally
+and is not compatible with asyncio.  If using the :func:`_asyncio.create_async_engine`
+function to create an :class:`.AsyncEngine`, the appropriate queue pool class
+is :class:`_pool.AsyncAdaptedQueuePool`, which is used automatically and does
+not need to be specified.
+
+In addition to :class:`_pool.AsyncAdaptedQueuePool`, the :class:`_pool.NullPool`
+and :class:`_pool.StaticPool` pool classes do not use locks and are also
+suitable for use with async engines.
+
+This error is also raised in reverse in the unlikely case that the
+:class:`_pool.AsyncAdaptedQueuePool` pool class is indicated explicitly with
+the :func:`_sa.create_engine` function.
+
+.. seealso::
+
+    :ref:`pooling_toplevel`
 
 .. _error_8s2b:
 
@@ -453,7 +475,7 @@ when a construct is stringified without any dialect-specific information.
 However, there are many constructs that are specific to some particular kind
 of database dialect, for which the :class:`.StrSQLCompiler` doesn't know how
 to turn into a string, such as the PostgreSQL
-`"insert on conflict" <postgresql_insert_on_conflict>`_ construct::
+:ref:`postgresql_insert_on_conflict` construct::
 
   >>> from sqlalchemy.dialects.postgresql import insert
   >>> from sqlalchemy import table, column
@@ -550,7 +572,7 @@ is executed::
 Above, no value has been provided for the parameter "my_param".  The correct
 approach is to provide a value::
 
-    result = conn.execute(stmt, my_param=12)
+    result = conn.execute(stmt, {"my_param": 12})
 
 When the message takes the form "a value is required for bind parameter <x>
 in parameter group <y>", the message is referring to the "executemany" style
@@ -1120,11 +1142,6 @@ Overall, "delete-orphan" cascade is usually applied
 on the "one" side of a one-to-many relationship so that it deletes objects
 in the "many" side, and not the other way around.
 
-.. versionchanged:: 1.3.18  The text of the "delete-orphan" error message
-   when used on a many-to-one or many-to-many relationship has been updated
-   to be more descriptive.
-
-
 .. seealso::
 
     :ref:`unitofwork_cascades`
@@ -1362,7 +1379,7 @@ annotations within class definitions at runtime. A requirement of this form is
 that all ORM annotations must make use of a generic container called
 :class:`_orm.Mapped` to be properly annotated. Legacy SQLAlchemy mappings which
 include explicit :pep:`484` typing annotations, such as those which use the
-:ref:`legacy Mypy extension <mypy_toplevel>` for typing support, may include
+legacy Mypy extension for typing support, may include
 directives such as those for :func:`_orm.relationship` that don't include this
 generic.
 
@@ -1777,8 +1794,7 @@ and associating the :class:`_engine.Engine` with the
     Base = declarative_base(metadata=metadata_obj)
 
 
-    class MyClass(Base):
-        ...
+    class MyClass(Base): ...
 
 
     session = Session()
@@ -1796,8 +1812,7 @@ engine::
     Base = declarative_base()
 
 
-    class MyClass(Base):
-        ...
+    class MyClass(Base): ...
 
 
     session = Session()

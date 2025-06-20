@@ -1,13 +1,12 @@
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# orm/strategy_options.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""
-
-"""
+""" """
 
 from __future__ import annotations
 
@@ -16,6 +15,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
+from typing import Final
 from typing import Iterable
 from typing import Optional
 from typing import overload
@@ -33,13 +33,13 @@ from ._typing import insp_is_mapper_property
 from .attributes import QueryableAttribute
 from .base import InspectionAttr
 from .interfaces import LoaderOption
+from .path_registry import _AbstractEntityRegistry
 from .path_registry import _DEFAULT_TOKEN
 from .path_registry import _StrPathToken
+from .path_registry import _TokenRegistry
 from .path_registry import _WILDCARD_TOKEN
-from .path_registry import AbstractEntityRegistry
 from .path_registry import path_is_property
 from .path_registry import PathRegistry
-from .path_registry import TokenRegistry
 from .util import _orm_full_deannotate
 from .util import AliasedInsp
 from .. import exc as sa_exc
@@ -52,7 +52,6 @@ from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
 from ..sql.base import _generative
-from ..util.typing import Final
 from ..util.typing import Literal
 from ..util.typing import Self
 
@@ -65,7 +64,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _InternalEntityType
     from .context import _MapperEntity
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .context import QueryContext
     from .interfaces import _StrategyKey
     from .interfaces import MapperProperty
@@ -97,6 +96,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         attr: _AttrType,
         alias: Optional[_FromClauseArgument] = None,
         _is_chain: bool = False,
+        _propagate_to_loaders: bool = False,
     ) -> Self:
         r"""Indicate that the given attribute should be eagerly loaded from
         columns stated manually in the query.
@@ -107,9 +107,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         The option is used in conjunction with an explicit join that loads
         the desired rows, i.e.::
 
-            sess.query(Order).\
-                    join(Order.user).\
-                    options(contains_eager(Order.user))
+            sess.query(Order).join(Order.user).options(contains_eager(Order.user))
 
         The above query would join from the ``Order`` entity to its related
         ``User`` entity, and the returned ``Order`` objects would have the
@@ -120,11 +118,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         :ref:`orm_queryguide_populate_existing` execution option assuming the
         primary collection of parent objects may already have been loaded::
 
-            sess.query(User).\
-                join(User.addresses).\
-                filter(Address.email_address.like('%@aol.com')).\
-                options(contains_eager(User.addresses)).\
-                populate_existing()
+            sess.query(User).join(User.addresses).filter(
+                Address.email_address.like("%@aol.com")
+            ).options(contains_eager(User.addresses)).populate_existing()
 
         See the section :ref:`contains_eager` for complete usage details.
 
@@ -159,7 +155,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         cloned = self._set_relationship_strategy(
             attr,
             {"lazy": "joined"},
-            propagate_to_loaders=False,
+            propagate_to_loaders=_propagate_to_loaders,
             opts={"eager_from_alias": coerced_alias},
             _reconcile_to_other=True if _is_chain else None,
         )
@@ -190,10 +186,18 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         the lead entity can be
         specifically referred to using the :class:`_orm.Load` constructor::
 
-            stmt = select(User, Address).join(User.addresses).options(
-                        Load(User).load_only(User.name, User.fullname),
-                        Load(Address).load_only(Address.email_address)
-                    )
+            stmt = (
+                select(User, Address)
+                .join(User.addresses)
+                .options(
+                    Load(User).load_only(User.name, User.fullname),
+                    Load(Address).load_only(Address.email_address),
+                )
+            )
+
+        When used together with the
+        :ref:`populate_existing <orm_queryguide_populate_existing>`
+        execution option only the attributes listed will be refreshed.
 
         :param \*attrs: Attributes to be loaded, all others will be deferred.
 
@@ -218,7 +222,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         """
         cloned = self._set_column_strategy(
-            attrs,
+            _expand_column_strategy_attrs(attrs),
             {"deferred": False, "instrument": True},
         )
 
@@ -246,28 +250,25 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         examples::
 
             # joined-load the "orders" collection on "User"
-            query(User).options(joinedload(User.orders))
+            select(User).options(joinedload(User.orders))
 
             # joined-load Order.items and then Item.keywords
-            query(Order).options(
-                joinedload(Order.items).joinedload(Item.keywords))
+            select(Order).options(joinedload(Order.items).joinedload(Item.keywords))
 
             # lazily load Order.items, but when Items are loaded,
             # joined-load the keywords collection
-            query(Order).options(
-                lazyload(Order.items).joinedload(Item.keywords))
+            select(Order).options(lazyload(Order.items).joinedload(Item.keywords))
 
         :param innerjoin: if ``True``, indicates that the joined eager load
          should use an inner join instead of the default of left outer join::
 
-            query(Order).options(joinedload(Order.user, innerjoin=True))
+            select(Order).options(joinedload(Order.user, innerjoin=True))
 
         In order to chain multiple eager joins together where some may be
         OUTER and others INNER, right-nested joins are used to link them::
 
-            query(A).options(
-                joinedload(A.bs, innerjoin=False).
-                    joinedload(B.cs, innerjoin=True)
+            select(A).options(
+                joinedload(A.bs, innerjoin=False).joinedload(B.cs, innerjoin=True)
             )
 
         The above query, linking A.bs via "outer" join and B.cs via "inner"
@@ -282,10 +283,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         will render as LEFT OUTER JOIN.  For example, supposing ``A.bs``
         is an outerjoin::
 
-            query(A).options(
-                joinedload(A.bs).
-                    joinedload(B.cs, innerjoin="unnested")
-            )
+            select(A).options(joinedload(A.bs).joinedload(B.cs, innerjoin="unnested"))
 
         The above join will render as "a LEFT OUTER JOIN b LEFT OUTER JOIN c",
         rather than as "a LEFT OUTER JOIN (b JOIN c)".
@@ -315,13 +313,15 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
             :ref:`joined_eager_loading`
 
-        """
+        """  # noqa: E501
         loader = self._set_relationship_strategy(
             attr,
             {"lazy": "joined"},
-            opts={"innerjoin": innerjoin}
-            if innerjoin is not None
-            else util.EMPTY_DICT,
+            opts=(
+                {"innerjoin": innerjoin}
+                if innerjoin is not None
+                else util.EMPTY_DICT
+            ),
         )
         return loader
 
@@ -335,17 +335,16 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         examples::
 
             # subquery-load the "orders" collection on "User"
-            query(User).options(subqueryload(User.orders))
+            select(User).options(subqueryload(User.orders))
 
             # subquery-load Order.items and then Item.keywords
-            query(Order).options(
-                subqueryload(Order.items).subqueryload(Item.keywords))
+            select(Order).options(
+                subqueryload(Order.items).subqueryload(Item.keywords)
+            )
 
             # lazily load Order.items, but when Items are loaded,
             # subquery-load the keywords collection
-            query(Order).options(
-                lazyload(Order.items).subqueryload(Item.keywords))
-
+            select(Order).options(lazyload(Order.items).subqueryload(Item.keywords))
 
         .. seealso::
 
@@ -370,16 +369,16 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         examples::
 
             # selectin-load the "orders" collection on "User"
-            query(User).options(selectinload(User.orders))
+            select(User).options(selectinload(User.orders))
 
             # selectin-load Order.items and then Item.keywords
-            query(Order).options(
-                selectinload(Order.items).selectinload(Item.keywords))
+            select(Order).options(
+                selectinload(Order.items).selectinload(Item.keywords)
+            )
 
             # lazily load Order.items, but when Items are loaded,
             # selectin-load the keywords collection
-            query(Order).options(
-                lazyload(Order.items).selectinload(Item.keywords))
+            select(Order).options(lazyload(Order.items).selectinload(Item.keywords))
 
         :param recursion_depth: optional int; when set to a positive integer
          in conjunction with a self-referential relationship,
@@ -477,6 +476,13 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
         return loader
 
+    @util.deprecated(
+        "2.1",
+        "The :func:`_orm.noload` option is deprecated and will be removed "
+        "in a future release.  This option "
+        "produces incorrect results by returning ``None`` for related "
+        "items.",
+    )
     def noload(self, attr: _AttrType) -> Self:
         """Indicate that the given relationship attribute should remain
         unloaded.
@@ -484,16 +490,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         The relationship attribute will return ``None`` when accessed without
         producing any loading effect.
 
-        This function is part of the :class:`_orm.Load` interface and supports
-        both method-chained and standalone operation.
-
         :func:`_orm.noload` applies to :func:`_orm.relationship` attributes
         only.
-
-        .. note:: Setting this loading strategy as the default strategy
-            for a relationship using the :paramref:`.orm.relationship.lazy`
-            parameter may cause issues with flushes, such if a delete operation
-            needs to load related objects and instead ``None`` was returned.
 
         .. seealso::
 
@@ -555,17 +553,20 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         element of an element::
 
             session.query(MyClass).options(
-                defaultload(MyClass.someattribute).
-                joinedload(MyOtherClass.someotherattribute)
+                defaultload(MyClass.someattribute).joinedload(
+                    MyOtherClass.someotherattribute
+                )
             )
 
         :func:`.defaultload` is also useful for setting column-level options on
         a related class, namely that of :func:`.defer` and :func:`.undefer`::
 
-            session.query(MyClass).options(
-                defaultload(MyClass.someattribute).
-                defer("some_column").
-                undefer("some_other_column")
+            session.scalars(
+                select(MyClass).options(
+                    defaultload(MyClass.someattribute)
+                    .defer("some_column")
+                    .undefer("some_other_column")
+                )
             )
 
         .. seealso::
@@ -589,8 +590,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             from sqlalchemy.orm import defer
 
             session.query(MyClass).options(
-                defer(MyClass.attribute_one),
-                defer(MyClass.attribute_two)
+                defer(MyClass.attribute_one), defer(MyClass.attribute_two)
             )
 
         To specify a deferred load of an attribute on a related class,
@@ -606,11 +606,11 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         at once using :meth:`_orm.Load.options`::
 
 
-            session.query(MyClass).options(
+            select(MyClass).options(
                 defaultload(MyClass.someattr).options(
                     defer(RelatedClass.some_column),
                     defer(RelatedClass.some_other_column),
-                    defer(RelatedClass.another_column)
+                    defer(RelatedClass.another_column),
                 )
             )
 
@@ -635,7 +635,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         strategy = {"deferred": True, "instrument": True}
         if raiseload:
             strategy["raiseload"] = True
-        return self._set_column_strategy((key,), strategy)
+        return self._set_column_strategy(
+            _expand_column_strategy_attrs((key,)), strategy
+        )
 
     def undefer(self, key: _AttrType) -> Self:
         r"""Indicate that the given column-oriented attribute should be
@@ -656,12 +658,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             )
 
             # undefer all columns specific to a single class using Load + *
-            session.query(MyClass, MyOtherClass).options(
-                Load(MyClass).undefer("*"))
+            session.query(MyClass, MyOtherClass).options(Load(MyClass).undefer("*"))
 
             # undefer a column on a related object
-            session.query(MyClass).options(
-                defaultload(MyClass.items).undefer(MyClass.text))
+            select(MyClass).options(defaultload(MyClass.items).undefer(MyClass.text))
 
         :param key: Attribute to be undeferred.
 
@@ -674,9 +674,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
             :func:`_orm.undefer_group`
 
-        """
+        """  # noqa: E501
         return self._set_column_strategy(
-            (key,), {"deferred": False, "instrument": True}
+            _expand_column_strategy_attrs((key,)),
+            {"deferred": False, "instrument": True},
         )
 
     def undefer_group(self, name: str) -> Self:
@@ -694,8 +695,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         spelled out using relationship loader options, such as
         :func:`_orm.defaultload`::
 
-            session.query(MyClass).options(
-                defaultload("someattr").undefer_group("large_attrs"))
+            select(MyClass).options(
+                defaultload("someattr").undefer_group("large_attrs")
+            )
 
         .. seealso::
 
@@ -729,8 +731,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
                 with_expression(SomeClass.x_y_expr, SomeClass.x + SomeClass.y)
             )
 
-        .. versionadded:: 1.2
-
         :param key: Attribute to be populated
 
         :param expr: SQL expression to be applied to the attribute.
@@ -747,7 +747,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
 
         return self._set_column_strategy(
-            (key,), {"query_expression": True}, opts={"expression": expression}
+            (key,), {"query_expression": True}, extra_criteria=(expression,)
         )
 
     def selectin_polymorphic(self, classes: Iterable[Type[Any]]) -> Self:
@@ -757,8 +757,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         This uses an additional SELECT with IN against all matched primary
         key values, and is the per-query analogue to the ``"selectin"``
         setting on the :paramref:`.mapper.polymorphic_load` parameter.
-
-        .. versionadded:: 1.2
 
         .. seealso::
 
@@ -776,12 +774,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self
 
     @overload
-    def _coerce_strat(self, strategy: _StrategySpec) -> _StrategyKey:
-        ...
+    def _coerce_strat(self, strategy: _StrategySpec) -> _StrategyKey: ...
 
     @overload
-    def _coerce_strat(self, strategy: Literal[None]) -> None:
-        ...
+    def _coerce_strat(self, strategy: Literal[None]) -> None: ...
 
     def _coerce_strat(
         self, strategy: Optional[_StrategySpec]
@@ -819,6 +815,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         attrs: Tuple[_AttrType, ...],
         strategy: Optional[_StrategySpec],
         opts: Optional[_OptsType] = None,
+        extra_criteria: Optional[Tuple[Any, ...]] = None,
     ) -> Self:
         strategy_key = self._coerce_strat(strategy)
 
@@ -828,6 +825,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             _COLUMN_TOKEN,
             opts=opts,
             attr_group=attrs,
+            extra_criteria=extra_criteria,
         )
         return self
 
@@ -884,12 +882,13 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         attr_group: Optional[_AttrGroupType] = None,
         propagate_to_loaders: bool = True,
         reconcile_to_other: Optional[bool] = None,
+        extra_criteria: Optional[Tuple[Any, ...]] = None,
     ) -> Self:
         raise NotImplementedError()
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         if not compile_state.compile_options._enable_eagerloads:
@@ -904,7 +903,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             not bool(compile_state.current_path),
         )
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         if not compile_state.compile_options._enable_eagerloads:
             return
 
@@ -917,7 +916,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     def _process(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
         raiseerr: bool,
     ) -> None:
@@ -1018,7 +1017,7 @@ class Load(_AbstractLoad):
 
     @classmethod
     def _construct_for_existing_path(
-        cls, path: AbstractEntityRegistry
+        cls, path: _AbstractEntityRegistry
     ) -> Load:
         load = cls.__new__(cls)
         load.path = path
@@ -1030,6 +1029,8 @@ class Load(_AbstractLoad):
     def _adapt_cached_option_to_uncached_option(
         self, context: QueryContext, uncached_opt: ORMOption
     ) -> ORMOption:
+        if uncached_opt is self:
+            return self
         return self._adjust_for_extra_criteria(context)
 
     def _prepend_path(self, path: PathRegistry) -> Load:
@@ -1045,49 +1046,51 @@ class Load(_AbstractLoad):
         returning a new instance of this ``Load`` object.
 
         """
+
+        # avoid generating cache keys for the queries if we don't
+        # actually have any extra_criteria options, which is the
+        # common case
+        for value in self.context:
+            if value._extra_criteria:
+                break
+        else:
+            return self
+
+        replacement_cache_key = context.user_passed_query._generate_cache_key()
+
+        if replacement_cache_key is None:
+            return self
+
         orig_query = context.compile_state.select_statement
+        orig_cache_key = orig_query._generate_cache_key()
+        assert orig_cache_key is not None
 
-        orig_cache_key: Optional[CacheKey] = None
-        replacement_cache_key: Optional[CacheKey] = None
-        found_crit = False
+        def process(
+            opt: _LoadElement,
+            replacement_cache_key: CacheKey,
+            orig_cache_key: CacheKey,
+        ) -> _LoadElement:
+            cloned_opt = opt._clone()
 
-        def process(opt: _LoadElement) -> _LoadElement:
-            if not opt._extra_criteria:
-                return opt
-
-            nonlocal orig_cache_key, replacement_cache_key, found_crit
-
-            found_crit = True
-
-            # avoid generating cache keys for the queries if we don't
-            # actually have any extra_criteria options, which is the
-            # common case
-            if orig_cache_key is None or replacement_cache_key is None:
-                orig_cache_key = orig_query._generate_cache_key()
-                replacement_cache_key = context.query._generate_cache_key()
-
-                assert orig_cache_key is not None
-                assert replacement_cache_key is not None
-
-            opt._extra_criteria = tuple(
+            cloned_opt._extra_criteria = tuple(
                 replacement_cache_key._apply_params_to_element(
                     orig_cache_key, crit
                 )
-                for crit in opt._extra_criteria
+                for crit in cloned_opt._extra_criteria
             )
-            return opt
 
-        new_context = tuple(
-            process(value._clone()) if value._extra_criteria else value
+            return cloned_opt
+
+        cloned = self._clone()
+        cloned.context = tuple(
+            (
+                process(value, replacement_cache_key, orig_cache_key)
+                if value._extra_criteria
+                else value
+            )
             for value in self.context
         )
-
-        if found_crit:
-            cloned = self._clone()
-            cloned.context = new_context
-            return cloned
-        else:
-            return self
+        return cloned
 
     def _reconcile_query_entities_with_us(self, mapper_entities, raiseerr):
         """called at process time to allow adjustment of the root
@@ -1096,7 +1099,6 @@ class Load(_AbstractLoad):
         """
         path = self.path
 
-        ezero = None
         for ent in mapper_entities:
             ezero = ent.entity_zero
             if ezero and orm_util._entity_corresponds_to(
@@ -1111,7 +1113,7 @@ class Load(_AbstractLoad):
 
     def _process(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
         raiseerr: bool,
     ) -> None:
@@ -1119,7 +1121,20 @@ class Load(_AbstractLoad):
             mapper_entities, raiseerr
         )
 
+        # if the context has a current path, this is a lazy load
+        has_current_path = bool(compile_state.compile_options._current_path)
+
         for loader in self.context:
+            # issue #11292
+            # historically, propagate_to_loaders was only considered at
+            # object loading time, whether or not to carry along options
+            # onto an object's loaded state where it would be used by lazyload.
+            # however, the defaultload() option needs to propagate in case
+            # its sub-options propagate_to_loaders, but its sub-options
+            # that dont propagate should not be applied for lazy loaders.
+            # so we check again
+            if has_current_path and not loader.propagate_to_loaders:
+                continue
             loader.process_compile_state(
                 self,
                 compile_state,
@@ -1177,19 +1192,15 @@ class Load(_AbstractLoad):
 
             query = session.query(Author)
             query = query.options(
-                        joinedload(Author.book).options(
-                            load_only(Book.summary, Book.excerpt),
-                            joinedload(Book.citations).options(
-                                joinedload(Citation.author)
-                            )
-                        )
-                    )
+                joinedload(Author.book).options(
+                    load_only(Book.summary, Book.excerpt),
+                    joinedload(Book.citations).options(joinedload(Citation.author)),
+                )
+            )
 
         :param \*opts: A series of loader option objects (ultimately
          :class:`_orm.Load` objects) which should be applied to the path
          specified by this :class:`_orm.Load` object.
-
-        .. versionadded:: 1.3.6
 
         .. seealso::
 
@@ -1220,6 +1231,7 @@ class Load(_AbstractLoad):
         attr_group: Optional[_AttrGroupType] = None,
         propagate_to_loaders: bool = True,
         reconcile_to_other: Optional[bool] = None,
+        extra_criteria: Optional[Tuple[Any, ...]] = None,
     ) -> Self:
         # for individual strategy that needs to propagate, set the whole
         # Load container to also propagate, so that it shows up in
@@ -1253,6 +1265,7 @@ class Load(_AbstractLoad):
                 propagate_to_loaders,
                 attr_group=attr_group,
                 reconcile_to_other=reconcile_to_other,
+                extra_criteria=extra_criteria,
             )
             if load_element:
                 self.context += (load_element,)
@@ -1273,6 +1286,7 @@ class Load(_AbstractLoad):
                         propagate_to_loaders,
                         attr_group=attr_group,
                         reconcile_to_other=reconcile_to_other,
+                        extra_criteria=extra_criteria,
                     )
                 else:
                     load_element = _AttributeStrategyLoad.create(
@@ -1284,6 +1298,7 @@ class Load(_AbstractLoad):
                         propagate_to_loaders,
                         attr_group=attr_group,
                         reconcile_to_other=reconcile_to_other,
+                        extra_criteria=extra_criteria,
                     )
 
                 if load_element:
@@ -1347,6 +1362,7 @@ class _WildcardLoad(_AbstractLoad):
         attr_group=None,
         propagate_to_loaders=True,
         reconcile_to_other=None,
+        extra_criteria=None,
     ):
         assert attrs is not None
         attr = attrs[0]
@@ -1362,6 +1378,8 @@ class _WildcardLoad(_AbstractLoad):
         self.path = (attr,)
         if opts:
             self.local_opts = util.immutabledict(opts)
+
+        assert extra_criteria is None
 
     def options(self, *opts: _AbstractLoad) -> Self:
         raise NotImplementedError("Star option does not support sub-options")
@@ -1380,7 +1398,7 @@ class _WildcardLoad(_AbstractLoad):
         if attr.endswith(_DEFAULT_TOKEN):
             attr = f"{attr.split(':')[0]}:{_WILDCARD_TOKEN}"
 
-        effective_path = cast(AbstractEntityRegistry, parent.path).token(attr)
+        effective_path = cast(_AbstractEntityRegistry, parent.path).token(attr)
 
         assert effective_path.is_token
 
@@ -1603,9 +1621,10 @@ class _LoadElement(
                 f"Mapped class {path[0]} does not apply to any of the "
                 f"root entities in this query, e.g. "
                 f"""{
-                    ", ".join(str(x.entity_zero)
-                    for x in mapper_entities if x.entity_zero
-                )}. Please """
+                    ", ".join(
+                        str(x.entity_zero)
+                        for x in mapper_entities if x.entity_zero
+                    )}. Please """
                 "specify the full path "
                 "from one of the root entities to the target "
                 "attribute. "
@@ -1619,13 +1638,17 @@ class _LoadElement(
         loads, and adjusts the given path to be relative to the
         current_path.
 
-        E.g. given a loader path and current path::
+        E.g. given a loader path and current path:
+
+        .. sourcecode:: text
 
             lp: User -> orders -> Order -> items -> Item -> keywords -> Keyword
 
             cp: User -> orders -> Order -> items
 
-        The adjusted path would be::
+        The adjusted path would be:
+
+        .. sourcecode:: text
 
             Item -> keywords -> Keyword
 
@@ -1649,7 +1672,9 @@ class _LoadElement(
 
         return effective_path
 
-    def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
+    def _init_path(
+        self, path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+    ):
         """Apply ORM attributes and/or wildcard to an existing path, producing
         a new path.
 
@@ -1709,6 +1734,7 @@ class _LoadElement(
         raiseerr: bool = True,
         attr_group: Optional[_AttrGroupType] = None,
         reconcile_to_other: Optional[bool] = None,
+        extra_criteria: Optional[Tuple[Any, ...]] = None,
     ) -> _LoadElement:
         """Create a new :class:`._LoadElement` object."""
 
@@ -1728,7 +1754,9 @@ class _LoadElement(
         else:
             opt._reconcile_to_other = None
 
-        path = opt._init_path(path, attr, wildcard_key, attr_group, raiseerr)
+        path = opt._init_path(
+            path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+        )
 
         if not path:
             return None  # type: ignore
@@ -1828,7 +1856,7 @@ class _LoadElement(
             replacement.local_opts = replacement.local_opts.union(
                 existing.local_opts
             )
-            replacement._extra_criteria += replacement._extra_criteria
+            replacement._extra_criteria += existing._extra_criteria
             return replacement
         elif replacement.path.is_token:
             # use 'last one wins' logic for wildcard options.  this is also
@@ -1870,7 +1898,9 @@ class _AttributeStrategyLoad(_LoadElement):
     is_class_strategy = False
     is_token_strategy = False
 
-    def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
+    def _init_path(
+        self, path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+    ):
         assert attr is not None
         self._of_type = None
         self._path_with_polymorphic_path = None
@@ -1916,7 +1946,11 @@ class _AttributeStrategyLoad(_LoadElement):
         # from an attribute.   This appears to have been an artifact of how
         # _UnboundLoad / Load interacted together, which was opaque and
         # poorly defined.
-        self._extra_criteria = attr._extra_criteria
+        if extra_criteria:
+            assert not attr._extra_criteria
+            self._extra_criteria = extra_criteria
+        else:
+            self._extra_criteria = attr._extra_criteria
 
         if getattr(attr, "_of_type", None):
             ac = attr._of_type
@@ -2060,9 +2094,9 @@ class _AttributeStrategyLoad(_LoadElement):
         d["_extra_criteria"] = ()
 
         if self._path_with_polymorphic_path:
-            d[
-                "_path_with_polymorphic_path"
-            ] = self._path_with_polymorphic_path.serialize()
+            d["_path_with_polymorphic_path"] = (
+                self._path_with_polymorphic_path.serialize()
+            )
 
         if self._of_type:
             if self._of_type.is_aliased_class:
@@ -2095,11 +2129,11 @@ class _TokenStrategyLoad(_LoadElement):
 
     e.g.::
 
-        raiseload('*')
-        Load(User).lazyload('*')
-        defer('*')
+        raiseload("*")
+        Load(User).lazyload("*")
+        defer("*")
         load_only(User.name, User.email)  # will create a defer('*')
-        joinedload(User.addresses).raiseload('*')
+        joinedload(User.addresses).raiseload("*")
 
     """
 
@@ -2109,7 +2143,9 @@ class _TokenStrategyLoad(_LoadElement):
     is_class_strategy = False
     is_token_strategy = True
 
-    def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
+    def _init_path(
+        self, path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+    ):
         # assert isinstance(attr, str) or attr is None
         if attr is not None:
             default_token = attr.endswith(_DEFAULT_TOKEN)
@@ -2171,7 +2207,7 @@ class _TokenStrategyLoad(_LoadElement):
             ("loader", natural_path)
             for natural_path in (
                 cast(
-                    TokenRegistry, effective_path
+                    _TokenRegistry, effective_path
                 )._generate_natural_for_superclasses()
             )
         ]
@@ -2195,7 +2231,9 @@ class _ClassStrategyLoad(_LoadElement):
 
     __visit_name__ = "class_strategy_load_element"
 
-    def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
+    def _init_path(
+        self, path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+    ):
         return path
 
     def _prepare_for_compile_state(
@@ -2350,6 +2388,23 @@ See :func:`_orm.{fn.__name__}` for usage examples.
     return fn
 
 
+def _expand_column_strategy_attrs(
+    attrs: Tuple[_AttrType, ...],
+) -> Tuple[_AttrType, ...]:
+    return cast(
+        "Tuple[_AttrType, ...]",
+        tuple(
+            a
+            for attr in attrs
+            for a in (
+                cast("QueryableAttribute[Any]", attr)._column_strategy_attrs()
+                if hasattr(attr, "_column_strategy_attrs")
+                else (attr,)
+            )
+        ),
+    )
+
+
 # standalone functions follow.  docstrings are filled in
 # by the ``@loader_unbound_fn`` decorator.
 
@@ -2363,6 +2418,7 @@ def contains_eager(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
 def load_only(*attrs: _AttrType, raiseload: bool = False) -> _AbstractLoad:
     # TODO: attrs against different classes.  we likely have to
     # add some extra state to Load of some kind
+    attrs = _expand_column_strategy_attrs(attrs)
     _, lead_element, _ = _parse_attr_argument(attrs[0])
     return Load(lead_element).load_only(*attrs, raiseload=raiseload)
 
@@ -2416,35 +2472,18 @@ def defaultload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def defer(
-    key: _AttrType, *addl_attrs: _AttrType, raiseload: bool = False
-) -> _AbstractLoad:
-    if addl_attrs:
-        util.warn_deprecated(
-            "The *addl_attrs on orm.defer is deprecated.  Please use "
-            "method chaining in conjunction with defaultload() to "
-            "indicate a path.",
-            version="1.3",
-        )
-
+def defer(key: _AttrType, *, raiseload: bool = False) -> _AbstractLoad:
     if raiseload:
         kw = {"raiseload": raiseload}
     else:
         kw = {}
 
-    return _generate_from_keys(Load.defer, (key,) + addl_attrs, False, kw)
+    return _generate_from_keys(Load.defer, (key,), False, kw)
 
 
 @loader_unbound_fn
-def undefer(key: _AttrType, *addl_attrs: _AttrType) -> _AbstractLoad:
-    if addl_attrs:
-        util.warn_deprecated(
-            "The *addl_attrs on orm.undefer is deprecated.  Please use "
-            "method chaining in conjunction with defaultload() to "
-            "indicate a path.",
-            version="1.3",
-        )
-    return _generate_from_keys(Load.undefer, (key,) + addl_attrs, False, {})
+def undefer(key: _AttrType) -> _AbstractLoad:
+    return _generate_from_keys(Load.undefer, (key,), False, {})
 
 
 @loader_unbound_fn

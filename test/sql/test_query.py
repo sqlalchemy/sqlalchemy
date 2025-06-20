@@ -1076,7 +1076,6 @@ class LimitTest(fixtures.TablesTest):
 
 
 class CompoundTest(fixtures.TablesTest):
-
     """test compound statements like UNION, INTERSECT, particularly their
     ability to nest on different databases."""
 
@@ -1463,7 +1462,6 @@ class CompoundTest(fixtures.TablesTest):
 
 
 class JoinTest(fixtures.TablesTest):
-
     """Tests join execution.
 
     The compiled SQL emitted by the dialect might be ANSI joins or

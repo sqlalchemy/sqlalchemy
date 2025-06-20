@@ -736,7 +736,7 @@ class MiscTest(fixtures.MappedTest):
             pass
 
         manager = instrumentation.register_class(A)
-        attributes.register_attribute(
+        attributes._register_attribute(
             A,
             "x",
             comparator=object(),

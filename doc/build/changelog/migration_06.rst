@@ -86,11 +86,10 @@ sign "+":
 Important Dialect Links:
 
 * Documentation on connect arguments:
-  https://www.sqlalchemy.org/docs/06/dbengine.html#create-
-  engine-url-arguments.
+  https://www.sqlalchemy.org/docs/06/dbengine.html#create-engine-url-arguments.
 
-* Reference documentation for individual dialects: https://ww
-  w.sqlalchemy.org/docs/06/reference/dialects/index.html
+* Reference documentation for individual dialects:
+  https://www.sqlalchemy.org/docs/06/reference/dialects/index.html.
 
 * The tips and tricks at DatabaseNotes.
 
@@ -1223,8 +1222,8 @@ SQLSoup
 
 SQLSoup has been modernized and updated to reflect common
 0.5/0.6 capabilities, including well defined session
-integration.  Please read the new docs at [https://www.sqlalc
-hemy.org/docs/06/reference/ext/sqlsoup.html].
+integration.  Please read the new docs at
+[https://www.sqlalchemy.org/docs/06/reference/ext/sqlsoup.html].
 
 Declarative
 -----------

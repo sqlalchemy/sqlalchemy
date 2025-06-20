@@ -1,5 +1,5 @@
 # testing/exclusions.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -205,12 +205,12 @@ class Predicate:
         if negate:
             bool_ = not negate
         return self.description % {
-            "driver": config.db.url.get_driver_name()
-            if config
-            else "<no driver>",
-            "database": config.db.url.get_backend_name()
-            if config
-            else "<no database>",
+            "driver": (
+                config.db.url.get_driver_name() if config else "<no driver>"
+            ),
+            "database": (
+                config.db.url.get_backend_name() if config else "<no database>"
+            ),
             "doesnt_support": "doesn't support" if bool_ else "does support",
             "does_support": "does support" if bool_ else "doesn't support",
         }
@@ -392,8 +392,8 @@ def open():  # noqa
     return skip_if(BooleanPredicate(False, "mark as execute"))
 
 
-def closed():
-    return skip_if(BooleanPredicate(True, "marked as skip"))
+def closed(reason="marked as skip"):
+    return skip_if(BooleanPredicate(True, reason))
 
 
 def fails(reason=None):

@@ -1,3 +1,6 @@
+import operator
+import sys
+
 from sqlalchemy import exc
 from sqlalchemy import testing
 from sqlalchemy.engine import result
@@ -7,9 +10,11 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.util import compat
+from sqlalchemy.util.langhelpers import load_uncompiled_module
 
 
 class ResultTupleTest(fixtures.TestBase):
@@ -95,7 +100,6 @@ class ResultTupleTest(fixtures.TestBase):
 
         # row as tuple getter doesn't accept ints.  for ints, just
         # use plain python
-        import operator
 
         getter = operator.itemgetter(2, 0, 1)
 
@@ -200,11 +204,31 @@ class ResultTupleTest(fixtures.TestBase):
             eq_(kt._fields, ("a", "b"))
             eq_(kt._asdict(), {"a": 1, "b": 3})
 
+    @testing.fixture
+    def _load_module(self):
+        from sqlalchemy.engine import _row_cy as _cy_row
+
+        _py_row = load_uncompiled_module(_cy_row)
+
+        # allow pickle to serialize the two rowproxy_reconstructor functions
+        # create a new virtual module
+        new_name = _py_row.__name__ + "py_only"
+        sys.modules[new_name] = _py_row
+        _py_row.__name__ = new_name
+        for item in vars(_py_row).values():
+            # only the rowproxy_reconstructor module is required to change,
+            # but set every one for consistency
+            if getattr(item, "__module__", None) == _cy_row.__name__:
+                item.__module__ = new_name
+        yield _cy_row, _py_row
+        sys.modules.pop(new_name)
+
     @testing.requires.cextensions
     @testing.variation("direction", ["py_to_cy", "cy_to_py"])
-    def test_serialize_cy_py_cy(self, direction: testing.Variation):
-        from sqlalchemy.engine import _py_row
-        from sqlalchemy.cyextension import resultproxy as _cy_row
+    def test_serialize_cy_py_cy(
+        self, direction: testing.Variation, _load_module
+    ):
+        _cy_row, _py_row = _load_module
 
         global Row
 
@@ -255,10 +279,8 @@ class ResultTupleTest(fixtures.TestBase):
             parent, [None, str, None, str.upper], parent._key_to_index, data
         )
         eq_(row_some_p._to_tuple_instance(), (1, "99", "42", "FOO"))
-        row_shorter = result.Row(
-            parent, [None, str], parent._key_to_index, data
-        )
-        eq_(row_shorter._to_tuple_instance(), (1, "99"))
+        with expect_raises(AssertionError):
+            result.Row(parent, [None, str], parent._key_to_index, data)
 
     def test_tuplegetter(self):
         data = list(range(10, 20))
@@ -331,6 +353,7 @@ class ResultTest(fixtures.TestBase):
         eq_(m1.fetchone(), {"a": 1, "b": 1, "c": 1})
         eq_(r1.fetchone(), (2, 1, 2))
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_tuples_plus_base(self):
         r1 = self._fixture()
 

@@ -42,7 +42,7 @@ augmented by ORM-specific automations and object-centric querying capabilities.
 Whereas working with Core and the SQL Expression language presents a
 schema-centric view of the database, along with a programming paradigm that is
 oriented around immutability, the ORM builds on top of this a domain-centric
-view of the database with a programming paradigm that is more explcitly
+view of the database with a programming paradigm that is more explicitly
 object-oriented and reliant upon mutability.  Since a relational database is
 itself a mutable service, the difference is that Core/SQL Expression language
 is command oriented whereas the ORM is state oriented.
@@ -55,7 +55,7 @@ Documentation Overview
 
 The documentation is separated into four sections:
 
-* :ref:`unified_tutorial` - this all-new tutorial for the 1.4/2.0 series of
+* :ref:`unified_tutorial` - this all-new tutorial for the 1.4/2.0/2.1 series of
   SQLAlchemy introduces the entire library holistically, starting from a
   description of Core and working more and more towards ORM-specific concepts.
   New users, as well as users coming from the 1.x series of
@@ -94,23 +94,14 @@ Installation Guide
 Supported Platforms
 -------------------
 
-SQLAlchemy supports the following platforms:
+SQLAlchemy 2.1 supports the following platforms:
 
-* cPython 3.7 and higher
+* cPython 3.9 and higher
 * Python-3 compatible versions of `PyPy <http://pypy.org/>`_
 
-.. versionchanged:: 2.0
-   SQLAlchemy now targets Python 3.7 and above.
+.. versionchanged:: 2.1
+   SQLAlchemy now targets Python 3.9 and above.
 
-AsyncIO Support
-----------------
-
-SQLAlchemy's ``asyncio`` support depends upon the
-`greenlet <https://pypi.org/project/greenlet/>`_ project.    This dependency
-will be installed by default on common machine platforms, however is not
-supported on every architecture and also may not install by default on
-less common architectures.  See the section :ref:`asyncio_install` for
-additional details on ensuring asyncio support is present.
 
 Supported Installation Methods
 -------------------------------
@@ -129,7 +120,7 @@ downloaded from PyPI and installed in one step:
 
 .. sourcecode:: text
 
-    pip install SQLAlchemy
+    pip install sqlalchemy
 
 This command will download the latest **released** version of SQLAlchemy from
 the `Python Cheese Shop <https://pypi.org/project/SQLAlchemy>`_ and install it
@@ -141,10 +132,29 @@ pip requires that the ``--pre`` flag be used:
 
 .. sourcecode:: text
 
-    pip install --pre SQLAlchemy
+    pip install --pre sqlalchemy
 
 Where above, if the most recent version is a prerelease, it will be installed
 instead of the latest released version.
+
+Installing with AsyncIO Support
+-------------------------------
+
+SQLAlchemy's ``asyncio`` support depends upon the
+`greenlet <https://pypi.org/project/greenlet/>`_ project.    This dependency
+is not included by default.   To install with asyncio support, run this command:
+
+.. sourcecode:: text
+
+    pip install sqlalchemy[asyncio]
+
+This installation will include the greenlet dependency in the installation.
+See the section :ref:`asyncio_install` for
+additional details on ensuring asyncio support is present.
+
+.. versionchanged:: 2.1  SQLAlchemy no longer installs the "greenlet"
+   dependency by default; use the ``sqlalchemy[asyncio]`` pip target to
+   install.
 
 
 Installing manually from the source distribution
@@ -238,13 +248,13 @@ the available DBAPIs for each database, including external links.
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 2.0. If you're working on a
+This documentation covers SQLAlchemy version 2.1. If you're working on a
 system that already has SQLAlchemy installed, check the version from your
 Python prompt like this::
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__  # doctest: +SKIP
-     2.0.0
+     2.1.0
 
 Next Steps
 ----------
@@ -254,7 +264,21 @@ With SQLAlchemy installed, new and old users alike can
 
 .. _migration:
 
-1.x to 2.0 Migration
+2.0 to 2.1 Migration
 =====================
 
-Notes on the new API released in SQLAlchemy 2.0 is available here at :doc:`changelog/migration_20`.
+Users coming SQLAlchemy version 2.0 will want to read:
+
+* :doc:`What's New in SQLAlchemy 2.1? <changelog/migration_21>` - New features and behaviors in version 2.1
+
+Users transitioning from 1.x versions of SQLAlchemy, such as version 1.4, will want to
+transition to version 2.0 overall before making any additional changes needed for
+the much smaller transition from 2.0 to 2.1.   Key documentation for the 1.x to 2.x
+transition:
+
+* :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete background on migrating from 1.3 or 1.4 to 2.0
+* :doc:`What's New in SQLAlchemy 2.0? <changelog/whatsnew_20>` - New 2.0 features and behaviors beyond the 1.x migration
+
+An index of all changelogs and migration documentation is at:
+
+* :doc:`Changelog catalog <changelog/index>` - Detailed changelogs for all SQLAlchemy Versions

@@ -204,8 +204,8 @@ the operation will INSERT one row at a time::
 
 .. _orm_queryguide_insert_heterogeneous_params:
 
-Using Heterogenous Parameter Dictionaries
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using Heterogeneous Parameter Dictionaries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ..  Setup code, not for display
 
@@ -215,7 +215,7 @@ Using Heterogenous Parameter Dictionaries
   BEGIN (implicit)...
 
 The ORM bulk insert feature supports lists of parameter dictionaries that are
-"heterogenous", which basically means "individual dictionaries can have different
+"heterogeneous", which basically means "individual dictionaries can have different
 keys".   When this condition is detected,
 the ORM will break up the parameter dictionaries into groups corresponding
 to each set of keys and batch accordingly into separate INSERT statements::
@@ -256,6 +256,111 @@ In the above example, the five parameter dictionaries passed translated into
 three INSERT statements, grouped along the specific sets of keys
 in each dictionary while still maintaining row order, i.e.
 ``("name", "fullname", "species")``, ``("name", "species")``, ``("name","fullname", "species")``.
+
+.. _orm_queryguide_insert_null_params:
+
+Sending NULL values in ORM bulk INSERT statements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The bulk ORM insert feature draws upon a behavior that is also present
+in the legacy "bulk" insert behavior, as well as in the ORM unit of work
+overall, which is that rows which contain NULL values are INSERTed using
+a statement that does not refer to those columns; the rationale here is so
+that backends and schemas which contain server-side INSERT defaults that may
+be sensitive to the presence of a NULL value vs. no value present will
+produce a server side value as expected.  This default behavior
+has the effect of breaking up the bulk inserted batches into more
+batches of fewer rows::
+
+    >>> session.execute(
+    ...     insert(User),
+    ...     [
+    ...         {
+    ...             "name": "name_a",
+    ...             "fullname": "Employee A",
+    ...             "species": "Squid",
+    ...         },
+    ...         {
+    ...             "name": "name_b",
+    ...             "fullname": "Employee B",
+    ...             "species": "Squirrel",
+    ...         },
+    ...         {
+    ...             "name": "name_c",
+    ...             "fullname": "Employee C",
+    ...             "species": None,
+    ...         },
+    ...         {
+    ...             "name": "name_d",
+    ...             "fullname": "Employee D",
+    ...             "species": "Bluefish",
+    ...         },
+    ...     ],
+    ... )
+    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] [('name_a', 'Employee A', 'Squid'), ('name_b', 'Employee B', 'Squirrel')]
+    INSERT INTO user_account (name, fullname) VALUES (?, ?)
+    [...] ('name_c', 'Employee C')
+    INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] ('name_d', 'Employee D', 'Bluefish')
+    ...
+
+..  Setup code, not for display
+
+  >>> session.rollback()
+  ROLLBACK...
+  >>> session.connection()
+  BEGIN (implicit)...
+
+Above, the bulk INSERT of four rows is broken into three separate statements,
+the second statement reformatted to not refer to the NULL column for the single
+parameter dictionary that contains a ``None`` value.    This default
+behavior may be undesirable when many rows in the dataset contain random NULL
+values, as it causes the "executemany" operation to be broken into a larger
+number of smaller operations; particularly when relying upon
+:ref:`insertmanyvalues <engine_insertmanyvalues>` to reduce the overall number
+of statements, this can have a bigger performance impact.
+
+To disable the handling of ``None`` values in the parameters into separate
+batches, pass the execution option ``render_nulls=True``; this will cause
+all parameter dictionaries to be treated equivalently, assuming the same
+set of keys in each dictionary::
+
+    >>> session.execute(
+    ...     insert(User).execution_options(render_nulls=True),
+    ...     [
+    ...         {
+    ...             "name": "name_a",
+    ...             "fullname": "Employee A",
+    ...             "species": "Squid",
+    ...         },
+    ...         {
+    ...             "name": "name_b",
+    ...             "fullname": "Employee B",
+    ...             "species": "Squirrel",
+    ...         },
+    ...         {
+    ...             "name": "name_c",
+    ...             "fullname": "Employee C",
+    ...             "species": None,
+    ...         },
+    ...         {
+    ...             "name": "name_d",
+    ...             "fullname": "Employee D",
+    ...             "species": "Bluefish",
+    ...         },
+    ...     ],
+    ... )
+    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] [('name_a', 'Employee A', 'Squid'), ('name_b', 'Employee B', 'Squirrel'), ('name_c', 'Employee C', None), ('name_d', 'Employee D', 'Bluefish')]
+    ...
+
+Above, all parameter dictionaries are sent in a single INSERT batch, including
+the ``None`` value present in the third parameter dictionary.
+
+.. versionadded:: 2.0.23  Added the ``render_nulls`` execution option which
+   mirrors the behavior of the legacy
+   :paramref:`_orm.Session.bulk_insert_mappings.render_nulls` parameter.
 
 .. _orm_queryguide_insert_joined_table_inheritance:
 
@@ -447,7 +552,7 @@ are not present:
   or other multi-table mappings are not supported, since that would require multiple
   INSERT statements.
 
-* :ref:`Heterogenous parameter sets <orm_queryguide_insert_heterogeneous_params>`
+* :ref:`Heterogeneous parameter sets <orm_queryguide_insert_heterogeneous_params>`
   are not supported - each element in the VALUES set must have the same
   columns.
 
@@ -887,6 +992,52 @@ For a DELETE, an example of deleting rows based on criteria::
     ROLLBACK...
     >>> session.connection()
     BEGIN (implicit)...
+
+.. warning:: Please read the following section :ref:`orm_queryguide_update_delete_caveats`
+   for important notes regarding how the functionality of ORM-Enabled UPDATE and DELETE
+   diverges from that of ORM :term:`unit of work` features, such
+   as using the :meth:`_orm.Session.delete` method to delete individual objects.
+
+
+.. _orm_queryguide_update_delete_caveats:
+
+Important Notes and Caveats for ORM-Enabled Update and Delete
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ORM-enabled UPDATE and DELETE features bypass ORM :term:`unit of work`
+automation in favor of being able to emit a single UPDATE or DELETE statement
+that matches multiple rows at once without complexity.
+
+* The operations do not offer in-Python cascading of relationships - it is
+  assumed that ON UPDATE CASCADE and/or ON DELETE CASCADE is configured for any
+  foreign key references which require it, otherwise the database may emit an
+  integrity violation if foreign key references are being enforced. See the
+  notes at :ref:`passive_deletes` for some examples.
+
+* After the UPDATE or DELETE, dependent objects in the :class:`.Session` which
+  were impacted by an ON UPDATE CASCADE or ON DELETE CASCADE on related tables,
+  particularly objects that refer to rows that have now been deleted, may still
+  reference those objects.  This issue is resolved once the :class:`.Session`
+  is expired, which normally occurs upon :meth:`.Session.commit` or can be
+  forced by using :meth:`.Session.expire_all`.
+
+* ORM-enabled UPDATEs and DELETEs do not handle joined table inheritance
+  automatically.   See the section :ref:`orm_queryguide_update_delete_joined_inh`
+  for notes on how to work with joined-inheritance mappings.
+
+* The WHERE criteria needed in order to limit the polymorphic identity to
+  specific subclasses for single-table-inheritance mappings **is included
+  automatically** .   This only applies to a subclass mapper that has no table of
+  its own.
+
+* The :func:`_orm.with_loader_criteria` option **is supported** by ORM
+  update and delete operations; criteria here will be added to that of the UPDATE
+  or DELETE statement being emitted, as well as taken into account during the
+  "synchronize" process.
+
+* In order to intercept ORM-enabled UPDATE and DELETE operations with event
+  handlers, use the :meth:`_orm.SessionEvents.do_orm_execute` event.
+
 
 .. _orm_queryguide_update_delete_sync:
 

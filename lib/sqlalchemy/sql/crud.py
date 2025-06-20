@@ -1,5 +1,5 @@
 # sql/crud.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -231,17 +231,12 @@ def _get_crud_params(
         spd = mp[0]
         stmt_parameter_tuples = list(spd.items())
         spd_str_key = {_column_as_key(key) for key in spd}
-    elif compile_state._ordered_values:
-        spd = compile_state._dict_parameters
-        stmt_parameter_tuples = compile_state._ordered_values
-        assert spd is not None
-        spd_str_key = {_column_as_key(key) for key in spd}
     elif compile_state._dict_parameters:
         spd = compile_state._dict_parameters
         stmt_parameter_tuples = list(spd.items())
         spd_str_key = {_column_as_key(key) for key in spd}
     else:
-        stmt_parameter_tuples = spd = spd_str_key = None
+        stmt_parameter_tuples = spd_str_key = None
 
     # if we have statement parameters - set defaults in the
     # compiled params
@@ -393,9 +388,9 @@ def _create_bind_param(
     process: Literal[True] = ...,
     required: bool = False,
     name: Optional[str] = None,
+    force_anonymous: bool = False,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -404,8 +399,7 @@ def _create_bind_param(
     col: ColumnElement[Any],
     value: Any,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 def _create_bind_param(
@@ -415,10 +409,14 @@ def _create_bind_param(
     process: bool = True,
     required: bool = False,
     name: Optional[str] = None,
+    force_anonymous: bool = False,
     **kw: Any,
 ) -> Union[str, elements.BindParameter[Any]]:
-    if name is None:
+    if force_anonymous:
+        name = None
+    elif name is None:
         name = col.key
+
     bindparam = elements.BindParameter(
         name, value, type_=col.type, required=required
     )
@@ -488,7 +486,7 @@ def _key_getters_for_crud_column(
         )
 
         def _column_as_key(
-            key: Union[ColumnClause[Any], str]
+            key: Union[ColumnClause[Any], str],
         ) -> Union[str, Tuple[str, str]]:
             str_key = c_key_role(key)
             if hasattr(key, "table") and key.table in _et:
@@ -614,9 +612,9 @@ def _scan_cols(
 
     assert compile_state.isupdate or compile_state.isinsert
 
-    if compile_state._parameter_ordering:
+    if compile_state._maintain_values_ordering:
         parameter_ordering = [
-            _column_as_key(key) for key in compile_state._parameter_ordering
+            _column_as_key(key) for key in compile_state._dict_parameters
         ]
         ordered_keys = set(parameter_ordering)
         cols = [
@@ -834,6 +832,7 @@ def _append_param_parameter(
 ):
     value = parameters.pop(col_key)
 
+    has_visiting_cte = kw.get("visiting_cte") is not None
     col_value = compiler.preparer.format_column(
         c, use_table=compile_state.include_table_with_column_exprs
     )
@@ -859,11 +858,14 @@ def _append_param_parameter(
             c,
             value,
             required=value is REQUIRED,
-            name=_col_bind_name(c)
-            if not _compile_state_isinsert(compile_state)
-            or not compile_state._has_multi_parameters
-            else "%s_m0" % _col_bind_name(c),
+            name=(
+                _col_bind_name(c)
+                if not _compile_state_isinsert(compile_state)
+                or not compile_state._has_multi_parameters
+                else "%s_m0" % _col_bind_name(c)
+            ),
             accumulate_bind_names=accumulated_bind_names,
+            force_anonymous=has_visiting_cte,
             **kw,
         )
     elif value._is_bind_parameter:
@@ -884,10 +886,12 @@ def _append_param_parameter(
             compiler,
             c,
             value,
-            name=_col_bind_name(c)
-            if not _compile_state_isinsert(compile_state)
-            or not compile_state._has_multi_parameters
-            else "%s_m0" % _col_bind_name(c),
+            name=(
+                _col_bind_name(c)
+                if not _compile_state_isinsert(compile_state)
+                or not compile_state._has_multi_parameters
+                else "%s_m0" % _col_bind_name(c)
+            ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
         )
@@ -1213,8 +1217,7 @@ def _create_insert_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[True] = ...,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -1223,8 +1226,7 @@ def _create_insert_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[False],
     **kw: Any,
-) -> elements.BindParameter[Any]:
-    ...
+) -> elements.BindParameter[Any]: ...
 
 
 def _create_insert_prefetch_bind_param(
@@ -1247,8 +1249,7 @@ def _create_update_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[True] = ...,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -1257,8 +1258,7 @@ def _create_update_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[False],
     **kw: Any,
-) -> elements.BindParameter[Any]:
-    ...
+) -> elements.BindParameter[Any]: ...
 
 
 def _create_update_prefetch_bind_param(
@@ -1288,7 +1288,7 @@ class _multiparam_column(elements.ColumnElement[Any]):
     def compare(self, other, **kw):
         raise NotImplementedError()
 
-    def _copy_internals(self, other, **kw):
+    def _copy_internals(self, **kw):
         raise NotImplementedError()
 
     def __eq__(self, other):
@@ -1437,6 +1437,7 @@ def _extend_values_for_multiparams(
     values_0 = initial_values
     values = [initial_values]
 
+    has_visiting_cte = kw.get("visiting_cte") is not None
     mp = compile_state._multi_parameters
     assert mp is not None
     for i, row in enumerate(mp[1:]):
@@ -1453,7 +1454,8 @@ def _extend_values_for_multiparams(
                         compiler,
                         col,
                         row[key],
-                        name="%s_m%d" % (col.key, i + 1),
+                        name=("%s_m%d" % (col.key, i + 1)),
+                        force_anonymous=has_visiting_cte,
                         **kw,
                     )
                 else:
@@ -1578,7 +1580,11 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
         should_implicit_return_defaults = (
             implicit_returning and stmt._return_defaults
         )
-        explicit_returning = should_implicit_return_defaults or stmt._returning
+        explicit_returning = (
+            should_implicit_return_defaults
+            or stmt._returning
+            or stmt._supplemental_returning
+        )
         use_insertmanyvalues = (
             toplevel
             and compiler.for_executemany

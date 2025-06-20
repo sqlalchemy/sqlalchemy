@@ -1,5 +1,5 @@
 # testing/assertsql.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -50,6 +50,7 @@ class CursorSQL(SQLMatchRule):
         if self.statement != stmt.statement or (
             self.params is not None and self.params != stmt.parameters
         ):
+            self.consume_statement = True
             self.errormessage = (
                 "Testing for exact SQL %s parameters %s received %s %s"
                 % (
@@ -87,9 +88,9 @@ class CompiledSQL(SQLMatchRule):
             dialect.supports_default_metavalue = True
 
             if self.enable_returning:
-                dialect.insert_returning = (
-                    dialect.update_returning
-                ) = dialect.delete_returning = True
+                dialect.insert_returning = dialect.update_returning = (
+                    dialect.delete_returning
+                ) = True
                 dialect.use_insertmanyvalues = True
                 dialect.supports_multivalues_insert = True
                 dialect.update_returning_multifrom = True

@@ -1,5 +1,5 @@
-# sqlalchemy/sql/events.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# sql/events.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -63,13 +63,14 @@ class DDLEvents(event.Events[SchemaEventTarget]):
         from sqlalchemy import Table, Column, Metadata, Integer
 
         m = MetaData()
-        some_table = Table('some_table', m, Column('data', Integer))
+        some_table = Table("some_table", m, Column("data", Integer))
+
 
         @event.listens_for(some_table, "after_create")
         def after_create(target, connection, **kw):
-            connection.execute(text(
-                "ALTER TABLE %s SET name=foo_%s" % (target.name, target.name)
-            ))
+            connection.execute(
+                text("ALTER TABLE %s SET name=foo_%s" % (target.name, target.name))
+            )
 
 
         some_engine = create_engine("postgresql://scott:tiger@host/test")
@@ -127,10 +128,11 @@ class DDLEvents(event.Events[SchemaEventTarget]):
     as listener callables::
 
         from sqlalchemy import DDL
+
         event.listen(
             some_table,
             "after_create",
-            DDL("ALTER TABLE %(table)s SET name=foo_%(table)s")
+            DDL("ALTER TABLE %(table)s SET name=foo_%(table)s"),
         )
 
     **Event Propagation to MetaData Copies**
@@ -149,7 +151,7 @@ class DDLEvents(event.Events[SchemaEventTarget]):
             some_table,
             "after_create",
             DDL("ALTER TABLE %(table)s SET name=foo_%(table)s"),
-            propagate=True
+            propagate=True,
         )
 
         new_metadata = MetaData()
@@ -169,7 +171,7 @@ class DDLEvents(event.Events[SchemaEventTarget]):
 
         :ref:`schema_ddl_sequences`
 
-    """
+    """  # noqa: E501
 
     _target_class_doc = "SomeSchemaClassOrObject"
     _dispatch_target = SchemaEventTarget
@@ -358,15 +360,16 @@ class DDLEvents(event.Events[SchemaEventTarget]):
 
             metadata = MetaData()
 
-            @event.listens_for(metadata, 'column_reflect')
+
+            @event.listens_for(metadata, "column_reflect")
             def receive_column_reflect(inspector, table, column_info):
                 # receives for all Table objects that are reflected
                 # under this MetaData
+                ...
 
 
             # will use the above event hook
             my_table = Table("my_table", metadata, autoload_with=some_engine)
-
 
         .. versionadded:: 1.4.0b2 The :meth:`_events.DDLEvents.column_reflect`
            hook may now be applied to a :class:`_schema.MetaData` object as
@@ -379,9 +382,11 @@ class DDLEvents(event.Events[SchemaEventTarget]):
 
             from sqlalchemy import Table
 
-            @event.listens_for(Table, 'column_reflect')
+
+            @event.listens_for(Table, "column_reflect")
             def receive_column_reflect(inspector, table, column_info):
                 # receives for all Table objects that are reflected
+                ...
 
         It can also be applied to a specific :class:`_schema.Table` at the
         point that one is being reflected using the
@@ -390,9 +395,7 @@ class DDLEvents(event.Events[SchemaEventTarget]):
             t1 = Table(
                 "my_table",
                 autoload_with=some_engine,
-                listeners=[
-                    ('column_reflect', receive_column_reflect)
-                ]
+                listeners=[("column_reflect", receive_column_reflect)],
             )
 
         The dictionary of column information as returned by the

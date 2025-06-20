@@ -1,0 +1,30 @@
+.. change::
+    :tags: change, sql
+    :tickets: 10236
+
+    The ``.c`` and ``.columns`` attributes on the :class:`.Select` and
+    :class:`.TextualSelect` constructs, which are not instances of
+    :class:`.FromClause`, have been removed completely, in addition to the
+    ``.select()`` method as well as other codepaths which would implicitly
+    generate a subquery from a :class:`.Select` without the need to explicitly
+    call the :meth:`.Select.subquery` method.
+
+    In the case of ``.c`` and ``.columns``, these attributes were never useful
+    in practice and have caused a great deal of confusion, hence were
+    deprecated back in version 1.4, and have emitted warnings since that
+    version.   Accessing the columns that are specific to a :class:`.Select`
+    construct is done via the :attr:`.Select.selected_columns` attribute, which
+    was added in version 1.4 to suit the use case that users often expected
+    ``.c`` to accomplish.  In the larger sense, implicit production of
+    subqueries works against SQLAlchemy's modern practice of making SQL
+    structure as explicit as possible.
+
+    Note that this is **not related** to the usual :attr:`.FromClause.c` and
+    :attr:`.FromClause.columns` attributes, common to objects such as
+    :class:`.Table` and :class:`.Subquery`,  which are unaffected by this
+    change.
+
+    .. seealso::
+
+        :ref:`change_4617` - original notes from SQLAlchemy 1.4
+

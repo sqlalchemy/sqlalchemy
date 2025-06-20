@@ -4,7 +4,6 @@ import contextlib
 from typing import List
 from typing import Optional
 
-from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
@@ -22,6 +21,7 @@ from sqlalchemy.ext.asyncio import async_object_session
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import close_all_sessions
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
 from sqlalchemy.orm import DeclarativeBase
@@ -38,12 +38,16 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
+from sqlalchemy.testing.assertions import in_
 from sqlalchemy.testing.assertions import is_false
+from sqlalchemy.testing.assertions import not_in
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.provision import normalize_sequence
+from sqlalchemy.testing.schema import Column
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
 
@@ -121,6 +125,50 @@ class AsyncSessionTest(AsyncFixture):
                     await async_session.execute(seq),
                     sync_connection.dialect.default_sequence_base,
                 )
+
+    @async_test
+    async def test_close_all(self, async_engine):
+        User = self.classes.User
+
+        s1 = AsyncSession(async_engine)
+        u1 = User()
+        s1.add(u1)
+
+        s2 = AsyncSession(async_engine)
+        u2 = User()
+        s2.add(u2)
+
+        in_(u1, s1)
+        in_(u2, s2)
+
+        await close_all_sessions()
+
+        not_in(u1, s1)
+        not_in(u2, s2)
+
+    @async_test
+    async def test_session_close_all_deprecated(self, async_engine):
+        User = self.classes.User
+
+        s1 = AsyncSession(async_engine)
+        u1 = User()
+        s1.add(u1)
+
+        s2 = AsyncSession(async_engine)
+        u2 = User()
+        s2.add(u2)
+
+        in_(u1, s1)
+        in_(u2, s2)
+
+        with expect_deprecated(
+            r"The AsyncSession.close_all\(\) method is deprecated and will "
+            "be removed in a future release. "
+        ):
+            await AsyncSession.close_all()
+
+        not_in(u1, s1)
+        not_in(u2, s2)
 
 
 class AsyncSessionQueryTest(AsyncFixture):
@@ -267,6 +315,7 @@ class AsyncSessionQueryTest(AsyncFixture):
 
     @testing.combinations("statement", "execute", argnames="location")
     @async_test
+    @testing.requires.server_side_cursors
     async def test_no_ss_cursor_w_execute(self, async_session, location):
         User = self.classes.User
 
@@ -720,7 +769,9 @@ class AsyncORMBehaviorsTest(AsyncFixture):
             class A:
                 __tablename__ = "a"
 
-                id = Column(Integer, primary_key=True)
+                id = Column(
+                    Integer, primary_key=True, test_needs_autoincrement=True
+                )
                 b = relationship(
                     "B",
                     uselist=False,
@@ -732,7 +783,9 @@ class AsyncORMBehaviorsTest(AsyncFixture):
             @registry.mapped
             class B:
                 __tablename__ = "b"
-                id = Column(Integer, primary_key=True)
+                id = Column(
+                    Integer, primary_key=True, test_needs_autoincrement=True
+                )
                 a_id = Column(ForeignKey("a.id"))
 
             async with async_engine.begin() as conn:
@@ -743,14 +796,8 @@ class AsyncORMBehaviorsTest(AsyncFixture):
         return go
 
     @testing.combinations(
-        (
-            "legacy_style",
-            True,
-        ),
-        (
-            "new_style",
-            False,
-        ),
+        ("legacy_style", True),
+        ("new_style", False),
         argnames="_legacy_inactive_history_style",
         id_="ia",
     )
@@ -887,6 +934,38 @@ class AsyncProxyTest(AsyncFixture):
 
         is_(async_session.get_transaction(), None)
         is_(async_session.get_nested_transaction(), None)
+
+    @async_test
+    async def test_get_transaction_gced(self, async_session):
+        """test #12471
+
+        this tests that the AsyncSessionTransaction is regenerated if
+        we don't have any reference to it beforehand.
+
+        """
+        is_(async_session.get_transaction(), None)
+        is_(async_session.get_nested_transaction(), None)
+
+        await async_session.begin()
+
+        trans = async_session.get_transaction()
+        is_not(trans, None)
+        is_(trans.session, async_session)
+        is_false(trans.nested)
+        is_(
+            trans.sync_transaction,
+            async_session.sync_session.get_transaction(),
+        )
+
+        await async_session.begin_nested()
+        nested = async_session.get_nested_transaction()
+        is_not(nested, None)
+        is_true(nested.nested)
+        is_(nested.session, async_session)
+        is_(
+            nested.sync_transaction,
+            async_session.sync_session.get_nested_transaction(),
+        )
 
     @async_test
     async def test_async_object_session(self, async_engine):

@@ -80,7 +80,7 @@ class SyncTest(
         pairs = [(a_mapper.c.id, b_mapper.c.id)]
         a1.obj().id = 7
         assert "id" not in b1.obj().__dict__
-        sync.populate(a1, a_mapper, b1, b_mapper, pairs, uowcommit, False)
+        sync._populate(a1, a_mapper, b1, b_mapper, pairs, uowcommit, False)
         eq_(b1.obj().id, 7)
         eq_(b1.obj().__dict__["id"], 7)
         assert ("pk_cascaded", b1, b_mapper.c.id) not in uowcommit.attributes
@@ -90,7 +90,7 @@ class SyncTest(
         pairs = [(a_mapper.c.id, b_mapper.c.id)]
         a1.obj().id = 7
         assert "id" not in b1.obj().__dict__
-        sync.populate(a1, a_mapper, b1, b_mapper, pairs, uowcommit, True)
+        sync._populate(a1, a_mapper, b1, b_mapper, pairs, uowcommit, True)
         eq_(b1.obj().id, 7)
         eq_(b1.obj().__dict__["id"], 7)
         eq_(uowcommit.attributes[("pk_cascaded", b1, b_mapper.c.id)], True)
@@ -102,7 +102,7 @@ class SyncTest(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for source column 't2.id'; "
             r"mapper 'Mapper\[A\(t1\)\]' does not map this column.",
-            sync.populate,
+            sync._populate,
             a1,
             a_mapper,
             b1,
@@ -120,7 +120,7 @@ class SyncTest(
             r"Can't execute sync rule for destination "
             r"column 't1.id'; "
             r"mapper 'Mapper\[B\(t2\)\]' does not map this column.",
-            sync.populate,
+            sync._populate,
             a1,
             a_mapper,
             b1,
@@ -135,7 +135,7 @@ class SyncTest(
         pairs = [(a_mapper.c.id, b_mapper.c.t1id)]
         b1.obj().t1id = 8
         eq_(b1.obj().__dict__["t1id"], 8)
-        sync.clear(b1, b_mapper, pairs)
+        sync._clear(b1, b_mapper, pairs)
         eq_(b1.obj().__dict__["t1id"], None)
 
     def test_clear_pk(self):
@@ -145,9 +145,9 @@ class SyncTest(
         eq_(b1.obj().__dict__["id"], 8)
         assert_raises_message(
             AssertionError,
-            "Dependency rule tried to blank-out primary key "
+            "Dependency rule on column 't1.id' tried to blank-out primary key "
             "column 't2.id' on instance '<B",
-            sync.clear,
+            sync._clear,
             b1,
             b_mapper,
             pairs,
@@ -161,7 +161,7 @@ class SyncTest(
             "Can't execute sync rule for destination "
             r"column 't1.foo'; mapper 'Mapper\[B\(t2\)\]' does not "
             "map this column.",
-            sync.clear,
+            sync._clear,
             b1,
             b_mapper,
             pairs,
@@ -174,7 +174,7 @@ class SyncTest(
         a1.obj().id = 12
         pairs = [(a_mapper.c.id, b_mapper.c.id)]
         dest = {}
-        sync.update(a1, a_mapper, dest, "old_", pairs)
+        sync._update(a1, a_mapper, dest, "old_", pairs)
         eq_(dest, {"id": 12, "old_id": 10})
 
     def test_update_unmapped(self):
@@ -185,7 +185,7 @@ class SyncTest(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for source column 't2.id'; "
             r"mapper 'Mapper\[A\(t1\)\]' does not map this column.",
-            sync.update,
+            sync._update,
             a1,
             a_mapper,
             dest,
@@ -198,7 +198,7 @@ class SyncTest(
         a1.obj().id = 10
         pairs = [(a_mapper.c.id, b_mapper.c.id)]
         dest = {}
-        sync.populate_dict(a1, a_mapper, dest, pairs)
+        sync._populate_dict(a1, a_mapper, dest, pairs)
         eq_(dest, {"id": 10})
 
     def test_populate_dict_unmapped(self):
@@ -210,7 +210,7 @@ class SyncTest(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for source column 't2.id'; "
             r"mapper 'Mapper\[A\(t1\)\]' does not map this column.",
-            sync.populate_dict,
+            sync._populate_dict,
             a1,
             a_mapper,
             dest,
@@ -221,11 +221,11 @@ class SyncTest(
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
         a1.obj().id = 10
         pairs = [(a_mapper.c.id, b_mapper.c.id)]
-        eq_(sync.source_modified(uowcommit, a1, a_mapper, pairs), False)
+        eq_(sync._source_modified(uowcommit, a1, a_mapper, pairs), False)
 
     def test_source_modified_no_pairs(self):
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
-        eq_(sync.source_modified(uowcommit, a1, a_mapper, []), False)
+        eq_(sync._source_modified(uowcommit, a1, a_mapper, []), False)
 
     def test_source_modified_modified(self):
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
@@ -233,7 +233,7 @@ class SyncTest(
         a1._commit_all(a1.dict)
         a1.obj().id = 12
         pairs = [(a_mapper.c.id, b_mapper.c.id)]
-        eq_(sync.source_modified(uowcommit, a1, a_mapper, pairs), True)
+        eq_(sync._source_modified(uowcommit, a1, a_mapper, pairs), True)
 
     def test_source_modified_composite(self):
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
@@ -244,7 +244,7 @@ class SyncTest(
             (a_mapper.c.id, b_mapper.c.id),
             (a_mapper.c.foo, b_mapper.c.id),
         ]
-        eq_(sync.source_modified(uowcommit, a1, a_mapper, pairs), True)
+        eq_(sync._source_modified(uowcommit, a1, a_mapper, pairs), True)
 
     def test_source_modified_composite_unmodified(self):
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
@@ -254,7 +254,7 @@ class SyncTest(
             (a_mapper.c.id, b_mapper.c.id),
             (a_mapper.c.foo, b_mapper.c.id),
         ]
-        eq_(sync.source_modified(uowcommit, a1, a_mapper, pairs), False)
+        eq_(sync._source_modified(uowcommit, a1, a_mapper, pairs), False)
 
     def test_source_modified_no_unmapped(self):
         uowcommit, a1, b1, a_mapper, b_mapper = self._fixture()
@@ -263,7 +263,7 @@ class SyncTest(
             orm_exc.UnmappedColumnError,
             "Can't execute sync rule for source column 't2.id'; "
             r"mapper 'Mapper\[A\(t1\)\]' does not map this column.",
-            sync.source_modified,
+            sync._source_modified,
             uowcommit,
             a1,
             a_mapper,

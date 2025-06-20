@@ -1,13 +1,11 @@
 # event/api.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Public API functions for the event system.
-
-"""
+"""Public API functions for the event system."""
 from __future__ import annotations
 
 from typing import Any
@@ -51,15 +49,14 @@ def listen(
         from sqlalchemy import event
         from sqlalchemy.schema import UniqueConstraint
 
+
         def unique_constraint_name(const, table):
-            const.name = "uq_%s_%s" % (
-                table.name,
-                list(const.columns)[0].name
-            )
+            const.name = "uq_%s_%s" % (table.name, list(const.columns)[0].name)
+
+
         event.listen(
-                UniqueConstraint,
-                "after_parent_attach",
-                unique_constraint_name)
+            UniqueConstraint, "after_parent_attach", unique_constraint_name
+        )
 
     :param bool insert: The default behavior for event handlers is to append
       the decorated user defined function to an internal list of registered
@@ -132,19 +129,17 @@ def listens_for(
     The :func:`.listens_for` decorator is part of the primary interface for the
     SQLAlchemy event system, documented at :ref:`event_toplevel`.
 
-    This function generally shares the same kwargs as :func:`.listens`.
+    This function generally shares the same kwargs as :func:`.listen`.
 
     e.g.::
 
         from sqlalchemy import event
         from sqlalchemy.schema import UniqueConstraint
 
+
         @event.listens_for(UniqueConstraint, "after_parent_attach")
         def unique_constraint_name(const, table):
-            const.name = "uq_%s_%s" % (
-                table.name,
-                list(const.columns)[0].name
-            )
+            const.name = "uq_%s_%s" % (table.name, list(const.columns)[0].name)
 
     A given function can also be invoked for only the first invocation
     of the event using the ``once`` argument::
@@ -152,7 +147,6 @@ def listens_for(
         @event.listens_for(Mapper, "before_configure", once=True)
         def on_config():
             do_config()
-
 
     .. warning:: The ``once`` argument does not imply automatic de-registration
        of the listener function after it has been invoked a first time; a
@@ -188,6 +182,7 @@ def remove(target: Any, identifier: str, fn: Callable[..., Any]) -> None:
         @event.listens_for(SomeMappedClass, "before_insert", propagate=True)
         def my_listener_function(*arg):
             pass
+
 
         # ... it's removed like this
         event.remove(SomeMappedClass, "before_insert", my_listener_function)

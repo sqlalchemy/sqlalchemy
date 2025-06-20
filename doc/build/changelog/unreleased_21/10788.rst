@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 10788
+
+    Fixed issue in name normalization (e.g. "uppercase" backends like Oracle)
+    where using a :class:`.TextualSelect` would not properly maintain as
+    uppercase column names that were quoted as uppercase, even though
+    the :class:`.TextualSelect` includes a :class:`.Column` that explicitly
+    holds this uppercase name.

@@ -6,12 +6,15 @@ that it extracts from the documentation.
 .. versionadded:: 2.0
 
 """
+
 # mypy: ignore-errors
 
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 from collections.abc import Iterator
+import dataclasses
 from functools import partial
+from itertools import chain
 from pathlib import Path
 import re
 from typing import NamedTuple
@@ -24,7 +27,14 @@ from black.mode import TargetVersion
 
 
 home = Path(__file__).parent.parent
-ignore_paths = (re.compile(r"changelog/unreleased_\d{2}"),)
+ignore_paths = (
+    re.compile(r"changelog/unreleased_\d{2}"),
+    re.compile(r"README\.unittests\.rst"),
+    re.compile(r"\.tox"),
+    re.compile(r"build"),
+)
+
+CUSTOM_TARGET_VERSIONS = {"declarative_tables.rst": "PY312"}
 
 
 class BlockLine(NamedTuple):
@@ -44,6 +54,7 @@ def _format_block(
     errors: list[tuple[int, str, Exception]],
     is_doctest: bool,
     file: str,
+    is_python_file: bool,
 ) -> list[str]:
     if not is_doctest:
         # The first line may have additional padding. Remove then restore later
@@ -57,8 +68,15 @@ def _format_block(
         add_padding = None
         code = "\n".join(l.code for l in input_block)
 
+    mode = PYTHON_BLACK_MODE if is_python_file else RST_BLACK_MODE
+    custom_target = CUSTOM_TARGET_VERSIONS.get(Path(file).name)
+    if custom_target:
+        mode = dataclasses.replace(
+            mode, target_versions={TargetVersion[custom_target]}
+        )
+
     try:
-        formatted = format_str(code, mode=BLACK_MODE)
+        formatted = format_str(code, mode=mode)
     except Exception as e:
         start_line = input_block[0].line_no
         first_error = not errors
@@ -118,6 +136,7 @@ start_code_section = re.compile(
     r"^(((?!\.\.).+::)|(\.\.\s*sourcecode::(.*py.*)?)|(::))$"
 )
 start_space = re.compile(r"^(\s*)[^ ]?")
+not_python_line = re.compile(r"^\s+[$:]")
 
 
 def format_file(
@@ -129,6 +148,8 @@ def format_file(
     original = file.read_text("utf-8")
     doctest_block: _Block | None = None
     plain_block: _Block | None = None
+
+    is_python_file = file.suffix == ".py"
 
     plain_code_section = False
     plain_padding = None
@@ -143,6 +164,7 @@ def format_file(
         errors=errors,
         is_doctest=True,
         file=str(file),
+        is_python_file=is_python_file,
     )
 
     def doctest_format():
@@ -157,6 +179,7 @@ def format_file(
         errors=errors,
         is_doctest=False,
         file=str(file),
+        is_python_file=is_python_file,
     )
 
     def plain_format():
@@ -245,6 +268,14 @@ def format_file(
                         ]
                         continue
                 buffer.append(line)
+            elif (
+                is_python_file
+                and not plain_block
+                and not_python_line.match(line)
+            ):
+                # not a python block. ignore it
+                plain_code_section = False
+                buffer.append(line)
             else:
                 # start of a plain block
                 assert not doctest_block
@@ -287,9 +318,12 @@ def format_file(
 
 
 def iter_files(directory: str) -> Iterator[Path]:
+    dir_path = home / directory
     yield from (
         file
-        for file in (home / directory).glob("./**/*.rst")
+        for file in chain(
+            dir_path.glob("./**/*.rst"), dir_path.glob("./**/*.py")
+        )
         if not any(pattern.search(file.as_posix()) for pattern in ignore_paths)
     )
 
@@ -316,11 +350,13 @@ def main(
             print(
                 f"{to_reformat} file(s) would be reformatted;",
                 (
-                    f"{sum(formatting_error_counts)} formatting errors "
-                    f"reported in {len(formatting_error_counts)} files"
-                )
-                if formatting_error_counts
-                else "no formatting errors reported",
+                    (
+                        f"{sum(formatting_error_counts)} formatting errors "
+                        f"reported in {len(formatting_error_counts)} files"
+                    )
+                    if formatting_error_counts
+                    else "no formatting errors reported"
+                ),
             )
 
             exit(1)
@@ -349,7 +385,7 @@ Use --report-doctest to ignore errors on plain code blocks.
         "-d",
         "--directory",
         help="Find documents in this directory and its sub dirs",
-        default="doc/build",
+        default=".",
     )
     parser.add_argument(
         "-c",
@@ -369,7 +405,8 @@ Use --report-doctest to ignore errors on plain code blocks.
         "-l",
         "--project-line-length",
         help="Configure the line length to the project value instead "
-        "of using the black default of 88",
+        "of using the black default of 88. Python files always use the"
+        "project line length",
         action="store_true",
     )
     parser.add_argument(
@@ -382,15 +419,24 @@ Use --report-doctest to ignore errors on plain code blocks.
     args = parser.parse_args()
 
     config = parse_pyproject_toml(home / "pyproject.toml")
-    BLACK_MODE = Mode(
-        target_versions={
-            TargetVersion[val.upper()]
-            for val in config.get("target_version", [])
-            if val != "py27"
-        },
-        line_length=config.get("line_length", DEFAULT_LINE_LENGTH)
-        if args.project_line_length
-        else DEFAULT_LINE_LENGTH,
+    target_versions = {
+        TargetVersion[val.upper()]
+        for val in config.get("target_version", [])
+        if val != "py27"
+    }
+
+    RST_BLACK_MODE = Mode(
+        target_versions=target_versions,
+        line_length=(
+            config.get("line_length", DEFAULT_LINE_LENGTH)
+            if args.project_line_length
+            else DEFAULT_LINE_LENGTH
+        ),
+    )
+    PYTHON_BLACK_MODE = Mode(
+        target_versions=target_versions,
+        # Remove a few char to account for normal indent
+        line_length=(config.get("line_length", 4) - 4 or DEFAULT_LINE_LENGTH),
     )
     REPORT_ONLY_DOCTEST = args.report_doctest
 

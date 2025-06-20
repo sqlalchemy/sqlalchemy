@@ -1,5 +1,5 @@
 # ext/orderinglist.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -26,18 +26,20 @@ displayed in order based on the value of the ``position`` column in the
 
     Base = declarative_base()
 
+
     class Slide(Base):
-        __tablename__ = 'slide'
+        __tablename__ = "slide"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
         bullets = relationship("Bullet", order_by="Bullet.position")
 
+
     class Bullet(Base):
-        __tablename__ = 'bullet'
+        __tablename__ = "bullet"
         id = Column(Integer, primary_key=True)
-        slide_id = Column(Integer, ForeignKey('slide.id'))
+        slide_id = Column(Integer, ForeignKey("slide.id"))
         position = Column(Integer)
         text = Column(String)
 
@@ -57,19 +59,24 @@ constructed using the :func:`.ordering_list` factory::
 
     Base = declarative_base()
 
+
     class Slide(Base):
-        __tablename__ = 'slide'
+        __tablename__ = "slide"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
-        bullets = relationship("Bullet", order_by="Bullet.position",
-                                collection_class=ordering_list('position'))
+        bullets = relationship(
+            "Bullet",
+            order_by="Bullet.position",
+            collection_class=ordering_list("position"),
+        )
+
 
     class Bullet(Base):
-        __tablename__ = 'bullet'
+        __tablename__ = "bullet"
         id = Column(Integer, primary_key=True)
-        slide_id = Column(Integer, ForeignKey('slide.id'))
+        slide_id = Column(Integer, ForeignKey("slide.id"))
         position = Column(Integer)
         text = Column(String)
 
@@ -151,14 +158,18 @@ def ordering_list(
 
         from sqlalchemy.ext.orderinglist import ordering_list
 
+
         class Slide(Base):
-            __tablename__ = 'slide'
+            __tablename__ = "slide"
 
             id = Column(Integer, primary_key=True)
             name = Column(String)
 
-            bullets = relationship("Bullet", order_by="Bullet.position",
-                                    collection_class=ordering_list('position'))
+            bullets = relationship(
+                "Bullet",
+                order_by="Bullet.position",
+                collection_class=ordering_list("position"),
+            )
 
     :param attr:
       Name of the mapped attribute to use for storage and retrieval of

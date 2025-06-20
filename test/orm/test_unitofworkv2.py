@@ -2171,7 +2171,6 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
 
 class LoadersUsingCommittedTest(UOWTest):
-
     """Test that events which occur within a flush()
     get the same attribute loading behavior as on the outside
     of the flush, and that the unit of work itself uses the
@@ -2260,7 +2259,6 @@ class LoadersUsingCommittedTest(UOWTest):
         Address, User = self.classes.Address, self.classes.User
 
         class AvoidReferencialError(Exception):
-
             """the test here would require ON UPDATE CASCADE on FKs
             for the flush to fully succeed; this exception is used
             to cancel the flush before we get that far.
@@ -3047,7 +3045,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
             testing.db,
             s.flush,
             CompiledSQL(
-                "INSERT INTO test2 (id, foo, bar) " "VALUES (:id, :foo, :bar)",
+                "INSERT INTO test2 (id, foo, bar) VALUES (:id, :foo, :bar)",
                 [{"id": 1, "foo": None, "bar": 2}],
             ),
         )
@@ -3160,7 +3158,9 @@ class EagerDefaultsSettingTest(
         t = Table(
             "test",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column(
                 "foo",
                 Integer,
@@ -3263,6 +3263,126 @@ class EagerDefaultsSettingTest(
                             {"id": 1, "bar": 6},
                             {"id": 2, "bar": 6},
                         ],
+                    ),
+                    Conditional(
+                        expected_eager_defaults and not expect_returning,
+                        [
+                            CompiledSQL(
+                                "SELECT test.foo AS test_foo "
+                                "FROM test WHERE test.id = :pk_1",
+                                [{"pk_1": 1}],
+                            ),
+                            CompiledSQL(
+                                "SELECT test.foo AS test_foo "
+                                "FROM test WHERE test.id = :pk_1",
+                                [{"pk_1": 2}],
+                            ),
+                        ],
+                        [],
+                    ),
+                ],
+            )
+        )
+
+    def test_eager_default_setting_inserts_no_pks(
+        self,
+        setup_mappers,
+        eager_defaults_variations,
+        implicit_returning_variations,
+        connection,
+    ):
+        """test for #10453.
+
+        This is essentially a variation from test_eager_default_setting,
+        as a separate test because there are too many new conditions by
+        introducing this variant.
+
+        """
+        Thing = setup_mappers
+        s = Session(connection)
+
+        t1, t2 = (Thing(bar=6), Thing(bar=6))
+
+        s.add_all([t1, t2])
+
+        expected_eager_defaults = eager_defaults_variations.eager_defaults or (
+            (
+                eager_defaults_variations.auto
+                or eager_defaults_variations.unspecified
+            )
+            and connection.dialect.insert_executemany_returning
+            and bool(implicit_returning_variations)
+        )
+        expect_returning = connection.dialect.insert_returning and bool(
+            implicit_returning_variations
+        )
+
+        with self.sql_execution_asserter(connection) as asserter:
+            s.flush()
+
+        asserter.assert_(
+            Conditional(
+                expect_returning,
+                [
+                    Conditional(
+                        connection.dialect.insert_executemany_returning,
+                        [
+                            Conditional(
+                                expected_eager_defaults,
+                                [
+                                    CompiledSQL(
+                                        "INSERT INTO test (bar) "
+                                        "VALUES (:bar) "
+                                        "RETURNING test.id, test.foo",
+                                        [
+                                            {"bar": 6},
+                                            {"bar": 6},
+                                        ],
+                                    )
+                                ],
+                                [
+                                    CompiledSQL(
+                                        "INSERT INTO test (bar) "
+                                        "VALUES (:bar) "
+                                        "RETURNING test.id",
+                                        [
+                                            {"bar": 6},
+                                            {"bar": 6},
+                                        ],
+                                    )
+                                ],
+                            )
+                        ],
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test (bar) "
+                                "VALUES (:bar) "
+                                "RETURNING test.id, test.foo",
+                                {"bar": 6},
+                            ),
+                            CompiledSQL(
+                                "INSERT INTO test (bar) "
+                                "VALUES (:bar) "
+                                "RETURNING test.id, test.foo",
+                                {"bar": 6},
+                            ),
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO test (bar) VALUES (:bar)",
+                        [
+                            {"bar": 6},
+                        ],
+                        enable_returning=False,
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO test (bar) VALUES (:bar)",
+                        [
+                            {"bar": 6},
+                        ],
+                        enable_returning=False,
                     ),
                     Conditional(
                         expected_eager_defaults and not expect_returning,

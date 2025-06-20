@@ -1,15 +1,12 @@
-# sqlalchemy/naming.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# sql/naming.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""Establish constraint and index naming conventions.
-
-
-"""
+"""Establish constraint and index naming conventions."""
 
 from __future__ import annotations
 

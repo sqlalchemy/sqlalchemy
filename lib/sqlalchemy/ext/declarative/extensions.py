@@ -1,5 +1,5 @@
 # ext/declarative/extensions.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -50,23 +50,26 @@ class ConcreteBase:
 
         from sqlalchemy.ext.declarative import ConcreteBase
 
+
         class Employee(ConcreteBase, Base):
-            __tablename__ = 'employee'
+            __tablename__ = "employee"
             employee_id = Column(Integer, primary_key=True)
             name = Column(String(50))
             __mapper_args__ = {
-                            'polymorphic_identity':'employee',
-                            'concrete':True}
+                "polymorphic_identity": "employee",
+                "concrete": True,
+            }
+
 
         class Manager(Employee):
-            __tablename__ = 'manager'
+            __tablename__ = "manager"
             employee_id = Column(Integer, primary_key=True)
             name = Column(String(50))
             manager_data = Column(String(40))
             __mapper_args__ = {
-                            'polymorphic_identity':'manager',
-                            'concrete':True}
-
+                "polymorphic_identity": "manager",
+                "concrete": True,
+            }
 
     The name of the discriminator column used by :func:`.polymorphic_union`
     defaults to the name ``type``.  To suit the use case of a mapping where an
@@ -75,11 +78,7 @@ class ConcreteBase:
     ``_concrete_discriminator_name`` attribute::
 
         class Employee(ConcreteBase, Base):
-            _concrete_discriminator_name = '_concrete_discriminator'
-
-    .. versionadded:: 1.3.19 Added the ``_concrete_discriminator_name``
-       attribute to :class:`_declarative.ConcreteBase` so that the
-       virtual discriminator column name can be customized.
+            _concrete_discriminator_name = "_concrete_discriminator"
 
     .. versionchanged:: 1.4.2 The ``_concrete_discriminator_name`` attribute
        need only be placed on the basemost class to take correct effect for
@@ -168,22 +167,26 @@ class AbstractConcreteBase(ConcreteBase):
         from sqlalchemy.orm import DeclarativeBase
         from sqlalchemy.ext.declarative import AbstractConcreteBase
 
+
         class Base(DeclarativeBase):
             pass
+
 
         class Employee(AbstractConcreteBase, Base):
             pass
 
+
         class Manager(Employee):
-            __tablename__ = 'manager'
+            __tablename__ = "manager"
             employee_id = Column(Integer, primary_key=True)
             name = Column(String(50))
             manager_data = Column(String(40))
 
             __mapper_args__ = {
-                'polymorphic_identity':'manager',
-                'concrete':True
+                "polymorphic_identity": "manager",
+                "concrete": True,
             }
+
 
         Base.registry.configure()
 
@@ -200,9 +203,11 @@ class AbstractConcreteBase(ConcreteBase):
 
         from sqlalchemy.ext.declarative import AbstractConcreteBase
 
+
         class Company(Base):
-            __tablename__ = 'company'
+            __tablename__ = "company"
             id = Column(Integer, primary_key=True)
+
 
         class Employee(AbstractConcreteBase, Base):
             strict_attrs = True
@@ -211,31 +216,31 @@ class AbstractConcreteBase(ConcreteBase):
 
             @declared_attr
             def company_id(cls):
-                return Column(ForeignKey('company.id'))
+                return Column(ForeignKey("company.id"))
 
             @declared_attr
             def company(cls):
                 return relationship("Company")
 
+
         class Manager(Employee):
-            __tablename__ = 'manager'
+            __tablename__ = "manager"
 
             name = Column(String(50))
             manager_data = Column(String(40))
 
             __mapper_args__ = {
-                'polymorphic_identity':'manager',
-                'concrete':True
+                "polymorphic_identity": "manager",
+                "concrete": True,
             }
+
 
         Base.registry.configure()
 
     When we make use of our mappings however, both ``Manager`` and
     ``Employee`` will have an independently usable ``.company`` attribute::
 
-        session.execute(
-            select(Employee).filter(Employee.company.has(id=5))
-        )
+        session.execute(select(Employee).filter(Employee.company.has(id=5)))
 
     :param strict_attrs: when specified on the base class, "strict" attribute
      mode is enabled which attempts to limit ORM mapped attributes on the
@@ -366,10 +371,12 @@ class DeferredReflection:
 
         from sqlalchemy.ext.declarative import declarative_base
         from sqlalchemy.ext.declarative import DeferredReflection
+
         Base = declarative_base()
 
+
         class MyClass(DeferredReflection, Base):
-            __tablename__ = 'mytable'
+            __tablename__ = "mytable"
 
     Above, ``MyClass`` is not yet mapped.   After a series of
     classes have been defined in the above fashion, all tables
@@ -391,17 +398,22 @@ class DeferredReflection:
         class ReflectedOne(DeferredReflection, Base):
             __abstract__ = True
 
+
         class ReflectedTwo(DeferredReflection, Base):
             __abstract__ = True
 
+
         class MyClass(ReflectedOne):
-            __tablename__ = 'mytable'
+            __tablename__ = "mytable"
+
 
         class MyOtherClass(ReflectedOne):
-            __tablename__ = 'myothertable'
+            __tablename__ = "myothertable"
+
 
         class YetAnotherClass(ReflectedTwo):
-            __tablename__ = 'yetanothertable'
+            __tablename__ = "yetanothertable"
+
 
         # ... etc.
 

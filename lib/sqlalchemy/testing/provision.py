@@ -1,3 +1,9 @@
+# testing/provision.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from __future__ import annotations
@@ -68,6 +74,7 @@ def setup_config(db_url, options, file_config, follower_ident):
     # hooks
 
     dialect = sa_url.make_url(db_url).get_dialect()
+
     dialect.load_provisioning()
 
     if follower_ident:
@@ -101,15 +108,19 @@ def generate_db_urls(db_urls, extra_drivers):
     """Generate a set of URLs to test given configured URLs plus additional
     driver names.
 
-    Given::
+    Given:
+
+    .. sourcecode:: text
 
         --dburi postgresql://db1  \
         --dburi postgresql://db2  \
         --dburi postgresql://db2  \
-        --dbdriver=psycopg2 --dbdriver=asyncpg?async_fallback=true
+        --dbdriver=psycopg2 --dbdriver=asyncpg
 
     Noting that the default postgresql driver is psycopg2,  the output
-    would be::
+    would be:
+
+    .. sourcecode:: text
 
         postgresql+psycopg2://db1
         postgresql+asyncpg://db1
@@ -123,11 +134,12 @@ def generate_db_urls(db_urls, extra_drivers):
     we want to keep it in that dburi.
 
     Driver specific query options can be specified by added them to the
-    driver name. For example, to enable the async fallback option for
-    asyncpg::
+    driver name. For example, to a sample option the asyncpg:
+
+    .. sourcecode:: text
 
         --dburi postgresql://db1  \
-        --dbdriver=asyncpg?async_fallback=true
+        --dbdriver=asyncpg?some_option=a_value
 
     """
     urls = set()
@@ -140,7 +152,10 @@ def generate_db_urls(db_urls, extra_drivers):
     ]
 
     for url_obj, dialect in urls_plus_dialects:
-        backend_to_driver_we_already_have[dialect.name].add(dialect.driver)
+        # use get_driver_name instead of dialect.driver to account for
+        # "_async" virtual drivers like oracledb and psycopg
+        driver_name = url_obj.get_driver_name()
+        backend_to_driver_we_already_have[dialect.name].add(driver_name)
 
     backend_to_driver_we_need = {}
 
@@ -352,7 +367,7 @@ def update_db_opts(db_url, db_opts, options):
 def post_configure_engine(url, engine, follower_ident):
     """Perform extra steps after configuring an engine for testing.
 
-    (For the internal dialects, currently only used by sqlite, oracle)
+    (For the internal dialects, currently only used by sqlite, oracle, mssql)
     """
 
 

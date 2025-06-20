@@ -3,12 +3,13 @@
 Mapping Class Inheritance Hierarchies
 =====================================
 
-SQLAlchemy supports three forms of inheritance: **single table inheritance**,
-where several types of classes are represented by a single table, **concrete
-table inheritance**, where each type of class is represented by independent
-tables, and **joined table inheritance**, where the class hierarchy is broken
-up among dependent tables, each class represented by its own table that only
-includes those attributes local to that class.
+SQLAlchemy supports three forms of inheritance:
+
+* **single table inheritance** – several types of classes are represented by a single table;
+
+* **concrete table inheritance** – each type of class is represented by independent tables;
+
+* **joined table inheritance** – the class hierarchy is broken up among dependent tables. Each class represented by its own table that only includes those attributes local to that class.
 
 The most common forms of inheritance are single and joined table, while
 concrete inheritance presents more configurational challenges.
@@ -203,12 +204,10 @@ and ``Employee``::
         }
 
 
-    class Manager(Employee):
-        ...
+    class Manager(Employee): ...
 
 
-    class Engineer(Employee):
-        ...
+    class Engineer(Employee): ...
 
 If the foreign key constraint is on a table corresponding to a subclass,
 the relationship should target that subclass instead.  In the example
@@ -248,8 +247,7 @@ established between the ``Manager`` and ``Company`` classes::
         }
 
 
-    class Engineer(Employee):
-        ...
+    class Engineer(Employee): ...
 
 Above, the ``Manager`` class will have a ``Manager.company`` attribute;
 ``Company`` will have a ``Company.managers`` attribute that always
@@ -638,7 +636,7 @@ using :paramref:`_orm.Mapper.polymorphic_abstract` as follows::
     class SysAdmin(Technologist):
         """a systems administrator"""
 
-        __mapper_args__ = {"polymorphic_identity": "engineer"}
+        __mapper_args__ = {"polymorphic_identity": "sysadmin"}
 
 In the above example, the new classes ``Technologist`` and ``Executive``
 are ordinary mapped classes, and also indicate new columns to be added to the

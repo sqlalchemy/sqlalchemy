@@ -1,5 +1,5 @@
 # ext/asyncio/base.py
-# Copyright (C) 2020-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2020-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -44,12 +44,10 @@ class ReversibleProxy(Generic[_PT]):
     __slots__ = ("__weakref__",)
 
     @overload
-    def _assign_proxied(self, target: _PT) -> _PT:
-        ...
+    def _assign_proxied(self, target: _PT) -> _PT: ...
 
     @overload
-    def _assign_proxied(self, target: None) -> None:
-        ...
+    def _assign_proxied(self, target: None) -> None: ...
 
     def _assign_proxied(self, target: Optional[_PT]) -> Optional[_PT]:
         if target is not None:
@@ -73,28 +71,26 @@ class ReversibleProxy(Generic[_PT]):
         cls._proxy_objects.pop(ref, None)
 
     @classmethod
-    def _regenerate_proxy_for_target(cls, target: _PT) -> Self:
+    def _regenerate_proxy_for_target(
+        cls, target: _PT, **additional_kw: Any
+    ) -> Self:
         raise NotImplementedError()
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
-        cls,
-        target: _PT,
-        regenerate: Literal[True] = ...,
-    ) -> Self:
-        ...
+        cls, target: _PT, regenerate: Literal[True] = ..., **additional_kw: Any
+    ) -> Self: ...
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
-        cls, target: _PT, regenerate: bool = True
-    ) -> Optional[Self]:
-        ...
+        cls, target: _PT, regenerate: bool = True, **additional_kw: Any
+    ) -> Optional[Self]: ...
 
     @classmethod
     def _retrieve_proxy_for_target(
-        cls, target: _PT, regenerate: bool = True
+        cls, target: _PT, regenerate: bool = True, **additional_kw: Any
     ) -> Optional[Self]:
         try:
             proxy_ref = cls._proxy_objects[weakref.ref(target)]
@@ -106,7 +102,7 @@ class ReversibleProxy(Generic[_PT]):
                 return proxy  # type: ignore
 
         if regenerate:
-            return cls._regenerate_proxy_for_target(target)
+            return cls._regenerate_proxy_for_target(target, **additional_kw)
         else:
             return None
 
@@ -182,7 +178,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
                 # tell if we get the same exception back
                 value = typ()
             try:
-                await util.athrow(self.gen, typ, value, traceback)
+                await self.gen.athrow(value)
             except StopAsyncIteration as exc:
                 # Suppress StopIteration *unless* it's the same exception that
                 # was passed to throw().  This prevents a StopIteration
@@ -219,7 +215,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
 
 
 def asyncstartablecontext(
-    func: Callable[..., AsyncIterator[_T_co]]
+    func: Callable[..., AsyncIterator[_T_co]],
 ) -> Callable[..., GeneratorStartableContext[_T_co]]:
     """@asyncstartablecontext decorator.
 
@@ -228,7 +224,9 @@ def asyncstartablecontext(
     ``@contextlib.asynccontextmanager`` supports, and the usage pattern
     is different as well.
 
-    Typical usage::
+    Typical usage:
+
+    .. sourcecode:: text
 
         @asyncstartablecontext
         async def some_async_generator(<arguments>):

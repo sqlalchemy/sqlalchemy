@@ -296,9 +296,9 @@ refer to alternate sets of tables and other constructs.  The server-side
 geometry of a "schema" takes many forms, including names of "schemas" under the
 scope of a particular database (e.g. PostgreSQL schemas), named sibling
 databases (e.g. MySQL / MariaDB access to other databases on the same server),
-as well as other concepts like tables owned by other usernames (Oracle, SQL
-Server) or even names that refer to alternate database files (SQLite ATTACH) or
-remote servers (Oracle DBLINK with synonyms).
+as well as other concepts like tables owned by other usernames (Oracle
+Database, SQL Server) or even names that refer to alternate database files
+(SQLite ATTACH) or remote servers (Oracle Database DBLINK with synonyms).
 
 What all of the above approaches have (mostly) in common is that there's a way
 of referencing this alternate set of tables using a string name.  SQLAlchemy
@@ -328,14 +328,15 @@ schema names on a per-connection or per-statement basis.
     "database" that typically has a single "owner".  Within this database there
     can be any number of "schemas" which then contain the actual table objects.
 
-    A table within a specific schema is referenced explicitly using the
-    syntax "<schemaname>.<tablename>".  Contrast this to an architecture such
-    as that of MySQL, where there are only "databases", however SQL statements
-    can refer to multiple databases at once, using the same syntax except it
-    is "<database>.<tablename>".  On Oracle, this syntax refers to yet another
-    concept, the "owner" of a table.  Regardless of which kind of database is
-    in use, SQLAlchemy uses the phrase "schema" to refer to the qualifying
-    identifier within the general syntax of "<qualifier>.<tablename>".
+    A table within a specific schema is referenced explicitly using the syntax
+    "<schemaname>.<tablename>".  Contrast this to an architecture such as that
+    of MySQL, where there are only "databases", however SQL statements can
+    refer to multiple databases at once, using the same syntax except it is
+    "<database>.<tablename>".  On Oracle Database, this syntax refers to yet
+    another concept, the "owner" of a table.  Regardless of which kind of
+    database is in use, SQLAlchemy uses the phrase "schema" to refer to the
+    qualifying identifier within the general syntax of
+    "<qualifier>.<tablename>".
 
 .. seealso::
 
@@ -510,17 +511,19 @@ These names are usually configured at the login level, such as when connecting
 to a PostgreSQL database, the default "schema" is called "public".
 
 There are often cases where the default "schema" cannot be set via the login
-itself and instead would usefully be configured each time a connection
-is made, using a statement such as "SET SEARCH_PATH" on PostgreSQL or
-"ALTER SESSION" on Oracle.  These approaches may be achieved by using
-the :meth:`_pool.PoolEvents.connect` event, which allows access to the
-DBAPI connection when it is first created.    For example, to set the
-Oracle CURRENT_SCHEMA variable to an alternate name::
+itself and instead would usefully be configured each time a connection is made,
+using a statement such as "SET SEARCH_PATH" on PostgreSQL or "ALTER SESSION" on
+Oracle Database.  These approaches may be achieved by using the
+:meth:`_pool.PoolEvents.connect` event, which allows access to the DBAPI
+connection when it is first created.  For example, to set the Oracle Database
+CURRENT_SCHEMA variable to an alternate name::
 
     from sqlalchemy import event
     from sqlalchemy import create_engine
 
-    engine = create_engine("oracle+cx_oracle://scott:tiger@tsn_name")
+    engine = create_engine(
+        "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1"
+    )
 
 
     @event.listens_for(engine, "connect", insert=True)

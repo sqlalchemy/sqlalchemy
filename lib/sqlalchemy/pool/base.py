@@ -1,14 +1,12 @@
-# sqlalchemy/pool.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# pool/base.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
-"""Base constructs for connection pools.
-
-"""
+"""Base constructs for connection pools."""
 
 from __future__ import annotations
 
@@ -25,6 +23,7 @@ from typing import Deque
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
@@ -35,7 +34,6 @@ from .. import exc
 from .. import log
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if TYPE_CHECKING:
     from ..engine.interfaces import DBAPIConnection
@@ -147,17 +145,14 @@ class _AsyncConnDialect(_ConnDialect):
 
 
 class _CreatorFnType(Protocol):
-    def __call__(self) -> DBAPIConnection:
-        ...
+    def __call__(self) -> DBAPIConnection: ...
 
 
 class _CreatorWRecFnType(Protocol):
-    def __call__(self, rec: ConnectionPoolEntry) -> DBAPIConnection:
-        ...
+    def __call__(self, rec: ConnectionPoolEntry) -> DBAPIConnection: ...
 
 
 class Pool(log.Identified, event.EventTarget):
-
     """Abstract base class for connection pools."""
 
     dispatch: dispatcher[Pool]
@@ -273,8 +268,6 @@ class Pool(log.Identified, event.EventTarget):
          other pooled connections established prior to that timestamp are
          invalidated.     Requires that a dialect is passed as well to
          interpret the disconnection error.
-
-         .. versionadded:: 1.2
 
         """
         if logging_name:
@@ -471,6 +464,7 @@ class Pool(log.Identified, event.EventTarget):
         raise NotImplementedError()
 
     def status(self) -> str:
+        """Returns a brief description of the state of this pool."""
         raise NotImplementedError()
 
 
@@ -633,7 +627,6 @@ class ConnectionPoolEntry(ManagesConnection):
 
 
 class _ConnectionRecord(ConnectionPoolEntry):
-
     """Maintains a position in a connection pool which references a pooled
     connection.
 
@@ -729,11 +722,13 @@ class _ConnectionRecord(ConnectionPoolEntry):
 
         rec.fairy_ref = ref = weakref.ref(
             fairy,
-            lambda ref: _finalize_fairy(
-                None, rec, pool, ref, echo, transaction_was_reset=False
-            )
-            if _finalize_fairy is not None
-            else None,
+            lambda ref: (
+                _finalize_fairy(
+                    None, rec, pool, ref, echo, transaction_was_reset=False
+                )
+                if _finalize_fairy is not None
+                else None
+            ),
         )
         _strong_ref_connection_records[ref] = rec
         if echo:
@@ -1074,14 +1069,13 @@ class PoolProxiedConnection(ManagesConnection):
 
     if typing.TYPE_CHECKING:
 
-        def commit(self) -> None:
-            ...
+        def commit(self) -> None: ...
 
-        def cursor(self) -> DBAPICursor:
-            ...
+        def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor: ...
 
-        def rollback(self) -> None:
-            ...
+        def rollback(self) -> None: ...
+
+        def __getattr__(self, key: str) -> Any: ...
 
     @property
     def is_valid(self) -> bool:
@@ -1189,7 +1183,6 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
 
 
 class _ConnectionFairy(PoolProxiedConnection):
-
     """Proxies a DBAPI connection and provides return-on-dereference
     support.
 

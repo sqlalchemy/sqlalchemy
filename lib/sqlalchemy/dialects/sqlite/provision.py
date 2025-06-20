@@ -1,3 +1,9 @@
+# dialects/sqlite/provision.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 import os
@@ -45,8 +51,6 @@ def _format_url(url, driver, ident):
     if filename and filename != ":memory:":
         assert "test_schema" not in filename
         tokens = re.split(r"[_\.]", filename)
-
-        new_filename = f"{driver}"
 
         for token in tokens:
             if token in _drivernames:

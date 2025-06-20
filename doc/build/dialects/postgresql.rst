@@ -69,9 +69,6 @@ The combination of ENUM and ARRAY is not directly supported by backend
 DBAPIs at this time.   Prior to SQLAlchemy 1.3.17, a special workaround
 was needed in order to allow this combination to work, described below.
 
-.. versionchanged:: 1.3.17 The combination of ENUM and ARRAY is now directly
-   handled by SQLAlchemy's implementation without any workarounds needed.
-
 .. sourcecode:: python
 
     from sqlalchemy import TypeDecorator
@@ -119,10 +116,6 @@ Using JSON/JSONB with ARRAY
 Similar to using ENUM, prior to SQLAlchemy 1.3.17, for an ARRAY of JSON/JSONB
 we need to render the appropriate CAST.   Current psycopg2 drivers accommodate
 the result set correctly without any special steps.
-
-.. versionchanged:: 1.3.17 The combination of JSON/JSONB and ARRAY is now
-   directly handled by SQLAlchemy's implementation without any workarounds
-   needed.
 
 .. sourcecode:: python
 
@@ -238,6 +231,8 @@ dialect, **does not** support multirange datatypes.
 .. versionadded:: 2.0.17 Added multirange support for the pg8000 dialect.
    pg8000 1.29.8 or greater is required.
 
+.. versionadded:: 2.0.26 :class:`_postgresql.MultiRange` sequence added.
+
 The example below illustrates use of the :class:`_postgresql.TSMULTIRANGE`
 datatype::
 
@@ -260,6 +255,7 @@ datatype::
 
         id: Mapped[int] = mapped_column(primary_key=True)
         event_name: Mapped[str]
+        added: Mapped[datetime]
         in_session_periods: Mapped[List[Range[datetime]]] = mapped_column(TSMULTIRANGE)
 
 Illustrating insertion and selecting of a record::
@@ -294,6 +290,38 @@ Illustrating insertion and selecting of a record::
    a new list to the attribute, or use the :class:`.MutableList`
    type modifier.  See the section :ref:`mutable_toplevel` for background.
 
+.. _postgresql_multirange_list_use:
+
+Use of a MultiRange sequence to infer the multirange type
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+When using a multirange as a literal without specifying the type
+the utility :class:`_postgresql.MultiRange` sequence can be used::
+
+    from sqlalchemy import literal
+    from sqlalchemy.dialects.postgresql import MultiRange
+
+    with Session(engine) as session:
+        stmt = select(EventCalendar).where(
+            EventCalendar.added.op("<@")(
+                MultiRange(
+                    [
+                        Range(datetime(2023, 1, 1), datetime(2013, 3, 31)),
+                        Range(datetime(2023, 7, 1), datetime(2013, 9, 30)),
+                    ]
+                )
+            )
+        )
+        in_range = session.execute(stmt).all()
+
+    with engine.connect() as conn:
+        row = conn.scalar(select(literal(MultiRange([Range(2, 4)]))))
+        print(f"{row.lower} -> {row.upper}")
+
+Using a simple ``list`` instead of :class:`_postgresql.MultiRange` would require
+manually setting the type of the literal value to the appropriate multirange type.
+
+.. versionadded:: 2.0.26 :class:`_postgresql.MultiRange` sequence added.
 
 The available multirange datatypes are as follows:
 
@@ -416,12 +444,14 @@ construction arguments, are as follows:
 .. autoclass:: sqlalchemy.dialects.postgresql.AbstractRange
     :members: comparator_factory
 
+.. autoclass:: sqlalchemy.dialects.postgresql.AbstractSingleRange
+
 .. autoclass:: sqlalchemy.dialects.postgresql.AbstractMultiRange
 
 
 .. autoclass:: ARRAY
     :members: __init__, Comparator
-
+    :member-order: bysource
 
 .. autoclass:: BIT
 
@@ -529,6 +559,9 @@ construction arguments, are as follows:
 .. autoclass:: TSTZMULTIRANGE
 
 
+.. autoclass:: MultiRange
+
+
 PostgreSQL SQL Elements and Functions
 --------------------------------------
 
@@ -556,6 +589,8 @@ PostgreSQL SQL Elements and Functions
 .. autoclass:: websearch_to_tsquery
 
 .. autoclass:: ts_headline
+
+.. autofunction:: distinct_on
 
 PostgreSQL Constraint Types
 ---------------------------

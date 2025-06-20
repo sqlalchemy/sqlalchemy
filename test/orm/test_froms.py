@@ -30,7 +30,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.context import ORMSelectCompileState
+from sqlalchemy.orm.context import _ORMSelectCompileState
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -1893,7 +1893,9 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 .order_by(User.id)
             )
 
-        compile_state = ORMSelectCompileState.create_for_statement(stmt, None)
+        compile_state = _ORMSelectCompileState._create_orm_context(
+            stmt, toplevel=True, compiler=None
+        )
         is_(compile_state._primary_entity, None)
 
     def test_column_queries_one(self):

@@ -15,20 +15,20 @@ Advanced Tox Options
 
 For more elaborate CI-style test running, the tox script provided will
 run against various Python / database targets.   For a basic run against
-Python 3.8 using an in-memory SQLite database::
+Python 3.11 using an in-memory SQLite database::
 
-    tox -e py38-sqlite
+    tox -e py311-sqlite
 
 The tox runner contains a series of target combinations that can run
 against various combinations of databases.  The test suite can be
 run against SQLite with "backend" tests also running against a PostgreSQL
 database::
 
-    tox -e py38-sqlite-postgresql
+    tox -e py311-sqlite-postgresql
 
 Or to run just "backend" tests against a MySQL database::
 
-    tox -e py38-mysql-backendonly
+    tox -e py311-mysql-backendonly
 
 Running against backends other than SQLite requires that a database of that
 vendor be available at a specific URL.  See "Setting Up Databases" below
@@ -83,13 +83,10 @@ a pre-set URL.  These can be seen using --dbs::
     $ pytest --dbs
     Available --db options (use --dburi to override)
                 aiomysql    mysql+aiomysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
-       aiomysql_fallback    mysql+aiomysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4&async_fallback=true
                aiosqlite    sqlite+aiosqlite:///:memory:
           aiosqlite_file    sqlite+aiosqlite:///async_querytest.db
                  asyncmy    mysql+asyncmy://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
-        asyncmy_fallback    mysql+asyncmy://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4&async_fallback=true
                  asyncpg    postgresql+asyncpg://scott:tiger@127.0.0.1:5432/test
-        asyncpg_fallback    postgresql+asyncpg://scott:tiger@127.0.0.1:5432/test?async_fallback=true
                  default    sqlite:///:memory:
             docker_mssql    mssql+pymssql://scott:tiger^5HHH@127.0.0.1:1433/test
                  mariadb    mariadb+mysqldb://scott:tiger@127.0.0.1:3306/test
@@ -105,7 +102,6 @@ a pre-set URL.  These can be seen using --dbs::
                  psycopg    postgresql+psycopg://scott:tiger@127.0.0.1:5432/test
                 psycopg2    postgresql+psycopg2://scott:tiger@127.0.0.1:5432/test
            psycopg_async    postgresql+psycopg_async://scott:tiger@127.0.0.1:5432/test
-    psycopg_async_fallback  postgresql+psycopg_async://scott:tiger@127.0.0.1:5432/test?async_fallback=true
                  pymysql    mysql+pymysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
         pysqlcipher_file    sqlite+pysqlcipher://:test@/querytest.db.enc
                   sqlite    sqlite:///:memory:
@@ -137,7 +133,7 @@ with the tox runner also::
     [db]
     postgresql=postgresql+psycopg2://username:pass@hostname/dbname
 
-Now when we run ``tox -e py38-postgresql``, it will use our custom URL instead
+Now when we run ``tox -e py311-postgresql``, it will use our custom URL instead
 of the fixed one in setup.cfg.
 
 Database Configuration
@@ -280,7 +276,7 @@ intended for production use!
 
     # configure the database
     sleep 20
-    docker exec -ti mariadb mysql -u root -ppassword -w -e "CREATE DATABASE test_schema CHARSET utf8mb4; GRANT ALL ON test_schema.* TO scott;"
+    docker exec -ti mariadb mariadb -u root -ppassword -w -e "CREATE DATABASE test_schema CHARSET utf8mb4; GRANT ALL ON test_schema.* TO scott;"
 
     # To stop the container. It will also remove it.
     docker stop mariadb
@@ -307,11 +303,11 @@ be used with pytest by using ``--db docker_mssql``.
 **Oracle configuration**::
 
     # create the container with the proper configuration for sqlalchemy
-    docker run --rm --name oracle -p 127.0.0.1:1521:1521 -d -e ORACLE_PASSWORD=tiger -e ORACLE_DATABASE=test -e APP_USER=scott -e APP_USER_PASSWORD=tiger gvenzl/oracle-xe:21-slim
+    docker run --rm --name oracle -p 127.0.0.1:1521:1521 -d -e ORACLE_PASSWORD=tiger -e ORACLE_DATABASE=test -e APP_USER=scott -e APP_USER_PASSWORD=tiger gvenzl/oracle-free:23-slim
 
     # enter the database container and run the command
     docker exec -ti oracle bash
-    >> sqlplus system/tiger@//localhost/XEPDB1 <<EOF
+    >> sqlplus system/tiger@//localhost/FREEPDB1 <<EOF
     CREATE USER test_schema IDENTIFIED BY tiger;
     GRANT DBA TO SCOTT;
     GRANT CREATE TABLE TO scott;
@@ -319,16 +315,16 @@ be used with pytest by using ``--db docker_mssql``.
     GRANT UNLIMITED TABLESPACE TO scott;
     GRANT UNLIMITED TABLESPACE TO test_schema;
     GRANT CREATE SESSION TO test_schema;
-    CREATE PUBLIC DATABASE LINK test_link CONNECT TO scott IDENTIFIED BY tiger USING 'XEPDB1';
-    CREATE PUBLIC DATABASE LINK test_link2 CONNECT TO test_schema IDENTIFIED BY tiger USING 'XEPDB1';
+    CREATE PUBLIC DATABASE LINK test_link CONNECT TO scott IDENTIFIED BY tiger USING 'FREEPDB1';
+    CREATE PUBLIC DATABASE LINK test_link2 CONNECT TO test_schema IDENTIFIED BY tiger USING 'FREEPDB1';
     EOF
 
     # To stop the container. It will also remove it.
     docker stop oracle
 
 NOTE: with this configuration the url to use is
-``oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=XEPDB1``.  It can
-be used with pytest by using ``--dburi oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=XEPDB1``.
+``oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=FREEPDB1``.  It can
+be used with pytest by using ``--dburi oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=FREEPDB1``.
 
 CONFIGURING LOGGING
 -------------------

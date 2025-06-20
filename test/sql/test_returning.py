@@ -690,7 +690,6 @@ class SequenceReturningTest(fixtures.TablesTest):
 
 
 class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
-
     """test returning() works with columns that define 'key'."""
 
     __requires__ = ("insert_returning",)
@@ -1295,6 +1294,16 @@ class InsertManyReturningTest(fixtures.TablesTest):
             Column("strval", String(50)),
         )
 
+        Table(
+            "no_implicit_returning",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+            implicit_returning=False,
+        )
+
     @testing.combinations(
         (
             lambda table: (table.c.strval + "hi",),
@@ -1416,6 +1425,61 @@ class InsertManyReturningTest(fixtures.TablesTest):
                     ],
                 )
 
+    @testing.variation(
+        "style",
+        ["no_cols", "cols", "cols_plus_supplemental", "normal_returning"],
+    )
+    def test_no_executemany_w_no_implicit_returning(self, connection, style):
+        """test a refinement made during fixes for #10453;
+        return_defaults() with 'supplemental_cols' is considered to be an
+        explicit returning case, bypassing the implicit_returning parameter.
+
+        """
+        t1 = self.tables.no_implicit_returning
+
+        if style.cols_plus_supplemental:
+            result = connection.execute(
+                t1.insert().return_defaults(
+                    t1.c.id, supplemental_cols=[t1.c.data]
+                ),
+                [
+                    {"data": "d1"},
+                    {"data": "d2"},
+                    {"data": "d3"},
+                ],
+            )
+            eq_(result.scalars().all(), ["d1", "d2", "d3"])
+        elif style.normal_returning:
+            result = connection.execute(
+                t1.insert().returning(t1.c.data),
+                [
+                    {"data": "d1"},
+                    {"data": "d2"},
+                    {"data": "d3"},
+                ],
+            )
+            eq_(result.scalars().all(), ["d1", "d2", "d3"])
+        elif style.cols:
+            result = connection.execute(
+                t1.insert().return_defaults(t1.c.id),
+                [
+                    {"data": "d1"},
+                    {"data": "d2"},
+                    {"data": "d3"},
+                ],
+            )
+            assert not result.returns_rows
+        elif style.no_cols:
+            result = connection.execute(
+                t1.insert().return_defaults(t1.c.id),
+                [
+                    {"data": "d1"},
+                    {"data": "d2"},
+                    {"data": "d3"},
+                ],
+            )
+            assert not result.returns_rows
+
     def test_insert_executemany_type_test(self, connection):
         t1 = self.tables.type_cases
         result = connection.execute(
@@ -1496,9 +1560,11 @@ class InsertManyReturningTest(fixtures.TablesTest):
             config,
             t1,
             (t1.c.id, t1.c.insdef, t1.c.data),
-            set_lambda=(lambda excluded: {"data": excluded.data + " excluded"})
-            if update_cols
-            else None,
+            set_lambda=(
+                (lambda excluded: {"data": excluded.data + " excluded"})
+                if update_cols
+                else None
+            ),
         )
 
         upserted_rows = connection.execute(

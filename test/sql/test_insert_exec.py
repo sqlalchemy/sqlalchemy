@@ -17,6 +17,7 @@ from sqlalchemy import insert_sentinel
 from sqlalchemy import INT
 from sqlalchemy import Integer
 from sqlalchemy import literal
+from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import sql
@@ -472,7 +473,6 @@ class InsertExecTest(fixtures.TablesTest):
 
 
 class TableInsertTest(fixtures.TablesTest):
-
     """test for consistent insert behavior across dialects
     regarding the inline() method, values() method, lower-case 't' tables.
 
@@ -771,6 +771,27 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
             Column("x_value", String(50)),
             Column("y_value", String(50)),
         )
+        Table(
+            "uniq_cons",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50), unique=True),
+        )
+
+    @testing.variation("use_returning", [True, False])
+    def test_returning_integrity_error(self, connection, use_returning):
+        """test for #11532"""
+
+        stmt = self.tables.uniq_cons.insert()
+        if use_returning:
+            stmt = stmt.returning(self.tables.uniq_cons.c.id)
+
+        # pymssql thought it would be funny to use OperationalError for
+        # a unique key violation.
+        with expect_raises((exc.IntegrityError, exc.OperationalError)):
+            connection.execute(
+                stmt, [{"data": "the data"}, {"data": "the data"}]
+            )
 
     def test_insert_unicode_keys(self, connection):
         table = self.tables["Unitéble2"]
@@ -788,7 +809,8 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
 
         eq_(connection.execute(table.select()).all(), [(1, 1), (2, 2), (3, 3)])
 
-    def test_insert_returning_values(self, connection):
+    @testing.variation("preserve_rowcount", [True, False])
+    def test_insert_returning_values(self, connection, preserve_rowcount):
         t = self.tables.data
 
         conn = connection
@@ -797,7 +819,14 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
             {"x": "x%d" % i, "y": "y%d" % i}
             for i in range(1, page_size * 2 + 27)
         ]
-        result = conn.execute(t.insert().returning(t.c.x, t.c.y), data)
+        if preserve_rowcount:
+            eo = {"preserve_rowcount": True}
+        else:
+            eo = {}
+
+        result = conn.execute(
+            t.insert().returning(t.c.x, t.c.y), data, execution_options=eo
+        )
 
         eq_([tup[0] for tup in result.cursor.description], ["x", "y"])
         eq_(result.keys(), ["x", "y"])
@@ -814,6 +843,9 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
         assert result._soft_closed
         # assert result.closed
         assert result.cursor is None
+
+        if preserve_rowcount:
+            eq_(result.rowcount, len(data))
 
     def test_insert_returning_preexecute_pk(self, metadata, connection):
         counter = itertools.count(1)
@@ -1037,10 +1069,14 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
 
         eq_(result.all(), [("p1_p1", "y1"), ("p2_p2", "y2")])
 
-    def test_insert_returning_defaults(self, connection):
+    @testing.variation("preserve_rowcount", [True, False])
+    def test_insert_returning_defaults(self, connection, preserve_rowcount):
         t = self.tables.data
 
-        conn = connection
+        if preserve_rowcount:
+            conn = connection.execution_options(preserve_rowcount=True)
+        else:
+            conn = connection
 
         result = conn.execute(t.insert(), {"x": "x0", "y": "y0"})
         first_pk = result.inserted_primary_key[0]
@@ -1054,6 +1090,9 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
             result.all(),
             [(pk, 5) for pk in range(1 + first_pk, total_rows + first_pk)],
         )
+
+        if preserve_rowcount:
+            eq_(result.rowcount, total_rows - 1)  # range starts from 1
 
     def test_insert_return_pks_default_values(self, connection):
         """test sending multiple, empty rows into an INSERT and getting primary
@@ -1439,12 +1478,138 @@ class IMVSentinelTest(fixtures.TestBase):
             coll(expected_data),
         )
 
+    @testing.requires.sequences
+    @testing.variation("explicit_sentinel", [True, False])
+    @testing.variation("sequence_actually_translates", [True, False])
+    @testing.variation("the_table_translates", [True, False])
+    def test_sequence_schema_translate(
+        self,
+        metadata,
+        connection,
+        explicit_sentinel,
+        warn_for_downgrades,
+        randomize_returning,
+        sort_by_parameter_order,
+        sequence_actually_translates,
+        the_table_translates,
+    ):
+        """test #11157"""
+
+        # so there's a bit of a bug which is that functions has_table()
+        # and has_sequence() do not take schema translate map into account,
+        # at all.   So on MySQL, where we dont have transactional DDL, the
+        # DROP for Table / Sequence does not really work for all test runs
+        # when the schema is set to a "to be translated" kind of name.
+        # so, make a Table/Sequence with fixed schema name for the CREATE,
+        # then use a different object for the test that has a translate
+        # schema name
+        Table(
+            "t1",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Sequence("some_seq", start=1, schema=config.test_schema),
+                primary_key=True,
+                insert_sentinel=bool(explicit_sentinel),
+            ),
+            Column("data", String(50)),
+            schema=config.test_schema if the_table_translates else None,
+        )
+        metadata.create_all(connection)
+
+        if sequence_actually_translates:
+            connection = connection.execution_options(
+                schema_translate_map={
+                    "should_be_translated": config.test_schema
+                }
+            )
+            sequence = Sequence(
+                "some_seq", start=1, schema="should_be_translated"
+            )
+        else:
+            connection = connection.execution_options(
+                schema_translate_map={"foo": "bar"}
+            )
+            sequence = Sequence("some_seq", start=1, schema=config.test_schema)
+
+        m2 = MetaData()
+        t1 = Table(
+            "t1",
+            m2,
+            Column(
+                "id",
+                Integer,
+                sequence,
+                primary_key=True,
+                insert_sentinel=bool(explicit_sentinel),
+            ),
+            Column("data", String(50)),
+            schema=(
+                "should_be_translated"
+                if sequence_actually_translates and the_table_translates
+                else config.test_schema if the_table_translates else None
+            ),
+        )
+
+        fixtures.insertmanyvalues_fixture(
+            connection,
+            randomize_rows=bool(randomize_returning),
+            warn_on_downgraded=bool(warn_for_downgrades),
+        )
+
+        stmt = insert(t1).returning(
+            t1.c.id,
+            t1.c.data,
+            sort_by_parameter_order=bool(sort_by_parameter_order),
+        )
+        data = [{"data": f"d{i}"} for i in range(10)]
+
+        use_imv = testing.db.dialect.use_insertmanyvalues
+        if (
+            use_imv
+            and explicit_sentinel
+            and sort_by_parameter_order
+            and not (
+                testing.db.dialect.insertmanyvalues_implicit_sentinel
+                & InsertmanyvaluesSentinelOpts.SEQUENCE
+            )
+        ):
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                r"Column t1.id can't be explicitly marked as a sentinel "
+                r"column .* as the particular type of default generation",
+            ):
+                connection.execute(stmt, data)
+            return
+
+        with self._expect_downgrade_warnings(
+            warn_for_downgrades=warn_for_downgrades,
+            sort_by_parameter_order=sort_by_parameter_order,
+            server_autoincrement=True,
+            autoincrement_is_sequence=True,
+        ):
+            result = connection.execute(stmt, data)
+
+        if sort_by_parameter_order:
+            coll = list
+        else:
+            coll = set
+
+        expected_data = [(i + 1, f"d{i}") for i in range(10)]
+
+        eq_(
+            coll(result),
+            coll(expected_data),
+        )
+
     @testing.combinations(
         Integer(),
         String(50),
         (ARRAY(Integer()), testing.requires.array_type),
         DateTime(),
         Uuid(),
+        Uuid(native_uuid=False),
         argnames="datatype",
     )
     def test_inserts_w_all_nulls(
@@ -1620,10 +1785,8 @@ class IMVSentinelTest(fixtures.TestBase):
         """test assertions to ensure sentinel values passed in parameter
         structures can be identified when they come back in cursor.fetchall().
 
-        Values that are further modified by the database driver or by
-        SQL expressions (as in the case below) before being INSERTed
-        won't match coming back out, so datatypes need to implement
-        _sentinel_value_resolver() if this is the case.
+        Sentinels are now matched based on the data on the outside of the
+        type, that is, before the bind, and after the result.
 
         """
 
@@ -1636,11 +1799,8 @@ class IMVSentinelTest(fixtures.TestBase):
 
             if resolve_sentinel_values:
 
-                def _sentinel_value_resolver(self, dialect):
-                    def fix_sentinels(value):
-                        return value.lower()
-
-                    return fix_sentinels
+                def process_result_value(self, value, dialect):
+                    return value.replace("upper", "UPPER")
 
         t1 = Table(
             "data",
@@ -1672,10 +1832,16 @@ class IMVSentinelTest(fixtures.TestBase):
                 connection.execute(stmt, data)
         else:
             result = connection.execute(stmt, data)
-            eq_(
-                set(result.all()),
-                {(f"d{i}", f"upper_d{i}") for i in range(10)},
-            )
+            if resolve_sentinel_values:
+                eq_(
+                    set(result.all()),
+                    {(f"d{i}", f"UPPER_d{i}") for i in range(10)},
+                )
+            else:
+                eq_(
+                    set(result.all()),
+                    {(f"d{i}", f"upper_d{i}") for i in range(10)},
+                )
 
     @testing.variation("add_insert_sentinel", [True, False])
     def test_sentinel_insert_default_pk_only(
@@ -1766,9 +1932,11 @@ class IMVSentinelTest(fixtures.TestBase):
             Column(
                 "id",
                 Uuid(),
-                server_default=func.gen_random_uuid()
-                if default_type.server_side
-                else None,
+                server_default=(
+                    func.gen_random_uuid()
+                    if default_type.server_side
+                    else None
+                ),
                 default=uuid.uuid4 if default_type.client_side else None,
                 primary_key=True,
                 insert_sentinel=bool(add_insert_sentinel),
@@ -1987,6 +2155,8 @@ class IMVSentinelTest(fixtures.TestBase):
         "return_type", ["include_sentinel", "default_only", "return_defaults"]
     )
     @testing.variation("add_sentinel_flag_to_col", [True, False])
+    @testing.variation("native_uuid", [True, False])
+    @testing.variation("as_uuid", [True, False])
     def test_sentinel_on_non_autoinc_primary_key(
         self,
         metadata,
@@ -1995,8 +2165,13 @@ class IMVSentinelTest(fixtures.TestBase):
         sort_by_parameter_order,
         randomize_returning,
         add_sentinel_flag_to_col,
+        native_uuid,
+        as_uuid,
     ):
         uuids = [uuid.uuid4() for i in range(10)]
+        if not as_uuid:
+            uuids = [str(u) for u in uuids]
+
         _some_uuids = iter(uuids)
 
         t1 = Table(
@@ -2004,7 +2179,7 @@ class IMVSentinelTest(fixtures.TestBase):
             metadata,
             Column(
                 "id",
-                Uuid(),
+                Uuid(native_uuid=bool(native_uuid), as_uuid=bool(as_uuid)),
                 default=functools.partial(next, _some_uuids),
                 primary_key=True,
                 insert_sentinel=bool(add_sentinel_flag_to_col),
@@ -2060,7 +2235,7 @@ class IMVSentinelTest(fixtures.TestBase):
                 collection_cls(r),
                 collection_cls(
                     [
-                        (uuids[i], f"d{i+1}", "some_server_default")
+                        (uuids[i], f"d{i + 1}", "some_server_default")
                         for i in range(5)
                     ]
                 ),
@@ -2072,7 +2247,7 @@ class IMVSentinelTest(fixtures.TestBase):
                 collection_cls(
                     [
                         (
-                            f"d{i+1}",
+                            f"d{i + 1}",
                             "some_server_default",
                         )
                         for i in range(5)
@@ -2096,6 +2271,8 @@ class IMVSentinelTest(fixtures.TestBase):
         else:
             return_type.fail()
 
+    @testing.variation("native_uuid", [True, False])
+    @testing.variation("as_uuid", [True, False])
     def test_client_composite_pk(
         self,
         metadata,
@@ -2103,15 +2280,19 @@ class IMVSentinelTest(fixtures.TestBase):
         randomize_returning,
         sort_by_parameter_order,
         warn_for_downgrades,
+        native_uuid,
+        as_uuid,
     ):
         uuids = [uuid.uuid4() for i in range(10)]
+        if not as_uuid:
+            uuids = [str(u) for u in uuids]
 
         t1 = Table(
             "data",
             metadata,
             Column(
                 "id1",
-                Uuid(),
+                Uuid(as_uuid=bool(as_uuid), native_uuid=bool(native_uuid)),
                 default=functools.partial(next, iter(uuids)),
                 primary_key=True,
             ),

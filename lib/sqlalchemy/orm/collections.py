@@ -1,5 +1,5 @@
 # orm/collections.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -21,6 +21,8 @@ provided.  One is a bundle of generic decorators that map function arguments
 and return values to events::
 
   from sqlalchemy.orm.collections import collection
+
+
   class MyClass:
       # ...
 
@@ -31,7 +33,6 @@ and return values to events::
       @collection.removes_return()
       def pop(self):
           return self.data.pop()
-
 
 The second approach is a bundle of targeted decorators that wrap appropriate
 append and remove notifiers around the mutation methods present in the
@@ -73,10 +74,11 @@ generally not needed.  Odds are, the extension method will delegate to a
 method that's already instrumented.  For example::
 
   class QueueIsh(list):
-     def push(self, item):
-         self.append(item)
-     def shift(self):
-         return self.pop(0)
+      def push(self, item):
+          self.append(item)
+
+      def shift(self):
+          return self.pop(0)
 
 There's no need to decorate these methods.  ``append`` and ``pop`` are already
 instrumented as part of the ``list`` interface.  Decorating them would fire
@@ -117,6 +119,7 @@ from typing import Iterable
 from typing import List
 from typing import NoReturn
 from typing import Optional
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -130,11 +133,10 @@ from .. import exc as sa_exc
 from .. import util
 from ..sql.base import NO_ARG
 from ..util.compat import inspect_getfullargspec
-from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
+    from .attributes import _CollectionAttributeImpl
     from .attributes import AttributeEventToken
-    from .attributes import CollectionAttributeImpl
     from .mapped_collection import attribute_keyed_dict
     from .mapped_collection import column_keyed_dict
     from .mapped_collection import keyfunc_mapping
@@ -148,10 +150,12 @@ __all__ = [
     "keyfunc_mapping",
     "column_keyed_dict",
     "attribute_keyed_dict",
-    "column_keyed_dict",
-    "attribute_keyed_dict",
-    "MappedCollection",
     "KeyFuncDict",
+    # old names in < 2.0
+    "mapped_collection",
+    "column_mapped_collection",
+    "attribute_mapped_collection",
+    "MappedCollection",
 ]
 
 __instrumentation_mutex = threading.Lock()
@@ -167,8 +171,7 @@ _FN = TypeVar("_FN", bound="Callable[..., Any]")
 
 
 class _CollectionConverterProtocol(Protocol):
-    def __call__(self, collection: _COL) -> _COL:
-        ...
+    def __call__(self, collection: _COL) -> _COL: ...
 
 
 class _AdaptedCollectionProtocol(Protocol):
@@ -176,7 +179,6 @@ class _AdaptedCollectionProtocol(Protocol):
     _sa_appender: Callable[..., Any]
     _sa_remover: Callable[..., Any]
     _sa_iterator: Callable[..., Iterable[Any]]
-    _sa_converter: _CollectionConverterProtocol
 
 
 class collection:
@@ -184,7 +186,7 @@ class collection:
 
     The decorators fall into two groups: annotations and interception recipes.
 
-    The annotating decorators (appender, remover, iterator, converter,
+    The annotating decorators (appender, remover, iterator,
     internally_instrumented) indicate the method's purpose and take no
     arguments.  They are not written with parens::
 
@@ -194,8 +196,9 @@ class collection:
     The recipe decorators all require parens, even those that take no
     arguments::
 
-        @collection.adds('entity')
+        @collection.adds("entity")
         def insert(self, position, entity): ...
+
 
         @collection.removes_return()
         def popitem(self): ...
@@ -216,10 +219,12 @@ class collection:
             @collection.appender
             def add(self, append): ...
 
+
             # or, equivalently
             @collection.appender
             @collection.adds(1)
             def add(self, append): ...
+
 
             # for mapping type, an 'append' may kick out a previous value
             # that occupies that slot.  consider d['a'] = 'foo'- any previous
@@ -260,10 +265,11 @@ class collection:
             @collection.remover
             def zap(self, entity): ...
 
+
             # or, equivalently
             @collection.remover
             @collection.removes_return()
-            def zap(self, ): ...
+            def zap(self): ...
 
         If the value to remove is not present in the collection, you may
         raise an exception or return None to ignore the error.
@@ -312,46 +318,6 @@ class collection:
         return fn
 
     @staticmethod
-    @util.deprecated(
-        "1.3",
-        "The :meth:`.collection.converter` handler is deprecated and will "
-        "be removed in a future release.  Please refer to the "
-        ":class:`.AttributeEvents.bulk_replace` listener interface in "
-        "conjunction with the :func:`.event.listen` function.",
-    )
-    def converter(fn):
-        """Tag the method as the collection converter.
-
-        This optional method will be called when a collection is being
-        replaced entirely, as in::
-
-            myobj.acollection = [newvalue1, newvalue2]
-
-        The converter method will receive the object being assigned and should
-        return an iterable of values suitable for use by the ``appender``
-        method.  A converter must not assign values or mutate the collection,
-        its sole job is to adapt the value the user provides into an iterable
-        of values for the ORM's use.
-
-        The default converter implementation will use duck-typing to do the
-        conversion.  A dict-like collection will be convert into an iterable
-        of dictionary values, and other types will simply be iterated::
-
-            @collection.converter
-            def convert(self, other): ...
-
-        If the duck-typing of the object does not match the type of this
-        collection, a TypeError is raised.
-
-        Supply an implementation of this method if you want to expand the
-        range of possible types that can be assigned in bulk or perform
-        validation on the values about to be assigned.
-
-        """
-        fn._sa_instrument_role = "converter"
-        return fn
-
-    @staticmethod
     def adds(arg):
         """Mark the method as adding an entity to the collection.
 
@@ -363,7 +329,8 @@ class collection:
             @collection.adds(1)
             def push(self, item): ...
 
-            @collection.adds('entity')
+
+            @collection.adds("entity")
             def do_stuff(self, thing, entity=None): ...
 
         """
@@ -470,25 +437,23 @@ class CollectionAdapter:
         "_key",
         "_data",
         "owner_state",
-        "_converter",
         "invalidated",
         "empty",
     )
 
-    attr: CollectionAttributeImpl
+    attr: _CollectionAttributeImpl
     _key: str
 
     # this is actually a weakref; see note in constructor
     _data: Callable[..., _AdaptedCollectionProtocol]
 
     owner_state: InstanceState[Any]
-    _converter: _CollectionConverterProtocol
     invalidated: bool
     empty: bool
 
     def __init__(
         self,
-        attr: CollectionAttributeImpl,
+        attr: _CollectionAttributeImpl,
         owner_state: InstanceState[Any],
         data: _AdaptedCollectionProtocol,
     ):
@@ -504,7 +469,6 @@ class CollectionAdapter:
 
         self.owner_state = owner_state
         data._sa_adapter = self
-        self._converter = data._sa_converter
         self.invalidated = False
         self.empty = False
 
@@ -548,9 +512,9 @@ class CollectionAdapter:
             self.empty
         ), "This collection adapter is not in the 'empty' state"
         self.empty = False
-        self.owner_state.dict[
-            self._key
-        ] = self.owner_state._empty_collections.pop(self._key)
+        self.owner_state.dict[self._key] = (
+            self.owner_state._empty_collections.pop(self._key)
+        )
 
     def _refuse_empty(self) -> NoReturn:
         raise sa_exc.InvalidRequestError(
@@ -762,7 +726,6 @@ class CollectionAdapter:
         # see note in constructor regarding this type: ignore
         self._data = weakref.ref(d["data"])  # type: ignore
 
-        self._converter = d["data"]._sa_converter
         d["data"]._sa_adapter = self
         self.invalidated = d["invalidated"]
         self.attr = getattr(d["owner_cls"], self._key).impl
@@ -811,7 +774,7 @@ def bulk_replace(values, existing_adapter, new_adapter, initiator=None):
         existing_adapter._fire_remove_event_bulk(removals, initiator=initiator)
 
 
-def prepare_instrumentation(
+def _prepare_instrumentation(
     factory: Union[Type[Collection[Any]], _CollectionFactoryType],
 ) -> _CollectionFactoryType:
     """Prepare a callable for future use as a collection class factory.
@@ -897,12 +860,7 @@ def _locate_roles_and_methods(cls):
             # note role declarations
             if hasattr(method, "_sa_instrument_role"):
                 role = method._sa_instrument_role
-                assert role in (
-                    "appender",
-                    "remover",
-                    "iterator",
-                    "converter",
-                )
+                assert role in ("appender", "remover", "iterator")
                 roles.setdefault(role, name)
 
             # transfer instrumentation requests from decorated function
@@ -1001,8 +959,6 @@ def _set_collection_attributes(cls, roles, methods):
 
     cls._sa_adapter = None
 
-    if not hasattr(cls, "_sa_converter"):
-        cls._sa_converter = None
     cls._sa_instrumented = id(cls)
 
 
@@ -1372,14 +1328,6 @@ def _set_binops_check_strict(self: Any, obj: Any) -> bool:
     return isinstance(obj, _set_binop_bases + (self.__class__,))
 
 
-def _set_binops_check_loose(self: Any, obj: Any) -> bool:
-    """Allow anything set-like to participate in set binops."""
-    return (
-        isinstance(obj, _set_binop_bases + (self.__class__,))
-        or util.duck_type_collection(obj) == set
-    )
-
-
 def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     """Tailored instrumentation wrappers for any set-like class."""
 
@@ -1554,14 +1502,15 @@ class InstrumentedDict(Dict[_KT, _VT]):
     """An instrumented version of the built-in dict."""
 
 
-__canned_instrumentation: util.immutabledict[
-    Any, _CollectionFactoryType
-] = util.immutabledict(
-    {
-        list: InstrumentedList,
-        set: InstrumentedSet,
-        dict: InstrumentedDict,
-    }
+__canned_instrumentation = cast(
+    util.immutabledict[Any, _CollectionFactoryType],
+    util.immutabledict(
+        {
+            list: InstrumentedList,
+            set: InstrumentedSet,
+            dict: InstrumentedDict,
+        }
+    ),
 )
 
 __interfaces: util.immutabledict[

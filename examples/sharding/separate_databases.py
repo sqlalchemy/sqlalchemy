@@ -1,4 +1,5 @@
 """Illustrates sharding using distinct SQLite databases."""
+
 from __future__ import annotations
 
 import datetime

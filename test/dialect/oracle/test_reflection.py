@@ -21,6 +21,11 @@ from sqlalchemy import text
 from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects import oracle
+from sqlalchemy.dialects.oracle import VECTOR
+from sqlalchemy.dialects.oracle import VectorDistanceType
+from sqlalchemy.dialects.oracle import VectorIndexConfig
+from sqlalchemy.dialects.oracle import VectorIndexType
+from sqlalchemy.dialects.oracle import VectorStorageFormat
 from sqlalchemy.dialects.oracle.base import BINARY_DOUBLE
 from sqlalchemy.dialects.oracle.base import BINARY_FLOAT
 from sqlalchemy.dialects.oracle.base import DOUBLE_PRECISION
@@ -684,6 +689,39 @@ class TableReflectionTest(fixtures.TestBase):
             finally:
                 conn.exec_driver_sql("DROP TABLE my_table")
 
+    def test_tablespace(self, connection, metadata):
+        tbl = Table(
+            "test_tablespace",
+            metadata,
+            Column("data", Integer),
+            oracle_tablespace="temp",
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+
+        tbl = Table("test_tablespace", m2, autoload_with=connection)
+        assert tbl.dialect_options["oracle"]["tablespace"] == "TEMP"
+
+    @testing.only_on("oracle>=23.4")
+    def test_reflection_w_vector_column(self, connection, metadata):
+        tb1 = Table(
+            "test_vector",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30)),
+            Column(
+                "embedding",
+                VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+            ),
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+
+        tb1 = Table("test_vector", m2, autoload_with=connection)
+        assert tb1.columns.keys() == ["id", "name", "embedding"]
+
 
 class ViewReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
@@ -1166,6 +1204,42 @@ class RoundTripIndexTest(fixtures.TestBase):
         eq_(len(reflectedtable.constraints), 1)
         eq_(len(reflectedtable.indexes), 5)
 
+    @testing.only_on("oracle>=23.4")
+    def test_vector_index(self, metadata, connection):
+        tb1 = Table(
+            "test_vector",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30)),
+            Column(
+                "embedding",
+                VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+            ),
+        )
+        tb1.create(connection)
+
+        ivf_index = Index(
+            "ivf_vector_index",
+            tb1.c.embedding,
+            oracle_vector=VectorIndexConfig(
+                index_type=VectorIndexType.IVF,
+                distance=VectorDistanceType.DOT,
+                accuracy=90,
+                ivf_neighbor_partitions=5,
+            ),
+        )
+        ivf_index.create(connection)
+
+        expected = [
+            {
+                "name": "ivf_vector_index",
+                "column_names": ["embedding"],
+                "dialect_options": {},
+                "unique": False,
+            },
+        ]
+        eq_(inspect(connection).get_indexes("test_vector"), expected)
+
 
 class DBLinkReflectionTest(fixtures.TestBase):
     __requires__ = ("oracle_test_dblink",)
@@ -1227,7 +1301,7 @@ class TypeReflectionTest(fixtures.TestBase):
             for attr in attributes:
                 r_attr = getattr(reflected_type, attr)
                 e_attr = getattr(expected_spec, attr)
-                col = f"c{i+1}"
+                col = f"c{i + 1}"
                 eq_(
                     r_attr,
                     e_attr,
@@ -1314,8 +1388,14 @@ class IdentityReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table("t1", metadata, Column("id1", Integer, Identity(on_null=True)))
-        Table("t2", metadata, Column("id2", Integer, Identity(order=True)))
+        Table(
+            "t1",
+            metadata,
+            Column("id1", Integer, Identity(oracle_on_null=True)),
+        )
+        Table(
+            "t2", metadata, Column("id2", Integer, Identity(oracle_order=True))
+        )
 
     def test_reflect_identity(self):
         insp = inspect(testing.db)
@@ -1323,23 +1403,23 @@ class IdentityReflectionTest(fixtures.TablesTest):
             "always": False,
             "start": 1,
             "increment": 1,
-            "on_null": False,
+            "oracle_on_null": False,
             "maxvalue": 10**28 - 1,
             "minvalue": 1,
             "cycle": False,
             "cache": 20,
-            "order": False,
+            "oracle_order": False,
         }
         for col in insp.get_columns("t1") + insp.get_columns("t2"):
             if col["name"] == "id1":
                 is_true("identity" in col)
                 exp = common.copy()
-                exp["on_null"] = True
+                exp["oracle_on_null"] = True
                 eq_(col["identity"], exp)
             if col["name"] == "id2":
                 is_true("identity" in col)
                 exp = common.copy()
-                exp["order"] = True
+                exp["oracle_order"] = True
                 eq_(col["identity"], exp)
 
 
@@ -1540,8 +1620,8 @@ drop table %(schema)sparent;
                 (schema, "parent"): [],
             }
             self.options[schema] = {
-                (schema, "my_table"): {},
-                (schema, "parent"): {},
+                (schema, "my_table"): {"oracle_tablespace": "USERS"},
+                (schema, "parent"): {"oracle_tablespace": "USERS"},
             }
 
     def test_tables(self, connection):

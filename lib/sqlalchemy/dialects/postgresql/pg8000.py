@@ -1,5 +1,5 @@
-# postgresql/pg8000.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors <see AUTHORS
+# dialects/postgresql/pg8000.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -27,19 +27,21 @@ PostgreSQL ``client_encoding`` parameter; by default this is the value in
 the ``postgresql.conf`` file, which often defaults to ``SQL_ASCII``.
 Typically, this can be changed to ``utf-8``, as a more useful default::
 
-    #client_encoding = sql_ascii # actually, defaults to database
-                                 # encoding
+    # client_encoding = sql_ascii # actually, defaults to database encoding
     client_encoding = utf8
 
 The ``client_encoding`` can be overridden for a session by executing the SQL:
 
-SET CLIENT_ENCODING TO 'utf8';
+.. sourcecode:: sql
+
+    SET CLIENT_ENCODING TO 'utf8';
 
 SQLAlchemy will execute this SQL on all new connections based on the value
 passed to :func:`_sa.create_engine` using the ``client_encoding`` parameter::
 
     engine = create_engine(
-        "postgresql+pg8000://user:pass@host/dbname", client_encoding='utf8')
+        "postgresql+pg8000://user:pass@host/dbname", client_encoding="utf8"
+    )
 
 .. _pg8000_ssl:
 
@@ -50,6 +52,7 @@ pg8000 accepts a Python ``SSLContext`` object which may be specified using the
 :paramref:`_sa.create_engine.connect_args` dictionary::
 
     import ssl
+
     ssl_context = ssl.create_default_context()
     engine = sa.create_engine(
         "postgresql+pg8000://scott:tiger@192.168.0.199/test",
@@ -61,6 +64,7 @@ or does not match the host name (as seen from the client), it may also be
 necessary to disable hostname checking::
 
     import ssl
+
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
@@ -122,7 +126,7 @@ class _PGString(sqltypes.String):
     render_bind_cast = True
 
 
-class _PGNumeric(sqltypes.Numeric):
+class _PGNumericCommon(sqltypes.NumericCommon):
     render_bind_cast = True
 
     def result_processor(self, dialect, coltype):
@@ -150,9 +154,12 @@ class _PGNumeric(sqltypes.Numeric):
                 )
 
 
-class _PGFloat(_PGNumeric, sqltypes.Float):
-    __visit_name__ = "float"
-    render_bind_cast = True
+class _PGNumeric(_PGNumericCommon, sqltypes.Numeric):
+    pass
+
+
+class _PGFloat(_PGNumericCommon, sqltypes.Float):
+    pass
 
 
 class _PGNumericNoBind(_PGNumeric):
@@ -253,7 +260,7 @@ class _PGOIDVECTOR(_SpaceVector, OIDVECTOR):
     pass
 
 
-class _Pg8000Range(ranges.AbstractRangeImpl):
+class _Pg8000Range(ranges.AbstractSingleRangeImpl):
     def bind_processor(self, dialect):
         pg8000_Range = dialect.dbapi.Range
 
@@ -304,15 +311,13 @@ class _Pg8000MultiRange(ranges.AbstractMultiRangeImpl):
         def to_multirange(value):
             if value is None:
                 return None
-
-            mr = []
-            for v in value:
-                mr.append(
+            else:
+                return ranges.MultiRange(
                     ranges.Range(
                         v.lower, v.upper, bounds=v.bounds, empty=v.is_empty
                     )
+                    for v in value
                 )
-            return mr
 
         return to_multirange
 
@@ -584,8 +589,8 @@ class PGDialect_pg8000(PGDialect):
         cursor = dbapi_connection.cursor()
         cursor.execute(
             f"""SET CLIENT_ENCODING TO '{
-            client_encoding.replace("'", "''")
-        }'"""
+                client_encoding.replace("'", "''")
+            }'"""
         )
         cursor.execute("COMMIT")
         cursor.close()

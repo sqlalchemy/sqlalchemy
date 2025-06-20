@@ -1,5 +1,5 @@
 # testing/fixtures/__init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -19,9 +19,11 @@ from .orm import (
     stop_test_class_inside_fixtures as stop_test_class_inside_fixtures,
 )
 from .sql import CacheKeyFixture as CacheKeyFixture
+from .sql import CacheKeySuite as CacheKeySuite
 from .sql import (
     ComputedReflectionFixtureTest as ComputedReflectionFixtureTest,
 )
+from .sql import DistinctOnFixture as DistinctOnFixture
 from .sql import insertmanyvalues_fixture as insertmanyvalues_fixture
 from .sql import NoCache as NoCache
 from .sql import RemovesEvents as RemovesEvents

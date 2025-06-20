@@ -1,5 +1,5 @@
-# sqlalchemy/pool/events.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# pool/events.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -35,10 +35,12 @@ class PoolEvents(event.Events[Pool]):
 
         from sqlalchemy import event
 
+
         def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
             "handle an on checkout event"
 
-        event.listen(Pool, 'checkout', my_on_checkout)
+
+        event.listen(Pool, "checkout", my_on_checkout)
 
     In addition to accepting the :class:`_pool.Pool` class and
     :class:`_pool.Pool` instances, :class:`_events.PoolEvents` also accepts
@@ -49,7 +51,7 @@ class PoolEvents(event.Events[Pool]):
         engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
         # will associate with engine.pool
-        event.listen(engine, 'checkout', my_on_checkout)
+        event.listen(engine, "checkout", my_on_checkout)
 
     """  # noqa: E501
 
@@ -173,7 +175,7 @@ class PoolEvents(event.Events[Pool]):
 
     def checkin(
         self,
-        dbapi_connection: DBAPIConnection,
+        dbapi_connection: Optional[DBAPIConnection],
         connection_record: ConnectionPoolEntry,
     ) -> None:
         """Called when a connection returns to the pool.

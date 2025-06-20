@@ -36,7 +36,7 @@ class ClsRegistryTest(fixtures.TestBase):
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.bar.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
         gc_collect()
 
         with expect_warnings(
@@ -44,7 +44,7 @@ class ClsRegistryTest(fixtures.TestBase):
             "same class name and module name as foo.bar.Foo, and "
             "will be replaced in the string-lookup table."
         ):
-            clsregistry.add_class(
+            clsregistry._add_class(
                 "Foo",
                 f2,
                 base._class_registry,
@@ -54,8 +54,8 @@ class ClsRegistryTest(fixtures.TestBase):
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
-        clsregistry.add_class("Foo", f2, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f2, base._class_registry)
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
@@ -71,9 +71,9 @@ class ClsRegistryTest(fixtures.TestBase):
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
         f3 = MockClass(base, "bat.alt.Hoho")
-        clsregistry.add_class("Foo", f1, base._class_registry)
-        clsregistry.add_class("Foo", f2, base._class_registry)
-        clsregistry.add_class("HoHo", f3, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f2, base._class_registry)
+        clsregistry._add_class("HoHo", f3, base._class_registry)
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
@@ -89,9 +89,9 @@ class ClsRegistryTest(fixtures.TestBase):
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
         f3 = MockClass(base, "bat.alt.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
-        clsregistry.add_class("Foo", f2, base._class_registry)
-        clsregistry.add_class("Foo", f3, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f2, base._class_registry)
+        clsregistry._add_class("Foo", f3, base._class_registry)
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
@@ -126,8 +126,8 @@ class ClsRegistryTest(fixtures.TestBase):
 
         f1 = MockClass(registry, "existent.Foo")
         f2 = MockClass(registry, "existent.existent.Foo")
-        clsregistry.add_class("Foo", f1, registry._class_registry)
-        clsregistry.add_class("Foo", f2, registry._class_registry)
+        clsregistry._add_class("Foo", f1, registry._class_registry)
+        clsregistry._add_class("Foo", f2, registry._class_registry)
 
         class MyClass(Base):
             __tablename__ = "my_table"
@@ -145,8 +145,8 @@ class ClsRegistryTest(fixtures.TestBase):
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
-        clsregistry.add_class("Foo", f2, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f2, base._class_registry)
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
@@ -170,8 +170,8 @@ class ClsRegistryTest(fixtures.TestBase):
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
-        clsregistry.add_class("Foo", f2, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f2, base._class_registry)
 
         gc_collect()
 
@@ -198,8 +198,8 @@ class ClsRegistryTest(fixtures.TestBase):
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
-        clsregistry.add_class("Foo", f2, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f2, base._class_registry)
 
         del f2
         gc_collect()
@@ -221,8 +221,8 @@ class ClsRegistryTest(fixtures.TestBase):
         for i in range(3):
             f1 = MockClass(base, "foo.bar.Foo")
             f2 = MockClass(base, "foo.alt.Foo")
-            clsregistry.add_class("Foo", f1, base._class_registry)
-            clsregistry.add_class("Foo", f2, base._class_registry)
+            clsregistry._add_class("Foo", f1, base._class_registry)
+            clsregistry._add_class("Foo", f2, base._class_registry)
 
             eq_(len(clsregistry._registries), 11)
 
@@ -230,7 +230,7 @@ class ClsRegistryTest(fixtures.TestBase):
             del f2
             gc_collect()
 
-            eq_(len(clsregistry._registries), 1)
+            eq_(len(clsregistry._registries), 0)
 
     def test_dupe_classes_name_race(self):
         """test the race condition that the class was garbage "
@@ -238,8 +238,8 @@ class ClsRegistryTest(fixtures.TestBase):
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
-        clsregistry.add_class("Foo", f2, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f2, base._class_registry)
 
         dupe_reg = base._class_registry["Foo"]
         dupe_reg.contents = [lambda: None]
@@ -266,7 +266,7 @@ class ClsRegistryTest(fixtures.TestBase):
 
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
         reg = base._class_registry["_sa_module_registry"]
 
         mod_entry = reg["foo"]["bar"]
@@ -291,7 +291,7 @@ class ClsRegistryTest(fixtures.TestBase):
     def test_module_reg_no_class(self):
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
         reg = base._class_registry["_sa_module_registry"]
         mod_entry = reg["foo"]["bar"]  # noqa
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
@@ -314,11 +314,11 @@ class ClsRegistryTest(fixtures.TestBase):
     def test_module_reg_cleanout_two_sub(self):
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
-        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry._add_class("Foo", f1, base._class_registry)
         reg = base._class_registry["_sa_module_registry"]
 
         f2 = MockClass(base, "foo.alt.Bar")
-        clsregistry.add_class("Bar", f2, base._class_registry)
+        clsregistry._add_class("Bar", f2, base._class_registry)
         assert reg["foo"]["bar"]
         del f1
         gc_collect()
@@ -332,7 +332,7 @@ class ClsRegistryTest(fixtures.TestBase):
     def test_module_reg_cleanout_sub_to_base(self):
         base = registry()
         f3 = MockClass(base, "bat.bar.Hoho")
-        clsregistry.add_class("Hoho", f3, base._class_registry)
+        clsregistry._add_class("Hoho", f3, base._class_registry)
         reg = base._class_registry["_sa_module_registry"]
 
         assert reg["bat"]["bar"]
@@ -343,7 +343,7 @@ class ClsRegistryTest(fixtures.TestBase):
     def test_module_reg_cleanout_cls_to_base(self):
         base = registry()
         f4 = MockClass(base, "single.Blat")
-        clsregistry.add_class("Blat", f4, base._class_registry)
+        clsregistry._add_class("Blat", f4, base._class_registry)
         reg = base._class_registry["_sa_module_registry"]
         assert reg["single"]
         del f4

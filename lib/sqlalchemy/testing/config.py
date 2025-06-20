@@ -1,5 +1,5 @@
 # testing/config.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -25,7 +25,6 @@ from typing import Union
 from . import mock
 from . import requirements as _requirements
 from .util import fail
-from .. import util
 
 # default requirements; this is replaced by plugin_base when pytest
 # is run
@@ -122,7 +121,9 @@ def combinations(
      passed, each argument combination is turned into a pytest.param() object,
      mapping the elements of the argument tuple to produce an id based on a
      character value in the same position within the string template using the
-     following scheme::
+     following scheme:
+
+     .. sourcecode:: text
 
         i - the given argument is a string that is part of the id only, don't
             pass it as an argument
@@ -146,7 +147,7 @@ def combinations(
             (operator.ne, "ne"),
             (operator.gt, "gt"),
             (operator.lt, "lt"),
-            id_="na"
+            id_="na",
         )
         def test_operator(self, opfunc, name):
             pass
@@ -177,8 +178,7 @@ class Variation:
 
     if typing.TYPE_CHECKING:
 
-        def __getattr__(self, key: str) -> bool:
-            ...
+        def __getattr__(self, key: str) -> bool: ...
 
     @property
     def name(self):
@@ -229,14 +229,9 @@ def variation(argname_or_fn, cases=None):
 
         @testing.variation("querytyp", ["select", "subquery", "legacy_query"])
         @testing.variation("lazy", ["select", "raise", "raise_on_sql"])
-        def test_thing(
-            self,
-            querytyp,
-            lazy,
-            decl_base
-        ):
+        def test_thing(self, querytyp, lazy, decl_base):
             class Thing(decl_base):
-                __tablename__ = 'thing'
+                __tablename__ = "thing"
 
                 # use name directly
                 rel = relationship("Rel", lazy=lazy.name)
@@ -250,7 +245,6 @@ def variation(argname_or_fn, cases=None):
                 stmt = Session.query(Thing)
             else:
                 querytyp.fail()
-
 
     The variable provided is a slots object of boolean variables, as well
     as the name of the case itself under the attribute ".name"
@@ -269,9 +263,11 @@ def variation(argname_or_fn, cases=None):
     else:
         argname = argname_or_fn
     cases_plus_limitations = [
-        entry
-        if (isinstance(entry, tuple) and len(entry) == 2)
-        else (entry, None)
+        (
+            entry
+            if (isinstance(entry, tuple) and len(entry) == 2)
+            else (entry, None)
+        )
         for entry in cases
     ]
 
@@ -280,9 +276,11 @@ def variation(argname_or_fn, cases=None):
     )
     return combinations(
         *[
-            (variation._name, variation, limitation)
-            if limitation is not None
-            else (variation._name, variation)
+            (
+                (variation._name, variation, limitation)
+                if limitation is not None
+                else (variation._name, variation)
+            )
             for variation, (case, limitation) in zip(
                 variations, cases_plus_limitations
             )
@@ -330,9 +328,7 @@ class Config:
         self.test_schema = "test_schema"
         self.test_schema_2 = "test_schema_2"
 
-        self.is_async = db.dialect.is_async and not util.asbool(
-            db.url.query.get("async_fallback", False)
-        )
+        self.is_async = db.dialect.is_async
 
     _stack = collections.deque()
     _configs = set()

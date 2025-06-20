@@ -1,3 +1,9 @@
+# dialects/oracle/provision.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from ... import create_engine
@@ -83,7 +89,7 @@ def _oracle_drop_db(cfg, eng, ident):
         # cx_Oracle seems to occasionally leak open connections when a large
         # suite it run, even if we confirm we have zero references to
         # connection objects.
-        # while there is a "kill session" command in Oracle,
+        # while there is a "kill session" command in Oracle Database,
         # it unfortunately does not release the connection sufficiently.
         _ora_drop_ignore(conn, ident)
         _ora_drop_ignore(conn, "%s_ts1" % ident)

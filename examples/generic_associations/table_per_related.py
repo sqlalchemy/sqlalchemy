@@ -16,6 +16,8 @@ but there really isn't any - the management and targeting of these tables
 is completely automated.
 
 """
+
+from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer

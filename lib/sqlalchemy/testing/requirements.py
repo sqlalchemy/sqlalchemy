@@ -1,5 +1,5 @@
 # testing/requirements.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -19,6 +19,7 @@ to provide specific inclusion/exclusions.
 
 from __future__ import annotations
 
+import os
 import platform
 
 from . import asyncio as _test_asyncio
@@ -91,7 +92,9 @@ class SuiteRequirements(Requirements):
 
     @property
     def table_value_constructor(self):
-        """Database / dialect supports a query like::
+        """Database / dialect supports a query like:
+
+        .. sourcecode:: sql
 
              SELECT * FROM VALUES ( (c1, c2), (c1, c2), ...)
              AS some_table(col1, col2)
@@ -656,6 +659,12 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def temp_table_comment_reflection(self):
+        """indicates if database supports comments on temp tables and
+        the dialect can reflect them"""
+        return exclusions.closed()
+
+    @property
     def comment_reflection(self):
         """Indicates if the database support table comment reflection"""
         return exclusions.closed()
@@ -797,6 +806,11 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def inline_check_constraint_reflection(self):
+        """target dialect supports reflection of inline check constraints"""
+        return exclusions.closed()
+
+    @property
     def check_constraint_reflection(self):
         """target dialect supports reflection of check constraints"""
         return exclusions.closed()
@@ -814,6 +828,11 @@ class SuiteRequirements(Requirements):
         """Target database must support VARCHAR with no length"""
 
         return exclusions.open()
+
+    @property
+    def nvarchar_types(self):
+        """target database supports NVARCHAR and NCHAR as an actual datatype"""
+        return exclusions.closed()
 
     @property
     def unicode_data_no_special_types(self):
@@ -844,6 +863,14 @@ class SuiteRequirements(Requirements):
     def symbol_names_w_double_quote(self):
         """Target driver can create tables with a name like 'some " table'"""
         return exclusions.open()
+
+    @property
+    def datetime_interval(self):
+        """target dialect supports rendering of a datetime.timedelta as a
+        literal string, e.g. via the TypeEngine.literal_processor() method.
+
+        """
+        return exclusions.closed()
 
     @property
     def datetime_literals(self):
@@ -979,7 +1006,9 @@ class SuiteRequirements(Requirements):
     @property
     def binary_literals(self):
         """target backend supports simple binary literals, e.g. an
-        expression like::
+        expression like:
+
+        .. sourcecode:: sql
 
             SELECT CAST('foo' AS BINARY)
 
@@ -1086,6 +1115,11 @@ class SuiteRequirements(Requirements):
         return exclusions.only_if(go)
 
     @property
+    def array_type(self):
+        """Target platform implements a native ARRAY type"""
+        return exclusions.closed()
+
+    @property
     def json_type(self):
         """target platform implements a native JSON type."""
 
@@ -1147,6 +1181,19 @@ class SuiteRequirements(Requirements):
         return self.precision_numerics_many_significant_digits
 
     @property
+    def server_defaults(self):
+        """Target backend supports server side defaults for columns"""
+
+        return exclusions.closed()
+
+    @property
+    def expression_server_defaults(self):
+        """Target backend supports server side defaults with SQL expressions
+        for columns"""
+
+        return exclusions.closed()
+
+    @property
     def implicit_decimal_binds(self):
         """target backend will return a selected Decimal as a Decimal, not
         a string.
@@ -1155,9 +1202,7 @@ class SuiteRequirements(Requirements):
 
             expr = decimal.Decimal("15.7563")
 
-            value = e.scalar(
-                select(literal(expr))
-            )
+            value = e.scalar(select(literal(expr)))
 
             assert value == expr
 
@@ -1325,7 +1370,9 @@ class SuiteRequirements(Requirements):
         present in a subquery in the WHERE clause.
 
         This is an ANSI-standard syntax that apparently MySQL can't handle,
-        such as::
+        such as:
+
+        .. sourcecode:: sql
 
             UPDATE documents SET flag=1 WHERE documents.title IN
                 (SELECT max(documents.title) AS title
@@ -1358,7 +1405,11 @@ class SuiteRequirements(Requirements):
         """target database supports ordering by a column from a SELECT
         inside of a UNION
 
-        E.g.  (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
+        E.g.:
+
+        .. sourcecode:: sql
+
+            (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
 
         """
         return exclusions.open()
@@ -1368,7 +1419,9 @@ class SuiteRequirements(Requirements):
         """target backend supports ORDER BY a column label within an
         expression.
 
-        Basically this::
+        Basically this:
+
+        .. sourcecode:: sql
 
             select data as foo from test order by foo || 'bar'
 
@@ -1458,6 +1511,10 @@ class SuiteRequirements(Requirements):
         return config.add_to_marker.timing_intensive
 
     @property
+    def posix(self):
+        return exclusions.skip_if(lambda: os.name != "posix")
+
+    @property
     def memory_intensive(self):
         from . import config
 
@@ -1499,16 +1556,25 @@ class SuiteRequirements(Requirements):
         return exclusions.skip_if(check)
 
     @property
-    def python38(self):
-        return exclusions.only_if(
-            lambda: util.py38, "Python 3.8 or above required"
-        )
+    def up_to_date_typealias_type(self):
+        # this checks a particular quirk found in typing_extensions <=4.12.0
+        # using older python versions like 3.10 or 3.9, we use TypeAliasType
+        # from typing_extensions which does not provide for sufficient
+        # introspection prior to 4.13.0
+        def check(config):
+            import typing
+            import typing_extensions
 
-    @property
-    def python39(self):
-        return exclusions.only_if(
-            lambda: util.py39, "Python 3.9 or above required"
-        )
+            TypeAliasType = getattr(
+                typing, "TypeAliasType", typing_extensions.TypeAliasType
+            )
+            TV = typing.TypeVar("TV")
+            TA_generic = TypeAliasType(  # type: ignore
+                "TA_generic", typing.List[TV], type_params=(TV,)
+            )
+            return hasattr(TA_generic[int], "__value__")
+
+        return exclusions.only_if(check)
 
     @property
     def python310(self):
@@ -1520,6 +1586,32 @@ class SuiteRequirements(Requirements):
     def python311(self):
         return exclusions.only_if(
             lambda: util.py311, "Python 3.11 or above required"
+        )
+
+    @property
+    def python312(self):
+        return exclusions.only_if(
+            lambda: util.py312, "Python 3.12 or above required"
+        )
+
+    @property
+    def fail_python314b1(self):
+        return exclusions.fails_if(
+            lambda: util.compat.py314b1, "Fails as of python 3.14.0b1"
+        )
+
+    @property
+    def not_python314(self):
+        """This requirement is interim to assist with backporting of
+        issue #12405.
+
+        SQLAlchemy 2.0 still includes the ``await_fallback()`` method that
+        makes use of ``asyncio.get_event_loop_policy()``.  This is removed
+        in SQLAlchemy 2.1.
+
+        """
+        return exclusions.skip_if(
+            lambda: util.py314, "Python 3.14 or above not supported"
         )
 
     @property
@@ -1593,13 +1685,26 @@ class SuiteRequirements(Requirements):
 
     @property
     def async_dialect(self):
-        """dialect makes use of await_() to invoke operations on the DBAPI."""
+        """dialect makes use of await_() to invoke operations on the
+        DBAPI."""
 
         return exclusions.closed()
 
     @property
     def asyncio(self):
         return self.greenlet
+
+    @property
+    def no_greenlet(self):
+        def go(config):
+            try:
+                import greenlet  # noqa: F401
+            except ImportError:
+                return True
+            else:
+                return False
+
+        return exclusions.only_if(go)
 
     @property
     def greenlet(self):
@@ -1755,3 +1860,34 @@ class SuiteRequirements(Requirements):
     def materialized_views_reflect_pk(self):
         """Target database reflect MATERIALIZED VIEWs pks."""
         return exclusions.closed()
+
+    @property
+    def supports_bitwise_or(self):
+        """Target database supports bitwise or"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_and(self):
+        """Target database supports bitwise and"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_not(self):
+        """Target database supports bitwise not"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_xor(self):
+        """Target database supports bitwise xor"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_shift(self):
+        """Target database supports bitwise left or right shift"""
+        return exclusions.closed()
+
+    @property
+    def like_escapes(self):
+        """Target backend supports custom ESCAPE characters
+        with LIKE comparisons"""
+        return exclusions.open()

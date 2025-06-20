@@ -583,7 +583,10 @@ class OnConflictTest(fixtures.TablesTest):
             [(43, "nameunique2", "name2@gmail.com", "not")],
         )
 
-    def test_on_conflict_do_update_exotic_targets_four_no_pk(self, connection):
+    @testing.variation("string_index_elements", [True, False])
+    def test_on_conflict_do_update_exotic_targets_four_no_pk(
+        self, connection, string_index_elements
+    ):
         users = self.tables.users_xtra
 
         self._exotic_targets_fixture(connection)
@@ -591,7 +594,11 @@ class OnConflictTest(fixtures.TablesTest):
         # upsert on target login_email, not id
         i = insert(users)
         i = i.on_conflict_do_update(
-            index_elements=[users.c.login_email],
+            index_elements=(
+                ["login_email"]
+                if string_index_elements
+                else [users.c.login_email]
+            ),
             set_=dict(
                 id=i.excluded.id,
                 name=i.excluded.name,

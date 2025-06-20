@@ -1,5 +1,5 @@
 # testing/asyncio.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,29 +11,27 @@
 # setup/teardown in an asyncio event loop, conditionally based on the
 # current DB driver being used for a test.
 
-# note that SQLAlchemy's asyncio integration also supports a method
-# of running individual asyncio functions inside of separate event loops
-# using "async_fallback" mode; however running whole functions in the event
-# loop is a more accurate test for how SQLAlchemy's asyncio features
-# would run in the real world.
-
-
 from __future__ import annotations
 
 from functools import wraps
 import inspect
 
 from . import config
-from ..util.concurrency import _util_async_run
-from ..util.concurrency import _util_async_run_coroutine_function
+from ..util.concurrency import _AsyncUtil
 
 # may be set to False if the
 # --disable-asyncio flag is passed to the test runner.
 ENABLE_ASYNCIO = True
+_async_util = _AsyncUtil()  # it has lazy init so just always create one
+
+
+def _shutdown():
+    """called when the test finishes"""
+    _async_util.close()
 
 
 def _run_coroutine_function(fn, *args, **kwargs):
-    return _util_async_run_coroutine_function(fn, *args, **kwargs)
+    return _async_util.run(fn, *args, **kwargs)
 
 
 def _assume_async(fn, *args, **kwargs):
@@ -50,7 +48,7 @@ def _assume_async(fn, *args, **kwargs):
     if not ENABLE_ASYNCIO:
         return fn(*args, **kwargs)
 
-    return _util_async_run(fn, *args, **kwargs)
+    return _async_util.run_in_greenlet(fn, *args, **kwargs)
 
 
 def _maybe_async_provisioning(fn, *args, **kwargs):
@@ -69,7 +67,7 @@ def _maybe_async_provisioning(fn, *args, **kwargs):
         return fn(*args, **kwargs)
 
     if config.any_async:
-        return _util_async_run(fn, *args, **kwargs)
+        return _async_util.run_in_greenlet(fn, *args, **kwargs)
     else:
         return fn(*args, **kwargs)
 
@@ -89,7 +87,7 @@ def _maybe_async(fn, *args, **kwargs):
     is_async = config._current.is_async
 
     if is_async:
-        return _util_async_run(fn, *args, **kwargs)
+        return _async_util.run_in_greenlet(fn, *args, **kwargs)
     else:
         return fn(*args, **kwargs)
 

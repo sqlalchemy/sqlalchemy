@@ -1232,9 +1232,20 @@ class AutoIncrementTest(fixtures.TestBase):
             1,
         )
 
+    @testing.combinations(
+        sa.Float, sa.DOUBLE_PRECISION, sa.Numeric, sa.Numeric(asdecimal=False)
+    )
+    def test_autoincrement_not_float(self, type_):
+        t = Table(
+            "table", sa.MetaData(), Column("col", type_, primary_key=True)
+        )
+
+        eq_(t.autoincrement_column, None)
+        eq_(t.primary_key._autoincrement_column, None)
+        eq_(t.c.col.autoincrement, "auto")
+
 
 class SpecialTypePKTest(fixtures.TestBase):
-
     """test process_result_value in conjunction with primary key columns.
 
     Also tests that "autoincrement" checks are against

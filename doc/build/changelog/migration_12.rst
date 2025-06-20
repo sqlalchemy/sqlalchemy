@@ -1586,7 +1586,7 @@ Support for Batch Mode / Fast Execution Helpers
 
 The psycopg2 ``cursor.executemany()`` method has been identified as performing
 poorly, particularly with INSERT statements.   To alleviate this, psycopg2
-has added `Fast Execution Helpers <https://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_
+has added `Fast Execution Helpers <https://www.psycopg.org/docs/extras.html#fast-execution-helpers>`_
 which rework statements into fewer server round trips by sending multiple
 DML statements in batch.   SQLAlchemy 1.2 now includes support for these
 helpers to be used transparently whenever the :class:`_engine.Engine` makes use

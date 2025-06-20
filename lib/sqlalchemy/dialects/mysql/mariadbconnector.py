@@ -1,11 +1,9 @@
-# mysql/mariadbconnector.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/mariadbconnector.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
-
 
 """
 
@@ -29,15 +27,36 @@ be ``mysqldb``. ``mariadb+mariadbconnector://`` is required to use this driver.
 .. mariadb: https://github.com/mariadb-corporation/mariadb-connector-python
 
 """  # noqa
+from __future__ import annotations
+
 import re
+from typing import Any
+from typing import Optional
+from typing import Sequence
+from typing import TYPE_CHECKING
+from typing import Union
 from uuid import UUID as _python_UUID
 
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
+from .mariadb import MariaDBDialect
 from ... import sql
 from ... import util
 from ...sql import sqltypes
+
+if TYPE_CHECKING:
+    from ...engine.base import Connection
+    from ...engine.interfaces import ConnectArgsType
+    from ...engine.interfaces import DBAPIConnection
+    from ...engine.interfaces import DBAPICursor
+    from ...engine.interfaces import DBAPIModule
+    from ...engine.interfaces import Dialect
+    from ...engine.interfaces import IsolationLevel
+    from ...engine.interfaces import PoolProxiedConnection
+    from ...engine.url import URL
+    from ...sql.compiler import SQLCompiler
+    from ...sql.type_api import _ResultProcessorType
 
 
 mariadb_cpy_minimum_version = (1, 0, 1)
@@ -47,10 +66,12 @@ class _MariaDBUUID(sqltypes.UUID[sqltypes._UUID_RETURN]):
     # work around JIRA issue
     # https://jira.mariadb.org/browse/CONPY-270.  When that issue is fixed,
     # this type can be removed.
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Optional[_ResultProcessorType[Any]]:
         if self.as_uuid:
 
-            def process(value):
+            def process(value: Any) -> Any:
                 if value is not None:
                     if hasattr(value, "decode"):
                         value = value.decode("ascii")
@@ -60,7 +81,7 @@ class _MariaDBUUID(sqltypes.UUID[sqltypes._UUID_RETURN]):
             return process
         else:
 
-            def process(value):
+            def process(value: Any) -> Any:
                 if value is not None:
                     if hasattr(value, "decode"):
                         value = value.decode("ascii")
@@ -71,28 +92,27 @@ class _MariaDBUUID(sqltypes.UUID[sqltypes._UUID_RETURN]):
 
 
 class MySQLExecutionContext_mariadbconnector(MySQLExecutionContext):
-    _lastrowid = None
+    _lastrowid: Optional[int] = None
 
-    def create_server_side_cursor(self):
+    def create_server_side_cursor(self) -> DBAPICursor:
         return self._dbapi_connection.cursor(buffered=False)
 
-    def create_default_cursor(self):
+    def create_default_cursor(self) -> DBAPICursor:
         return self._dbapi_connection.cursor(buffered=True)
 
-    def post_exec(self):
+    def post_exec(self) -> None:
+        super().post_exec()
+
         self._rowcount = self.cursor.rowcount
 
+        if TYPE_CHECKING:
+            assert isinstance(self.compiled, SQLCompiler)
         if self.isinsert and self.compiled.postfetch_lastrowid:
             self._lastrowid = self.cursor.lastrowid
 
-    @property
-    def rowcount(self):
-        if self._rowcount is not None:
-            return self._rowcount
-        else:
-            return self.cursor.rowcount
-
-    def get_lastrowid(self):
+    def get_lastrowid(self) -> int:
+        if TYPE_CHECKING:
+            assert self._lastrowid is not None
         return self._lastrowid
 
 
@@ -131,7 +151,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
     )
 
     @util.memoized_property
-    def _dbapi_version(self):
+    def _dbapi_version(self) -> tuple[int, ...]:
         if self.dbapi and hasattr(self.dbapi, "__version__"):
             return tuple(
                 [
@@ -144,7 +164,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
         else:
             return (99, 99, 99)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.paramstyle = "qmark"
         if self.dbapi is not None:
@@ -156,20 +176,26 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
                 )
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> DBAPIModule:
         return __import__("mariadb")
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self,
+        e: DBAPIModule.Error,
+        connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
+        cursor: Optional[DBAPICursor],
+    ) -> bool:
         if super().is_disconnect(e, connection, cursor):
             return True
-        elif isinstance(e, self.dbapi.Error):
+        elif isinstance(e, self.loaded_dbapi.Error):
             str_e = str(e).lower()
             return "not connected" in str_e or "isn't valid" in str_e
         else:
             return False
 
-    def create_connect_args(self, url):
+    def create_connect_args(self, url: URL) -> ConnectArgsType:
         opts = url.translate_connect_args()
+        opts.update(url.query)
 
         int_params = [
             "connect_timeout",
@@ -184,6 +210,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
             "ssl_verify_cert",
             "ssl",
             "pool_reset_connection",
+            "compress",
         ]
 
         for key in int_params:
@@ -203,19 +230,21 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
             except (AttributeError, ImportError):
                 self.supports_sane_rowcount = False
             opts["client_flag"] = client_flag
-        return [[], opts]
+        return [], opts
 
-    def _extract_error_code(self, exception):
+    def _extract_error_code(self, exception: DBAPIModule.Error) -> int:
         try:
-            rc = exception.errno
+            rc: int = exception.errno
         except:
             rc = -1
         return rc
 
-    def _detect_charset(self, connection):
+    def _detect_charset(self, connection: Connection) -> str:
         return "utf8mb4"
 
-    def get_isolation_level_values(self, dbapi_connection):
+    def get_isolation_level_values(
+        self, dbapi_conn: DBAPIConnection
+    ) -> Sequence[IsolationLevel]:
         return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
@@ -224,21 +253,23 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
             "AUTOCOMMIT",
         )
 
-    def set_isolation_level(self, connection, level):
+    def set_isolation_level(
+        self, dbapi_connection: DBAPIConnection, level: IsolationLevel
+    ) -> None:
         if level == "AUTOCOMMIT":
-            connection.autocommit = True
+            dbapi_connection.autocommit = True
         else:
-            connection.autocommit = False
-            super().set_isolation_level(connection, level)
+            dbapi_connection.autocommit = False
+            super().set_isolation_level(dbapi_connection, level)
 
-    def do_begin_twophase(self, connection, xid):
+    def do_begin_twophase(self, connection: Connection, xid: Any) -> None:
         connection.execute(
             sql.text("XA BEGIN :xid").bindparams(
                 sql.bindparam("xid", xid, literal_execute=True)
             )
         )
 
-    def do_prepare_twophase(self, connection, xid):
+    def do_prepare_twophase(self, connection: Connection, xid: Any) -> None:
         connection.execute(
             sql.text("XA END :xid").bindparams(
                 sql.bindparam("xid", xid, literal_execute=True)
@@ -251,8 +282,12 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
         )
 
     def do_rollback_twophase(
-        self, connection, xid, is_prepared=True, recover=False
-    ):
+        self,
+        connection: Connection,
+        xid: Any,
+        is_prepared: bool = True,
+        recover: bool = False,
+    ) -> None:
         if not is_prepared:
             connection.execute(
                 sql.text("XA END :xid").bindparams(
@@ -266,8 +301,12 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
         )
 
     def do_commit_twophase(
-        self, connection, xid, is_prepared=True, recover=False
-    ):
+        self,
+        connection: Connection,
+        xid: Any,
+        is_prepared: bool = True,
+        recover: bool = False,
+    ) -> None:
         if not is_prepared:
             self.do_prepare_twophase(connection, xid)
         connection.execute(
@@ -277,4 +316,12 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
         )
 
 
+class MariaDBDialect_mariadbconnector(
+    MariaDBDialect, MySQLDialect_mariadbconnector
+):
+    supports_statement_cache = True
+    _allows_uuid_binds = False
+
+
 dialect = MySQLDialect_mariadbconnector
+mariadb_dialect = MariaDBDialect_mariadbconnector

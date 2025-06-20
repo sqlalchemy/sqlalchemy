@@ -16,6 +16,7 @@ combinatoric generated code approach.
 .. versionadded:: 2.0
 
 """
+
 # mypy: ignore-errors
 
 from __future__ import annotations
@@ -36,15 +37,21 @@ is_posix = os.name == "posix"
 sys.path.append(str(Path(__file__).parent.parent))
 
 
-def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
+def process_module(
+    modname: str, filename: str, expected_number: int, cmd: code_writer_cmd
+) -> str:
     # use tempfile in same path as the module, or at least in the
     # current working directory, so that black / zimports use
     # local pyproject.toml
-    with NamedTemporaryFile(
-        mode="w",
-        delete=False,
-        suffix=".py",
-    ) as buf, open(filename) as orig_py:
+    found = 0
+    with (
+        NamedTemporaryFile(
+            mode="w",
+            delete=False,
+            suffix=".py",
+        ) as buf,
+        open(filename) as orig_py,
+    ):
         indent = ""
         in_block = False
         current_fnname = given_fnname = None
@@ -54,6 +61,7 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
                 line,
             )
             if m:
+                found += 1
                 indent = m.group(1)
                 given_fnname = current_fnname = m.group(2)
                 if current_fnname.startswith("self."):
@@ -82,26 +90,32 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
                 )
 
                 for num_args in range(start_index, end_index + 1):
+                    ret_suffix = ""
                     combinations = [
-                        [
-                            f"__ent{arg}: _TCCA[_T{arg}]"
-                            for arg in range(num_args)
-                        ]
+                        f"__ent{arg}: _TCCA[_T{arg}]"
+                        for arg in range(num_args)
                     ]
-                    for combination in combinations:
-                        buf.write(
-                            textwrap.indent(
-                                f"""
+
+                    if num_args == end_index:
+                        ret_suffix = ", Unpack[TupleAny]"
+                        extra_args = (
+                            f", *entities: _ColumnsClauseArgument[Any]"
+                            f"{extra_args.replace(', *', '')}"
+                        )
+
+                    buf.write(
+                        textwrap.indent(
+                            f"""
 @overload
 def {current_fnname}(
-    {'self, ' if use_self else ''}{", ".join(combination)}{extra_args}
-) -> {return_type}[Tuple[{', '.join(f'_T{i}' for i in range(num_args))}]]:
+    {'self, ' if use_self else ''}{", ".join(combinations)},/{extra_args}
+) -> {return_type}[{', '.join(f'_T{i}' for i in range(num_args))}{ret_suffix}]:
     ...
 
 """,  # noqa: E501
-                                indent,
-                            )
+                            indent,
                         )
+                    )
 
             if in_block and line.startswith(
                 f"{indent}# END OVERLOADED FUNCTIONS {given_fnname}"
@@ -110,16 +124,20 @@ def {current_fnname}(
 
             if not in_block:
                 buf.write(line)
+    if found != expected_number:
+        raise Exception(
+            f"{modname} processed {found}. expected {expected_number}"
+        )
     return buf.name
 
 
-def run_module(modname: str, cmd: code_writer_cmd) -> None:
+def run_module(modname: str, count: int, cmd: code_writer_cmd) -> None:
     cmd.write_status(f"importing module {modname}\n")
     mod = importlib.import_module(modname)
     destination_path = mod.__file__
     assert destination_path is not None
 
-    tempfile = process_module(modname, destination_path, cmd)
+    tempfile = process_module(modname, destination_path, count, cmd)
 
     cmd.run_zimports(tempfile)
     cmd.run_black(tempfile)
@@ -127,17 +145,17 @@ def run_module(modname: str, cmd: code_writer_cmd) -> None:
 
 
 def main(cmd: code_writer_cmd) -> None:
-    for modname in entries:
+    for modname, count in entries:
         if cmd.args.module in {"all", modname}:
-            run_module(modname, cmd)
+            run_module(modname, count, cmd)
 
 
 entries = [
-    "sqlalchemy.sql._selectable_constructors",
-    "sqlalchemy.orm.session",
-    "sqlalchemy.orm.query",
-    "sqlalchemy.sql.selectable",
-    "sqlalchemy.sql.dml",
+    ("sqlalchemy.sql._selectable_constructors", 1),
+    ("sqlalchemy.orm.session", 1),
+    ("sqlalchemy.orm.query", 1),
+    ("sqlalchemy.sql.selectable", 1),
+    ("sqlalchemy.sql.dml", 3),
 ]
 
 if __name__ == "__main__":
@@ -146,7 +164,7 @@ if __name__ == "__main__":
     with cmd.add_arguments() as parser:
         parser.add_argument(
             "--module",
-            choices=entries + ["all"],
+            choices=[n for n, _ in entries] + ["all"],
             default="all",
             help="Which file to generate. Default is to regenerate all files",
         )

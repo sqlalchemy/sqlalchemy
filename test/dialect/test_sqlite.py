@@ -1,7 +1,9 @@
 """SQLite-specific tests."""
+
 import datetime
 import json
 import os
+import random
 
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -52,6 +54,7 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Date
@@ -83,12 +86,12 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         metadata.create_all(connection)
         for stmt in [
-            "INSERT INTO bool_table (id, boo) " "VALUES (1, 'false');",
-            "INSERT INTO bool_table (id, boo) " "VALUES (2, 'true');",
-            "INSERT INTO bool_table (id, boo) " "VALUES (3, '1');",
-            "INSERT INTO bool_table (id, boo) " "VALUES (4, '0');",
-            "INSERT INTO bool_table (id, boo) " "VALUES (5, 1);",
-            "INSERT INTO bool_table (id, boo) " "VALUES (6, 0);",
+            "INSERT INTO bool_table (id, boo) VALUES (1, 'false');",
+            "INSERT INTO bool_table (id, boo) VALUES (2, 'true');",
+            "INSERT INTO bool_table (id, boo) VALUES (3, '1');",
+            "INSERT INTO bool_table (id, boo) VALUES (4, '0');",
+            "INSERT INTO bool_table (id, boo) VALUES (5, 1);",
+            "INSERT INTO bool_table (id, boo) VALUES (6, 0);",
         ]:
             connection.exec_driver_sql(stmt)
 
@@ -318,23 +321,17 @@ class JSONTest(fixtures.TestBase):
             connection.scalar(select(sqlite_json.c.foo["json"])), value["json"]
         )
 
-    def test_deprecated_serializer_args(self, metadata):
+    def test_serializer_args(self, metadata):
         sqlite_json = Table("json_test", metadata, Column("foo", sqlite.JSON))
         data_element = {"foo": "bar"}
 
         js = mock.Mock(side_effect=json.dumps)
         jd = mock.Mock(side_effect=json.loads)
 
-        with testing.expect_deprecated(
-            "The _json_deserializer argument to the SQLite "
-            "dialect has been renamed",
-            "The _json_serializer argument to the SQLite "
-            "dialect has been renamed",
-        ):
-            engine = engines.testing_engine(
-                options=dict(_json_serializer=js, _json_deserializer=jd)
-            )
-            metadata.create_all(engine)
+        engine = engines.testing_engine(
+            options=dict(json_serializer=js, json_deserializer=jd)
+        )
+        metadata.create_all(engine)
 
         with engine.begin() as conn:
             conn.execute(sqlite_json.insert(), {"foo": data_element})
@@ -652,7 +649,7 @@ class DialectTest(
 
     @testing.provide_metadata
     def test_quoted_identifiers_functional_two(self):
-        """ "test the edgiest of edge cases, quoted table/col names
+        """test the edgiest of edge cases, quoted table/col names
         that start and end with quotes.
 
         SQLite claims to have fixed this in
@@ -740,7 +737,7 @@ class DialectTest(
             ),
         ),
         (
-            "sqlite:///file:path/to/database?" "mode=ro&uri=true",
+            "sqlite:///file:path/to/database?mode=ro&uri=true",
             (
                 ["file:path/to/database?mode=ro"],
                 {"uri": True, "check_same_thread": False},
@@ -782,6 +779,16 @@ class DialectTest(
             "CREATE TABLE t (x INTEGER,"
             " y INTEGER GENERATED ALWAYS AS (x + 2)%s)" % text,
         )
+
+    @testing.combinations(
+        (func.localtimestamp(),),
+        (func.now(),),
+        (func.char_length("test"),),
+        (func.aggregate_strings("abc", ","),),
+        argnames="fn",
+    )
+    def test_builtin_functions_roundtrip(self, fn, connection):
+        connection.execute(select(fn))
 
 
 class AttachedDBTest(fixtures.TablesTest):
@@ -912,7 +919,6 @@ class AttachedDBTest(fixtures.TablesTest):
 
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests SQLite-dialect specific compilation."""
 
     __dialect__ = sqlite.dialect()
@@ -968,7 +974,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_localtime(self):
         self.assert_compile(
-            func.localtimestamp(), 'DATETIME(CURRENT_TIMESTAMP, "localtime")'
+            func.localtimestamp(), "DATETIME(CURRENT_TIMESTAMP, 'localtime')"
         )
 
     def test_constraints_with_schemas(self):
@@ -1031,39 +1037,60 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             ")",
         )
 
-    def test_column_defaults_ddl(self):
+    @testing.combinations(
+        (
+            Boolean(create_constraint=True),
+            sql.false(),
+            "BOOLEAN DEFAULT 0, CHECK (x IN (0, 1))",
+        ),
+        (
+            String(),
+            func.sqlite_version(),
+            "VARCHAR DEFAULT (sqlite_version())",
+        ),
+        (Integer(), func.abs(-5) + 17, "INTEGER DEFAULT (abs(-5) + 17)"),
+        (
+            # test #12425
+            String(),
+            func.now(),
+            "VARCHAR DEFAULT CURRENT_TIMESTAMP",
+        ),
+        (
+            # test #12425
+            String(),
+            func.datetime(func.now(), "localtime"),
+            "VARCHAR DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))",
+        ),
+        (
+            # test #12425
+            String(),
+            text("datetime(CURRENT_TIMESTAMP, 'localtime')"),
+            "VARCHAR DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))",
+        ),
+        (
+            # default with leading spaces that should not be
+            # parenthesized
+            String,
+            text("  'some default'"),
+            "VARCHAR DEFAULT   'some default'",
+        ),
+        (String, text("'some default'"), "VARCHAR DEFAULT 'some default'"),
+        argnames="datatype,default,expected",
+    )
+    def test_column_defaults_ddl(self, datatype, default, expected):
         t = Table(
             "t",
             MetaData(),
             Column(
                 "x",
-                Boolean(create_constraint=True),
-                server_default=sql.false(),
+                datatype,
+                server_default=default,
             ),
         )
 
         self.assert_compile(
             CreateTable(t),
-            "CREATE TABLE t (x BOOLEAN DEFAULT (0), CHECK (x IN (0, 1)))",
-        )
-
-        t = Table(
-            "t",
-            MetaData(),
-            Column("x", String(), server_default=func.sqlite_version()),
-        )
-        self.assert_compile(
-            CreateTable(t),
-            "CREATE TABLE t (x VARCHAR DEFAULT (sqlite_version()))",
-        )
-
-        t = Table(
-            "t",
-            MetaData(),
-            Column("x", Integer(), server_default=func.abs(-5) + 17),
-        )
-        self.assert_compile(
-            CreateTable(t), "CREATE TABLE t (x INTEGER DEFAULT (abs(-5) + 17))"
+            f"CREATE TABLE t (x {expected})",
         )
 
     def test_create_partial_index(self):
@@ -1144,6 +1171,28 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE atable (id INTEGER) WITHOUT ROWID",
         )
 
+    def test_create_table_strict(self):
+        m = MetaData()
+        table = Table("atable", m, Column("id", Integer), sqlite_strict=True)
+        self.assert_compile(
+            schema.CreateTable(table),
+            "CREATE TABLE atable (id INTEGER) STRICT",
+        )
+
+    def test_create_table_without_rowid_strict(self):
+        m = MetaData()
+        table = Table(
+            "atable",
+            m,
+            Column("id", Integer),
+            sqlite_with_rowid=False,
+            sqlite_strict=True,
+        )
+        self.assert_compile(
+            schema.CreateTable(table),
+            "CREATE TABLE atable (id INTEGER) WITHOUT ROWID, STRICT",
+        )
+
 
 class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = sqlite.dialect()
@@ -1155,7 +1204,7 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateColumn(c),
-            "test INTEGER NOT NULL " "ON CONFLICT FAIL",
+            "test INTEGER NOT NULL ON CONFLICT FAIL",
             dialect=sqlite.dialect(),
         )
 
@@ -1194,7 +1243,7 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             CreateTable(t),
-            "CREATE TABLE n (x VARCHAR(30), " "UNIQUE (x) ON CONFLICT FAIL)",
+            "CREATE TABLE n (x VARCHAR(30), UNIQUE (x) ON CONFLICT FAIL)",
             dialect=sqlite.dialect(),
         )
 
@@ -1314,7 +1363,6 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class InsertTest(fixtures.TestBase, AssertsExecutionResults):
-
     """Tests inserts and autoincrement."""
 
     __only_on__ = "sqlite"
@@ -1816,6 +1864,29 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             Table("q", meta, Column("id", Integer), PrimaryKeyConstraint("id"))
 
+            # intentional new line
+            Table(
+                "r",
+                meta,
+                Column("id", Integer),
+                Column("value", Integer),
+                Column("prefix", String),
+                CheckConstraint("id > 0"),
+                UniqueConstraint("prefix", name="prefix_named"),
+                # Constraint definition with newline and tab characters
+                CheckConstraint(
+                    """((value > 0) AND \n\t(value < 100) AND \n\t
+                      (value != 50))""",
+                    name="ck_r_value_multiline",
+                ),
+                UniqueConstraint("value"),
+                # Constraint name with special chars and 'check' in the name
+                CheckConstraint("value IS NOT NULL", name="^check-r* #\n\t"),
+                PrimaryKeyConstraint("id", name="pk_name"),
+                # Constraint definition with special characters.
+                CheckConstraint("prefix NOT GLOB '*[^-. /#,]*'"),
+            )
+
             meta.create_all(conn)
 
             # will contain an "autoindex"
@@ -1851,8 +1922,20 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             conn.exec_driver_sql(
                 "CREATE TABLE cp ("
-                "q INTEGER check (q > 1 AND q < 6),\n"
-                "CONSTRAINT cq CHECK (q == 1 OR (q > 2 AND q < 5))\n"
+                "id INTEGER NOT NULL,\n"
+                "q INTEGER, \n"
+                "p INTEGER, \n"
+                "CONSTRAINT cq CHECK (p = 1 OR (p > 2 AND p < 5)),\n"
+                "PRIMARY KEY (id)\n"
+                ")"
+            )
+
+            conn.exec_driver_sql(
+                "CREATE TABLE cp_inline (\n"
+                "id INTEGER NOT NULL,\n"
+                "q INTEGER CHECK (q > 1 AND q < 6), \n"
+                "p INTEGER CONSTRAINT cq CHECK (p = 1 OR (p > 2 AND p < 5)),\n"
+                "PRIMARY KEY (id)\n"
                 ")"
             )
 
@@ -1911,6 +1994,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "b",
                 "a1",
                 "a2",
+                "r",
             ]:
                 conn.exec_driver_sql("drop table %s" % name)
 
@@ -2426,6 +2510,27 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [{"column_names": ["x"], "name": None}],
         )
 
+    def test_unique_constraint_mixed_into_ck(self, connection):
+        """test #11832"""
+
+        inspector = inspect(connection)
+        eq_(
+            inspector.get_unique_constraints("r"),
+            [
+                {"name": "prefix_named", "column_names": ["prefix"]},
+                {"name": None, "column_names": ["value"]},
+            ],
+        )
+
+    def test_primary_key_constraint_mixed_into_ck(self, connection):
+        """test #11832"""
+
+        inspector = inspect(connection)
+        eq_(
+            inspector.get_pk_constraint("r"),
+            {"constrained_columns": ["id"], "name": "pk_name"},
+        )
+
     def test_primary_key_constraint_named(self):
         inspector = inspect(testing.db)
         eq_(
@@ -2447,13 +2552,43 @@ class ConstraintReflectionTest(fixtures.TestBase):
             {"constrained_columns": [], "name": None},
         )
 
-    def test_check_constraint(self):
+    def test_check_constraint_plain(self):
         inspector = inspect(testing.db)
         eq_(
             inspector.get_check_constraints("cp"),
             [
-                {"sqltext": "q == 1 OR (q > 2 AND q < 5)", "name": "cq"},
+                {"sqltext": "p = 1 OR (p > 2 AND p < 5)", "name": "cq"},
+            ],
+        )
+
+    def test_check_constraint_inline_plain(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("cp_inline"),
+            [
+                {"sqltext": "p = 1 OR (p > 2 AND p < 5)", "name": "cq"},
                 {"sqltext": "q > 1 AND q < 6", "name": None},
+            ],
+        )
+
+    @testing.fails("need to come up with new regex and/or DDL parsing")
+    def test_check_constraint_multiline(self):
+        """test for #11677"""
+
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("r"),
+            [
+                {"sqltext": "value IS NOT NULL", "name": "^check-r* #\n\t"},
+                # Triple-quote multi-line definition should have added a
+                # newline and whitespace:
+                {
+                    "sqltext": "((value > 0) AND \n\t(value < 100) AND \n\t\n"
+                    "                      (value != 50))",
+                    "name": "ck_r_value_multiline",
+                },
+                {"sqltext": "id > 0", "name": None},
+                {"sqltext": "prefix NOT GLOB '*[^-. /#,]*'", "name": None},
             ],
         )
 
@@ -2466,17 +2601,27 @@ class ConstraintReflectionTest(fixtures.TestBase):
         argnames="colname,expected",
     )
     @testing.combinations(
-        "uq", "uq_inline", "pk", "ix", argnames="constraint_type"
+        "uq",
+        "uq_inline",
+        "uq_inline_tab_before",  # tab before column params
+        "uq_inline_tab_within",  # tab within column params
+        "pk",
+        "ix",
+        argnames="constraint_type",
     )
     def test_constraint_cols(
         self, colname, expected, constraint_type, connection, metadata
     ):
-        if constraint_type == "uq_inline":
+        if constraint_type.startswith("uq_inline"):
+            inline_create_sql = {
+                "uq_inline": "CREATE TABLE t (%s INTEGER UNIQUE)",
+                "uq_inline_tab_before": "CREATE TABLE t (%s\tINTEGER UNIQUE)",
+                "uq_inline_tab_within": "CREATE TABLE t (%s INTEGER\tUNIQUE)",
+            }
+
             t = Table("t", metadata, Column(colname, Integer))
             connection.exec_driver_sql(
-                """
-            CREATE TABLE t (%s INTEGER UNIQUE)
-            """
+                inline_create_sql[constraint_type]
                 % connection.dialect.identifier_preparer.quote(colname)
             )
         else:
@@ -2494,7 +2639,12 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             t.create(connection)
 
-        if constraint_type in ("uq", "uq_inline"):
+        if constraint_type in (
+            "uq",
+            "uq_inline",
+            "uq_inline_tab_before",
+            "uq_inline_tab_within",
+        ):
             const = inspect(connection).get_unique_constraints("t")[0]
             eq_(const["column_names"], [expected])
         elif constraint_type == "pk":
@@ -2508,7 +2658,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
 
 class SavepointTest(fixtures.TablesTest):
-
     """test that savepoints work when we use the correct event setup"""
 
     __only_on__ = "sqlite"
@@ -2739,19 +2888,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "mytable", column("myid", Integer), column("name", String)
         )
 
-    def _only_on_py38_w_sqlite_39():
-        """in python 3.9 and above you can actually do::
-
-            @(testing.requires.python38 + testing.only_on("sqlite > 3.9"))
-            def test_determinsitic_parameter(self):
-                ...
-
-        that'll be cool.  until then...
-
-        """
-        return testing.requires.python38 + testing.only_on("sqlite >= 3.9")
-
-    @_only_on_py38_w_sqlite_39()
+    @testing.only_on("sqlite >= 3.9")
     def test_determinsitic_parameter(self):
         """for #9379, make sure that "deterministic=True" is used when we are
         on python 3.8 with modern SQLite version.
@@ -2841,7 +2978,279 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
-class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
+class OnConflictCompileTest(
+    AssertsCompiledSQL, fixtures.CacheKeySuite, fixtures.TestBase
+):
+    __dialect__ = "sqlite"
+
+    @testing.combinations(
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=["id"], index_where=text("name = 'hi'")
+            ),
+            "ON CONFLICT (id) WHERE name = 'hi' DO NOTHING",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=["id"], index_where="name = 'hi'"
+            ),
+            exc.ArgumentError,
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=[users.c.id], index_where=users.c.name == "hi"
+            ),
+            "ON CONFLICT (id) WHERE name = __[POSTCOMPILE_name_1] DO NOTHING",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where=users.c.name == "hi",
+            ),
+            "ON CONFLICT (id) DO UPDATE SET name = ? " "WHERE users.name = ?",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where=text("name = 'hi'"),
+            ),
+            "ON CONFLICT (id) DO UPDATE SET name = ? " "WHERE name = 'hi'",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where="name = 'hi'",
+            ),
+            exc.ArgumentError,
+        ),
+        argnames="case,expected",
+    )
+    def test_assorted_arg_coercion(self, users, case, expected):
+        stmt = insert(users)
+
+        if isinstance(expected, type) and issubclass(expected, Exception):
+            with expect_raises(expected):
+                testing.resolve_lambda(case, stmt=stmt, users=users),
+        else:
+            self.assert_compile(
+                testing.resolve_lambda(case, stmt=stmt, users=users),
+                f"INSERT INTO users (id, name) VALUES (?, ?) {expected}",
+            )
+
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_insert_on_conflict_cache_key(self):
+        table = Table(
+            "foos",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("bar", String(10)),
+            Column("baz", String(10)),
+        )
+        Index("foo_idx", table.c.id)
+
+        def stmt0():
+            # note a multivalues INSERT is not cacheable; use just one
+            # set of values
+            return insert(table).values(
+                {"id": 1, "bar": "ab"},
+            )
+
+        def stmt1():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing()
+
+        def stmt2():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=["id"])
+
+        def stmt21():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=[table.c.id])
+
+        def stmt22():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(
+                index_elements=["id", table.c.bar]
+            )
+
+        def stmt23():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=["id", "bar"])
+
+        def stmt24():
+            stmt = insert(table).values(
+                {"id": 1, "bar": "ab", "baz": "xy"},
+            )
+            return stmt.on_conflict_do_nothing(index_elements=["id", "bar"])
+
+        def stmt3():
+            stmt = stmt0()
+            return stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "bar": random.choice(["a", "b", "c"]),
+                    "baz": random.choice(["d", "e", "f"]),
+                },
+            )
+
+        def stmt31():
+            stmt = stmt0()
+            return stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "baz": random.choice(["d", "e", "f"]),
+                },
+            )
+
+        return lambda: [
+            stmt0(),
+            stmt1(),
+            stmt2(),
+            stmt21(),
+            stmt22(),
+            stmt23(),
+            stmt24(),
+            stmt3(),
+            stmt31(),
+        ]
+
+    @testing.combinations("control", "excluded", "dict", argnames="scenario")
+    def test_set_excluded(self, scenario, users, users_w_key):
+        """test #8014, sending all of .excluded to set"""
+
+        if scenario == "control":
+
+            stmt = insert(users)
+            self.assert_compile(
+                stmt.on_conflict_do_update(set_=stmt.excluded),
+                "INSERT INTO users (id, name) VALUES (?, ?) ON CONFLICT  "
+                "DO UPDATE SET id = excluded.id, name = excluded.name",
+            )
+        else:
+
+            stmt = insert(users_w_key)
+
+            if scenario == "excluded":
+                self.assert_compile(
+                    stmt.on_conflict_do_update(set_=stmt.excluded),
+                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
+                    "ON CONFLICT  "
+                    "DO UPDATE SET id = excluded.id, name = excluded.name",
+                )
+            else:
+                self.assert_compile(
+                    stmt.on_conflict_do_update(
+                        set_={
+                            "id": stmt.excluded.id,
+                            "name_keyed": stmt.excluded.name_keyed,
+                        }
+                    ),
+                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
+                    "ON CONFLICT  "
+                    "DO UPDATE SET id = excluded.id, name = excluded.name",
+                )
+
+    def test_dont_consume_set_collection(self, users):
+        stmt = insert(users).values(
+            [
+                {
+                    "name": "spongebob",
+                },
+                {
+                    "name": "sandy",
+                },
+            ]
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[users.c.name], set_=dict(name=stmt.excluded.name)
+        )
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (name) VALUES (?), (?) "
+            "ON CONFLICT (name) DO UPDATE SET name = excluded.name",
+        )
+        stmt = stmt.returning(users)
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (name) VALUES (?), (?) "
+            "ON CONFLICT (name) DO UPDATE SET name = excluded.name "
+            "RETURNING id, name",
+        )
+
+    def test_on_conflict_do_update_exotic_targets_six(self, users_xtra):
+        users = users_xtra
+
+        unique_partial_index = schema.Index(
+            "idx_unique_partial_name",
+            users_xtra.c.name,
+            users_xtra.c.lets_index_this,
+            unique=True,
+            sqlite_where=users_xtra.c.lets_index_this == "unique_name",
+        )
+
+        i = insert(users)
+        i = i.on_conflict_do_update(
+            index_elements=unique_partial_index.columns,
+            index_where=unique_partial_index.dialect_options["sqlite"][
+                "where"
+            ],
+            set_=dict(
+                name=i.excluded.name, login_email=i.excluded.login_email
+            ),
+        )
+
+        # this test illustrates that the index_where clause can't use
+        # bound parameters, where we see below a literal_execute parameter is
+        # used (will be sent as literal to the DBAPI).  SQLite otherwise
+        # fails here with "(sqlite3.OperationalError) ON CONFLICT clause does
+        # not match any PRIMARY KEY or UNIQUE constraint" if sent as a real
+        # bind parameter.
+        self.assert_compile(
+            i,
+            "INSERT INTO users_xtra (id, name, login_email, lets_index_this) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT (name, lets_index_this) "
+            "WHERE lets_index_this = __[POSTCOMPILE_lets_index_this_1] "
+            "DO UPDATE "
+            "SET name = excluded.name, login_email = excluded.login_email",
+        )
+
+    @testing.fixture
+    def users(self):
+        metadata = MetaData()
+        return Table(
+            "users",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+
+    @testing.fixture
+    def users_w_key(self):
+        metadata = MetaData()
+        return Table(
+            "users_w_key",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), key="name_keyed"),
+        )
+
+    @testing.fixture
+    def users_xtra(self):
+        metadata = MetaData()
+        return Table(
+            "users_xtra",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+            Column("login_email", String(50)),
+            Column("lets_index_this", String(50)),
+        )
+
+
+class OnConflictTest(fixtures.TablesTest):
     __only_on__ = ("sqlite >= 3.24.0",)
     __backend__ = True
 
@@ -2901,49 +3310,8 @@ class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     def test_bad_args(self):
-        assert_raises(
-            ValueError, insert(self.tables.users).on_conflict_do_update
-        )
-
-    @testing.combinations("control", "excluded", "dict")
-    @testing.skip_if("+pysqlite_numeric")
-    @testing.skip_if("+pysqlite_dollar")
-    def test_set_excluded(self, scenario):
-        """test #8014, sending all of .excluded to set"""
-
-        if scenario == "control":
-            users = self.tables.users
-
-            stmt = insert(users)
-            self.assert_compile(
-                stmt.on_conflict_do_update(set_=stmt.excluded),
-                "INSERT INTO users (id, name) VALUES (?, ?) ON CONFLICT  "
-                "DO UPDATE SET id = excluded.id, name = excluded.name",
-            )
-        else:
-            users_w_key = self.tables.users_w_key
-
-            stmt = insert(users_w_key)
-
-            if scenario == "excluded":
-                self.assert_compile(
-                    stmt.on_conflict_do_update(set_=stmt.excluded),
-                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
-                    "ON CONFLICT  "
-                    "DO UPDATE SET id = excluded.id, name = excluded.name",
-                )
-            else:
-                self.assert_compile(
-                    stmt.on_conflict_do_update(
-                        set_={
-                            "id": stmt.excluded.id,
-                            "name_keyed": stmt.excluded.name_keyed,
-                        }
-                    ),
-                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
-                    "ON CONFLICT  "
-                    "DO UPDATE SET id = excluded.id, name = excluded.name",
-                )
+        with expect_raises(ValueError):
+            insert(self.tables.users).on_conflict_do_update()
 
     def test_on_conflict_do_no_call_twice(self):
         users = self.tables.users
@@ -3464,7 +3832,7 @@ class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
         # The last inserted primary key should be 2 here
-        # it is taking the result from the the exotic fixture
+        # it is taking the result from the exotic fixture
         eq_(result.inserted_primary_key, (2,))
 
         eq_(
@@ -3568,3 +3936,100 @@ class ReflectInternalSchemaTables(fixtures.TablesTest):
             eq_(res, ["sqlitetempview"])
         finally:
             connection.exec_driver_sql("DROP VIEW sqlitetempview")
+
+
+class ComputedReflectionTest(fixtures.TestBase):
+    __only_on__ = "sqlite"
+    __backend__ = True
+
+    @classmethod
+    def setup_test_class(cls):
+        tables = [
+            """CREATE TABLE test1 (
+                s VARCHAR,
+                x VARCHAR GENERATED ALWAYS AS (s || 'x')
+            );""",
+            """CREATE TABLE test2 (
+                s VARCHAR,
+                x VARCHAR GENERATED ALWAYS AS (s || 'x'),
+                y VARCHAR GENERATED ALWAYS AS (s || 'y')
+            );""",
+            """CREATE TABLE test3 (
+                s VARCHAR,
+                x INTEGER GENERATED ALWAYS AS (INSTR(s, ","))
+            );""",
+            """CREATE TABLE test4 (
+                s VARCHAR,
+                x INTEGER GENERATED ALWAYS AS (INSTR(s, ",")),
+                y INTEGER GENERATED ALWAYS AS (INSTR(x, ",")));""",
+            """CREATE TABLE test5 (
+                s VARCHAR,
+                x VARCHAR GENERATED ALWAYS AS (s || 'x') STORED
+            );""",
+            """CREATE TABLE test6 (
+                s VARCHAR,
+                x VARCHAR GENERATED ALWAYS AS (s || 'x') STORED,
+                y VARCHAR GENERATED ALWAYS AS (s || 'y') STORED
+            );""",
+            """CREATE TABLE test7 (
+                s VARCHAR,
+                x INTEGER GENERATED ALWAYS AS (INSTR(s, ",")) STORED
+            );""",
+            """CREATE TABLE test8 (
+                s VARCHAR,
+                x INTEGER GENERATED ALWAYS AS (INSTR(s, ",")) STORED,
+                y INTEGER GENERATED ALWAYS AS (INSTR(x, ",")) STORED
+            );""",
+        ]
+
+        with testing.db.begin() as conn:
+            for ct in tables:
+                conn.exec_driver_sql(ct)
+
+    @classmethod
+    def teardown_test_class(cls):
+        with testing.db.begin() as conn:
+            for tn in cls.res:
+                conn.exec_driver_sql(f"DROP TABLE {tn}")
+
+    res = {
+        "test1": {"x": {"text": "s || 'x'", "stored": False}},
+        "test2": {
+            "x": {"text": "s || 'x'", "stored": False},
+            "y": {"text": "s || 'y'", "stored": False},
+        },
+        "test3": {"x": {"text": 'INSTR(s, ",")', "stored": False}},
+        "test4": {
+            "x": {"text": 'INSTR(s, ",")', "stored": False},
+            "y": {"text": 'INSTR(x, ",")', "stored": False},
+        },
+        "test5": {"x": {"text": "s || 'x'", "stored": True}},
+        "test6": {
+            "x": {"text": "s || 'x'", "stored": True},
+            "y": {"text": "s || 'y'", "stored": True},
+        },
+        "test7": {"x": {"text": 'INSTR(s, ",")', "stored": True}},
+        "test8": {
+            "x": {"text": 'INSTR(s, ",")', "stored": True},
+            "y": {"text": 'INSTR(x, ",")', "stored": True},
+        },
+    }
+
+    def test_reflection(self, connection):
+        meta = MetaData()
+        meta.reflect(connection)
+        eq_(len(meta.tables), len(self.res))
+        for tbl in meta.tables.values():
+            data = self.res[tbl.name]
+            seen = set()
+            for col in tbl.c:
+                if col.name not in data:
+                    is_(col.computed, None)
+                else:
+                    info = data[col.name]
+                    seen.add(col.name)
+                    msg = f"{tbl.name}-{col.name}"
+                    is_true(bool(col.computed))
+                    eq_(col.computed.sqltext.text, info["text"], msg)
+                    eq_(col.computed.persisted, info["stored"], msg)
+            eq_(seen, data.keys())

@@ -1,0 +1,6 @@
+.. change::
+    :tags: typing, orm
+    :tickets: 12346
+
+    Deprecated the ``declarative_mixin`` decorator since it was used only
+    by the now removed mypy plugin.

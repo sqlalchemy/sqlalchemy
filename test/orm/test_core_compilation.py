@@ -20,6 +20,7 @@ from sqlalchemy import true
 from sqlalchemy import union
 from sqlalchemy import update
 from sqlalchemy import util
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
@@ -45,6 +46,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import Variation
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.util.langhelpers import hybridproperty
@@ -365,9 +367,23 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
 
 
 class PropagateAttrsTest(QueryTest):
+    __backend__ = True
+
     def propagate_cases():
+        def distinct_deprecated(User, user_table):
+            with expect_deprecated("Passing expression to"):
+                return select(1).distinct(User.id).select_from(user_table)
+
         return testing.combinations(
             (lambda: select(1), False),
+            (lambda User: select(User.id), True),
+            (lambda User: select(User.id + User.id), True),
+            (lambda User: select(User.id + User.id + User.id), True),
+            (lambda User: select(sum([User.id] * 10, User.id)), True),  # type: ignore  # noqa: E501
+            (
+                lambda User: select(literal_column("3") + User.id + User.id),
+                True,
+            ),
             (lambda User: select(func.count(User.id)), True),
             (
                 lambda User: select(1).select_from(select(User).subquery()),
@@ -423,8 +439,13 @@ class PropagateAttrsTest(QueryTest):
             ),
             (
                 # changed as part of #9805
-                lambda User, user_table: select(1)
-                .distinct(User.id)
+                distinct_deprecated,
+                True,
+                testing.requires.supports_distinct_on,
+            ),
+            (
+                lambda user_table, User: select(1)
+                .ext(distinct_on(User.id))
                 .select_from(user_table),
                 True,
                 testing.requires.supports_distinct_on,
@@ -555,7 +576,7 @@ class DMLTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "DELETE FROM users AS users_1 " "WHERE users_1.name = :name_1",
+            "DELETE FROM users AS users_1 WHERE users_1.name = :name_1",
         )
 
     @testing.variation("stmt_type", ["core", "orm"])
@@ -1797,7 +1818,7 @@ class InheritedTest(_poly_fixtures._Polymorphic):
     run_setup_mappers = "once"
 
 
-class ExplicitWithPolymorhpicTest(
+class ExplicitWithPolymorphicTest(
     _poly_fixtures._PolymorphicUnions, AssertsCompiledSQL
 ):
     __dialect__ = "default"
@@ -2603,6 +2624,61 @@ class JoinedInhTest(
             "anon_1.name, anon_1.type, anon_1.status, anon_1.engineer_name, "
             "anon_1.primary_language FROM anon_1",
         )
+
+    @testing.variation("named", [True, False])
+    @testing.variation("flat", [True, False])
+    def test_aliased_joined_entities(self, named, flat):
+        Company = self.classes.Company
+        Engineer = self.classes.Engineer
+
+        if named:
+            e1 = aliased(Engineer, flat=flat, name="myengineer")
+        else:
+            e1 = aliased(Engineer, flat=flat)
+
+        q = select(Company.name, e1.primary_language).join(
+            Company.employees.of_type(e1)
+        )
+
+        if not flat:
+            name = "anon_1" if not named else "myengineer"
+
+            self.assert_compile(
+                q,
+                "SELECT companies.name, "
+                f"{name}.engineers_primary_language FROM companies "
+                "JOIN (SELECT people.person_id AS people_person_id, "
+                "people.company_id AS people_company_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "engineers.person_id AS engineers_person_id, "
+                "engineers.status AS engineers_status, "
+                "engineers.engineer_name AS engineers_engineer_name, "
+                "engineers.primary_language AS engineers_primary_language "
+                "FROM people JOIN engineers "
+                "ON people.person_id = engineers.person_id) AS "
+                f"{name} "
+                f"ON companies.company_id = {name}.people_company_id",
+            )
+        elif named:
+            self.assert_compile(
+                q,
+                "SELECT companies.name, "
+                "myengineer_engineers.primary_language "
+                "FROM companies JOIN (people AS myengineer_people "
+                "JOIN engineers AS myengineer_engineers "
+                "ON myengineer_people.person_id = "
+                "myengineer_engineers.person_id) "
+                "ON companies.company_id = myengineer_people.company_id",
+            )
+        else:
+            self.assert_compile(
+                q,
+                "SELECT companies.name, engineers_1.primary_language "
+                "FROM companies JOIN (people AS people_1 "
+                "JOIN engineers AS engineers_1 "
+                "ON people_1.person_id = engineers_1.person_id) "
+                "ON companies.company_id = people_1.company_id",
+            )
 
 
 class RawSelectTest(QueryTest, AssertsCompiledSQL):

@@ -32,10 +32,14 @@ Class documentation for the constructors listed at
 
    .. automethod:: Delete.where
 
+   .. automethod:: Delete.with_dialect_options
+
    .. automethod:: Delete.returning
 
 .. autoclass:: Insert
    :members:
+
+   .. automethod:: Insert.with_dialect_options
 
    .. automethod:: Insert.values
 
@@ -47,6 +51,8 @@ Class documentation for the constructors listed at
    .. automethod:: Update.returning
 
    .. automethod:: Update.where
+
+   .. automethod:: Update.with_dialect_options
 
    .. automethod:: Update.values
 

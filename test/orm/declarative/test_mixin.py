@@ -7,6 +7,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -36,6 +37,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import uses_deprecated
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import mapped_column
@@ -98,6 +100,159 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         self.assert_compile(select(Foo), "SELECT foo.name, foo.id FROM foo")
 
+    @testing.variation("base_type", ["generate_base", "subclass"])
+    @testing.variation("attrname", ["table", "tablename"])
+    @testing.variation("position", ["base", "abstract"])
+    @testing.variation("assert_no_extra_cols", [True, False])
+    def test_declared_attr_on_base(
+        self, registry, base_type, attrname, position, assert_no_extra_cols
+    ):
+        """test #11509"""
+
+        if position.abstract:
+            if base_type.generate_base:
+                SuperBase = registry.generate_base()
+
+                class Base(SuperBase):
+                    __abstract__ = True
+                    if attrname.table:
+
+                        @declared_attr.directive
+                        def __table__(cls):
+                            return Table(
+                                cls.__name__,
+                                cls.registry.metadata,
+                                Column("id", Integer, primary_key=True),
+                            )
+
+                    elif attrname.tablename:
+
+                        @declared_attr.directive
+                        def __tablename__(cls):
+                            return cls.__name__
+
+                    else:
+                        attrname.fail()
+
+            elif base_type.subclass:
+
+                class SuperBase(DeclarativeBase):
+                    pass
+
+                class Base(SuperBase):
+                    __abstract__ = True
+                    if attrname.table:
+
+                        @declared_attr.directive
+                        def __table__(cls):
+                            return Table(
+                                cls.__name__,
+                                cls.registry.metadata,
+                                Column("id", Integer, primary_key=True),
+                            )
+
+                    elif attrname.tablename:
+
+                        @declared_attr.directive
+                        def __tablename__(cls):
+                            return cls.__name__
+
+                    else:
+                        attrname.fail()
+
+            else:
+                base_type.fail()
+        else:
+            if base_type.generate_base:
+
+                class Base:
+                    if attrname.table:
+
+                        @declared_attr.directive
+                        def __table__(cls):
+                            return Table(
+                                cls.__name__,
+                                cls.registry.metadata,
+                                Column("id", Integer, primary_key=True),
+                            )
+
+                    elif attrname.tablename:
+
+                        @declared_attr.directive
+                        def __tablename__(cls):
+                            return cls.__name__
+
+                    else:
+                        attrname.fail()
+
+                Base = registry.generate_base(cls=Base)
+            elif base_type.subclass:
+
+                class Base(DeclarativeBase):
+                    if attrname.table:
+
+                        @declared_attr.directive
+                        def __table__(cls):
+                            return Table(
+                                cls.__name__,
+                                cls.registry.metadata,
+                                Column("id", Integer, primary_key=True),
+                            )
+
+                    elif attrname.tablename:
+
+                        @declared_attr.directive
+                        def __tablename__(cls):
+                            return cls.__name__
+
+                    else:
+                        attrname.fail()
+
+            else:
+                base_type.fail()
+
+        if attrname.table and assert_no_extra_cols:
+            with expect_raises_message(
+                sa.exc.ArgumentError,
+                "Can't add additional column 'data' when specifying __table__",
+            ):
+
+                class MyNopeClass(Base):
+                    data = Column(String)
+
+            return
+
+        class MyClass(Base):
+            if attrname.tablename:
+                id = Column(Integer, primary_key=True)  # noqa: A001
+
+        class MyOtherClass(Base):
+            if attrname.tablename:
+                id = Column(Integer, primary_key=True)  # noqa: A001
+
+        t = Table(
+            "my_override",
+            Base.metadata,
+            Column("id", Integer, primary_key=True),
+        )
+
+        class MyOverrideClass(Base):
+            __table__ = t
+
+        Base.registry.configure()
+
+        # __table__ was assigned
+        assert isinstance(MyClass.__dict__["__table__"], schema.Table)
+        assert isinstance(MyOtherClass.__dict__["__table__"], schema.Table)
+
+        eq_(MyClass.__table__.name, "MyClass")
+        eq_(MyClass.__table__.c.keys(), ["id"])
+
+        eq_(MyOtherClass.__table__.name, "MyOtherClass")
+        eq_(MyOtherClass.__table__.c.keys(), ["id"])
+
+        is_(MyOverrideClass.__table__, t)
+
     def test_simple_wbase(self):
         class MyMixin:
             id = Column(
@@ -145,6 +300,10 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.name, "testing")
         eq_(obj.foo(), "bar1")
 
+    @uses_deprecated(
+        "The declarative_mixin decorator was used only by the now removed "
+        "mypy plugin so it has no longer any use and can be safely removed."
+    )
     def test_declarative_mixin_decorator(self):
         @declarative_mixin
         class MyMixin:
@@ -672,11 +831,9 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 return relationship("Other")
 
         class Engineer(Mixin, Person):
-
             """single table inheritance"""
 
         class Manager(Mixin, Person):
-
             """single table inheritance"""
 
         class Other(Base):
@@ -1324,7 +1481,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Can't add additional column 'tada' when " "specifying __table__",
+            "Can't add additional column 'tada' when specifying __table__",
             go,
         )
 

@@ -1,5 +1,5 @@
 # sql/_dml_constructors.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -24,10 +24,7 @@ def insert(table: _DMLTableArgument) -> Insert:
 
         from sqlalchemy import insert
 
-        stmt = (
-            insert(user_table).
-            values(name='username', fullname='Full Username')
-        )
+        stmt = insert(user_table).values(name="username", fullname="Full Username")
 
     Similar functionality is available via the
     :meth:`_expression.TableClause.insert` method on
@@ -78,7 +75,7 @@ def insert(table: _DMLTableArgument) -> Insert:
 
         :ref:`tutorial_core_insert` - in the :ref:`unified_tutorial`
 
-    """
+    """  # noqa: E501
     return Insert(table)
 
 
@@ -90,9 +87,7 @@ def update(table: _DMLTableArgument) -> Update:
         from sqlalchemy import update
 
         stmt = (
-            update(user_table).
-            where(user_table.c.id == 5).
-            values(name='user #5')
+            update(user_table).where(user_table.c.id == 5).values(name="user #5")
         )
 
     Similar functionality is available via the
@@ -109,7 +104,7 @@ def update(table: _DMLTableArgument) -> Update:
         :ref:`tutorial_core_update_delete` - in the :ref:`unified_tutorial`
 
 
-    """
+    """  # noqa: E501
     return Update(table)
 
 
@@ -120,10 +115,7 @@ def delete(table: _DMLTableArgument) -> Delete:
 
         from sqlalchemy import delete
 
-        stmt = (
-            delete(user_table).
-            where(user_table.c.id == 5)
-        )
+        stmt = delete(user_table).where(user_table.c.id == 5)
 
     Similar functionality is available via the
     :meth:`_expression.TableClause.delete` method on

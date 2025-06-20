@@ -171,14 +171,6 @@ multi-valued INSERT construct, the subset of parameters that corresponds to
 the individual VALUES clause is isolated from the full parameter dictionary
 and returned alone.
 
-.. versionadded:: 1.2
-
-    Added :meth:`.DefaultExecutionContext.get_current_parameters` method,
-    which improves upon the still-present
-    :attr:`.DefaultExecutionContext.current_parameters` attribute
-    by offering the service of organizing multiple VALUES clauses
-    into individual parameter dictionaries.
-
 .. _defaults_client_invoked_sql:
 
 Client-Invoked SQL Expressions
@@ -349,7 +341,7 @@ SQLAlchemy represents database sequences using the
 :class:`~sqlalchemy.schema.Sequence` object, which is considered to be a
 special case of "column default". It only has an effect on databases which have
 explicit support for sequences, which among SQLAlchemy's included dialects
-includes PostgreSQL, Oracle, MS SQL Server, and MariaDB.  The
+includes PostgreSQL, Oracle Database, MS SQL Server, and MariaDB.  The
 :class:`~sqlalchemy.schema.Sequence` object is otherwise ignored.
 
 .. tip::
@@ -466,8 +458,8 @@ column::
 
 In the above example, ``CREATE TABLE`` for PostgreSQL will make use of the
 ``SERIAL`` datatype for the ``cart_id`` column, and the ``cart_id_seq``
-sequence will be ignored.  However on Oracle, the ``cart_id_seq`` sequence
-will be created explicitly.
+sequence will be ignored.  However on Oracle Database, the ``cart_id_seq``
+sequence will be created explicitly.
 
 .. tip::
 
@@ -544,7 +536,7 @@ Associating a Sequence as the Server Side Default
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note:: The following technique is known to work only with the PostgreSQL
-   database.  It does not work with Oracle.
+   database.  It does not work with Oracle Database.
 
 The preceding sections illustrate how to associate a :class:`.Sequence` with a
 :class:`_schema.Column` as the **Python side default generator**::
@@ -627,14 +619,12 @@ including the default schema, if any.
 
     :ref:`postgresql_sequences` - in the PostgreSQL dialect documentation
 
-    :ref:`oracle_returning` - in the Oracle dialect documentation
+    :ref:`oracle_returning` - in the Oracle Database dialect documentation
 
 .. _computed_ddl:
 
 Computed Columns (GENERATED ALWAYS AS)
 --------------------------------------
-
-.. versionadded:: 1.3.11
 
 The :class:`.Computed` construct allows a :class:`_schema.Column` to be declared in
 DDL as a "GENERATED ALWAYS AS" column, that is, one which has a value that is
@@ -704,9 +694,9 @@ eagerly fetched.
 
 * PostgreSQL as of version 12
 
-* Oracle - with the caveat that RETURNING does not work correctly with UPDATE
-  (a warning will be emitted to this effect when the UPDATE..RETURNING that
-  includes a computed column is rendered)
+* Oracle Database - with the caveat that RETURNING does not work correctly with
+  UPDATE (a warning will be emitted to this effect when the UPDATE..RETURNING
+  that includes a computed column is rendered)
 
 * Microsoft SQL Server
 
@@ -792,7 +782,7 @@ The :class:`.Identity` construct is currently known to be supported by:
 
 * PostgreSQL as of version 10.
 
-* Oracle as of version 12. It also supports passing ``always=None`` to
+* Oracle Database as of version 12. It also supports passing ``always=None`` to
   enable the default generated mode and the parameter ``on_null=True`` to
   specify "ON NULL" in conjunction with a "BY DEFAULT" identity column.
 

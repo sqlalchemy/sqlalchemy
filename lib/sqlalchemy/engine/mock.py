@@ -1,5 +1,5 @@
 # engine/mock.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -27,10 +27,9 @@ if typing.TYPE_CHECKING:
     from .interfaces import Dialect
     from .url import URL
     from ..sql.base import Executable
-    from ..sql.ddl import SchemaDropper
-    from ..sql.ddl import SchemaGenerator
+    from ..sql.ddl import InvokeDDLBase
     from ..sql.schema import HasSchemaAttr
-    from ..sql.schema import SchemaItem
+    from ..sql.visitors import Visitable
 
 
 class MockConnection:
@@ -53,12 +52,14 @@ class MockConnection:
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: SchemaItem,
+        visitorcallable: Type[InvokeDDLBase],
+        element: Visitable,
         **kwargs: Any,
     ) -> None:
         kwargs["checkfirst"] = False
-        visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
+        visitorcallable(
+            dialect=self.dialect, connection=self, **kwargs
+        ).traverse_single(element)
 
     def execute(
         self,
@@ -90,10 +91,12 @@ def create_mock_engine(
 
         from sqlalchemy import create_mock_engine
 
+
         def dump(sql, *multiparams, **params):
             print(sql.compile(dialect=engine.dialect))
 
-        engine = create_mock_engine('postgresql+psycopg2://', dump)
+
+        engine = create_mock_engine("postgresql+psycopg2://", dump)
         metadata.create_all(engine, checkfirst=False)
 
     :param url: A string URL which typically needs to contain only the

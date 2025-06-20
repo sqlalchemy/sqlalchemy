@@ -1,10 +1,9 @@
-# mysql/cymysql.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/cymysql.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 r"""
 
@@ -21,18 +20,36 @@ r"""
     dialects are mysqlclient and PyMySQL.
 
 """  # noqa
+from __future__ import annotations
 
-from .base import BIT
+from typing import Any
+from typing import Iterable
+from typing import Optional
+from typing import TYPE_CHECKING
+from typing import Union
+
 from .base import MySQLDialect
 from .mysqldb import MySQLDialect_mysqldb
+from .types import BIT
 from ... import util
+
+if TYPE_CHECKING:
+    from ...engine.base import Connection
+    from ...engine.interfaces import DBAPIConnection
+    from ...engine.interfaces import DBAPICursor
+    from ...engine.interfaces import DBAPIModule
+    from ...engine.interfaces import Dialect
+    from ...engine.interfaces import PoolProxiedConnection
+    from ...sql.type_api import _ResultProcessorType
 
 
 class _cymysqlBIT(BIT):
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Optional[_ResultProcessorType[Any]]:
         """Convert MySQL's 64 bit, variable length binary string to a long."""
 
-        def process(value):
+        def process(value: Optional[Iterable[int]]) -> Optional[int]:
             if value is not None:
                 v = 0
                 for i in iter(value):
@@ -55,17 +72,22 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _cymysqlBIT})
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> DBAPIModule:
         return __import__("cymysql")
 
-    def _detect_charset(self, connection):
-        return connection.connection.charset
+    def _detect_charset(self, connection: Connection) -> str:
+        return connection.connection.charset  # type: ignore[no-any-return]
 
-    def _extract_error_code(self, exception):
-        return exception.errno
+    def _extract_error_code(self, exception: DBAPIModule.Error) -> int:
+        return exception.errno  # type: ignore[no-any-return]
 
-    def is_disconnect(self, e, connection, cursor):
-        if isinstance(e, self.dbapi.OperationalError):
+    def is_disconnect(
+        self,
+        e: DBAPIModule.Error,
+        connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
+        cursor: Optional[DBAPICursor],
+    ) -> bool:
+        if isinstance(e, self.loaded_dbapi.OperationalError):
             return self._extract_error_code(e) in (
                 2006,
                 2013,
@@ -73,7 +95,7 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
                 2045,
                 2055,
             )
-        elif isinstance(e, self.dbapi.InterfaceError):
+        elif isinstance(e, self.loaded_dbapi.InterfaceError):
             # if underlying connection is closed,
             # this is the error you get
             return True

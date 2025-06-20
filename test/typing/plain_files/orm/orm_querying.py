@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from sqlalchemy import ColumnElement
 from sqlalchemy import ForeignKey
 from sqlalchemy import orm
+from sqlalchemy import ScalarSelect
 from sqlalchemy import select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import DeclarativeBase
@@ -124,3 +126,26 @@ def load_options_error() -> None:
         # EXPECTED_MYPY_RE: Argument 1 to .* has incompatible type .*
         orm.undefer(B.a).undefer("bar"),
     )
+
+
+# test 10959
+def test_10959_with_loader_criteria() -> None:
+    def where_criteria(cls_: type[A]) -> ColumnElement[bool]:
+        return cls_.data == "some data"
+
+    orm.with_loader_criteria(A, lambda cls: cls.data == "some data")
+    orm.with_loader_criteria(A, where_criteria)
+
+
+def test_10937() -> None:
+    stmt: ScalarSelect[bool] = select(A.id == B.id).scalar_subquery()
+    stmt1: ScalarSelect[bool] = select(A.id > 0).scalar_subquery()
+    stmt2: ScalarSelect[int] = select(A.id + 2).scalar_subquery()
+    stmt3: ScalarSelect[str] = select(A.data + B.data).scalar_subquery()
+
+    select(stmt, stmt2, stmt3, stmt1)
+
+
+def test_bundles() -> None:
+    b1 = orm.Bundle("b1", A.id, A.data)
+    orm.Bundle("b2", A.id, A.data, b1)

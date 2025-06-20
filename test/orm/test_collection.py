@@ -28,6 +28,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -43,7 +44,7 @@ def _register_attribute(class_, key, **kw):
     kw.setdefault("comparator", object())
     kw.setdefault("parententity", object())
 
-    return attributes.register_attribute(class_, key, **kw)
+    return attributes._register_attribute(class_, key, **kw)
 
 
 class Canary:
@@ -866,11 +867,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control |= values
             assert_eq()
 
-            try:
+            with expect_raises(TypeError):
+                control |= [e, creator()]
+
+            with expect_raises(TypeError):
                 direct |= [e, creator()]
-                assert False
-            except TypeError:
-                assert True
 
         addall(creator(), creator())
         direct.clear()
@@ -924,11 +925,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control -= values
             assert_eq()
 
-            try:
+            with expect_raises(TypeError):
+                control -= [e, creator()]
+
+            with expect_raises(TypeError):
                 direct -= [e, creator()]
-                assert False
-            except TypeError:
-                assert True
 
         if hasattr(direct, "intersection_update"):
             zap()
@@ -965,11 +966,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control &= values
             assert_eq()
 
-            try:
+            with expect_raises(TypeError):
+                control &= [e, creator()]
+
+            with expect_raises(TypeError):
                 direct &= [e, creator()]
-                assert False
-            except TypeError:
-                assert True
 
         if hasattr(direct, "symmetric_difference_update"):
             zap()
@@ -1020,11 +1021,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control ^= values
             assert_eq()
 
-            try:
+            with expect_raises(TypeError):
+                control ^= [e, creator()]
+
+            with expect_raises(TypeError):
                 direct ^= [e, creator()]
-                assert False
-            except TypeError:
-                assert True
 
     def _test_set_bulk(self, typecallable, creator=None):
         if creator is None:
@@ -2787,6 +2788,40 @@ class CustomCollectionsTest(fixtures.MappedTest):
 
 
 class InstrumentationTest(fixtures.ORMTest):
+    def test_name_setup(self):
+
+        class Base:
+            @collection.iterator
+            def base_iterate(self, x):
+                return "base_iterate"
+
+            @collection.appender
+            def base_append(self, x):
+                return "base_append"
+
+            @collection.remover
+            def base_remove(self, x):
+                return "base_remove"
+
+        from sqlalchemy.orm.collections import _instrument_class
+
+        _instrument_class(Base)
+
+        eq_(Base._sa_remover(Base(), 5), "base_remove")
+        eq_(Base._sa_appender(Base(), 5), "base_append")
+        eq_(Base._sa_iterator(Base(), 5), "base_iterate")
+
+        class Sub(Base):
+            @collection.remover
+            def sub_remove(self, x):
+                return "sub_remove"
+
+        _instrument_class(Sub)
+
+        eq_(Sub._sa_appender(Sub(), 5), "base_append")
+        eq_(Sub._sa_remover(Sub(), 5), "sub_remove")
+        eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
+
     def test_uncooperative_descriptor_in_sweep(self):
         class DoNotTouch:
             def __get__(self, obj, owner):

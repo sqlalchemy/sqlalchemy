@@ -1,5 +1,5 @@
 # event/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -42,9 +42,9 @@ from .registry import _EventKey
 from .. import util
 from ..util.typing import Literal
 
-_registrars: MutableMapping[
-    str, List[Type[_HasEventsDispatch[Any]]]
-] = util.defaultdict(list)
+_registrars: MutableMapping[str, List[Type[_HasEventsDispatch[Any]]]] = (
+    util.defaultdict(list)
+)
 
 
 def _is_event_name(name: str) -> bool:
@@ -191,13 +191,8 @@ class _Dispatch(_DispatchCommon[_ET]):
         :class:`._Dispatch` objects.
 
         """
-        if "_joined_dispatch_cls" not in self.__class__.__dict__:
-            cls = type(
-                "Joined%s" % self.__class__.__name__,
-                (_JoinedDispatcher,),
-                {"__slots__": self._event_names},
-            )
-            self.__class__._joined_dispatch_cls = cls
+        assert "_joined_dispatch_cls" in self.__class__.__dict__
+
         return self._joined_dispatch_cls(self, other)
 
     def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
@@ -240,8 +235,7 @@ class _HasEventsDispatch(Generic[_ET]):
 
     if typing.TYPE_CHECKING:
 
-        def __getattr__(self, name: str) -> _InstanceLevelDispatch[_ET]:
-            ...
+        def __getattr__(self, name: str) -> _InstanceLevelDispatch[_ET]: ...
 
     def __init_subclass__(cls) -> None:
         """Intercept new Event subclasses and create associated _Dispatch
@@ -329,6 +323,51 @@ class _HasEventsDispatch(Generic[_ET]):
             else:
                 dispatch_target_cls.dispatch = dispatcher(cls)
 
+        klass = type(
+            "Joined%s" % dispatch_cls.__name__,
+            (_JoinedDispatcher,),
+            {"__slots__": event_names},
+        )
+        dispatch_cls._joined_dispatch_cls = klass
+
+        # establish pickle capability by adding it to this module
+        globals()[klass.__name__] = klass
+
+
+class _JoinedDispatcher(_DispatchCommon[_ET]):
+    """Represent a connection between two _Dispatch objects."""
+
+    __slots__ = "local", "parent", "_instance_cls"
+
+    local: _DispatchCommon[_ET]
+    parent: _DispatchCommon[_ET]
+    _instance_cls: Optional[Type[_ET]]
+
+    def __init__(
+        self, local: _DispatchCommon[_ET], parent: _DispatchCommon[_ET]
+    ):
+        self.local = local
+        self.parent = parent
+        self._instance_cls = self.local._instance_cls
+
+    def __reduce__(self) -> Any:
+        return (self.__class__, (self.local, self.parent))
+
+    def __getattr__(self, name: str) -> _JoinedListener[_ET]:
+        # Assign _JoinedListeners as attributes on demand
+        # to reduce startup time for new dispatch objects.
+        ls = getattr(self.local, name)
+        jl = _JoinedListener(self.parent, ls.name, ls)
+        setattr(self, ls.name, jl)
+        return jl
+
+    def _listen(self, event_key: _EventKey[_ET], **kw: Any) -> None:
+        return self.parent._listen(event_key, **kw)
+
+    @property
+    def _events(self) -> Type[_HasEventsDispatch[_ET]]:
+        return self.parent._events
+
 
 class Events(_HasEventsDispatch[_ET]):
     """Define event listening functions for a particular target type."""
@@ -341,9 +380,11 @@ class Events(_HasEventsDispatch[_ET]):
             return all(isinstance(target.dispatch, t) for t in types)
 
         def dispatch_parent_is(t: Type[Any]) -> bool:
-            return isinstance(
-                cast("_JoinedDispatcher[_ET]", target.dispatch).parent, t
-            )
+            parent = cast("_JoinedDispatcher[_ET]", target.dispatch).parent
+            while isinstance(parent, _JoinedDispatcher):
+                parent = cast("_JoinedDispatcher[_ET]", parent).parent
+
+            return isinstance(parent, t)
 
         # Mapper, ClassManager, Session override this to
         # also accept classes, scoped_sessions, sessionmakers, etc.
@@ -383,38 +424,6 @@ class Events(_HasEventsDispatch[_ET]):
         cls.dispatch._clear()
 
 
-class _JoinedDispatcher(_DispatchCommon[_ET]):
-    """Represent a connection between two _Dispatch objects."""
-
-    __slots__ = "local", "parent", "_instance_cls"
-
-    local: _DispatchCommon[_ET]
-    parent: _DispatchCommon[_ET]
-    _instance_cls: Optional[Type[_ET]]
-
-    def __init__(
-        self, local: _DispatchCommon[_ET], parent: _DispatchCommon[_ET]
-    ):
-        self.local = local
-        self.parent = parent
-        self._instance_cls = self.local._instance_cls
-
-    def __getattr__(self, name: str) -> _JoinedListener[_ET]:
-        # Assign _JoinedListeners as attributes on demand
-        # to reduce startup time for new dispatch objects.
-        ls = getattr(self.local, name)
-        jl = _JoinedListener(self.parent, ls.name, ls)
-        setattr(self, ls.name, jl)
-        return jl
-
-    def _listen(self, event_key: _EventKey[_ET], **kw: Any) -> None:
-        return self.parent._listen(event_key, **kw)
-
-    @property
-    def _events(self) -> Type[_HasEventsDispatch[_ET]]:
-        return self.parent._events
-
-
 class dispatcher(Generic[_ET]):
     """Descriptor used by target classes to
     deliver the _Dispatch class at the class level
@@ -430,12 +439,10 @@ class dispatcher(Generic[_ET]):
     @overload
     def __get__(
         self, obj: Literal[None], cls: Type[Any]
-    ) -> Type[_Dispatch[_ET]]:
-        ...
+    ) -> Type[_Dispatch[_ET]]: ...
 
     @overload
-    def __get__(self, obj: Any, cls: Type[Any]) -> _DispatchCommon[_ET]:
-        ...
+    def __get__(self, obj: Any, cls: Type[Any]) -> _DispatchCommon[_ET]: ...
 
     def __get__(self, obj: Any, cls: Type[Any]) -> Any:
         if obj is None:

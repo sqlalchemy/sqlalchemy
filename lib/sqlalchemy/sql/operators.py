@@ -1,5 +1,5 @@
 # sql/operators.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -25,11 +25,13 @@ from operator import inv as _uncast_inv
 from operator import le as _uncast_le
 from operator import lshift as _uncast_lshift
 from operator import lt as _uncast_lt
+from operator import matmul as _uncast_matmul
 from operator import mod as _uncast_mod
 from operator import mul as _uncast_mul
 from operator import ne as _uncast_ne
 from operator import neg as _uncast_neg
 from operator import or_ as _uncast_or_
+from operator import pow as _uncast_pow
 from operator import rshift as _uncast_rshift
 from operator import sub as _uncast_sub
 from operator import truediv as _uncast_truediv
@@ -41,6 +43,7 @@ from typing import Dict
 from typing import Generic
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -51,7 +54,6 @@ from typing import Union
 from .. import exc
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
     from ._typing import ColumnExpressionArgument
@@ -77,8 +79,7 @@ class OperatorType(Protocol):
         right: Optional[Any] = None,
         *other: Any,
         **kwargs: Any,
-    ) -> ColumnElement[Any]:
-        ...
+    ) -> ColumnElement[Any]: ...
 
     @overload
     def __call__(
@@ -87,8 +88,7 @@ class OperatorType(Protocol):
         right: Optional[Any] = None,
         *other: Any,
         **kwargs: Any,
-    ) -> Operators:
-        ...
+    ) -> Operators: ...
 
     def __call__(
         self,
@@ -96,8 +96,7 @@ class OperatorType(Protocol):
         right: Optional[Any] = None,
         *other: Any,
         **kwargs: Any,
-    ) -> Operators:
-        ...
+    ) -> Operators: ...
 
 
 add = cast(OperatorType, _uncast_add)
@@ -112,11 +111,13 @@ inv = cast(OperatorType, _uncast_inv)
 le = cast(OperatorType, _uncast_le)
 lshift = cast(OperatorType, _uncast_lshift)
 lt = cast(OperatorType, _uncast_lt)
+matmul = cast(OperatorType, _uncast_matmul)
 mod = cast(OperatorType, _uncast_mod)
 mul = cast(OperatorType, _uncast_mul)
 ne = cast(OperatorType, _uncast_ne)
 neg = cast(OperatorType, _uncast_neg)
 or_ = cast(OperatorType, _uncast_or_)
+pow_ = cast(OperatorType, _uncast_pow)
 rshift = cast(OperatorType, _uncast_rshift)
 sub = cast(OperatorType, _uncast_sub)
 truediv = cast(OperatorType, _uncast_truediv)
@@ -151,6 +152,7 @@ class Operators:
         is equivalent to::
 
             from sqlalchemy import and_
+
             and_(a, b)
 
         Care should be taken when using ``&`` regarding
@@ -175,6 +177,7 @@ class Operators:
         is equivalent to::
 
             from sqlalchemy import or_
+
             or_(a, b)
 
         Care should be taken when using ``|`` regarding
@@ -199,6 +202,7 @@ class Operators:
         is equivalent to::
 
             from sqlalchemy import not_
+
             not_(a)
 
         """
@@ -227,7 +231,7 @@ class Operators:
         This function can also be used to make bitwise operators explicit. For
         example::
 
-          somecolumn.op('&')(0xff)
+          somecolumn.op("&")(0xFF)
 
         is a bitwise AND of the value in ``somecolumn``.
 
@@ -278,7 +282,7 @@ class Operators:
 
          e.g.::
 
-            >>> expr = column('x').op('+', python_impl=lambda a, b: a + b)('y')
+            >>> expr = column("x").op("+", python_impl=lambda a, b: a + b)("y")
 
          The operator for the above expression will also work for non-SQL
          left and right objects::
@@ -392,10 +396,9 @@ class custom_op(OperatorType, Generic[_T]):
         from sqlalchemy.sql import operators
         from sqlalchemy import Numeric
 
-        unary = UnaryExpression(table.c.somecolumn,
-                modifier=operators.custom_op("!"),
-                type_=Numeric)
-
+        unary = UnaryExpression(
+            table.c.somecolumn, modifier=operators.custom_op("!"), type_=Numeric
+        )
 
     .. seealso::
 
@@ -403,7 +406,7 @@ class custom_op(OperatorType, Generic[_T]):
 
         :meth:`.Operators.bool_op`
 
-    """
+    """  # noqa: E501
 
     __name__ = "custom_op"
 
@@ -466,8 +469,7 @@ class custom_op(OperatorType, Generic[_T]):
         right: Optional[Any] = None,
         *other: Any,
         **kwargs: Any,
-    ) -> ColumnElement[Any]:
-        ...
+    ) -> ColumnElement[Any]: ...
 
     @overload
     def __call__(
@@ -476,8 +478,7 @@ class custom_op(OperatorType, Generic[_T]):
         right: Optional[Any] = None,
         *other: Any,
         **kwargs: Any,
-    ) -> Operators:
-        ...
+    ) -> Operators: ...
 
     def __call__(
         self,
@@ -545,13 +546,11 @@ class ColumnOperators(Operators):
 
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
-        ) -> ColumnOperators:
-            ...
+        ) -> ColumnOperators: ...
 
         def reverse_operate(
             self, op: OperatorType, other: Any, **kwargs: Any
-        ) -> ColumnOperators:
-            ...
+        ) -> ColumnOperators: ...
 
     def __lt__(self, other: Any) -> ColumnOperators:
         """Implement the ``<`` operator.
@@ -574,8 +573,7 @@ class ColumnOperators(Operators):
     # https://docs.python.org/3/reference/datamodel.html#object.__hash__
     if TYPE_CHECKING:
 
-        def __hash__(self) -> int:
-            ...
+        def __hash__(self) -> int: ...
 
     else:
         __hash__ = Operators.__hash__
@@ -623,8 +621,7 @@ class ColumnOperators(Operators):
     # deprecated 1.4; see #5435
     if TYPE_CHECKING:
 
-        def isnot_distinct_from(self, other: Any) -> ColumnOperators:
-            ...
+        def isnot_distinct_from(self, other: Any) -> ColumnOperators: ...
 
     else:
         isnot_distinct_from = is_not_distinct_from
@@ -666,7 +663,7 @@ class ColumnOperators(Operators):
         return self.operate(getitem, index)
 
     def __lshift__(self, other: Any) -> ColumnOperators:
-        """implement the << operator.
+        """Implement the ``<<`` operator.
 
         Not used by SQLAlchemy core, this is provided
         for custom operator systems which want to use
@@ -674,14 +671,50 @@ class ColumnOperators(Operators):
         """
         return self.operate(lshift, other)
 
+    def __rlshift__(self, other: Any) -> ColumnOperators:
+        """Implement the ``<<`` operator in reverse.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        << as an extension point.
+        """
+        return self.reverse_operate(lshift, other)
+
     def __rshift__(self, other: Any) -> ColumnOperators:
-        """implement the >> operator.
+        """Implement the ``>>`` operator.
 
         Not used by SQLAlchemy core, this is provided
         for custom operator systems which want to use
         >> as an extension point.
         """
         return self.operate(rshift, other)
+
+    def __rrshift__(self, other: Any) -> ColumnOperators:
+        """Implement the ``>>`` operator in reverse.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        >> as an extension point.
+        """
+        return self.reverse_operate(rshift, other)
+
+    def __matmul__(self, other: Any) -> ColumnOperators:
+        """Implement the ``@`` operator.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        @ as an extension point.
+        """
+        return self.operate(matmul, other)
+
+    def __rmatmul__(self, other: Any) -> ColumnOperators:
+        """Implement the ``@`` operator in reverse.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        @ as an extension point.
+        """
+        return self.reverse_operate(matmul, other)
 
     def concat(self, other: Any) -> ColumnOperators:
         """Implement the 'concat' operator.
@@ -707,14 +740,15 @@ class ColumnOperators(Operators):
     ) -> ColumnOperators:
         r"""Implement the ``like`` operator.
 
-        In a column context, produces the expression::
+        In a column context, produces the expression:
+
+        .. sourcecode:: sql
 
             a LIKE other
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.like("%foobar%"))
+            stmt = select(sometable).where(sometable.c.column.like("%foobar%"))
 
         :param other: expression to be compared
         :param escape: optional escape character, renders the ``ESCAPE``
@@ -734,18 +768,21 @@ class ColumnOperators(Operators):
     ) -> ColumnOperators:
         r"""Implement the ``ilike`` operator, e.g. case insensitive LIKE.
 
-        In a column context, produces an expression either of the form::
+        In a column context, produces an expression either of the form:
+
+        .. sourcecode:: sql
 
             lower(a) LIKE lower(other)
 
-        Or on backends that support the ILIKE operator::
+        Or on backends that support the ILIKE operator:
+
+        .. sourcecode:: sql
 
             a ILIKE other
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.ilike("%foobar%"))
+            stmt = select(sometable).where(sometable.c.column.ilike("%foobar%"))
 
         :param other: expression to be compared
         :param escape: optional escape character, renders the ``ESCAPE``
@@ -757,7 +794,7 @@ class ColumnOperators(Operators):
 
             :meth:`.ColumnOperators.like`
 
-        """
+        """  # noqa: E501
         return self.operate(ilike_op, other, escape=escape)
 
     def bitwise_xor(self, other: Any) -> ColumnOperators:
@@ -851,12 +888,15 @@ class ColumnOperators(Operators):
 
         The given parameter ``other`` may be:
 
-        * A list of literal values, e.g.::
+        * A list of literal values,
+          e.g.::
 
             stmt.where(column.in_([1, 2, 3]))
 
           In this calling form, the list of items is converted to a set of
-          bound parameters the same length as the list given::
+          bound parameters the same length as the list given:
+
+          .. sourcecode:: sql
 
             WHERE COL IN (?, ?, ?)
 
@@ -864,16 +904,20 @@ class ColumnOperators(Operators):
           :func:`.tuple_` containing multiple expressions::
 
             from sqlalchemy import tuple_
+
             stmt.where(tuple_(col1, col2).in_([(1, 10), (2, 20), (3, 30)]))
 
-        * An empty list, e.g.::
+        * An empty list,
+          e.g.::
 
             stmt.where(column.in_([]))
 
           In this calling form, the expression renders an "empty set"
           expression.  These expressions are tailored to individual backends
           and are generally trying to get an empty SELECT statement as a
-          subquery.  Such as on SQLite, the expression is::
+          subquery.  Such as on SQLite, the expression is:
+
+          .. sourcecode:: sql
 
             WHERE col IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
 
@@ -883,10 +927,12 @@ class ColumnOperators(Operators):
         * A bound parameter, e.g. :func:`.bindparam`, may be used if it
           includes the :paramref:`.bindparam.expanding` flag::
 
-            stmt.where(column.in_(bindparam('value', expanding=True)))
+            stmt.where(column.in_(bindparam("value", expanding=True)))
 
           In this calling form, the expression renders a special non-SQL
-          placeholder expression that looks like::
+          placeholder expression that looks like:
+
+          .. sourcecode:: sql
 
             WHERE COL IN ([EXPANDING_value])
 
@@ -896,32 +942,30 @@ class ColumnOperators(Operators):
 
             connection.execute(stmt, {"value": [1, 2, 3]})
 
-          The database would be passed a bound parameter for each value::
+          The database would be passed a bound parameter for each value:
+
+          .. sourcecode:: sql
 
             WHERE COL IN (?, ?, ?)
 
-          .. versionadded:: 1.2 added "expanding" bound parameters
-
           If an empty list is passed, a special "empty list" expression,
           which is specific to the database in use, is rendered.  On
-          SQLite this would be::
+          SQLite this would be:
+
+          .. sourcecode:: sql
 
             WHERE COL IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
-
-          .. versionadded:: 1.3 "expanding" bound parameters now support
-             empty lists
 
         * a :func:`_expression.select` construct, which is usually a
           correlated scalar select::
 
             stmt.where(
-                column.in_(
-                    select(othertable.c.y).
-                    where(table.c.x == othertable.c.x)
-                )
+                column.in_(select(othertable.c.y).where(table.c.x == othertable.c.x))
             )
 
-          In this calling form, :meth:`.ColumnOperators.in_` renders as given::
+          In this calling form, :meth:`.ColumnOperators.in_` renders as given:
+
+          .. sourcecode:: sql
 
             WHERE COL IN (SELECT othertable.y
             FROM othertable WHERE othertable.x = table.x)
@@ -930,7 +974,7 @@ class ColumnOperators(Operators):
          construct, or a :func:`.bindparam` construct that includes the
          :paramref:`.bindparam.expanding` flag set to True.
 
-        """
+        """  # noqa: E501
         return self.operate(in_op, other)
 
     def not_in(self, other: Any) -> ColumnOperators:
@@ -949,11 +993,6 @@ class ColumnOperators(Operators):
            ``notin_()`` in previous releases.  The previous name remains
            available for backwards compatibility.
 
-        .. versionchanged:: 1.2  The :meth:`.ColumnOperators.in_` and
-           :meth:`.ColumnOperators.not_in` operators
-           now produce a "static" expression for an empty IN sequence
-           by default.
-
         .. seealso::
 
             :meth:`.ColumnOperators.in_`
@@ -964,8 +1003,7 @@ class ColumnOperators(Operators):
     # deprecated 1.4; see #5429
     if TYPE_CHECKING:
 
-        def notin_(self, other: Any) -> ColumnOperators:
-            ...
+        def notin_(self, other: Any) -> ColumnOperators: ...
 
     else:
         notin_ = not_in
@@ -994,8 +1032,7 @@ class ColumnOperators(Operators):
 
         def notlike(
             self, other: Any, escape: Optional[str] = None
-        ) -> ColumnOperators:
-            ...
+        ) -> ColumnOperators: ...
 
     else:
         notlike = not_like
@@ -1024,8 +1061,7 @@ class ColumnOperators(Operators):
 
         def notilike(
             self, other: Any, escape: Optional[str] = None
-        ) -> ColumnOperators:
-            ...
+        ) -> ColumnOperators: ...
 
     else:
         notilike = not_ilike
@@ -1063,8 +1099,7 @@ class ColumnOperators(Operators):
     # deprecated 1.4; see #5429
     if TYPE_CHECKING:
 
-        def isnot(self, other: Any) -> ColumnOperators:
-            ...
+        def isnot(self, other: Any) -> ColumnOperators: ...
 
     else:
         isnot = is_not
@@ -1078,14 +1113,15 @@ class ColumnOperators(Operators):
         r"""Implement the ``startswith`` operator.
 
         Produces a LIKE expression that tests against a match for the start
-        of a string value::
+        of a string value:
+
+        .. sourcecode:: sql
 
             column LIKE <other> || '%'
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.startswith("foobar"))
+            stmt = select(sometable).where(sometable.c.column.startswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1114,7 +1150,9 @@ class ColumnOperators(Operators):
 
             somecolumn.startswith("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE :param || '%' ESCAPE '/'
 
@@ -1130,7 +1168,9 @@ class ColumnOperators(Operators):
 
             somecolumn.startswith("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE :param || '%' ESCAPE '^'
 
@@ -1150,7 +1190,7 @@ class ColumnOperators(Operators):
 
             :meth:`.ColumnOperators.like`
 
-        """
+        """  # noqa: E501
         return self.operate(
             startswith_op, other, escape=escape, autoescape=autoescape
         )
@@ -1165,14 +1205,15 @@ class ColumnOperators(Operators):
         version of :meth:`.ColumnOperators.startswith`.
 
         Produces a LIKE expression that tests against an insensitive
-        match for the start of a string value::
+        match for the start of a string value:
+
+        .. sourcecode:: sql
 
             lower(column) LIKE lower(<other>) || '%'
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.istartswith("foobar"))
+            stmt = select(sometable).where(sometable.c.column.istartswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1201,7 +1242,9 @@ class ColumnOperators(Operators):
 
             somecolumn.istartswith("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE lower(:param) || '%' ESCAPE '/'
 
@@ -1217,7 +1260,9 @@ class ColumnOperators(Operators):
 
             somecolumn.istartswith("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE lower(:param) || '%' ESCAPE '^'
 
@@ -1232,7 +1277,7 @@ class ColumnOperators(Operators):
         .. seealso::
 
             :meth:`.ColumnOperators.startswith`
-        """
+        """  # noqa: E501
         return self.operate(
             istartswith_op, other, escape=escape, autoescape=autoescape
         )
@@ -1246,14 +1291,15 @@ class ColumnOperators(Operators):
         r"""Implement the 'endswith' operator.
 
         Produces a LIKE expression that tests against a match for the end
-        of a string value::
+        of a string value:
+
+        .. sourcecode:: sql
 
             column LIKE '%' || <other>
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.endswith("foobar"))
+            stmt = select(sometable).where(sometable.c.column.endswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1282,7 +1328,9 @@ class ColumnOperators(Operators):
 
             somecolumn.endswith("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE '%' || :param ESCAPE '/'
 
@@ -1298,7 +1346,9 @@ class ColumnOperators(Operators):
 
             somecolumn.endswith("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE '%' || :param ESCAPE '^'
 
@@ -1318,7 +1368,7 @@ class ColumnOperators(Operators):
 
             :meth:`.ColumnOperators.like`
 
-        """
+        """  # noqa: E501
         return self.operate(
             endswith_op, other, escape=escape, autoescape=autoescape
         )
@@ -1333,14 +1383,15 @@ class ColumnOperators(Operators):
         version of :meth:`.ColumnOperators.endswith`.
 
         Produces a LIKE expression that tests against an insensitive match
-        for the end of a string value::
+        for the end of a string value:
+
+        .. sourcecode:: sql
 
             lower(column) LIKE '%' || lower(<other>)
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.iendswith("foobar"))
+            stmt = select(sometable).where(sometable.c.column.iendswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1369,7 +1420,9 @@ class ColumnOperators(Operators):
 
             somecolumn.iendswith("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE '%' || lower(:param) ESCAPE '/'
 
@@ -1385,7 +1438,9 @@ class ColumnOperators(Operators):
 
             somecolumn.iendswith("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE '%' || lower(:param) ESCAPE '^'
 
@@ -1400,7 +1455,7 @@ class ColumnOperators(Operators):
         .. seealso::
 
             :meth:`.ColumnOperators.endswith`
-        """
+        """  # noqa: E501
         return self.operate(
             iendswith_op, other, escape=escape, autoescape=autoescape
         )
@@ -1409,14 +1464,15 @@ class ColumnOperators(Operators):
         r"""Implement the 'contains' operator.
 
         Produces a LIKE expression that tests against a match for the middle
-        of a string value::
+        of a string value:
+
+        .. sourcecode:: sql
 
             column LIKE '%' || <other> || '%'
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.contains("foobar"))
+            stmt = select(sometable).where(sometable.c.column.contains("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1445,7 +1501,9 @@ class ColumnOperators(Operators):
 
             somecolumn.contains("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE '%' || :param || '%' ESCAPE '/'
 
@@ -1461,7 +1519,9 @@ class ColumnOperators(Operators):
 
             somecolumn.contains("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE '%' || :param || '%' ESCAPE '^'
 
@@ -1482,7 +1542,7 @@ class ColumnOperators(Operators):
             :meth:`.ColumnOperators.like`
 
 
-        """
+        """  # noqa: E501
         return self.operate(contains_op, other, **kw)
 
     def icontains(self, other: Any, **kw: Any) -> ColumnOperators:
@@ -1490,14 +1550,15 @@ class ColumnOperators(Operators):
         version of :meth:`.ColumnOperators.contains`.
 
         Produces a LIKE expression that tests against an insensitive match
-        for the middle of a string value::
+        for the middle of a string value:
+
+        .. sourcecode:: sql
 
             lower(column) LIKE '%' || lower(<other>) || '%'
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.icontains("foobar"))
+            stmt = select(sometable).where(sometable.c.column.icontains("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1526,7 +1587,9 @@ class ColumnOperators(Operators):
 
             somecolumn.icontains("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE '%' || lower(:param) || '%' ESCAPE '/'
 
@@ -1542,7 +1605,9 @@ class ColumnOperators(Operators):
 
             somecolumn.icontains("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE '%' || lower(:param) || '%' ESCAPE '^'
 
@@ -1558,7 +1623,7 @@ class ColumnOperators(Operators):
 
             :meth:`.ColumnOperators.contains`
 
-        """
+        """  # noqa: E501
         return self.operate(icontains_op, other, **kw)
 
     def match(self, other: Any, **kwargs: Any) -> ColumnOperators:
@@ -1582,7 +1647,7 @@ class ColumnOperators(Operators):
                 :class:`_mysql.match` - MySQL specific construct with
                 additional features.
 
-        * Oracle - renders ``CONTAINS(x, y)``
+        * Oracle Database - renders ``CONTAINS(x, y)``
         * other backends may provide special implementations.
         * Backends without any special implementation will emit
           the operator as "MATCH".  This is compatible with SQLite, for
@@ -1599,7 +1664,7 @@ class ColumnOperators(Operators):
         E.g.::
 
             stmt = select(table.c.some_column).where(
-                table.c.some_column.regexp_match('^(b|c)')
+                table.c.some_column.regexp_match("^(b|c)")
             )
 
         :meth:`_sql.ColumnOperators.regexp_match` attempts to resolve to
@@ -1610,7 +1675,7 @@ class ColumnOperators(Operators):
         Examples include:
 
         * PostgreSQL - renders ``x ~ y`` or ``x !~ y`` when negated.
-        * Oracle - renders ``REGEXP_LIKE(x, y)``
+        * Oracle Database - renders ``REGEXP_LIKE(x, y)``
         * SQLite - uses SQLite's ``REGEXP`` placeholder operator and calls into
           the Python ``re.match()`` builtin.
         * other backends may provide special implementations.
@@ -1618,9 +1683,9 @@ class ColumnOperators(Operators):
           the operator as "REGEXP" or "NOT REGEXP".  This is compatible with
           SQLite and MySQL, for example.
 
-        Regular expression support is currently implemented for Oracle,
-        PostgreSQL, MySQL and MariaDB.  Partial support is available for
-        SQLite.  Support among third-party dialects may vary.
+        Regular expression support is currently implemented for Oracle
+        Database, PostgreSQL, MySQL and MariaDB.  Partial support is available
+        for SQLite.  Support among third-party dialects may vary.
 
         :param pattern: The regular expression pattern string or column
           clause.
@@ -1657,11 +1722,7 @@ class ColumnOperators(Operators):
         E.g.::
 
             stmt = select(
-                table.c.some_column.regexp_replace(
-                    'b(..)',
-                    'X\1Y',
-                    flags='g'
-                )
+                table.c.some_column.regexp_replace("b(..)", "X\1Y", flags="g")
             )
 
         :meth:`_sql.ColumnOperators.regexp_replace` attempts to resolve to
@@ -1671,8 +1732,8 @@ class ColumnOperators(Operators):
         **not backend agnostic**.
 
         Regular expression replacement support is currently implemented for
-        Oracle, PostgreSQL, MySQL 8 or greater and MariaDB.  Support among
-        third-party dialects may vary.
+        Oracle Database, PostgreSQL, MySQL 8 or greater and MariaDB.  Support
+        among third-party dialects may vary.
 
         :param pattern: The regular expression pattern string or column
           clause.
@@ -1728,8 +1789,7 @@ class ColumnOperators(Operators):
     # deprecated 1.4; see #5435
     if TYPE_CHECKING:
 
-        def nullsfirst(self) -> ColumnOperators:
-            ...
+        def nullsfirst(self) -> ColumnOperators: ...
 
     else:
         nullsfirst = nulls_first
@@ -1747,8 +1807,7 @@ class ColumnOperators(Operators):
     # deprecated 1.4; see #5429
     if TYPE_CHECKING:
 
-        def nullslast(self) -> ColumnOperators:
-            ...
+        def nullslast(self) -> ColumnOperators: ...
 
     else:
         nullslast = nulls_last
@@ -1819,10 +1878,10 @@ class ColumnOperators(Operators):
         See the documentation for :func:`_sql.any_` for examples.
 
         .. note:: be sure to not confuse the newer
-            :meth:`_sql.ColumnOperators.any_` method with its older
-            :class:`_types.ARRAY`-specific counterpart, the
-            :meth:`_types.ARRAY.Comparator.any` method, which a different
-            calling syntax and usage pattern.
+            :meth:`_sql.ColumnOperators.any_` method with the **legacy**
+            version of this method, the :meth:`_types.ARRAY.Comparator.any`
+            method that's specific to :class:`_types.ARRAY`, which uses a
+            different calling style.
 
         """
         return self.operate(any_op)
@@ -1834,10 +1893,10 @@ class ColumnOperators(Operators):
         See the documentation for :func:`_sql.all_` for examples.
 
         .. note:: be sure to not confuse the newer
-            :meth:`_sql.ColumnOperators.all_` method with its older
-            :class:`_types.ARRAY`-specific counterpart, the
-            :meth:`_types.ARRAY.Comparator.all` method, which a different
-            calling syntax and usage pattern.
+            :meth:`_sql.ColumnOperators.all_` method with the **legacy**
+            version of this method, the :meth:`_types.ARRAY.Comparator.all`
+            method that's specific to :class:`_types.ARRAY`, which uses a
+            different calling style.
 
         """
         return self.operate(all_op)
@@ -1919,6 +1978,29 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(floordiv, other)
 
+    def __pow__(self, other: Any) -> ColumnOperators:
+        """Implement the ``**`` operator.
+
+        In a column context, produces the clause ``pow(a, b)``, or a similar
+        dialect-specific expression.
+
+        .. versionadded:: 2.1
+
+        """
+        return self.operate(pow_, other)
+
+    def __rpow__(self, other: Any) -> ColumnOperators:
+        """Implement the ``**`` operator in reverse.
+
+        .. seealso::
+
+            :meth:`.ColumnOperators.__pow__`.
+
+        .. versionadded:: 2.1
+
+        """
+        return self.reverse_operate(pow_, other)
+
 
 _commutative: Set[Any] = {eq, ne, add, mul}
 _comparison: Set[Any] = {eq, ne, lt, gt, ge, le}
@@ -1968,8 +2050,7 @@ def is_true(a: Any) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def istrue(a: Any) -> Any:
-        ...
+    def istrue(a: Any) -> Any: ...
 
 else:
     istrue = is_true
@@ -1984,8 +2065,7 @@ def is_false(a: Any) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def isfalse(a: Any) -> Any:
-        ...
+    def isfalse(a: Any) -> Any: ...
 
 else:
     isfalse = is_false
@@ -2007,8 +2087,7 @@ def is_not_distinct_from(a: Any, b: Any) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def isnot_distinct_from(a: Any, b: Any) -> Any:
-        ...
+    def isnot_distinct_from(a: Any, b: Any) -> Any: ...
 
 else:
     isnot_distinct_from = is_not_distinct_from
@@ -2030,8 +2109,7 @@ def is_not(a: Any, b: Any) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def isnot(a: Any, b: Any) -> Any:
-        ...
+    def isnot(a: Any, b: Any) -> Any: ...
 
 else:
     isnot = is_not
@@ -2063,8 +2141,7 @@ def not_like_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def notlike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
-        ...
+    def notlike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any: ...
 
 else:
     notlike_op = not_like_op
@@ -2086,8 +2163,7 @@ def not_ilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def notilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
-        ...
+    def notilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any: ...
 
 else:
     notilike_op = not_ilike_op
@@ -2109,8 +2185,9 @@ def not_between_op(a: Any, b: Any, c: Any, symmetric: bool = False) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def notbetween_op(a: Any, b: Any, c: Any, symmetric: bool = False) -> Any:
-        ...
+    def notbetween_op(
+        a: Any, b: Any, c: Any, symmetric: bool = False
+    ) -> Any: ...
 
 else:
     notbetween_op = not_between_op
@@ -2132,8 +2209,7 @@ def not_in_op(a: Any, b: Any) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def notin_op(a: Any, b: Any) -> Any:
-        ...
+    def notin_op(a: Any, b: Any) -> Any: ...
 
 else:
     notin_op = not_in_op
@@ -2198,8 +2274,7 @@ if TYPE_CHECKING:
     @_operator_fn
     def notstartswith_op(
         a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 else:
     notstartswith_op = not_startswith_op
@@ -2243,8 +2318,7 @@ if TYPE_CHECKING:
     @_operator_fn
     def notendswith_op(
         a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 else:
     notendswith_op = not_endswith_op
@@ -2288,8 +2362,7 @@ if TYPE_CHECKING:
     @_operator_fn
     def notcontains_op(
         a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 else:
     notcontains_op = not_contains_op
@@ -2346,8 +2419,7 @@ def not_match_op(a: Any, b: Any, **kw: Any) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def notmatch_op(a: Any, b: Any, **kw: Any) -> Any:
-        ...
+    def notmatch_op(a: Any, b: Any, **kw: Any) -> Any: ...
 
 else:
     notmatch_op = not_match_op
@@ -2392,8 +2464,7 @@ def nulls_first_op(a: Any) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def nullsfirst_op(a: Any) -> Any:
-        ...
+    def nullsfirst_op(a: Any) -> Any: ...
 
 else:
     nullsfirst_op = nulls_first_op
@@ -2408,8 +2479,7 @@ def nulls_last_op(a: Any) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def nullslast_op(a: Any) -> Any:
-        ...
+    def nullslast_op(a: Any) -> Any: ...
 
 else:
     nullslast_op = nulls_last_op
@@ -2501,6 +2571,12 @@ def is_associative(op: OperatorType) -> bool:
     return op in _associative
 
 
+def is_order_by_modifier(op: Optional[OperatorType]) -> bool:
+    return op in _order_by_modifier
+
+
+_order_by_modifier = {desc_op, asc_op, nulls_first_op, nulls_last_op}
+
 _natural_self_precedent = _associative.union(
     [getitem, json_getitem_op, json_path_getitem_op]
 )
@@ -2528,6 +2604,7 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     getitem: 15,
     json_getitem_op: 15,
     json_path_getitem_op: 15,
+    pow_: 15,
     mul: 8,
     truediv: 8,
     floordiv: 8,
@@ -2582,9 +2659,13 @@ _PRECEDENCE: Dict[OperatorType, int] = {
 }
 
 
-def is_precedent(operator: OperatorType, against: OperatorType) -> bool:
+def is_precedent(
+    operator: OperatorType, against: Optional[OperatorType]
+) -> bool:
     if operator is against and is_natural_self_precedent(operator):
         return False
+    elif against is None:
+        return True
     else:
         return bool(
             _PRECEDENCE.get(

@@ -389,7 +389,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     ):
         """test #8035"""
 
-        tname = f"##foo{random.randint(1,1000000)}"
+        tname = f"##foo{random.randint(1, 1000000)}"
 
         with temp_db_alt_collation_fixture.connect() as conn:
             conn.exec_driver_sql(f"CREATE TABLE {tname} (id int primary key)")
@@ -985,6 +985,54 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             },
         )
 
+    def test_comments_with_dropped_column(self, metadata, connection):
+        """test issue #12654"""
+
+        Table(
+            "tbl_with_comments",
+            metadata,
+            Column(
+                "id", types.Integer, primary_key=True, comment="pk comment"
+            ),
+            Column("foobar", Integer, comment="comment_foobar"),
+            Column("foo", Integer, comment="comment_foo"),
+            Column(
+                "bar",
+                Integer,
+                comment="comment_bar",
+            ),
+        )
+        metadata.create_all(connection)
+        insp = inspect(connection)
+        eq_(
+            {
+                c["name"]: c["comment"]
+                for c in insp.get_columns("tbl_with_comments")
+            },
+            {
+                "id": "pk comment",
+                "foobar": "comment_foobar",
+                "foo": "comment_foo",
+                "bar": "comment_bar",
+            },
+        )
+
+        connection.exec_driver_sql(
+            "ALTER TABLE [tbl_with_comments] DROP COLUMN [foobar]"
+        )
+        insp = inspect(connection)
+        eq_(
+            {
+                c["name"]: c["comment"]
+                for c in insp.get_columns("tbl_with_comments")
+            },
+            {
+                "id": "pk comment",
+                "foo": "comment_foo",
+                "bar": "comment_bar",
+            },
+        )
+
 
 class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_info_unicode_cast_no_2000(self):
@@ -1028,10 +1076,13 @@ class ReflectHugeViewTest(fixtures.TablesTest):
                 for i in range(col_num)
             ],
         )
-        cls.view_str = (
-            view_str
-        ) = "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
-            ",".join("long_named_column_number_%d" % i for i in range(col_num))
+        cls.view_str = view_str = (
+            "CREATE VIEW huge_named_view AS SELECT %s FROM base_table"
+            % (
+                ",".join(
+                    "long_named_column_number_%d" % i for i in range(col_num)
+                )
+            )
         )
         assert len(view_str) > 4000
 
@@ -1196,7 +1247,11 @@ class IdentityReflectionTest(fixtures.TablesTest):
                     ),
                 ),
                 Column("id2", Integer, Identity()),
-                Column("id3", sqltypes.BigInteger, Identity()),
+                Column(
+                    "id3",
+                    sqltypes.BigInteger,
+                    Identity(start=-9223372036854775808),
+                ),
                 Column("id4", sqltypes.SmallInteger, Identity()),
                 Column("id5", sqltypes.Numeric, Identity()),
             ]
@@ -1218,7 +1273,10 @@ class IdentityReflectionTest(fixtures.TablesTest):
                 eq_(type(col["identity"]["start"]), int)
                 eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id3":
-                eq_(col["identity"], {"start": 1, "increment": 1})
+                eq_(
+                    col["identity"],
+                    {"start": -9223372036854775808, "increment": 1},
+                )
                 eq_(type(col["identity"]["start"]), int)
                 eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id4":

@@ -1,5 +1,5 @@
 # sql/lambdas.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -256,10 +256,7 @@ class LambdaElement(elements.ClauseElement):
 
                 self.closure_cache_key = cache_key
 
-                try:
-                    rec = lambda_cache[tracker_key + cache_key]
-                except KeyError:
-                    rec = None
+                rec = lambda_cache.get(tracker_key + cache_key)
             else:
                 cache_key = _cache_key.NO_CACHE
                 rec = None
@@ -278,7 +275,7 @@ class LambdaElement(elements.ClauseElement):
                         rec = AnalyzedFunction(
                             tracker, self, apply_propagate_attrs, fn
                         )
-                        rec.closure_bindparams = bindparams
+                        rec.closure_bindparams = list(bindparams)
                         lambda_cache[key] = rec
                     else:
                         rec = lambda_cache[key]
@@ -303,7 +300,9 @@ class LambdaElement(elements.ClauseElement):
             while lambda_element is not None:
                 rec = lambda_element._rec
                 if rec.bindparam_trackers:
-                    tracker_instrumented_fn = rec.tracker_instrumented_fn
+                    tracker_instrumented_fn = (
+                        rec.tracker_instrumented_fn  # type:ignore [union-attr] # noqa: E501
+                    )
                     for tracker in rec.bindparam_trackers:
                         tracker(
                             lambda_element.fn,
@@ -407,9 +406,9 @@ class LambdaElement(elements.ClauseElement):
 
         while parent is not None:
             assert parent.closure_cache_key is not CacheConst.NO_CACHE
-            parent_closure_cache_key: Tuple[
-                Any, ...
-            ] = parent.closure_cache_key
+            parent_closure_cache_key: Tuple[Any, ...] = (
+                parent.closure_cache_key
+            )
 
             cache_key = (
                 (parent.fn.__code__,) + parent_closure_cache_key + cache_key
@@ -437,7 +436,7 @@ class DeferredLambdaElement(LambdaElement):
 
     def __init__(
         self,
-        fn: _LambdaType,
+        fn: _AnyLambdaType,
         role: Type[roles.SQLRole],
         opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
         lambda_args: Tuple[Any, ...] = (),
@@ -518,7 +517,6 @@ class StatementLambdaElement(
 
         stmt += lambda s: s.where(table.c.col == parameter)
 
-
     .. versionadded:: 1.4
 
     .. seealso::
@@ -535,8 +533,7 @@ class StatementLambdaElement(
             role: Type[SQLRole],
             opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
             apply_propagate_attrs: Optional[ClauseElement] = None,
-        ):
-            ...
+        ): ...
 
     def __add__(
         self, other: _StmtLambdaElementType[Any]
@@ -559,9 +556,7 @@ class StatementLambdaElement(
             ...     stmt = lambda_stmt(
             ...         lambda: select(table.c.x, table.c.y),
             ...     )
-            ...     stmt = stmt.add_criteria(
-            ...         lambda: table.c.x > parameter
-            ...     )
+            ...     stmt = stmt.add_criteria(lambda: table.c.x > parameter)
             ...     return stmt
 
         The :meth:`_sql.StatementLambdaElement.add_criteria` method is
@@ -572,18 +567,15 @@ class StatementLambdaElement(
             >>> def my_stmt(self, foo):
             ...     stmt = lambda_stmt(
             ...         lambda: select(func.max(foo.x, foo.y)),
-            ...         track_closure_variables=False
+            ...         track_closure_variables=False,
             ...     )
-            ...     stmt = stmt.add_criteria(
-            ...         lambda: self.where_criteria,
-            ...         track_on=[self]
-            ...     )
+            ...     stmt = stmt.add_criteria(lambda: self.where_criteria, track_on=[self])
             ...     return stmt
 
         See :func:`_sql.lambda_stmt` for a description of the parameters
         accepted.
 
-        """
+        """  # noqa: E501
 
         opts = self.opts + dict(
             enable_tracking=enable_tracking,
@@ -612,7 +604,7 @@ class StatementLambdaElement(
         return self._rec_expected_expr
 
     @property
-    def _with_options(self):
+    def _with_options(self):  # type: ignore[override]
         return self._proxied._with_options
 
     @property
@@ -620,7 +612,7 @@ class StatementLambdaElement(
         return self._proxied._effective_plugin_target
 
     @property
-    def _execution_options(self):
+    def _execution_options(self):  # type: ignore[override]
         return self._proxied._execution_options
 
     @property
@@ -628,27 +620,27 @@ class StatementLambdaElement(
         return self._proxied._all_selected_columns
 
     @property
-    def is_select(self):
+    def is_select(self):  # type: ignore[override]
         return self._proxied.is_select
 
     @property
-    def is_update(self):
+    def is_update(self):  # type: ignore[override]
         return self._proxied.is_update
 
     @property
-    def is_insert(self):
+    def is_insert(self):  # type: ignore[override]
         return self._proxied.is_insert
 
     @property
-    def is_text(self):
+    def is_text(self):  # type: ignore[override]
         return self._proxied.is_text
 
     @property
-    def is_delete(self):
+    def is_delete(self):  # type: ignore[override]
         return self._proxied.is_delete
 
     @property
-    def is_dml(self):
+    def is_dml(self):  # type: ignore[override]
         return self._proxied.is_dml
 
     def spoil(self) -> NullLambdaStatement:
@@ -737,9 +729,9 @@ class AnalyzedCode:
         "closure_trackers",
         "build_py_wrappers",
     )
-    _fns: weakref.WeakKeyDictionary[
-        CodeType, AnalyzedCode
-    ] = weakref.WeakKeyDictionary()
+    _fns: weakref.WeakKeyDictionary[CodeType, AnalyzedCode] = (
+        weakref.WeakKeyDictionary()
+    )
 
     _generation_mutex = threading.RLock()
 
@@ -1180,16 +1172,16 @@ class AnalyzedFunction:
                         closure_pywrappers.append(bind)
                 else:
                     value = fn.__globals__[name]
-                    new_globals[name] = bind = PyWrapper(fn, name, value)
+                    new_globals[name] = PyWrapper(fn, name, value)
 
             # rewrite the original fn.   things that look like they will
             # become bound parameters are wrapped in a PyWrapper.
-            self.tracker_instrumented_fn = (
-                tracker_instrumented_fn
-            ) = self._rewrite_code_obj(
-                fn,
-                [new_closure[name] for name in fn.__code__.co_freevars],
-                new_globals,
+            self.tracker_instrumented_fn = tracker_instrumented_fn = (
+                self._rewrite_code_obj(
+                    fn,
+                    [new_closure[name] for name in fn.__code__.co_freevars],
+                    new_globals,
+                )
             )
 
             # now invoke the function.  This will give us a new SQL

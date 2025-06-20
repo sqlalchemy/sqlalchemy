@@ -20,15 +20,17 @@ jobs:
       matrix:
         # emulated wheels on linux take too much time, split wheels into multiple runs
         python:
-          - "cp37-* cp38-*"
-          - "cp39-* cp310-*"
-          - "cp311-* cp312-*"
+          - "cp39-*"
+          - "cp310-* cp311-*"
+          - "cp312-* cp313-*"
         wheel_mode:
           - compiled
         os:
           - "windows-2022"
-          - "macos-12"
+          # TODO: macos-14 uses arm macs (only python 3.10+) - make arm wheel on it
+          - "macos-13"
           - "ubuntu-22.04"
+          - "ubuntu-22.04-arm"
         linux_archs:
           # this is only meaningful on linux. windows and macos ignore exclude all but one arch
           - "aarch64"
@@ -38,42 +40,46 @@ jobs:
           # create pure python build
           - os: ubuntu-22.04
             wheel_mode: pure-python
-            python: "cp-311*"
+            python: "cp-312*"
 
         exclude:
           - os: "windows-2022"
             linux_archs: "aarch64"
-          - os: "macos-12"
+          - os: "macos-13"
             linux_archs: "aarch64"
+          - os: "ubuntu-22.04"
+            linux_archs: "aarch64"
+          - os: "ubuntu-22.04-arm"
+            linux_archs: "x86_64"
 
       fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Remove tag_build from setup.cfg
-        # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
+      - name: Remove tag-build from pyproject.toml
+        # sqlalchemy has `tag-build` set to `dev` in pyproject.toml. It needs to be removed before creating the wheel
         # otherwise it gets tagged with `dev0`
         shell: pwsh
         # This is equivalent to the sed commands:
-        # `sed -i '/tag_build=dev/d' setup.cfg`
-        # `sed -i '/tag_build = dev/d' setup.cfg`
+        # `sed -i '/tag-build="dev"/d' pyproject.toml`
+        # `sed -i '/tag-build = "dev"/d' pyproject.toml`
 
         # `-replace` uses a regexp match
-        # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
         run: |
-          (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
+          (get-content pyproject.toml) | %{$_ -replace 'tag-build.?=.?"dev"',""} | set-content pyproject.toml
 
       # See details at https://cibuildwheel.readthedocs.io/en/stable/faq/#emulation
-      - name: Set up QEMU on linux
-        if: ${{ runner.os == 'Linux' }}
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
+      # no longer needed since arm runners are now available
+      # - name: Set up QEMU on linux
+      #   if: ${{ runner.os == 'Linux' }}
+      #   uses: docker/setup-qemu-action@v3
+      #   with:
+      #     platforms: all
 
       - name: Build compiled wheels
         if: ${{ matrix.wheel_mode == 'compiled' }}
-        uses: pypa/cibuildwheel@v2.16.2
+        uses: pypa/cibuildwheel@v2.22.0
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
@@ -82,9 +88,9 @@ jobs:
 
 
       - name: Set up Python for twine and pure-python wheel
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Build pure-python wheel
         if: ${{ matrix.wheel_mode == 'pure-python' && runner.os == 'Linux' }}

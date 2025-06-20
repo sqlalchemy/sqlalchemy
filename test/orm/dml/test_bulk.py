@@ -2,6 +2,7 @@ from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import Identity
 from sqlalchemy import insert
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -89,8 +90,14 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
         cls.mapper_registry.map_imperatively(Address, a)
         cls.mapper_registry.map_imperatively(Order, o)
 
-    @testing.combinations("save_objects", "insert_mappings", "insert_stmt")
-    def test_bulk_save_return_defaults(self, statement_type):
+    @testing.combinations(
+        "save_objects",
+        "insert_mappings",
+        "insert_stmt",
+        argnames="statement_type",
+    )
+    @testing.variation("return_defaults", [True, False])
+    def test_bulk_save_return_defaults(self, statement_type, return_defaults):
         (User,) = self.classes("User")
 
         s = fixture_session()
@@ -101,12 +108,14 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
             returning_users_id = " RETURNING users.id"
             with self.sql_execution_asserter() as asserter:
-                s.bulk_save_objects(objects, return_defaults=True)
+                s.bulk_save_objects(objects, return_defaults=return_defaults)
         elif statement_type == "insert_mappings":
             data = [dict(name="u1"), dict(name="u2"), dict(name="u3")]
             returning_users_id = " RETURNING users.id"
             with self.sql_execution_asserter() as asserter:
-                s.bulk_insert_mappings(User, data, return_defaults=True)
+                s.bulk_insert_mappings(
+                    User, data, return_defaults=return_defaults
+                )
         elif statement_type == "insert_stmt":
             data = [dict(name="u1"), dict(name="u2"), dict(name="u3")]
 
@@ -119,7 +128,10 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
         asserter.assert_(
             Conditional(
-                testing.db.dialect.insert_executemany_returning
+                (
+                    return_defaults
+                    and testing.db.dialect.insert_executemany_returning
+                )
                 or statement_type == "insert_stmt",
                 [
                     CompiledSQL(
@@ -129,23 +141,61 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
                     ),
                 ],
                 [
-                    CompiledSQL(
-                        "INSERT INTO users (name) VALUES (:name)",
-                        [{"name": "u1"}],
-                    ),
-                    CompiledSQL(
-                        "INSERT INTO users (name) VALUES (:name)",
-                        [{"name": "u2"}],
-                    ),
-                    CompiledSQL(
-                        "INSERT INTO users (name) VALUES (:name)",
-                        [{"name": "u3"}],
-                    ),
+                    Conditional(
+                        return_defaults,
+                        [
+                            CompiledSQL(
+                                "INSERT INTO users (name) VALUES (:name)",
+                                [{"name": "u1"}],
+                            ),
+                            CompiledSQL(
+                                "INSERT INTO users (name) VALUES (:name)",
+                                [{"name": "u2"}],
+                            ),
+                            CompiledSQL(
+                                "INSERT INTO users (name) VALUES (:name)",
+                                [{"name": "u3"}],
+                            ),
+                        ],
+                        [
+                            CompiledSQL(
+                                "INSERT INTO users (name) VALUES (:name)",
+                                [
+                                    {"name": "u1"},
+                                    {"name": "u2"},
+                                    {"name": "u3"},
+                                ],
+                            ),
+                        ],
+                    )
                 ],
             )
         )
+
         if statement_type == "save_objects":
-            eq_(objects[0].__dict__["id"], 1)
+            if return_defaults:
+                eq_(objects[0].__dict__["id"], 1)
+                eq_(inspect(objects[0]).key, (User, (1,), None))
+            else:
+                assert "id" not in objects[0].__dict__
+                eq_(inspect(objects[0]).key, None)
+        elif statement_type == "insert_mappings":
+            # test for #11661
+            if return_defaults:
+                eq_(data[0]["id"], 1)
+            else:
+                assert "id" not in data[0]
+
+    def test_bulk_save_objects_defaults_key(self):
+        User = self.classes.User
+
+        pes = [User(name=f"foo{i}") for i in range(3)]
+        s = fixture_session()
+        s.bulk_save_objects(pes, return_defaults=True)
+        key = inspect(pes[0]).key
+
+        s.commit()
+        eq_(inspect(s.get(User, 1)).key, key)
 
     def test_bulk_save_mappings_preserve_order(self):
         (User,) = self.classes("User")
@@ -238,7 +288,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
         asserter.assert_(
             CompiledSQL(
-                "UPDATE users SET name=:name WHERE " "users.id = :users_id",
+                "UPDATE users SET name=:name WHERE users.id = :users_id",
                 [
                     {"users_id": 1, "name": "u1new"},
                     {"users_id": 2, "name": "u2"},

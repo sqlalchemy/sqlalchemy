@@ -18,7 +18,7 @@ attrs_ third party integration library.
 .. _orm_declarative_native_dataclasses:
 
 Declarative Dataclass Mapping
--------------------------------
+-----------------------------
 
 SQLAlchemy :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
 mappings may be augmented with an additional
@@ -41,7 +41,7 @@ decorator.
    limited and is currently known to be supported by Pyright_ as well
    as Mypy_ as of **version 1.2**.  Note that Mypy 1.1.1 introduced
    :pep:`681` support but did not correctly accommodate Python descriptors
-   which will lead to errors when using SQLAlhcemy's ORM mapping scheme.
+   which will lead to errors when using SQLAlchemy's ORM mapping scheme.
 
    .. seealso::
 
@@ -278,17 +278,24 @@ parameter for ``created_at`` were passed proceeds as:
 Integration with Annotated
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The approach introduced at :ref:`orm_declarative_mapped_column_pep593` illustrates
-how to use :pep:`593` ``Annotated`` objects to package whole
-:func:`_orm.mapped_column` constructs for re-use.  This feature is supported
-with the dataclasses feature.   One aspect of the feature however requires
-a workaround when working with typing tools, which is that the
-:pep:`681`-specific arguments ``init``, ``default``, ``repr``, and ``default_factory``
-**must** be on the right hand side, packaged into an explicit :func:`_orm.mapped_column`
-construct, in order for the typing tool to interpret the attribute correctly.
-As an example, the approach below will work perfectly fine at runtime,
-however typing tools will consider the ``User()`` construction to be
-invalid, as they do not see the ``init=False`` parameter present::
+The approach introduced at :ref:`orm_declarative_mapped_column_pep593`
+illustrates how to use :pep:`593` ``Annotated`` objects to package whole
+:func:`_orm.mapped_column` constructs for re-use.  While ``Annotated`` objects
+can be combined with the use of dataclasses, **dataclass-specific keyword
+arguments unfortunately cannot be used within the Annotated construct**.  This
+includes :pep:`681`-specific arguments ``init``, ``default``, ``repr``, and
+``default_factory``, which **must** be present in a :func:`_orm.mapped_column`
+or similar construct inline with the class attribute.
+
+.. versionchanged:: 2.0.14/2.0.22  the ``Annotated`` construct when used with
+   an ORM construct like :func:`_orm.mapped_column` cannot accommodate dataclass
+   field parameters such as ``init`` and ``repr`` - this use goes against the
+   design of Python dataclasses and is not supported by :pep:`681`, and therefore
+   is also rejected by the SQLAlchemy ORM at runtime.   A deprecation warning
+   is now emitted and the attribute will be ignored.
+
+As an example, the ``init=False`` parameter below will be ignored and additionally
+emit a deprecation warning::
 
     from typing import Annotated
 
@@ -296,7 +303,7 @@ invalid, as they do not see the ``init=False`` parameter present::
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
-    # typing tools will ignore init=False here
+    # typing tools as well as SQLAlchemy will ignore init=False here
     intpk = Annotated[int, mapped_column(init=False, primary_key=True)]
 
     reg = registry()
@@ -308,7 +315,7 @@ invalid, as they do not see the ``init=False`` parameter present::
         id: Mapped[intpk]
 
 
-    # typing error: Argument missing for parameter "id"
+    # typing error as well as runtime error: Argument missing for parameter "id"
     u1 = User()
 
 Instead, :func:`_orm.mapped_column` must be present on the right side
@@ -424,7 +431,7 @@ scalar object references may make use of
 The above mapping will generate an empty list for ``Parent.children`` when a
 new ``Parent()`` object is constructed without passing ``children``, and
 similarly a ``None`` value for ``Child.parent`` when a new ``Child()`` object
-is constructed without passsing ``parent``.
+is constructed without passing ``parent``.
 
 While the :paramref:`_orm.relationship.default_factory` can be automatically
 derived from the given collection class of the :func:`_orm.relationship`
@@ -705,6 +712,15 @@ which itself is specified within the ``__mapper_args__`` dictionary, so that it
 is passed to the constructor for :class:`_orm.Mapper`. An alternative to this
 approach is in the next example.
 
+
+.. warning::
+    Declaring a dataclass ``field()`` setting a ``default`` together with ``init=False``
+    will not work as would be expected with a totally plain dataclass,
+    since the SQLAlchemy class instrumentation will replace
+    the default value set on the class by the dataclass creation process.
+    Use ``default_factory`` instead. This adaptation is done automatically when
+    making use of :ref:`orm_declarative_native_dataclasses`.
+
 .. _orm_declarative_dataclasses_declarative_table:
 
 Mapping pre-existing dataclasses using Declarative-style fields
@@ -778,8 +794,8 @@ example at :ref:`orm_declarative_mixins_relationships`::
 
     class RefTargetMixin:
         @declared_attr
-        def target_id(cls):
-            return Column("target_id", ForeignKey("target.id"))
+        def target_id(cls) -> Mapped[int]:
+            return mapped_column("target_id", ForeignKey("target.id"))
 
         @declared_attr
         def target(cls):
@@ -909,10 +925,18 @@ variables::
 
     mapper_registry.map_imperatively(Address, address)
 
+The same warning mentioned in :ref:`orm_declarative_dataclasses_imperative_table`
+applies when using this mapping style.
+
 .. _orm_declarative_attrs_imperative_table:
 
 Applying ORM mappings to an existing attrs class
 -------------------------------------------------
+
+.. warning:: The ``attrs`` library is not part of SQLAlchemy's continuous
+   integration testing, and compatibility with this library may change without
+   notice due to incompatibilities introduced by either side.
+
 
 The attrs_ library is a popular third party library that provides similar
 features as dataclasses, with many additional features provided not
@@ -923,103 +947,27 @@ initiates a process to scan the class for attributes that define the class'
 behavior, which are then used to generate methods, documentation, and
 annotations.
 
-The SQLAlchemy ORM supports mapping an attrs_ class using **Declarative with
-Imperative Table** or **Imperative** mapping. The general form of these two
-styles is fully equivalent to the
-:ref:`orm_declarative_dataclasses_declarative_table` and
-:ref:`orm_declarative_dataclasses_imperative_table` mapping forms used with
-dataclasses, where the inline attribute directives used by dataclasses or attrs
-are unchanged, and SQLAlchemy's table-oriented instrumentation is applied at
-runtime.
+The SQLAlchemy ORM supports mapping an attrs_ class using **Imperative** mapping.
+The general form of this style is equivalent to the
+:ref:`orm_imperative_dataclasses` mapping form used with
+dataclasses, where the class construction uses ``attrs`` alone, with ORM mappings
+applied after the fact without any class attribute scanning.
 
 The ``@define`` decorator of attrs_ by default replaces the annotated class
 with a new __slots__ based class, which is not supported. When using the old
 style annotation ``@attr.s`` or using ``define(slots=False)``, the class
-does not get replaced. Furthermore attrs removes its own class-bound attributes
+does not get replaced. Furthermore ``attrs`` removes its own class-bound attributes
 after the decorator runs, so that SQLAlchemy's mapping process takes over these
 attributes without any issue. Both decorators, ``@attr.s`` and ``@define(slots=False)``
 work with SQLAlchemy.
 
-Mapping attrs with Declarative "Imperative Table"
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. versionchanged:: 2.0  SQLAlchemy integration with ``attrs`` works only
+   with imperative mapping style, that is, not using Declarative.
+   The introduction of ORM Annotated Declarative style is not cross-compatible
+   with ``attrs``.
 
-In the "Declarative with Imperative Table" style, a :class:`_schema.Table`
-object is declared inline with the declarative class.   The
-``@define`` decorator is applied to the class first, then the
-:meth:`_orm.registry.mapped` decorator second::
-
-    from __future__ import annotations
-
-    from typing import List
-    from typing import Optional
-
-    from attrs import define
-    from sqlalchemy import Column
-    from sqlalchemy import ForeignKey
-    from sqlalchemy import Integer
-    from sqlalchemy import MetaData
-    from sqlalchemy import String
-    from sqlalchemy import Table
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import registry
-    from sqlalchemy.orm import relationship
-
-    mapper_registry = registry()
-
-
-    @mapper_registry.mapped
-    @define(slots=False)
-    class User:
-        __table__ = Table(
-            "user",
-            mapper_registry.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("name", String(50)),
-            Column("FullName", String(50), key="fullname"),
-            Column("nickname", String(12)),
-        )
-        id: Mapped[int]
-        name: Mapped[str]
-        fullname: Mapped[str]
-        nickname: Mapped[str]
-        addresses: Mapped[List[Address]]
-
-        __mapper_args__ = {  # type: ignore
-            "properties": {
-                "addresses": relationship("Address"),
-            }
-        }
-
-
-    @mapper_registry.mapped
-    @define(slots=False)
-    class Address:
-        __table__ = Table(
-            "address",
-            mapper_registry.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("user_id", Integer, ForeignKey("user.id")),
-            Column("email_address", String(50)),
-        )
-        id: Mapped[int]
-        user_id: Mapped[int]
-        email_address: Mapped[Optional[str]]
-
-.. note:: The ``attrs`` ``slots=True`` option, which enables ``__slots__`` on
-   a mapped class, cannot be used with SQLAlchemy mappings without fully
-   implementing alternative
-   :ref:`attribute instrumentation <examples_instrumentation>`, as mapped
-   classes normally rely upon direct access to ``__dict__`` for state storage.
-   Behavior is undefined when this option is present.
-
-
-
-Mapping attrs with Imperative Mapping
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Just as is the case with dataclasses, we can make use of
-:meth:`_orm.registry.map_imperatively` to map an existing ``attrs`` class
-as well::
+The ``attrs`` class is built first.  The SQLAlchemy ORM mapping can be
+applied after the fact using :meth:`_orm.registry.map_imperatively`::
 
     from __future__ import annotations
 
@@ -1082,11 +1030,6 @@ as well::
     )
 
     mapper_registry.map_imperatively(Address, address)
-
-The above form is equivalent to the previous example using
-Declarative with Imperative Table.
-
-
 
 .. _dataclass: https://docs.python.org/3/library/dataclasses.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html

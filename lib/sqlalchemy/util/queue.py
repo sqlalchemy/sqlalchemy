@@ -1,5 +1,5 @@
 # util/queue.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -24,16 +24,13 @@ import asyncio
 from collections import deque
 import threading
 from time import time as _time
-import typing
 from typing import Any
-from typing import Awaitable
 from typing import Deque
 from typing import Generic
 from typing import Optional
 from typing import TypeVar
 
-from .concurrency import await_fallback
-from .concurrency import await_only
+from .concurrency import await_
 from .langhelpers import memoized_property
 
 
@@ -57,8 +54,7 @@ class QueueCommon(Generic[_T]):
     maxsize: int
     use_lifo: bool
 
-    def __init__(self, maxsize: int = 0, use_lifo: bool = False):
-        ...
+    def __init__(self, maxsize: int = 0, use_lifo: bool = False): ...
 
     def empty(self) -> bool:
         raise NotImplementedError()
@@ -239,15 +235,6 @@ class Queue(QueueCommon[_T]):
 
 
 class AsyncAdaptedQueue(QueueCommon[_T]):
-    if typing.TYPE_CHECKING:
-
-        @staticmethod
-        def await_(coroutine: Awaitable[Any]) -> _T:
-            ...
-
-    else:
-        await_ = staticmethod(await_only)
-
     def __init__(self, maxsize: int = 0, use_lifo: bool = False):
         self.use_lifo = use_lifo
         self.maxsize = maxsize
@@ -292,9 +279,9 @@ class AsyncAdaptedQueue(QueueCommon[_T]):
 
         try:
             if timeout is not None:
-                self.await_(asyncio.wait_for(self._queue.put(item), timeout))
+                await_(asyncio.wait_for(self._queue.put(item), timeout))
             else:
-                self.await_(self._queue.put(item))
+                await_(self._queue.put(item))
         except (asyncio.QueueFull, asyncio.TimeoutError) as err:
             raise Full() from err
 
@@ -310,15 +297,8 @@ class AsyncAdaptedQueue(QueueCommon[_T]):
 
         try:
             if timeout is not None:
-                return self.await_(
-                    asyncio.wait_for(self._queue.get(), timeout)
-                )
+                return await_(asyncio.wait_for(self._queue.get(), timeout))
             else:
-                return self.await_(self._queue.get())
+                return await_(self._queue.get())
         except (asyncio.QueueEmpty, asyncio.TimeoutError) as err:
             raise Empty() from err
-
-
-class FallbackAsyncAdaptedQueue(AsyncAdaptedQueue[_T]):
-    if not typing.TYPE_CHECKING:
-        await_ = staticmethod(await_fallback)

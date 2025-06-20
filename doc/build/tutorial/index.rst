@@ -151,13 +151,13 @@ the reader is invited to work with the code examples given in real time with
 their own Python interpreter.
 
 If running the examples, it is advised that the reader performs a quick check to
-verify that we are on  **version 2.0** of SQLAlchemy:
+verify that we are on  **version 2.1** of SQLAlchemy:
 
 .. sourcecode:: pycon+sql
 
     >>> import sqlalchemy
     >>> sqlalchemy.__version__  # doctest: +SKIP
-    2.0.0
+    2.1.0
 
 
 

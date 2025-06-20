@@ -5,6 +5,7 @@ to selected entities.
 """
 
 import datetime
+from functools import partial
 
 from sqlalchemy import Column
 from sqlalchemy import create_engine
@@ -23,7 +24,9 @@ class HasTemporal:
     """Mixin that identifies a class as having a timestamp column"""
 
     timestamp = Column(
-        DateTime, default=datetime.datetime.utcnow, nullable=False
+        DateTime,
+        default=partial(datetime.datetime.now, datetime.timezone.utc),
+        nullable=False,
     )
 
 

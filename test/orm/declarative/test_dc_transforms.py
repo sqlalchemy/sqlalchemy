@@ -27,6 +27,7 @@ from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import column_property
@@ -45,6 +46,7 @@ from sqlalchemy.orm import registry as _RegistryType
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.orm.attributes import LoaderCallableStatus
 from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -76,17 +78,23 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         if request.param == "(MAD, DB)":
 
             class Base(MappedAsDataclass, DeclarativeBase):
+                _mad_before = True
                 metadata = _md
                 type_annotation_map = {
-                    str: String().with_variant(String(50), "mysql", "mariadb")
+                    str: String().with_variant(
+                        String(50), "mysql", "mariadb", "oracle"
+                    )
                 }
 
         else:
             # test #8665 by reversing the order of the classes
             class Base(DeclarativeBase, MappedAsDataclass):
+                _mad_before = False
                 metadata = _md
                 type_annotation_map = {
-                    str: String().with_variant(String(50), "mysql", "mariadb")
+                    str: String().with_variant(
+                        String(50), "mysql", "mariadb", "oracle"
+                    )
                 }
 
         yield Base
@@ -126,7 +134,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 args=["self", "data", "x", "bs"],
                 varargs=None,
                 varkw=None,
-                defaults=(None, mock.ANY),
+                defaults=(LoaderCallableStatus.DONT_SET, mock.ANY),
                 kwonlyargs=[],
                 kwonlydefaults=None,
                 annotations={},
@@ -138,7 +146,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 args=["self", "data", "x"],
                 varargs=None,
                 varkw=None,
-                defaults=(None,),
+                defaults=(LoaderCallableStatus.DONT_SET,),
                 kwonlyargs=[],
                 kwonlydefaults=None,
                 annotations={},
@@ -156,6 +164,8 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         a3 = A("data")
         eq_(repr(a3), "some_module.A(id=None, data='data', x=None, bs=[])")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     def test_generic_class(self):
         """further test for #8665"""
 
@@ -179,9 +189,9 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 JSON, init=True, default_factory=lambda: {}
             )
 
-        new_instance: GenericSetting[  # noqa: F841
-            Dict[str, Any]
-        ] = GenericSetting(key="x", value={"foo": "bar"})
+        new_instance: GenericSetting[Dict[str, Any]] = (  # noqa: F841
+            GenericSetting(key="x", value={"foo": "bar"})
+        )
 
     def test_no_anno_doesnt_go_into_dc(
         self, dc_decl_base: Type[MappedAsDataclass]
@@ -223,9 +233,12 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             foo: Mapped[str]
             bar: Mapped[str] = mapped_column()
 
-        with _dataclass_mixin_warning(
-            "_BaseMixin", "'create_user', 'update_user'"
-        ), _dataclass_mixin_warning("SubMixin", "'foo', 'bar'"):
+        with (
+            _dataclass_mixin_warning(
+                "_BaseMixin", "'create_user', 'update_user'"
+            ),
+            _dataclass_mixin_warning("SubMixin", "'foo', 'bar'"),
+        ):
 
             class User(SubMixin, Base):
                 __tablename__ = "sys_user"
@@ -268,7 +281,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 args=["self", "data", "x", "bs"],
                 varargs=None,
                 varkw=None,
-                defaults=(None, mock.ANY),
+                defaults=(LoaderCallableStatus.DONT_SET, mock.ANY),
                 kwonlyargs=[],
                 kwonlydefaults=None,
                 annotations={},
@@ -280,7 +293,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 args=["self", "data", "x"],
                 varargs=None,
                 varkw=None,
-                defaults=(None,),
+                defaults=(LoaderCallableStatus.DONT_SET,),
                 kwonlyargs=[],
                 kwonlydefaults=None,
                 annotations={},
@@ -300,6 +313,8 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         a3 = A("data")
         eq_(repr(a3), "some_module.A(id=None, data='data', x=None, bs=[])")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     @testing.variation("dc_type", ["decorator", "superclass"])
     def test_dataclass_fn(self, dc_type: Variation):
         annotations = {}
@@ -371,9 +386,14 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_combine_args_from_pep593(self, decl_base: Type[DeclarativeBase]):
         """test that we can set up column-level defaults separate from
-        dataclass defaults
+        dataclass defaults with a pep593 setup; however the dataclass
+        defaults need to override the insert_defaults so that they
+        take place on INSERT
 
         """
+
+        # anno only: global intpk, str30, s_str30, user_fk
+
         intpk = Annotated[int, mapped_column(primary_key=True)]
         str30 = Annotated[
             str, mapped_column(String(30), insert_default=func.foo())
@@ -390,9 +410,20 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             # we need this case for dataclasses that can't derive things
             # from Annotated yet at the typing level
             id: Mapped[intpk] = mapped_column(init=False)
+            name_plain: Mapped[str30] = mapped_column()
+            name_no_init: Mapped[str30] = mapped_column(init=False)
             name_none: Mapped[Optional[str30]] = mapped_column(default=None)
+            name_insert_none: Mapped[Optional[str30]] = mapped_column(
+                insert_default=None, init=False
+            )
             name: Mapped[str30] = mapped_column(default="hi")
+            name_insert: Mapped[str30] = mapped_column(
+                insert_default="hi", init=False
+            )
             name2: Mapped[s_str30] = mapped_column(default="there")
+            name2_insert: Mapped[s_str30] = mapped_column(
+                insert_default="there", init=False
+            )
             addresses: Mapped[List["Address"]] = relationship(  # noqa: F821
                 back_populates="user", default_factory=list
             )
@@ -408,15 +439,34 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             )
 
         is_true(User.__table__.c.id.primary_key)
-        is_true(User.__table__.c.name_none.default.arg.compare(func.foo()))
-        is_true(User.__table__.c.name.default.arg.compare(func.foo()))
+
+        # the default from the Annotated overrides mapped_cols that have
+        # nothing for default or insert default
+        is_true(User.__table__.c.name_plain.default.arg.compare(func.foo()))
+        is_true(User.__table__.c.name_no_init.default.arg.compare(func.foo()))
+
+        # mapped cols that have None for default or insert default, that
+        # default overrides
+        is_true(User.__table__.c.name_none.default is None)
+        is_true(User.__table__.c.name_insert_none.default is None)
+
+        # mapped cols that have a value for default or insert default, that
+        # default overrides
+        is_true(User.__table__.c.name.default.arg == "hi")
+        is_true(User.__table__.c.name2.default.arg == "there")
+        is_true(User.__table__.c.name_insert.default.arg == "hi")
+        is_true(User.__table__.c.name2_insert.default.arg == "there")
+
         eq_(User.__table__.c.name2.server_default.arg, "some server default")
 
         is_true(Address.__table__.c.user_id.references(User.__table__.c.id))
-        u1 = User()
+        u1 = User(name_plain="name")
         eq_(u1.name_none, None)
+        eq_(u1.name_insert_none, None)
         eq_(u1.name, "hi")
         eq_(u1.name2, "there")
+        eq_(u1.name_insert, None)
+        eq_(u1.name2_insert, None)
 
     def test_inheritance(self, dc_decl_base: Type[MappedAsDataclass]):
         class Person(dc_decl_base):
@@ -683,6 +733,27 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(fas.args, ["self", "id"])
         eq_(fas.kwonlyargs, ["data"])
 
+    @testing.combinations(True, False, argnames="unsafe_hash")
+    def test_hash_attribute(
+        self, dc_decl_base: Type[MappedAsDataclass], unsafe_hash
+    ):
+        class A(dc_decl_base, unsafe_hash=unsafe_hash):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, hash=False)
+            data: Mapped[str] = mapped_column(hash=True)
+
+        a = A(id=1, data="x")
+        if not unsafe_hash or not dc_decl_base._mad_before:
+            with expect_raises(TypeError):
+                a_hash1 = hash(a)
+        else:
+            a_hash1 = hash(a)
+            a.id = 41
+            eq_(hash(a), a_hash1)
+            a.data = "y"
+            ne_(hash(a), a_hash1)
+
     @testing.requires.python310
     def test_kw_only_dataclass_constant(
         self, dc_decl_base: Type[MappedAsDataclass]
@@ -742,6 +813,21 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             class Foo(Mixin):
                 bar_value: Mapped[float] = mapped_column(default=78)
 
+    def test_MappedAsDataclass_table_provided(self, registry):
+        """test #11973"""
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Class .*Foo.* already defines a '__table__'. "
+            "ORM Annotated Dataclasses do not support a pre-existing "
+            "'__table__' element",
+        ):
+
+            @registry.mapped_as_dataclass
+            class Foo:
+                __table__ = Table("foo", registry.metadata)
+                foo: Mapped[float]
+
     def test_dataclass_exception_wrapped(self, dc_decl_base):
         with expect_raises_message(
             exc.InvalidRequestError,
@@ -783,7 +869,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(a.call_no_init, 20)
 
         fields = {f.name: f for f in dataclasses.fields(A)}
-        eq_(fields["def_init"].default, 42)
+        eq_(fields["def_init"].default, LoaderCallableStatus.DONT_SET)
         eq_(fields["call_init"].default_factory, c10)
         eq_(fields["def_no_init"].default, dataclasses.MISSING)
         ne_(fields["def_no_init"].default_factory, dataclasses.MISSING)
@@ -1133,6 +1219,8 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
         c1 = Child()
         eq_regex(repr(c1), r".*\.Child\(a=10, b=7, c=9\)")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     def test_abstract_is_dc(self):
         collected_annotations = {}
 
@@ -1154,6 +1242,8 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
         eq_(collected_annotations, {Mixin: {"b": int}, Child: {"c": int}})
         eq_regex(repr(Child(6, 7)), r".*\.Child\(b=6, c=7\)")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     @testing.variation("check_annotations", [True, False])
     def test_abstract_is_dc_w_mapped(self, check_annotations):
         if check_annotations:
@@ -1217,6 +1307,8 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
 
         eq_regex(repr(Child(a=5, b=6, c=7)), r".*\.Child\(c=7\)")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     @testing.variation(
         "dataclass_scope",
         ["on_base", "on_mixin", "on_base_class", "on_sub_class"],
@@ -1417,14 +1509,12 @@ class DataclassArgsTest(fixtures.TestBase):
         else:
             return args, args
 
-    @testing.fixture(params=["mapped_column", "synonym", "deferred"])
+    @testing.fixture(params=["mapped_column", "deferred"])
     def mapped_expr_constructor(self, request):
         name = request.param
 
         if name == "mapped_column":
             yield mapped_column(default=7, init=True)
-        elif name == "synonym":
-            yield synonym("some_int", default=7, init=True)
         elif name == "deferred":
             yield deferred(Column(Integer), default=7, init=True)
 
@@ -1578,18 +1668,19 @@ class DataclassArgsTest(fixtures.TestBase):
         with expect_raises(TypeError):
             cls("Some data", 5)
 
-        # we run real "dataclasses" on the class.  so with init=False, it
-        # doesn't touch what was there, and the SQLA default constructor
-        # gets put on.
+        # behavior change in 2.1, even if init=False we set descriptor
+        # defaults
+
         a1 = cls(data="some data")
         eq_(a1.data, "some data")
-        eq_(a1.x, None)
+
+        eq_(a1.x, 7)
 
         a1 = cls()
         eq_(a1.data, None)
 
-        # no constructor, it sets None for x...ok
-        eq_(a1.x, None)
+        # but this breaks for synonyms
+        eq_(a1.x, 7)
 
     def _assert_match_args(self, cls, create, dc_arguments):
         if not dc_arguments["kw_only"]:
@@ -1794,13 +1885,14 @@ class DataclassArgsTest(fixtures.TestBase):
             kw = {
                 "init": False,
                 "repr": False,
-                "default": False,
+                "default": None,
                 "default_factory": list,
                 "compare": True,
                 "kw_only": False,
+                "hash": False,
             }
             exp = interfaces._AttributeOptions(
-                False, False, False, list, True, False
+                False, False, None, list, True, False, False
             )
         else:
             kw = {}
@@ -1822,7 +1914,13 @@ class DataclassArgsTest(fixtures.TestBase):
                 "compare": True,
             }
             exp = interfaces._AttributeOptions(
-                False, False, _NoArg.NO_ARG, _NoArg.NO_ARG, True, _NoArg.NO_ARG
+                False,
+                False,
+                _NoArg.NO_ARG,
+                _NoArg.NO_ARG,
+                True,
+                _NoArg.NO_ARG,
+                _NoArg.NO_ARG,
             )
         else:
             kw = {}
@@ -2132,3 +2230,456 @@ class ReadOnlyAttrTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         m3 = MyClass(data="foo")
         m3.const = "some const"
         eq_(m2, m3)
+
+
+class UseDescriptorDefaultsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    """tests related to #12168"""
+
+    __dialect__ = "default"
+
+    @testing.fixture(params=[True, False])
+    def dc_decl_base(self, request, metadata):
+        _md = metadata
+
+        udd = request.param
+
+        class Base(MappedAsDataclass, DeclarativeBase):
+            use_descriptor_defaults = udd
+
+            if not use_descriptor_defaults:
+                _sa_disable_descriptor_defaults = True
+
+            metadata = _md
+            type_annotation_map = {
+                str: String().with_variant(
+                    String(50), "mysql", "mariadb", "oracle"
+                )
+            }
+
+        yield Base
+        Base.registry.dispose()
+
+    def test_mapped_column_default(self, dc_decl_base):
+
+        class MyClass(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str] = mapped_column(default="my_default")
+
+        mc = MyClass()
+        eq_(mc.data, "my_default")
+
+        if not MyClass.use_descriptor_defaults:
+            eq_(mc.__dict__["data"], "my_default")
+        else:
+            assert "data" not in mc.__dict__
+
+        eq_(MyClass.__table__.c.data.default.arg, "my_default")
+
+    def test_mapped_column_default_and_insert_default(self, dc_decl_base):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "The 'default' and 'insert_default' parameters of "
+            "Column are mutually exclusive",
+        ):
+            mapped_column(default="x", insert_default="y")
+
+    def test_relationship_only_none_default(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Only 'None' is accepted as dataclass "
+            r"default for a relationship\(\)",
+        ):
+            relationship(default="not none")
+
+    @testing.variation("uselist_type", ["implicit", "m2o_explicit"])
+    def test_relationship_only_nouselist_none_default(
+        self, dc_decl_base, uselist_type
+    ):
+        with expect_raises_message(
+            exc.ArgumentError,
+            rf"On relationship {'A.bs' if uselist_type.implicit else 'B.a'}, "
+            "the dataclass default for relationship "
+            "may only be set for a relationship that references a scalar "
+            "value, i.e. many-to-one or explicitly uselist=False",
+        ):
+
+            class A(dc_decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+                if uselist_type.implicit:
+                    bs: Mapped[List["B"]] = relationship("B", default=None)
+
+            class B(dc_decl_base):
+                __tablename__ = "b"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+                data: Mapped[str]
+
+                if uselist_type.m2o_explicit:
+                    a: Mapped[List[A]] = relationship(
+                        "A", uselist=True, default=None
+                    )
+
+            dc_decl_base.registry.configure()
+
+    def test_constructor_repr(self, dc_decl_base):
+
+        class A(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str]
+
+            x: Mapped[Optional[int]] = mapped_column(default=None)
+
+            bs: Mapped[List["B"]] = relationship(  # noqa: F821
+                default_factory=list
+            )
+
+        class B(dc_decl_base):
+            __tablename__ = "b"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str]
+            a_id: Mapped[Optional[int]] = mapped_column(
+                ForeignKey("a.id"), init=False
+            )
+            x: Mapped[Optional[int]] = mapped_column(default=None)
+
+        A.__qualname__ = "some_module.A"
+        B.__qualname__ = "some_module.B"
+
+        eq_(
+            pyinspect.getfullargspec(A.__init__),
+            pyinspect.FullArgSpec(
+                args=["self", "data", "x", "bs"],
+                varargs=None,
+                varkw=None,
+                defaults=(
+                    (LoaderCallableStatus.DONT_SET, mock.ANY)
+                    if A.use_descriptor_defaults
+                    else (None, mock.ANY)
+                ),
+                kwonlyargs=[],
+                kwonlydefaults=None,
+                annotations={},
+            ),
+        )
+        eq_(
+            pyinspect.getfullargspec(B.__init__),
+            pyinspect.FullArgSpec(
+                args=["self", "data", "x"],
+                varargs=None,
+                varkw=None,
+                defaults=(
+                    (LoaderCallableStatus.DONT_SET,)
+                    if B.use_descriptor_defaults
+                    else (None,)
+                ),
+                kwonlyargs=[],
+                kwonlydefaults=None,
+                annotations={},
+            ),
+        )
+
+        a2 = A("10", x=5, bs=[B("data1"), B("data2", x=12)])
+        eq_(
+            repr(a2),
+            "some_module.A(id=None, data='10', x=5, "
+            "bs=[some_module.B(id=None, data='data1', a_id=None, x=None), "
+            "some_module.B(id=None, data='data2', a_id=None, x=12)])",
+        )
+
+        a3 = A("data")
+        eq_(repr(a3), "some_module.A(id=None, data='data', x=None, bs=[])")
+
+    def test_defaults_if_no_init_dc_level(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+
+        class MyClass(dc_decl_base, init=False):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str] = mapped_column(default="default_status")
+
+        mc = MyClass()
+        if MyClass.use_descriptor_defaults:
+            # behavior change of honoring default when dataclass init=False
+            eq_(mc.data, "default_status")
+        else:
+            eq_(mc.data, None)  # "default_status")
+
+    def test_defaults_w_no_init_attr_level(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+
+        class MyClass(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str] = mapped_column(
+                default="default_status", init=False
+            )
+
+        mc = MyClass()
+        eq_(mc.data, "default_status")
+
+        if MyClass.use_descriptor_defaults:
+            assert "data" not in mc.__dict__
+        else:
+            eq_(mc.__dict__["data"], "default_status")
+
+    @testing.variation("use_attr_init", [True, False])
+    def test_fk_set_scenario(self, dc_decl_base, use_attr_init):
+        if use_attr_init:
+            attr_init_kw = {}
+        else:
+            attr_init_kw = {"init": False}
+
+        class Parent(dc_decl_base):
+            __tablename__ = "parent"
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+
+        class Child(dc_decl_base):
+            __tablename__ = "child"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            parent_id: Mapped[Optional[int]] = mapped_column(
+                ForeignKey("parent.id"), default=None
+            )
+            parent: Mapped[Optional[Parent]] = relationship(
+                default=None, **attr_init_kw
+            )
+
+        dc_decl_base.metadata.create_all(testing.db)
+
+        with Session(testing.db) as sess:
+            p1 = Parent(id=14)
+            sess.add(p1)
+            sess.flush()
+
+            # parent_id=14, parent=None but fk is kept
+            c1 = Child(id=7, parent_id=14)
+            sess.add(c1)
+            sess.flush()
+
+            if Parent.use_descriptor_defaults:
+                assert c1.parent is p1
+            else:
+                assert c1.parent is None
+
+    @testing.variation("use_attr_init", [True, False])
+    def test_merge_scenario(self, dc_decl_base, use_attr_init):
+        if use_attr_init:
+            attr_init_kw = {}
+        else:
+            attr_init_kw = {"init": False}
+
+        class MyClass(dc_decl_base):
+            __tablename__ = "myclass"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+            name: Mapped[str]
+            status: Mapped[str] = mapped_column(
+                default="default_status", **attr_init_kw
+            )
+
+        dc_decl_base.metadata.create_all(testing.db)
+
+        with Session(testing.db) as sess:
+            if use_attr_init:
+                u1 = MyClass(id=1, name="x", status="custom_status")
+            else:
+                u1 = MyClass(id=1, name="x")
+                u1.status = "custom_status"
+            sess.add(u1)
+
+            sess.flush()
+
+            u2 = sess.merge(MyClass(id=1, name="y"))
+            is_(u2, u1)
+            eq_(u2.name, "y")
+
+            if MyClass.use_descriptor_defaults:
+                eq_(u2.status, "custom_status")
+            else:
+                # was overridden by the default in __dict__
+                eq_(u2.status, "default_status")
+
+            if use_attr_init:
+                u3 = sess.merge(
+                    MyClass(id=1, name="z", status="default_status")
+                )
+            else:
+                mc = MyClass(id=1, name="z")
+                mc.status = "default_status"
+                u3 = sess.merge(mc)
+
+            is_(u3, u1)
+            eq_(u3.name, "z")
+
+            # field was explicit so is overridden by merge
+            eq_(u3.status, "default_status")
+
+
+class SynonymDescriptorDefaultTest(AssertsCompiledSQL, fixtures.TestBase):
+    """test new behaviors for synonyms given dataclasses descriptor defaults
+    introduced in 2.1.  Related to #12168"""
+
+    __dialect__ = "default"
+
+    @testing.fixture(params=[True, False])
+    def dc_decl_base(self, request, metadata):
+        _md = metadata
+
+        udd = request.param
+
+        class Base(MappedAsDataclass, DeclarativeBase):
+            use_descriptor_defaults = udd
+
+            if not use_descriptor_defaults:
+                _sa_disable_descriptor_defaults = True
+
+            metadata = _md
+            type_annotation_map = {
+                str: String().with_variant(
+                    String(50), "mysql", "mariadb", "oracle"
+                )
+            }
+
+        yield Base
+        Base.registry.dispose()
+
+    def test_syn_matches_col_default(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            some_int: Mapped[int] = mapped_column(default=7, init=False)
+            some_syn: Mapped[int] = synonym("some_int", default=7)
+
+        a1 = A()
+        eq_(a1.some_syn, 7)
+        eq_(a1.some_int, 7)
+
+        a1 = A(some_syn=10)
+        eq_(a1.some_syn, 10)
+        eq_(a1.some_int, 10)
+
+    @testing.variation("some_int_init", [True, False])
+    def test_syn_does_not_match_col_default(
+        self, dc_decl_base: Type[MappedAsDataclass], some_int_init
+    ):
+        with (
+            expect_raises_message(
+                exc.ArgumentError,
+                "Synonym 'some_syn' default argument 10 must match the "
+                "dataclasses default value of proxied object 'some_int', "
+                "currently 7",
+            )
+            if dc_decl_base.use_descriptor_defaults
+            else contextlib.nullcontext()
+        ):
+
+            class A(dc_decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                some_int: Mapped[int] = mapped_column(
+                    default=7, init=bool(some_int_init)
+                )
+                some_syn: Mapped[int] = synonym("some_int", default=10)
+
+    @testing.variation("some_int_init", [True, False])
+    def test_syn_requires_col_default(
+        self, dc_decl_base: Type[MappedAsDataclass], some_int_init
+    ):
+        with (
+            expect_raises_message(
+                exc.ArgumentError,
+                "Synonym 'some_syn' default argument 10 must match the "
+                "dataclasses default value of proxied object 'some_int', "
+                "currently not set",
+            )
+            if dc_decl_base.use_descriptor_defaults
+            else contextlib.nullcontext()
+        ):
+
+            class A(dc_decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                some_int: Mapped[int] = mapped_column(init=bool(some_int_init))
+                some_syn: Mapped[int] = synonym("some_int", default=10)
+
+    @testing.variation("intermediary_init", [True, False])
+    @testing.variation("some_syn_2_first", [True, False])
+    def test_syn_matches_syn_default_one(
+        self,
+        intermediary_init,
+        some_syn_2_first,
+        dc_decl_base: Type[MappedAsDataclass],
+    ):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+            if some_syn_2_first:
+                some_syn_2: Mapped[int] = synonym("some_syn", default=7)
+
+            some_int: Mapped[int] = mapped_column(default=7, init=False)
+            some_syn: Mapped[int] = synonym(
+                "some_int", default=7, init=bool(intermediary_init)
+            )
+
+            if not some_syn_2_first:
+                some_syn_2: Mapped[int] = synonym("some_syn", default=7)
+
+        a1 = A()
+        eq_(a1.some_syn_2, 7)
+        eq_(a1.some_syn, 7)
+        eq_(a1.some_int, 7)
+
+        a1 = A(some_syn_2=10)
+
+        if not A.use_descriptor_defaults:
+            if some_syn_2_first:
+                eq_(a1.some_syn_2, 7)
+                eq_(a1.some_syn, 7)
+                eq_(a1.some_int, 7)
+            else:
+                eq_(a1.some_syn_2, 10)
+                eq_(a1.some_syn, 10)
+                eq_(a1.some_int, 10)
+        else:
+            eq_(a1.some_syn_2, 10)
+            eq_(a1.some_syn, 10)
+            eq_(a1.some_int, 10)
+
+        # here we have both some_syn and some_syn_2 in the constructor,
+        # which makes absolutely no sense to do in practice.
+        # the new 2.1 behavior we can see is better, however, having
+        # multiple synonyms in a chain with dataclasses with more than one
+        # of them in init is pretty much a bad idea
+        if intermediary_init:
+            a1 = A(some_syn_2=10, some_syn=12)
+            if some_syn_2_first:
+                eq_(a1.some_syn_2, 12)
+                eq_(a1.some_syn, 12)
+                eq_(a1.some_int, 12)
+            else:
+                eq_(a1.some_syn_2, 10)
+                eq_(a1.some_syn, 10)
+                eq_(a1.some_int, 10)

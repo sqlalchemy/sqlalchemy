@@ -32,9 +32,10 @@ from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing.assertions import eq_ignore_whitespace
+from sqlalchemy.testing import resolve_lambda
 from sqlalchemy.types import TypeEngine
 
 tbl = table("t", column("a"))
@@ -175,7 +176,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t = table("sometable", column("somecolumn"))
         self.assert_compile(
             t.insert(),
-            "INSERT INTO sometable (somecolumn) VALUES " "(:somecolumn)",
+            "INSERT INTO sometable (somecolumn) VALUES (:somecolumn)",
         )
 
     def test_update(self):
@@ -393,7 +394,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "check_post_param": {},
             },
         ),
-        (lambda t: t.c.foo.in_([None]), "sometable.foo IN (NULL)", {}),
+        (
+            lambda t: t.c.foo.in_([None]),
+            "sometable.foo IN (__[POSTCOMPILE_foo_1])",
+            {},
+        ),
     )
     def test_strict_binds(self, expr, compiled, kw):
         """test the 'strict' compiler binds."""
@@ -484,6 +489,74 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "myid FROM mytable ORDER BY mytable.myid) AS foo, mytable WHERE "
             "foo.myid = mytable.myid",
         )
+
+    @testing.variation("style", ["plain", "ties", "percent"])
+    def test_noorderby_insubquery_fetch(self, style):
+        """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
+        present; test issue #10458"""
+
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        if style.plain:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10)
+                .alias("foo")
+            )
+        elif style.ties:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10, with_ties=True)
+                .alias("foo")
+            )
+        elif style.percent:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10, percent=True)
+                .alias("foo")
+            )
+        else:
+            style.fail()
+
+        crit = q.c.myid == table1.c.myid
+
+        if style.plain:
+            # the "plain" style of fetch doesnt use TOP right now, so
+            # there's an order_by implicit in the row_number part of it
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT anon_1.myid AS myid FROM "
+                "(SELECT mytable.myid AS myid, ROW_NUMBER() OVER "
+                "(ORDER BY mytable.myid) AS mssql_rn FROM mytable) AS anon_1 "
+                "WHERE mssql_rn <= :param_1) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
+        elif style.ties:
+            # issue #10458 is that when TIES/PERCENT were used, and it just
+            # generates TOP, ORDER BY would be omitted.
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT TOP __[POSTCOMPILE_param_1] WITH "
+                "TIES mytable.myid AS myid FROM mytable "
+                "ORDER BY mytable.myid) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
+        elif style.percent:
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT TOP __[POSTCOMPILE_param_1] "
+                "PERCENT mytable.myid AS myid FROM mytable "
+                "ORDER BY mytable.myid) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
 
     @testing.combinations(10, 0)
     def test_noorderby_insubquery_offset_oldstyle(self, offset):
@@ -634,9 +707,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             select(tbl),
             "SELECT %(name)s.test.id FROM %(name)s.test"
             % {"name": rendered_schema},
-            schema_translate_map={None: schemaname}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: schemaname} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -709,16 +782,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "test",
             metadata,
             Column("id", Integer, primary_key=True),
-            schema=quoted_name("Foo.dbo", True)
-            if not use_schema_translate
-            else None,
+            schema=(
+                quoted_name("Foo.dbo", True)
+                if not use_schema_translate
+                else None
+            ),
         )
         self.assert_compile(
             select(tbl),
             "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test",
-            schema_translate_map={None: quoted_name("Foo.dbo", True)}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: quoted_name("Foo.dbo", True)}
+                if use_schema_translate
+                else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -736,9 +813,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test",
-            schema_translate_map={None: "[Foo.dbo]"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "[Foo.dbo]"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -756,9 +833,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT foo.dbo.test.id FROM foo.dbo.test",
-            schema_translate_map={None: "foo.dbo"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "foo.dbo"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -774,9 +851,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT [Foo].dbo.test.id FROM [Foo].dbo.test",
-            schema_translate_map={None: "Foo.dbo"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "Foo.dbo"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -790,7 +867,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             tbl.delete().where(tbl.c.id == 1),
-            "DELETE FROM paj.test WHERE paj.test.id = " ":id_1",
+            "DELETE FROM paj.test WHERE paj.test.id = :id_1",
         )
         s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
@@ -810,7 +887,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             tbl.delete().where(tbl.c.id == 1),
-            "DELETE FROM banana.paj.test WHERE " "banana.paj.test.id = :id_1",
+            "DELETE FROM banana.paj.test WHERE banana.paj.test.id = :id_1",
         )
         s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
@@ -927,7 +1004,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select(func.max(t.c.col1)),
-            "SELECT max(sometable.col1) AS max_1 FROM " "sometable",
+            "SELECT max(sometable.col1) AS max_1 FROM sometable",
         )
 
     def test_function_overrides(self):
@@ -1000,7 +1077,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         d = delete(table1).returning(table1.c.myid, table1.c.name)
         self.assert_compile(
-            d, "DELETE FROM mytable OUTPUT deleted.myid, " "deleted.name"
+            d, "DELETE FROM mytable OUTPUT deleted.myid, deleted.name"
         )
         d = (
             delete(table1)
@@ -1774,6 +1851,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_raises_message(exc.CompileError, error):
             print(stmt.compile(dialect=self.__dialect__))
 
+    @testing.combinations(
+        (lambda t: t.c.a**t.c.b, "POWER(t.a, t.b)", {}),
+        (lambda t: t.c.a**3, "POWER(t.a, :pow_1)", {"pow_1": 3}),
+        (lambda t: t.c.c.match(t.c.d), "CONTAINS (t.c, t.d)", {}),
+        (lambda t: t.c.c.match("w"), "CONTAINS (t.c, :c_1)", {"c_1": "w"}),
+        (lambda t: func.pow(t.c.a, 3), "POWER(t.a, :pow_1)", {"pow_1": 3}),
+        (lambda t: func.power(t.c.a, t.c.b), "power(t.a, t.b)", {}),
+    )
+    def test_simple_compile(self, fn, string, params):
+        t = table(
+            "t",
+            column("a", Integer),
+            column("b", Integer),
+            column("c", String),
+            column("d", String),
+        )
+        expr = resolve_lambda(fn, t=t)
+        self.assert_compile(expr, string, params)
+
 
 class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
@@ -1873,7 +1969,7 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,1)" ")",
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,1))",
         )
 
     def test_identity_separate_from_primary_key(self):

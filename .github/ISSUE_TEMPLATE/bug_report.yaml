@@ -9,13 +9,25 @@ body:
     attributes:
       value: "
 
-**If you are writing new SQLAlchemy code and are observing a behavior that you did not expect,
-or if you are new to SQLAlchemy overall, please open a
-[discussion](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
-instead of an issue report.  The VAST MAJORITY of issues are converted to discussions
-as they are not bugs.**
+**STOP**
 
-[START A NEW USAGE QUESTIONS DISCUSSION HERE](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
+**We would really prefer if you DONT open a bug report.**
+
+**Please open a** [discussion](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions) **instead of a bug report**.
+
+**Why?**
+
+**First, because the vast majority of issues reported are not bugs but either expected behaviors that
+are misunderstood by the user, or sometimes undefined behaviors that aren't supported.  These bugs are CLOSED**.
+
+**Secondly, because when there IS a bug, often it's not clear what the bug is or where it is, or
+if the thing is even expected, and we would much rather make a clean bug report once we've discussed
+the issue**.
+
+**Given the above, if you DO open a bug report anyway, we're probably going to assume you didn't read these instructions.**
+
+So since you are by definition reading this,
+[START A NEW USAGE QUESTIONS DISCUSSION HERE!](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
 
 "
   - type: markdown

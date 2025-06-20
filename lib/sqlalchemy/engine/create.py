@@ -1,5 +1,5 @@
 # engine/create.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -82,13 +82,11 @@ def create_engine(
     query_cache_size: int = ...,
     use_insertmanyvalues: bool = ...,
     **kwargs: Any,
-) -> Engine:
-    ...
+) -> Engine: ...
 
 
 @overload
-def create_engine(url: Union[str, URL], **kwargs: Any) -> Engine:
-    ...
+def create_engine(url: Union[str, URL], **kwargs: Any) -> Engine: ...
 
 
 @util.deprecated_params(
@@ -135,8 +133,11 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     and its underlying :class:`.Dialect` and :class:`_pool.Pool`
     constructs::
 
-        engine = create_engine("mysql+mysqldb://scott:tiger@hostname/dbname",
-                                    pool_recycle=3600, echo=True)
+        engine = create_engine(
+            "mysql+mysqldb://scott:tiger@hostname/dbname",
+            pool_recycle=3600,
+            echo=True,
+        )
 
     The string form of the URL is
     ``dialect[+driver]://user:password@host/dbname[?key=value..]``, where
@@ -261,8 +262,6 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         will not be displayed in INFO logging nor will they be formatted into
         the string representation of :class:`.StatementError` objects.
 
-        .. versionadded:: 1.3.8
-
         .. seealso::
 
             :ref:`dbengine_logging` - further detail on how to configure
@@ -325,16 +324,9 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         to a Python object.  By default, the Python ``json.loads`` function is
         used.
 
-        .. versionchanged:: 1.3.7  The SQLite dialect renamed this from
-           ``_json_deserializer``.
-
     :param json_serializer: for dialects that support the :class:`_types.JSON`
         datatype, this is a Python callable that will render a given object
         as JSON.   By default, the Python ``json.dumps`` function is used.
-
-        .. versionchanged:: 1.3.7  The SQLite dialect renamed this from
-           ``_json_serializer``.
-
 
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many
@@ -371,8 +363,6 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         case of a new database version for which this value has changed but
         SQLAlchemy's dialect has not been adjusted, the value may be passed
         here.
-
-        .. versionadded:: 1.3.9
 
         .. seealso::
 
@@ -431,8 +421,6 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         "pre-ping" feature that tests connections for liveness upon
         each checkout.
 
-        .. versionadded:: 1.2
-
         .. seealso::
 
             :ref:`pool_disconnects_pessimistic`
@@ -482,8 +470,6 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         use.   When planning for server-side timeouts, ensure that a recycle or
         pre-ping strategy is in use to gracefully   handle stale connections.
 
-          .. versionadded:: 1.3
-
           .. seealso::
 
             :ref:`pool_use_lifo`
@@ -492,8 +478,6 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
 
     :param plugins: string list of plugin names to load.  See
         :class:`.CreateEnginePlugin` for background.
-
-        .. versionadded:: 1.2.3
 
     :param query_cache_size: size of the cache used to cache the SQL string
      form of queries.  Set to zero to disable caching.
@@ -657,6 +641,17 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     else:
         pool._dialect = dialect
 
+    if (
+        hasattr(pool, "_is_asyncio")
+        and pool._is_asyncio is not dialect.is_async
+    ):
+        raise exc.ArgumentError(
+            f"Pool class {pool.__class__.__name__} cannot be "
+            f"used with {'non-' if not dialect.is_async else ''}"
+            "asyncio engine",
+            code="pcls",
+        )
+
     # create engine.
     if not pop_kwarg("future", True):
         raise exc.ArgumentError(
@@ -816,13 +811,11 @@ def create_pool_from_url(
     timeout: float = ...,
     use_lifo: bool = ...,
     **kwargs: Any,
-) -> Pool:
-    ...
+) -> Pool: ...
 
 
 @overload
-def create_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool:
-    ...
+def create_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool: ...
 
 
 def create_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool:

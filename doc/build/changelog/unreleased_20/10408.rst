@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 10408
-
-    Fixed issue where referring to a FROM entry in the SET clause of an UPDATE
-    statement would not include it in the FROM clause of the UPDATE statement,
-    if that entry were nowhere else in the statement; this occurs currently for
-    CTEs that were added using :meth:`.Update.add_cte` to provide the desired
-    CTE at the top of the statement.

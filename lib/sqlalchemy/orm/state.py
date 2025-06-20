@@ -1,5 +1,5 @@
 # orm/state.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -20,6 +20,7 @@ from typing import Dict
 from typing import Generic
 from typing import Iterable
 from typing import Optional
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
@@ -45,13 +46,14 @@ from .. import exc as sa_exc
 from .. import inspection
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Protocol
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from ._typing import _IdentityKeyType
     from ._typing import _InstanceDict
     from ._typing import _LoaderCallable
-    from .attributes import AttributeImpl
+    from .attributes import _AttributeImpl
     from .attributes import History
     from .base import PassiveFlag
     from .collections import _AdaptedCollectionProtocol
@@ -78,8 +80,7 @@ if not TYPE_CHECKING:
 
 
 class _InstanceDictProto(Protocol):
-    def __call__(self) -> Optional[IdentityMap]:
-        ...
+    def __call__(self) -> Optional[IdentityMap]: ...
 
 
 class _InstallLoaderCallableProto(Protocol[_O]):
@@ -93,14 +94,16 @@ class _InstallLoaderCallableProto(Protocol[_O]):
     """
 
     def __call__(
-        self, state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
-    ) -> None:
-        ...
+        self,
+        state: InstanceState[_O],
+        dict_: _InstanceDict,
+        row: Row[Unpack[TupleAny]],
+    ) -> None: ...
 
 
 @inspection._self_inspects
 class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
-    """tracks state information at the instance level.
+    """Tracks state information at the instance level.
 
     The :class:`.InstanceState` is a key object used by the
     SQLAlchemy ORM in order to track the state of an object;
@@ -150,7 +153,14 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     committed_state: Dict[str, Any]
 
     modified: bool = False
+    """When ``True`` the object was modified."""
     expired: bool = False
+    """When ``True`` the object is :term:`expired`.
+
+    .. seealso::
+
+        :ref:`session_expire`
+    """
     _deleted: bool = False
     _load_pending: bool = False
     _orphaned_outside_of_session: bool = False
@@ -171,11 +181,12 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
 
     expired_attributes: Set[str]
     """The set of keys which are 'expired' to be loaded by
-       the manager's deferred scalar loader, assuming no pending
-       changes.
+    the manager's deferred scalar loader, assuming no pending
+    changes.
 
-       see also the ``unmodified`` collection which is intersected
-       against this set when a refresh operation occurs."""
+    See also the ``unmodified`` collection which is intersected
+    against this set when a refresh operation occurs.
+    """
 
     callables: Dict[str, Callable[[InstanceState[_O], PassiveFlag], Any]]
     """A namespace where a per-state loader callable can be associated.
@@ -230,7 +241,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def pending(self) -> bool:
         """Return ``True`` if the object is :term:`pending`.
 
-
         .. seealso::
 
             :ref:`session_object_states`
@@ -258,8 +268,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             of whether or not the object is associated with a
             :class:`.Session`, use the :attr:`.InstanceState.was_deleted`
             accessor.
-
-        .. versionadded: 1.1
 
         .. seealso::
 
@@ -326,8 +334,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def _track_last_known_value(self, key: str) -> None:
         """Track the last known value of a particular key after expiration
         operations.
-
-        .. versionadded:: 1.3
 
         """
 
@@ -569,7 +575,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def get_history(self, key: str, passive: PassiveFlag) -> History:
         return self.manager[key].impl.get_history(self, self.dict, passive)
 
-    def get_impl(self, key: str) -> AttributeImpl:
+    def get_impl(self, key: str) -> _AttributeImpl:
         return self.manager[key].impl
 
     def _get_pending_mutation(self, key: str) -> PendingCollection:
@@ -673,7 +679,9 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             fixed_impl = impl
 
             def _set_callable(
-                state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
+                state: InstanceState[_O],
+                dict_: _InstanceDict,
+                row: Row[Unpack[TupleAny]],
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}
@@ -685,7 +693,9 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         else:
 
             def _set_callable(
-                state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
+                state: InstanceState[_O],
+                dict_: _InstanceDict,
+                row: Row[Unpack[TupleAny]],
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}
@@ -860,7 +870,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def _modified_event(
         self,
         dict_: _InstanceDict,
-        attr: Optional[AttributeImpl],
+        attr: Optional[_AttributeImpl],
         previous: Any,
         collection: bool = False,
         is_userland: bool = False,
@@ -959,7 +969,9 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
                 del self.callables[key]
 
     def _commit_all(
-        self, dict_: _InstanceDict, instance_dict: Optional[IdentityMap] = None
+        self,
+        dict_: _InstanceDict,
+        instance_dict: Optional[IdentityMap] = None,
     ) -> None:
         """commit all attributes unconditionally.
 

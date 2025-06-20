@@ -1,13 +1,11 @@
 # types.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Compatibility namespace for sqlalchemy.sql.types.
-
-"""
+"""Compatibility namespace for sqlalchemy.sql.types."""
 
 
 from __future__ import annotations
@@ -47,6 +45,7 @@ from .sql.sqltypes import NULLTYPE as NULLTYPE
 from .sql.sqltypes import NullType as NullType
 from .sql.sqltypes import NUMERIC as NUMERIC
 from .sql.sqltypes import Numeric as Numeric
+from .sql.sqltypes import NumericCommon as NumericCommon
 from .sql.sqltypes import NVARCHAR as NVARCHAR
 from .sql.sqltypes import PickleType as PickleType
 from .sql.sqltypes import REAL as REAL

@@ -1,5 +1,5 @@
 # sql/traversals.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -80,16 +80,13 @@ class HasShallowCopy(HasTraverseInternals):
 
     if typing.TYPE_CHECKING:
 
-        def _generated_shallow_copy_traversal(self, other: Self) -> None:
-            ...
+        def _generated_shallow_copy_traversal(self, other: Self) -> None: ...
 
         def _generated_shallow_from_dict_traversal(
             self, d: Dict[str, Any]
-        ) -> None:
-            ...
+        ) -> None: ...
 
-        def _generated_shallow_to_dict_traversal(self) -> Dict[str, Any]:
-            ...
+        def _generated_shallow_to_dict_traversal(self) -> Dict[str, Any]: ...
 
     @classmethod
     def _generate_shallow_copy(
@@ -312,9 +309,11 @@ class _CopyInternalsTraversal(HasTraversalDispatch):
         # sequence of 2-tuples
         return [
             (
-                clone(key, **kw)
-                if hasattr(key, "__clause_element__")
-                else key,
+                (
+                    clone(key, **kw)
+                    if hasattr(key, "__clause_element__")
+                    else key
+                ),
                 clone(value, **kw),
             )
             for key, value in element
@@ -336,9 +335,11 @@ class _CopyInternalsTraversal(HasTraversalDispatch):
         def copy(elem):
             if isinstance(elem, (list, tuple)):
                 return [
-                    clone(value, **kw)
-                    if hasattr(value, "__clause_element__")
-                    else value
+                    (
+                        clone(value, **kw)
+                        if hasattr(value, "__clause_element__")
+                        else value
+                    )
                     for value in elem
                 ]
             elif isinstance(elem, dict):
@@ -561,6 +562,8 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
                         return False
                     else:
                         continue
+                elif right_child is None:
+                    return False
 
                 comparison = dispatch(
                     left_attrname, left, left_child, right, right_child, **kw
@@ -663,6 +666,19 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
                 return COMPARE_FAILED
 
             for l, r in zip_longest(ltup, rtup, fillvalue=None):
+                self.stack.append((l, r))
+
+    def visit_multi_list(
+        self, attrname, left_parent, left, right_parent, right, **kw
+    ):
+        for l, r in zip_longest(left, right, fillvalue=None):
+            if isinstance(l, str):
+                if not isinstance(r, str) or l != r:
+                    return COMPARE_FAILED
+            elif isinstance(r, str):
+                if not isinstance(l, str) or l != r:
+                    return COMPARE_FAILED
+            else:
                 self.stack.append((l, r))
 
     def visit_clauseelement_list(
@@ -793,7 +809,7 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
         else:
             return left == right
 
-    def visit_with_context_options(
+    def visit_compile_state_funcs(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
         return tuple((fn.__code__, c_key) for fn, c_key in left) == tuple(

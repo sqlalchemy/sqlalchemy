@@ -20,10 +20,10 @@ import sys
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath("../../lib"))
 sys.path.insert(0, os.path.abspath("../.."))  # examples
-sys.path.insert(0, os.path.abspath("."))
 
+# was never needed, does not work as of python 3.12 due to conflicts
+# sys.path.insert(0, os.path.abspath("."))
 
-os.environ["DISABLE_SQLALCHEMY_CEXT_RUNTIME"] = "true"
 
 # -- General configuration --------------------------------------------------
 
@@ -233,18 +233,18 @@ master_doc = "contents"
 
 # General information about the project.
 project = "SQLAlchemy"
-copyright = "2007-2023, the SQLAlchemy authors and contributors"  # noqa
+copyright = "2007-2025, the SQLAlchemy authors and contributors"  # noqa
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = "2.0"
+version = "2.1"
 # The full version, including alpha/beta/rc tags.
-release = "2.0.21"
+release = "2.1.0b1"
 
-release_date = "September 18, 2023"
+release_date = None
 
 site_base = os.environ.get("RTD_SITE_BASE", "https://www.sqlalchemy.org")
 site_adapter_template = "docs_adapter.mako"

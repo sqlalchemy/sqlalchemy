@@ -15,12 +15,15 @@ ORM-mapped objects.  The ORM objects themselves are maintained inside the
 structure that maintains unique copies of each object, where "unique" means
 "only one object with a particular primary key".
 
-The :class:`.Session` begins in a mostly stateless form. Once queries are
-issued or other objects are persisted with it, it requests a connection
-resource from an :class:`_engine.Engine` that is associated with the
-:class:`.Session`, and then establishes a transaction on that connection. This
-transaction remains in effect until the :class:`.Session` is instructed to
-commit or roll back the transaction.
+The :class:`.Session` in its most common pattern of use begins in a mostly
+stateless form. Once queries are issued or other objects are persisted with it,
+it requests a connection resource from an :class:`_engine.Engine` that is
+associated with the :class:`.Session`, and then establishes a transaction on
+that connection. This transaction remains in effect until the :class:`.Session`
+is instructed to commit or roll back the transaction.   When the transaction
+ends, the connection resource associated with the :class:`_engine.Engine`
+is :term:`released` to the connection pool managed by the engine.   A new
+transaction then starts with a new connection checkout.
 
 The ORM objects maintained by a :class:`_orm.Session` are :term:`instrumented`
 such that whenever an attribute or a collection is modified in the Python
@@ -151,7 +154,7 @@ The purpose of :class:`_orm.sessionmaker` is to provide a factory for
 :class:`_orm.Session` objects with a fixed configuration.   As it is typical
 that an application will have an :class:`_engine.Engine` object in module
 scope, the :class:`_orm.sessionmaker` can provide a factory for
-:class:`_orm.Session` objects that are against this engine::
+:class:`_orm.Session` objects that are constructed against this engine::
 
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -643,8 +646,26 @@ connections. If no pending changes are detected, then no SQL is emitted to the
 database. This behavior is not configurable and is not affected by the
 :paramref:`.Session.autoflush` parameter.
 
-Subsequent to that, :meth:`_orm.Session.commit` will then COMMIT the actual
-database transaction or transactions, if any, that are in place.
+Subsequent to that, assuming the :class:`_orm.Session` is bound to an
+:class:`_engine.Engine`, :meth:`_orm.Session.commit` will then COMMIT the
+actual database transaction that is in place, if one was started.   After the
+commit, the :class:`_engine.Connection` object associated with that transaction
+is closed, causing its underlying DBAPI connection to be :term:`released` back
+to the connection pool associated with the :class:`_engine.Engine` to which the
+:class:`_orm.Session` is bound.
+
+For a :class:`_orm.Session` that's bound to multiple engines (e.g. as described
+at :ref:`Partitioning Strategies <session_partitioning>`), the same COMMIT
+steps will proceed for each :class:`_engine.Engine` /
+:class:`_engine.Connection` that is in play within the "logical" transaction
+being committed.  These database transactions are uncoordinated with each other
+unless :ref:`two-phase features <session_twophase>` are enabled.
+
+Other connection-interaction patterns are available as well, by binding the
+:class:`_orm.Session` to a :class:`_engine.Connection` directly; in this case,
+it's assumed that an externally-managed transaction is present, and a real
+COMMIT will not be emitted automatically in this case; see the section
+:ref:`session_external_transaction` for background on this pattern.
 
 Finally, all objects within the :class:`_orm.Session` are :term:`expired` as
 the transaction is closed out. This is so that when the instances are next
@@ -671,9 +692,25 @@ been begun either via :ref:`autobegin <session_autobegin>`
 or by calling the :meth:`_orm.Session.begin`
 method explicitly, is as follows:
 
-  * All transactions are rolled back and all connections returned to the
-    connection pool, unless the Session was bound directly to a Connection, in
-    which case the connection is still maintained (but still rolled back).
+  * Database transactions are rolled back.  For a :class:`_orm.Session`
+    bound to a single :class:`_engine.Engine`, this means ROLLBACK is emitted
+    for at most a single :class:`_engine.Connection` that's currently in use.
+    For :class:`_orm.Session` objects bound to multiple :class:`_engine.Engine`
+    objects, ROLLBACK is emitted for all :class:`_engine.Connection` objects
+    that were checked out.
+  * Database connections are :term:`released`.  This follows the same connection-related
+    behavior noted in :ref:`session_committing`, where
+    :class:`_engine.Connection` objects obtained from :class:`_engine.Engine`
+    objects are closed, causing the DBAPI connections to be :term:`released` to
+    the connection pool within the :class:`_engine.Engine`.   New connections
+    are checked out from the :class:`_engine.Engine` if and when a new
+    transaction begins.
+  * For a :class:`_orm.Session`
+    that's bound directly to a :class:`_engine.Connection` as described
+    at :ref:`session_external_transaction`, rollback behavior on this
+    :class:`_engine.Connection` would follow the behavior specified by the
+    :paramref:`_orm.Session.join_transaction_mode` parameter, which could
+    involve rolling back savepoints or emitting a real ROLLBACK.
   * Objects which were initially in the :term:`pending` state when they were added
     to the :class:`~sqlalchemy.orm.session.Session` within the lifespan of the
     transaction are expunged, corresponding to their INSERT statement being

@@ -16,6 +16,7 @@ from sqlalchemy import desc
 from sqlalchemy import Enum
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
@@ -54,6 +55,7 @@ from sqlalchemy.sql.schema import RETAIN_SCHEMA
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning
 from sqlalchemy.testing import eq_
@@ -518,7 +520,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         t.c.x._init_items(s1)
         assert s1.metadata is m1
 
-    def test_pickle_metadata_sequence_implicit(self):
+    def test_pickle_metadata_sequence_implicit(self, picklers):
         m1 = MetaData()
         Table(
             "a",
@@ -527,13 +529,13 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column("x", Integer, Sequence("x_seq")),
         )
 
-        m2 = pickle.loads(pickle.dumps(m1))
+        m2 = picklers.loads(picklers.dumps(m1))
 
         t2 = Table("a", m2, extend_existing=True)
 
         eq_(m2._sequences, {"x_seq": t2.c.x.default})
 
-    def test_pickle_metadata_schema(self):
+    def test_pickle_metadata_schema(self, picklers):
         m1 = MetaData()
         Table(
             "a",
@@ -543,7 +545,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             schema="y",
         )
 
-        m2 = pickle.loads(pickle.dumps(m1))
+        m2 = picklers.loads(picklers.dumps(m1))
 
         Table("a", m2, schema="y", extend_existing=True)
 
@@ -751,13 +753,25 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                     comment="foo",
                 ),
                 "Column('foo', Integer(), table=None, primary_key=True, "
-                "nullable=False, onupdate=%s, default=%s, server_default=%s, "
-                "comment='foo')"
-                % (
-                    ColumnDefault(1),
-                    ColumnDefault(42),
-                    DefaultClause("42"),
+                f"nullable=False, onupdate={ColumnDefault(1)}, default="
+                f"{ColumnDefault(42)}, server_default={DefaultClause('42')}, "
+                "comment='foo')",
+            ),
+            (
+                Column(
+                    "foo",
+                    Integer,
+                    primary_key=True,
+                    nullable=False,
+                    onupdate=1,
+                    insert_default=42,
+                    server_default="42",
+                    comment="foo",
                 ),
+                "Column('foo', Integer(), table=None, primary_key=True, "
+                f"nullable=False, onupdate={ColumnDefault(1)}, default="
+                f"{ColumnDefault(42)}, server_default={DefaultClause('42')}, "
+                "comment='foo')",
             ),
             (
                 Table("bar", MetaData(), Column("x", String)),
@@ -799,19 +813,27 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
 
 class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
-    @testing.requires.check_constraints
-    def test_copy(self):
-        # TODO: modernize this test for 2.0
 
+    @testing.fixture
+    def copy_fixture(self, metadata):
         from sqlalchemy.testing.schema import Table
-
-        meta = MetaData()
 
         table = Table(
             "mytable",
-            meta,
+            metadata,
             Column("myid", Integer, Sequence("foo_id_seq"), primary_key=True),
             Column("name", String(40), nullable=True),
+            Column("status", Boolean(create_constraint=True)),
+            Column(
+                "entry",
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    name="entry_enum",
+                    create_constraint=True,
+                ),
+            ),
             Column(
                 "foo",
                 String(40),
@@ -831,7 +853,7 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
 
         table2 = Table(
             "othertable",
-            meta,
+            metadata,
             Column("id", Integer, Sequence("foo_seq"), primary_key=True),
             Column("myid", Integer, ForeignKey("mytable.myid")),
             test_needs_fk=True,
@@ -839,103 +861,119 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
 
         table3 = Table(
             "has_comments",
-            meta,
+            metadata,
             Column("foo", Integer, comment="some column"),
             comment="table comment",
         )
 
-        def test_to_metadata():
+        metadata.create_all(testing.db)
+
+        return table, table2, table3
+
+    @testing.fixture(
+        params=[
+            "to_metadata",
+            "pickle",
+            "pickle_via_reflect",
+        ]
+    )
+    def copy_tables_fixture(self, request, metadata, copy_fixture, picklers):
+        table, table2, table3 = copy_fixture
+
+        test = request.param
+
+        if test == "to_metadata":
             meta2 = MetaData()
             table_c = table.to_metadata(meta2)
             table2_c = table2.to_metadata(meta2)
             table3_c = table3.to_metadata(meta2)
-            return (table_c, table2_c, table3_c)
+            return (table_c, table2_c, table3_c, (True, False))
 
-        def test_pickle():
-            meta.bind = testing.db
-            meta2 = pickle.loads(pickle.dumps(meta))
-            pickle.loads(pickle.dumps(meta2))
+        elif test == "pickle":
+            meta2 = picklers.loads(picklers.dumps(metadata))
+            picklers.loads(picklers.dumps(meta2))
             return (
                 meta2.tables["mytable"],
                 meta2.tables["othertable"],
                 meta2.tables["has_comments"],
+                (True, False),
             )
 
-        def test_pickle_via_reflect():
+        elif test == "pickle_via_reflect":
             # this is the most common use case, pickling the results of a
             # database reflection
             meta2 = MetaData()
             t1 = Table("mytable", meta2, autoload_with=testing.db)
             Table("othertable", meta2, autoload_with=testing.db)
             Table("has_comments", meta2, autoload_with=testing.db)
-            meta3 = pickle.loads(pickle.dumps(meta2))
+            meta3 = picklers.loads(picklers.dumps(meta2))
             assert meta3.tables["mytable"] is not t1
 
             return (
                 meta3.tables["mytable"],
                 meta3.tables["othertable"],
                 meta3.tables["has_comments"],
+                (False, True),
             )
 
-        meta.create_all(testing.db)
-        try:
-            for test, has_constraints, reflect in (
-                (test_to_metadata, True, False),
-                (test_pickle, True, False),
-                (test_pickle_via_reflect, False, True),
-            ):
-                table_c, table2_c, table3_c = test()
-                self.assert_tables_equal(table, table_c)
-                self.assert_tables_equal(table2, table2_c)
-                assert table is not table_c
-                assert table.primary_key is not table_c.primary_key
-                assert (
-                    list(table2_c.c.myid.foreign_keys)[0].column
-                    is table_c.c.myid
+        assert False
+
+    @testing.requires.check_constraints
+    def test_copy(self, metadata, copy_fixture, copy_tables_fixture):
+
+        table, table2, table3 = copy_fixture
+        table_c, table2_c, table3_c, (has_constraints, reflect) = (
+            copy_tables_fixture
+        )
+
+        self.assert_tables_equal(table, table_c)
+        self.assert_tables_equal(table2, table2_c)
+        assert table is not table_c
+        assert table.primary_key is not table_c.primary_key
+        assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
+        assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
+        assert "x" in str(table_c.c.foo.server_default.arg)
+        if not reflect:
+            assert isinstance(table_c.c.myid.default, Sequence)
+            assert str(table_c.c.foo.server_onupdate.arg) == "q"
+            assert str(table_c.c.bar.default.arg) == "y"
+            assert (
+                getattr(
+                    table_c.c.bar.onupdate.arg,
+                    "arg",
+                    table_c.c.bar.onupdate.arg,
                 )
-                assert (
-                    list(table2_c.c.myid.foreign_keys)[0].column
-                    is not table.c.myid
-                )
-                assert "x" in str(table_c.c.foo.server_default.arg)
-                if not reflect:
-                    assert isinstance(table_c.c.myid.default, Sequence)
-                    assert str(table_c.c.foo.server_onupdate.arg) == "q"
-                    assert str(table_c.c.bar.default.arg) == "y"
-                    assert (
-                        getattr(
-                            table_c.c.bar.onupdate.arg,
-                            "arg",
-                            table_c.c.bar.onupdate.arg,
-                        )
-                        == "z"
-                    )
-                    assert isinstance(table2_c.c.id.default, Sequence)
+                == "z"
+            )
+            assert isinstance(table2_c.c.id.default, Sequence)
 
-                # constraints don't get reflected for any dialect right
-                # now
+        if testing.requires.unique_constraint_reflection.enabled:
+            for c in table_c.constraints:
+                if isinstance(c, UniqueConstraint):
+                    break
+            else:
+                for c in table_c.indexes:
+                    break
+                else:
+                    assert False
 
-                if has_constraints:
-                    for c in table_c.c.description.constraints:
-                        if isinstance(c, CheckConstraint):
-                            break
-                    else:
-                        assert False
-                    assert str(c.sqltext) == "description='hi'"
-                    for c in table_c.constraints:
-                        if isinstance(c, UniqueConstraint):
-                            break
-                    else:
-                        assert False
-                    assert c.columns.contains_column(table_c.c.name)
-                    assert not c.columns.contains_column(table.c.name)
+            assert c.columns.contains_column(table_c.c.name)
+            assert not c.columns.contains_column(table.c.name)
 
-                if testing.requires.comment_reflection.enabled:
-                    eq_(table3_c.comment, "table comment")
-                    eq_(table3_c.c.foo.comment, "some column")
+        # CHECK constraints don't get reflected for any dialect right
+        # now
 
-        finally:
-            meta.drop_all(testing.db)
+        if has_constraints:
+            for c in table_c.c.description.constraints:
+                if isinstance(c, CheckConstraint):
+                    break
+            else:
+                assert False
+            assert str(c.sqltext) == "description='hi'"
+
+        if testing.requires.comment_reflection.enabled:
+            eq_(table3_c.comment, "table comment")
+            eq_(table3_c.c.foo.comment, "some column")
 
     def test_col_key_fk_parent(self):
         # test #2643
@@ -1777,6 +1815,18 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             12,
         )
 
+        assert_raises_message(
+            tsa.exc.ArgumentError,
+            "'SchemaItem' object, such as a 'Column' or a "
+            "'Constraint' expected, got "
+            r"\(Column\('q', Integer\(\), table=None\), "
+            r"Column\('p', Integer\(\), table=None\)\)",
+            Table,
+            "asdf",
+            MetaData(),
+            (Column("q", Integer), Column("p", Integer)),
+        )
+
     def test_reset_exported_passes(self):
         m = MetaData()
 
@@ -2110,6 +2160,64 @@ class PKAutoIncrementTest(fixtures.TestBase):
             lambda: pk._autoincrement_column,
         )
 
+    def test_float_illegal_autoinc(self):
+        """test that Float is not acceptable if autoincrement=True
+
+        note this changed in 2.1 with #5252 where Numeric/Float were split out
+
+        """
+        t = Table("t", MetaData(), Column("a", Float, autoincrement=True))
+        pk = PrimaryKeyConstraint(t.c.a)
+        t.append_constraint(pk)
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Column type FLOAT on column 't.a' is not compatible "
+            "with autoincrement=True",
+        ):
+            pk._autoincrement_column,
+
+    def test_numeric_nonzero_scale_illegal_autoinc(self):
+        """test that Numeric() with non-zero scale is not acceptable if
+        autoincrement=True"""
+        t = Table(
+            "t", MetaData(), Column("a", Numeric(10, 5), autoincrement=True)
+        )
+        pk = PrimaryKeyConstraint(t.c.a)
+        t.append_constraint(pk)
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Column type NUMERIC\(10, 5\) with non-zero scale 5",
+        ):
+            pk._autoincrement_column,
+
+    def test_numeric_zero_scale_autoinc_not_auto(self):
+        """test that Numeric() is not automatically assigned to
+        autoincrement"""
+        t = Table(
+            "t", MetaData(), Column("a", Numeric(10, 0), primary_key=True)
+        )
+
+        is_(t.autoincrement_column, None)
+
+    def test_integer_autoinc_is_auto(self):
+        """test that Integer() is automatically assigned to autoincrement"""
+        t = Table("t", MetaData(), Column("a", Integer, primary_key=True))
+
+        is_(t.autoincrement_column, t.c.a)
+
+    def test_numeric_zero_scale_autoinc_explicit_ok(self):
+        """test that Numeric() with zero scale is acceptable if
+        autoincrement=True"""
+        t = Table(
+            "t",
+            MetaData(),
+            Column("a", Numeric(10, 0), autoincrement=True, primary_key=True),
+        )
+
+        is_(t.autoincrement_column, t.c.a)
+
     def test_single_integer_default(self):
         t = Table(
             "t",
@@ -2326,6 +2434,23 @@ class SchemaTypeTest(fixtures.TestBase):
             ],
         )
 
+    def test_adapt_to_schema(self):
+        m = MetaData()
+        type_ = self.MyType()
+        eq_(type_.inherit_schema, True)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "z")
+
+        adapted = t1.c.y.type.adapt(self.MyType)
+
+        eq_(type_.inherit_schema, False)
+        eq_(adapted.inherit_schema, False)
+
+        eq_(adapted.schema, "z")
+
+        adapted2 = t1.c.y.type.adapt(self.MyType, schema="q")
+        eq_(adapted2.schema, "q")
+
     def test_independent_schema(self):
         m = MetaData()
         type_ = self.MyType(schema="q")
@@ -2355,33 +2480,80 @@ class SchemaTypeTest(fixtures.TestBase):
 
     def test_inherit_schema(self):
         m = MetaData()
-        type_ = self.MyType(schema="q", inherit_schema=True)
+        type_ = self.MyType(inherit_schema=True)
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "z")
 
-    def test_independent_schema_enum(self):
+    @combinations({}, {"inherit_schema": False}, argnames="enum_kw")
+    @combinations({}, {"schema": "m"}, argnames="meta_kw")
+    @combinations({}, {"schema": "t"}, argnames="table_kw")
+    def test_independent_schema_enum_explicit_schema(
+        self, enum_kw, meta_kw, table_kw
+    ):
+        m = MetaData(**meta_kw)
+        type_ = sqltypes.Enum("a", schema="e", **enum_kw)
+        t1 = Table("x", m, Column("y", type_), **table_kw)
+        eq_(t1.c.y.type.schema, "e")
+
+    def test_explicit_schema_w_inherit_raises(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Ambiguously setting inherit_schema=True while also passing "
+            "a non-None schema argument",
+        ):
+            sqltypes.Enum("a", schema="e", inherit_schema=True)
+
+    def test_independent_schema_off_no_explicit_schema(self):
+        m = MetaData(schema="m")
+        type_ = sqltypes.Enum("a", inherit_schema=False)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, None)
+
+    def test_inherit_schema_enum_auto(self):
         m = MetaData()
-        type_ = sqltypes.Enum("a", schema="q")
+        type_ = sqltypes.Enum("a", "b", "c")
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "z")
+
+    def test_inherit_schema_enum_meta(self):
+        m = MetaData(schema="q")
+        type_ = sqltypes.Enum("a", "b", "c")
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "z")
+
+    def test_inherit_schema_enum_set_meta(self):
+        m = MetaData(schema="q")
+        type_ = sqltypes.Enum("a", "b", "c", metadata=m)
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "q")
 
-    def test_inherit_schema_enum(self):
-        m = MetaData()
-        type_ = sqltypes.Enum("a", "b", "c", schema="q", inherit_schema=True)
+    def test_inherit_schema_enum_set_meta_explicit(self):
+        m = MetaData(schema="q")
+        type_ = sqltypes.Enum("a", "b", "c", metadata=m, schema="e")
         t1 = Table("x", m, Column("y", type_), schema="z")
-        eq_(t1.c.y.type.schema, "z")
+        eq_(t1.c.y.type.schema, "e")
 
-    def test_to_metadata_copy_type(self):
+    @testing.variation("assign_metadata", [True, False])
+    def test_to_metadata_copy_type(self, assign_metadata):
         m1 = MetaData()
 
-        type_ = self.MyType()
+        if assign_metadata:
+            type_ = self.MyType(metadata=m1)
+        else:
+            type_ = self.MyType()
+
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2)
 
-        # metadata isn't set
-        is_(t2.c.y.type.metadata, None)
+        if assign_metadata:
+            # metadata was transferred
+            # issue #11802
+            is_(t2.c.y.type.metadata, m2)
+        else:
+            # metadata isn't set
+            is_(t2.c.y.type.metadata, None)
 
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
@@ -2400,22 +2572,48 @@ class SchemaTypeTest(fixtures.TestBase):
         t2 = t1.to_metadata(m2)
         eq_(t2.c.y.type.schema, "z")
 
-    def test_to_metadata_independent_schema(self):
+    @testing.variation("inherit_schema", ["novalue", True, False])
+    def test_to_metadata_independent_schema(self, inherit_schema):
         m1 = MetaData()
 
-        type_ = self.MyType()
+        if inherit_schema.novalue:
+            type_ = self.MyType()
+        else:
+            type_ = self.MyType(inherit_schema=bool(inherit_schema))
+
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2, schema="bar")
 
-        eq_(t2.c.y.type.schema, None)
+        if inherit_schema.novalue or inherit_schema:
+            eq_(t2.c.y.type.schema, "bar")
+        else:
+            eq_(t2.c.y.type.schema, None)
+
+    @testing.combinations(
+        ("name", "foobar", "name"),
+        ("schema", "someschema", "schema"),
+        ("inherit_schema", True, "inherit_schema"),
+        ("metadata", MetaData(), "metadata"),
+    )
+    def test_copy_args(self, argname, value, attrname):
+        kw = {argname: value}
+        e1 = self.MyType(**kw)
+
+        e1_copy = e1.copy()
+
+        eq_(getattr(e1_copy, attrname), value)
 
     def test_to_metadata_inherit_schema(self):
         m1 = MetaData()
 
         type_ = self.MyType(inherit_schema=True)
+
         t1 = Table("x", m1, Column("y", type_))
+        # note that inherit_schema means the schema mutates to be that
+        # of the table
+        is_(type_.schema, None)
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2, schema="bar")
@@ -2870,7 +3068,7 @@ class UseExistingTest(testing.AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             exc.InvalidRequestError,
-            "Table 'users' is already defined for this " "MetaData instance.",
+            "Table 'users' is already defined for this MetaData instance.",
             go,
         )
 
@@ -4134,7 +4332,6 @@ class ConstraintTest(fixtures.TestBase):
 
 
 class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
-
     """Test Column() construction."""
 
     __dialect__ = "default"
@@ -4365,6 +4562,28 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
         deregister(schema.CreateColumn)
 
+    @testing.combinations(("index",), ("unique",), argnames="paramname")
+    @testing.combinations((True,), (False,), (None,), argnames="orig")
+    @testing.combinations((True,), (False,), (None,), argnames="merging")
+    def test_merge_index_unique(self, paramname, orig, merging):
+        """test #11091"""
+        source = Column(**{paramname: merging})
+
+        target = Column(**{paramname: orig})
+
+        source._merge(target)
+
+        target_copy = target._copy()
+        for col in (
+            target,
+            target_copy,
+        ):
+            result = getattr(col, paramname)
+            if orig is None:
+                is_(result, merging)
+            else:
+                is_(result, orig)
+
     @testing.combinations(
         ("default", lambda ctx: 10),
         ("default", func.foo()),
@@ -4550,7 +4769,6 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class ColumnDefaultsTest(fixtures.TestBase):
-
     """test assignment of default fixures to columns"""
 
     def _fixture(self, *arg, **kw):
@@ -4658,6 +4876,18 @@ class ColumnDefaultsTest(fixtures.TestBase):
         c = self._fixture(onupdate=target)
         assert c.onupdate.arg == target
         assert c.onupdate.column is c
+
+    def test_column_insert_default(self):
+        c = self._fixture(insert_default="y")
+        assert c.default.arg == "y"
+
+    def test_column_insert_default_mututally_exclusive(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "The 'default' and 'insert_default' parameters of "
+            "Column are mutually exclusive",
+        ):
+            self._fixture(insert_default="x", default="y")
 
 
 class ColumnOptionsTest(fixtures.TestBase):
@@ -5655,7 +5885,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect.max_identifier_length = 15
         self.assert_compile(
             schema.CreateIndex(ix),
-            "CREATE INDEX ix_user_2de9 ON " '"user" (data, "Data2", "Data3")',
+            'CREATE INDEX ix_user_2de9 ON "user" (data, "Data2", "Data3")',
             dialect=dialect,
         )
 
@@ -5780,9 +6010,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             "b",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("aid", ForeignKey("a.id"))
-            if not col_has_type
-            else Column("aid", Integer, ForeignKey("a.id")),
+            (
+                Column("aid", ForeignKey("a.id"))
+                if not col_has_type
+                else Column("aid", Integer, ForeignKey("a.id"))
+            ),
         )
         fks = list(
             c for c in b.constraints if isinstance(c, ForeignKeyConstraint)
@@ -5937,7 +6169,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         # no issue with native boolean
         self.assert_compile(
             schema.CreateTable(u1),
-            'CREATE TABLE "user" (' "x BOOLEAN" ")",
+            """CREATE TABLE "user" (x BOOLEAN)""",
             dialect="postgresql",
         )
 

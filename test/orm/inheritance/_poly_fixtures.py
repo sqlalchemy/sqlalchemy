@@ -469,19 +469,20 @@ class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
     e.g.::
 
         self._fixture_from_geometry(
-            "a": {
-                "subclasses": {
-                    "b": {"polymorphic_load": "selectin"},
-                    "c": {
-                        "subclasses": {
-                            "d": {
-                                "polymorphic_load": "inlne", "single": True
+            {
+                "a": {
+                    "subclasses": {
+                        "b": {"polymorphic_load": "selectin"},
+                        "c": {
+                            "subclasses": {
+                                "d": {"polymorphic_load": "inlne", "single": True},
+                                "e": {
+                                    "polymorphic_load": "inline",
+                                    "single": True,
+                                },
                             },
-                            "e": {
-                                "polymorphic_load": "inline", "single": True
-                            },
+                            "polymorphic_load": "selectin",
                         },
-                        "polymorphic_load": "selectin",
                     }
                 }
             }
@@ -490,42 +491,41 @@ class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
     would provide the equivalent of::
 
         class a(Base):
-            __tablename__ = 'a'
+            __tablename__ = "a"
 
             id = Column(Integer, primary_key=True)
             a_data = Column(String(50))
             type = Column(String(50))
-            __mapper_args__ = {
-                "polymorphic_on": type,
-                "polymorphic_identity": "a"
-            }
+            __mapper_args__ = {"polymorphic_on": type, "polymorphic_identity": "a"}
+
 
         class b(a):
-            __tablename__ = 'b'
+            __tablename__ = "b"
 
-            id = Column(ForeignKey('a.id'), primary_key=True)
+            id = Column(ForeignKey("a.id"), primary_key=True)
             b_data = Column(String(50))
 
             __mapper_args__ = {
                 "polymorphic_identity": "b",
-                "polymorphic_load": "selectin"
+                "polymorphic_load": "selectin",
             }
 
             # ...
 
+
         class c(a):
-            __tablename__ = 'c'
+            __tablename__ = "c"
 
-        class d(c):
-            # ...
 
-        class e(c):
-            # ...
+        class d(c): ...
+
+
+        class e(c): ...
 
     Declarative is used so that we get extra behaviors of declarative,
     such as single-inheritance column masking.
 
-    """
+    """  # noqa: E501
 
     run_create_tables = "each"
     run_define_tables = "each"

@@ -1,5 +1,5 @@
-# sqlalchemy/log.py
-# Copyright (C) 2006-2023 the SQLAlchemy authors and contributors
+# log.py
+# Copyright (C) 2006-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # Includes alterations by Vinay Sajip vinay_sajip@yahoo.co.uk
 #
@@ -30,18 +30,13 @@ from typing import TypeVar
 from typing import Union
 
 from .util import py311
-from .util import py38
 from .util.typing import Literal
 
 
-if py38:
-    STACKLEVEL = True
-    # needed as of py3.11.0b1
-    # #8019
-    STACKLEVEL_OFFSET = 2 if py311 else 1
-else:
-    STACKLEVEL = False
-    STACKLEVEL_OFFSET = 0
+STACKLEVEL = True
+# needed as of py3.11.0b1
+# #8019
+STACKLEVEL_OFFSET = 2 if py311 else 1
 
 _IT = TypeVar("_IT", bound="Identified")
 
@@ -269,14 +264,12 @@ class echo_property:
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[Identified]
-    ) -> echo_property:
-        ...
+    ) -> echo_property: ...
 
     @overload
     def __get__(
         self, instance: Identified, owner: Type[Identified]
-    ) -> _EchoFlagType:
-        ...
+    ) -> _EchoFlagType: ...
 
     def __get__(
         self, instance: Optional[Identified], owner: Type[Identified]

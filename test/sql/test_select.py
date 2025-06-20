@@ -469,6 +469,21 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             " %(joiner)s SELECT :param_3 AS anon_3" % {"joiner": joiner},
         )
 
+    @testing.combinations(
+        lambda stmt: stmt.with_statement_hint("some hint"),
+        lambda stmt: stmt.with_hint(table("x"), "some hint"),
+        lambda stmt: stmt.where(column("q") == 5),
+        lambda stmt: stmt.having(column("q") == 5),
+        lambda stmt: stmt.order_by(column("q")),
+        lambda stmt: stmt.group_by(column("q")),
+        # TODO: continue
+    )
+    def test_methods_generative(self, testcase):
+        s1 = select(1)
+        s2 = testing.resolve_lambda(testcase, stmt=s1)
+
+        assert s1 is not s2
+
 
 class ColumnCollectionAsSelectTest(fixtures.TestBase, AssertsCompiledSQL):
     """tests related to #8285."""

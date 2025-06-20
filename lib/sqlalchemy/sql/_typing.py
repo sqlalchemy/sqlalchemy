@@ -1,5 +1,5 @@
 # sql/_typing.py
-# Copyright (C) 2022 the SQLAlchemy authors and contributors
+# Copyright (C) 2022-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,12 +11,14 @@ import operator
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Generic
+from typing import Iterable
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
-from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -27,8 +29,10 @@ from .. import exc
 from .. import util
 from ..inspection import Inspectable
 from ..util.typing import Literal
-from ..util.typing import Protocol
+from ..util.typing import TupleAny
 from ..util.typing import TypeAlias
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from datetime import date
@@ -51,10 +55,10 @@ if TYPE_CHECKING:
     from .elements import SQLCoreOperations
     from .elements import TextClause
     from .lambdas import LambdaElement
-    from .roles import ColumnsClauseRole
     from .roles import FromClauseRole
     from .schema import Column
     from .selectable import Alias
+    from .selectable import CompoundSelect
     from .selectable import CTE
     from .selectable import FromClause
     from .selectable import Join
@@ -68,9 +72,15 @@ if TYPE_CHECKING:
     from .sqltypes import TableValueType
     from .sqltypes import TupleType
     from .type_api import TypeEngine
+    from ..engine import Connection
+    from ..engine import Dialect
+    from ..engine import Engine
+    from ..engine.mock import MockConnection
     from ..util.typing import TypeGuard
 
 _T = TypeVar("_T", bound=Any)
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
+_Ts = TypeVarTuple("_Ts")
 
 
 _CE = TypeVar("_CE", bound="ColumnElement[Any]")
@@ -78,18 +88,25 @@ _CE = TypeVar("_CE", bound="ColumnElement[Any]")
 _CLE = TypeVar("_CLE", bound="ClauseElement")
 
 
-class _HasClauseElement(Protocol):
+class _HasClauseElement(Protocol, Generic[_T_co]):
     """indicates a class that has a __clause_element__() method"""
 
-    def __clause_element__(self) -> ColumnsClauseRole:
-        ...
+    def __clause_element__(self) -> roles.ExpressionElementRole[_T_co]: ...
 
 
 class _CoreAdapterProto(Protocol):
     """protocol for the ClauseAdapter/ColumnAdapter.traverse() method."""
 
-    def __call__(self, obj: _CE) -> _CE:
-        ...
+    def __call__(self, obj: _CE) -> _CE: ...
+
+
+class _HasDialect(Protocol):
+    """protocol for Engine/Connection-like objects that have dialect
+    attribute.
+    """
+
+    @property
+    def dialect(self) -> Dialect: ...
 
 
 # match column types that are not ORM entities
@@ -97,6 +114,7 @@ _NOT_ENTITY = TypeVar(
     "_NOT_ENTITY",
     int,
     str,
+    bool,
     "datetime",
     "date",
     "time",
@@ -106,13 +124,15 @@ _NOT_ENTITY = TypeVar(
     "Decimal",
 )
 
+_StarOrOne = Literal["*", 1]
+
 _MAYBE_ENTITY = TypeVar(
     "_MAYBE_ENTITY",
     roles.ColumnsClauseRole,
-    Literal["*", 1],
+    _StarOrOne,
     Type[Any],
-    Inspectable[_HasClauseElement],
-    _HasClauseElement,
+    Inspectable[_HasClauseElement[Any]],
+    _HasClauseElement[Any],
 )
 
 
@@ -126,7 +146,7 @@ _TextCoercedExpressionArgument = Union[
     str,
     "TextClause",
     "ColumnElement[_T]",
-    _HasClauseElement,
+    _HasClauseElement[_T],
     roles.ExpressionElementRole[_T],
 ]
 
@@ -134,10 +154,10 @@ _ColumnsClauseArgument = Union[
     roles.TypedColumnsClauseRole[_T],
     roles.ColumnsClauseRole,
     "SQLCoreOperations[_T]",
-    Literal["*", 1],
+    _StarOrOne,
     Type[_T],
-    Inspectable[_HasClauseElement],
-    _HasClauseElement,
+    Inspectable[_HasClauseElement[_T]],
+    _HasClauseElement[_T],
 ]
 """open-ended SELECT columns clause argument.
 
@@ -155,8 +175,6 @@ _TypedColumnClauseArgument = Union[
     Type[_T],
 ]
 
-_TP = TypeVar("_TP", bound=Tuple[Any, ...])
-
 _T0 = TypeVar("_T0", bound=Any)
 _T1 = TypeVar("_T1", bound=Any)
 _T2 = TypeVar("_T2", bound=Any)
@@ -171,9 +189,10 @@ _T9 = TypeVar("_T9", bound=Any)
 
 _ColumnExpressionArgument = Union[
     "ColumnElement[_T]",
-    _HasClauseElement,
+    _HasClauseElement[_T],
     "SQLCoreOperations[_T]",
     roles.ExpressionElementRole[_T],
+    roles.TypedColumnsClauseRole[_T],
     Callable[[], "ColumnElement[_T]"],
     "LambdaElement",
 ]
@@ -198,6 +217,12 @@ _ColumnExpressionOrLiteralArgument = Union[Any, _ColumnExpressionArgument[_T]]
 
 _ColumnExpressionOrStrLabelArgument = Union[str, _ColumnExpressionArgument[_T]]
 
+_ByArgument = Union[
+    Iterable[_ColumnExpressionOrStrLabelArgument[Any]],
+    _ColumnExpressionOrStrLabelArgument[Any],
+]
+"""Used for keyword-based ``order_by`` and ``partition_by`` parameters."""
+
 
 _InfoType = Dict[Any, Any]
 """the .info dictionary accepted and used throughout Core /ORM"""
@@ -205,8 +230,8 @@ _InfoType = Dict[Any, Any]
 _FromClauseArgument = Union[
     roles.FromClauseRole,
     Type[Any],
-    Inspectable[_HasClauseElement],
-    _HasClauseElement,
+    Inspectable[_HasClauseElement[Any]],
+    _HasClauseElement[Any],
 ]
 """A FROM clause, like we would send to select().select_from().
 
@@ -227,13 +252,15 @@ come from the ORM.
 """
 
 _SelectStatementForCompoundArgument = Union[
-    "SelectBase", roles.CompoundElementRole
+    "Select[Unpack[_Ts]]",
+    "CompoundSelect[Unpack[_Ts]]",
+    roles.CompoundElementRole,
 ]
 """SELECT statement acceptable by ``union()`` and other SQL set operations"""
 
 _DMLColumnArgument = Union[
     str,
-    _HasClauseElement,
+    _HasClauseElement[Any],
     roles.DMLColumnRole,
     "SQLCoreOperations[Any]",
 ]
@@ -258,14 +285,16 @@ used for :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`, etc.
 
 """
 
+_DDLColumnReferenceArgument = _DDLColumnArgument
+
 _DMLTableArgument = Union[
     "TableClause",
     "Join",
     "Alias",
     "CTE",
     Type[Any],
-    Inspectable[_HasClauseElement],
-    _HasClauseElement,
+    Inspectable[_HasClauseElement[Any]],
+    _HasClauseElement[Any],
 ]
 
 _PropagateAttrsType = util.immutabledict[str, Any]
@@ -278,58 +307,51 @@ _LimitOffsetType = Union[int, _ColumnExpressionArgument[int], None]
 
 _AutoIncrementType = Union[bool, Literal["auto", "ignore_fk"]]
 
+_CreateDropBind = Union["Engine", "Connection", "MockConnection"]
+
 if TYPE_CHECKING:
 
-    def is_sql_compiler(c: Compiled) -> TypeGuard[SQLCompiler]:
-        ...
+    def is_sql_compiler(c: Compiled) -> TypeGuard[SQLCompiler]: ...
 
-    def is_ddl_compiler(c: Compiled) -> TypeGuard[DDLCompiler]:
-        ...
+    def is_ddl_compiler(c: Compiled) -> TypeGuard[DDLCompiler]: ...
 
-    def is_named_from_clause(t: FromClauseRole) -> TypeGuard[NamedFromClause]:
-        ...
+    def is_named_from_clause(
+        t: FromClauseRole,
+    ) -> TypeGuard[NamedFromClause]: ...
 
-    def is_column_element(c: ClauseElement) -> TypeGuard[ColumnElement[Any]]:
-        ...
+    def is_column_element(
+        c: ClauseElement,
+    ) -> TypeGuard[ColumnElement[Any]]: ...
 
     def is_keyed_column_element(
         c: ClauseElement,
-    ) -> TypeGuard[KeyedColumnElement[Any]]:
-        ...
+    ) -> TypeGuard[KeyedColumnElement[Any]]: ...
 
-    def is_text_clause(c: ClauseElement) -> TypeGuard[TextClause]:
-        ...
+    def is_text_clause(c: ClauseElement) -> TypeGuard[TextClause]: ...
 
-    def is_from_clause(c: ClauseElement) -> TypeGuard[FromClause]:
-        ...
+    def is_from_clause(c: ClauseElement) -> TypeGuard[FromClause]: ...
 
-    def is_tuple_type(t: TypeEngine[Any]) -> TypeGuard[TupleType]:
-        ...
+    def is_tuple_type(t: TypeEngine[Any]) -> TypeGuard[TupleType]: ...
 
-    def is_table_value_type(t: TypeEngine[Any]) -> TypeGuard[TableValueType]:
-        ...
+    def is_table_value_type(
+        t: TypeEngine[Any],
+    ) -> TypeGuard[TableValueType]: ...
 
-    def is_selectable(t: Any) -> TypeGuard[Selectable]:
-        ...
+    def is_selectable(t: Any) -> TypeGuard[Selectable]: ...
 
     def is_select_base(
-        t: Union[Executable, ReturnsRows]
-    ) -> TypeGuard[SelectBase]:
-        ...
+        t: Union[Executable, ReturnsRows],
+    ) -> TypeGuard[SelectBase]: ...
 
     def is_select_statement(
-        t: Union[Executable, ReturnsRows]
-    ) -> TypeGuard[Select[Any]]:
-        ...
+        t: Union[Executable, ReturnsRows],
+    ) -> TypeGuard[Select[Unpack[TupleAny]]]: ...
 
-    def is_table(t: FromClause) -> TypeGuard[TableClause]:
-        ...
+    def is_table(t: FromClause) -> TypeGuard[TableClause]: ...
 
-    def is_subquery(t: FromClause) -> TypeGuard[Subquery]:
-        ...
+    def is_subquery(t: FromClause) -> TypeGuard[Subquery]: ...
 
-    def is_dml(c: ClauseElement) -> TypeGuard[UpdateBase]:
-        ...
+    def is_dml(c: ClauseElement) -> TypeGuard[UpdateBase]: ...
 
 else:
     is_sql_compiler = operator.attrgetter("is_sql")
@@ -357,7 +379,7 @@ def is_quoted_name(s: str) -> TypeGuard[quoted_name]:
     return hasattr(s, "quote")
 
 
-def is_has_clause_element(s: object) -> TypeGuard[_HasClauseElement]:
+def is_has_clause_element(s: object) -> TypeGuard[_HasClauseElement[Any]]:
     return hasattr(s, "__clause_element__")
 
 
@@ -380,20 +402,17 @@ def _unexpected_kw(methname: str, kw: Dict[str, Any]) -> NoReturn:
 @overload
 def Nullable(
     val: "SQLCoreOperations[_T]",
-) -> "SQLCoreOperations[Optional[_T]]":
-    ...
+) -> "SQLCoreOperations[Optional[_T]]": ...
 
 
 @overload
 def Nullable(
     val: roles.ExpressionElementRole[_T],
-) -> roles.ExpressionElementRole[Optional[_T]]:
-    ...
+) -> roles.ExpressionElementRole[Optional[_T]]: ...
 
 
 @overload
-def Nullable(val: Type[_T]) -> Type[Optional[_T]]:
-    ...
+def Nullable(val: Type[_T]) -> Type[Optional[_T]]: ...
 
 
 def Nullable(
@@ -417,25 +436,21 @@ def Nullable(
 @overload
 def NotNullable(
     val: "SQLCoreOperations[Optional[_T]]",
-) -> "SQLCoreOperations[_T]":
-    ...
+) -> "SQLCoreOperations[_T]": ...
 
 
 @overload
 def NotNullable(
     val: roles.ExpressionElementRole[Optional[_T]],
-) -> roles.ExpressionElementRole[_T]:
-    ...
+) -> roles.ExpressionElementRole[_T]: ...
 
 
 @overload
-def NotNullable(val: Type[Optional[_T]]) -> Type[_T]:
-    ...
+def NotNullable(val: Type[Optional[_T]]) -> Type[_T]: ...
 
 
 @overload
-def NotNullable(val: Optional[Type[_T]]) -> Type[_T]:
-    ...
+def NotNullable(val: Optional[Type[_T]]) -> Type[_T]: ...
 
 
 def NotNullable(

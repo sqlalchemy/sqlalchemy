@@ -1,3 +1,9 @@
+# testing/suite/test_rowcount.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from sqlalchemy import bindparam
@@ -198,7 +204,7 @@ class RowCountTest(fixtures.TablesTest):
     def test_text_rowcount(self, connection):
         # test issue #3622, make sure eager rowcount is called for text
         result = connection.execute(
-            text("update employees set department='Z' " "where department='C'")
+            text("update employees set department='Z' where department='C'")
         )
         eq_(result.rowcount, 3)
 

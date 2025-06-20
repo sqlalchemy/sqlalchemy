@@ -1,5 +1,5 @@
 # orm/sync.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -19,7 +19,7 @@ from . import util as orm_util
 from .base import PassiveFlag
 
 
-def populate(
+def _populate(
     source,
     source_mapper,
     dest,
@@ -62,7 +62,7 @@ def populate(
             uowcommit.attributes[("pk_cascaded", dest, r)] = True
 
 
-def bulk_populate_inherit_keys(source_dict, source_mapper, synchronize_pairs):
+def _bulk_populate_inherit_keys(source_dict, source_mapper, synchronize_pairs):
     # a simplified version of populate() used by bulk insert mode
     for l, r in synchronize_pairs:
         try:
@@ -78,7 +78,7 @@ def bulk_populate_inherit_keys(source_dict, source_mapper, synchronize_pairs):
             _raise_col_to_prop(True, source_mapper, l, source_mapper, r, err)
 
 
-def clear(dest, dest_mapper, synchronize_pairs):
+def _clear(dest, dest_mapper, synchronize_pairs):
     for l, r in synchronize_pairs:
         if (
             r.primary_key
@@ -86,8 +86,9 @@ def clear(dest, dest_mapper, synchronize_pairs):
             not in orm_util._none_set
         ):
             raise AssertionError(
-                "Dependency rule tried to blank-out primary key "
-                "column '%s' on instance '%s'" % (r, orm_util.state_str(dest))
+                f"Dependency rule on column '{l}' "
+                "tried to blank-out primary key "
+                f"column '{r}' on instance '{orm_util.state_str(dest)}'"
             )
         try:
             dest_mapper._set_state_attr_by_column(dest, dest.dict, r, None)
@@ -95,7 +96,7 @@ def clear(dest, dest_mapper, synchronize_pairs):
             _raise_col_to_prop(True, None, l, dest_mapper, r, err)
 
 
-def update(source, source_mapper, dest, old_prefix, synchronize_pairs):
+def _update(source, source_mapper, dest, old_prefix, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
             oldvalue = source_mapper._get_committed_attr_by_column(
@@ -110,7 +111,7 @@ def update(source, source_mapper, dest, old_prefix, synchronize_pairs):
         dest[old_prefix + r.key] = oldvalue
 
 
-def populate_dict(source, source_mapper, dict_, synchronize_pairs):
+def _populate_dict(source, source_mapper, dict_, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
             value = source_mapper._get_state_attr_by_column(
@@ -122,7 +123,7 @@ def populate_dict(source, source_mapper, dict_, synchronize_pairs):
         dict_[r.key] = value
 
 
-def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
+def _source_modified(uowcommit, source, source_mapper, synchronize_pairs):
     """return true if the source object has changes from an old to a
     new value on the given synchronize pairs
 

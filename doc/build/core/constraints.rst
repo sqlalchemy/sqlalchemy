@@ -308,8 +308,12 @@ arguments. The value is any string which will be output after the appropriate
         ),
     )
 
-Note that these clauses require ``InnoDB`` tables when used with MySQL.
-They may also not be supported on other databases.
+Note that some backends have special requirements for cascades to function:
+
+* MySQL / MariaDB - the ``InnoDB`` storage engine should be used (this is
+  typically the default in modern databases)
+* SQLite - constraints are not enabled by default.
+  See :ref:`sqlite_foreign_keys`
 
 .. seealso::
 
@@ -319,6 +323,12 @@ They may also not be supported on other databases.
     :ref:`passive_deletes`
 
     :ref:`passive_deletes_many_to_many`
+
+    :ref:`postgresql_constraint_options` - indicates additional options
+    available for foreign key cascades such as column lists
+
+    :ref:`sqlite_foreign_keys` - background on enabling foreign key support
+    with SQLite
 
 .. _schema_unique_constraint:
 
@@ -644,11 +654,6 @@ name as follows::
     as well as a listing of all available naming components.
 
     `The Importance of Naming Constraints <https://alembic.sqlalchemy.org/en/latest/naming.html>`_ - in the Alembic documentation.
-
-
-.. versionadded:: 1.3.0 added multi-column naming tokens such as ``%(column_0_N_name)s``.
-   Generated names that go beyond the character limit for the target database will be
-   deterministically truncated.
 
 .. _naming_check_constraints:
 

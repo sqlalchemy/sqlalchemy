@@ -279,17 +279,24 @@ Facts about :attr:`_engine.CursorResult.rowcount`:
   the statement.   It does not matter if the row were actually modified or not.
 
 * :attr:`_engine.CursorResult.rowcount` is not necessarily available for an UPDATE
-  or DELETE statement that uses RETURNING.
+  or DELETE statement that uses RETURNING, or for one that uses an
+  :ref:`executemany <tutorial_multiple_parameters>` execution.   The availability
+  depends on the DBAPI module in use.
 
-* For an :ref:`executemany <tutorial_multiple_parameters>` execution,
-  :attr:`_engine.CursorResult.rowcount` may not be available either, which depends
-  highly on the DBAPI module in use as well as configured options.  The
-  attribute :attr:`_engine.CursorResult.supports_sane_multi_rowcount` indicates
-  if this value will be available for the current backend in use.
+* In any case where the DBAPI does not determine the rowcount for some type
+  of statement, the returned value will be ``-1``.
+
+* SQLAlchemy pre-memoizes the DBAPIs ``cursor.rowcount`` value before the cursor
+  is closed, as some DBAPIs don't support accessing this attribute after the
+  fact.  In order to pre-memoize ``cursor.rowcount`` for a statement that is
+  not UPDATE or DELETE, such as INSERT or SELECT, the
+  :paramref:`_engine.Connection.execution_options.preserve_rowcount` execution
+  option may be used.
 
 * Some drivers, particularly third party dialects for non-relational databases,
   may not support :attr:`_engine.CursorResult.rowcount` at all.   The
-  :attr:`_engine.CursorResult.supports_sane_rowcount` will indicate this.
+  :attr:`_engine.CursorResult.supports_sane_rowcount` cursor attribute will
+  indicate this.
 
 * "rowcount" is used by the ORM :term:`unit of work` process to validate that
   an UPDATE or DELETE statement matched the expected number of rows, and is

@@ -1149,9 +1149,9 @@ class DefaultTest(fixtures.MappedTest):
         mp = self.mapper_registry.map_imperatively(
             Hoho,
             default_t,
-            eager_defaults="auto"
-            if eager_defaults.auto
-            else bool(eager_defaults),
+            eager_defaults=(
+                "auto" if eager_defaults.auto else bool(eager_defaults)
+            ),
         )
 
         h1 = Hoho(hoho=althohoval)
@@ -2299,7 +2299,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             testing.db,
             session.flush,
             CompiledSQL(
-                "INSERT INTO users (name) " "VALUES (:name)",
+                "INSERT INTO users (name) VALUES (:name)",
                 {"name": "imnewlyadded"},
             ),
             AllOf(
@@ -2463,43 +2463,6 @@ class ManyToOneTest(_fixtures.FixtureTest):
         u2 = session.get(User, u2.id)
         assert a1.user is u2
 
-    def test_bidirectional_no_load(self):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={
-                "addresses": relationship(
-                    Address, backref="user", lazy="noload"
-                )
-            },
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        # try it on unsaved objects
-        u1 = User(name="u1")
-        a1 = Address(email_address="e1")
-        a1.user = u1
-
-        session = fixture_session()
-        session.add(u1)
-        session.flush()
-        session.expunge_all()
-
-        a1 = session.get(Address, a1.id)
-
-        a1.user = None
-        session.flush()
-        session.expunge_all()
-        assert session.get(Address, a1.id).user is None
-        assert session.get(User, u1.id).addresses == []
-
 
 class ManyToManyTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -2616,7 +2579,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
                 {"description": "item4updated", "items_id": objects[4].id},
             ),
             CompiledSQL(
-                "INSERT INTO keywords (name) " "VALUES (:name)",
+                "INSERT INTO keywords (name) VALUES (:name)",
                 {"name": "yellow"},
             ),
             CompiledSQL(
@@ -3416,7 +3379,7 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
             # sync operation during _save_obj().update, this is safe to remove
             # again.
             CompiledSQL(
-                "UPDATE child SET pid=:pid " "WHERE child.cid = :child_cid",
+                "UPDATE child SET pid=:pid WHERE child.cid = :child_cid",
                 {"pid": 1, "child_cid": 1},
             ),
         )

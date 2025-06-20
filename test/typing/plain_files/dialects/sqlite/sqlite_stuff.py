@@ -21,3 +21,6 @@ unique = UniqueConstraint(name="my_constraint")
 insert(Test).on_conflict_do_nothing("foo", Test.id > 0).on_conflict_do_update(
     unique, Test.id > 0, {"id": 42, Test.data: 99}, Test.id == 22
 ).excluded.foo.desc()
+
+s1 = insert(Test)
+s1.on_conflict_do_update(set_=s1.excluded)

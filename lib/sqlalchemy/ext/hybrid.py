@@ -1,5 +1,5 @@
 # ext/hybrid.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -34,8 +34,9 @@ may receive the class directly, depending on context::
     class Base(DeclarativeBase):
         pass
 
+
     class Interval(Base):
-        __tablename__ = 'interval'
+        __tablename__ = "interval"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         start: Mapped[int]
@@ -56,7 +57,6 @@ may receive the class directly, depending on context::
         @hybrid_method
         def intersects(self, other: Interval) -> bool:
             return self.contains(other.start) | self.contains(other.end)
-
 
 Above, the ``length`` property returns the difference between the
 ``end`` and ``start`` attributes.  With an instance of ``Interval``,
@@ -150,6 +150,7 @@ the absolute value function::
     from sqlalchemy import func
     from sqlalchemy import type_coerce
 
+
     class Interval(Base):
         # ...
 
@@ -214,6 +215,7 @@ example below that illustrates the use of :meth:`.hybrid_property.setter` and
 
     # correct use, however is not accepted by pep-484 tooling
 
+
     class Interval(Base):
         # ...
 
@@ -255,6 +257,7 @@ decorator to be re-used with different method names, while still producing
 a single decorator under one name::
 
     # correct use which is also accepted by pep-484 tooling
+
 
     class Interval(Base):
         # ...
@@ -330,6 +333,7 @@ expression is used as the column that's the target of the SET.  If our
 ``Interval.start``, this could be substituted directly::
 
     from sqlalchemy import update
+
     stmt = update(Interval).values({Interval.start_point: 10})
 
 However, when using a composite hybrid like ``Interval.length``, this
@@ -339,6 +343,7 @@ this, using the :meth:`.hybrid_property.update_expression` decorator.
 A handler that works similarly to our setter would be::
 
     from typing import List, Tuple, Any
+
 
     class Interval(Base):
         # ...
@@ -352,10 +357,10 @@ A handler that works similarly to our setter would be::
             self.end = self.start + value
 
         @length.inplace.update_expression
-        def _length_update_expression(cls, value: Any) -> List[Tuple[Any, Any]]:
-            return [
-                (cls.end, cls.start + value)
-            ]
+        def _length_update_expression(
+            cls, value: Any
+        ) -> List[Tuple[Any, Any]]:
+            return [(cls.end, cls.start + value)]
 
 Above, if we use ``Interval.length`` in an UPDATE expression, we get
 a hybrid SET expression:
@@ -412,15 +417,16 @@ mapping which relates a ``User`` to a ``SavingsAccount``::
 
 
     class SavingsAccount(Base):
-        __tablename__ = 'account'
+        __tablename__ = "account"
         id: Mapped[int] = mapped_column(primary_key=True)
-        user_id: Mapped[int] = mapped_column(ForeignKey('user.id'))
+        user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         balance: Mapped[Decimal] = mapped_column(Numeric(15, 5))
 
         owner: Mapped[User] = relationship(back_populates="accounts")
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(100))
 
@@ -448,7 +454,10 @@ mapping which relates a ``User`` to a ``SavingsAccount``::
         @balance.inplace.expression
         @classmethod
         def _balance_expression(cls) -> SQLColumnExpression[Optional[Decimal]]:
-            return cast("SQLColumnExpression[Optional[Decimal]]", SavingsAccount.balance)
+            return cast(
+                "SQLColumnExpression[Optional[Decimal]]",
+                SavingsAccount.balance,
+            )
 
 The above hybrid property ``balance`` works with the first
 ``SavingsAccount`` entry in the list of accounts for this user.   The
@@ -471,8 +480,11 @@ be used in an appropriate context such that an appropriate join to
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
-    >>> print(select(User, User.balance).
-    ...       join(User.accounts).filter(User.balance > 5000))
+    >>> print(
+    ...     select(User, User.balance)
+    ...     .join(User.accounts)
+    ...     .filter(User.balance > 5000)
+    ... )
     {printsql}SELECT "user".id AS user_id, "user".name AS user_name,
     account.balance AS account_balance
     FROM "user" JOIN account ON "user".id = account.user_id
@@ -487,8 +499,11 @@ would use an outer join:
 
     >>> from sqlalchemy import select
     >>> from sqlalchemy import or_
-    >>> print (select(User, User.balance).outerjoin(User.accounts).
-    ...         filter(or_(User.balance < 5000, User.balance == None)))
+    >>> print(
+    ...     select(User, User.balance)
+    ...     .outerjoin(User.accounts)
+    ...     .filter(or_(User.balance < 5000, User.balance == None))
+    ... )
     {printsql}SELECT "user".id AS user_id, "user".name AS user_name,
     account.balance AS account_balance
     FROM "user" LEFT OUTER JOIN account ON "user".id = account.user_id
@@ -528,15 +543,16 @@ we can adjust our ``SavingsAccount`` example to aggregate the balances for
 
 
     class SavingsAccount(Base):
-        __tablename__ = 'account'
+        __tablename__ = "account"
         id: Mapped[int] = mapped_column(primary_key=True)
-        user_id: Mapped[int] = mapped_column(ForeignKey('user.id'))
+        user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
         balance: Mapped[Decimal] = mapped_column(Numeric(15, 5))
 
         owner: Mapped[User] = relationship(back_populates="accounts")
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
         id: Mapped[int] = mapped_column(primary_key=True)
         name: Mapped[str] = mapped_column(String(100))
 
@@ -546,7 +562,9 @@ we can adjust our ``SavingsAccount`` example to aggregate the balances for
 
         @hybrid_property
         def balance(self) -> Decimal:
-            return sum((acc.balance for acc in self.accounts), start=Decimal("0"))
+            return sum(
+                (acc.balance for acc in self.accounts), start=Decimal("0")
+            )
 
         @balance.inplace.expression
         @classmethod
@@ -556,7 +574,6 @@ we can adjust our ``SavingsAccount`` example to aggregate the balances for
                 .where(SavingsAccount.user_id == cls.id)
                 .label("total_balance")
             )
-
 
 The above recipe will give us the ``balance`` column which renders
 a correlated SELECT:
@@ -604,6 +621,7 @@ named ``word_insensitive``::
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     class Base(DeclarativeBase):
         pass
 
@@ -612,8 +630,9 @@ named ``word_insensitive``::
         def __eq__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             return func.lower(self.__clause_element__()) == func.lower(other)
 
+
     class SearchWord(Base):
-        __tablename__ = 'searchword'
+        __tablename__ = "searchword"
 
         id: Mapped[int] = mapped_column(primary_key=True)
         word: Mapped[str]
@@ -675,6 +694,7 @@ how the standard Python ``@property`` object works::
         def _name_setter(self, value: str) -> None:
             self.first_name = value
 
+
     class FirstNameLastName(FirstNameOnly):
         # ...
 
@@ -684,11 +704,11 @@ how the standard Python ``@property`` object works::
         # of FirstNameOnly.name that is local to FirstNameLastName
         @FirstNameOnly.name.getter
         def name(self) -> str:
-            return self.first_name + ' ' + self.last_name
+            return self.first_name + " " + self.last_name
 
         @name.inplace.setter
         def _name_setter(self, value: str) -> None:
-            self.first_name, self.last_name = value.split(' ', 1)
+            self.first_name, self.last_name = value.split(" ", 1)
 
 Above, the ``FirstNameLastName`` class refers to the hybrid from
 ``FirstNameOnly.name`` to repurpose its getter and setter for the subclass.
@@ -709,8 +729,7 @@ reference the instrumented attribute back to the hybrid object::
         @FirstNameOnly.name.overrides.expression
         @classmethod
         def name(cls):
-            return func.concat(cls.first_name, ' ', cls.last_name)
-
+            return func.concat(cls.first_name, " ", cls.last_name)
 
 Hybrid Value Objects
 --------------------
@@ -751,7 +770,7 @@ Replacing the previous ``CaseInsensitiveComparator`` class with a new
         def __str__(self):
             return self.word
 
-        key = 'word'
+        key = "word"
         "Label to apply to Query tuple results"
 
 Above, the ``CaseInsensitiveWord`` object represents ``self.word``, which may
@@ -762,7 +781,7 @@ SQL side or Python side. Our ``SearchWord`` class can now deliver the
 ``CaseInsensitiveWord`` object unconditionally from a single hybrid call::
 
     class SearchWord(Base):
-        __tablename__ = 'searchword'
+        __tablename__ = "searchword"
         id: Mapped[int] = mapped_column(primary_key=True)
         word: Mapped[str]
 
@@ -834,6 +853,7 @@ from typing import Generic
 from typing import List
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -854,7 +874,6 @@ from ..sql.elements import SQLCoreOperations
 from ..util.typing import Concatenate
 from ..util.typing import Literal
 from ..util.typing import ParamSpec
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 if TYPE_CHECKING:
@@ -904,13 +923,11 @@ class HybridExtensionType(InspectionAttrExtensionType):
 
 
 class _HybridGetterType(Protocol[_T_co]):
-    def __call__(s, self: Any) -> _T_co:
-        ...
+    def __call__(s, self: Any) -> _T_co: ...
 
 
 class _HybridSetterType(Protocol[_T_con]):
-    def __call__(s, self: Any, value: _T_con) -> None:
-        ...
+    def __call__(s, self: Any, value: _T_con) -> None: ...
 
 
 class _HybridUpdaterType(Protocol[_T_con]):
@@ -918,25 +935,21 @@ class _HybridUpdaterType(Protocol[_T_con]):
         s,
         cls: Any,
         value: Union[_T_con, _ColumnExpressionArgument[_T_con]],
-    ) -> List[Tuple[_DMLColumnArgument, Any]]:
-        ...
+    ) -> List[Tuple[_DMLColumnArgument, Any]]: ...
 
 
 class _HybridDeleterType(Protocol[_T_co]):
-    def __call__(s, self: Any) -> None:
-        ...
+    def __call__(s, self: Any) -> None: ...
 
 
 class _HybridExprCallableType(Protocol[_T_co]):
     def __call__(
         s, cls: Any
-    ) -> Union[_HasClauseElement, SQLColumnExpression[_T_co]]:
-        ...
+    ) -> Union[_HasClauseElement[_T_co], SQLColumnExpression[_T_co]]: ...
 
 
 class _HybridComparatorCallableType(Protocol[_T]):
-    def __call__(self, cls: Any) -> Comparator[_T]:
-        ...
+    def __call__(self, cls: Any) -> Comparator[_T]: ...
 
 
 class _HybridClassLevelAccessor(QueryableAttribute[_T]):
@@ -947,23 +960,24 @@ class _HybridClassLevelAccessor(QueryableAttribute[_T]):
 
     if TYPE_CHECKING:
 
-        def getter(self, fget: _HybridGetterType[_T]) -> hybrid_property[_T]:
-            ...
+        def getter(
+            self, fget: _HybridGetterType[_T]
+        ) -> hybrid_property[_T]: ...
 
-        def setter(self, fset: _HybridSetterType[_T]) -> hybrid_property[_T]:
-            ...
+        def setter(
+            self, fset: _HybridSetterType[_T]
+        ) -> hybrid_property[_T]: ...
 
-        def deleter(self, fdel: _HybridDeleterType[_T]) -> hybrid_property[_T]:
-            ...
+        def deleter(
+            self, fdel: _HybridDeleterType[_T]
+        ) -> hybrid_property[_T]: ...
 
         @property
-        def overrides(self) -> hybrid_property[_T]:
-            ...
+        def overrides(self) -> hybrid_property[_T]: ...
 
         def update_expression(
             self, meth: _HybridUpdaterType[_T]
-        ) -> hybrid_property[_T]:
-            ...
+        ) -> hybrid_property[_T]: ...
 
 
 class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
@@ -987,6 +1001,7 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
         Usage is typically via decorator::
 
             from sqlalchemy.ext.hybrid import hybrid_method
+
 
             class SomeClass:
                 @hybrid_method
@@ -1025,14 +1040,12 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[object]
-    ) -> Callable[_P, SQLCoreOperations[_R]]:
-        ...
+    ) -> Callable[_P, SQLCoreOperations[_R]]: ...
 
     @overload
     def __get__(
         self, instance: object, owner: Type[object]
-    ) -> Callable[_P, _R]:
-        ...
+    ) -> Callable[_P, _R]: ...
 
     def __get__(
         self, instance: Optional[object], owner: Type[object]
@@ -1087,6 +1100,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
 
             from sqlalchemy.ext.hybrid import hybrid_property
 
+
             class SomeClass:
                 @hybrid_property
                 def value(self):
@@ -1103,21 +1117,18 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         self.expr = _unwrap_classmethod(expr)
         self.custom_comparator = _unwrap_classmethod(custom_comparator)
         self.update_expr = _unwrap_classmethod(update_expr)
-        util.update_wrapper(self, fget)
+        util.update_wrapper(self, fget)  # type: ignore[arg-type]
 
     @overload
-    def __get__(self, instance: Any, owner: Literal[None]) -> Self:
-        ...
+    def __get__(self, instance: Any, owner: Literal[None]) -> Self: ...
 
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[object]
-    ) -> _HybridClassLevelAccessor[_T]:
-        ...
+    ) -> _HybridClassLevelAccessor[_T]: ...
 
     @overload
-    def __get__(self, instance: object, owner: Type[object]) -> _T:
-        ...
+    def __get__(self, instance: object, owner: Type[object]) -> _T: ...
 
     def __get__(
         self, instance: Optional[object], owner: Optional[Type[object]]
@@ -1168,14 +1179,13 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
                 def foobar(self):
                     return self._foobar
 
+
             class SubClass(SuperClass):
                 # ...
 
                 @SuperClass.foobar.overrides.expression
                 def foobar(cls):
                     return func.subfoobar(self._foobar)
-
-        .. versionadded:: 1.2
 
         .. seealso::
 
@@ -1260,11 +1270,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         return hybrid_property._InPlace(self)
 
     def getter(self, fget: _HybridGetterType[_T]) -> hybrid_property[_T]:
-        """Provide a modifying decorator that defines a getter method.
-
-        .. versionadded:: 1.2
-
-        """
+        """Provide a modifying decorator that defines a getter method."""
 
         return self._copy(fget=fget)
 
@@ -1377,12 +1383,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
                 @fullname.update_expression
                 def fullname(cls, value):
                     fname, lname = value.split(" ", 1)
-                    return [
-                        (cls.first_name, fname),
-                        (cls.last_name, lname)
-                    ]
-
-        .. versionadded:: 1.2
+                    return [(cls.first_name, fname), (cls.last_name, lname)]
 
         """
         return self._copy(update_expr=meth)
@@ -1411,7 +1412,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
     def _get_comparator(
         self, comparator: Any
     ) -> Callable[[Any], _HybridClassLevelAccessor[_T]]:
-        proxy_attr = attributes.create_proxied_attribute(self)
+        proxy_attr = attributes._create_proxied_attribute(self)
 
         def expr_comparator(
             owner: Type[object],
@@ -1447,7 +1448,7 @@ class Comparator(interfaces.PropComparator[_T]):
     classes for usage with hybrids."""
 
     def __init__(
-        self, expression: Union[_HasClauseElement, SQLColumnExpression[_T]]
+        self, expression: Union[_HasClauseElement[_T], SQLColumnExpression[_T]]
     ):
         self.expression = expression
 
@@ -1482,7 +1483,7 @@ class ExprComparator(Comparator[_T]):
     def __init__(
         self,
         cls: Type[Any],
-        expression: Union[_HasClauseElement, SQLColumnExpression[_T]],
+        expression: Union[_HasClauseElement[_T], SQLColumnExpression[_T]],
         hybrid: hybrid_property[_T],
     ):
         self.cls = cls

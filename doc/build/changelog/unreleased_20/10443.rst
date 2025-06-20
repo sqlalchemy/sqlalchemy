@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 10443
-
-    Fixed 2.0 regression where the :class:`.DDL` construct would no longer
-    ``__repr__()`` due to the removed ``on`` attribute not being accommodated.
-    Pull request courtesy Iuri de Silvio.

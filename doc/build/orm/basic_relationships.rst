@@ -1018,7 +1018,7 @@ within any of these string expressions::
 
 In an example like the above, the string passed to :class:`_orm.Mapped`
 can be disambiguated from a specific class argument by passing the class
-location string directly to :paramref:`_orm.relationship.argument` as well.
+location string directly to the first positional parameter (:paramref:`_orm.relationship.argument`) as well.
 Below illustrates a typing-only import for ``Child``, combined with a
 runtime specifier for the target class that will search for the correct
 name within the :class:`_orm.registry`::
@@ -1102,8 +1102,10 @@ that will be passed to ``eval()`` are:
     are **evaluated as Python code expressions using eval().  DO NOT PASS
     UNTRUSTED INPUT TO THESE ARGUMENTS.**
 
+.. _orm_declarative_table_adding_relationship:
+
 Adding Relationships to Mapped Classes After Declaration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It should also be noted that in a similar way as described at
 :ref:`orm_declarative_table_adding_columns`, any :class:`_orm.MapperProperty`
@@ -1116,15 +1118,13 @@ class were available, we could also apply it afterwards::
     # we create a Parent class which knows nothing about Child
 
 
-    class Parent(Base):
-        ...
+    class Parent(Base): ...
 
 
     # ... later, in Module B, which is imported after module A:
 
 
-    class Child(Base):
-        ...
+    class Child(Base): ...
 
 
     from module_a import Parent
@@ -1163,12 +1163,7 @@ Many-to-many relationships make use of the
 :paramref:`_orm.relationship.secondary` parameter, which ordinarily
 indicates a reference to a typically non-mapped :class:`_schema.Table`
 object or other Core selectable object.  Late evaluation
-using either a lambda callable or string name is supported, where string
-resolution works by evaluation of given Python expression which links
-identifier names to same-named :class:`_schema.Table` objects that
-are present in the same
-:class:`_schema.MetaData` collection referenced by the current
-:class:`_orm.registry`.
+using a lambda callable is typical.
 
 For the example given at :ref:`relationships_many_to_many`, if we assumed
 that the ``association_table`` :class:`.Table` object would be defined at a point later on in the
@@ -1183,9 +1178,16 @@ using a lambda as::
             "Child", secondary=lambda: association_table
         )
 
-Or to illustrate locating the same :class:`.Table` object by name,
-the name of the :class:`.Table` is used as the argument.
-From a Python perspective, this is a Python expression evaluated as a variable
+As a shortcut for table names that are also **valid Python identifiers**, the
+:paramref:`_orm.relationship.secondary` parameter may also be passed as a
+string, where resolution works by evaluation of the string as a Python
+expression, with simple identifier names linked to same-named
+:class:`_schema.Table` objects that are present in the same
+:class:`_schema.MetaData` collection referenced by the current
+:class:`_orm.registry`.
+
+In the example below, the expression
+``"association_table"`` is evaluated as a variable
 named "association_table" that is resolved against the table names within
 the :class:`.MetaData` collection::
 
@@ -1195,8 +1197,17 @@ the :class:`.MetaData` collection::
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[List["Child"]] = relationship(secondary="association_table")
 
+.. note:: When passed as a string, the name passed to
+    :paramref:`_orm.relationship.secondary` **must be a valid Python identifier**
+    starting with a letter and containing only alphanumeric characters or
+    underscores.   Other characters such as dashes etc. will be interpreted
+    as Python operators which will not resolve to the name given.  Please consider
+    using lambda expressions rather than strings for improved clarity.
+
 .. warning:: When passed as a string,
     :paramref:`_orm.relationship.secondary` argument is interpreted using Python's
     ``eval()`` function, even though it's typically the name of a table.
     **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+
+
 

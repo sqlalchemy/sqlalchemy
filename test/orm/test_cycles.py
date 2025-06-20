@@ -5,6 +5,7 @@ T1<->T2, with o2m or m2o between them, and a third T3 with o2m/m2o to one/both
 T1/T2.
 
 """
+
 from itertools import count
 
 from sqlalchemy import bindparam
@@ -1187,7 +1188,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                 ],
             ),
             CompiledSQL(
-                "DELETE FROM person " "WHERE person.id = :id",
+                "DELETE FROM person WHERE person.id = :id",
                 lambda ctx: [{"id": p.id}],
             ),
             CompiledSQL(

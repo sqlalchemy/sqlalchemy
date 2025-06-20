@@ -123,8 +123,9 @@ object's dictionary of tables::
 
     metadata_obj = MetaData()
     metadata_obj.reflect(bind=someengine)
-    for table in reversed(metadata_obj.sorted_tables):
-        someengine.execute(table.delete())
+    with someengine.begin() as conn:
+        for table in reversed(metadata_obj.sorted_tables):
+            conn.execute(table.delete())
 
 .. _metadata_reflection_schemas:
 

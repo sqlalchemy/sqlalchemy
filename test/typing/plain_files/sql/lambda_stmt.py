@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Tuple
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Column
@@ -62,15 +61,15 @@ with e.connect() as conn:
     result = conn.execute(s6)
 
     if TYPE_CHECKING:
-        # EXPECTED_TYPE: CursorResult[Any]
+        # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
         reveal_type(result)
 
     # we can type these like this
-    my_result: Result[Tuple[User]] = conn.execute(s6)
+    my_result: Result[User] = conn.execute(s6)
 
     if TYPE_CHECKING:
         # pyright and mypy disagree on the specific type here,
         # mypy sees Result as we said, pyright seems to upgrade it to
         # CursorResult
-        # EXPECTED_RE_TYPE: .*(?:Cursor)?Result\[Tuple\[.*User\]\]
+        # EXPECTED_RE_TYPE: .*(?:Cursor)?Result\[.*User\]
         reveal_type(my_result)

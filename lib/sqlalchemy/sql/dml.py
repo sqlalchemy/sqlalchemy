@@ -1,5 +1,5 @@
 # sql/dml.py
-# Copyright (C) 2009-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2009-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -18,11 +18,13 @@ from typing import cast
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -32,7 +34,6 @@ from typing import Union
 from . import coercions
 from . import roles
 from . import util as sql_util
-from ._typing import _TP
 from ._typing import _unexpected_kw
 from ._typing import is_column_element
 from ._typing import is_named_from_clause
@@ -42,11 +43,14 @@ from .base import _from_objects
 from .base import _generative
 from .base import _select_iterables
 from .base import ColumnCollection
+from .base import ColumnSet
 from .base import CompileState
 from .base import DialectKWArgs
 from .base import Executable
 from .base import Generative
 from .base import HasCompileState
+from .base import HasSyntaxExtensions
+from .base import SyntaxExtension
 from .elements import BooleanClauseList
 from .elements import ClauseElement
 from .elements import ColumnClause
@@ -66,7 +70,11 @@ from .visitors import InternalTraversal
 from .. import exc
 from .. import util
 from ..util.typing import Self
+from ..util.typing import TupleAny
 from ..util.typing import TypeGuard
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
+
 
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
@@ -91,14 +99,11 @@ if TYPE_CHECKING:
     from .selectable import Select
     from .selectable import Selectable
 
-    def isupdate(dml: DMLState) -> TypeGuard[UpdateDMLState]:
-        ...
+    def isupdate(dml: DMLState) -> TypeGuard[UpdateDMLState]: ...
 
-    def isdelete(dml: DMLState) -> TypeGuard[DeleteDMLState]:
-        ...
+    def isdelete(dml: DMLState) -> TypeGuard[DeleteDMLState]: ...
 
-    def isinsert(dml: DMLState) -> TypeGuard[InsertDMLState]:
-        ...
+    def isinsert(dml: DMLState) -> TypeGuard[InsertDMLState]: ...
 
 else:
     isupdate = operator.attrgetter("isupdate")
@@ -107,6 +112,7 @@ else:
 
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 _DMLColumnElement = Union[str, ColumnClause[Any]]
 _DMLTableElement = Union[TableClause, Alias, Join]
@@ -118,8 +124,7 @@ class DMLState(CompileState):
     _multi_parameters: Optional[
         List[MutableMapping[_DMLColumnElement, Any]]
     ] = None
-    _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
-    _parameter_ordering: Optional[List[_DMLColumnElement]] = None
+    _maintain_values_ordering: bool = False
     _primary_table: FromClause
     _supports_implicit_returning = True
 
@@ -137,9 +142,11 @@ class DMLState(CompileState):
     @classmethod
     def get_entity_description(cls, statement: UpdateBase) -> Dict[str, Any]:
         return {
-            "name": statement.table.name
-            if is_named_from_clause(statement.table)
-            else None,
+            "name": (
+                statement.table.name
+                if is_named_from_clause(statement.table)
+                else None
+            ),
             "table": statement.table,
         }
 
@@ -163,8 +170,7 @@ class DMLState(CompileState):
     if TYPE_CHECKING:
 
         @classmethod
-        def get_plugin_class(cls, statement: Executable) -> Type[DMLState]:
-            ...
+        def get_plugin_class(cls, statement: Executable) -> Type[DMLState]: ...
 
     @classmethod
     def _get_multi_crud_kv_pairs(
@@ -190,13 +196,15 @@ class DMLState(CompileState):
         return [
             (
                 coercions.expect(roles.DMLColumnRole, k),
-                v
-                if not needs_to_be_cacheable
-                else coercions.expect(
-                    roles.ExpressionElementRole,
-                    v,
-                    type_=NullType(),
-                    is_crud=True,
+                (
+                    v
+                    if not needs_to_be_cacheable
+                    else coercions.expect(
+                        roles.ExpressionElementRole,
+                        v,
+                        type_=NullType(),
+                        is_crud=True,
+                    )
                 ),
             )
             for k, v in kv_iterator
@@ -306,12 +314,14 @@ class InsertDMLState(DMLState):
     def _process_multi_values(self, statement: ValuesBase) -> None:
         for parameters in statement._multi_values:
             multi_parameters: List[MutableMapping[_DMLColumnElement, Any]] = [
-                {
-                    c.key: value
-                    for c, value in zip(statement.table.c, parameter_set)
-                }
-                if isinstance(parameter_set, collections_abc.Sequence)
-                else parameter_set
+                (
+                    {
+                        c.key: value
+                        for c, value in zip(statement.table.c, parameter_set)
+                    }
+                    if isinstance(parameter_set, collections_abc.Sequence)
+                    else parameter_set
+                )
                 for parameter_set in parameters
             ]
 
@@ -337,7 +347,7 @@ class UpdateDMLState(DMLState):
         self.statement = statement
 
         self.isupdate = True
-        if statement._ordered_values is not None:
+        if statement._maintain_values_ordering:
             self._process_ordered_values(statement)
         elif statement._values is not None:
             self._process_values(statement)
@@ -353,14 +363,12 @@ class UpdateDMLState(DMLState):
         )
 
     def _process_ordered_values(self, statement: ValuesBase) -> None:
-        parameters = statement._ordered_values
-
+        parameters = statement._values
         if self._no_parameters:
             self._no_parameters = False
             assert parameters is not None
             self._dict_parameters = dict(parameters)
-            self._ordered_values = parameters
-            self._parameter_ordering = [key for key, value in parameters]
+            self._maintain_values_ordering = True
         else:
             raise exc.InvalidRequestError(
                 "Can only invoke ordered_values() once, and not mixed "
@@ -396,9 +404,9 @@ class UpdateBase(
 
     __visit_name__ = "update_base"
 
-    _hints: util.immutabledict[
-        Tuple[_DMLTableElement, str], str
-    ] = util.EMPTY_DICT
+    _hints: util.immutabledict[Tuple[_DMLTableElement, str], str] = (
+        util.EMPTY_DICT
+    )
     named_with_column = False
 
     _label_style: SelectLabelStyle = (
@@ -407,19 +415,25 @@ class UpdateBase(
     table: _DMLTableElement
 
     _return_defaults = False
-    _return_defaults_columns: Optional[
-        Tuple[_ColumnsClauseElement, ...]
-    ] = None
+    _return_defaults_columns: Optional[Tuple[_ColumnsClauseElement, ...]] = (
+        None
+    )
     _supplemental_returning: Optional[Tuple[_ColumnsClauseElement, ...]] = None
     _returning: Tuple[_ColumnsClauseElement, ...] = ()
 
     is_dml = True
 
     def _generate_fromclause_column_proxies(
-        self, fromclause: FromClause
+        self,
+        fromclause: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
-        fromclause._columns._populate_separate_keys(
-            col._make_proxy(fromclause)
+        columns._populate_separate_keys(
+            col._make_proxy(
+                fromclause, primary_key=primary_key, foreign_keys=foreign_keys
+            )
             for col in self._all_selected_columns
             if is_column_element(col)
         )
@@ -446,7 +460,7 @@ class UpdateBase(
 
             upd = table.update().dialect_options(mysql_limit=10)
 
-        .. versionadded: 1.4 - this method supersedes the dialect options
+        .. versionadded:: 1.4 - this method supersedes the dialect options
            associated with the constructor.
 
 
@@ -523,11 +537,11 @@ class UpdateBase(
 
         E.g.::
 
-            stmt = table.insert().values(data='newdata').return_defaults()
+            stmt = table.insert().values(data="newdata").return_defaults()
 
             result = connection.execute(stmt)
 
-            server_created_at = result.returned_defaults['created_at']
+            server_created_at = result.returned_defaults["created_at"]
 
         When used against an UPDATE statement
         :meth:`.UpdateBase.return_defaults` instead looks for columns that
@@ -567,7 +581,8 @@ class UpdateBase(
 
         3. :meth:`.UpdateBase.return_defaults` can be called against any
            backend. Backends that don't support RETURNING will skip the usage
-           of the feature, rather than raising an exception. The return value
+           of the feature, rather than raising an exception, *unless*
+           ``supplemental_cols`` is passed. The return value
            of :attr:`_engine.CursorResult.returned_defaults` will be ``None``
            for backends that don't support RETURNING or for which the target
            :class:`.Table` sets :paramref:`.Table.implicit_returning` to
@@ -683,6 +698,16 @@ class UpdateBase(
                 )
 
         return self
+
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+        """Return ``True`` if this :class:`.ReturnsRows` is
+        'derived' from the given :class:`.FromClause`.
+
+        Since these are DMLs, we dont want such statements ever being adapted
+        so we return False for derives.
+
+        """
+        return False
 
     @_generative
     def returning(
@@ -959,11 +984,11 @@ class ValuesBase(UpdateBase):
 
     _supports_multi_parameters = False
 
-    select: Optional[Select[Any]] = None
+    select: Optional[Select[Unpack[TupleAny]]] = None
     """SELECT statement for INSERT .. FROM SELECT"""
 
     _post_values_clause: Optional[ClauseElement] = None
-    """used by extensions to Insert etc. to add additional syntacitcal
+    """used by extensions to Insert etc. to add additional syntactical
     constructs, e.g. ON CONFLICT etc."""
 
     _values: Optional[util.immutabledict[_DMLColumnElement, Any]] = None
@@ -975,7 +1000,7 @@ class ValuesBase(UpdateBase):
         ...,
     ] = ()
 
-    _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
+    _maintain_values_ordering: bool = False
 
     _select_names: Optional[List[str]] = None
     _inline: bool = False
@@ -988,12 +1013,13 @@ class ValuesBase(UpdateBase):
     @_generative
     @_exclusive_against(
         "_select_names",
-        "_ordered_values",
+        "_maintain_values_ordering",
         msgs={
             "_select_names": "This construct already inserts from a SELECT",
-            "_ordered_values": "This statement already has ordered "
+            "_maintain_values_ordering": "This statement already has ordered "
             "values present",
         },
+        defaults={"_maintain_values_ordering": False},
     )
     def values(
         self,
@@ -1029,7 +1055,7 @@ class ValuesBase(UpdateBase):
 
                 users.insert().values(name="some name")
 
-                users.update().where(users.c.id==5).values(name="some name")
+                users.update().where(users.c.id == 5).values(name="some name")
 
         :param \*args: As an alternative to passing key/value parameters,
          a dictionary, tuple, or list of dictionaries or tuples can be passed
@@ -1059,13 +1085,17 @@ class ValuesBase(UpdateBase):
          this syntax is supported on backends such as SQLite, PostgreSQL,
          MySQL, but not necessarily others::
 
-            users.insert().values([
-                                {"name": "some name"},
-                                {"name": "some other name"},
-                                {"name": "yet another name"},
-                            ])
+            users.insert().values(
+                [
+                    {"name": "some name"},
+                    {"name": "some other name"},
+                    {"name": "yet another name"},
+                ]
+            )
 
-         The above form would render a multiple VALUES statement similar to::
+         The above form would render a multiple VALUES statement similar to:
+
+         .. sourcecode:: sql
 
                 INSERT INTO users (name) VALUES
                                 (:name_1),
@@ -1161,11 +1191,15 @@ class ValuesBase(UpdateBase):
         return self
 
 
-class Insert(ValuesBase):
+class Insert(ValuesBase, HasSyntaxExtensions[Literal["post_values"]]):
     """Represent an INSERT construct.
 
     The :class:`_expression.Insert` object is created using the
     :func:`_expression.insert()` function.
+
+    Available extension points:
+
+    * ``post_values``: applies additional logic after the ``VALUES`` clause.
 
     """
 
@@ -1206,8 +1240,25 @@ class Insert(ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
+    _position_map = util.immutabledict(
+        {
+            "post_values": "_post_values_clause",
+        }
+    )
+
+    _post_values_clause: Optional[ClauseElement] = None
+    """extension point for a ClauseElement that will be compiled directly
+    after the VALUES portion of the :class:`.Insert` statement
+
+    """
+
     def __init__(self, table: _DMLTableArgument):
         super().__init__(table)
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_insert(self)
 
     @_generative
     def inline(self) -> Self:
@@ -1243,7 +1294,7 @@ class Insert(ValuesBase):
         e.g.::
 
             sel = select(table1.c.a, table1.c.b).where(table1.c.c > 5)
-            ins = table2.insert().from_select(['a', 'b'], sel)
+            ins = table2.insert().from_select(["a", "b"], sel)
 
         :param names: a sequence of string column names or
          :class:`_schema.Column`
@@ -1293,19 +1344,22 @@ class Insert(ValuesBase):
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], *, sort_by_parameter_order: bool = False
-        ) -> ReturningInsert[Tuple[_T0]]:
-            ...
+            self,
+            __ent0: _TCCA[_T0],
+            /,
+            *,
+            sort_by_parameter_order: bool = False,
+        ) -> ReturningInsert[_T0]: ...
 
         @overload
         def returning(
             self,
             __ent0: _TCCA[_T0],
             __ent1: _TCCA[_T1],
+            /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1]]:
-            ...
+        ) -> ReturningInsert[_T0, _T1]: ...
 
         @overload
         def returning(
@@ -1313,10 +1367,10 @@ class Insert(ValuesBase):
             __ent0: _TCCA[_T0],
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
+            /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2]]:
-            ...
+        ) -> ReturningInsert[_T0, _T1, _T2]: ...
 
         @overload
         def returning(
@@ -1325,10 +1379,10 @@ class Insert(ValuesBase):
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
+            /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3]]:
-            ...
+        ) -> ReturningInsert[_T0, _T1, _T2, _T3]: ...
 
         @overload
         def returning(
@@ -1338,10 +1392,10 @@ class Insert(ValuesBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
+            /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4]]:
-            ...
+        ) -> ReturningInsert[_T0, _T1, _T2, _T3, _T4]: ...
 
         @overload
         def returning(
@@ -1352,10 +1406,10 @@ class Insert(ValuesBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
+            /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
-            ...
+        ) -> ReturningInsert[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
         @overload
         def returning(
@@ -1367,10 +1421,10 @@ class Insert(ValuesBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
+            /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
-            ...
+        ) -> ReturningInsert[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
         @overload
         def returning(
@@ -1383,10 +1437,12 @@ class Insert(ValuesBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
-            *,
+            /,
+            *entities: _ColumnsClauseArgument[Any],
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
-            ...
+        ) -> ReturningInsert[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]: ...
 
         # END OVERLOADED FUNCTIONS self.returning
 
@@ -1396,19 +1452,17 @@ class Insert(ValuesBase):
             *cols: _ColumnsClauseArgument[Any],
             sort_by_parameter_order: bool = False,
             **__kw: Any,
-        ) -> ReturningInsert[Any]:
-            ...
+        ) -> ReturningInsert[Any]: ...
 
         def returning(
             self,
             *cols: _ColumnsClauseArgument[Any],
             sort_by_parameter_order: bool = False,
             **__kw: Any,
-        ) -> ReturningInsert[Any]:
-            ...
+        ) -> ReturningInsert[Any]: ...
 
 
-class ReturningInsert(Insert, TypedReturnsRows[_TP]):
+class ReturningInsert(Insert, TypedReturnsRows[Unpack[_Ts]]):
     """Typing-only class that establishes a generic type form of
     :class:`.Insert` which tracks returned column types.
 
@@ -1420,9 +1474,24 @@ class ReturningInsert(Insert, TypedReturnsRows[_TP]):
     """
 
 
+# note: if not for MRO issues, this class should extend
+# from HasSyntaxExtensions[Literal["post_criteria"]]
 class DMLWhereBase:
     table: _DMLTableElement
     _where_criteria: Tuple[ColumnElement[Any], ...] = ()
+
+    _post_criteria_clause: Optional[ClauseElement] = None
+    """used by extensions to Update/Delete etc. to add additional syntacitcal
+    constructs, e.g. LIMIT etc.
+
+    .. versionadded:: 2.1
+
+    """
+
+    # can't put position_map here either without HasSyntaxExtensions
+    # _position_map = util.immutabledict(
+    #     {"post_criteria": "_post_criteria_clause"}
+    # )
 
     @_generative
     def where(self, *whereclause: _ColumnExpressionArgument[bool]) -> Self:
@@ -1496,11 +1565,17 @@ class DMLWhereBase:
         )
 
 
-class Update(DMLWhereBase, ValuesBase):
+class Update(
+    DMLWhereBase, ValuesBase, HasSyntaxExtensions[Literal["post_criteria"]]
+):
     """Represent an Update construct.
 
     The :class:`_expression.Update` object is created using the
     :func:`_expression.update()` function.
+
+    Available extension points:
+
+    * ``post_criteria``: applies additional logic after the ``WHERE`` clause.
 
     """
 
@@ -1513,11 +1588,12 @@ class Update(DMLWhereBase, ValuesBase):
             ("table", InternalTraversal.dp_clauseelement),
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_inline", InternalTraversal.dp_boolean),
-            ("_ordered_values", InternalTraversal.dp_dml_ordered_values),
+            ("_maintain_values_ordering", InternalTraversal.dp_boolean),
             ("_values", InternalTraversal.dp_dml_values),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
             ("_return_defaults", InternalTraversal.dp_boolean),
+            ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
             (
                 "_return_defaults_columns",
                 InternalTraversal.dp_clauseelement_tuple,
@@ -1529,10 +1605,13 @@ class Update(DMLWhereBase, ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
+    _position_map = util.immutabledict(
+        {"post_criteria": "_post_criteria_clause"}
+    )
+
     def __init__(self, table: _DMLTableArgument):
         super().__init__(table)
 
-    @_generative
     def ordered_values(self, *args: Tuple[_DMLColumnArgument, Any]) -> Self:
         """Specify the VALUES clause of this UPDATE statement with an explicit
         parameter ordering that will be maintained in the SET clause of the
@@ -1540,9 +1619,7 @@ class Update(DMLWhereBase, ValuesBase):
 
         E.g.::
 
-            stmt = table.update().ordered_values(
-                ("name", "ed"), ("ident": "foo")
-            )
+            stmt = table.update().ordered_values(("name", "ed"), ("ident", "foo"))
 
         .. seealso::
 
@@ -1555,18 +1632,16 @@ class Update(DMLWhereBase, ValuesBase):
            :paramref:`_expression.update.preserve_parameter_order`
            parameter, which will be removed in SQLAlchemy 2.0.
 
-        """
+        """  # noqa: E501
         if self._values:
             raise exc.ArgumentError(
-                "This statement already has values present"
-            )
-        elif self._ordered_values:
-            raise exc.ArgumentError(
-                "This statement already has ordered values present"
+                "This statement already has "
+                f"{'ordered ' if self._maintain_values_ordering else ''}"
+                "values present"
             )
 
-        kv_generator = DMLState.get_plugin_class(self)._get_crud_kv_pairs
-        self._ordered_values = kv_generator(self, args, True)
+        self = self.values(dict(args))
+        self._maintain_values_ordering = True
         return self
 
     @_generative
@@ -1588,6 +1663,11 @@ class Update(DMLWhereBase, ValuesBase):
         self._inline = True
         return self
 
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_update(self)
+
     if TYPE_CHECKING:
         # START OVERLOADED FUNCTIONS self.returning ReturningUpdate 1-8
 
@@ -1595,20 +1675,17 @@ class Update(DMLWhereBase, ValuesBase):
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(self, __ent0: _TCCA[_T0]) -> ReturningUpdate[Tuple[_T0]]:
-            ...
+        def returning(self, __ent0: _TCCA[_T0], /) -> ReturningUpdate[_T0]: ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
-        ) -> ReturningUpdate[Tuple[_T0, _T1]]:
-            ...
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
+        ) -> ReturningUpdate[_T0, _T1]: ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2]]:
-            ...
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
+        ) -> ReturningUpdate[_T0, _T1, _T2]: ...
 
         @overload
         def returning(
@@ -1617,8 +1694,8 @@ class Update(DMLWhereBase, ValuesBase):
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3]]:
-            ...
+            /,
+        ) -> ReturningUpdate[_T0, _T1, _T2, _T3]: ...
 
         @overload
         def returning(
@@ -1628,8 +1705,8 @@ class Update(DMLWhereBase, ValuesBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4]]:
-            ...
+            /,
+        ) -> ReturningUpdate[_T0, _T1, _T2, _T3, _T4]: ...
 
         @overload
         def returning(
@@ -1640,8 +1717,8 @@ class Update(DMLWhereBase, ValuesBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
-            ...
+            /,
+        ) -> ReturningUpdate[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
         @overload
         def returning(
@@ -1653,8 +1730,8 @@ class Update(DMLWhereBase, ValuesBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
-            ...
+            /,
+        ) -> ReturningUpdate[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
         @overload
         def returning(
@@ -1667,24 +1744,25 @@ class Update(DMLWhereBase, ValuesBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
-            ...
+            /,
+            *entities: _ColumnsClauseArgument[Any],
+        ) -> ReturningUpdate[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]: ...
 
         # END OVERLOADED FUNCTIONS self.returning
 
         @overload
         def returning(
             self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
-        ) -> ReturningUpdate[Any]:
-            ...
+        ) -> ReturningUpdate[Any]: ...
 
         def returning(
             self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
-        ) -> ReturningUpdate[Any]:
-            ...
+        ) -> ReturningUpdate[Any]: ...
 
 
-class ReturningUpdate(Update, TypedReturnsRows[_TP]):
+class ReturningUpdate(Update, TypedReturnsRows[Unpack[_Ts]]):
     """Typing-only class that establishes a generic type form of
     :class:`.Update` which tracks returned column types.
 
@@ -1696,11 +1774,17 @@ class ReturningUpdate(Update, TypedReturnsRows[_TP]):
     """
 
 
-class Delete(DMLWhereBase, UpdateBase):
+class Delete(
+    DMLWhereBase, UpdateBase, HasSyntaxExtensions[Literal["post_criteria"]]
+):
     """Represent a DELETE construct.
 
     The :class:`_expression.Delete` object is created using the
     :func:`_expression.delete()` function.
+
+    Available extension points:
+
+    * ``post_criteria``: applies additional logic after the ``WHERE`` clause.
 
     """
 
@@ -1714,6 +1798,7 @@ class Delete(DMLWhereBase, UpdateBase):
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
+            ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
@@ -1721,10 +1806,19 @@ class Delete(DMLWhereBase, UpdateBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
+    _position_map = util.immutabledict(
+        {"post_criteria": "_post_criteria_clause"}
+    )
+
     def __init__(self, table: _DMLTableArgument):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_delete(self)
 
     if TYPE_CHECKING:
         # START OVERLOADED FUNCTIONS self.returning ReturningDelete 1-8
@@ -1733,20 +1827,17 @@ class Delete(DMLWhereBase, UpdateBase):
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(self, __ent0: _TCCA[_T0]) -> ReturningDelete[Tuple[_T0]]:
-            ...
+        def returning(self, __ent0: _TCCA[_T0], /) -> ReturningDelete[_T0]: ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
-        ) -> ReturningDelete[Tuple[_T0, _T1]]:
-            ...
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
+        ) -> ReturningDelete[_T0, _T1]: ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2]]:
-            ...
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
+        ) -> ReturningDelete[_T0, _T1, _T2]: ...
 
         @overload
         def returning(
@@ -1755,8 +1846,8 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3]]:
-            ...
+            /,
+        ) -> ReturningDelete[_T0, _T1, _T2, _T3]: ...
 
         @overload
         def returning(
@@ -1766,8 +1857,8 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4]]:
-            ...
+            /,
+        ) -> ReturningDelete[_T0, _T1, _T2, _T3, _T4]: ...
 
         @overload
         def returning(
@@ -1778,8 +1869,8 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
-            ...
+            /,
+        ) -> ReturningDelete[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
         @overload
         def returning(
@@ -1791,8 +1882,8 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
-            ...
+            /,
+        ) -> ReturningDelete[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
         @overload
         def returning(
@@ -1805,24 +1896,25 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
-            ...
+            /,
+            *entities: _ColumnsClauseArgument[Any],
+        ) -> ReturningDelete[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]: ...
 
         # END OVERLOADED FUNCTIONS self.returning
 
         @overload
         def returning(
             self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
-        ) -> ReturningDelete[Any]:
-            ...
+        ) -> ReturningDelete[Unpack[TupleAny]]: ...
 
         def returning(
             self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
-        ) -> ReturningDelete[Any]:
-            ...
+        ) -> ReturningDelete[Unpack[TupleAny]]: ...
 
 
-class ReturningDelete(Update, TypedReturnsRows[_TP]):
+class ReturningDelete(Update, TypedReturnsRows[Unpack[_Ts]]):
     """Typing-only class that establishes a generic type form of
     :class:`.Delete` which tracks returned column types.
 

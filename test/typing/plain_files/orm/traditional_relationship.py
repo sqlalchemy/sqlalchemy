@@ -5,6 +5,7 @@ This requires that the return type of relationship is based on Any,
 if no uselists are present.
 
 """
+
 import typing
 from typing import List
 from typing import Set

@@ -3,6 +3,7 @@
 See #4246
 
 """
+
 import contextlib
 
 from sqlalchemy import Column
@@ -89,7 +90,11 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
             # set x/y > 10
             try:
                 alt_trans.execute(update(A).values(x=15, y=19))
-            except (exc.InternalError, exc.OperationalError) as err:
+            except (
+                exc.InternalError,
+                exc.OperationalError,
+                exc.DatabaseError,
+            ) as err:
                 assert "Lock wait timeout exceeded" in str(err)
                 assert should_be_locked
             else:
@@ -102,7 +107,11 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
             # set x/y > 10
             try:
                 alt_trans.execute(update(B).values(x=15, y=19))
-            except (exc.InternalError, exc.OperationalError) as err:
+            except (
+                exc.InternalError,
+                exc.OperationalError,
+                exc.DatabaseError,
+            ) as err:
                 assert "Lock wait timeout exceeded" in str(err)
                 assert should_be_locked
             else:

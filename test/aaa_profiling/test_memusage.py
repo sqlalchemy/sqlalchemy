@@ -7,6 +7,7 @@ import weakref
 
 import sqlalchemy as sa
 from sqlalchemy import and_
+from sqlalchemy import ClauseElement
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -20,8 +21,10 @@ from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import registry
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.engine import result
+from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.processors import to_decimal_processor_factory
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
@@ -39,6 +42,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.sql import column
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.util import visit_binary_product
 from sqlalchemy.sql.visitors import cloned_traverse
 from sqlalchemy.sql.visitors import replacement_traverse
@@ -219,10 +223,14 @@ def profile_memory(
         # return run_plain
 
         def run_in_process(*func_args):
-            queue = multiprocessing.Queue()
-            proc = multiprocessing.Process(
-                target=profile, args=(queue, func_args)
-            )
+            # see
+            # https://docs.python.org/3.14/whatsnew/3.14.html
+            # #incompatible-changes - the default run type is no longer
+            # "fork", but since we are running closures in the process
+            # we need forked mode
+            ctx = multiprocessing.get_context("fork")
+            queue = ctx.Queue()
+            proc = ctx.Process(target=profile, args=(queue, func_args))
             proc.start()
             while True:
                 row = queue.get()
@@ -283,7 +291,7 @@ class MemUsageTest(EnsureZeroed):
     def test_DecimalResultProcessor_init(self):
         @profile_memory()
         def go():
-            to_decimal_processor_factory({}, 10)
+            to_decimal_processor_factory(dict, 10)
 
         go()
 
@@ -390,7 +398,7 @@ class MemUsageTest(EnsureZeroed):
 
 @testing.add_to_marker.memory_intensive
 class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
-    __requires__ = "cpython", "memory_process_intensive", "no_asyncio"
+    __requires__ = "cpython", "posix", "memory_process_intensive", "no_asyncio"
     __sparse_backend__ = True
 
     # ensure a pure growing test trips the assertion
@@ -1085,62 +1093,6 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
     # https://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
 
     @testing.crashes("mysql+cymysql", "blocking")
-    def test_join_cache_deprecated_coercion(self):
-        metadata = MetaData()
-        table1 = Table(
-            "table1",
-            metadata,
-            Column(
-                "id", Integer, primary_key=True, test_needs_autoincrement=True
-            ),
-            Column("data", String(30)),
-        )
-        table2 = Table(
-            "table2",
-            metadata,
-            Column(
-                "id", Integer, primary_key=True, test_needs_autoincrement=True
-            ),
-            Column("data", String(30)),
-            Column("t1id", Integer, ForeignKey("table1.id")),
-        )
-
-        class Foo:
-            pass
-
-        class Bar:
-            pass
-
-        self.mapper_registry.map_imperatively(
-            Foo,
-            table1,
-            properties={
-                "bars": relationship(
-                    self.mapper_registry.map_imperatively(Bar, table2)
-                )
-            },
-        )
-        metadata.create_all(self.engine)
-        session = sessionmaker(self.engine)
-
-        @profile_memory()
-        def go():
-            s = table2.select()
-            sess = session()
-            with testing.expect_deprecated(
-                "Implicit coercion of SELECT and textual SELECT constructs",
-                "An alias is being generated automatically",
-                assert_=False,
-            ):
-                sess.query(Foo).join(s, Foo.bars).all()
-            sess.rollback()
-
-        try:
-            go()
-        finally:
-            metadata.drop_all(self.engine)
-
-    @testing.crashes("mysql+cymysql", "blocking")
     def test_join_cache(self):
         metadata = MetaData()
         table1 = Table(
@@ -1192,6 +1144,22 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             metadata.drop_all(self.engine)
 
 
+class SomeFoo(DialectKWArgs, ClauseElement):
+    pass
+
+
+class FooDialect(DefaultDialect):
+    construct_arguments = [
+        (
+            SomeFoo,
+            {
+                "bar": False,
+                "bat": False,
+            },
+        )
+    ]
+
+
 @testing.add_to_marker.memory_intensive
 class CycleTest(_fixtures.FixtureTest):
     __requires__ = ("cpython", "no_windows")
@@ -1213,6 +1181,33 @@ class CycleTest(_fixtures.FixtureTest):
         @assert_cycles()
         def go():
             return s.query(User).all()
+
+        go()
+
+    @testing.fixture
+    def foo_dialect(self):
+        registry.register("foo", __name__, "FooDialect")
+
+        yield
+        registry.deregister("foo")
+
+    def test_dialect_kwargs(self, foo_dialect):
+
+        @assert_cycles()
+        def go():
+            ff = SomeFoo()
+
+            ff._validate_dialect_kwargs({"foo_bar": True})
+
+            eq_(ff.dialect_options["foo"]["bar"], True)
+
+            eq_(ff.dialect_options["foo"]["bat"], False)
+
+            eq_(ff.dialect_kwargs["foo_bar"], True)
+            eq_(ff.dialect_kwargs["foo_bat"], False)
+
+            ff.dialect_kwargs["foo_bat"] = True
+            eq_(ff.dialect_options["foo"]["bat"], True)
 
         go()
 

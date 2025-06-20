@@ -1,5 +1,5 @@
-# ext/declarative/clsregistry.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# orm/clsregistry.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -52,16 +52,16 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T", bound=Any)
 
-_ClsRegistryType = MutableMapping[str, Union[type, "ClsRegistryToken"]]
+_ClsRegistryType = MutableMapping[str, Union[type, "_ClsRegistryToken"]]
 
 # strong references to registries which we place in
 # the _decl_class_registry, which is usually weak referencing.
 # the internal registries here link to classes with weakrefs and remove
 # themselves when all references to contained classes are removed.
-_registries: Set[ClsRegistryToken] = set()
+_registries: Set[_ClsRegistryToken] = set()
 
 
-def add_class(
+def _add_class(
     classname: str, cls: Type[_T], decl_class_registry: _ClsRegistryType
 ) -> None:
     """Add a class to the _decl_class_registry associated with the
@@ -72,7 +72,7 @@ def add_class(
         # class already exists.
         existing = decl_class_registry[classname]
         if not isinstance(existing, _MultipleClassMarker):
-            existing = decl_class_registry[classname] = _MultipleClassMarker(
+            decl_class_registry[classname] = _MultipleClassMarker(
                 [cls, cast("Type[Any]", existing)]
             )
     else:
@@ -83,9 +83,9 @@ def add_class(
             _ModuleMarker, decl_class_registry["_sa_module_registry"]
         )
     except KeyError:
-        decl_class_registry[
-            "_sa_module_registry"
-        ] = root_module = _ModuleMarker("_sa_module_registry", None)
+        decl_class_registry["_sa_module_registry"] = root_module = (
+            _ModuleMarker("_sa_module_registry", None)
+        )
 
     tokens = cls.__module__.split(".")
 
@@ -115,7 +115,7 @@ def add_class(
                 raise
 
 
-def remove_class(
+def _remove_class(
     classname: str, cls: Type[Any], decl_class_registry: _ClsRegistryType
 ) -> None:
     if classname in decl_class_registry:
@@ -180,13 +180,13 @@ def _key_is_empty(
         return not test(thing)
 
 
-class ClsRegistryToken:
+class _ClsRegistryToken:
     """an object that can be in the registry._class_registry as a value."""
 
     __slots__ = ()
 
 
-class _MultipleClassMarker(ClsRegistryToken):
+class _MultipleClassMarker(_ClsRegistryToken):
     """refers to multiple classes of the same name
     within _decl_class_registry.
 
@@ -239,10 +239,10 @@ class _MultipleClassMarker(ClsRegistryToken):
     def add_item(self, item: Type[Any]) -> None:
         # protect against class registration race condition against
         # asynchronous garbage collection calling _remove_item,
-        # [ticket:3208]
+        # [ticket:3208] and [ticket:10782]
         modules = {
             cls.__module__
-            for cls in [ref() for ref in self.contents]
+            for cls in [ref() for ref in list(self.contents)]
             if cls is not None
         }
         if item.__module__ in modules:
@@ -255,7 +255,7 @@ class _MultipleClassMarker(ClsRegistryToken):
         self.contents.add(weakref.ref(item, self._remove_item))
 
 
-class _ModuleMarker(ClsRegistryToken):
+class _ModuleMarker(_ClsRegistryToken):
     """Refers to a module name within
     _decl_class_registry.
 
@@ -282,13 +282,14 @@ class _ModuleMarker(ClsRegistryToken):
     def __contains__(self, name: str) -> bool:
         return name in self.contents
 
-    def __getitem__(self, name: str) -> ClsRegistryToken:
+    def __getitem__(self, name: str) -> _ClsRegistryToken:
         return self.contents[name]
 
     def _remove_item(self, name: str) -> None:
         self.contents.pop(name, None)
-        if not self.contents and self.parent is not None:
-            self.parent._remove_item(self.name)
+        if not self.contents:
+            if self.parent is not None:
+                self.parent._remove_item(self.name)
             _registries.discard(self)
 
     def resolve_attr(self, key: str) -> Union[_ModNS, Type[Any]]:
@@ -316,7 +317,7 @@ class _ModuleMarker(ClsRegistryToken):
                 else:
                     raise
         else:
-            existing = self.contents[name] = _MultipleClassMarker(
+            self.contents[name] = _MultipleClassMarker(
                 [cls], on_remove=lambda: self._remove_item(name)
             )
 
@@ -417,14 +418,14 @@ class _class_resolver:
         "fallback",
         "_dict",
         "_resolvers",
-        "favor_tables",
+        "tables_only",
     )
 
     cls: Type[Any]
     prop: RelationshipProperty[Any]
     fallback: Mapping[str, Any]
     arg: str
-    favor_tables: bool
+    tables_only: bool
     _resolvers: Tuple[Callable[[str], Any], ...]
 
     def __init__(
@@ -433,7 +434,7 @@ class _class_resolver:
         prop: RelationshipProperty[Any],
         fallback: Mapping[str, Any],
         arg: str,
-        favor_tables: bool = False,
+        tables_only: bool = False,
     ):
         self.cls = cls
         self.prop = prop
@@ -441,7 +442,7 @@ class _class_resolver:
         self.fallback = fallback
         self._dict = util.PopulateDict(self._access_cls)
         self._resolvers = ()
-        self.favor_tables = favor_tables
+        self.tables_only = tables_only
 
     def _access_cls(self, key: str) -> Any:
         cls = self.cls
@@ -452,16 +453,20 @@ class _class_resolver:
         decl_class_registry = decl_base._class_registry
         metadata = decl_base.metadata
 
-        if self.favor_tables:
+        if self.tables_only:
             if key in metadata.tables:
                 return metadata.tables[key]
             elif key in metadata._schemas:
                 return _GetTable(key, getattr(cls, "metadata", metadata))
 
         if key in decl_class_registry:
-            return _determine_container(key, decl_class_registry[key])
+            dt = _determine_container(key, decl_class_registry[key])
+            if self.tables_only:
+                return dt.cls
+            else:
+                return dt
 
-        if not self.favor_tables:
+        if not self.tables_only:
             if key in metadata.tables:
                 return metadata.tables[key]
             elif key in metadata._schemas:
@@ -474,7 +479,8 @@ class _class_resolver:
                 _ModuleMarker, decl_class_registry["_sa_module_registry"]
             )
             return registry.resolve_attr(key)
-        elif self._resolvers:
+
+        if self._resolvers:
             for resolv in self._resolvers:
                 value = resolv(key)
                 if value is not None:
@@ -528,23 +534,27 @@ class _class_resolver:
                 return rval
 
     def __call__(self) -> Any:
-        try:
-            x = eval(self.arg, globals(), self._dict)
+        if self.tables_only:
+            try:
+                return self._dict[self.arg]
+            except KeyError as k:
+                self._raise_for_name(self.arg, k)
+        else:
+            try:
+                x = eval(self.arg, globals(), self._dict)
 
-            if isinstance(x, _GetColumns):
-                return x.cls
-            else:
-                return x
-        except NameError as n:
-            self._raise_for_name(n.args[0], n)
+                if isinstance(x, _GetColumns):
+                    return x.cls
+                else:
+                    return x
+            except NameError as n:
+                self._raise_for_name(n.args[0], n)
 
 
 _fallback_dict: Mapping[str, Any] = None  # type: ignore
 
 
-def _resolver(
-    cls: Type[Any], prop: RelationshipProperty[Any]
-) -> Tuple[
+def _resolver(cls: Type[Any], prop: RelationshipProperty[Any]) -> Tuple[
     Callable[[str], Callable[[], Union[Type[Any], Table, _ModNS]]],
     Callable[[str, bool], _class_resolver],
 ]:
@@ -559,9 +569,9 @@ def _resolver(
             {"foreign": foreign, "remote": remote}
         )
 
-    def resolve_arg(arg: str, favor_tables: bool = False) -> _class_resolver:
+    def resolve_arg(arg: str, tables_only: bool = False) -> _class_resolver:
         return _class_resolver(
-            cls, prop, _fallback_dict, arg, favor_tables=favor_tables
+            cls, prop, _fallback_dict, arg, tables_only=tables_only
         )
 
     def resolve_name(

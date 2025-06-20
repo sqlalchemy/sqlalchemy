@@ -360,7 +360,7 @@ Selecting Entities from Subqueries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :func:`_orm.aliased` construct discussed in the previous section
-can be used with any :class:`_sql.Subuqery` construct that comes from a
+can be used with any :class:`_sql.Subquery` construct that comes from a
 method such as :meth:`_sql.Select.subquery` to link ORM entities to the
 columns returned by that subquery; there must be a **column correspondence**
 relationship between the columns delivered by the subquery and the columns
@@ -721,7 +721,7 @@ Joining to Subqueries
 ^^^^^^^^^^^^^^^^^^^^^
 
 The target of a join may be any "selectable" entity which includes
-subuqeries.   When using the ORM, it is typical
+subqueries.   When using the ORM, it is typical
 that these targets are stated in terms of an
 :func:`_orm.aliased` construct, but this is not strictly required, particularly
 if the joined entity is not being returned in the results.  For example, to join from the

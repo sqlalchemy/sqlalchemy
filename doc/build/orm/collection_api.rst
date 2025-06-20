@@ -47,7 +47,7 @@ below where ``list`` is used::
         parent_id: Mapped[int] = mapped_column(primary_key=True)
 
         # use a list
-        children: Mapped[List["Child"]] = relationship()
+        children: Mapped[list["Child"]] = relationship()
 
 
     class Child(Base):
@@ -59,7 +59,6 @@ below where ``list`` is used::
 Or for a ``set``, illustrated in the same
 ``Parent.children`` collection::
 
-    from typing import Set
     from sqlalchemy import ForeignKey
 
     from sqlalchemy.orm import DeclarativeBase
@@ -78,7 +77,7 @@ Or for a ``set``, illustrated in the same
         parent_id: Mapped[int] = mapped_column(primary_key=True)
 
         # use a set
-        children: Mapped[Set["Child"]] = relationship()
+        children: Mapped[set["Child"]] = relationship()
 
 
     class Child(Base):
@@ -86,22 +85,6 @@ Or for a ``set``, illustrated in the same
 
         child_id: Mapped[int] = mapped_column(primary_key=True)
         parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
-
-.. note::  If using Python 3.7 or 3.8, annotations for collections need
-   to use ``typing.List`` or ``typing.Set``, e.g. ``Mapped[List["Child"]]`` or
-   ``Mapped[Set["Child"]]``; the ``list`` and ``set`` Python built-ins
-   don't yet support generic annotation in these Python versions, such as::
-
-       from typing import List
-
-
-       class Parent(Base):
-           __tablename__ = "parent"
-
-           parent_id: Mapped[int] = mapped_column(primary_key=True)
-
-           # use a List, Python 3.8 and earlier
-           children: Mapped[List["Child"]] = relationship()
 
 When using mappings without the :class:`_orm.Mapped` annotation, such as when
 using :ref:`imperative mappings <orm_imperative_mapping>` or untyped
@@ -129,7 +112,7 @@ Python code, as well as in a few special cases, the collection class for a
 In the absence of :paramref:`_orm.relationship.collection_class`
 or :class:`_orm.Mapped`, the default collection type is ``list``.
 
-Beyond ``list`` and ``set`` builtins, there is also support for two varities of
+Beyond ``list`` and ``set`` builtins, there is also support for two varieties of
 dictionary, described below at :ref:`orm_dictionary_collection`. There is also
 support for any arbitrary mutable sequence type can be set up as the target
 collection, with some additional configuration steps; this is described in the
@@ -533,8 +516,7 @@ methods can be changed as well:
             ...
 
         @collection.iterator
-        def hey_use_this_instead_for_iteration(self):
-            ...
+        def hey_use_this_instead_for_iteration(self): ...
 
 There is no requirement to be "list-like" or "set-like" at all. Collection classes
 can be any shape, so long as they have the append, remove and iterate
@@ -666,5 +648,3 @@ Collection Internals
 .. autoclass:: InstrumentedList
 
 .. autoclass:: InstrumentedSet
-
-.. autofunction:: prepare_instrumentation

@@ -2680,7 +2680,7 @@ on MySQL::
 Drizzle Dialect is now an External Dialect
 ------------------------------------------
 
-The dialect for `Drizzle <https://www.drizzle.org/>`_ is now an external
+The dialect for `Drizzle <https://en.wikipedia.org/wiki/Drizzle_(database_server)>`_ is now an external
 dialect, available at https://bitbucket.org/zzzeek/sqlalchemy-drizzle.
 This dialect was added to SQLAlchemy right before SQLAlchemy was able to
 accommodate third party dialects well; going forward, all databases that aren't

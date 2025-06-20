@@ -6,6 +6,7 @@ related PostalCode, City, Country objects should be pulled from long
 term cache.
 
 """
+
 import os
 
 from sqlalchemy import select

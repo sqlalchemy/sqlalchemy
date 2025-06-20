@@ -1,5 +1,9 @@
 """Test various algorithmic properties of selectables."""
+
 from itertools import zip_longest
+import random
+import threading
+import time
 
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -41,6 +45,7 @@ from sqlalchemy.sql import elements
 from sqlalchemy.sql import LABEL_STYLE_DISAMBIGUATE_ONLY
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
@@ -1573,24 +1578,6 @@ class SelectableTest(
             "SELECT table1.col1 AS a FROM table1) AS b) AS c) AS anon_1",
         )
 
-    def test_self_referential_select_raises(self):
-        t = table("t", column("x"))
-
-        # this issue is much less likely as subquery() applies a labeling
-        # style to the select, eliminating the self-referential call unless
-        # the select already had labeling applied
-
-        s = select(t).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-
-        with testing.expect_deprecated("The SelectBase.c"):
-            s.where.non_generative(s, s.c.t_x > 5)
-
-        assert_raises_message(
-            exc.InvalidRequestError,
-            r"select\(\) construct refers to itself as a FROM",
-            s.compile,
-        )
-
     def test_unusual_column_elements_text(self):
         """test that .c excludes text()."""
 
@@ -1961,7 +1948,6 @@ class RefreshForNewColTest(fixtures.TestBase):
 
 
 class AnonLabelTest(fixtures.TestBase):
-
     """Test behaviors fixed by [ticket:2168]."""
 
     def test_anon_labels_named_column(self):
@@ -2044,6 +2030,16 @@ class JoinAnonymizingTest(fixtures.TestBase, AssertsCompiledSQL):
             "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b",
         )
 
+    def test_join_alias_name_flat(self):
+        a = table("a", column("a"))
+        b = table("b", column("b"))
+        self.assert_compile(
+            a.join(b, a.c.a == b.c.b)._anonymous_fromclause(
+                name="foo", flat=True
+            ),
+            "a AS foo_a JOIN b AS foo_b ON foo_a.a = foo_b.b",
+        )
+
     def test_composed_join_alias_flat(self):
         a = table("a", column("a"))
         b = table("b", column("b"))
@@ -2060,6 +2056,24 @@ class JoinAnonymizingTest(fixtures.TestBase, AssertsCompiledSQL):
             "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b JOIN "
             "(c AS c_1 JOIN d AS d_1 ON c_1.c = d_1.d) "
             "ON b_1.b = c_1.c",
+        )
+
+    def test_composed_join_alias_name_flat(self):
+        a = table("a", column("a"))
+        b = table("b", column("b"))
+        c = table("c", column("c"))
+        d = table("d", column("d"))
+
+        j1 = a.join(b, a.c.a == b.c.b)
+        j2 = c.join(d, c.c.c == d.c.d)
+
+        self.assert_compile(
+            j1.join(j2, b.c.b == c.c.c)._anonymous_fromclause(
+                name="foo", flat=True
+            ),
+            "a AS foo_a JOIN b AS foo_b ON foo_a.a = foo_b.b JOIN "
+            "(c AS foo_c JOIN d AS foo_d ON foo_c.c = foo_d.d) "
+            "ON foo_b.b = foo_c.c",
         )
 
     def test_composed_join_alias(self):
@@ -3023,6 +3037,37 @@ class AnnotationsTest(fixtures.TestBase):
         eq_(whereclause.left._annotations, {"foo": "bar"})
         eq_(whereclause.right._annotations, {"foo": "bar"})
 
+    @testing.variation("use_col_ahead_of_time", [True, False])
+    def test_set_type_on_column(self, use_col_ahead_of_time):
+        """test related to #10597"""
+
+        col = Column()
+
+        col_anno = col._annotate({"foo": "bar"})
+
+        if use_col_ahead_of_time:
+            expr = col_anno == bindparam("foo")
+
+            # this could only be fixed if we put some kind of a container
+            # that receives the type directly rather than using NullType;
+            # like a PendingType or something
+
+            is_(expr.right.type._type_affinity, sqltypes.NullType)
+
+        assert "type" not in col_anno.__dict__
+
+        col.name = "name"
+        col._set_type(Integer())
+
+        eq_(col_anno.name, "name")
+        is_(col_anno.type._type_affinity, Integer)
+
+        expr = col_anno == bindparam("foo")
+
+        is_(expr.right.type._type_affinity, Integer)
+
+        assert "type" in col_anno.__dict__
+
     @testing.combinations(True, False, None)
     def test_setup_inherit_cache(self, inherit_cache_value):
         if inherit_cache_value is None:
@@ -3982,3 +4027,39 @@ class AliasTest(fixtures.TestBase, AssertsCompiledSQL):
         a3 = a2._clone()
         a3._copy_internals()
         is_(a1.corresponding_column(a3.c.c), a1.c.c)
+
+
+class FromClauseConcurrencyTest(fixtures.TestBase):
+    """test for issue 12302"""
+
+    @testing.requires.timing_intensive
+    def test_c_collection(self):
+        dictionary_meta = MetaData()
+        all_indexes_table = Table(
+            "all_indexes",
+            dictionary_meta,
+            *[Column(f"col{i}", Integer) for i in range(50)],
+        )
+
+        fails = 0
+
+        def use_table():
+            nonlocal fails
+            try:
+                for i in range(3):
+                    time.sleep(random.random() * 0.0001)
+                    all_indexes.c.col35
+            except:
+                fails += 1
+                raise
+
+        for j in range(1000):
+            all_indexes = all_indexes_table.alias("a_indexes")
+
+            threads = [threading.Thread(target=use_table) for i in range(5)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            assert not fails, "one or more runs failed"

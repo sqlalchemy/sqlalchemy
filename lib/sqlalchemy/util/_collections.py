@@ -1,5 +1,5 @@
 # util/_collections.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,7 +9,6 @@
 """Collection classes and helpers."""
 from __future__ import annotations
 
-import collections.abc as collections_abc
 import operator
 import threading
 import types
@@ -17,6 +16,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Container
 from typing import Dict
 from typing import FrozenSet
 from typing import Generic
@@ -27,6 +27,7 @@ from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -35,32 +36,14 @@ from typing import Union
 from typing import ValuesView
 import weakref
 
-from ._has_cy import HAS_CYEXTENSION
+from ._collections_cy import IdentitySet as IdentitySet
+from ._collections_cy import OrderedSet as OrderedSet
+from ._collections_cy import unique_list as unique_list  # noqa: F401
+from ._immutabledict_cy import immutabledict as immutabledict
+from ._immutabledict_cy import ImmutableDictBase as ImmutableDictBase
+from ._immutabledict_cy import ReadOnlyContainer as ReadOnlyContainer
+from .typing import is_non_string_iterable
 from .typing import Literal
-from .typing import Protocol
-
-if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_collections import immutabledict as immutabledict
-    from ._py_collections import IdentitySet as IdentitySet
-    from ._py_collections import ReadOnlyContainer as ReadOnlyContainer
-    from ._py_collections import ImmutableDictBase as ImmutableDictBase
-    from ._py_collections import OrderedSet as OrderedSet
-    from ._py_collections import unique_list as unique_list
-else:
-    from sqlalchemy.cyextension.immutabledict import (
-        ReadOnlyContainer as ReadOnlyContainer,
-    )
-    from sqlalchemy.cyextension.immutabledict import (
-        ImmutableDictBase as ImmutableDictBase,
-    )
-    from sqlalchemy.cyextension.immutabledict import (
-        immutabledict as immutabledict,
-    )
-    from sqlalchemy.cyextension.collections import IdentitySet as IdentitySet
-    from sqlalchemy.cyextension.collections import OrderedSet as OrderedSet
-    from sqlalchemy.cyextension.collections import (  # noqa
-        unique_list as unique_list,
-    )
 
 
 _T = TypeVar("_T", bound=Any)
@@ -79,8 +62,8 @@ def merge_lists_w_ordering(a: List[Any], b: List[Any]) -> List[Any]:
 
     Example::
 
-        >>> a = ['__tablename__', 'id', 'x', 'created_at']
-        >>> b = ['id', 'name', 'data', 'y', 'created_at']
+        >>> a = ["__tablename__", "id", "x", "created_at"]
+        >>> b = ["id", "name", "data", "y", "created_at"]
         >>> merge_lists_w_ordering(a, b)
         ['__tablename__', 'id', 'name', 'data', 'y', 'x', 'created_at']
 
@@ -144,7 +127,7 @@ class FacadeDict(ImmutableDictBase[_KT, _VT]):
     """A dictionary that is not publicly mutable."""
 
     def __new__(cls, *args: Any) -> FacadeDict[Any, Any]:
-        new = ImmutableDictBase.__new__(cls)
+        new: FacadeDict[Any, Any] = ImmutableDictBase.__new__(cls)
         return new
 
     def copy(self) -> NoReturn:
@@ -227,12 +210,10 @@ class Properties(Generic[_T]):
         self._data.update(value)
 
     @overload
-    def get(self, key: str) -> Optional[_T]:
-        ...
+    def get(self, key: str) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: str, default: Union[_DT, _T]) -> Union[_DT, _T]:
-        ...
+    def get(self, key: str, default: Union[_DT, _T]) -> Union[_DT, _T]: ...
 
     def get(
         self, key: str, default: Optional[Union[_DT, _T]] = None
@@ -289,7 +270,7 @@ sort_dictionary = _ordered_dictionary_sort
 
 
 class WeakSequence(Sequence[_T]):
-    def __init__(self, __elements: Sequence[_T] = ()):
+    def __init__(self, __elements: Sequence[_T] = (), /):
         # adapted from weakref.WeakKeyDictionary, prevent reference
         # cycles in the collection itself
         def _remove(item, selfref=weakref.ref(self)):
@@ -322,13 +303,7 @@ class WeakSequence(Sequence[_T]):
             return obj()
 
 
-class OrderedIdentitySet(IdentitySet):
-    def __init__(self, iterable: Optional[Iterable[Any]] = None):
-        IdentitySet.__init__(self)
-        self._members = OrderedDict()
-        if iterable:
-            for o in iterable:
-                self.add(o)
+OrderedIdentitySet = IdentitySet
 
 
 class PopulateDict(Dict[_KT, _VT]):
@@ -419,9 +394,7 @@ def coerce_generator_arg(arg: Any) -> List[Any]:
 def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
     if x is None:
         return default  # type: ignore
-    if not isinstance(x, collections_abc.Iterable) or isinstance(
-        x, (str, bytes)
-    ):
+    if not is_non_string_iterable(x):
         return [x]
     elif isinstance(x, list):
         return x
@@ -429,15 +402,14 @@ def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
         return list(x)
 
 
-def has_intersection(set_, iterable):
+def has_intersection(set_: Container[Any], iterable: Iterable[Any]) -> bool:
     r"""return True if any items of set\_ are present in iterable.
 
     Goes through special effort to ensure __hash__ is not called
     on items in iterable that don't support it.
 
     """
-    # TODO: optimize, write in C, etc.
-    return bool(set_.intersection([i for i in iterable if i.__hash__]))
+    return any(i in set_ for i in iterable if i.__hash__)
 
 
 def to_set(x):
@@ -458,7 +430,9 @@ def to_column_set(x: Any) -> Set[Any]:
         return x
 
 
-def update_copy(d, _new=None, **kw):
+def update_copy(
+    d: Dict[Any, Any], _new: Optional[Dict[Any, Any]] = None, **kw: Any
+) -> Dict[Any, Any]:
     """Copy the given dict and update with the given values."""
 
     d = d.copy()
@@ -522,18 +496,16 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
         return self._counter
 
     @overload
-    def get(self, key: _KT) -> Optional[_VT]:
-        ...
+    def get(self, key: _KT) -> Optional[_VT]: ...
 
     @overload
-    def get(self, key: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]:
-        ...
+    def get(self, key: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]: ...
 
     def get(
         self, key: _KT, default: Optional[Union[_VT, _T]] = None
     ) -> Optional[Union[_VT, _T]]:
-        item = self._data.get(key, default)
-        if item is not default and item is not None:
+        item = self._data.get(key)
+        if item is not None:
             item[2][0] = self._inc_counter()
             return item[1]
         else:
@@ -589,13 +561,11 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
 
 
 class _CreateFuncType(Protocol[_T_co]):
-    def __call__(self) -> _T_co:
-        ...
+    def __call__(self) -> _T_co: ...
 
 
 class _ScopeFuncType(Protocol):
-    def __call__(self) -> Any:
-        ...
+    def __call__(self) -> Any: ...
 
 
 class ScopedRegistry(Generic[_T]):

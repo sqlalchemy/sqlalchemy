@@ -1,0 +1,8 @@
+.. change::
+    :tags: change, orm
+    :tickets: 10500
+
+    The ``first_init`` ORM event has been removed.  This event was
+    non-functional throughout the 1.4 and 2.0 series and could not be invoked
+    without raising an internal error, so it is not expected that there is any
+    real-world use of this event hook.

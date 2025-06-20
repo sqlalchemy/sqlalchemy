@@ -6,21 +6,23 @@ class which represents historical versions of the target object.
 Compare to the :ref:`examples_versioned_rows` examples which write updates
 as new rows in the same table, without using a separate history table.
 
-Usage is illustrated via a unit test module ``test_versioning.py``, which can
-be run like any other module, using ``unittest`` internally::
+Usage is illustrated via a unit test module ``test_versioning.py``, which is
+run using SQLAlchemy's internal pytest plugin::
 
-    python -m examples.versioned_history.test_versioning
+    $ pytest test/base/test_examples.py
 
 
 A fragment of example usage, using declarative::
 
     from history_meta import Versioned, versioned_session
 
+
     class Base(DeclarativeBase):
         pass
 
+
     class SomeClass(Versioned, Base):
-        __tablename__ = 'sometable'
+        __tablename__ = "sometable"
 
         id = Column(Integer, primary_key=True)
         name = Column(String(50))
@@ -28,25 +30,25 @@ A fragment of example usage, using declarative::
         def __eq__(self, other):
             assert type(other) is SomeClass and other.id == self.id
 
+
     Session = sessionmaker(bind=engine)
     versioned_session(Session)
 
     sess = Session()
-    sc = SomeClass(name='sc1')
+    sc = SomeClass(name="sc1")
     sess.add(sc)
     sess.commit()
 
-    sc.name = 'sc1modified'
+    sc.name = "sc1modified"
     sess.commit()
 
     assert sc.version == 2
 
     SomeClassHistory = SomeClass.__history_mapper__.class_
 
-    assert sess.query(SomeClassHistory).\\
-                filter(SomeClassHistory.version == 1).\\
-                all() \\
-                == [SomeClassHistory(version=1, name='sc1')]
+    assert sess.query(SomeClassHistory).filter(
+        SomeClassHistory.version == 1
+    ).all() == [SomeClassHistory(version=1, name="sc1")]
 
 The ``Versioned`` mixin is designed to work with declarative.  To use
 the extension with classical mappers, the ``_history_mapper`` function
@@ -64,7 +66,7 @@ feature documented at :ref:`mapper_version_counter`.   To enable this feature,
 set the flag ``Versioned.use_mapper_versioning`` to True::
 
     class SomeClass(Versioned, Base):
-        __tablename__ = 'sometable'
+        __tablename__ = "sometable"
 
         use_mapper_versioning = True
 

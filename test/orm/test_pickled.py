@@ -239,7 +239,7 @@ class PickleTest(fixtures.MappedTest):
         self.mapper_registry.map_imperatively(
             User,
             users,
-            properties={"addresses": relationship(Address, lazy="noload")},
+            properties={"addresses": relationship(Address, lazy="raise")},
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
@@ -305,7 +305,7 @@ class PickleTest(fixtures.MappedTest):
         self.mapper_registry.map_imperatively(
             User,
             users,
-            properties={"addresses": relationship(Address, lazy="noload")},
+            properties={"addresses": relationship(Address)},
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
@@ -321,7 +321,7 @@ class PickleTest(fixtures.MappedTest):
         self.mapper_registry.map_imperatively(
             User,
             users,
-            properties={"addresses": relationship(Address, lazy="noload")},
+            properties={"addresses": relationship(Address)},
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
@@ -653,6 +653,17 @@ class PickleTest(fixtures.MappedTest):
                 Address(id=1, email_address="email1"),
             )
             is_not_none(collections.collection_adapter(repickled.addresses))
+
+    def test_bulk_save_objects_defaults_pickle(self):
+        "Test for #11332"
+        users = self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+        pes = [User(name=f"foo{i}") for i in range(3)]
+        s = fixture_session()
+        s.bulk_save_objects(pes, return_defaults=True)
+        state = pickle.dumps(pes)
+        pickle.loads(state)
 
 
 class OptionsTest(_Polymorphic):

@@ -1,4 +1,4 @@
-import collections
+from collections import defaultdict
 import collections.abc as collections_abc
 from contextlib import contextmanager
 import csv
@@ -51,6 +51,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -270,6 +271,7 @@ class CursorResultTest(fixtures.TablesTest):
         r = connection.scalars(users.select().order_by(users.c.user_id))
         eq_(r.all(), [7, 8, 9])
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_result_tuples(self, connection):
         users = self.tables.users
 
@@ -286,6 +288,7 @@ class CursorResultTest(fixtures.TablesTest):
         ).tuples()
         eq_(r.all(), [(7, "jack"), (8, "ed"), (9, "fred")])
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_row_tuple(self, connection):
         users = self.tables.users
 
@@ -490,7 +493,7 @@ class CursorResultTest(fixtures.TablesTest):
         if use_pickle:
             with expect_raises_message(
                 exc.NoSuchColumnError,
-                "Row was unpickled; lookup by ColumnElement is " "unsupported",
+                "Row was unpickled; lookup by ColumnElement is unsupported",
             ):
                 result[0]._mapping[users.c.user_id]
         else:
@@ -499,7 +502,7 @@ class CursorResultTest(fixtures.TablesTest):
         if use_pickle:
             with expect_raises_message(
                 exc.NoSuchColumnError,
-                "Row was unpickled; lookup by ColumnElement is " "unsupported",
+                "Row was unpickled; lookup by ColumnElement is unsupported",
             ):
                 result[0]._mapping[users.c.user_name]
         else:
@@ -527,8 +530,14 @@ class CursorResultTest(fixtures.TablesTest):
             "import sqlalchemy; import pickle; print(["
             f"r[0] for r in pickle.load(open('''{name}''', 'rb'))])"
         )
+        parts = list(sys.path)
+        if os.environ.get("PYTHONPATH"):
+            parts.append(os.environ["PYTHONPATH"])
+        pythonpath = os.pathsep.join(parts)
         proc = subprocess.run(
-            [sys.executable, "-c", code], stdout=subprocess.PIPE
+            [sys.executable, "-c", code],
+            stdout=subprocess.PIPE,
+            env={**os.environ, "PYTHONPATH": pythonpath},
         )
         exp = str([r[0] for r in result]).encode()
         eq_(proc.returncode, 0)
@@ -1301,11 +1310,15 @@ class CursorResultTest(fixtures.TablesTest):
 
         stmt = select(
             *[
-                text("*")
-                if colname == "*"
-                else users.c.user_name.label("name_label")
-                if colname == "name_label"
-                else users.c[colname]
+                (
+                    text("*")
+                    if colname == "*"
+                    else (
+                        users.c.user_name.label("name_label")
+                        if colname == "name_label"
+                        else users.c[colname]
+                    )
+                )
                 for colname in cols
             ]
         )
@@ -1474,10 +1487,7 @@ class CursorResultTest(fixtures.TablesTest):
         row = result.first()
         dict_row = row._asdict()
 
-        # dictionaries aren't ordered in Python 3 until 3.7
-        odict_row = collections.OrderedDict(
-            [("user_id", 1), ("user_name", "foo")]
-        )
+        odict_row = dict([("user_id", 1), ("user_name", "foo")])
         eq_(dict_row, odict_row)
 
         mapping_row = row._mapping
@@ -1730,6 +1740,29 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(proxy.key, "value")
         eq_(proxy._mapping["key"], "value")
 
+    @contextmanager
+    def cursor_wrapper(self, engine):
+        calls = defaultdict(int)
+
+        class CursorWrapper:
+            def __init__(self, real_cursor):
+                self.real_cursor = real_cursor
+
+            def __getattr__(self, name):
+                calls[name] += 1
+                return getattr(self.real_cursor, name)
+
+        create_cursor = engine.dialect.execution_ctx_cls.create_cursor
+
+        def new_create(context):
+            cursor = create_cursor(context)
+            return CursorWrapper(cursor)
+
+        with patch.object(
+            engine.dialect.execution_ctx_cls, "create_cursor", new_create
+        ):
+            yield calls
+
     def test_no_rowcount_on_selects_inserts(self, metadata, testing_engine):
         """assert that rowcount is only called on deletes and updates.
 
@@ -1741,33 +1774,71 @@ class CursorResultTest(fixtures.TablesTest):
 
         engine = testing_engine()
 
+        req = testing.requires
+
         t = Table("t1", metadata, Column("data", String(10)))
         metadata.create_all(engine)
-
-        with patch.object(
-            engine.dialect.execution_ctx_cls, "rowcount"
-        ) as mock_rowcount:
+        count = 0
+        with self.cursor_wrapper(engine) as call_counts:
             with engine.begin() as conn:
-                mock_rowcount.__get__ = Mock()
                 conn.execute(
                     t.insert(),
                     [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}],
                 )
-
-                eq_(len(mock_rowcount.__get__.mock_calls), 0)
+                if (
+                    req.rowcount_always_cached.enabled
+                    or req.rowcount_always_cached_on_insert.enabled
+                ):
+                    count += 1
+                eq_(call_counts["rowcount"], count)
 
                 eq_(
                     conn.execute(t.select()).fetchall(),
                     [("d1",), ("d2",), ("d3",)],
                 )
-                eq_(len(mock_rowcount.__get__.mock_calls), 0)
+                if req.rowcount_always_cached.enabled:
+                    count += 1
+                eq_(call_counts["rowcount"], count)
 
                 conn.execute(t.update(), {"data": "d4"})
 
-                eq_(len(mock_rowcount.__get__.mock_calls), 1)
+                count += 1
+                eq_(call_counts["rowcount"], count)
 
                 conn.execute(t.delete())
-                eq_(len(mock_rowcount.__get__.mock_calls), 2)
+                count += 1
+                eq_(call_counts["rowcount"], count)
+
+    def test_rowcount_always_called_when_preserve_rowcount(
+        self, metadata, testing_engine
+    ):
+        """assert that rowcount is called on any statement when
+        ``preserve_rowcount=True``.
+
+        """
+
+        engine = testing_engine()
+
+        t = Table("t1", metadata, Column("data", String(10)))
+        metadata.create_all(engine)
+
+        with self.cursor_wrapper(engine) as call_counts:
+            with engine.begin() as conn:
+                conn = conn.execution_options(preserve_rowcount=True)
+                # Do not use insertmanyvalues on any driver
+                conn.execute(t.insert(), {"data": "d1"})
+
+                eq_(call_counts["rowcount"], 1)
+
+                eq_(conn.execute(t.select()).fetchall(), [("d1",)])
+                eq_(call_counts["rowcount"], 2)
+
+                conn.execute(t.update(), {"data": "d4"})
+
+                eq_(call_counts["rowcount"], 3)
+
+                conn.execute(t.delete())
+                eq_(call_counts["rowcount"], 4)
 
     def test_row_is_sequence(self):
         row = Row(object(), [None], {}, ["value"])
@@ -2500,6 +2571,60 @@ class KeyTargetingTest(fixtures.TablesTest):
         eq_(row[5], "a3")
         eq_(row[6], "d3")
         eq_(row[7], "d3")
+
+    @testing.requires.duplicate_names_in_cursor_description
+    @testing.combinations((None,), (0,), (1,), (2,), argnames="pos")
+    @testing.variation("texttype", ["literal", "text"])
+    def test_dupe_col_targeting(self, connection, pos, texttype):
+        """test #11306"""
+
+        keyed2 = self.tables.keyed2
+        col = keyed2.c.b
+        data_value = "b2"
+
+        cols = [col, col, col]
+        expected = [data_value, data_value, data_value]
+
+        if pos is not None:
+            if texttype.literal:
+                cols[pos] = literal_column("10")
+            elif texttype.text:
+                cols[pos] = text("10")
+            else:
+                texttype.fail()
+
+            expected[pos] = 10
+
+        stmt = select(*cols)
+
+        result = connection.execute(stmt)
+
+        if texttype.text and pos is not None:
+            # when using text(), the name of the col is taken from
+            # cursor.description directly since we don't know what's
+            # inside a text()
+            key_for_text_col = result.cursor.description[pos][0]
+        elif texttype.literal and pos is not None:
+            # for literal_column(), we use the text
+            key_for_text_col = "10"
+
+        eq_(result.all(), [tuple(expected)])
+
+        result = connection.execute(stmt).mappings()
+        if pos is None:
+            eq_(set(result.keys()), {"b", "b__1", "b__2"})
+            eq_(
+                result.all(),
+                [{"b": data_value, "b__1": data_value, "b__2": data_value}],
+            )
+
+        else:
+            eq_(set(result.keys()), {"b", "b__1", key_for_text_col})
+
+            eq_(
+                result.all(),
+                [{"b": data_value, "b__1": data_value, key_for_text_col: 10}],
+            )
 
     def test_columnclause_schema_column_one(self, connection):
         # originally addressed by [ticket:2932], however liberalized
@@ -3457,9 +3582,10 @@ class AlternateCursorResultTest(fixtures.TablesTest):
                 r = conn.execute(select(self.table).limit(1))
 
                 r.fetchone()
-                with mock.patch.object(
-                    r, "_soft_close", raise_
-                ), testing.expect_raises_message(IOError, "random non-DBAPI"):
+                with (
+                    mock.patch.object(r, "_soft_close", raise_),
+                    testing.expect_raises_message(IOError, "random non-DBAPI"),
+                ):
                     r.first()
                 r.close()
 

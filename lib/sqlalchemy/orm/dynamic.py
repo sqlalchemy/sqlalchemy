@@ -1,5 +1,5 @@
 # orm/dynamic.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -37,10 +37,10 @@ from . import util as orm_util
 from .base import PassiveFlag
 from .query import Query
 from .session import object_session
-from .writeonly import AbstractCollectionWriter
-from .writeonly import WriteOnlyAttributeImpl
+from .writeonly import _AbstractCollectionWriter
+from .writeonly import _WriteOnlyAttributeImpl
+from .writeonly import _WriteOnlyLoader
 from .writeonly import WriteOnlyHistory
-from .writeonly import WriteOnlyLoader
 from .. import util
 from ..engine import result
 
@@ -61,7 +61,7 @@ _T = TypeVar("_T", bound=Any)
 class DynamicCollectionHistory(WriteOnlyHistory[_T]):
     def __init__(
         self,
-        attr: DynamicAttributeImpl,
+        attr: _DynamicAttributeImpl,
         state: InstanceState[_T],
         passive: PassiveFlag,
         apply_to: Optional[DynamicCollectionHistory[_T]] = None,
@@ -79,10 +79,10 @@ class DynamicCollectionHistory(WriteOnlyHistory[_T]):
             self._reconcile_collection = False
 
 
-class DynamicAttributeImpl(WriteOnlyAttributeImpl):
+class _DynamicAttributeImpl(_WriteOnlyAttributeImpl):
     _supports_dynamic_iteration = True
     collection_history_cls = DynamicCollectionHistory[Any]
-    query_class: Type[AppenderMixin[Any]]  # type: ignore[assignment]
+    query_class: Type[_AppenderMixin[Any]]  # type: ignore[assignment]
 
     def __init__(
         self,
@@ -91,10 +91,10 @@ class DynamicAttributeImpl(WriteOnlyAttributeImpl):
         dispatch: _Dispatch[QueryableAttribute[Any]],
         target_mapper: Mapper[_T],
         order_by: _RelationshipOrderByArg,
-        query_class: Optional[Type[AppenderMixin[_T]]] = None,
+        query_class: Optional[Type[_AppenderMixin[_T]]] = None,
         **kw: Any,
     ) -> None:
-        attributes.AttributeImpl.__init__(
+        attributes._AttributeImpl.__init__(
             self, class_, key, None, dispatch, **kw
         )
         self.target_mapper = target_mapper
@@ -102,18 +102,18 @@ class DynamicAttributeImpl(WriteOnlyAttributeImpl):
             self.order_by = tuple(order_by)
         if not query_class:
             self.query_class = AppenderQuery
-        elif AppenderMixin in query_class.mro():
+        elif _AppenderMixin in query_class.mro():
             self.query_class = query_class
         else:
             self.query_class = mixin_user_query(query_class)
 
 
 @relationships.RelationshipProperty.strategy_for(lazy="dynamic")
-class DynaLoader(WriteOnlyLoader):
-    impl_class = DynamicAttributeImpl
+class _DynaLoader(_WriteOnlyLoader):
+    impl_class = _DynamicAttributeImpl
 
 
-class AppenderMixin(AbstractCollectionWriter[_T]):
+class _AppenderMixin(_AbstractCollectionWriter[_T]):
     """A mixin that expects to be mixing in a Query class with
     AbstractAppender.
 
@@ -124,7 +124,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
     _order_by_clauses: Tuple[ColumnElement[Any], ...]
 
     def __init__(
-        self, attr: DynamicAttributeImpl, state: InstanceState[_T]
+        self, attr: _DynamicAttributeImpl, state: InstanceState[_T]
     ) -> None:
         Query.__init__(
             self,  # type: ignore[arg-type]
@@ -161,10 +161,12 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
             return result.IteratorResult(
                 result.SimpleResultMetaData([self.attr.class_.__name__]),
-                self.attr._get_collection_history(  # type: ignore[arg-type]
-                    attributes.instance_state(self.instance),
-                    PassiveFlag.PASSIVE_NO_INITIALIZE,
-                ).added_items,
+                iter(
+                    self.attr._get_collection_history(
+                        attributes.instance_state(self.instance),
+                        PassiveFlag.PASSIVE_NO_INITIALIZE,
+                    ).added_items
+                ),
                 _source_supports_scalars=True,
             ).scalars()
         else:
@@ -172,8 +174,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
     if TYPE_CHECKING:
 
-        def __iter__(self) -> Iterator[_T]:
-            ...
+        def __iter__(self) -> Iterator[_T]: ...
 
     def __getitem__(self, index: Any) -> Union[_T, List[_T]]:
         sess = self.session
@@ -282,7 +283,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
         self._remove_impl(item)
 
 
-class AppenderQuery(AppenderMixin[_T], Query[_T]):  # type: ignore[misc]
+class AppenderQuery(_AppenderMixin[_T], Query[_T]):  # type: ignore[misc]
     """A dynamic query that supports basic collection storage operations.
 
     Methods on :class:`.AppenderQuery` include all methods of
@@ -293,7 +294,7 @@ class AppenderQuery(AppenderMixin[_T], Query[_T]):  # type: ignore[misc]
     """
 
 
-def mixin_user_query(cls: Any) -> type[AppenderMixin[Any]]:
+def mixin_user_query(cls: Any) -> type[_AppenderMixin[Any]]:
     """Return a new class with AppenderQuery functionality layered over."""
     name = "Appender" + cls.__name__
-    return type(name, (AppenderMixin, cls), {"query_class": cls})
+    return type(name, (_AppenderMixin, cls), {"query_class": cls})

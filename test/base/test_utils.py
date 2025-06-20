@@ -1,4 +1,5 @@
 import copy
+from decimal import Decimal
 import inspect
 from pathlib import Path
 import pickle
@@ -31,12 +32,12 @@ from sqlalchemy.util import classproperty
 from sqlalchemy.util import compat
 from sqlalchemy.util import FastIntFlag
 from sqlalchemy.util import get_callable_argspec
+from sqlalchemy.util import is_non_string_iterable
 from sqlalchemy.util import langhelpers
 from sqlalchemy.util import preloaded
 from sqlalchemy.util import WeakSequence
 from sqlalchemy.util._collections import merge_lists_w_ordering
-from sqlalchemy.util._has_cy import _import_cy_extensions
-from sqlalchemy.util._has_cy import HAS_CYEXTENSION
+from sqlalchemy.util._has_cython import _all_cython_modules
 
 
 class WeakSequenceTest(fixtures.TestBase):
@@ -469,7 +470,6 @@ class ImmutableDictTest(fixtures.TestBase):
         i2 = util.immutabledict({"a": 42, 42: "a"})
         eq_(str(i2), "immutabledict({'a': 42, 42: 'a'})")
 
-    @testing.requires.python39
     def test_pep584(self):
         i = util.immutabledict({"a": 2})
         with expect_raises_message(TypeError, "object is immutable"):
@@ -1548,6 +1548,30 @@ class HashEqOverride:
             return self.value != other.value
         else:
             return True
+
+
+class MiscTest(fixtures.TestBase):
+    @testing.combinations(
+        (["one", "two", "three"], True),
+        (("one", "two", "three"), True),
+        ((), True),
+        ("four", False),
+        (252, False),
+        (Decimal("252"), False),
+        (b"four", False),
+        (iter("four"), True),
+        (b"", False),
+        ("", False),
+        (None, False),
+        ({"dict": "value"}, True),
+        ({}, True),
+        ({"set", "two"}, True),
+        (set(), True),
+        (util.immutabledict(), True),
+        (util.immutabledict({"key": "value"}), True),
+    )
+    def test_non_string_iterable_check(self, fixture, expected):
+        is_(is_non_string_iterable(fixture), expected)
 
 
 class IdentitySetTest(fixtures.TestBase):
@@ -3592,15 +3616,44 @@ class MethodOveriddenTest(fixtures.TestBase):
 
 
 class CyExtensionTest(fixtures.TestBase):
-    @testing.only_if(lambda: HAS_CYEXTENSION, "No Cython")
+    __requires__ = ("cextensions",)
+
     def test_all_cyext_imported(self):
-        ext = _import_cy_extensions()
+        ext = _all_cython_modules()
         lib_folder = (Path(__file__).parent / ".." / ".." / "lib").resolve()
         sa_folder = lib_folder / "sqlalchemy"
-        cython_files = [f.resolve() for f in sa_folder.glob("**/*.pyx")]
+        cython_files = [f.resolve() for f in sa_folder.glob("**/*_cy.py")]
         eq_(len(ext), len(cython_files))
         names = {
-            ".".join(f.relative_to(lib_folder).parts).replace(".pyx", "")
+            ".".join(f.relative_to(lib_folder).parts).replace(".py", "")
             for f in cython_files
         }
         eq_({m.__name__ for m in ext}, set(names))
+
+    @testing.combinations(*_all_cython_modules())
+    def test_load_uncompiled_module(self, module):
+        is_true(module._is_compiled())
+        py_module = langhelpers.load_uncompiled_module(module)
+        is_false(py_module._is_compiled())
+        eq_(py_module.__name__, module.__name__)
+        eq_(py_module.__package__, module.__package__)
+
+    def test_setup_defines_all_files(self):
+        try:
+            import setuptools  # noqa: F401
+        except ImportError:
+            testing.skip_test("setuptools is required")
+        with (
+            mock.patch("setuptools.setup", mock.MagicMock()),
+            mock.patch.dict(
+                "os.environ",
+                {"DISABLE_SQLALCHEMY_CEXT": "", "REQUIRE_SQLALCHEMY_CEXT": ""},
+            ),
+        ):
+            import setup
+
+            setup_modules = {f"sqlalchemy.{m}" for m in setup.CYTHON_MODULES}
+            expected = {e.__name__ for e in _all_cython_modules()}
+            print(expected)
+            print(setup_modules)
+            eq_(setup_modules, expected)

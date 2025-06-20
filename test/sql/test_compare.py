@@ -1,4 +1,5 @@
 import importlib
+from inspect import signature
 import itertools
 import random
 
@@ -8,6 +9,7 @@ from sqlalchemy import case
 from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import DateTime
 from sqlalchemy import dialects
 from sqlalchemy import exists
 from sqlalchemy import extract
@@ -29,8 +31,6 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import values
-from sqlalchemy.dialects import mysql
-from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
@@ -42,17 +42,23 @@ from sqlalchemy.sql import roles
 from sqlalchemy.sql import True_
 from sqlalchemy.sql import type_coerce
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.annotation import Annotated
+from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.base import HasCacheKey
+from sqlalchemy.sql.base import SingletonConstant
+from sqlalchemy.sql.base import SyntaxExtension
 from sqlalchemy.sql.elements import _label_reference
 from sqlalchemy.sql.elements import _textual_label_reference
-from sqlalchemy.sql.elements import Annotated
 from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.sql.elements import ClauseList
 from sqlalchemy.sql.elements import CollationClause
+from sqlalchemy.sql.elements import DQLDMLClauseElement
+from sqlalchemy.sql.elements import ElementList
 from sqlalchemy.sql.elements import Immutable
 from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.elements import Slice
+from sqlalchemy.sql.elements import TypeClause
 from sqlalchemy.sql.elements import UnaryExpression
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.functions import GenericFunction
@@ -61,10 +67,10 @@ from sqlalchemy.sql.lambdas import lambda_stmt
 from sqlalchemy.sql.lambdas import LambdaElement
 from sqlalchemy.sql.lambdas import LambdaOptions
 from sqlalchemy.sql.selectable import _OffsetLimitParam
-from sqlalchemy.sql.selectable import AliasedReturnsRows
 from sqlalchemy.sql.selectable import FromGrouping
 from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from sqlalchemy.sql.selectable import NoInit
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.sql.selectable import Selectable
 from sqlalchemy.sql.selectable import SelectStatementGrouping
@@ -188,6 +194,15 @@ class CoreFixtures:
             _label_reference(table_a.c.a.desc()),
             _label_reference(table_a.c.a.asc()),
         ),
+        lambda: (
+            TypeClause(String(50)),
+            TypeClause(DateTime()),
+        ),
+        lambda: (
+            table_a.c.a,
+            ElementList([table_a.c.a]),
+            ElementList([table_a.c.a, table_a.c.b]),
+        ),
         lambda: (_textual_label_reference("a"), _textual_label_reference("b")),
         lambda: (
             text("select a, b from table").columns(a=Integer, b=String),
@@ -203,6 +218,43 @@ class CoreFixtures:
             text("select a, b, c from table where foo=:bar").bindparams(
                 bindparam("bar", type_=String)
             ),
+        ),
+        lambda: (
+            # test #11471
+            text("select * from table")
+            .columns(a=Integer())
+            .add_cte(table_b.select().cte()),
+            text("select * from table")
+            .columns(a=Integer())
+            .add_cte(table_b.select().where(table_b.c.a > 5).cte()),
+        ),
+        lambda: (
+            union(
+                select(table_a).where(table_a.c.a > 1),
+                select(table_a).where(table_a.c.a < 1),
+            ).add_cte(select(table_b).where(table_b.c.a > 1).cte("ttt")),
+            union(
+                select(table_a).where(table_a.c.a > 1),
+                select(table_a).where(table_a.c.a < 1),
+            ).add_cte(select(table_b).where(table_b.c.a < 1).cte("ttt")),
+            union(
+                select(table_a).where(table_a.c.a > 1),
+                select(table_a).where(table_a.c.a < 1),
+            )
+            .add_cte(select(table_b).where(table_b.c.a > 1).cte("ttt"))
+            ._annotate({"foo": "bar"}),
+        ),
+        lambda: (
+            union(
+                select(table_a).where(table_a.c.a > 1),
+                select(table_a).where(table_a.c.a < 1),
+            ).self_group(),
+            union(
+                select(table_a).where(table_a.c.a > 1),
+                select(table_a).where(table_a.c.a < 1),
+            )
+            .self_group()
+            ._annotate({"foo": "bar"}),
         ),
         lambda: (
             literal(1).op("+")(literal(1)),
@@ -401,6 +453,7 @@ class CoreFixtures:
             func.row_number().over(order_by=table_a.c.a, range_=(0, 10)),
             func.row_number().over(order_by=table_a.c.a, range_=(None, 10)),
             func.row_number().over(order_by=table_a.c.a, rows=(None, 20)),
+            func.row_number().over(order_by=table_a.c.a, groups=(None, 20)),
             func.row_number().over(order_by=table_a.c.b),
             func.row_number().over(
                 order_by=table_a.c.a, partition_by=table_a.c.b
@@ -468,6 +521,21 @@ class CoreFixtures:
             select(table_a.c.a)
             .where(table_a.c.b == 5)
             .with_for_update(nowait=True),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(nowait=True, skip_locked=True),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(nowait=True, read=True),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(of=table_a.c.a),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(of=table_a.c.b),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(nowait=True, key_share=True),
             select(table_a.c.a).where(table_a.c.b == 5).correlate(table_b),
             select(table_a.c.a)
             .where(table_a.c.b == 5)
@@ -482,6 +550,7 @@ class CoreFixtures:
             select(table_a.c.a).fetch(2, percent=True),
             select(table_a.c.a).fetch(2, with_ties=True),
             select(table_a.c.a).fetch(2, with_ties=True, percent=True),
+            select(table_a.c.a).fetch(2, oracle_fetch_approximate=True),
             select(table_a.c.a).fetch(2).offset(3),
             select(table_a.c.a).fetch(2).offset(5),
             select(table_a.c.a).limit(2).offset(5),
@@ -933,15 +1002,15 @@ class CoreFixtures:
 
     def _statements_w_context_options_fixtures():
         return [
-            select(table_a)._add_context_option(opt1, True),
-            select(table_a)._add_context_option(opt1, 5),
+            select(table_a)._add_compile_state_func(opt1, True),
+            select(table_a)._add_compile_state_func(opt1, 5),
             select(table_a)
-            ._add_context_option(opt1, True)
-            ._add_context_option(opt2, True),
+            ._add_compile_state_func(opt1, True)
+            ._add_compile_state_func(opt2, True),
             select(table_a)
-            ._add_context_option(opt1, True)
-            ._add_context_option(opt2, 5),
-            select(table_a)._add_context_option(opt3, True),
+            ._add_compile_state_func(opt1, True)
+            ._add_compile_state_func(opt2, 5),
+            select(table_a)._add_compile_state_func(opt3, True),
         ]
 
     fixtures.append(_statements_w_context_options_fixtures)
@@ -1114,6 +1183,40 @@ class CoreFixtures:
 
     dont_compare_values_fixtures.append(_lambda_fixtures)
 
+    def _numeric_agnostic_window_functions():
+        return (
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=(random.randint(50, 60), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=(random.randint(-40, -20), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                rows=(random.randint(-40, -20), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=(None, random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=(random.randint(50, 60), None),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                groups=(random.randint(50, 60), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                groups=(random.randint(-40, -20), random.randint(60, 70)),
+            ),
+        )
+
+    dont_compare_values_fixtures.append(_numeric_agnostic_window_functions)
+
     # like fixture but returns at least two objects that compare equally
     equal_fixtures = [
         lambda: (
@@ -1132,17 +1235,7 @@ class CoreFixtures:
 
 
 class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
-    # we are slightly breaking the policy of not having external dialect
-    # stuff in here, but use pg/mysql as test cases to ensure that these
-    # objects don't report an inaccurate cache key, which is dependent
-    # on the base insert sending out _post_values_clause and the caching
-    # system properly recognizing these constructs as not cacheable
-
     @testing.combinations(
-        postgresql.insert(table_a).on_conflict_do_update(
-            index_elements=[table_a.c.a], set_={"name": "foo"}
-        ),
-        mysql.insert(table_a).on_duplicate_key_update(updated_once=None),
         table_a.insert().values(  # multivalues doesn't cache
             [
                 {"name": "some name"},
@@ -1194,6 +1287,23 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         is_true(c1._generate_cache_key() != c3._generate_cache_key())
         is_false(c1._generate_cache_key() == c3._generate_cache_key())
 
+    def test_in_with_none(self):
+        """test #12314"""
+
+        def fixture():
+            elements = list(
+                random_choices([1, 2, None, 3, 4], k=random.randint(1, 7))
+            )
+
+            # slight issue.  if the first element is None and not an int,
+            # the type of the BindParameter goes from Integer to Nulltype.
+            # but if we set the left side to be Integer then it comes from
+            # that side, and the vast majority of in_() use cases come from
+            # a typed column expression, so this is fine
+            return (column("x", Integer).in_(elements),)
+
+        self._run_cache_key_fixture(fixture, compare_values=False)
+
     def test_cache_key(self):
         for fixtures_, compare_values in [
             (self.fixtures, True),
@@ -1201,7 +1311,9 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
             (self.type_cache_key_fixtures, False),
         ]:
             for fixture in fixtures_:
-                self._run_cache_key_fixture(fixture, compare_values)
+                self._run_cache_key_fixture(
+                    fixture, compare_values=compare_values
+                )
 
     def test_cache_key_equal(self):
         for fixture in self.equal_fixtures:
@@ -1216,7 +1328,7 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
 
         self._run_cache_key_fixture(
             fixture,
-            True,
+            compare_values=True,
         )
 
     def test_bindparam_subclass_nocache(self):
@@ -1239,7 +1351,7 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
                 _literal_bindparam(None),
             )
 
-        self._run_cache_key_fixture(fixture, True)
+        self._run_cache_key_fixture(fixture, compare_values=True)
 
     def test_cache_key_unknown_traverse(self):
         class Foobar1(ClauseElement):
@@ -1345,6 +1457,258 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         is_not(ck3, None)
 
 
+def all_hascachekey_subclasses(ignore_subclasses=()):
+    def find_subclasses(cls: type):
+        for s in class_hierarchy(cls):
+            if (
+                # class_hierarchy may return values that
+                # aren't subclasses of cls
+                not issubclass(s, cls)
+                or "_traverse_internals" not in s.__dict__
+                or any(issubclass(s, ignore) for ignore in ignore_subclasses)
+            ):
+                continue
+            yield s
+
+    return dict.fromkeys(find_subclasses(HasCacheKey))
+
+
+class HasCacheKeySubclass(fixtures.TestBase):
+    custom_traverse = {
+        "AnnotatedFunctionAsBinary": {
+            "sql_function",
+            "left_index",
+            "right_index",
+            "modifiers",
+            "_annotations",
+        },
+        "Annotatednext_value": {"sequence", "_annotations"},
+        "FunctionAsBinary": {
+            "sql_function",
+            "left_index",
+            "right_index",
+            "modifiers",
+        },
+        "next_value": {"sequence"},
+        "array": ({"type", "clauses"}),
+    }
+
+    ignore_keys = {
+        "AnnotatedColumn": {"dialect_options"},
+        "SelectStatementGrouping": {
+            "_independent_ctes",
+            "_independent_ctes_opts",
+        },
+    }
+
+    @testing.combinations(*all_hascachekey_subclasses())
+    def test_traverse_internals(self, cls: type):
+        super_traverse = {}
+        # ignore_super = self.ignore_super.get(cls.__name__, set())
+        for s in cls.mro()[1:]:
+            # if s.__name__ in ignore_super:
+            #     continue
+            if s.__name__ == "Executable":
+                continue
+            for attr in s.__dict__:
+                if not attr.endswith("_traverse_internals"):
+                    continue
+                for k, v in s.__dict__[attr]:
+                    if k not in super_traverse:
+                        super_traverse[k] = v
+        traverse_dict = dict(cls.__dict__["_traverse_internals"])
+        eq_(len(cls.__dict__["_traverse_internals"]), len(traverse_dict))
+        if cls.__name__ in self.custom_traverse:
+            eq_(traverse_dict.keys(), self.custom_traverse[cls.__name__])
+        else:
+            ignore = self.ignore_keys.get(cls.__name__, set())
+
+            left_keys = traverse_dict.keys() | ignore
+            is_true(
+                left_keys >= super_traverse.keys(),
+                f"{left_keys} >= {super_traverse.keys()} - missing: "
+                f"{super_traverse.keys() - left_keys} - ignored {ignore}",
+            )
+
+            subset = {
+                k: v for k, v in traverse_dict.items() if k in super_traverse
+            }
+            eq_(
+                subset,
+                {k: v for k, v in super_traverse.items() if k not in ignore},
+            )
+
+    # name -> (traverse names, init args)
+    custom_init = {
+        "BinaryExpression": (
+            {"right", "operator", "type", "negate", "modifiers", "left"},
+            {"right", "operator", "type_", "negate", "modifiers", "left"},
+        ),
+        "BindParameter": (
+            {"literal_execute", "type", "callable", "value", "key"},
+            {"required", "isoutparam", "literal_execute", "type_", "callable_"}
+            | {"unique", "expanding", "quote", "value", "key"},
+        ),
+        "Cast": ({"type", "clause"}, {"type_", "expression"}),
+        "ClauseList": (
+            {"clauses", "operator"},
+            {"group_contents", "group", "operator", "clauses"},
+        ),
+        "ColumnClause": (
+            {"is_literal", "type", "table", "name"},
+            {"type_", "is_literal", "text"},
+        ),
+        "ExpressionClauseList": (
+            {"clauses", "operator"},
+            {"type_", "operator", "clauses"},
+        ),
+        "FromStatement": (
+            {"_raw_columns", "_with_options", "element"}
+            | {"_propagate_attrs", "_compile_state_funcs"},
+            {"element", "entities"},
+        ),
+        "FunctionAsBinary": (
+            {"modifiers", "sql_function", "right_index", "left_index"},
+            {"right_index", "left_index", "fn"},
+        ),
+        "FunctionElement": (
+            {"clause_expr", "_table_value_type", "_with_ordinality"},
+            {"clauses"},
+        ),
+        "Function": (
+            {"_table_value_type", "clause_expr", "_with_ordinality"}
+            | {"packagenames", "type", "name"},
+            {"type_", "packagenames", "name", "clauses"},
+        ),
+        "Label": ({"_element", "type", "name"}, {"type_", "element", "name"}),
+        "LambdaElement": (
+            {"_resolved"},
+            {"role", "opts", "apply_propagate_attrs", "fn"},
+        ),
+        "Load": (
+            {"propagate_to_loaders", "additional_source_entities"}
+            | {"path", "context"},
+            {"entity"},
+        ),
+        "LoaderCriteriaOption": (
+            {"where_criteria", "entity", "propagate_to_loaders"}
+            | {"root_entity", "include_aliases"},
+            {"where_criteria", "include_aliases", "propagate_to_loaders"}
+            | {"entity_or_base", "loader_only", "track_closure_variables"},
+        ),
+        "NullLambdaStatement": ({"_resolved"}, {"statement"}),
+        "ScalarFunctionColumn": (
+            {"type", "fn", "name"},
+            {"type_", "name", "fn"},
+        ),
+        "ScalarValues": (
+            {"_data", "_column_args", "literal_binds"},
+            {"columns", "data", "literal_binds"},
+        ),
+        "Select": (
+            {
+                "_having_criteria",
+                "_distinct",
+                "_group_by_clauses",
+                "_fetch_clause",
+                "_limit_clause",
+                "_label_style",
+                "_order_by_clauses",
+                "_raw_columns",
+                "_correlate_except",
+                "_statement_hints",
+                "_hints",
+                "_independent_ctes",
+                "_distinct_on",
+                "_compile_state_funcs",
+                "_setup_joins",
+                "_suffixes",
+                "_memoized_select_entities",
+                "_for_update_arg",
+                "_prefixes",
+                "_propagate_attrs",
+                "_with_options",
+                "_independent_ctes_opts",
+                "_offset_clause",
+                "_correlate",
+                "_where_criteria",
+                "_annotations",
+                "_fetch_clause_options",
+                "_from_obj",
+                "_post_select_clause",
+                "_post_body_clause",
+                "_post_criteria_clause",
+                "_pre_columns_clause",
+            },
+            {"entities"},
+        ),
+        "TableValuedColumn": (
+            {"scalar_alias", "type", "name"},
+            {"type_", "scalar_alias"},
+        ),
+        "TableValueType": ({"_elements"}, {"elements"}),
+        "TextualSelect": (
+            {"column_args", "_annotations", "_independent_ctes"}
+            | {"element", "_independent_ctes_opts"},
+            {"positional", "columns", "text"},
+        ),
+        "Tuple": ({"clauses", "operator"}, {"clauses", "types"}),
+        "TypeClause": ({"type"}, {"type_"}),
+        "TypeCoerce": ({"type", "clause"}, {"type_", "expression"}),
+        "UnaryExpression": (
+            {"modifier", "element", "operator"},
+            {"operator", "wraps_column_expression"}
+            | {"type_", "modifier", "element"},
+        ),
+        "Values": (
+            {"_column_args", "literal_binds", "name", "_data"},
+            {"columns", "name", "literal_binds"},
+        ),
+        "_FrameClause": (
+            {"upper_integer_bind", "upper_type"}
+            | {"lower_type", "lower_integer_bind"},
+            {"range_"},
+        ),
+        "_MemoizedSelectEntities": (
+            {"_with_options", "_raw_columns", "_setup_joins"},
+            {"args"},
+        ),
+        "array": ({"type", "clauses"}, {"clauses", "type_"}),
+        "next_value": ({"sequence"}, {"seq"}),
+    }
+
+    @testing.combinations(
+        *all_hascachekey_subclasses(
+            ignore_subclasses=[
+                Annotated,
+                NoInit,
+                SingletonConstant,
+                SyntaxExtension,
+                DialectKWArgs,
+            ]
+        )
+    )
+    def test_init_args_in_traversal(self, cls: type):
+        sig = signature(cls.__init__)
+        init_args = set()
+        for p in sig.parameters.values():
+            if (
+                p.name == "self"
+                or p.name.startswith("_")
+                or p.kind in (p.VAR_KEYWORD,)
+            ):
+                continue
+            init_args.add(p.name)
+
+        names = {n for n, _ in cls.__dict__["_traverse_internals"]}
+        if cls.__name__ in self.custom_init:
+            traverse, inits = self.custom_init[cls.__name__]
+            eq_(names, traverse)
+            eq_(init_args, inits)
+        else:
+            is_true(names.issuperset(init_args), f"{names} : {init_args}")
+
+
 class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
     @classmethod
     def setup_test_class(cls):
@@ -1360,21 +1724,24 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
         also included in the fixtures above.
 
         """
-        need = {
+        need = set(
             cls
-            for cls in class_hierarchy(ClauseElement)
-            if issubclass(cls, (ColumnElement, Selectable, LambdaElement))
-            and (
-                "__init__" in cls.__dict__
-                or issubclass(cls, AliasedReturnsRows)
+            for cls in all_hascachekey_subclasses(
+                ignore_subclasses=[Annotated, NoInit, SingletonConstant]
             )
-            and not issubclass(cls, (Annotated))
-            and cls.__module__.startswith("sqlalchemy.")
-            and "orm" not in cls.__module__
+            if "orm" not in cls.__module__
             and "compiler" not in cls.__module__
-            and "crud" not in cls.__module__
-            and "dialects" not in cls.__module__  # TODO: dialects?
-        }.difference({ColumnElement, UnaryExpression})
+            and "dialects" not in cls.__module__
+            and issubclass(
+                cls,
+                (
+                    ColumnElement,
+                    Selectable,
+                    LambdaElement,
+                    DQLDMLClauseElement,
+                ),
+            )
+        )
 
         for fixture in self.fixtures + self.dont_compare_values_fixtures:
             case_a = fixture()

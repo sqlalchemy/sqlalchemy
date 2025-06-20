@@ -1,5 +1,5 @@
-# mssql/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mssql/base.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,7 +9,6 @@
 """
 .. dialect:: mssql
     :name: Microsoft SQL Server
-    :full_support: 2017
     :normal_support: 2012+
     :best_effort: 2005+
 
@@ -40,9 +39,12 @@ considered to be the identity column - unless it is associated with a
     from sqlalchemy import Table, MetaData, Column, Integer
 
     m = MetaData()
-    t = Table('t', m,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer))
+    t = Table(
+        "t",
+        m,
+        Column("id", Integer, primary_key=True),
+        Column("x", Integer),
+    )
     m.create_all(engine)
 
 The above example will generate DDL as:
@@ -60,9 +62,12 @@ specify ``False`` for the :paramref:`_schema.Column.autoincrement` flag,
 on the first integer primary key column::
 
     m = MetaData()
-    t = Table('t', m,
-            Column('id', Integer, primary_key=True, autoincrement=False),
-            Column('x', Integer))
+    t = Table(
+        "t",
+        m,
+        Column("id", Integer, primary_key=True, autoincrement=False),
+        Column("x", Integer),
+    )
     m.create_all(engine)
 
 To add the ``IDENTITY`` keyword to a non-primary key column, specify
@@ -72,9 +77,12 @@ To add the ``IDENTITY`` keyword to a non-primary key column, specify
 is set to ``False`` on any integer primary key column::
 
     m = MetaData()
-    t = Table('t', m,
-            Column('id', Integer, primary_key=True, autoincrement=False),
-            Column('x', Integer, autoincrement=True))
+    t = Table(
+        "t",
+        m,
+        Column("id", Integer, primary_key=True, autoincrement=False),
+        Column("x", Integer, autoincrement=True),
+    )
     m.create_all(engine)
 
 .. versionchanged::  1.4   Added :class:`_schema.Identity` construct
@@ -91,14 +99,6 @@ is set to ``False`` on any integer primary key column::
    These options are also no longer returned as part of the
    ``dialect_options`` key in :meth:`_reflection.Inspector.get_columns`.
    Use the information in the ``identity`` key instead.
-
-.. deprecated:: 1.3
-
-   The use of :class:`.Sequence` to specify IDENTITY characteristics is
-   deprecated and will be removed in a future release.   Please use
-   the :class:`_schema.Identity` object parameters
-   :paramref:`_schema.Identity.start` and
-   :paramref:`_schema.Identity.increment`.
 
 .. versionchanged::  1.4   Removed the ability to use a :class:`.Sequence`
    object to modify IDENTITY characteristics. :class:`.Sequence` objects
@@ -137,14 +137,12 @@ parameters passed to the :class:`_schema.Identity` object::
     from sqlalchemy import Table, Integer, Column, Identity
 
     test = Table(
-        'test', metadata,
+        "test",
+        metadata,
         Column(
-            'id',
-            Integer,
-            primary_key=True,
-            Identity(start=100, increment=10)
+            "id", Integer, primary_key=True, Identity(start=100, increment=10)
         ),
-        Column('name', String(20))
+        Column("name", String(20)),
     )
 
 The CREATE TABLE for the above :class:`_schema.Table` object would be:
@@ -154,20 +152,13 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
    CREATE TABLE test (
      id INTEGER NOT NULL IDENTITY(100,10) PRIMARY KEY,
      name VARCHAR(20) NULL,
-     )
+   )
 
 .. note::
 
    The :class:`_schema.Identity` object supports many other parameter in
    addition to ``start`` and ``increment``. These are not supported by
    SQL Server and will be ignored when generating the CREATE TABLE ddl.
-
-.. versionchanged:: 1.3.19  The :class:`_schema.Identity` object is
-   now used to affect the
-   ``IDENTITY`` generator for a :class:`_schema.Column` under  SQL Server.
-   Previously, the :class:`.Sequence` object was used.  As SQL Server now
-   supports real sequences as a separate construct, :class:`.Sequence` will be
-   functional in the normal way starting from SQLAlchemy version 1.4.
 
 
 Using IDENTITY with Non-Integer numeric types
@@ -186,6 +177,7 @@ type deployed to the SQL Server database can be specified as ``Numeric`` using
     from sqlalchemy.ext.declarative import declarative_base
 
     Base = declarative_base()
+
 
     class TestTable(Base):
         __tablename__ = "test"
@@ -212,8 +204,9 @@ integer values in Python 3), use :class:`_types.TypeDecorator` as follows::
 
     from sqlalchemy import TypeDecorator
 
+
     class NumericAsInteger(TypeDecorator):
-        '''normalize floating point return values into ints'''
+        "normalize floating point return values into ints"
 
         impl = Numeric(10, 0, asdecimal=False)
         cache_ok = True
@@ -222,6 +215,7 @@ integer values in Python 3), use :class:`_types.TypeDecorator` as follows::
             if value is not None:
                 value = int(value)
             return value
+
 
     class TestTable(Base):
         __tablename__ = "test"
@@ -271,11 +265,11 @@ The process for fetching this value has several variants:
     fetched in order to receive the value.  Given a table as::
 
         t = Table(
-            't',
+            "t",
             metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer),
-            implicit_returning=False
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            implicit_returning=False,
         )
 
     an INSERT will look like:
@@ -301,12 +295,13 @@ statement proceeding, and ``SET IDENTITY_INSERT OFF`` subsequent to the
 execution.  Given this example::
 
     m = MetaData()
-    t = Table('t', m, Column('id', Integer, primary_key=True),
-                    Column('x', Integer))
+    t = Table(
+        "t", m, Column("id", Integer, primary_key=True), Column("x", Integer)
+    )
     m.create_all(engine)
 
     with engine.begin() as conn:
-        conn.execute(t.insert(), {'id': 1, 'x':1}, {'id':2, 'x':2})
+        conn.execute(t.insert(), {"id": 1, "x": 1}, {"id": 2, "x": 2})
 
 The above column will be created with IDENTITY, however the INSERT statement
 we emit is specifying explicit values.  In the echo output we can see
@@ -342,7 +337,11 @@ The :class:`.Sequence` object creates "real" sequences, i.e.,
     >>> from sqlalchemy import Sequence
     >>> from sqlalchemy.schema import CreateSequence
     >>> from sqlalchemy.dialects import mssql
-    >>> print(CreateSequence(Sequence("my_seq", start=1)).compile(dialect=mssql.dialect()))
+    >>> print(
+    ...     CreateSequence(Sequence("my_seq", start=1)).compile(
+    ...         dialect=mssql.dialect()
+    ...     )
+    ... )
     {printsql}CREATE SEQUENCE my_seq START WITH 1
 
 For integer primary key generation, SQL Server's ``IDENTITY`` construct should
@@ -376,11 +375,11 @@ more than one backend without using dialect-specific types.
 To build a SQL Server VARCHAR or NVARCHAR with MAX length, use None::
 
     my_table = Table(
-        'my_table', metadata,
-        Column('my_data', VARCHAR(None)),
-        Column('my_n_data', NVARCHAR(None))
+        "my_table",
+        metadata,
+        Column("my_data", VARCHAR(None)),
+        Column("my_n_data", NVARCHAR(None)),
     )
-
 
 Collation Support
 -----------------
@@ -389,10 +388,13 @@ Character collations are supported by the base string types,
 specified by the string argument "collation"::
 
     from sqlalchemy import VARCHAR
-    Column('login', VARCHAR(32, collation='Latin1_General_CI_AS'))
+
+    Column("login", VARCHAR(32, collation="Latin1_General_CI_AS"))
 
 When such a column is associated with a :class:`_schema.Table`, the
-CREATE TABLE statement for this column will yield::
+CREATE TABLE statement for this column will yield:
+
+.. sourcecode:: sql
 
     login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL
 
@@ -412,7 +414,9 @@ versions when no OFFSET clause is present.  A statement such as::
 
     select(some_table).limit(5)
 
-will render similarly to::
+will render similarly to:
+
+.. sourcecode:: sql
 
     SELECT TOP 5 col1, col2.. FROM table
 
@@ -422,7 +426,9 @@ LIMIT and OFFSET, or just OFFSET alone, will be rendered using the
 
     select(some_table).order_by(some_table.c.col3).limit(5).offset(10)
 
-will render similarly to::
+will render similarly to:
+
+.. sourcecode:: sql
 
     SELECT anon_1.col1, anon_1.col2 FROM (SELECT col1, col2,
     ROW_NUMBER() OVER (ORDER BY col3) AS
@@ -475,16 +481,13 @@ each new connection.
 To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
-        "mssql+pyodbc://scott:tiger@ms_2008",
-        isolation_level="REPEATABLE READ"
+        "mssql+pyodbc://scott:tiger@ms_2008", isolation_level="REPEATABLE READ"
     )
 
 To set using per-connection execution options::
 
     connection = engine.connect()
-    connection = connection.execution_options(
-        isolation_level="READ COMMITTED"
-    )
+    connection = connection.execution_options(isolation_level="READ COMMITTED")
 
 Valid values for ``isolation_level`` include:
 
@@ -534,7 +537,6 @@ will remain consistent with the state of the transaction::
 
     mssql_engine = create_engine(
         "mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+17+for+SQL+Server",
-
         # disable default reset-on-return scheme
         pool_reset_on_return=None,
     )
@@ -563,13 +565,17 @@ Nullability
 -----------
 MSSQL has support for three levels of column nullability. The default
 nullability allows nulls and is explicit in the CREATE TABLE
-construct::
+construct:
+
+.. sourcecode:: sql
 
     name VARCHAR(20) NULL
 
 If ``nullable=None`` is specified then no specification is made. In
 other words the database's configured default is used. This will
-render::
+render:
+
+.. sourcecode:: sql
 
     name VARCHAR(20)
 
@@ -625,8 +631,9 @@ behavior of this flag is as follows:
 * The flag can be set to either ``True`` or ``False`` when the dialect
   is created, typically via :func:`_sa.create_engine`::
 
-        eng = create_engine("mssql+pymssql://user:pass@host/db",
-                        deprecate_large_types=True)
+        eng = create_engine(
+            "mssql+pymssql://user:pass@host/db", deprecate_large_types=True
+        )
 
 * Complete control over whether the "old" or "new" types are rendered is
   available in all SQLAlchemy versions by using the UPPERCASE type objects
@@ -648,9 +655,10 @@ at once using the :paramref:`_schema.Table.schema` argument of
 :class:`_schema.Table`::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="mydatabase.dbo"
+        schema="mydatabase.dbo",
     )
 
 When performing operations such as table or component reflection, a schema
@@ -662,9 +670,10 @@ components will be quoted separately for case sensitive names and other
 special characters.   Given an argument as below::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="MyDataBase.dbo"
+        schema="MyDataBase.dbo",
     )
 
 The above schema would be rendered as ``[MyDataBase].dbo``, and also in
@@ -677,24 +686,21 @@ Below, the "owner" will be considered as ``MyDataBase.dbo`` and the
 "database" will be None::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="[MyDataBase.dbo]"
+        schema="[MyDataBase.dbo]",
     )
 
 To individually specify both database and owner name with special characters
 or embedded dots, use two sets of brackets::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="[MyDataBase.Period].[MyOwner.Dot]"
+        schema="[MyDataBase.Period].[MyOwner.Dot]",
     )
-
-
-.. versionchanged:: 1.2 the SQL Server dialect now treats brackets as
-   identifier delimiters splitting the schema into separate database
-   and owner tokens, to allow dots within either name itself.
 
 .. _legacy_schema_rendering:
 
@@ -706,10 +712,11 @@ schema-qualified table would be auto-aliased when used in a
 SELECT statement; given a table::
 
     account_table = Table(
-        'account', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('info', String(100)),
-        schema="customer_schema"
+        "account",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("info", String(100)),
+        schema="customer_schema",
     )
 
 this legacy mode of rendering would assume that "customer_schema.account"
@@ -752,37 +759,55 @@ which renders the index as ``CREATE CLUSTERED INDEX my_index ON table (x)``.
 
 To generate a clustered primary key use::
 
-    Table('my_table', metadata,
-          Column('x', ...),
-          Column('y', ...),
-          PrimaryKeyConstraint("x", "y", mssql_clustered=True))
+    Table(
+        "my_table",
+        metadata,
+        Column("x", ...),
+        Column("y", ...),
+        PrimaryKeyConstraint("x", "y", mssql_clustered=True),
+    )
 
-which will render the table, for example, as::
+which will render the table, for example, as:
 
-  CREATE TABLE my_table (x INTEGER NOT NULL, y INTEGER NOT NULL,
-                         PRIMARY KEY CLUSTERED (x, y))
+.. sourcecode:: sql
+
+  CREATE TABLE my_table (
+    x INTEGER NOT NULL,
+    y INTEGER NOT NULL,
+    PRIMARY KEY CLUSTERED (x, y)
+  )
 
 Similarly, we can generate a clustered unique constraint using::
 
-    Table('my_table', metadata,
-          Column('x', ...),
-          Column('y', ...),
-          PrimaryKeyConstraint("x"),
-          UniqueConstraint("y", mssql_clustered=True),
-          )
+    Table(
+        "my_table",
+        metadata,
+        Column("x", ...),
+        Column("y", ...),
+        PrimaryKeyConstraint("x"),
+        UniqueConstraint("y", mssql_clustered=True),
+    )
 
 To explicitly request a non-clustered primary key (for example, when
 a separate clustered index is desired), use::
 
-    Table('my_table', metadata,
-          Column('x', ...),
-          Column('y', ...),
-          PrimaryKeyConstraint("x", "y", mssql_clustered=False))
+    Table(
+        "my_table",
+        metadata,
+        Column("x", ...),
+        Column("y", ...),
+        PrimaryKeyConstraint("x", "y", mssql_clustered=False),
+    )
 
-which will render the table, for example, as::
+which will render the table, for example, as:
 
-  CREATE TABLE my_table (x INTEGER NOT NULL, y INTEGER NOT NULL,
-                         PRIMARY KEY NONCLUSTERED (x, y))
+.. sourcecode:: sql
+
+  CREATE TABLE my_table (
+    x INTEGER NOT NULL,
+    y INTEGER NOT NULL,
+    PRIMARY KEY NONCLUSTERED (x, y)
+  )
 
 Columnstore Index Support
 -------------------------
@@ -820,7 +845,7 @@ INCLUDE
 The ``mssql_include`` option renders INCLUDE(colname) for the given string
 names::
 
-    Index("my_index", table.c.x, mssql_include=['y'])
+    Index("my_index", table.c.x, mssql_include=["y"])
 
 would render the index as ``CREATE INDEX my_index ON table (x) INCLUDE (y)``
 
@@ -835,8 +860,6 @@ names::
     Index("my_index", table.c.x, mssql_where=table.c.x > 10)
 
 would render the index as ``CREATE INDEX my_index ON table (x) WHERE x > 10``.
-
-.. versionadded:: 1.3.4
 
 Index ordering
 ^^^^^^^^^^^^^^
@@ -875,18 +898,19 @@ To disable the usage of OUTPUT INSERTED on a per-table basis,
 specify ``implicit_returning=False`` for each :class:`_schema.Table`
 which has triggers::
 
-    Table('mytable', metadata,
-        Column('id', Integer, primary_key=True),
+    Table(
+        "mytable",
+        metadata,
+        Column("id", Integer, primary_key=True),
         # ...,
-        implicit_returning=False
+        implicit_returning=False,
     )
 
 Declarative form::
 
     class MyClass(Base):
         # ...
-        __table_args__ = {'implicit_returning':False}
-
+        __table_args__ = {"implicit_returning": False}
 
 .. _mssql_rowcount_versioning:
 
@@ -920,7 +944,9 @@ isolation mode that locks entire tables, and causes even mildly concurrent
 applications to have long held locks and frequent deadlocks.
 Enabling snapshot isolation for the database as a whole is recommended
 for modern levels of concurrency support.  This is accomplished via the
-following ALTER DATABASE commands executed at the SQL prompt::
+following ALTER DATABASE commands executed at the SQL prompt:
+
+.. sourcecode:: sql
 
     ALTER DATABASE MyDatabase SET ALLOW_SNAPSHOT_ISOLATION ON
 
@@ -1360,8 +1386,6 @@ class TIMESTAMP(sqltypes._Binary):
     TIMESTAMP type, which is not supported by SQL Server.  It
     is a read-only datatype that does not support INSERT of values.
 
-    .. versionadded:: 1.2
-
     .. seealso::
 
         :class:`_mssql.ROWVERSION`
@@ -1378,8 +1402,6 @@ class TIMESTAMP(sqltypes._Binary):
 
         :param convert_int: if True, binary integer values will
          be converted to integers on read.
-
-        .. versionadded:: 1.2
 
         """
         self.convert_int = convert_int
@@ -1414,8 +1436,6 @@ class ROWVERSION(TIMESTAMP):
 
     This is a read-only datatype that does not support INSERT of values.
 
-    .. versionadded:: 1.2
-
     .. seealso::
 
         :class:`_mssql.TIMESTAMP`
@@ -1426,7 +1446,6 @@ class ROWVERSION(TIMESTAMP):
 
 
 class NTEXT(sqltypes.UnicodeText):
-
     """MSSQL NTEXT type, for variable-length unicode text up to 2^30
     characters."""
 
@@ -1537,63 +1556,24 @@ class MSUUid(sqltypes.Uuid):
         if self.native_uuid:
 
             def process(value):
-                if value is not None:
-                    value = f"""'{str(value).replace("''", "'")}'"""
-                return value
+                return f"""'{str(value).replace("''", "'")}'"""
 
             return process
         else:
             if self.as_uuid:
 
                 def process(value):
-                    if value is not None:
-                        value = f"""'{value.hex}'"""
-                    return value
+                    return f"""'{value.hex}'"""
 
                 return process
             else:
 
                 def process(value):
-                    if value is not None:
-                        value = f"""'{
-                            value.replace("-", "").replace("'", "''")
-                        }'"""
-                    return value
+                    return f"""'{
+                        value.replace("-", "").replace("'", "''")
+                    }'"""
 
                 return process
-
-    def _sentinel_value_resolver(self, dialect):
-        """Return a callable that will receive the uuid object or string
-        as it is normally passed to the DB in the parameter set, after
-        bind_processor() is called.  Convert this value to match
-        what it would be as coming back from an INSERT..OUTPUT inserted.
-
-        for the UUID type, there are four varieties of settings so here
-        we seek to convert to the string or UUID representation that comes
-        back from the driver.
-
-        """
-        character_based_uuid = (
-            not dialect.supports_native_uuid or not self.native_uuid
-        )
-
-        if character_based_uuid:
-            if self.native_uuid:
-                # for pyodbc, uuid.uuid() objects are accepted for incoming
-                # data, as well as strings. but the driver will always return
-                # uppercase strings in result sets.
-                def process(value):
-                    return str(value).upper()
-
-            else:
-
-                def process(value):
-                    return str(value)
-
-            return process
-        else:
-            # for pymssql, we get uuid.uuid() objects back.
-            return None
 
 
 class UNIQUEIDENTIFIER(sqltypes.Uuid[sqltypes._UUID_RETURN]):
@@ -1602,12 +1582,12 @@ class UNIQUEIDENTIFIER(sqltypes.Uuid[sqltypes._UUID_RETURN]):
     @overload
     def __init__(
         self: UNIQUEIDENTIFIER[_python_UUID], as_uuid: Literal[True] = ...
-    ):
-        ...
+    ): ...
 
     @overload
-    def __init__(self: UNIQUEIDENTIFIER[str], as_uuid: Literal[False] = ...):
-        ...
+    def __init__(
+        self: UNIQUEIDENTIFIER[str], as_uuid: Literal[False] = ...
+    ): ...
 
     def __init__(self, as_uuid: bool = True):
         """Construct a :class:`_mssql.UNIQUEIDENTIFIER` type.
@@ -1617,7 +1597,7 @@ class UNIQUEIDENTIFIER(sqltypes.Uuid[sqltypes._UUID_RETURN]):
          as Python uuid objects, converting to/from string via the
          DBAPI.
 
-         .. versionchanged: 2.0 Added direct "uuid" support to the
+         .. versionchanged:: 2.0 Added direct "uuid" support to the
             :class:`_mssql.UNIQUEIDENTIFIER` datatype; uuid interpretation
             defaults to ``True``.
 
@@ -1858,7 +1838,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
     _enable_identity_insert = False
     _select_lastrowid = False
     _lastrowid = None
-    _rowcount = None
 
     dialect: MSDialect
 
@@ -1942,6 +1921,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
             row = self.cursor.fetchall()[0]
             self._lastrowid = int(row[0])
 
+            self.cursor_fetch_strategy = _cursor._NO_CURSOR_DML
         elif (
             self.compiled is not None
             and is_sql_compiler(self.compiled)
@@ -1976,13 +1956,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
     def get_lastrowid(self):
         return self._lastrowid
-
-    @property
-    def rowcount(self):
-        if self._rowcount is not None:
-            return self._rowcount
-        else:
-            return self.cursor.rowcount
 
     def handle_dbapi_exception(self, e):
         if self._enable_identity_insert:
@@ -2035,6 +2008,10 @@ class MSSQLCompiler(compiler.SQLCompiler):
         self.tablealiases = {}
         super().__init__(*args, **kwargs)
 
+    def visit_frame_clause(self, frameclause, **kw):
+        kw["literal_execute"] = True
+        return super().visit_frame_clause(frameclause, **kw)
+
     def _with_legacy_schema_aliasing(fn):
         def decorate(self, *arg, **kw):
             if self.dialect.legacy_schema_aliasing:
@@ -2062,6 +2039,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
         kw["literal_execute"] = True
         delimeter = fn.clauses.clauses[1]._compiler_dispatch(self, **kw)
         return f"string_agg({expr}, {delimeter})"
+
+    def visit_pow_func(self, fn, **kw):
+        return f"POWER{self.function_argspec(fn)}"
 
     def visit_concat_op_expression_clauselist(
         self, clauselist, operator, **kw
@@ -2125,6 +2105,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             or (
                 # limit can use TOP with is by itself. fetch only uses TOP
                 # when it needs to because of PERCENT and/or WITH TIES
+                # TODO: Why?  shouldn't we use TOP always ?
                 select._simple_int_clause(select._fetch_clause)
                 and (
                     select._fetch_clause_options["percent"]
@@ -2385,10 +2366,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return ""
 
     def order_by_clause(self, select, **kw):
-        # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
+        # MSSQL only allows ORDER BY in subqueries if there is a LIMIT:
+        # "The ORDER BY clause is invalid in views, inline functions,
+        # derived tables, subqueries, and common table expressions,
+        # unless TOP, OFFSET or FOR XML is also specified."
         if (
             self.is_subquery()
-            and not select._limit
+            and not self._use_top(select)
             and (
                 select._offset is None
                 or not self.dialect._supports_offset_fetch
@@ -2480,14 +2464,16 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
-        elif binary.type._type_affinity is sqltypes.Numeric:
+        elif binary.type._type_affinity in (sqltypes.Numeric, sqltypes.Float):
             type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS %s)" % (
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
-                "FLOAT"
-                if isinstance(binary.type, sqltypes.Float)
-                else "NUMERIC(%s, %s)"
-                % (binary.type.precision, binary.type.scale),
+                (
+                    "FLOAT"
+                    if isinstance(binary.type, sqltypes.Float)
+                    else "NUMERIC(%s, %s)"
+                    % (binary.type.precision, binary.type.scale)
+                ),
             )
         elif binary.type._type_affinity is sqltypes.Boolean:
             # the NULL handling is particularly weird with boolean, so
@@ -2523,7 +2509,6 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
 
 class MSSQLStrictCompiler(MSSQLCompiler):
-
     """A subclass of MSSQLCompiler which disables the usage of bind
     parameters where not allowed natively by MS-SQL.
 
@@ -2842,22 +2827,8 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
     def _unescape_identifier(self, value):
         return value.replace("]]", "]")
 
-    def quote_schema(self, schema, force=None):
+    def quote_schema(self, schema):
         """Prepare a quoted table and schema name."""
-
-        # need to re-implement the deprecation warning entirely
-        if force is not None:
-            # not using the util.deprecated_params() decorator in this
-            # case because of the additional function call overhead on this
-            # very performance-critical spot.
-            util.warn_deprecated(
-                "The IdentifierPreparer.quote_schema.force parameter is "
-                "deprecated and will be removed in a future release.  This "
-                "flag has no effect on the behavior of the "
-                "IdentifierPreparer.quote method; please refer to "
-                "quoted_name().",
-                version="1.3",
-            )
 
         dbname, owner = _schema_elements(schema)
         if dbname:
@@ -3623,27 +3594,36 @@ where
     @reflection.cache
     @_db_plus_owner
     def get_columns(self, connection, tablename, dbname, owner, schema, **kw):
+        sys_columns = ischema.sys_columns
+        sys_types = ischema.sys_types
+        sys_default_constraints = ischema.sys_default_constraints
+        computed_cols = ischema.computed_columns
+        identity_cols = ischema.identity_columns
+        extended_properties = ischema.extended_properties
+
+        # to access sys tables, need an object_id.
+        # object_id() can normally match to the unquoted name even if it
+        # has special characters. however it also accepts quoted names,
+        # which means for the special case that the name itself has
+        # "quotes" (e.g. brackets for SQL Server) we need to "quote" (e.g.
+        # bracket) that name anyway.  Fixed as part of #12654
+
         is_temp_table = tablename.startswith("#")
         if is_temp_table:
             owner, tablename = self._get_internal_temp_table_name(
                 connection, tablename
             )
 
-            columns = ischema.mssql_temp_table_columns
-        else:
-            columns = ischema.columns
-
-        computed_cols = ischema.computed_columns
-        identity_cols = ischema.identity_columns
+        object_id_tokens = [self.identifier_preparer.quote(tablename)]
         if owner:
-            whereclause = sql.and_(
-                columns.c.table_name == tablename,
-                columns.c.table_schema == owner,
-            )
-            full_name = columns.c.table_schema + "." + columns.c.table_name
-        else:
-            whereclause = columns.c.table_name == tablename
-            full_name = columns.c.table_name
+            object_id_tokens.insert(0, self.identifier_preparer.quote(owner))
+
+        if is_temp_table:
+            object_id_tokens.insert(0, "tempdb")
+
+        object_id = func.object_id(".".join(object_id_tokens))
+
+        whereclause = sys_columns.c.object_id == object_id
 
         if self._supports_nvarchar_max:
             computed_definition = computed_cols.c.definition
@@ -3653,92 +3633,112 @@ where
                 computed_cols.c.definition, NVARCHAR(4000)
             )
 
-        object_id = func.object_id(full_name)
-
         s = (
             sql.select(
-                columns.c.column_name,
-                columns.c.data_type,
-                columns.c.is_nullable,
-                columns.c.character_maximum_length,
-                columns.c.numeric_precision,
-                columns.c.numeric_scale,
-                columns.c.column_default,
-                columns.c.collation_name,
+                sys_columns.c.name,
+                sys_types.c.name,
+                sys_columns.c.is_nullable,
+                sys_columns.c.max_length,
+                sys_columns.c.precision,
+                sys_columns.c.scale,
+                sys_default_constraints.c.definition,
+                sys_columns.c.collation_name,
                 computed_definition,
                 computed_cols.c.is_persisted,
                 identity_cols.c.is_identity,
                 identity_cols.c.seed_value,
                 identity_cols.c.increment_value,
-                ischema.extended_properties.c.value.label("comment"),
+                extended_properties.c.value.label("comment"),
             )
-            .select_from(columns)
+            .select_from(sys_columns)
+            .join(
+                sys_types,
+                onclause=sys_columns.c.user_type_id
+                == sys_types.c.user_type_id,
+            )
+            .outerjoin(
+                sys_default_constraints,
+                sql.and_(
+                    sys_default_constraints.c.object_id
+                    == sys_columns.c.default_object_id,
+                    sys_default_constraints.c.parent_column_id
+                    == sys_columns.c.column_id,
+                ),
+            )
             .outerjoin(
                 computed_cols,
                 onclause=sql.and_(
-                    computed_cols.c.object_id == object_id,
-                    computed_cols.c.name
-                    == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                    computed_cols.c.object_id == sys_columns.c.object_id,
+                    computed_cols.c.column_id == sys_columns.c.column_id,
                 ),
             )
             .outerjoin(
                 identity_cols,
                 onclause=sql.and_(
-                    identity_cols.c.object_id == object_id,
-                    identity_cols.c.name
-                    == columns.c.column_name.collate("DATABASE_DEFAULT"),
+                    identity_cols.c.object_id == sys_columns.c.object_id,
+                    identity_cols.c.column_id == sys_columns.c.column_id,
                 ),
             )
             .outerjoin(
-                ischema.extended_properties,
+                extended_properties,
                 onclause=sql.and_(
-                    ischema.extended_properties.c["class"] == 1,
-                    ischema.extended_properties.c.major_id == object_id,
-                    ischema.extended_properties.c.minor_id
-                    == columns.c.ordinal_position,
-                    ischema.extended_properties.c.name == "MS_Description",
+                    extended_properties.c["class"] == 1,
+                    extended_properties.c.name == "MS_Description",
+                    sys_columns.c.object_id == extended_properties.c.major_id,
+                    sys_columns.c.column_id == extended_properties.c.minor_id,
                 ),
             )
             .where(whereclause)
-            .order_by(columns.c.ordinal_position)
+            .order_by(sys_columns.c.column_id)
         )
 
-        c = connection.execution_options(future_result=True).execute(s)
+        if is_temp_table:
+            exec_opts = {"schema_translate_map": {"sys": "tempdb.sys"}}
+        else:
+            exec_opts = {"schema_translate_map": {}}
+        c = connection.execution_options(**exec_opts).execute(s)
 
         cols = []
         for row in c.mappings():
-            name = row[columns.c.column_name]
-            type_ = row[columns.c.data_type]
-            nullable = row[columns.c.is_nullable] == "YES"
-            charlen = row[columns.c.character_maximum_length]
-            numericprec = row[columns.c.numeric_precision]
-            numericscale = row[columns.c.numeric_scale]
-            default = row[columns.c.column_default]
-            collation = row[columns.c.collation_name]
+            name = row[sys_columns.c.name]
+            type_ = row[sys_types.c.name]
+            nullable = row[sys_columns.c.is_nullable] == 1
+            maxlen = row[sys_columns.c.max_length]
+            numericprec = row[sys_columns.c.precision]
+            numericscale = row[sys_columns.c.scale]
+            default = row[sys_default_constraints.c.definition]
+            collation = row[sys_columns.c.collation_name]
             definition = row[computed_definition]
             is_persisted = row[computed_cols.c.is_persisted]
             is_identity = row[identity_cols.c.is_identity]
             identity_start = row[identity_cols.c.seed_value]
             identity_increment = row[identity_cols.c.increment_value]
-            comment = row[ischema.extended_properties.c.value]
+            comment = row[extended_properties.c.value]
 
             coltype = self.ischema_names.get(type_, None)
 
             kwargs = {}
+
             if coltype in (
-                MSString,
-                MSChar,
-                MSNVarchar,
-                MSNChar,
-                MSText,
-                MSNText,
                 MSBinary,
                 MSVarBinary,
                 sqltypes.LargeBinary,
             ):
-                if charlen == -1:
-                    charlen = None
-                kwargs["length"] = charlen
+                kwargs["length"] = maxlen if maxlen != -1 else None
+            elif coltype in (
+                MSString,
+                MSChar,
+                MSText,
+            ):
+                kwargs["length"] = maxlen if maxlen != -1 else None
+                if collation:
+                    kwargs["collation"] = collation
+            elif coltype in (
+                MSNVarchar,
+                MSNChar,
+                MSNText,
+            ):
+                kwargs["length"] = maxlen // 2 if maxlen != -1 else None
                 if collation:
                     kwargs["collation"] = collation
 
@@ -3749,7 +3749,7 @@ where
                 )
                 coltype = sqltypes.NULLTYPE
             else:
-                if issubclass(coltype, sqltypes.Numeric):
+                if issubclass(coltype, sqltypes.NumericCommon):
                     kwargs["precision"] = numericprec
 
                     if not issubclass(coltype, sqltypes.Float):
@@ -3982,10 +3982,8 @@ index_info AS (
         )
 
         # group rows by constraint ID, to handle multi-column FKs
-        fkeys = []
-
-        def fkey_rec():
-            return {
+        fkeys = util.defaultdict(
+            lambda: {
                 "name": None,
                 "constrained_columns": [],
                 "referred_schema": None,
@@ -3993,8 +3991,7 @@ index_info AS (
                 "referred_columns": [],
                 "options": {},
             }
-
-        fkeys = util.defaultdict(fkey_rec)
+        )
 
         for r in connection.execute(s).all():
             (

@@ -2,13 +2,16 @@
 
 import datetime
 
+from sqlalchemy import and_
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import event
 from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import select
 from sqlalchemy import util
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import object_mapper
@@ -56,6 +59,10 @@ def _history_mapper(local_mapper):
             local_mapper.local_table.metadata,
             name=local_mapper.local_table.name + "_history",
         )
+        for idx in history_table.indexes:
+            if idx.name is not None:
+                idx.name += "_history"
+            idx.unique = False
 
         for orig_c, history_c in zip(
             local_mapper.local_table.c, history_table.c
@@ -144,8 +151,39 @@ def _history_mapper(local_mapper):
                 super_history_table.append_column(col)
 
     if not super_mapper:
+
+        def default_version_from_history(context):
+            # Set default value of version column to the maximum of the
+            # version in history columns already present +1
+            # Otherwise re-appearance of deleted rows would cause an error
+            # with the next update
+            current_parameters = context.get_current_parameters()
+            return context.connection.scalar(
+                select(
+                    func.coalesce(func.max(history_table.c.version), 0) + 1
+                ).where(
+                    and_(
+                        *[
+                            history_table.c[c.name]
+                            == current_parameters.get(c.name, None)
+                            for c in inspect(
+                                local_mapper.local_table
+                            ).primary_key
+                        ]
+                    )
+                )
+            )
+
         local_mapper.local_table.append_column(
-            Column("version", Integer, default=1, nullable=False),
+            Column(
+                "version",
+                Integer,
+                # if rows are not being deleted from the main table with
+                # subsequent re-use of primary key, this default can be
+                # "1" instead of running a query per INSERT
+                default=default_version_from_history,
+                nullable=False,
+            ),
             replace_existing=True,
         )
         local_mapper.add_property(

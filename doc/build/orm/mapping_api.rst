@@ -13,8 +13,6 @@ Class Mapping API
 
 .. autofunction:: declarative_base
 
-.. autofunction:: declarative_mixin
-
 .. autofunction:: as_declarative
 
 .. autofunction:: mapped_column
@@ -53,11 +51,11 @@ Class Mapping API
 
             class HasIdMixin:
                 @declared_attr.cascading
-                def id(cls):
+                def id(cls) -> Mapped[int]:
                     if has_inherited_table(cls):
-                        return Column(ForeignKey("myclass.id"), primary_key=True)
+                        return mapped_column(ForeignKey("myclass.id"), primary_key=True)
                     else:
-                        return Column(Integer, primary_key=True)
+                        return mapped_column(Integer, primary_key=True)
 
 
             class MyClass(HasIdMixin, Base):

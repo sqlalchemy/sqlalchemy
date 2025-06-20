@@ -1,5 +1,5 @@
 # engine/row.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -22,32 +22,30 @@ from typing import List
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
-from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
-from typing import TypeVar
-from typing import Union
 
+from ._row_cy import BaseRow as BaseRow
 from ..sql import util as sql_util
 from ..util import deprecated
-from ..util._has_cy import HAS_CYEXTENSION
-
-if TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_row import BaseRow as BaseRow
-else:
-    from sqlalchemy.cyextension.resultproxy import BaseRow as BaseRow
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
+    from typing import Tuple as _RowBase
+
     from .result import _KeyType
     from .result import _ProcessorsType
     from .result import RMKeyView
+else:
+    _RowBase = Sequence
 
-_T = TypeVar("_T", bound=Any)
-_TP = TypeVar("_TP", bound=Tuple[Any, ...])
+
+_Ts = TypeVarTuple("_Ts")
 
 
-class Row(BaseRow, Sequence[Any], Generic[_TP]):
+class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
     """Represent a single result row.
 
     The :class:`.Row` object represents a row of a database result.  It is
@@ -83,7 +81,12 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
     def __delattr__(self, name: str) -> NoReturn:
         raise AttributeError("can't delete attribute")
 
-    def _tuple(self) -> _TP:
+    @deprecated(
+        "2.1.0",
+        "The :meth:`.Row._tuple` method is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
+    def _tuple(self) -> Tuple[Unpack[_Ts]]:
         """Return a 'tuple' form of this :class:`.Row`.
 
         At runtime, this method returns "self"; the :class:`.Row` object is
@@ -99,13 +102,16 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
 
         .. seealso::
 
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
+
             :attr:`.Row._t` - shorthand attribute notation
 
             :meth:`.Result.tuples`
 
 
         """
-        return self  # type: ignore
+        return self
 
     @deprecated(
         "2.0.19",
@@ -114,16 +120,26 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         "methods and library-level attributes are intended to be underscored "
         "to avoid name conflicts.  Please use :meth:`Row._tuple`.",
     )
-    def tuple(self) -> _TP:
+    def tuple(self) -> Tuple[Unpack[_Ts]]:
         """Return a 'tuple' form of this :class:`.Row`.
 
         .. versionadded:: 2.0
+
+        .. seealso::
+
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
 
         """
         return self._tuple()
 
     @property
-    def _t(self) -> _TP:
+    @deprecated(
+        "2.1.0",
+        "The :attr:`.Row._t` attribute is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
+    def _t(self) -> Tuple[Unpack[_Ts]]:
         """A synonym for :meth:`.Row._tuple`.
 
         .. versionadded:: 2.0.19 - The :attr:`.Row._t` attribute supersedes
@@ -133,9 +149,12 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
 
         .. seealso::
 
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
+
             :attr:`.Result.t`
         """
-        return self  # type: ignore
+        return self
 
     @property
     @deprecated(
@@ -145,10 +164,15 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         "methods and library-level attributes are intended to be underscored "
         "to avoid name conflicts.  Please use :attr:`Row._t`.",
     )
-    def t(self) -> _TP:
+    def t(self) -> Tuple[Unpack[_Ts]]:
         """A synonym for :meth:`.Row._tuple`.
 
         .. versionadded:: 2.0
+
+        .. seealso::
+
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
 
         """
         return self._t
@@ -172,7 +196,7 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
 
     def _filter_on_values(
         self, processor: Optional[_ProcessorsType]
-    ) -> Row[Any]:
+    ) -> Row[Unpack[_Ts]]:
         return Row(self._parent, processor, self._key_to_index, self._data)
 
     if not TYPE_CHECKING:
@@ -209,19 +233,6 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         )
 
     __hash__ = BaseRow.__hash__
-
-    if TYPE_CHECKING:
-
-        @overload
-        def __getitem__(self, index: int) -> Any:
-            ...
-
-        @overload
-        def __getitem__(self, index: slice) -> Sequence[Any]:
-            ...
-
-        def __getitem__(self, index: Union[int, slice]) -> Any:
-            ...
 
     def __lt__(self, other: Any) -> bool:
         return self._op(other, operator.lt)
@@ -296,8 +307,8 @@ class ROMappingView(ABC):
     def __init__(
         self, mapping: Mapping["_KeyType", Any], items: Sequence[Any]
     ):
-        self._mapping = mapping
-        self._items = items
+        self._mapping = mapping  # type: ignore[misc]
+        self._items = items  # type: ignore[misc]
 
     def __len__(self) -> int:
         return len(self._items)
@@ -321,11 +332,11 @@ class ROMappingView(ABC):
 class ROMappingKeysValuesView(
     ROMappingView, typing.KeysView["_KeyType"], typing.ValuesView[Any]
 ):
-    __slots__ = ("_items",)
+    __slots__ = ("_items",)  # mapping slot is provided by KeysView
 
 
 class ROMappingItemsView(ROMappingView, typing.ItemsView["_KeyType", Any]):
-    __slots__ = ("_items",)
+    __slots__ = ("_items",)  # mapping slot is provided by ItemsView
 
 
 class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
@@ -343,11 +354,10 @@ class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
     as iteration of keys, values, and items::
 
         for row in result:
-            if 'a' in row._mapping:
-                print("Column 'a': %s" % row._mapping['a'])
+            if "a" in row._mapping:
+                print("Column 'a': %s" % row._mapping["a"])
 
             print("Column b: %s" % row._mapping[table.c.b])
-
 
     .. versionadded:: 1.4 The :class:`.RowMapping` object replaces the
        mapping-like access previously provided by a database result row,
@@ -359,8 +369,7 @@ class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
 
     if TYPE_CHECKING:
 
-        def __getitem__(self, key: _KeyType) -> Any:
-            ...
+        def __getitem__(self, key: _KeyType) -> Any: ...
 
     else:
         __getitem__ = BaseRow._get_by_key_impl_mapping

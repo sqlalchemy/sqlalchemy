@@ -1,0 +1,14 @@
+.. change::
+    :tags: change, installation
+    :tickets: 10197
+
+    The ``greenlet`` dependency used for asyncio support no longer installs
+    by default.  This dependency does not publish wheel files for every architecture
+    and is not needed for applications that aren't using asyncio features.
+    Use the ``sqlalchemy[asyncio]`` install target to include this dependency.
+
+    .. seealso::
+
+        :ref:`change_10197`
+
+

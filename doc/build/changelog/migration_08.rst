@@ -1394,8 +1394,7 @@ yet, we'll be adding the ``inspector`` argument into it
 directly::
 
     @event.listens_for(Table, "column_reflect")
-    def listen_for_col(inspector, table, column_info):
-        ...
+    def listen_for_col(inspector, table, column_info): ...
 
 :ticket:`2418`
 
@@ -1495,7 +1494,7 @@ SQLSoup
 SQLSoup is a handy package that presents an alternative
 interface on top of the SQLAlchemy ORM.   SQLSoup is now
 moved into its own project and documented/released
-separately; see https://bitbucket.org/zzzeek/sqlsoup.
+separately; see https://github.com/zzzeek/sqlsoup.
 
 SQLSoup is a very simple tool that could also benefit from
 contributors who are interested in its style of usage.

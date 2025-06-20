@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any
 from typing import Iterable
 
@@ -34,7 +35,15 @@ def run_operation(
     source_data = Path(source).read_text().replace(remove_str, "")
     dest_data = header.format(source=source, this_file=this_file) + source_data
 
-    cmd.write_output_file_from_text(dest_data, dest)
+    with NamedTemporaryFile(
+        mode="w",
+        delete=False,
+        suffix=".py",
+    ) as buf:
+        buf.write(dest_data)
+
+    cmd.run_black(buf.name)
+    cmd.write_output_file_from_tempfile(buf.name, dest)
 
 
 def main(file: str, cmd: code_writer_cmd) -> None:
@@ -51,7 +60,11 @@ files = {
     "typed_annotation": {
         "source": "test/orm/declarative/test_typed_mapping.py",
         "dest": "test/orm/declarative/test_tm_future_annotations_sync.py",
-    }
+    },
+    "dc_typed_annotation": {
+        "source": "test/orm/declarative/test_dc_transforms.py",
+        "dest": "test/orm/declarative/test_dc_transforms_future_anno_sync.py",
+    },
 }
 
 if __name__ == "__main__":

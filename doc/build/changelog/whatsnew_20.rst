@@ -75,6 +75,7 @@ result set.
    for the 2.0 series. Typing details are subject to change however
    significant backwards-incompatible changes are not planned.
 
+.. _change_result_typing_20:
 
 SQL Expression / Statement / Result Set Typing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -367,7 +368,7 @@ ORM Declarative Models
 ~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy 1.4 introduced the first SQLAlchemy-native ORM typing support
-using a combination of sqlalchemy2-stubs_ and the :ref:`Mypy Plugin <mypy_toplevel>`.
+using a combination of sqlalchemy2-stubs_ and the Mypy Plugin.
 In SQLAlchemy 2.0, the Mypy plugin **remains available, and has been updated
 to work with SQLAlchemy 2.0's typing system**.  However, it should now be
 considered **deprecated**, as applications now have a straightforward path to adopting the
@@ -728,7 +729,7 @@ and :class:`_engine.Row` objects::
 Using Legacy Mypy-Typed Models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SQLAlchemy applications that use the :ref:`Mypy plugin <mypy_toplevel>` with
+SQLAlchemy applications that use the Mypy plugin with
 explicit annotations that don't use :class:`_orm.Mapped` in their annotations
 are subject to errors under the new system, as such annotations are flagged as
 errors when using constructs such as :func:`_orm.relationship`.
@@ -1050,7 +1051,7 @@ implemented by
 :meth:`_orm.Session.bulk_insert_mappings`, with additional enhancements.  This will optimize the
 batching of rows making use of the new :ref:`fast insertmany <change_6047>`
 feature, while also adding support for
-heterogenous parameter sets and multiple-table mappings like joined table
+heterogeneous parameter sets and multiple-table mappings like joined table
 inheritance::
 
     >>> users = session.scalars(
@@ -2183,6 +2184,11 @@ previous approach of defaulting to :class:`_pool.NullPool`, which does not
 hold onto database connections after they are released, did in fact have a
 measurable negative performance impact. As always, the pool class is
 customizable via the :paramref:`_sa.create_engine.poolclass` parameter.
+
+.. versionchanged:: 2.0.38 - an equivalent change is also made for the
+   ``aiosqlite`` dialect, using :class:`._pool.AsyncAdaptedQueuePool` instead
+   of :class:`._pool.NullPool`.  The ``aiosqlite`` dialect was not included
+   in the initial change in error.
 
 .. seealso::
 

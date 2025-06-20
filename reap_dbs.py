@@ -1,4 +1,4 @@
-"""Drop Oracle, SQL Server databases that are left over from a
+"""Drop Oracle Database, SQL Server databases that are left over from a
 multiprocessing test run.
 
 Currently the cx_Oracle driver seems to sometimes not release a
@@ -10,6 +10,7 @@ running a kill of all detected sessions does not seem to release the
 database in process.
 
 """
+
 import logging
 import sys
 

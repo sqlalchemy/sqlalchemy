@@ -1,12 +1,11 @@
 # sql/default_comparator.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Default implementation of SQL comparison operations.
-"""
+"""Default implementation of SQL comparison operations."""
 
 from __future__ import annotations
 
@@ -21,6 +20,7 @@ from typing import Type
 from typing import Union
 
 from . import coercions
+from . import functions
 from . import operators
 from . import roles
 from . import type_api
@@ -56,7 +56,6 @@ def _boolean_compare(
     negate_op: Optional[OperatorType] = None,
     reverse: bool = False,
     _python_is_types: Tuple[Type[Any], ...] = (type(None), bool),
-    _any_all_expr: bool = False,
     result_type: Optional[TypeEngine[bool]] = None,
     **kwargs: Any,
 ) -> OperatorExpression[bool]:
@@ -90,7 +89,7 @@ def _boolean_compare(
                 negate=negate_op,
                 modifiers=kwargs,
             )
-        elif _any_all_expr:
+        elif expr._is_collection_aggregate:
             obj = coercions.expect(
                 roles.ConstExprRole, element=obj, operator=op, expr=expr
             )
@@ -248,7 +247,7 @@ def _unsupported_impl(
     expr: ColumnElement[Any], op: OperatorType, *arg: Any, **kw: Any
 ) -> NoReturn:
     raise NotImplementedError(
-        "Operator '%s' is not supported on " "this expression" % op.__name__
+        "Operator '%s' is not supported on this expression" % op.__name__
     )
 
 
@@ -297,9 +296,11 @@ def _match_impl(
             operator=operators.match_op,
         ),
         result_type=type_api.MATCHTYPE,
-        negate_op=operators.not_match_op
-        if op is operators.match_op
-        else operators.match_op,
+        negate_op=(
+            operators.not_match_op
+            if op is operators.match_op
+            else operators.match_op
+        ),
         **kw,
     )
 
@@ -341,11 +342,26 @@ def _between_impl(
             group=False,
         ),
         op,
-        negate=operators.not_between_op
-        if op is operators.between_op
-        else operators.between_op,
+        negate=(
+            operators.not_between_op
+            if op is operators.between_op
+            else operators.between_op
+        ),
         modifiers=kw,
     )
+
+
+def _pow_impl(
+    expr: ColumnElement[Any],
+    op: OperatorType,
+    other: Any,
+    reverse: bool = False,
+    **kw: Any,
+) -> ColumnElement[Any]:
+    if reverse:
+        return functions.pow(other, expr)
+    else:
+        return functions.pow(expr, other)
 
 
 def _collate_impl(
@@ -542,8 +558,10 @@ operator_lookup: Dict[
     "getitem": (_getitem_impl, util.EMPTY_DICT),
     "lshift": (_unsupported_impl, util.EMPTY_DICT),
     "rshift": (_unsupported_impl, util.EMPTY_DICT),
+    "matmul": (_unsupported_impl, util.EMPTY_DICT),
     "contains": (_unsupported_impl, util.EMPTY_DICT),
     "regexp_match_op": (_regexp_match_impl, util.EMPTY_DICT),
     "not_regexp_match_op": (_regexp_match_impl, util.EMPTY_DICT),
     "regexp_replace_op": (_regexp_replace_impl, util.EMPTY_DICT),
+    "pow": (_pow_impl, util.EMPTY_DICT),
 }

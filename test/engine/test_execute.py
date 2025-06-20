@@ -34,6 +34,7 @@ from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 from sqlalchemy.pool import NullPool
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.sql import column
@@ -50,6 +51,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
@@ -425,20 +427,24 @@ class ExecuteTest(fixtures.TablesTest):
         # TODO: this test is assuming too much of arbitrary dialects and would
         # be better suited tested against a single mock dialect that does not
         # have any special behaviors
-        with patch.object(
-            testing.db.dialect, "dbapi", Mock(Error=DBAPIError)
-        ), patch.object(
-            testing.db.dialect, "loaded_dbapi", Mock(Error=DBAPIError)
-        ), patch.object(
-            testing.db.dialect, "is_disconnect", lambda *arg: False
-        ), patch.object(
-            testing.db.dialect,
-            "do_execute",
-            Mock(side_effect=NonStandardException),
-        ), patch.object(
-            testing.db.dialect.execution_ctx_cls,
-            "handle_dbapi_exception",
-            Mock(),
+        with (
+            patch.object(testing.db.dialect, "dbapi", Mock(Error=DBAPIError)),
+            patch.object(
+                testing.db.dialect, "loaded_dbapi", Mock(Error=DBAPIError)
+            ),
+            patch.object(
+                testing.db.dialect, "is_disconnect", lambda *arg: False
+            ),
+            patch.object(
+                testing.db.dialect,
+                "do_execute",
+                Mock(side_effect=NonStandardException),
+            ),
+            patch.object(
+                testing.db.dialect.execution_ctx_cls,
+                "handle_dbapi_exception",
+                Mock(),
+            ),
         ):
             with testing.db.connect() as conn:
                 assert_raises(
@@ -554,7 +560,7 @@ class ExecuteTest(fixtures.TablesTest):
         "Older versions don't support cursor pickling, newer ones do",
     )
     @testing.fails_on(
-        "mysql+mysqlconnector",
+        "+mysqlconnector",
         "Exception doesn't come back exactly the same from pickle",
     )
     @testing.fails_on(
@@ -636,14 +642,37 @@ class ExecuteTest(fixtures.TablesTest):
             conn.close()
 
     def test_empty_insert(self, connection):
-        """test that execute() interprets [] as a list with no params"""
+        """test that execute() interprets [] as a list with no params and
+        warns since it has nothing to do with such an executemany.
+        """
         users_autoinc = self.tables.users_autoinc
 
-        connection.execute(
-            users_autoinc.insert().values(user_name=bindparam("name", None)),
-            [],
-        )
-        eq_(connection.execute(users_autoinc.select()).fetchall(), [(1, None)])
+        with expect_deprecated(
+            r"Empty parameter sequence passed to execute\(\). "
+            "This use is deprecated and will raise an exception in a "
+            "future SQLAlchemy release"
+        ):
+            connection.execute(
+                users_autoinc.insert().values(
+                    user_name=bindparam("name", None)
+                ),
+                [],
+            )
+
+        eq_(len(connection.execute(users_autoinc.select()).all()), 1)
+
+    @testing.only_on("sqlite")
+    def test_raw_insert_with_empty_list(self, connection):
+        """exec_driver_sql instead does not raise if an empty list is passed.
+        Let the driver do that if it wants to.
+        """
+        conn = connection
+        with expect_raises_message(
+            tsa.exc.ProgrammingError, "Incorrect number of bindings supplied"
+        ):
+            conn.exec_driver_sql(
+                "insert into users (user_id, user_name) values (?, ?)", []
+            )
 
     @testing.only_on("sqlite")
     def test_execute_compiled_favors_compiled_paramstyle(self):
@@ -976,11 +1005,14 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
         engine = engines.testing_engine()
 
         close_mock = Mock()
-        with mock.patch.object(
-            engine._connection_cls,
-            "begin",
-            Mock(side_effect=Exception("boom")),
-        ), mock.patch.object(engine._connection_cls, "close", close_mock):
+        with (
+            mock.patch.object(
+                engine._connection_cls,
+                "begin",
+                Mock(side_effect=Exception("boom")),
+            ),
+            mock.patch.object(engine._connection_cls, "close", close_mock),
+        ):
             with expect_raises_message(Exception, "boom"):
                 with engine.begin():
                     pass
@@ -1781,6 +1813,38 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(canary.be2.call_count, 1)
         eq_(canary.be3.call_count, 2)
 
+    @testing.requires.ad_hoc_engines
+    def test_option_engine_registration_issue_one(self):
+        """test #12289"""
+
+        e1 = create_engine(testing.db.url)
+        e2 = e1.execution_options(foo="bar")
+        e3 = e2.execution_options(isolation_level="AUTOCOMMIT")
+
+        eq_(
+            e3._execution_options,
+            {"foo": "bar", "isolation_level": "AUTOCOMMIT"},
+        )
+
+    @testing.requires.ad_hoc_engines
+    def test_option_engine_registration_issue_two(self):
+        """test #12289"""
+
+        e1 = create_engine(testing.db.url)
+        e2 = e1.execution_options(foo="bar")
+
+        @event.listens_for(e2, "engine_connect")
+        def r1(*arg, **kw):
+            pass
+
+        e3 = e2.execution_options(bat="hoho")
+
+        @event.listens_for(e3, "engine_connect")
+        def r2(*arg, **kw):
+            pass
+
+        eq_(e3._execution_options, {"foo": "bar", "bat": "hoho"})
+
     def test_emit_sql_in_autobegin(self, testing_engine):
         e1 = testing_engine(config.db_url)
 
@@ -1869,11 +1933,12 @@ class EngineEventsTest(fixtures.TestBase):
             # as part of create
             # note we can't use an event to ensure begin() is not called
             # because create also blocks events from happening
-            with mock.patch.object(
-                e1.dialect, "initialize", side_effect=init
-            ) as m1, mock.patch.object(
-                e1._connection_cls, "begin"
-            ) as begin_mock:
+            with (
+                mock.patch.object(
+                    e1.dialect, "initialize", side_effect=init
+                ) as m1,
+                mock.patch.object(e1._connection_cls, "begin") as begin_mock,
+            ):
 
                 @event.listens_for(e1, "connect", insert=True)
                 def go1(dbapi_conn, xyz):
@@ -1939,13 +2004,10 @@ class EngineEventsTest(fixtures.TestBase):
     def test_new_exec_driver_sql_no_events(self):
         m1 = Mock()
 
-        def select1(db):
-            return str(select(1).compile(dialect=db.dialect))
-
         with testing.db.connect() as conn:
             event.listen(conn, "before_execute", m1.before_execute)
             event.listen(conn, "after_execute", m1.after_execute)
-            conn.exec_driver_sql(select1(testing.db))
+            conn.exec_driver_sql(str(select(1).compile(testing.db)))
         eq_(m1.mock_calls, [])
 
     def test_add_event_after_connect(self, testing_engine):
@@ -2411,7 +2473,15 @@ class EngineEventsTest(fixtures.TestBase):
     @testing.combinations(True, False, argnames="close")
     def test_close_parameter(self, testing_engine, close):
         eng = testing_engine(
-            options=dict(pool_size=1, max_overflow=0, poolclass=QueuePool)
+            options=dict(
+                pool_size=1,
+                max_overflow=0,
+                poolclass=(
+                    QueuePool
+                    if not testing.db.dialect.is_async
+                    else AsyncAdaptedQueuePool
+                ),
+            )
         )
 
         conn = eng.connect()
@@ -2506,11 +2576,14 @@ class EngineEventsTest(fixtures.TestBase):
         def conn_tracker(conn, opt):
             opt["conn_tracked"] = True
 
-        with mock.patch.object(
-            engine.dialect, "set_connection_execution_options"
-        ) as conn_opt, mock.patch.object(
-            engine.dialect, "set_engine_execution_options"
-        ) as engine_opt:
+        with (
+            mock.patch.object(
+                engine.dialect, "set_connection_execution_options"
+            ) as conn_opt,
+            mock.patch.object(
+                engine.dialect, "set_engine_execution_options"
+            ) as engine_opt,
+        ):
             e2 = engine.execution_options(e1="opt_e1")
             c1 = engine.connect()
             c2 = c1.execution_options(c1="opt_c1")
@@ -3463,11 +3536,12 @@ class OnConnectTest(fixtures.TestBase):
             nonlocal init_connection
             init_connection = connection
 
-        with mock.patch.object(
-            e._connection_cls, "begin"
-        ) as mock_begin, mock.patch.object(
-            e.dialect, "initialize", Mock(side_effect=mock_initialize)
-        ) as mock_init:
+        with (
+            mock.patch.object(e._connection_cls, "begin") as mock_begin,
+            mock.patch.object(
+                e.dialect, "initialize", Mock(side_effect=mock_initialize)
+            ) as mock_init,
+        ):
             conn = e.connect()
 
             eq_(mock_begin.mock_calls, [])
@@ -3654,12 +3728,12 @@ class DialectEventTest(fixtures.TestBase):
             arg[-1].get_result_proxy = Mock(return_value=Mock(context=arg[-1]))
             return retval
 
-        m1.real_do_execute.side_effect = (
-            m1.do_execute.side_effect
-        ) = mock_the_cursor
-        m1.real_do_executemany.side_effect = (
-            m1.do_executemany.side_effect
-        ) = mock_the_cursor
+        m1.real_do_execute.side_effect = m1.do_execute.side_effect = (
+            mock_the_cursor
+        )
+        m1.real_do_executemany.side_effect = m1.do_executemany.side_effect = (
+            mock_the_cursor
+        )
         m1.real_do_execute_no_params.side_effect = (
             m1.do_execute_no_params.side_effect
         ) = mock_the_cursor
@@ -3898,12 +3972,16 @@ class SetInputSizesTest(fixtures.TablesTest):
         # "safe" datatypes so that the DBAPI does not actually need
         # setinputsizes() called in order to work.
 
-        with mock.patch.object(
-            engine.dialect, "bind_typing", BindTyping.SETINPUTSIZES
-        ), mock.patch.object(
-            engine.dialect, "do_set_input_sizes", do_set_input_sizes
-        ), mock.patch.object(
-            engine.dialect.execution_ctx_cls, "pre_exec", pre_exec
+        with (
+            mock.patch.object(
+                engine.dialect, "bind_typing", BindTyping.SETINPUTSIZES
+            ),
+            mock.patch.object(
+                engine.dialect, "do_set_input_sizes", do_set_input_sizes
+            ),
+            mock.patch.object(
+                engine.dialect.execution_ctx_cls, "pre_exec", pre_exec
+            ),
         ):
             yield engine, canary
 

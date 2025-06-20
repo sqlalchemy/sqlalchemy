@@ -129,6 +129,24 @@ class ExecutionTest(_fixtures.FixtureTest):
             ):
                 sess.scalar("select id from users where id=:id", {"id": 7})
 
+    @testing.skip_if(
+        "oracle", "missing SELECT keyword [SQL: INSERT INTO tbl () VALUES ()]"
+    )
+    def test_empty_list_execute(self, metadata, connection):
+        t = Table("tbl", metadata, Column("col", sa.Integer))
+        t.create(connection)
+        sess = Session(bind=connection)
+        sess.execute(t.insert(), {"col": 42})
+
+        with assertions.expect_deprecated(
+            r"Empty parameter sequence passed to execute\(\). "
+            "This use is deprecated and will raise an exception in a "
+            "future SQLAlchemy release"
+        ):
+            sess.execute(t.insert(), [])
+
+        eq_(len(sess.execute(sa.select(t.c.col)).all()), 2)
+
 
 class TransScopingTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -447,11 +465,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         assert u1 in s1
         assert u2 in s2
 
-        with assertions.expect_deprecated(
-            r"The Session.close_all\(\) method is deprecated and will "
-            "be removed in a future release. "
-        ):
-            Session.close_all()
+        close_all_sessions()
 
         assert u1 not in s1
         assert u2 not in s2
@@ -662,6 +676,23 @@ class SessionUtilTest(_fixtures.FixtureTest):
             sa.exc.NoResultFound, "No row was found when one was required"
         ):
             sess.get_one(User, 2)
+
+    def test_delete_all(self):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+
+        sess.add_all([User(id=1, name="u1"), User(id=2, name="u2")])
+        sess.commit()
+        sess.close()
+
+        ua, ub = sess.scalars(select(User)).all()
+        eq_([ua in sess, ub in sess], [True, True])
+        sess.delete_all([ua, ub])
+        sess.flush()
+        eq_([ua in sess, ub in sess], [False, False])
+        eq_(sess.scalars(select(User)).all(), [])
 
 
 class SessionStateTest(_fixtures.FixtureTest):
@@ -2091,7 +2122,8 @@ class SessionInterface(fixtures.MappedTest):
         ]:
             raises_(name, user_arg)
 
-        raises_("add_all", (user_arg,))
+        for name in ["add_all", "merge_all", "delete_all"]:
+            raises_(name, (user_arg,))
 
         # flush will no-op without something in the unit of work
         def _():
@@ -2102,7 +2134,10 @@ class SessionInterface(fixtures.MappedTest):
 
             s = fixture_session()
             s.add(OK())
-            x_raises_(s, "flush", objects=(user_arg,))
+            with assertions.expect_deprecated(
+                "The `objects` parameter of `Session.flush` is deprecated"
+            ):
+                x_raises_(s, "flush", objects=(user_arg,))
 
         _()
 
@@ -2227,7 +2262,7 @@ class SessionInterface(fixtures.MappedTest):
             )
 
             with mock.patch(
-                "sqlalchemy.orm.session.loading.load_on_ident"
+                "sqlalchemy.orm.session.loading._load_on_ident"
             ) as load_on_ident:
                 s.refresh(m1, with_for_update={"read": True})
                 s.refresh(m1, with_for_update=True)

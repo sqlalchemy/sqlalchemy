@@ -3,6 +3,11 @@ import decimal
 import importlib
 import operator
 import os
+import pickle
+import subprocess
+import sys
+from tempfile import mkstemp
+import uuid
 
 import sqlalchemy as sa
 from sqlalchemy import and_
@@ -15,6 +20,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import CHAR
 from sqlalchemy import CLOB
+from sqlalchemy import collate
 from sqlalchemy import DATE
 from sqlalchemy import Date
 from sqlalchemy import DATETIME
@@ -57,14 +63,17 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
+from sqlalchemy import VARBINARY
 from sqlalchemy import VARCHAR
 import sqlalchemy.dialects.mysql as mysql
 import sqlalchemy.dialects.oracle as oracle
 import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy.engine import default
+from sqlalchemy.engine import interfaces
 from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.sql import column
+from sqlalchemy.sql import compiler
 from sqlalchemy.sql import ddl
 from sqlalchemy.sql import elements
 from sqlalchemy.sql import null
@@ -289,6 +298,7 @@ class AdaptTest(fixtures.TestBase):
                     "schema",
                     "metadata",
                     "name",
+                    "dispatch",
                 ):
                     continue
                 # assert each value was copied, or that
@@ -302,22 +312,27 @@ class AdaptTest(fixtures.TestBase):
         eq_(t1.evaluates_none().should_evaluate_none, True)
 
     def test_python_type(self):
-        eq_(types.Integer().python_type, int)
-        eq_(types.Numeric().python_type, decimal.Decimal)
-        eq_(types.Numeric(asdecimal=False).python_type, float)
-        eq_(types.LargeBinary().python_type, bytes)
-        eq_(types.Float().python_type, float)
-        eq_(types.Double().python_type, float)
-        eq_(types.Interval().python_type, datetime.timedelta)
+        eq_(types.ARRAY(types.Integer).python_type, list)
+        eq_(types.Boolean().python_type, bool)
         eq_(types.Date().python_type, datetime.date)
         eq_(types.DateTime().python_type, datetime.datetime)
-        eq_(types.String().python_type, str)
-        eq_(types.Unicode().python_type, str)
+        eq_(types.Double().python_type, float)
         eq_(types.Enum("one", "two", "three").python_type, str)
-
-        assert_raises(
-            NotImplementedError, lambda: types.TypeEngine().python_type
-        )
+        eq_(types.Float().python_type, float)
+        eq_(types.Integer().python_type, int)
+        eq_(types.Interval().python_type, datetime.timedelta)
+        eq_(types.JSON().python_type, object)
+        eq_(types.LargeBinary().python_type, bytes)
+        eq_(types.NullType().python_type, object)
+        eq_(types.Numeric().python_type, decimal.Decimal)
+        eq_(types.Numeric(asdecimal=False).python_type, float)
+        eq_(types.PickleType().python_type, object)
+        eq_(types.String().python_type, str)
+        eq_(types.Time().python_type, datetime.time)
+        eq_(types.Unicode().python_type, str)
+        eq_(types.Uuid().python_type, uuid.UUID)
+        eq_(types.Uuid(as_uuid=False).python_type, str)
+        eq_(types.TypeEngine().python_type, object)
 
     @testing.uses_deprecated()
     @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
@@ -443,6 +458,11 @@ class TypeAffinityTest(fixtures.TestBase):
 class AsGenericTest(fixtures.TestBase):
     @testing.combinations(
         (String(), String()),
+        (VARBINARY(), LargeBinary()),
+        (mysql.BINARY(), LargeBinary()),
+        (mysql.MEDIUMBLOB(), LargeBinary()),
+        (oracle.RAW(), LargeBinary()),
+        (pg.BYTEA(), LargeBinary()),
         (VARCHAR(length=100), String(length=100)),
         (NVARCHAR(length=100), Unicode(length=100)),
         (DATE(), Date()),
@@ -465,6 +485,9 @@ class AsGenericTest(fixtures.TestBase):
             (t,)
             for t in _all_types(omit_special_types=True)
             if not util.method_is_overridden(t, TypeEngine.as_generic)
+            and not util.method_is_overridden(
+                t, TypeEngine._generic_type_affinity
+            )
         ]
     )
     def test_as_generic_all_types_heuristic(self, type_):
@@ -496,6 +519,11 @@ class AsGenericTest(fixtures.TestBase):
         assert isinstance(gentype, TypeEngine)
 
 
+class SomeTypeDecorator(TypeDecorator):
+    impl = String()
+    cache_ok = True
+
+
 class PickleTypesTest(fixtures.TestBase):
     @testing.combinations(
         ("Boo", Boolean()),
@@ -507,22 +535,111 @@ class PickleTypesTest(fixtures.TestBase):
         ("Big", BigInteger()),
         ("Num", Numeric()),
         ("Flo", Float()),
+        ("Enu", Enum("one", "two", "three")),
         ("Dat", DateTime()),
         ("Dat", Date()),
         ("Tim", Time()),
         ("Lar", LargeBinary()),
         ("Pic", PickleType()),
         ("Int", Interval()),
+        ("Dec", SomeTypeDecorator()),
+        argnames="name,type_",
         id_="ar",
     )
-    def test_pickle_types(self, name, type_):
+    @testing.variation("use_adapt", [True, False])
+    def test_pickle_types(self, name, type_, use_adapt):
+
+        if use_adapt:
+            type_ = type_.copy()
+
         column_type = Column(name, type_)
         meta = MetaData()
         Table("foo", meta, column_type)
 
+        expr = select(1).where(column_type == bindparam("q"))
+
         for loads, dumps in picklers():
             loads(dumps(column_type))
             loads(dumps(meta))
+
+            expr_str_one = str(expr)
+            ne = loads(dumps(expr))
+
+            eq_(str(ne), expr_str_one)
+
+            re_pickle_it = loads(dumps(ne))
+            eq_(str(re_pickle_it), expr_str_one)
+
+    def test_pickle_td_comparator(self):
+        comparator = SomeTypeDecorator().comparator_factory(column("q"))
+
+        expected_mro = (
+            TypeDecorator.Comparator,
+            sqltypes.Concatenable.Comparator,
+            TypeEngine.Comparator,
+        )
+        eq_(comparator.__class__.__mro__[1:4], expected_mro)
+
+        for loads, dumps in picklers():
+            unpickled = loads(dumps(comparator))
+            eq_(unpickled.__class__.__mro__[1:4], expected_mro)
+
+            reunpickled = loads(dumps(unpickled))
+            eq_(reunpickled.__class__.__mro__[1:4], expected_mro)
+
+    @testing.combinations(
+        ("Str", String()),
+        ("Tex", Text()),
+        ("Uni", Unicode()),
+        ("Boo", Boolean()),
+        ("Dat", DateTime()),
+        ("Dat", Date()),
+        ("Tim", Time()),
+        ("Lar", LargeBinary()),
+        ("Pic", PickleType()),
+        ("Int", Interval()),
+        ("Enu", Enum("one", "two", "three")),
+        argnames="name,type_",
+        id_="ar",
+    )
+    @testing.variation("use_adapt", [True, False])
+    def test_pickle_types_other_process(self, name, type_, use_adapt):
+        """test for #11530
+
+        this does a full exec of python interpreter so the number of variations
+        here is reduced to just a single pickler, else each case takes
+        a full second.
+
+        """
+
+        if use_adapt:
+            type_ = type_.copy()
+
+        column_type = Column(name, type_)
+        meta = MetaData()
+        Table("foo", meta, column_type)
+
+        for target in column_type, meta:
+            f, name = mkstemp("pkl")
+            with os.fdopen(f, "wb") as f:
+                pickle.dump(target, f)
+
+            name = name.replace(os.sep, "/")
+            code = (
+                "import sqlalchemy; import pickle; "
+                f"pickle.load(open('''{name}''', 'rb'))"
+            )
+            parts = list(sys.path)
+            if os.environ.get("PYTHONPATH"):
+                parts.append(os.environ["PYTHONPATH"])
+            pythonpath = os.pathsep.join(parts)
+            proc = subprocess.run(
+                [sys.executable, "-c", code],
+                env={**os.environ, "PYTHONPATH": pythonpath},
+                stderr=subprocess.PIPE,
+            )
+            eq_(proc.returncode, 0, proc.stderr.decode(errors="replace"))
+            os.unlink(name)
 
 
 class _UserDefinedTypeFixture:
@@ -723,13 +840,20 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
             ),
         )
 
-    def test_processing(self, connection):
+    @testing.variation("use_driver_cols", [True, False])
+    def test_processing(self, connection, use_driver_cols):
         users = self.tables.users
         self._data_fixture(connection)
 
-        result = connection.execute(
-            users.select().order_by(users.c.user_id)
-        ).fetchall()
+        if use_driver_cols:
+            result = connection.execute(
+                users.select().order_by(users.c.user_id),
+                execution_options={"driver_column_names": True},
+            ).fetchall()
+        else:
+            result = connection.execute(
+                users.select().order_by(users.c.user_id)
+            ).fetchall()
         eq_(
             result,
             [
@@ -1417,9 +1541,11 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         # on the way in here
         eq_(
             conn.execute(new_stmt).fetchall(),
-            [("x", "BIND_INxBIND_OUT")]
-            if coerce_fn is type_coerce
-            else [("x", "xBIND_OUT")],
+            (
+                [("x", "BIND_INxBIND_OUT")]
+                if coerce_fn is type_coerce
+                else [("x", "xBIND_OUT")]
+            ),
         )
 
     def test_cast_bind(self, connection):
@@ -1441,9 +1567,11 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
         eq_(
             conn.execute(stmt).fetchall(),
-            [("x", "BIND_INxBIND_OUT")]
-            if coerce_fn is type_coerce
-            else [("x", "xBIND_OUT")],
+            (
+                [("x", "BIND_INxBIND_OUT")]
+                if coerce_fn is type_coerce
+                else [("x", "xBIND_OUT")]
+            ),
         )
 
     def test_cast_existing_typed(self, connection):
@@ -1690,6 +1818,19 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
             self.UTypeTwo(), "postgresql", "mssql"
         )
         self.composite = self.variant.with_variant(self.UTypeThree(), "mysql")
+
+    def test_copy_doesnt_lose_variants(self):
+        """test #11176"""
+
+        v = self.UTypeOne().with_variant(self.UTypeTwo(), "postgresql")
+
+        v_c = v.copy()
+
+        self.assert_compile(v_c, "UTYPEONE", dialect="default")
+
+        self.assert_compile(
+            v_c, "UTYPETWO", dialect=dialects.postgresql.dialect()
+        )
 
     def test_one_dialect_is_req(self):
         with expect_raises_message(
@@ -2299,7 +2440,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             assert_raises(
                 (exc.DBAPIError,),
                 connection.exec_driver_sql,
-                "insert into my_table " "(data) values('four')",
+                "insert into my_table (data) values('four')",
             )
             trans.rollback()
 
@@ -2679,21 +2820,23 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         e = Enum("x", "y", name="somename", create_constraint=True)
         eq_(
             repr(e),
-            "Enum('x', 'y', name='somename', create_constraint=True)",
+            "Enum('x', 'y', name='somename', inherit_schema=True, "
+            "create_constraint=True)",
         )
 
     def test_repr_three(self):
         e = Enum("x", "y", native_enum=False, length=255)
         eq_(
             repr(e),
-            "Enum('x', 'y', native_enum=False, length=255)",
+            "Enum('x', 'y', inherit_schema=True, "
+            "native_enum=False, length=255)",
         )
 
     def test_repr_four(self):
         e = Enum("x", "y", length=255)
         eq_(
             repr(e),
-            "Enum('x', 'y', length=255)",
+            "Enum('x', 'y', inherit_schema=True, length=255)",
         )
 
     def test_length_native(self):
@@ -2726,7 +2869,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     def test_none_length_non_native(self):
         e = Enum("x", "y", native_enum=False, length=None)
         eq_(e.length, None)
-        eq_(repr(e), "Enum('x', 'y', native_enum=False, length=None)")
+        eq_(
+            repr(e),
+            "Enum('x', 'y', inherit_schema=True, "
+            "native_enum=False, length=None)",
+        )
         self.assert_compile(e, "VARCHAR", dialect="default")
 
     def test_omit_aliases(self, connection):
@@ -3282,6 +3429,91 @@ class ExpressionTest(
                     "BIND_INfooBIND_OUT",
                 )
             ],
+        )
+
+    @testing.fixture
+    def renders_bind_cast(self):
+        class MyText(Text):
+            render_bind_cast = True
+
+        class MyCompiler(compiler.SQLCompiler):
+            def render_bind_cast(self, type_, dbapi_type, sqltext):
+                return f"""{sqltext}->BINDCAST->[{
+                    self.dialect.type_compiler_instance.process(
+                        dbapi_type, identifier_preparer=self.preparer
+                    )
+                }]"""
+
+        class MyDialect(default.DefaultDialect):
+            bind_typing = interfaces.BindTyping.RENDER_CASTS
+            colspecs = {Text: MyText}
+            statement_compiler = MyCompiler
+
+        return MyDialect()
+
+    @testing.combinations(
+        (lambda c1: c1.like("qpr"), "q LIKE :q_1->BINDCAST->[TEXT]"),
+        (
+            lambda c2: c2.like("qpr"),
+            'q LIKE :q_1->BINDCAST->[TEXT COLLATE "xyz"]',
+        ),
+        (
+            # new behavior, a type with no collation passed into collate()
+            # now has a new type with that collation, so we get the collate
+            # on the right side bind-cast. previous to #11576 we'd only
+            # get TEXT for the bindcast.
+            lambda c1: collate(c1, "abc").like("qpr"),
+            '(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE "abc"]',
+        ),
+        (
+            lambda c2: collate(c2, "abc").like("qpr"),
+            '(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE "abc"]',
+        ),
+        argnames="testcase,expected",
+    )
+    @testing.variation("use_type_decorator", [True, False])
+    def test_collate_type_interaction(
+        self, renders_bind_cast, testcase, expected, use_type_decorator
+    ):
+        """test #11576.
+
+        This involves dialects that use the render_bind_cast feature only,
+        currently asycnpg and psycopg.   However, the implementation of the
+        feature is mostly in Core, so a fixture dialect / compiler is used so
+        that the test is agnostic of those dialects.
+
+        """
+
+        if use_type_decorator:
+
+            class MyTextThing(TypeDecorator):
+                cache_ok = True
+                impl = Text
+
+            c1 = Column("q", MyTextThing())
+            c2 = Column("q", MyTextThing(collation="xyz"))
+        else:
+            c1 = Column("q", Text())
+            c2 = Column("q", Text(collation="xyz"))
+
+        expr = testing.resolve_lambda(testcase, c1=c1, c2=c2)
+        if use_type_decorator:
+            assert isinstance(expr.left.type, MyTextThing)
+        self.assert_compile(expr, expected, dialect=renders_bind_cast)
+
+        # original types still work, have not been modified
+        eq_(c1.type.collation, None)
+        eq_(c2.type.collation, "xyz")
+
+        self.assert_compile(
+            c1.like("qpr"),
+            "q LIKE :q_1->BINDCAST->[TEXT]",
+            dialect=renders_bind_cast,
+        )
+        self.assert_compile(
+            c2.like("qpr"),
+            'q LIKE :q_1->BINDCAST->[TEXT COLLATE "xyz"]',
+            dialect=renders_bind_cast,
         )
 
     def test_bind_adapt(self, connection):
@@ -3876,7 +4108,6 @@ class TestKWArgPassThru(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class NumericRawSQLTest(fixtures.TestBase):
-
     """Test what DBAPIs and dialects return without any typing
     information supplied at the SQLA level.
 
@@ -4007,7 +4238,6 @@ class IntegerTest(fixtures.TestBase):
 class BooleanTest(
     fixtures.TablesTest, AssertsExecutionResults, AssertsCompiledSQL
 ):
-
     """test edge cases for booleans.  Note that the main boolean test suite
     is now in testing/suite/test_types.py
 

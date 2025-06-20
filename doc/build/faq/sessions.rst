@@ -370,7 +370,7 @@ See :ref:`session_deleting_from_collections` for a description of this behavior.
 why isn't my ``__init__()`` called when I load objects?
 -------------------------------------------------------
 
-See :ref:`mapping_constructors` for a description of this behavior.
+See :ref:`mapped_class_load_events` for a description of this behavior.
 
 how do I use ON DELETE CASCADE with SA's ORM?
 ---------------------------------------------

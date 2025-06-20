@@ -3,8 +3,10 @@ of rows in bulk (under construction! there's just one test at the moment)
 
 
 """
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
+from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
@@ -18,7 +20,7 @@ engine = None
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, Identity(), primary_key=True)
     name = Column(String(255))
     description = Column(String(255))
 

@@ -7,6 +7,7 @@ from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import LABEL_STYLE_DISAMBIGUATE_ONLY
 from sqlalchemy import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy import literal_column
 from sqlalchemy import Numeric
@@ -21,6 +22,7 @@ from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.orm.context import _ORMSelectCompileState
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import roles
@@ -423,6 +425,21 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return A
 
+    @testing.fixture
+    def _unnamed_expr_matches_col_fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            foo = Column(String)
+
+            @hybrid.hybrid_property
+            def bar(self):
+                return self.foo
+
+        return A
+
     def test_access_from_unmapped(self):
         """test #9519"""
 
@@ -495,6 +512,41 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT anon_1.id, anon_1.name "
             "FROM (SELECT a.id AS id, a.firstname || :firstname_1 || "
             "a.lastname AS name FROM a) AS anon_1",
+        )
+
+    @testing.variation("pre_populate_col_proxy", [True, False])
+    def test_labeling_for_unnamed_matches_col(
+        self, _unnamed_expr_matches_col_fixture, pre_populate_col_proxy
+    ):
+        """test #11728"""
+
+        A = _unnamed_expr_matches_col_fixture
+
+        if pre_populate_col_proxy:
+            pre_stmt = select(A.id, A.foo)
+            pre_stmt.subquery().c
+
+        stmt = select(A.id, A.bar)
+        self.assert_compile(
+            stmt,
+            "SELECT a.id, a.foo FROM a",
+        )
+
+        compile_state = _ORMSelectCompileState._create_orm_context(
+            stmt, toplevel=True, compiler=None
+        )
+        eq_(
+            compile_state._column_naming_convention(
+                LABEL_STYLE_DISAMBIGUATE_ONLY, legacy=False
+            )(list(stmt.inner_columns)[1]),
+            "bar",
+        )
+        eq_(stmt.subquery().c.keys(), ["id", "bar"])
+
+        self.assert_compile(
+            select(stmt.subquery()),
+            "SELECT anon_1.id, anon_1.foo FROM "
+            "(SELECT a.id AS id, a.foo AS foo FROM a) AS anon_1",
         )
 
     def test_labeling_for_unnamed_tablename_plus_col(

@@ -1,5 +1,5 @@
-# ext/declarative/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# orm/decl_base.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -22,6 +22,7 @@ from typing import Mapping
 from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -44,6 +45,7 @@ from .base import InspectionAttr
 from .descriptor_props import CompositeProperty
 from .descriptor_props import SynonymProperty
 from .interfaces import _AttributeOptions
+from .interfaces import _DataclassArguments
 from .interfaces import _DCAttributeOptions
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MappedAttribute
@@ -65,11 +67,9 @@ from ..sql.schema import Column
 from ..sql.schema import Table
 from ..util import topological
 from ..util.typing import _AnnotationScanType
+from ..util.typing import get_args
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_literal
-from ..util.typing import Protocol
-from ..util.typing import TypedDict
-from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
     from ._typing import _ClassDict
@@ -98,12 +98,12 @@ class MappedClassProtocol(Protocol[_O]):
     __mapper__: Mapper[_O]
     __table__: FromClause
 
-    def __call__(self, **kw: Any) -> _O:
-        ...
+    def __call__(self, **kw: Any) -> _O: ...
 
 
 class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
     "Internal more detailed version of ``MappedClassProtocol``."
+
     metadata: MetaData
     __tablename__: str
     __mapper_args__: _MapperKwArgs
@@ -111,22 +111,9 @@ class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
 
     _sa_apply_dc_transforms: Optional[_DataclassArguments]
 
-    def __declare_first__(self) -> None:
-        ...
+    def __declare_first__(self) -> None: ...
 
-    def __declare_last__(self) -> None:
-        ...
-
-
-class _DataclassArguments(TypedDict):
-    init: Union[_NoArg, bool]
-    repr: Union[_NoArg, bool]
-    eq: Union[_NoArg, bool]
-    order: Union[_NoArg, bool]
-    unsafe_hash: Union[_NoArg, bool]
-    match_args: Union[_NoArg, bool]
-    kw_only: Union[_NoArg, bool]
-    dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]]
+    def __declare_last__(self) -> None: ...
 
 
 def _declared_mapping_info(
@@ -340,22 +327,13 @@ class _MapperConfig:
         self.properties = util.OrderedDict()
         self.declared_attr_reg = {}
 
-        if not mapper_kw.get("non_primary", False):
-            instrumentation.register_class(
-                self.cls,
-                finalize=False,
-                registry=registry,
-                declarative_scan=self,
-                init_method=registry.constructor,
-            )
-        else:
-            manager = attributes.opt_manager_of_class(self.cls)
-            if not manager or not manager.is_mapped:
-                raise exc.InvalidRequestError(
-                    "Class %s has no primary mapper configured.  Configure "
-                    "a primary mapper first before setting up a non primary "
-                    "Mapper." % self.cls
-                )
+        instrumentation.register_class(
+            self.cls,
+            finalize=False,
+            registry=registry,
+            declarative_scan=self,
+            init_method=registry.constructor,
+        )
 
     def set_cls_attribute(self, attrname: str, value: _T) -> _T:
         manager = instrumentation.manager_of_class(self.cls)
@@ -384,10 +362,9 @@ class _ImperativeMapperConfig(_MapperConfig):
         self.local_table = self.set_cls_attribute("__table__", table)
 
         with mapperlib._CONFIGURE_MUTEX:
-            if not mapper_kw.get("non_primary", False):
-                clsregistry.add_class(
-                    self.classname, self.cls, registry._class_registry
-                )
+            clsregistry._add_class(
+                self.classname, self.cls, registry._class_registry
+            )
 
             self._setup_inheritance(mapper_kw)
 
@@ -434,7 +411,7 @@ class _ImperativeMapperConfig(_MapperConfig):
 class _CollectedAnnotation(NamedTuple):
     raw_annotation: _AnnotationScanType
     mapped_container: Optional[Type[Mapped[Any]]]
-    extracted_mapped_annotation: Union[Type[Any], str]
+    extracted_mapped_annotation: Union[_AnnotationScanType, str]
     is_dataclass: bool
     attr_value: Any
     originating_module: str
@@ -456,6 +433,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         "tablename",
         "mapper_args",
         "mapper_args_fn",
+        "table_fn",
         "inherits",
         "single",
         "allow_dataclass_fields",
@@ -565,7 +543,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         self._setup_dataclasses_transforms()
 
         with mapperlib._CONFIGURE_MUTEX:
-            clsregistry.add_class(
+            clsregistry._add_class(
                 self.classname, self.cls, registry._class_registry
             )
 
@@ -762,7 +740,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         _include_dunders = self._include_dunders
         mapper_args_fn = None
         table_args = inherited_table_args = None
-
+        table_fn = None
         tablename = None
         fixed_table = "__table__" in clsdict_view
 
@@ -843,6 +821,22 @@ class _ClassScanMapperConfig(_MapperConfig):
                         )
                         if not tablename and (not class_mapped or check_decl):
                             tablename = cls_as_Decl.__tablename__
+                    elif name == "__table__":
+                        check_decl = _check_declared_props_nocascade(
+                            obj, name, cls
+                        )
+                        # if a @declared_attr using "__table__" is detected,
+                        # wrap up a callable to look for "__table__" from
+                        # the final concrete class when we set up a table.
+                        # this was fixed by
+                        # #11509, regression in 2.0 from version 1.4.
+                        if check_decl and not table_fn:
+                            # don't even invoke __table__ until we're ready
+                            def _table_fn() -> FromClause:
+                                return cls_as_Decl.__table__
+
+                            table_fn = _table_fn
+
                     elif name == "__table_args__":
                         check_decl = _check_declared_props_nocascade(
                             obj, name, cls
@@ -859,9 +853,10 @@ class _ClassScanMapperConfig(_MapperConfig):
                             if base is not cls:
                                 inherited_table_args = True
                     else:
-                        # skip all other dunder names, which at the moment
-                        # should only be __table__
-                        continue
+                        # any other dunder names; should not be here
+                        # as we have tested for all four names in
+                        # _include_dunders
+                        assert False
                 elif class_mapped:
                     if _is_declarative_props(obj) and not obj._quiet:
                         util.warn(
@@ -908,9 +903,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                                     "@declared_attr.cascading; "
                                     "skipping" % (name, cls)
                                 )
-                            collected_attributes[name] = column_copies[
-                                obj
-                            ] = ret = obj.__get__(obj, cls)
+                            collected_attributes[name] = column_copies[obj] = (
+                                ret
+                            ) = obj.__get__(obj, cls)
                             setattr(cls, name, ret)
                         else:
                             if is_dataclass_field:
@@ -947,9 +942,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                             ):
                                 ret = ret.descriptor
 
-                            collected_attributes[name] = column_copies[
-                                obj
-                            ] = ret
+                            collected_attributes[name] = column_copies[obj] = (
+                                ret
+                            )
 
                         if (
                             isinstance(ret, (Column, MapperProperty))
@@ -1034,6 +1029,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         self.table_args = table_args
         self.tablename = tablename
         self.mapper_args_fn = mapper_args_fn
+        self.table_fn = table_fn
 
     def _setup_dataclasses_transforms(self) -> None:
         dataclass_setup_arguments = self.dataclass_setup_arguments
@@ -1049,6 +1045,16 @@ class _ClassScanMapperConfig(_MapperConfig):
                 "This can happen if a class that inherits from "
                 "'MappedAsDataclass', even indirectly, is been mapped with "
                 "'@registry.mapped_as_dataclass'"
+            )
+
+        # can't create a dataclass if __table__ is already there. This would
+        # fail an assertion when calling _get_arguments_for_make_dataclass:
+        # assert False, "Mapped[] received without a mapping declaration"
+        if "__table__" in self.cls.__dict__:
+            raise exc.InvalidRequestError(
+                f"Class {self.cls} already defines a '__table__'. "
+                "ORM Annotated Dataclasses do not support a pre-existing "
+                "'__table__' element"
             )
 
         warn_for_non_dc_attrs = collections.defaultdict(list)
@@ -1069,10 +1075,12 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         field_list = [
             _AttributeOptions._get_arguments_for_make_dataclass(
+                self,
                 key,
                 anno,
                 mapped_container,
                 self.collected_attributes.get(key, _NoArg.NO_ARG),
+                dataclass_setup_arguments,
             )
             for key, anno, mapped_container in (
                 (
@@ -1105,7 +1113,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                 )
             )
         ]
-
         if warn_for_non_dc_attrs:
             for (
                 originating_class,
@@ -1130,9 +1137,9 @@ class _ClassScanMapperConfig(_MapperConfig):
         defaults = {}
         for item in field_list:
             if len(item) == 2:
-                name, tp = item  # type: ignore
+                name, tp = item
             elif len(item) == 3:
-                name, tp, spec = item  # type: ignore
+                name, tp, spec = item
                 defaults[name] = spec
             else:
                 assert False
@@ -1202,7 +1209,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                 **{
                     k: v
                     for k, v in dataclass_setup_arguments.items()
-                    if v is not _NoArg.NO_ARG and k != "dataclass_callable"
+                    if v is not _NoArg.NO_ARG
+                    and k not in ("dataclass_callable",)
                 },
             )
         except (TypeError, ValueError) as ex:
@@ -1270,8 +1278,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                     or isinstance(attr_value, _MappedAttribute)
                 )
             )
-        else:
-            is_dataclass_field = False
 
         is_dataclass_field = False
         extracted = _extract_mapped_subtype(
@@ -1282,10 +1288,8 @@ class _ClassScanMapperConfig(_MapperConfig):
             type(attr_value),
             required=False,
             is_dataclass_field=is_dataclass_field,
-            expect_mapped=expect_mapped
-            and not is_dataclass,  # self.allow_dataclass_fields,
+            expect_mapped=expect_mapped and not is_dataclass,
         )
-
         if extracted is None:
             # ClassVar can come out here
             return None
@@ -1293,9 +1297,9 @@ class _ClassScanMapperConfig(_MapperConfig):
         extracted_mapped_annotation, mapped_container = extracted
 
         if attr_value is None and not is_literal(extracted_mapped_annotation):
-            for elem in typing_get_args(extracted_mapped_annotation):
-                if isinstance(elem, str) or is_fwd_ref(
-                    elem, check_generic=True
+            for elem in get_args(extracted_mapped_annotation):
+                if is_fwd_ref(
+                    elem, check_generic=True, check_for_plain_string=True
                 ):
                     elem = de_stringify_annotation(
                         self.cls,
@@ -1434,9 +1438,9 @@ class _ClassScanMapperConfig(_MapperConfig):
             cls, "_sa_decl_prepare_nocascade", strict=True
         )
 
+        allow_unmapped_annotations = self.allow_unmapped_annotations
         expect_annotations_wo_mapped = (
-            self.allow_unmapped_annotations
-            or self.is_dataclass_prior_to_mapping
+            allow_unmapped_annotations or self.is_dataclass_prior_to_mapping
         )
 
         look_for_dataclass_things = bool(self.dataclass_setup_arguments)
@@ -1531,7 +1535,15 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # Mapped[] etc. were not used.  If annotation is None,
                     # do declarative_scan so that the property can raise
                     # for required
-                    if mapped_container is not None or annotation is None:
+                    if (
+                        mapped_container is not None
+                        or annotation is None
+                        # issue #10516: need to do declarative_scan even with
+                        # a non-Mapped annotation if we are doing
+                        # __allow_unmapped__, for things like col.name
+                        # assignment
+                        or allow_unmapped_annotations
+                    ):
                         try:
                             value.declarative_scan(
                                 self,
@@ -1545,7 +1557,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                                 is_dataclass,
                             )
                         except NameError as ne:
-                            raise exc.ArgumentError(
+                            raise orm_exc.MappedAnnotationError(
                                 f"Could not resolve all types within mapped "
                                 f'annotation: "{annotation}".  Ensure all '
                                 f"types are written correctly and are "
@@ -1682,7 +1694,11 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         manager = attributes.manager_of_class(cls)
 
-        if "__table__" not in clsdict_view and table is None:
+        if (
+            self.table_fn is None
+            and "__table__" not in clsdict_view
+            and table is None
+        ):
             if hasattr(cls, "__table_cls__"):
                 table_cls = cast(
                     Type[Table],
@@ -1728,7 +1744,12 @@ class _ClassScanMapperConfig(_MapperConfig):
                 )
         else:
             if table is None:
-                table = cls_as_Decl.__table__
+                if self.table_fn:
+                    table = self.set_cls_attribute(
+                        "__table__", self.table_fn()
+                    )
+                else:
+                    table = cls_as_Decl.__table__
             if declared_columns:
                 for c in declared_columns:
                     if not table.c.contains_column(c):
@@ -1977,8 +1998,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
     def _early_mapping(self, mapper_kw: _MapperKwArgs) -> None:
         pass
 
-    # mypy disallows plain property override of variable
-    @property  # type: ignore
+    @property
     def cls(self) -> Type[Any]:
         return self._cls()  # type: ignore
 

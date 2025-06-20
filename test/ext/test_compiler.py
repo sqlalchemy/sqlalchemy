@@ -209,9 +209,11 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "SELECT my_function(t1.q) AS my_function_1 FROM t1"
-            if named
-            else "SELECT my_function(t1.q) AS anon_1 FROM t1",
+            (
+                "SELECT my_function(t1.q) AS my_function_1 FROM t1"
+                if named
+                else "SELECT my_function(t1.q) AS anon_1 FROM t1"
+            ),
             dialect="sqlite",
         )
 

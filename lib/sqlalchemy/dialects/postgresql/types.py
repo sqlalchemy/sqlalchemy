@@ -1,4 +1,5 @@
-# Copyright (C) 2013-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/types.py
+# Copyright (C) 2013-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -18,7 +19,9 @@ from ...sql import type_api
 from ...util.typing import Literal
 
 if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
     from ...sql.operators import OperatorType
+    from ...sql.type_api import _LiteralProcessorType
     from ...sql.type_api import TypeEngine
 
 _DECIMAL_TYPES = (1231, 1700)
@@ -35,43 +38,52 @@ class PGUuid(sqltypes.UUID[sqltypes._UUID_RETURN]):
         @overload
         def __init__(
             self: PGUuid[_python_UUID], as_uuid: Literal[True] = ...
-        ) -> None:
-            ...
+        ) -> None: ...
 
         @overload
-        def __init__(self: PGUuid[str], as_uuid: Literal[False] = ...) -> None:
-            ...
+        def __init__(
+            self: PGUuid[str], as_uuid: Literal[False] = ...
+        ) -> None: ...
 
-        def __init__(self, as_uuid: bool = True) -> None:
-            ...
+        def __init__(self, as_uuid: bool = True) -> None: ...
 
 
 class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = "BYTEA"
 
 
-class INET(sqltypes.TypeEngine[str]):
+class _NetworkAddressTypeMixin:
+
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        if TYPE_CHECKING:
+            assert isinstance(self, TypeEngine)
+        return self
+
+
+class INET(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "INET"
 
 
 PGInet = INET
 
 
-class CIDR(sqltypes.TypeEngine[str]):
+class CIDR(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "CIDR"
 
 
 PGCidr = CIDR
 
 
-class MACADDR(sqltypes.TypeEngine[str]):
+class MACADDR(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR"
 
 
 PGMacAddr = MACADDR
 
 
-class MACADDR8(sqltypes.TypeEngine[str]):
+class MACADDR8(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR8"
 
 
@@ -92,12 +104,11 @@ class MONEY(sqltypes.TypeEngine[str]):
         from sqlalchemy import Dialect
         from sqlalchemy import TypeDecorator
 
+
         class NumericMoney(TypeDecorator):
             impl = MONEY
 
-            def process_result_value(
-                self, value: Any, dialect: Dialect
-            ) -> None:
+            def process_result_value(self, value: Any, dialect: Dialect) -> None:
                 if value is not None:
                     # adjust this for the currency and numeric
                     m = re.match(r"\$([\d.]+)", value)
@@ -112,28 +123,25 @@ class MONEY(sqltypes.TypeEngine[str]):
         from sqlalchemy import cast
         from sqlalchemy import TypeDecorator
 
+
         class NumericMoney(TypeDecorator):
             impl = MONEY
 
             def column_expression(self, column: Any):
                 return cast(column, Numeric())
 
-    .. versionadded:: 1.2
-
-    """
+    """  # noqa: E501
 
     __visit_name__ = "MONEY"
 
 
 class OID(sqltypes.TypeEngine[int]):
-
     """Provide the PostgreSQL OID type."""
 
     __visit_name__ = "OID"
 
 
 class REGCONFIG(sqltypes.TypeEngine[str]):
-
     """Provide the PostgreSQL REGCONFIG type.
 
     .. versionadded:: 2.0.0rc1
@@ -144,7 +152,6 @@ class REGCONFIG(sqltypes.TypeEngine[str]):
 
 
 class TSQUERY(sqltypes.TypeEngine[str]):
-
     """Provide the PostgreSQL TSQUERY type.
 
     .. versionadded:: 2.0.0rc1
@@ -155,18 +162,12 @@ class TSQUERY(sqltypes.TypeEngine[str]):
 
 
 class REGCLASS(sqltypes.TypeEngine[str]):
-
-    """Provide the PostgreSQL REGCLASS type.
-
-    .. versionadded:: 1.2.7
-
-    """
+    """Provide the PostgreSQL REGCLASS type."""
 
     __visit_name__ = "REGCLASS"
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
-
     """Provide the PostgreSQL TIMESTAMP type."""
 
     __visit_name__ = "TIMESTAMP"
@@ -187,7 +188,6 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
 
 class TIME(sqltypes.TIME):
-
     """PostgreSQL TIME type."""
 
     __visit_name__ = "TIME"
@@ -208,7 +208,6 @@ class TIME(sqltypes.TIME):
 
 
 class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
-
     """PostgreSQL INTERVAL type."""
 
     __visit_name__ = "INTERVAL"
@@ -223,8 +222,6 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
         :param fields: string fields specifier.  allows storage of fields
          to be limited, such as ``"YEAR"``, ``"MONTH"``, ``"DAY TO HOUR"``,
          etc.
-
-         .. versionadded:: 1.2
 
         """
         self.precision = precision
@@ -246,6 +243,14 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
     @property
     def python_type(self) -> Type[dt.timedelta]:
         return dt.timedelta
+
+    def literal_processor(
+        self, dialect: Dialect
+    ) -> Optional[_LiteralProcessorType[dt.timedelta]]:
+        def process(value: dt.timedelta) -> str:
+            return f"make_interval(secs=>{value.total_seconds()})"
+
+        return process
 
 
 PGInterval = INTERVAL
@@ -270,7 +275,6 @@ PGBit = BIT
 
 
 class TSVECTOR(sqltypes.TypeEngine[str]):
-
     """The :class:`_postgresql.TSVECTOR` type implements the PostgreSQL
     text search type TSVECTOR.
 
@@ -287,7 +291,6 @@ class TSVECTOR(sqltypes.TypeEngine[str]):
 
 
 class CITEXT(sqltypes.TEXT):
-
     """Provide the PostgreSQL CITEXT type.
 
     .. versionadded:: 2.0.7

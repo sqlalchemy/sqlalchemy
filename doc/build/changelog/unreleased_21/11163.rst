@@ -1,0 +1,12 @@
+.. change::
+    :tags: orm
+    :tickets: 11163
+
+    Ignore :paramref:`_orm.Session.join_transaction_mode` in all cases when
+    the bind provided to the :class:`_orm.Session` is an
+    :class:`_engine.Engine`.
+    Previously if an event that executed before the session logic,
+    like :meth:`_engine.ConnectionEvents.engine_connect`,
+    left the connection with an active transaction, the
+    :paramref:`_orm.Session.join_transaction_mode` behavior took
+    place, leading to a surprising behavior.

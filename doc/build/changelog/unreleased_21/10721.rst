@@ -1,0 +1,7 @@
+.. change::
+    :tags: change, orm
+    :tickets: 10721
+
+    Removed legacy signatures dating back to 0.9 release from the
+    :meth:`_orm.SessionEvents.after_bulk_update` and
+    :meth:`_orm.SessionEvents.after_bulk_delete`.

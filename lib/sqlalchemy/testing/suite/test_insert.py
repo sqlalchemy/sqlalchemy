@@ -1,3 +1,9 @@
+# testing/suite/test_insert.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from decimal import Decimal
@@ -18,7 +24,6 @@ from ... import literal_column
 from ... import Numeric
 from ... import select
 from ... import String
-from ...dialects.postgresql import BYTEA
 from ...types import LargeBinary
 from ...types import UUID
 from ...types import Uuid
@@ -105,6 +110,15 @@ class InsertBehaviorTest(fixtures.TablesTest):
             Column("data", String(50)),
         )
         Table(
+            "no_implicit_returning",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(50)),
+            implicit_returning=False,
+        )
+        Table(
             "includes_defaults",
             metadata,
             Column(
@@ -118,6 +132,33 @@ class InsertBehaviorTest(fixtures.TablesTest):
                 default=literal_column("2", type_=Integer) + literal(2),
             ),
         )
+
+    @testing.variation("style", ["plain", "return_defaults"])
+    @testing.variation("executemany", [True, False])
+    def test_no_results_for_non_returning_insert(
+        self, connection, style, executemany
+    ):
+        """test another INSERT issue found during #10453"""
+
+        table = self.tables.no_implicit_returning
+
+        stmt = table.insert()
+        if style.return_defaults:
+            stmt = stmt.return_defaults()
+
+        if executemany:
+            data = [
+                {"data": "d1"},
+                {"data": "d2"},
+                {"data": "d3"},
+                {"data": "d4"},
+                {"data": "d5"},
+            ]
+        else:
+            data = {"data": "d1"}
+
+        r = connection.execute(stmt, data)
+        assert not r.returns_rows
 
     @requirements.autoincrement_insert
     def test_autoclose_on_insert(self, connection):
@@ -451,9 +492,11 @@ class ReturningTest(fixtures.TablesTest):
                 t.c.value,
                 sort_by_parameter_order=bool(sort_by_parameter_order),
             ),
-            [{"value": value} for i in range(10)]
-            if multiple_rows
-            else {"value": value},
+            (
+                [{"value": value} for i in range(10)]
+                if multiple_rows
+                else {"value": value}
+            ),
         )
 
         if multiple_rows:
@@ -510,6 +553,12 @@ class ReturningTest(fixtures.TablesTest):
             uuid.uuid4(),
             testing.requires.uuid_data_type,
         ),
+        (
+            "generic_native_uuid_str",
+            Uuid(as_uuid=False, native_uuid=True),
+            str(uuid.uuid4()),
+            testing.requires.uuid_data_type,
+        ),
         ("UUID", UUID(), uuid.uuid4(), testing.requires.uuid_data_type),
         (
             "LargeBinary1",
@@ -517,7 +566,6 @@ class ReturningTest(fixtures.TablesTest):
             b"this is binary",
         ),
         ("LargeBinary2", LargeBinary(), b"7\xe7\x9f"),
-        ("PG BYTEA", BYTEA(), b"7\xe7\x9f", testing.only_on("postgresql")),
         argnames="type_,value",
         id_="iaa",
     )
@@ -556,9 +604,11 @@ class ReturningTest(fixtures.TablesTest):
                 t.c.value,
                 sort_by_parameter_order=bool(sort_by_parameter_order),
             ),
-            [{"value": value} for i in range(10)]
-            if multiple_rows
-            else {"value": value},
+            (
+                [{"value": value} for i in range(10)]
+                if multiple_rows
+                else {"value": value}
+            ),
         )
 
         if multiple_rows:

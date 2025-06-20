@@ -1,5 +1,5 @@
-# mysql/__init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/__init__.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -52,8 +52,10 @@ from .base import VARCHAR
 from .base import YEAR
 from .dml import Insert
 from .dml import insert
+from .dml import limit
 from .expression import match
-from ...util import compat
+from .mariadb import INET4
+from .mariadb import INET6
 
 # default dialect
 base.dialect = dialect = mysqldb.dialect
@@ -71,6 +73,8 @@ __all__ = (
     "DOUBLE",
     "ENUM",
     "FLOAT",
+    "INET4",
+    "INET6",
     "INTEGER",
     "INTEGER",
     "JSON",
@@ -98,4 +102,5 @@ __all__ = (
     "insert",
     "Insert",
     "match",
+    "limit",
 )

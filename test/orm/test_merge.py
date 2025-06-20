@@ -1476,9 +1476,7 @@ class MergeTest(_fixtures.FixtureTest):
             CountStatements(
                 0
                 if load.noload
-                else 1
-                if merge_persistent.merge_persistent
-                else 2
+                else 1 if merge_persistent.merge_persistent else 2
             )
         )
 
@@ -1807,6 +1805,29 @@ class MergeTest(_fixtures.FixtureTest):
         sess.flush()
 
         eq_(sess.query(Address).one(), Address(id=1, email_address="c"))
+
+    def test_merge_all(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+        sess = fixture_session()
+        load = self.load_tracker(User)
+
+        ua = User(id=42, name="bob")
+        ub = User(id=7, name="fred")
+        eq_(load.called, 0)
+        uam, ubm = sess.merge_all([ua, ub])
+        eq_(load.called, 2)
+        assert uam in sess
+        assert ubm in sess
+        eq_(uam, User(id=42, name="bob"))
+        eq_(ubm, User(id=7, name="fred"))
+        sess.flush()
+        sess.expunge_all()
+        eq_(
+            sess.query(User).order_by("id").all(),
+            [User(id=7, name="fred"), User(id=42, name="bob")],
+        )
 
 
 class M2ONoUseGetLoadingTest(fixtures.MappedTest):

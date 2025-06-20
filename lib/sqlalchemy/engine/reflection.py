@@ -1,5 +1,5 @@
 # engine/reflection.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -35,6 +35,7 @@ from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Dict
+from typing import final
 from typing import Generator
 from typing import Iterable
 from typing import List
@@ -55,11 +56,11 @@ from .. import util
 from ..sql import operators
 from ..sql import schema as sa_schema
 from ..sql.cache_key import _ad_hoc_cache_key_from_args
+from ..sql.elements import quoted_name
 from ..sql.elements import TextClause
 from ..sql.type_api import TypeEngine
 from ..sql.visitors import InternalTraversal
 from ..util import topological
-from ..util.typing import final
 
 if TYPE_CHECKING:
     from .interfaces import Dialect
@@ -89,8 +90,16 @@ def cache(
     exclude = {"info_cache", "unreflectable"}
     key = (
         fn.__name__,
-        tuple(a for a in args if isinstance(a, str)),
-        tuple((k, v) for k, v in kw.items() if k not in exclude),
+        tuple(
+            (str(a), a.quote) if isinstance(a, quoted_name) else a
+            for a in args
+            if isinstance(a, str)
+        ),
+        tuple(
+            (k, (str(v), v.quote) if isinstance(v, quoted_name) else v)
+            for k, v in kw.items()
+            if k not in exclude
+        ),
     )
     ret: _R = info_cache.get(key)
     if ret is None:
@@ -184,7 +193,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
     or a :class:`_engine.Connection`::
 
         from sqlalchemy import inspect, create_engine
-        engine = create_engine('...')
+
+        engine = create_engine("...")
         insp = inspect(engine)
 
     Where above, the :class:`~sqlalchemy.engine.interfaces.Dialect` associated
@@ -621,7 +631,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return a list of temporary table names for the current bind.
 
         This method is unsupported by most dialects; currently
-        only Oracle, PostgreSQL and SQLite implements it.
+        only Oracle Database, PostgreSQL and SQLite implements it.
 
         :param \**kw: Additional keyword argument to pass to the dialect
          specific implementation. See the documentation of the dialect
@@ -657,7 +667,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         given name was created.
 
         This currently includes some options that apply to MySQL and Oracle
-        tables.
+        Database tables.
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -1306,8 +1316,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
 
         :return: a dictionary, with the table comment.
 
-        .. versionadded:: 1.2
-
         .. seealso:: :meth:`Inspector.get_multi_table_comment`
         """
 
@@ -1483,9 +1491,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
             from sqlalchemy import create_engine, MetaData, Table
             from sqlalchemy import inspect
 
-            engine = create_engine('...')
+            engine = create_engine("...")
             meta = MetaData()
-            user_table = Table('user', meta)
+            user_table = Table("user", meta)
             insp = inspect(engine)
             insp.reflect_table(user_table, None)
 
@@ -1704,9 +1712,12 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 if pk in cols_by_orig_name and pk not in exclude_columns
             ]
 
-            # update pk constraint name and comment
+            # update pk constraint name, comment and dialect_kwargs
             table.primary_key.name = pk_cons.get("name")
             table.primary_key.comment = pk_cons.get("comment", None)
+            dialect_options = pk_cons.get("dialect_options")
+            if dialect_options:
+                table.primary_key.dialect_kwargs.update(dialect_options)
 
             # tell the PKConstraint to re-initialize
             # its column collection
@@ -1843,7 +1854,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
                     if not expressions:
                         util.warn(
                             f"Skipping {flavor} {name!r} because key "
-                            f"{index+1} reflected as None but no "
+                            f"{index + 1} reflected as None but no "
                             "'expressions' were returned"
                         )
                         break

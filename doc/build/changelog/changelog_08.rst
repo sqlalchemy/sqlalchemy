@@ -3499,7 +3499,7 @@
       ready for general use yet, however
       it does have *extremely* rudimental
       functionality now.
-      https://bitbucket.org/zzzeek/sqlalchemy-access
+      https://github.com/gordthompson/sqlalchemy-access
 
     .. change::
         :tags: maxdb, moved
@@ -3507,8 +3507,9 @@
 
       The MaxDB dialect, which hasn't been
       functional for several years, is
-      moved out to a pending bitbucket project,
-      https://bitbucket.org/zzzeek/sqlalchemy-maxdb.
+      moved out to a pending bitbucket project, (deleted; to view
+      the MaxDB code see the commit before it was removed at
+      https://github.com/sqlalchemy/sqlalchemy/tree/ba67f7dbc5eb7a1ed2a3e1b56df72a837130f7bb/lib/sqlalchemy/dialects/maxdb)
 
     .. change::
         :tags: sqlite, feature

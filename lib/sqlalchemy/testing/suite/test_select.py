@@ -1,3 +1,9 @@
+# testing/suite/test_select.py
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 import collections.abc as collections_abc
@@ -198,7 +204,7 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         )
 
     def _assert_result(
-        self, connection, select, result, params=(), set_=False
+        self, connection, select, result, params=None, set_=False
     ):
         if set_:
             query_res = connection.execute(select, params).fetchall()
@@ -208,7 +214,7 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         else:
             eq_(connection.execute(select, params).fetchall(), result)
 
-    def _assert_result_str(self, select, result, params=()):
+    def _assert_result_str(self, select, result, params=None):
         with config.db.connect() as conn:
             eq_(conn.exec_driver_sql(select, params).fetchall(), result)
 
@@ -728,7 +734,7 @@ class SameNamedSchemaTableTest(fixtures.TablesTest):
 class JoinTest(fixtures.TablesTest):
     __backend__ = True
 
-    def _assert_result(self, select, result, params=()):
+    def _assert_result(self, select, result, params=None):
         with config.db.connect() as conn:
             eq_(conn.execute(select, params).fetchall(), result)
 
@@ -850,7 +856,7 @@ class CompoundSelectTest(fixtures.TablesTest):
             ],
         )
 
-    def _assert_result(self, select, result, params=()):
+    def _assert_result(self, select, result, params=None):
         with config.db.connect() as conn:
             eq_(conn.execute(select, params).fetchall(), result)
 
@@ -1115,7 +1121,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
             ],
         )
 
-    def _assert_result(self, select, result, params=()):
+    def _assert_result(self, select, result, params=None):
         with config.db.connect() as conn:
             eq_(conn.execute(select, params).fetchall(), result)
 
@@ -1535,6 +1541,7 @@ class LikeFunctionsTest(fixtures.TablesTest):
         col = self.tables.some_table.c.data
         self._test(col.startswith("ab%c"), {1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
+    @testing.requires.like_escapes
     def test_startswith_autoescape(self):
         col = self.tables.some_table.c.data
         self._test(col.startswith("ab%c", autoescape=True), {3})
@@ -1546,10 +1553,12 @@ class LikeFunctionsTest(fixtures.TablesTest):
             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
         )
 
+    @testing.requires.like_escapes
     def test_startswith_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.startswith("ab##c", escape="#"), {7})
 
+    @testing.requires.like_escapes
     def test_startswith_autoescape_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.startswith("ab%c", autoescape=True, escape="#"), {3})
@@ -1565,14 +1574,17 @@ class LikeFunctionsTest(fixtures.TablesTest):
             col.endswith(literal_column("'e%fg'")), {1, 2, 3, 4, 5, 6, 7, 8, 9}
         )
 
+    @testing.requires.like_escapes
     def test_endswith_autoescape(self):
         col = self.tables.some_table.c.data
         self._test(col.endswith("e%fg", autoescape=True), {6})
 
+    @testing.requires.like_escapes
     def test_endswith_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.endswith("e##fg", escape="#"), {9})
 
+    @testing.requires.like_escapes
     def test_endswith_autoescape_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.endswith("e%fg", autoescape=True, escape="#"), {6})
@@ -1582,14 +1594,17 @@ class LikeFunctionsTest(fixtures.TablesTest):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cde"), {1, 2, 3, 4, 5, 6, 7, 8, 9})
 
+    @testing.requires.like_escapes
     def test_contains_autoescape(self):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cde", autoescape=True), {3})
 
+    @testing.requires.like_escapes
     def test_contains_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.contains("b##cde", escape="#"), {7})
 
+    @testing.requires.like_escapes
     def test_contains_autoescape_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cd", autoescape=True, escape="#"), {3})
@@ -1765,7 +1780,7 @@ class IdentityAutoincrementTest(fixtures.TablesTest):
         )
 
     def test_autoincrement_with_identity(self, connection):
-        res = connection.execute(self.tables.tbl.insert(), {"desc": "row"})
+        connection.execute(self.tables.tbl.insert(), {"desc": "row"})
         res = connection.execute(self.tables.tbl.select()).first()
         eq_(res, (1, "row"))
 
@@ -1822,7 +1837,10 @@ class DistinctOnTest(AssertsCompiledSQL, fixtures.TablesTest):
 
     @testing.fails_if(testing.requires.supports_distinct_on)
     def test_distinct_on(self):
-        stm = select("*").distinct(column("q")).select_from(table("foo"))
+        with testing.expect_deprecated(
+            "Passing expression to ``distinct`` to generate "
+        ):
+            stm = select("*").distinct(column("q")).select_from(table("foo"))
         with testing.expect_deprecated(
             "DISTINCT ON is currently supported only by the PostgreSQL "
         ):
@@ -1880,3 +1898,128 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             len(result),
             expected_row_count_for_is_not,
         )
+
+
+class WindowFunctionTest(fixtures.TablesTest):
+    __requires__ = ("window_functions",)
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("col1", Integer),
+            Column("col2", Integer),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [{"id": i, "col1": i, "col2": i * 5} for i in range(1, 50)],
+        )
+
+    def test_window(self, connection):
+        some_table = self.tables.some_table
+        rows = connection.execute(
+            select(
+                func.max(some_table.c.col2).over(
+                    order_by=[some_table.c.col1.desc()]
+                )
+            ).where(some_table.c.col1 < 20)
+        ).all()
+
+        eq_(rows, [(95,) for i in range(19)])
+
+    def test_window_rows_between_w_caching(self, connection):
+        some_table = self.tables.some_table
+
+        # this tests that dialects such as SQL Server which require literal
+        # rendering of ROWS BETWEEN and RANGE BETWEEN numerical values make
+        # use of literal_execute, for post-cache rendering of integer values,
+        # and not literal_binds which would include the integer values in the
+        # cached string (caching overall fixed in #11515)
+        for i in range(3):
+            for rows, expected in [
+                (
+                    (5, 20),
+                    list(range(105, 245, 5)) + ([245] * 16) + [None] * 5,
+                ),
+                (
+                    (20, 30),
+                    list(range(155, 245, 5)) + ([245] * 11) + [None] * 20,
+                ),
+            ]:
+                result_rows = connection.execute(
+                    select(
+                        func.max(some_table.c.col2).over(
+                            order_by=[some_table.c.col1],
+                            rows=rows,
+                        )
+                    )
+                ).all()
+
+                eq_(result_rows, [(i,) for i in expected])
+
+
+class BitwiseTest(fixtures.TablesTest):
+    __backend__ = True
+    run_inserts = run_deletes = "once"
+
+    inserted_data = [{"a": i, "b": i + 1} for i in range(10)]
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("bitwise", metadata, Column("a", Integer), Column("b", Integer))
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(cls.tables.bitwise.insert(), cls.inserted_data)
+
+    @testing.combinations(
+        (
+            lambda a: a.bitwise_xor(5),
+            [i for i in range(10) if i != 5],
+            testing.requires.supports_bitwise_xor,
+        ),
+        (
+            lambda a: a.bitwise_or(1),
+            list(range(10)),
+            testing.requires.supports_bitwise_or,
+        ),
+        (
+            lambda a: a.bitwise_and(4),
+            list(range(4, 8)),
+            testing.requires.supports_bitwise_and,
+        ),
+        (
+            lambda a: (a - 2).bitwise_not(),
+            [0],
+            testing.requires.supports_bitwise_not,
+        ),
+        (
+            lambda a: a.bitwise_lshift(1),
+            list(range(1, 10)),
+            testing.requires.supports_bitwise_shift,
+        ),
+        (
+            lambda a: a.bitwise_rshift(2),
+            list(range(4, 10)),
+            testing.requires.supports_bitwise_shift,
+        ),
+        argnames="case, expected",
+    )
+    def test_bitwise(self, case, expected, connection):
+        tbl = self.tables.bitwise
+
+        a = tbl.c.a
+
+        op = testing.resolve_lambda(case, a=a)
+
+        stmt = select(tbl).where(op > 0).order_by(a)
+
+        res = connection.execute(stmt).mappings().all()
+        eq_(res, [self.inserted_data[i] for i in expected])

@@ -8,8 +8,10 @@ from typing import Set
 import uuid
 
 from sqlalchemy import bindparam
+from sqlalchemy import Computed
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Identity
@@ -23,14 +25,23 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import column_property
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import immediateload
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import orm_insert_sentinel
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -48,18 +59,21 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
     @testing.variation(
         "style",
         [
+            ("default", testing.requires.insert_returning),
             "no_executemany",
             ("no_sort_by", testing.requires.insert_returning),
             ("all_enabled", testing.requires.insert_returning),
         ],
     )
     @testing.variation("sort_by_parameter_order", [True, False])
+    @testing.variation("enable_implicit_returning", [True, False])
     def test_no_returning_error(
         self,
         decl_base,
         testing_engine,
         style: testing.Variation,
         sort_by_parameter_order,
+        enable_implicit_returning,
     ):
         class A(ComparableEntity, decl_base):
             __tablename__ = "a"
@@ -67,22 +81,30 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             data: Mapped[str]
             x: Mapped[Optional[int]] = mapped_column("xcol")
 
+            if not enable_implicit_returning:
+                __table_args__ = {"implicit_returning": False}
+
         engine = testing_engine()
 
-        if style.no_executemany:
+        if style.default:
+            pass
+        elif style.no_executemany:
             engine.dialect.use_insertmanyvalues = False
+            engine.dialect.use_insertmanyvalues_wo_returning = False
             engine.dialect.insert_executemany_returning = False
             engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
                 False
             )
         elif style.no_sort_by:
             engine.dialect.use_insertmanyvalues = True
+            engine.dialect.use_insertmanyvalues_wo_returning = True
             engine.dialect.insert_executemany_returning = True
             engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
                 False
             )
         elif style.all_enabled:
             engine.dialect.use_insertmanyvalues = True
+            engine.dialect.use_insertmanyvalues_wo_returning = True
             engine.dialect.insert_executemany_returning = True
             engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
                 True
@@ -93,8 +115,10 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         decl_base.metadata.create_all(engine)
         s = Session(engine)
 
-        if style.all_enabled or (
-            style.no_sort_by and not sort_by_parameter_order
+        if (
+            style.all_enabled
+            or (style.no_sort_by and not sort_by_parameter_order)
+            or style.default
         ):
             result = s.scalars(
                 insert(A).returning(
@@ -127,6 +151,67 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
                         {"data": "d4", "x": 6},
                     ],
                 )
+
+    @testing.variation("render_nulls", [True, False])
+    def test_render_nulls(self, decl_base, render_nulls):
+        """test #10575"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            data: Mapped[str]
+            x: Mapped[Optional[int]]
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        with self.sql_execution_asserter() as asserter:
+            stmt = insert(A)
+            if render_nulls:
+                stmt = stmt.execution_options(render_nulls=True)
+
+            s.execute(
+                stmt,
+                [
+                    {"data": "d3", "x": 5},
+                    {"data": "d4", "x": 6},
+                    {"data": "d5", "x": 6},
+                    {"data": "d6", "x": None},
+                    {"data": "d7", "x": 6},
+                ],
+            )
+
+        if render_nulls:
+            asserter.assert_(
+                CompiledSQL(
+                    "INSERT INTO a (data, x) VALUES (:data, :x)",
+                    [
+                        {"data": "d3", "x": 5},
+                        {"data": "d4", "x": 6},
+                        {"data": "d5", "x": 6},
+                        {"data": "d6", "x": None},
+                        {"data": "d7", "x": 6},
+                    ],
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "INSERT INTO a (data, x) VALUES (:data, :x)",
+                    [
+                        {"data": "d3", "x": 5},
+                        {"data": "d4", "x": 6},
+                        {"data": "d5", "x": 6},
+                    ],
+                ),
+                CompiledSQL(
+                    "INSERT INTO a (data) VALUES (:data)", [{"data": "d6"}]
+                ),
+                CompiledSQL(
+                    "INSERT INTO a (data, x) VALUES (:data, :x)",
+                    [{"data": "d7", "x": 6}],
+                ),
+            )
 
     def test_omit_returning_ok(self, decl_base):
         class A(decl_base):
@@ -190,6 +275,86 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
                     {"name": "some name 3"},
                 ],
             ),
+        )
+
+    @testing.requires.insert_returning
+    @testing.variation(
+        "insert_type",
+        [("values", testing.requires.multivalues_inserts), "bulk"],
+    )
+    def test_returning_col_property(
+        self, decl_base, insert_type: testing.Variation
+    ):
+        """test #12326"""
+
+        class User(ComparableEntity, decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+            name: Mapped[str]
+            age: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+
+        a_alias = aliased(User)
+        User.colprop = column_property(
+            select(func.max(a_alias.age))
+            .where(a_alias.id != User.id)
+            .scalar_subquery()
+        )
+
+        sess = fixture_session()
+
+        if insert_type.values:
+            stmt = insert(User).values(
+                [
+                    dict(id=1, name="john", age=25),
+                    dict(id=2, name="jack", age=47),
+                    dict(id=3, name="jill", age=29),
+                    dict(id=4, name="jane", age=37),
+                ],
+            )
+            params = None
+        elif insert_type.bulk:
+            stmt = insert(User)
+            params = [
+                dict(id=1, name="john", age=25),
+                dict(id=2, name="jack", age=47),
+                dict(id=3, name="jill", age=29),
+                dict(id=4, name="jane", age=37),
+            ]
+        else:
+            insert_type.fail()
+
+        stmt = stmt.returning(User)
+
+        result = sess.execute(stmt, params=params)
+
+        # the RETURNING doesn't have the column property in it.
+        # so to load these, they are all lazy loaded
+        with self.sql_execution_asserter() as asserter:
+            eq_(
+                result.scalars().all(),
+                [
+                    User(id=1, name="john", age=25, colprop=47),
+                    User(id=2, name="jack", age=47, colprop=37),
+                    User(id=3, name="jill", age=29, colprop=47),
+                    User(id=4, name="jane", age=37, colprop=47),
+                ],
+            )
+
+        # assert they're all lazy loaded
+        asserter.assert_(
+            *[
+                CompiledSQL(
+                    'SELECT (SELECT max(user_1.age) AS max_1 FROM "user" '
+                    'AS user_1 WHERE user_1.id != "user".id) AS anon_1 '
+                    'FROM "user" WHERE "user".id = :pk_1'
+                )
+                for i in range(4)
+            ]
         )
 
     @testing.requires.insert_returning
@@ -306,6 +471,68 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         result = s.scalars(insert_stmt)
 
         eq_(result.all(), [User(id=1, name="John", age=30)])
+
+    @testing.requires.insert_returning
+    @testing.variation(
+        "insert_type",
+        ["bulk", ("values", testing.requires.multivalues_inserts), "single"],
+    )
+    def test_insert_returning_bundle(self, decl_base, insert_type):
+        """test #10776"""
+
+        class User(decl_base):
+            __tablename__ = "users"
+
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+
+            name: Mapped[str] = mapped_column()
+            x: Mapped[int]
+            y: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+        insert_stmt = insert(User).returning(
+            User.name, Bundle("mybundle", User.id, User.x, User.y)
+        )
+
+        s = fixture_session()
+
+        if insert_type.bulk:
+            result = s.execute(
+                insert_stmt,
+                [
+                    {"name": "some name 1", "x": 1, "y": 2},
+                    {"name": "some name 2", "x": 2, "y": 3},
+                    {"name": "some name 3", "x": 3, "y": 4},
+                ],
+            )
+        elif insert_type.values:
+            result = s.execute(
+                insert_stmt.values(
+                    [
+                        {"name": "some name 1", "x": 1, "y": 2},
+                        {"name": "some name 2", "x": 2, "y": 3},
+                        {"name": "some name 3", "x": 3, "y": 4},
+                    ],
+                )
+            )
+        elif insert_type.single:
+            result = s.execute(
+                insert_stmt, {"name": "some name 1", "x": 1, "y": 2}
+            )
+        else:
+            insert_type.fail()
+
+        if insert_type.single:
+            eq_(result.all(), [("some name 1", (1, 1, 2))])
+        else:
+            eq_(
+                result.all(),
+                [
+                    ("some name 1", (1, 1, 2)),
+                    ("some name 2", (2, 2, 3)),
+                    ("some name 3", (3, 3, 4)),
+                ],
+            )
 
     @testing.variation(
         "use_returning", [(True, testing.requires.insert_returning), False]
@@ -456,6 +683,103 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
 
 class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __backend__ = True
+
+    @testing.variation(
+        "use_onupdate",
+        [
+            "none",
+            "server",
+            "callable",
+            "clientsql",
+            ("computed", testing.requires.computed_columns),
+        ],
+    )
+    def test_bulk_update_onupdates(
+        self,
+        decl_base,
+        use_onupdate,
+    ):
+        """assert that for now, bulk ORM update by primary key does not
+        expire or refresh onupdates."""
+
+        class Employee(ComparableEntity, decl_base):
+            __tablename__ = "employee"
+
+            uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+            user_name: Mapped[str] = mapped_column(String(200), nullable=False)
+
+            if use_onupdate.server:
+                some_server_value: Mapped[str] = mapped_column(
+                    server_onupdate=FetchedValue()
+                )
+            elif use_onupdate.callable:
+                some_server_value: Mapped[str] = mapped_column(
+                    onupdate=lambda: "value 2"
+                )
+            elif use_onupdate.clientsql:
+                some_server_value: Mapped[str] = mapped_column(
+                    onupdate=literal("value 2")
+                )
+            elif use_onupdate.computed:
+                some_server_value: Mapped[str] = mapped_column(
+                    String(255),
+                    Computed(user_name + " computed value"),
+                    nullable=True,
+                )
+            else:
+                some_server_value: Mapped[str]
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        uuid1 = uuid.uuid4()
+
+        if use_onupdate.computed:
+            server_old_value, server_new_value = (
+                "e1 old name computed value",
+                "e1 new name computed value",
+            )
+            e1 = Employee(uuid=uuid1, user_name="e1 old name")
+        else:
+            server_old_value, server_new_value = ("value 1", "value 2")
+            e1 = Employee(
+                uuid=uuid1,
+                user_name="e1 old name",
+                some_server_value="value 1",
+            )
+        s.add(e1)
+        s.flush()
+
+        # for computed col, make sure e1.some_server_value is loaded.
+        # this will already be the case for all RETURNING backends, so this
+        # suits just MySQL.
+        if use_onupdate.computed:
+            e1.some_server_value
+
+        stmt = update(Employee)
+
+        # perform out of band UPDATE on server value to simulate
+        # a computed col
+        if use_onupdate.none or use_onupdate.server:
+            s.connection().execute(
+                update(Employee.__table__).values(some_server_value="value 2")
+            )
+
+        execution_options = {}
+
+        s.execute(
+            stmt,
+            execution_options=execution_options,
+            params=[{"uuid": uuid1, "user_name": "e1 new name"}],
+        )
+
+        assert "some_server_value" in e1.__dict__
+        eq_(e1.some_server_value, server_old_value)
+
+        # do a full expire, now the new value is definitely there
+        s.commit()
+        s.expire_all()
+        eq_(e1.some_server_value, server_new_value)
 
     @testing.variation(
         "returning_executemany",
@@ -720,6 +1044,34 @@ class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             result = s.execute(stmt, data)
             eq_(result.all(), [(1, 5, 9), (2, 5, 9), (3, 5, 9)])
 
+    @testing.requires.update_returning
+    def test_bulk_update_returning_bundle(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+
+            x: Mapped[int]
+            y: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+
+        s = fixture_session()
+
+        s.add_all(
+            [A(id=1, x=1, y=1), A(id=2, x=2, y=2), A(id=3, x=3, y=3)],
+        )
+        s.commit()
+
+        stmt = update(A).returning(Bundle("mybundle", A.id, A.x), A.y)
+
+        data = {"x": 5, "y": 9}
+
+        result = s.execute(stmt, data)
+        eq_(result.all(), [((1, 5), 9), ((2, 5), 9), ((3, 5), 9)])
+
     def test_bulk_update_w_where_one(self, decl_base):
         """test use case in #9595"""
 
@@ -807,6 +1159,47 @@ class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
                 (4, "jane", 37),
             ],
         )
+
+    @testing.requires.update_returning
+    def test_returning_col_property(self, decl_base):
+        """test #12326"""
+
+        class User(ComparableEntity, decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+            name: Mapped[str]
+            age: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+
+        a_alias = aliased(User)
+        User.colprop = column_property(
+            select(func.max(a_alias.age))
+            .where(a_alias.id != User.id)
+            .scalar_subquery()
+        )
+
+        sess = fixture_session()
+
+        sess.execute(
+            insert(User),
+            [
+                dict(id=1, name="john", age=25),
+                dict(id=2, name="jack", age=47),
+                dict(id=3, name="jill", age=29),
+                dict(id=4, name="jane", age=37),
+            ],
+        )
+
+        stmt = (
+            update(User).values(age=30).where(User.age == 29).returning(User)
+        )
+
+        row = sess.execute(stmt).one()
+        eq_(row[0], User(id=3, name="jill", age=30, colprop=47))
 
 
 class BulkDMLReturningInhTest:
@@ -2133,3 +2526,213 @@ class CTETest(fixtures.DeclarativeMappedTest):
         asserter.assert_(
             CompiledSQL(expected, [{"param_1": id_, "param_2": "some user"}])
         )
+
+
+class EagerLoadTest(
+    fixtures.DeclarativeMappedTest, testing.AssertsExecutionResults
+):
+    run_inserts = "each"
+    __requires__ = ("insert_returning",)
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(
+                Integer, Identity(), primary_key=True
+            )
+            cs = relationship("C")
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(
+                Integer, Identity(), primary_key=True
+            )
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            a = relationship("A")
+
+        class C(Base):
+            __tablename__ = "c"
+            id: Mapped[int] = mapped_column(
+                Integer, Identity(), primary_key=True
+            )
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A = cls.classes.A
+        C = cls.classes.C
+        with Session(connection) as sess:
+            sess.add_all(
+                [
+                    A(id=1, cs=[C(id=1), C(id=2)]),
+                    A(id=2),
+                    A(id=3, cs=[C(id=3), C(id=4)]),
+                ]
+            )
+            sess.commit()
+
+    @testing.fixture
+    def fixture_with_loader_opt(self):
+        def go(lazy):
+            class Base(DeclarativeBase):
+                pass
+
+            class A(Base):
+                __tablename__ = "a"
+                id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+            class B(Base):
+                __tablename__ = "b"
+                id: Mapped[int] = mapped_column(Integer, primary_key=True)
+                a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+                a = relationship("A", lazy=lazy)
+
+            return A, B
+
+        return go
+
+    @testing.combinations(
+        (selectinload,),
+        (immediateload,),
+    )
+    def test_insert_supported(self, loader):
+        A, B = self.classes("A", "B")
+
+        sess = fixture_session()
+
+        result = sess.execute(
+            insert(B).returning(B).options(loader(B.a)),
+            [
+                {"id": 1, "a_id": 1},
+                {"id": 2, "a_id": 1},
+                {"id": 3, "a_id": 2},
+                {"id": 4, "a_id": 3},
+                {"id": 5, "a_id": 3},
+            ],
+        ).scalars()
+
+        for b in result:
+            assert "a" in b.__dict__
+
+    @testing.combinations(
+        (joinedload,),
+        (subqueryload,),
+    )
+    def test_insert_not_supported(self, loader):
+        """test #11853"""
+
+        A, B = self.classes("A", "B")
+
+        sess = fixture_session()
+
+        stmt = insert(B).returning(B).options(loader(B.a))
+
+        with expect_deprecated(
+            f"The {loader.__name__} loader option is not compatible "
+            "with DML statements",
+        ):
+            sess.execute(stmt, [{"id": 1, "a_id": 1}])
+
+    @testing.combinations(
+        (joinedload,),
+        (subqueryload,),
+        (selectinload,),
+        (immediateload,),
+    )
+    def test_secondary_opt_ok(self, loader):
+        A, B = self.classes("A", "B")
+
+        sess = fixture_session()
+
+        opt = selectinload(B.a)
+        opt = getattr(opt, loader.__name__)(A.cs)
+
+        result = sess.execute(
+            insert(B).returning(B).options(opt),
+            [
+                {"id": 1, "a_id": 1},
+                {"id": 2, "a_id": 1},
+                {"id": 3, "a_id": 2},
+                {"id": 4, "a_id": 3},
+                {"id": 5, "a_id": 3},
+            ],
+        ).scalars()
+
+        for b in result:
+            assert "a" in b.__dict__
+            assert "cs" in b.a.__dict__
+
+    @testing.combinations(
+        ("joined",),
+        ("select",),
+        ("subquery",),
+        ("selectin",),
+        ("immediate",),
+        argnames="lazy_opt",
+    )
+    def test_insert_handles_implicit(self, fixture_with_loader_opt, lazy_opt):
+        """test #11853"""
+
+        A, B = fixture_with_loader_opt(lazy_opt)
+
+        sess = fixture_session()
+
+        for b_obj in sess.execute(
+            insert(B).returning(B),
+            [
+                {"id": 1, "a_id": 1},
+                {"id": 2, "a_id": 1},
+                {"id": 3, "a_id": 2},
+                {"id": 4, "a_id": 3},
+                {"id": 5, "a_id": 3},
+            ],
+        ).scalars():
+
+            if lazy_opt in ("select", "joined", "subquery"):
+                # these aren't supported by DML
+                assert "a" not in b_obj.__dict__
+            else:
+                # the other three are
+                assert "a" in b_obj.__dict__
+
+    @testing.combinations(
+        (lazyload,), (selectinload,), (immediateload,), argnames="loader_opt"
+    )
+    @testing.combinations(
+        (joinedload,),
+        (subqueryload,),
+        (selectinload,),
+        (immediateload,),
+        (lazyload,),
+        argnames="secondary_opt",
+    )
+    def test_secondary_w_criteria_caching(self, loader_opt, secondary_opt):
+        """test #11855"""
+        A, B, C = self.classes("A", "B", "C")
+
+        for i in range(3):
+            with fixture_session() as sess:
+
+                opt = loader_opt(B.a)
+                opt = getattr(opt, secondary_opt.__name__)(
+                    A.cs.and_(C.a_id == 1)
+                )
+                stmt = insert(B).returning(B).options(opt)
+
+                b1 = sess.scalar(stmt, [{"a_id": 1}])
+
+                eq_({c.id for c in b1.a.cs}, {1, 2})
+
+                opt = loader_opt(B.a)
+                opt = getattr(opt, secondary_opt.__name__)(
+                    A.cs.and_(C.a_id == 3)
+                )
+
+                stmt = insert(B).returning(B).options(opt)
+
+                b3 = sess.scalar(stmt, [{"a_id": 3}])
+
+                eq_({c.id for c in b3.a.cs}, {3, 4})
