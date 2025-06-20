@@ -2735,7 +2735,7 @@ def init_state_collection(
     return adapter
 
 
-def set_committed_value(instance, key, value):
+def set_committed_value(instance: object, key: str, value: Any) -> None:
     """Set the value of an attribute with no history events.
 
     Cancels any previous history present.  The value should be
