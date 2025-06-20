@@ -207,6 +207,7 @@ from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
 from .base import REGCLASS
 from .base import REGCONFIG
+from .bitstring import BitString
 from .types import BIT
 from .types import BYTEA
 from .types import CITEXT
@@ -241,6 +242,25 @@ class AsyncpgTime(sqltypes.Time):
 
 class AsyncpgBit(BIT):
     render_bind_cast = True
+
+    def bind_processor(self, dialect):
+        asyncpg_BitString = dialect.dbapi.asyncpg.BitString
+
+        def to_bind(value):
+            if isinstance(value, str):
+                value = BitString(value)
+                value = asyncpg_BitString.from_int(int(value), len(value))
+            return value
+
+        return to_bind
+
+    def result_processor(self, dialect, coltype):
+        def to_result(value):
+            if value is not None:
+                value = BitString.from_int(value.to_int(), length=len(value))
+            return value
+
+        return to_result
 
 
 class AsyncpgByteA(BYTEA):
