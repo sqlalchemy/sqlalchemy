@@ -887,6 +887,35 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
             ],
         )
 
+    def test_unary_operator(self, connection):
+        users = self.tables.users
+        self._data_fixture(connection)
+
+        eq_(
+            connection.scalar(
+                select(-users.c.goofy8).order_by(users.c.user_id)
+            ),
+            -1200,
+        )
+
+    def test_unary_operator_standalone(self, connection):
+        """test #12681"""
+
+        class MyNewIntType(types.TypeDecorator):
+            impl = Integer
+            cache_ok = True
+
+            def process_bind_param(self, value, dialect):
+                if value is None:
+                    value = 29
+                return value * 10
+
+            def process_result_value(self, value, dialect):
+                return value * 10
+
+        eq_(connection.scalar(select(literal(12, MyNewIntType))), 1200)
+        eq_(connection.scalar(select(-literal(12, MyNewIntType))), -1200)
+
     def test_plain_in_typedec(self, connection):
         users = self.tables.users
         self._data_fixture(connection)

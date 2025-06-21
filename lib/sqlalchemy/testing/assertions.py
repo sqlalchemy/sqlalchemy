@@ -513,6 +513,7 @@ class AssertsCompiledSQL:
         use_default_dialect=False,
         allow_dialect_select=False,
         supports_default_values=True,
+        supports_native_boolean=False,
         supports_default_metavalue=True,
         literal_binds=False,
         render_postcompile=False,
@@ -527,6 +528,7 @@ class AssertsCompiledSQL:
             dialect = default.DefaultDialect()
             dialect.supports_default_values = supports_default_values
             dialect.supports_default_metavalue = supports_default_metavalue
+            dialect.supports_native_boolean = supports_native_boolean
         elif allow_dialect_select:
             dialect = None
         else:

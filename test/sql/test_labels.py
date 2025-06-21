@@ -1080,15 +1080,24 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
             "some_table.name AS name_1 FROM some_table",
         )
 
-    def test_boolean_auto_label(self):
+    @testing.variation("native_boolean", [True, False])
+    def test_boolean_auto_label(self, native_boolean):
         col = column("value", Boolean)
 
-        self.assert_compile(
-            select(~col, col),
-            # not sure if this SQL is right but this is what it was
-            # before the new labeling, just different label name
-            "SELECT value = 0 AS value, value",
-        )
+        if native_boolean:
+            self.assert_compile(
+                select(~col, col),
+                "SELECT NOT value, value",
+                supports_native_boolean=True,
+                use_default_dialect=True,
+            )
+        else:
+            self.assert_compile(
+                select(~col, col),
+                # not sure if this SQL is right but this is what it was
+                # before the new labeling, just different label name
+                "SELECT value = 0 AS value, value",
+            )
 
     def test_label_auto_label_use_labels(self):
         expr = self._fixture()
