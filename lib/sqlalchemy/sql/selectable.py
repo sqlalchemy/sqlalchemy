@@ -3492,6 +3492,8 @@ class ScalarValues(roles.InElementRole, GroupedElement, ColumnElement[Any]):
             self, against: Optional[OperatorType] = None
         ) -> Self: ...
 
+        def _ungroup(self) -> ColumnElement[Any]: ...
+
 
 class SelectBase(
     roles.SelectStatementRole,
@@ -6848,9 +6850,8 @@ class ScalarSelect(
     def self_group(self, against: Optional[OperatorType] = None) -> Self:
         return self
 
-    if TYPE_CHECKING:
-
-        def _ungroup(self) -> Select[Unpack[TupleAny]]: ...
+    def _ungroup(self) -> Self:
+        return self
 
     @_generative
     def correlate(
@@ -6938,10 +6939,6 @@ class Exists(UnaryExpression[bool]):
     """
 
     inherit_cache = True
-    element: Union[
-        SelectStatementGrouping[Select[Unpack[TupleAny]]],
-        ScalarSelect[Any],
-    ]
 
     def __init__(
         self,
@@ -6968,7 +6965,6 @@ class Exists(UnaryExpression[bool]):
             s,
             operator=operators.exists,
             type_=type_api.BOOLEANTYPE,
-            wraps_column_expression=True,
         )
 
     @util.ro_non_memoized_property
@@ -6978,12 +6974,17 @@ class Exists(UnaryExpression[bool]):
     def _regroup(
         self,
         fn: Callable[[Select[Unpack[TupleAny]]], Select[Unpack[TupleAny]]],
-    ) -> SelectStatementGrouping[Select[Unpack[TupleAny]]]:
-        element = self.element._ungroup()
+    ) -> ScalarSelect[Any]:
+
+        assert isinstance(self.element, ScalarSelect)
+        element = self.element.element
+        if not isinstance(element, Select):
+            raise exc.InvalidRequestError(
+                "Can only apply this operation to a plain SELECT construct"
+            )
         new_element = fn(element)
 
-        return_value = new_element.self_group(against=operators.exists)
-        assert isinstance(return_value, SelectStatementGrouping)
+        return_value = new_element.scalar_subquery()
         return return_value
 
     def select(self) -> Select[bool]:
@@ -7038,7 +7039,6 @@ class Exists(UnaryExpression[bool]):
             :meth:`_sql.ScalarSelect.correlate_except`
 
         """
-
         e = self._clone()
         e.element = self._regroup(
             lambda element: element.correlate_except(*fromclauses)

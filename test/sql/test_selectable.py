@@ -3943,6 +3943,40 @@ class ResultMapTest(fixtures.TestBase):
             [Boolean],
         )
 
+    @testing.combinations(
+        lambda e, t: e.correlate(t),
+        lambda e, t: e.correlate_except(t),
+        lambda e, t: e.select_from(t),
+        lambda e, t: e.where(t.c.y == 5),
+        argnames="testcase",
+    )
+    @testing.variation("inner_select", ["select", "compound"])
+    def test_exists_regroup_modifiers(
+        self, testcase, inner_select: testing.Variation
+    ):
+        a = table("a", column("x"), column("y"))
+        b = table("b", column("x"), column("y"))
+        if inner_select.compound:
+            stmt = select(a.c.x).union_all(select(b.c.x))
+        elif inner_select.select:
+            stmt = select(a.c.x)
+        else:
+            inner_select.fail()
+
+        exists = stmt.exists()
+
+        if inner_select.compound:
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                "Can only apply this operation to a plain SELECT construct",
+            ):
+                testcase(exists, b)
+        else:
+            regrouped = testcase(exists, b)
+            assert regrouped.element.compare(
+                testcase(exists.element, b).scalar_subquery()
+            )
+
     def test_column_subquery_plain(self):
         t = self._fixture()
         s1 = select(t.c.x).where(t.c.x > 5).scalar_subquery()
