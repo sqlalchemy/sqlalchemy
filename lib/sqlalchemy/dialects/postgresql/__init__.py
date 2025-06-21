@@ -33,6 +33,7 @@ from .base import SMALLINT
 from .base import TEXT
 from .base import UUID
 from .base import VARCHAR
+from .bitstring import BitString
 from .dml import Insert
 from .dml import insert
 from .ext import aggregate_order_by
@@ -154,6 +155,7 @@ __all__ = (
     "JSONPATH",
     "Any",
     "All",
+    "BitString",
     "DropEnumType",
     "DropDomainType",
     "CreateDomainType",
