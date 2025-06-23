@@ -521,6 +521,26 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         connection.exec_driver_sql('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
 
     @testing.fixture
+    def some_collation(self, connection, some_schema):
+        connection.exec_driver_sql(
+            'CREATE COLLATION IF NOT EXISTS "SomeSchema"."SomeCollation"'
+            " (LOCALE = 'C.utf8')"
+        )
+        yield
+        connection.exec_driver_sql(
+            'DROP COLLATION IF EXISTS "SomeSchema"."SomeCollation"'
+        )
+
+    @testing.fixture
+    def schema_collation_domain(self, connection, some_schema, some_collation):
+        connection.exec_driver_sql(
+            "CREATE DOMAIN domain_with_collation AS TEXT"
+            ' COLLATE "SomeSchema"."SomeCollation"'
+        )
+        yield
+        connection.exec_driver_sql("DROP DOMAIN domain_with_collation")
+
+    @testing.fixture
     def int_domain(self, connection):
         connection.exec_driver_sql(
             "CREATE DOMAIN my_int AS int CONSTRAINT b_my_int_one CHECK "
@@ -710,6 +730,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         enum_domain,
         nullable_domains,
         int_domain,
+        schema_collation_domain,
         testdomain,
         testdomain_schema,
     ):
@@ -724,6 +745,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -734,6 +756,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -744,6 +767,18 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
+                },
+                {
+                    "visible": True,
+                    "name": "domain_with_collation",
+                    "schema": "public",
+                    "nullable": True,
+                    "type": "text",
+                    "default": None,
+                    "constraints": [],
+                    "collation": "SomeCollation",
+                    "collation_schema": "SomeSchema",
                 },
                 {
                     "visible": True,
@@ -754,6 +789,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -769,6 +805,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                         {"check": "VALUE <> 22", "name": "my_int_check"},
                     ],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -779,6 +816,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": "default",
+                    "collation_schema": "pg_catalog",
                 },
                 {
                     "visible": True,
@@ -796,6 +834,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                         }
                     ],
                     "collation": "C",
+                    "collation_schema": "pg_catalog",
                 },
                 {
                     "visible": True,
@@ -806,6 +845,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": "42",
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
             ],
             "test_schema": [
@@ -818,6 +858,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": "0",
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 }
             ],
             "SomeSchema": [
@@ -830,6 +871,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": "0",
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 }
             ],
         }
@@ -2733,6 +2775,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "not_null": False,
                 "comment": None,
                 "collation": None,
+                "collation_schema": None,
                 "generated": "",
                 "identity_options": None,
             }
@@ -2776,6 +2819,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "not_null": False,
                 "comment": None,
                 "collation": None,
+                "collation_schema": None,
                 "generated": "",
                 "identity_options": None,
             }
