@@ -3,6 +3,7 @@ import random
 
 from sqlalchemy import bindparam
 from sqlalchemy import column
+from sqlalchemy import DateTime
 from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
@@ -41,6 +42,14 @@ class _UpdateFromTestBase:
             Column("myid", Integer),
             Column("name", String(30)),
             Column("description", String(50)),
+        )
+        Table(
+            "mytable_with_onupdate",
+            metadata,
+            Column("myid", Integer),
+            Column("name", String(30)),
+            Column("description", String(50)),
+            Column("updated_at", DateTime, onupdate=func.now()),
         )
         Table(
             "myothertable",
@@ -627,19 +636,36 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             t.update().values(x=5, z=5).compile,
         )
 
-    def test_unconsumed_names_values_dict(self):
+    @testing.variation("include_in_from", [True, False])
+    @testing.variation("use_mysql", [True, False])
+    def test_unconsumed_names_values_dict(self, include_in_from, use_mysql):
         t = table("t", column("x"), column("y"))
         t2 = table("t2", column("q"), column("z"))
 
-        assert_raises_message(
-            exc.CompileError,
-            "Unconsumed column names: j",
-            t.update()
-            .values(x=5, j=7)
-            .values({t2.c.z: 5})
-            .where(t.c.x == t2.c.q)
-            .compile,
-        )
+        stmt = t.update().values(x=5, j=7).values({t2.c.z: 5})
+        if include_in_from:
+            stmt = stmt.where(t.c.x == t2.c.q)
+
+        if use_mysql:
+            if not include_in_from:
+                msg = (
+                    "Statement is not a multi-table UPDATE statement; cannot "
+                    r"include columns from table\(s\) 't2' in SET clause"
+                )
+            else:
+                msg = "Unconsumed column names: j"
+        else:
+            msg = (
+                "Backend does not support additional tables in the SET "
+                r"clause; cannot include columns from table\(s\) 't2' in "
+                "SET clause"
+            )
+
+        with expect_raises_message(exc.CompileError, msg):
+            if use_mysql:
+                stmt.compile(dialect=mysql.dialect())
+            else:
+                stmt.compile()
 
     def test_unconsumed_names_kwargs_w_keys(self):
         t = table("t", column("x"), column("y"))
@@ -1027,54 +1053,164 @@ class UpdateFromCompileTest(
 
     run_create_tables = run_inserts = run_deletes = None
 
-    def test_alias_one(self):
-        table1 = self.tables.mytable
+    @testing.variation("use_onupdate", [True, False])
+    def test_alias_one(self, use_onupdate):
+
+        if use_onupdate:
+            table1 = self.tables.mytable_with_onupdate
+            tname = "mytable_with_onupdate"
+        else:
+            table1 = self.tables.mytable
+            tname = "mytable"
         talias1 = table1.alias("t1")
 
         # this case is nonsensical.  the UPDATE is entirely
         # against the alias, but we name the table-bound column
-        # in values.   The behavior here isn't really defined
+        # in values.   The behavior here isn't really defined.
+        # onupdates get skipped.
         self.assert_compile(
             update(talias1)
             .where(talias1.c.myid == 7)
             .values({table1.c.name: "fred"}),
-            "UPDATE mytable AS t1 "
+            f"UPDATE {tname} AS t1 "
             "SET name=:name "
             "WHERE t1.myid = :myid_1",
         )
 
-    def test_alias_two(self):
-        table1 = self.tables.mytable
+    @testing.variation("use_onupdate", [True, False])
+    def test_alias_two(self, use_onupdate):
+        """test a multi-table UPDATE/SET is actually supported on SQLite, PG
+        if we are only using an alias of the main table
+
+        """
+        if use_onupdate:
+            table1 = self.tables.mytable_with_onupdate
+            tname = "mytable_with_onupdate"
+            onupdate = ", updated_at=now() "
+        else:
+            table1 = self.tables.mytable
+            tname = "mytable"
+            onupdate = " "
         talias1 = table1.alias("t1")
 
         # Here, compared to
         # test_alias_one(), here we actually have UPDATE..FROM,
         # which is causing the "table1.c.name" param to be handled
-        # as an "extra table", hence we see the full table name rendered.
+        # as an "extra table", hence we see the full table name rendered
+        # as well as ON UPDATEs coming in nicely.
         self.assert_compile(
             update(talias1)
             .where(table1.c.myid == 7)
             .values({table1.c.name: "fred"}),
-            "UPDATE mytable AS t1 "
-            "SET name=:mytable_name "
-            "FROM mytable "
-            "WHERE mytable.myid = :myid_1",
-            checkparams={"mytable_name": "fred", "myid_1": 7},
+            f"UPDATE {tname} AS t1 "
+            f"SET name=:{tname}_name{onupdate}"
+            f"FROM {tname} "
+            f"WHERE {tname}.myid = :myid_1",
+            checkparams={f"{tname}_name": "fred", "myid_1": 7},
         )
 
-    def test_alias_two_mysql(self):
-        table1 = self.tables.mytable
+    @testing.variation("use_onupdate", [True, False])
+    def test_alias_two_mysql(self, use_onupdate):
+        if use_onupdate:
+            table1 = self.tables.mytable_with_onupdate
+            tname = "mytable_with_onupdate"
+            onupdate = ", mytable_with_onupdate.updated_at=now() "
+        else:
+            table1 = self.tables.mytable
+            tname = "mytable"
+            onupdate = " "
         talias1 = table1.alias("t1")
 
         self.assert_compile(
             update(talias1)
             .where(table1.c.myid == 7)
             .values({table1.c.name: "fred"}),
-            "UPDATE mytable AS t1, mytable SET mytable.name=%s "
-            "WHERE mytable.myid = %s",
-            checkparams={"mytable_name": "fred", "myid_1": 7},
+            f"UPDATE {tname} AS t1, {tname} SET {tname}.name=%s{onupdate}"
+            f"WHERE {tname}.myid = %s",
+            checkparams={f"{tname}_name": "fred", "myid_1": 7},
             dialect="mysql",
         )
+
+    @testing.variation("use_alias", [True, False])
+    @testing.variation("use_alias_in_set", [True, False])
+    @testing.variation("include_in_from", [True, False])
+    @testing.variation("use_mysql", [True, False])
+    def test_raise_if_totally_different_table(
+        self, use_alias, include_in_from, use_alias_in_set, use_mysql
+    ):
+        """test cases for #12962"""
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        if use_alias:
+            target = table1.alias("t1")
+        else:
+            target = table1
+
+        stmt = update(target).where(table1.c.myid == 7)
+
+        if use_alias_in_set:
+            stmt = stmt.values({table2.alias().c.othername: "fred"})
+        else:
+            stmt = stmt.values({table2.c.othername: "fred"})
+
+        if include_in_from:
+            stmt = stmt.where(table2.c.otherid == 12)
+
+        if use_mysql and include_in_from and not use_alias_in_set:
+            if not use_alias:
+                self.assert_compile(
+                    stmt,
+                    "UPDATE mytable, myothertable "
+                    "SET myothertable.othername=%s "
+                    "WHERE mytable.myid = %s AND myothertable.otherid = %s",
+                    dialect="mysql",
+                )
+            else:
+                self.assert_compile(
+                    stmt,
+                    "UPDATE mytable AS t1, mytable, myothertable "
+                    "SET myothertable.othername=%s WHERE mytable.myid = %s "
+                    "AND myothertable.otherid = %s",
+                    dialect="mysql",
+                )
+            return
+
+        if use_alias_in_set:
+            tabledesc = "Anonymous alias of myothertable"
+        else:
+            tabledesc = "myothertable"
+
+        if use_mysql:
+            if include_in_from:
+                msg = (
+                    r"Multi-table UPDATE statement does not include "
+                    rf"table\(s\) '{tabledesc}'"
+                )
+            else:
+                if use_alias:
+                    msg = (
+                        rf"Multi-table UPDATE statement does not include "
+                        rf"table\(s\) '{tabledesc}'"
+                    )
+                else:
+                    msg = (
+                        rf"Statement is not a multi-table UPDATE statement; "
+                        r"cannot include columns from table\(s\) "
+                        rf"'{tabledesc}' in SET clause"
+                    )
+        else:
+            msg = (
+                r"Backend does not support additional tables in the "
+                r"SET clause; cannot include columns from table\(s\) "
+                rf"'{tabledesc}' in SET clause"
+            )
+
+        with expect_raises_message(exc.CompileError, msg):
+            if use_mysql:
+                stmt.compile(dialect=mysql.dialect())
+            else:
+                stmt.compile()
 
     def test_update_from_multitable_same_name_mysql(self):
         users, addresses = self.tables.users, self.tables.addresses
