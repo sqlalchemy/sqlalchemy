@@ -445,6 +445,7 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         data_type: _TypeEngineArgument[Any],
         *,
         collation: Optional[str] = None,
+        collation_schema: Optional[str] = None,
         default: Union[elements.TextClause, str, None] = None,
         constraint_name: Optional[str] = None,
         not_null: Optional[bool] = None,
@@ -462,6 +463,9 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
           If no collation is specified, the underlying data type's default
           collation is used. The underlying type must be collatable if
           ``collation`` is specified.
+        :param collation_schema: The optional name of the schema in which
+          specified ``collation`` is defined. If not specified, the current
+          schema is assumed.
         :param default: The DEFAULT clause specifies a default value for
           columns of the domain data type. The default should be a string
           or a :func:`_expression.text` value.
@@ -491,6 +495,11 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         self.data_type = type_api.to_instance(data_type)
         self.default = default
         self.collation = collation
+        if collation_schema is not None and collation is None:
+            raise TypeError(
+                "The collation argument is required for using collation_schema"
+            )
+        self.collation_schema = collation_schema
         self.constraint_name = constraint_name
         self.not_null = bool(not_null)
         if check is not None:

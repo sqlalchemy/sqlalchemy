@@ -1339,11 +1339,13 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
     @testing.requires.column_collation_reflection
     def test_column_collation_reflection(self, connection, metadata):
+        connection.exec_driver_sql("CREATE SCHEMA s")
+        connection.exec_driver_sql("CREATE COLLATION s.c (LOCALE = 'C.utf8')")
         m1 = metadata
         Table(
             "t",
             m1,
-            Column("collated", sa.String(collation="C")),
+            Column("collated", sa.String(collation="c", collation_schema="s")),
             Column("not_collated", sa.String()),
         )
         m1.create_all(connection)
@@ -1351,12 +1353,21 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         m2 = MetaData()
         t2 = Table("t", m2, autoload_with=connection)
 
-        eq_(t2.c.collated.type.collation, "C")
+        eq_(
+            (
+                t2.c.collated.type.collation,
+                t2.c.collated.type.collation_schema,
+            ),
+            ("c", "s"),
+        )
         is_none(t2.c.not_collated.type.collation)
 
         insp = inspect(connection)
         collated, not_collated = insp.get_columns("t")
-        eq_(collated["type"].collation, "C")
+        eq_(
+            (collated["type"].collation, collated["type"].collation_schema),
+            ("c", "s"),
+        )
         is_none(not_collated["type"].collation)
 
     @testing.requires.check_constraint_reflection

@@ -2401,7 +2401,14 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         options = []
         if domain.collation is not None:
-            options.append(f"COLLATE {self.preparer.quote(domain.collation)}")
+            collation = self.preparer.quote(domain.collation)
+            if domain.collation_schema is not None:
+                collation = (
+                    self.preparer.quote(domain.collation_schema)
+                    + "."
+                    + collation
+                )
+            options.append(f"COLLATE {collation}")
         if domain.default is not None:
             default = self.render_default_string(domain.default)
             options.append(f"DEFAULT {default}")
@@ -2921,6 +2928,8 @@ class ReflectedDomain(ReflectedNamedType):
     """
     collation: Optional[str]
     """The collation for the domain."""
+    collation_schema: Optional[str]
+    """The name of the schema in which the collation is defined."""
 
 
 class ReflectedEnum(ReflectedNamedType):
@@ -3880,6 +3889,7 @@ class PGDialect(default.DefaultDialect):
         enums: Dict[str, ReflectedEnum],
         type_description: str,
         collation: Optional[str],
+        collation_schema: Optional[str],
     ) -> sqltypes.TypeEngine[Any]:
         """
         Attempts to reconstruct a column type defined in ischema_names based
@@ -3980,10 +3990,12 @@ class PGDialect(default.DefaultDialect):
                     enums,
                     type_description="DOMAIN '%s'" % domain["name"],
                     collation=domain["collation"],
+                    collation_schema=domain["collation_schema"],
                 )
                 args = (domain["name"], data_type)
 
                 kwargs["collation"] = domain["collation"]
+                kwargs["collation_schema"] = domain["collation_schema"]
                 kwargs["default"] = domain["default"]
                 kwargs["not_null"] = not domain["nullable"]
                 kwargs["create_type"] = False
@@ -4014,6 +4026,7 @@ class PGDialect(default.DefaultDialect):
 
         if collation is not None:
             kwargs["collation"] = collation
+            kwargs["collation_schema"] = collation_schema
 
         data_type = schema_type(*args, **kwargs)
         if array_dim >= 1:
@@ -4034,18 +4047,20 @@ class PGDialect(default.DefaultDialect):
             table_cols = columns[(schema, row_dict["table_name"])]
 
             try:
-                collation, default_collation_for_types = collations[
-                    row_dict["collation"]
-                ]
+                (
+                    collation,
+                    collation_schema,
+                    default_collation_for_types,
+                ) = collations[row_dict["collation"]]
             except KeyError:
-                collation = None
+                collation = collation_schema = None
             else:
                 # Only export the collation if distinct from type's default.
                 if (
                     default_collation_for_types is not None
                     and row_dict["type"] in default_collation_for_types
                 ):
-                    collation = None
+                    collation, collation_schema = None, None
 
             coltype = self._reflect_type(
                 row_dict["format_type"],
@@ -4053,6 +4068,7 @@ class PGDialect(default.DefaultDialect):
                 enums,
                 type_description="column '%s'" % row_dict["name"],
                 collation=collation,
+                collation_schema=collation_schema,
             )
 
             default = row_dict["default"]
@@ -5224,6 +5240,9 @@ class PGDialect(default.DefaultDialect):
                     if def_.casefold().startswith("check"):
                         check = def_[7:-1]
                         constraints.append({"name": name, "check": check})
+            collation, collation_schema = collation_by_type.get(
+                domain["atttype_oid"], (None, None)
+            )
             domain_rec: ReflectedDomain = {
                 "name": domain["name"],
                 "schema": domain["schema"],
@@ -5232,7 +5251,8 @@ class PGDialect(default.DefaultDialect):
                 "nullable": domain["nullable"],
                 "default": domain["default"],
                 "constraints": constraints,
-                "collation": collation_by_type.get(domain["atttype_oid"]),
+                "collation": collation,
+                "collation_schema": collation_schema,
             }
             domains.append(domain_rec)
 
@@ -5267,6 +5287,7 @@ class PGDialect(default.DefaultDialect):
             sql.select(
                 pg_catalog.pg_collation.c.oid,
                 pg_catalog.pg_collation.c.collname,
+                pg_catalog.pg_namespace.c.nspname,
                 # cast to bigint (oid are "unsigned four-byte integer") to make
                 # it easier for dialects to interpret
                 sql.func.array_agg(
@@ -5279,23 +5300,34 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_type.c.typcollation
                 == pg_catalog.pg_collation.c.oid,
             )
+            .outerjoin(
+                pg_catalog.pg_namespace,
+                pg_catalog.pg_namespace.c.oid
+                == pg_catalog.pg_collation.c.collnamespace,
+            )
         ).group_by(
-            pg_catalog.pg_collation.c.oid, pg_catalog.pg_collation.c.collname
+            pg_catalog.pg_collation.c.oid,
+            pg_catalog.pg_collation.c.collname,
+            pg_catalog.pg_namespace.c.nspname,
         )
 
     @reflection.cache
     def _load_collation_dict(
         self, connection, **kw
-    ) -> dict[int, Tuple[str, Optional[list[int]]]]:
+    ) -> dict[int, Tuple[str, Optional[str], Optional[list[int]]]]:
         rows = connection.execute(self._pg_collation_query)
-        return {oid: (name, types) for oid, name, types in rows}
+        return {
+            oid: (name, schema, types) for oid, name, schema, types in rows
+        }
 
     @reflection.cache
-    def _collation_by_type(self, connection, **kw) -> dict[int, str]:
+    def _collation_by_type(
+        self, connection, **kw
+    ) -> dict[int, Tuple[str, Optional[str]]]:
         collations = self._load_collation_dict(connection, **kw)
         return {
-            typoid: name
-            for (name, types) in collations.values()
+            typoid: (name, schema)
+            for (name, schema, types) in collations.values()
             for typoid in (types or ())
         }
 
