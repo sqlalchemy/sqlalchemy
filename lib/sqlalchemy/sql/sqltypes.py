@@ -236,9 +236,10 @@ class String(Concatenable, TypeEngine[str]):
             )
         self.collation_schema = collation_schema
 
-    def _with_collation(self, collation):
+    def _with_collation(self, collation, collation_schema):
         new_type = self.copy()
         new_type.collation = collation
+        new_type.collation_schema = collation_schema
         return new_type
 
     def _resolve_for_literal(self, value):

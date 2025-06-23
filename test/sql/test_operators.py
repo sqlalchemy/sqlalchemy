@@ -306,6 +306,14 @@ class DefaultColumnComparatorTest(
             collate(left, right)
         )
 
+    def test_collate_invalid_collation(self):
+        left = column("left")
+        right = "some.inva-lid.collation"
+        with expect_raises_message(ValueError, "Invalid collation"):
+            collate(left, right)
+        with expect_raises_message(ValueError, "Invalid collation"):
+            left.comparator.operate(operators.collate, right)
+
     def test_default_adapt(self):
         class TypeOne(TypeEngine):
             pass
