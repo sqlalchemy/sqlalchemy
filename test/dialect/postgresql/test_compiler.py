@@ -389,14 +389,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 DOMAIN(
                     "foo",
                     Text,
-                    collation="utf8",
+                    collation="my-coll",
+                    collation_schema="CollS",
                     default="foobar",
                     constraint_name="no_bar",
                     not_null=True,
                     check="VALUE != 'bar'",
                 )
             ),
-            "CREATE DOMAIN foo AS TEXT COLLATE utf8 DEFAULT 'foobar' "
+            "CREATE DOMAIN foo AS TEXT "
+            'COLLATE "CollS"."my-coll" '
+            "DEFAULT 'foobar' "
             "CONSTRAINT no_bar NOT NULL CHECK (VALUE != 'bar')",
         )
 

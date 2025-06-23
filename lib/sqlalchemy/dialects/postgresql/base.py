@@ -2566,7 +2566,14 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         options = []
         if domain.collation is not None:
-            options.append(f"COLLATE {self.preparer.quote(domain.collation)}")
+            collation = self.preparer.quote(domain.collation)
+            if domain.collation_schema is not None:
+                collation = (
+                    self.preparer.quote(domain.collation_schema)
+                    + "."
+                    + collation
+                )
+            options.append(f"COLLATE {collation}")
         if domain.default is not None:
             default = self.render_default_string(domain.default)
             options.append(f"DEFAULT {default}")
@@ -3118,6 +3125,8 @@ class ReflectedDomain(ReflectedNamedType):
     """
     collation: Optional[str]
     """The collation for the domain."""
+    collation_schema: Optional[str]
+    """The name of the schema in which the collation is defined."""
 
 
 class ReflectedEnum(ReflectedNamedType):
@@ -4119,7 +4128,7 @@ class PGDialect(default.DefaultDialect):
             else_=sql.null(),
         ).label("default")
 
-        # get the name of the collate when it's different from the default one
+        # get collation (name and schema), when different from the default one
         collate = sql.case(
             (
                 sql.and_(
@@ -4133,7 +4142,19 @@ class PGDialect(default.DefaultDialect):
                     .scalar_subquery()
                     != pg_catalog.pg_attribute.c.attcollation,
                 ),
-                select(pg_catalog.pg_collation.c.collname)
+                select(
+                    sql.func.json_build_object(
+                        "name",
+                        pg_catalog.pg_collation.c.collname,
+                        "schema",
+                        pg_catalog.pg_namespace.c.nspname,
+                    ),
+                )
+                .outerjoin(
+                    pg_catalog.pg_namespace,
+                    pg_catalog.pg_namespace.c.oid
+                    == pg_catalog.pg_collation.c.collnamespace,
+                )
                 .where(
                     pg_catalog.pg_collation.c.oid
                     == pg_catalog.pg_attribute.c.attcollation
@@ -4216,6 +4237,7 @@ class PGDialect(default.DefaultDialect):
         named_type_loader: _NamedTypeLoader,
         type_description: str,
         collation: Optional[str],
+        collation_schema: Optional[str],
     ) -> sqltypes.TypeEngine[Any]:
         """
         Attempts to reconstruct a column type defined in ischema_names based
@@ -4322,10 +4344,12 @@ class PGDialect(default.DefaultDialect):
                     named_type_loader,
                     type_description="DOMAIN '%s'" % domain["name"],
                     collation=domain["collation"],
+                    collation_schema=domain["collation_schema"],
                 )
                 args = (domain["name"], data_type)
 
                 kwargs["collation"] = domain["collation"]
+                kwargs["collation_schema"] = domain["collation_schema"]
                 kwargs["default"] = domain["default"]
                 kwargs["not_null"] = not domain["nullable"]
                 kwargs["create_type"] = False
@@ -4356,6 +4380,7 @@ class PGDialect(default.DefaultDialect):
 
         if collation is not None:
             kwargs["collation"] = collation
+            kwargs["collation_schema"] = collation_schema
 
         data_type = schema_type(*args, **kwargs)
         if array_dim >= 1:
@@ -4381,7 +4406,10 @@ class PGDialect(default.DefaultDialect):
                 row_dict["format_type"],
                 named_type_loader,
                 type_description="column '%s'" % row_dict["name"],
-                collation=collation,
+                collation=collation["name"] if collation is not None else None,
+                collation_schema=(
+                    collation["schema"] if collation is not None else None
+                ),
             )
 
             default = row_dict["default"]
@@ -5482,6 +5510,10 @@ class PGDialect(default.DefaultDialect):
 
     @lru_cache()
     def _domain_query(self, schema):
+        collation_namespace = pg_catalog.pg_namespace.alias(
+            "collation_namespace"
+        )
+
         con_sq = (
             select(
                 pg_catalog.pg_constraint.c.contypid,
@@ -5517,7 +5549,8 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_namespace.c.nspname.label("schema"),
                 con_sq.c.condefs,
                 con_sq.c.connames,
-                pg_catalog.pg_collation.c.collname,
+                pg_catalog.pg_collation.c.collname.label("collation"),
+                collation_namespace.c.nspname.label("collation_schema"),
             )
             .join(
                 pg_catalog.pg_namespace,
@@ -5528,6 +5561,11 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_collation,
                 pg_catalog.pg_type.c.typcollation
                 == pg_catalog.pg_collation.c.oid,
+            )
+            .outerjoin(
+                collation_namespace,
+                collation_namespace.c.oid
+                == pg_catalog.pg_collation.c.collnamespace,
             )
             .outerjoin(
                 con_sq,
@@ -5571,7 +5609,8 @@ class PGDialect(default.DefaultDialect):
                 "nullable": domain["nullable"],
                 "default": domain["default"],
                 "constraints": constraints,
-                "collation": domain["collname"],
+                "collation": domain["collation"],
+                "collation_schema": domain["collation_schema"],
             }
             domains.append(domain_rec)
 
