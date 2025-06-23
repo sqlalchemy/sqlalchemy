@@ -327,6 +327,52 @@ def _get_crud_params(
             .difference(check_columns)
         )
         if check:
+
+            if dml.isupdate(compile_state):
+                tables_mentioned = set(
+                    c.table
+                    for c, v in stmt_parameter_tuples
+                    if isinstance(c, ColumnClause) and c.table is not None
+                ).difference([compile_state.dml_table])
+
+                multi_not_in_from = tables_mentioned.difference(
+                    compile_state._extra_froms
+                )
+
+                if tables_mentioned and (
+                    not compile_state.is_multitable
+                    or not compiler.render_table_with_column_in_update_from
+                ):
+                    if not compiler.render_table_with_column_in_update_from:
+                        preamble = (
+                            "Backend does not support additional "
+                            "tables in the SET clause"
+                        )
+                    else:
+                        preamble = (
+                            "Statement is not a multi-table UPDATE statement"
+                        )
+
+                    raise exc.CompileError(
+                        f"{preamble}; cannot "
+                        f"""include columns from table(s) {
+                            ", ".join(f"'{t.description}'"
+                                      for t in tables_mentioned)
+                        } in SET clause"""
+                    )
+
+                elif multi_not_in_from:
+                    assert compiler.render_table_with_column_in_update_from
+                    raise exc.CompileError(
+                        f"Multi-table UPDATE statement does not include "
+                        "table(s) "
+                        f"""{
+                            ", ".join(
+                                f"'{t.description}'" for
+                                t in multi_not_in_from)
+                        }"""
+                    )
+
             raise exc.CompileError(
                 "Unconsumed column names: %s"
                 % (", ".join("%s" % (c,) for c in check))
@@ -1364,9 +1410,28 @@ def _get_update_multitable_params(
 
     affected_tables = set()
     for t in compile_state._extra_froms:
+        # extra gymnastics to support the probably-shouldnt-have-supported
+        # case of "UPDATE table AS alias SET table.foo = bar", but it's
+        # supported
+        we_shouldnt_be_here_if_columns_found = (
+            not include_table
+            and not compile_state.dml_table.is_derived_from(t)
+        )
+
         for c in t.c:
             if c in normalized_params:
+
+                if we_shouldnt_be_here_if_columns_found:
+                    raise exc.CompileError(
+                        "Backend does not support additional tables "
+                        "in the SET "
+                        "clause; cannot include columns from table(s) "
+                        f"'{t.description}' in "
+                        "SET clause"
+                    )
+
                 affected_tables.add(t)
+
                 check_columns[_getattr_col_key(c)] = c
                 value = normalized_params[c]
 
@@ -1392,6 +1457,7 @@ def _get_update_multitable_params(
                     value = compiler.process(value.self_group(), **kw)
                     accumulated_bind_names = ()
                 values.append((c, col_value, value, accumulated_bind_names))
+
     # determine tables which are actually to be updated - process onupdate
     # and server_onupdate for these
     for t in affected_tables:

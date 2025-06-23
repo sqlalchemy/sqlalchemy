@@ -1,0 +1,26 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12692
+
+    Hardening of the compiler's actions for UPDATE statements that access
+    multiple tables to report more specifically when tables or aliases are
+    referenced in the SET clause; on cases where the backend does not support
+    secondary tables in the SET clause, an explicit error is raised, and on the
+    MySQL or similar backends that support such a SET clause, more specific
+    checking for not-properly-included tables is performed.  Overall the change
+    is preventing these erroneous forms of UPDATE statements from being
+    compiled, whereas previously it was relied on the database to raise an
+    error, which was not always guaranteed to happen, or to be non-ambiguous,
+    due to cases where the parent table included the same column name as the
+    secondary table column being updated.
+
+
+.. change::
+    :tags: bug, orm
+    :tickets: 12692
+
+    Fixed bug where the ORM would pull in the wrong column into an UPDATE when
+    a key name inside of the :meth:`.ValuesBase.values` method could be located
+    from an ORM entity mentioned in the statement, but where that ORM entity
+    was not the actual table that the statement was inserting or updating.  An
+    extra check for this edge case is added to avoid this problem.
