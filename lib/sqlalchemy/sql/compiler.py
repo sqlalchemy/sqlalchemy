@@ -2637,7 +2637,9 @@ class SQLCompiler(Compiled):
             return schema_prefix + self.preparer.quote(tablename) + "." + name
 
     def visit_collation(self, element, **kw):
-        return self.preparer.format_collation(element.collation)
+        return self.preparer.format_collation(
+            element.collation, element.collation_schema
+        )
 
     def visit_fromclause(self, fromclause, **kwargs):
         return fromclause.name
@@ -7733,11 +7735,14 @@ class IdentifierPreparer:
         else:
             return ident
 
-    def format_collation(self, collation_name):
+    def format_collation(self, collation_name, collation_schema):
         if self.quote_case_sensitive_collations:
-            return self.quote(collation_name)
+            name = self.quote(collation_name)
         else:
-            return collation_name
+            name = collation_name
+        if collation_schema is not None:
+            return self.quote_schema(collation_schema) + "." + name
+        return name
 
     def format_sequence(
         self, sequence: schema.Sequence, use_schema: bool = True
