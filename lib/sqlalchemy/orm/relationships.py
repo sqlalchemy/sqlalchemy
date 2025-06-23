@@ -399,6 +399,7 @@ class RelationshipProperty(
     direction: RelationshipDirection
 
     _init_args: _RelationshipArgs
+    _disable_dataclass_default_factory = True
 
     def __init__(
         self,
@@ -1431,8 +1432,11 @@ class RelationshipProperty(
             criterion = adapt_source(criterion)
         return criterion
 
+    def _format_as_string(self, class_: type, key: str) -> str:
+        return f"{class_.__name__}.{key}"
+
     def __str__(self) -> str:
-        return str(self.parent.class_.__name__) + "." + self.key
+        return self._format_as_string(self.parent.class_, self.key)
 
     def merge(
         self,
@@ -1895,6 +1899,18 @@ class RelationshipProperty(
         # checking of the annotation in any case.
         if self.argument is None:
             self.argument = cast("_RelationshipArgumentType[_T]", argument)
+
+        if (
+            self._attribute_options.dataclasses_default_factory
+            is not _NoArg.NO_ARG
+            and self._attribute_options.dataclasses_default_factory
+            is not self.collection_class
+        ):
+            raise sa_exc.ArgumentError(
+                f"For relationship {self._format_as_string(cls, key)} using "
+                "dataclass options, default_factory must be exactly "
+                f"{self.collection_class}"
+            )
 
     @util.preload_module("sqlalchemy.orm.mapper")
     def _setup_entity(self, __argument: Any = None, /) -> None:

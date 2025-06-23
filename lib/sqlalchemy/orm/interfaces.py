@@ -384,6 +384,8 @@ class _DataclassDefaultsDontSet(_DCAttributeOptions):
 
     _default_scalar_value: Any
 
+    _disable_dataclass_default_factory: bool = False
+
     def _get_dataclass_setup_options(
         self,
         decl_scan: _ClassScanMapperConfig,
@@ -391,21 +393,35 @@ class _DataclassDefaultsDontSet(_DCAttributeOptions):
         dataclass_setup_arguments: _DataclassArguments,
     ) -> _AttributeOptions:
 
+        disable_descriptor_defaults = getattr(
+            decl_scan.cls, "_sa_disable_descriptor_defaults", False
+        )
+
         dataclasses_default = self._attribute_options.dataclasses_default
+        dataclasses_default_factory = (
+            self._attribute_options.dataclasses_default_factory
+        )
+
         if (
             dataclasses_default is not _NoArg.NO_ARG
             and not callable(dataclasses_default)
-            and not getattr(
-                decl_scan.cls, "_sa_disable_descriptor_defaults", False
-            )
+            and not disable_descriptor_defaults
         ):
             self._default_scalar_value = (
                 self._attribute_options.dataclasses_default
             )
             return self._attribute_options._replace(
-                dataclasses_default=DONT_SET
+                dataclasses_default=DONT_SET,
             )
-
+        elif (
+            self._disable_dataclass_default_factory
+            and dataclasses_default_factory is not _NoArg.NO_ARG
+            and not disable_descriptor_defaults
+        ):
+            return self._attribute_options._replace(
+                dataclasses_default=DONT_SET,
+                dataclasses_default_factory=_NoArg.NO_ARG,
+            )
         return self._attribute_options
 
 
