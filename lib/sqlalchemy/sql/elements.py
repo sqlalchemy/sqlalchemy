@@ -4231,7 +4231,7 @@ class Over(ColumnElement[_T]):
         element: ColumnElement[_T],
         partition_by: Optional[_ByArgument] = None,
         order_by: Optional[_ByArgument] = None,
-        range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        range_: Optional[typing_Tuple[Optional[typing.Any], Optional[typing.Any]]] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ):
@@ -4252,8 +4252,8 @@ class Over(ColumnElement[_T]):
             )
         else:
             self.range_ = _FrameClause(range_) if range_ else None
-            self.rows = _FrameClause(rows) if rows else None
-            self.groups = _FrameClause(groups) if groups else None
+            self.rows = _FrameClause(self._interpret_int_range(rows)) if rows else None
+            self.groups = _FrameClause(self._interpret_int_range(groups)) if groups else None
 
     if not TYPE_CHECKING:
 
@@ -4272,6 +4272,15 @@ class Over(ColumnElement[_T]):
                 ]
             )
         )
+    
+    def _interpret_int_range(self, rows):
+        try:
+            lower = rows[0] if rows[0] is None else int(rows[0])
+            upper = rows[1] if rows[1] is None else int(rows[1])
+        except ValueError as ve:
+            raise exc.ArgumentError("Integer or None expected for rows value and groups value") from ve
+
+        return lower, upper
 
 
 class _FrameClauseType(Enum):
@@ -4292,70 +4301,48 @@ class _FrameClause(ClauseElement):
     __visit_name__ = "frame_clause"
 
     _traverse_internals: _TraverseInternalsType = [
-        ("lower_integer_bind", InternalTraversal.dp_clauseelement),
-        ("upper_integer_bind", InternalTraversal.dp_clauseelement),
+        ("lower_bind", InternalTraversal.dp_clauseelement),
+        ("upper_bind", InternalTraversal.dp_clauseelement),
         ("lower_type", InternalTraversal.dp_plain_obj),
         ("upper_type", InternalTraversal.dp_plain_obj),
     ]
 
     def __init__(
         self,
-        range_: typing_Tuple[Optional[int], Optional[int]],
+        range_: typing_Tuple[Optional[typing.Any], Optional[typing.Any]],
     ):
         try:
-            r0, r1 = range_
+            lower_value, upper_value = range_
         except (ValueError, TypeError) as ve:
             raise exc.ArgumentError("2-tuple expected for range/rows") from ve
 
-        if r0 is None:
+        if lower_value is None:
             self.lower_type = _FrameClauseType.RANGE_UNBOUNDED
-            self.lower_integer_bind = None
+            self.lower_bind = None
         else:
-            try:
-                lower_integer = int(r0)
-            except ValueError as err:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
-                ) from err
+            if lower_value == 0:
+                self.lower_type = _FrameClauseType.RANGE_CURRENT
+                self.lower_bind = None
+            elif lower_value < 0:
+                self.lower_type = _FrameClauseType.RANGE_PRECEDING
+                self.lower_bind = literal(abs(lower_value), type_api.NULLTYPE)
             else:
-                if lower_integer == 0:
-                    self.lower_type = _FrameClauseType.RANGE_CURRENT
-                    self.lower_integer_bind = None
-                elif lower_integer < 0:
-                    self.lower_type = _FrameClauseType.RANGE_PRECEDING
-                    self.lower_integer_bind = literal(
-                        abs(lower_integer), type_api.INTEGERTYPE
-                    )
-                else:
-                    self.lower_type = _FrameClauseType.RANGE_FOLLOWING
-                    self.lower_integer_bind = literal(
-                        lower_integer, type_api.INTEGERTYPE
-                    )
+                self.lower_type = _FrameClauseType.RANGE_FOLLOWING
+                self.lower_bind = literal(lower_value, type_api.NULLTYPE)
 
-        if r1 is None:
+        if upper_value is None:
             self.upper_type = _FrameClauseType.RANGE_UNBOUNDED
-            self.upper_integer_bind = None
+            self.upper_bind = None
         else:
-            try:
-                upper_integer = int(r1)
-            except ValueError as err:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
-                ) from err
+            if upper_value == 0:
+                self.upper_type = _FrameClauseType.RANGE_CURRENT
+                self.upper_bind = None
+            elif upper_value < 0:
+                self.upper_type = _FrameClauseType.RANGE_PRECEDING
+                self.upper_bind = literal(abs(upper_value), type_api.NULLTYPE)
             else:
-                if upper_integer == 0:
-                    self.upper_type = _FrameClauseType.RANGE_CURRENT
-                    self.upper_integer_bind = None
-                elif upper_integer < 0:
-                    self.upper_type = _FrameClauseType.RANGE_PRECEDING
-                    self.upper_integer_bind = literal(
-                        abs(upper_integer), type_api.INTEGERTYPE
-                    )
-                else:
-                    self.upper_type = _FrameClauseType.RANGE_FOLLOWING
-                    self.upper_integer_bind = literal(
-                        upper_integer, type_api.INTEGERTYPE
-                    )
+                self.upper_type = _FrameClauseType.RANGE_FOLLOWING
+                self.upper_bind = literal(upper_value, type_api.NULLTYPE)
 
 
 class WithinGroup(ColumnElement[_T]):

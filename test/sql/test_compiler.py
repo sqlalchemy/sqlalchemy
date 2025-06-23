@@ -3247,16 +3247,16 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_over_invalid_framespecs(self):
         assert_raises_message(
             exc.ArgumentError,
-            "Integer or None expected for range value",
+            "Integer or None expected for rows value and groups value",
             func.row_number().over,
-            range_=("foo", 8),
+            rows=("foo", 8),
         )
 
         assert_raises_message(
             exc.ArgumentError,
-            "Integer or None expected for range value",
+            "Integer or None expected for rows value and groups value",
             func.row_number().over,
-            range_=(-5, "foo"),
+            groups=(-5, "foo"),
         )
 
         assert_raises_message(

@@ -2849,7 +2849,7 @@ class SQLCompiler(Compiled):
         elif frameclause.lower_type is elements._FrameClauseType.RANGE_CURRENT:
             left = "CURRENT ROW"
         else:
-            val = self.process(frameclause.lower_integer_bind, **kw)
+            val = self.process(frameclause.lower_bind, **kw)
             if (
                 frameclause.lower_type
                 is elements._FrameClauseType.RANGE_PRECEDING
@@ -2863,7 +2863,7 @@ class SQLCompiler(Compiled):
         elif frameclause.upper_type is elements._FrameClauseType.RANGE_CURRENT:
             right = "CURRENT ROW"
         else:
-            val = self.process(frameclause.upper_integer_bind, **kw)
+            val = self.process(frameclause.upper_bind, **kw)
             if (
                 frameclause.upper_type
                 is elements._FrameClauseType.RANGE_PRECEDING
