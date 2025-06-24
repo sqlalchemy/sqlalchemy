@@ -4315,34 +4315,35 @@ class _FrameClause(ClauseElement):
             lower_value, upper_value = range_
         except (ValueError, TypeError) as ve:
             raise exc.ArgumentError("2-tuple expected for range/rows") from ve
+        
+        lower_type = type_api.INTEGERTYPE if isinstance(lower_value, int) else type_api.NUMERICTYPE
+        upper_type = type_api.INTEGERTYPE if isinstance(upper_value, int) else type_api.NUMERICTYPE
 
         if lower_value is None:
             self.lower_type = _FrameClauseType.RANGE_UNBOUNDED
             self.lower_bind = None
+        elif lower_value == 0:
+            self.lower_type = _FrameClauseType.RANGE_CURRENT
+            self.lower_bind = None
+        elif lower_value < 0:
+            self.lower_type = _FrameClauseType.RANGE_PRECEDING
+            self.lower_bind = literal(abs(lower_value), lower_type)
         else:
-            if lower_value == 0:
-                self.lower_type = _FrameClauseType.RANGE_CURRENT
-                self.lower_bind = None
-            elif lower_value < 0:
-                self.lower_type = _FrameClauseType.RANGE_PRECEDING
-                self.lower_bind = literal(abs(lower_value), type_api.NULLTYPE)
-            else:
-                self.lower_type = _FrameClauseType.RANGE_FOLLOWING
-                self.lower_bind = literal(lower_value, type_api.NULLTYPE)
+            self.lower_type = _FrameClauseType.RANGE_FOLLOWING
+            self.lower_bind = literal(lower_value, lower_type)
 
         if upper_value is None:
             self.upper_type = _FrameClauseType.RANGE_UNBOUNDED
             self.upper_bind = None
+        elif upper_value == 0:
+            self.upper_type = _FrameClauseType.RANGE_CURRENT
+            self.upper_bind = None
+        elif upper_value < 0:
+            self.upper_type = _FrameClauseType.RANGE_PRECEDING
+            self.upper_bind = literal(abs(upper_value), upper_type)
         else:
-            if upper_value == 0:
-                self.upper_type = _FrameClauseType.RANGE_CURRENT
-                self.upper_bind = None
-            elif upper_value < 0:
-                self.upper_type = _FrameClauseType.RANGE_PRECEDING
-                self.upper_bind = literal(abs(upper_value), type_api.NULLTYPE)
-            else:
-                self.upper_type = _FrameClauseType.RANGE_FOLLOWING
-                self.upper_bind = literal(upper_value, type_api.NULLTYPE)
+            self.upper_type = _FrameClauseType.RANGE_FOLLOWING
+            self.upper_bind = literal(upper_value, upper_type)
 
 
 class WithinGroup(ColumnElement[_T]):
@@ -4525,7 +4526,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
                 _ColumnExpressionArgument[Any],
             ]
         ] = None,
-        range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        range_: Optional[typing_Tuple[Optional[Any], Optional[Any]]] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ) -> Over[_T]:
