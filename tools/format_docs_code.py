@@ -31,7 +31,7 @@ ignore_paths = (
     re.compile(r"changelog/unreleased_\d{2}"),
     re.compile(r"README\.unittests\.rst"),
     re.compile(r"\.tox"),
-    re.compile(r"build"),
+    re.compile(rf"{home.as_posix()}/build"),
 )
 
 CUSTOM_TARGET_VERSIONS = {"declarative_tables.rst": "PY312"}
