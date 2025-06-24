@@ -1752,7 +1752,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
     def description(self) -> str:
         name = self.name
         if isinstance(name, _anonymous_label):
-            name = "anon_1"
+            return "anon_1"
 
         return name
 
@@ -1791,6 +1791,14 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
 
 class FromClauseAlias(AliasedReturnsRows):
     element: FromClause
+
+    @util.ro_non_memoized_property
+    def description(self) -> str:
+        name = self.name
+        if isinstance(name, _anonymous_label):
+            return f"Anonymous alias of {self.element.description}"
+
+        return name
 
 
 class Alias(roles.DMLTableRole, FromClauseAlias):

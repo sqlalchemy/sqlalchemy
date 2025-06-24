@@ -2478,7 +2478,8 @@ class IncludeColsFksTest(AssertsCompiledSQL, fixtures.TestBase):
         # the existing alias doesn't know about it
         with expect_raises_message(
             sa.exc.InvalidRequestError,
-            "Foreign key associated with column 'anon_1.r' could not find "
+            "Foreign key associated with column 'Anonymous alias of b.r' "
+            "could not find "
             "table 'a' with which to generate a foreign key to target "
             "column 'x'",
         ):
