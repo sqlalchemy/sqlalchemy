@@ -2314,10 +2314,7 @@ class SQLCompiler(Compiled):
     @util.memoized_property
     @util.preload_module("sqlalchemy.engine.result")
     def _inserted_primary_key_from_returning_getter(self):
-        if typing.TYPE_CHECKING:
-            from ..engine import result
-        else:
-            result = util.preloaded.engine_result
+        result = util.preloaded.engine_result
 
         assert self.compile_state is not None
         statement = self.compile_state.statement
