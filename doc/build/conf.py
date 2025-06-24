@@ -40,7 +40,7 @@ extensions = [
     "sphinx_paramlinks",
     "sphinx_copybutton",
 ]
-needs_extensions = {"zzzeeksphinx": "1.2.1"}
+needs_extensions = {"zzzeeksphinx": "1.6.1"}
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -165,11 +165,6 @@ autodocmods_convert_modname = {
     "sqlalchemy.orm.interfaces": "sqlalchemy.orm",
     "sqlalchemy.orm.query": "sqlalchemy.orm",
     "sqlalchemy.orm.util": "sqlalchemy.orm",
-}
-
-autodocmods_convert_modname_w_class = {
-    ("sqlalchemy.engine.interfaces", "Connectable"): "sqlalchemy.engine",
-    ("sqlalchemy.sql.base", "DialectKWArgs"): "sqlalchemy.sql.base",
 }
 
 # on the referencing side, a newer zzzeeksphinx extension
