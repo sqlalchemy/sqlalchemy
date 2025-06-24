@@ -166,8 +166,12 @@ SQLAlchemy Documentation
 
   .. container::
 
-    * :doc:`Frequently Asked Questions <faq/index>` - A collection of common problems and solutions
-    * :doc:`Glossary <glossary>` - Terms used in SQLAlchemy's documentation
-    * :doc:`Error Message Guide <errors>` - Explanations of many SQLAlchemy Errors
-    * :doc:`Complete table of of contents <contents>`
-    * :ref:`Index <genindex>`
+    * :doc:`Frequently Asked Questions <faq/index>` - A collection of common
+      problems and solutions
+    * :doc:`Glossary <glossary>` - Definitions of terms used in SQLAlchemy
+      documentation
+    * :doc:`Error Message Guide <errors>` - Explanations of many SQLAlchemy
+      errors
+    * :doc:`Complete table of of contents <contents>` - Full list of available
+      documentation
+    * :ref:`Index <genindex>` - Index for easy lookup of documentation topics
