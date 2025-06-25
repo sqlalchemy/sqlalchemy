@@ -1332,6 +1332,20 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def not_python314(self):
+        """This requirement is interim to assist with backporting of
+        issue #12405.
+
+        SQLAlchemy 1.4 still includes the ``await_fallback()`` method that
+        makes use of ``asyncio.get_event_loop_policy()``.  This is removed
+        in SQLAlchemy 2.1.
+
+        """
+        return exclusions.skip_if(
+            lambda: util.py314, "Python 3.14 or above not supported"
+        )
+
+    @property
     def cpython(self):
         return exclusions.only_if(
             lambda: util.cpython, "cPython interpreter needed"
