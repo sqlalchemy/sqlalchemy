@@ -4554,8 +4554,8 @@ class PGDialect(default.DefaultDialect):
                 ).label("element"),
                 (idx_sq.c.attnum == 0).label("is_expr"),
                 # since it's converted to array cast it to bigint (oid are
-                # "unsigned four-byte integer") to make it earier for
-                # dialects to iterpret
+                # "unsigned four-byte integer") to make it easier for
+                # dialects to interpret
                 idx_sq.c.att_opclass.cast(BIGINT),
             )
             .select_from(idx_sq)
