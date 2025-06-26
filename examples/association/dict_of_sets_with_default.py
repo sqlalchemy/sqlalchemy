@@ -12,43 +12,46 @@ upon access of a non-existent key, in the same manner as Python's
 
 """
 
-import operator
+from __future__ import annotations
 
-from sqlalchemy import Column
+import operator
+from typing import Mapping
+
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
+from sqlalchemy import select
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.collections import KeyFuncDict
 
 
-class Base:
-    id = Column(Integer, primary_key=True)
+class Base(DeclarativeBase):
+    id: Mapped[int] = mapped_column(primary_key=True)
 
 
-Base = declarative_base(cls=Base)
-
-
-class GenDefaultCollection(KeyFuncDict):
-    def __missing__(self, key):
+class GenDefaultCollection(KeyFuncDict[str, "B"]):
+    def __missing__(self, key: str) -> B:
         self[key] = b = B(key)
         return b
 
 
 class A(Base):
     __tablename__ = "a"
-    associations = relationship(
+    associations: Mapped[Mapping[str, B]] = relationship(
         "B",
         collection_class=lambda: GenDefaultCollection(
             operator.attrgetter("key")
         ),
     )
 
-    collections = association_proxy("associations", "values")
+    collections: AssociationProxy[dict[str, set[int]]] = association_proxy(
+        "associations", "values"
+    )
     """Bridge the association from 'associations' over to the 'values'
     association proxy of B.
     """
@@ -56,15 +59,15 @@ class A(Base):
 
 class B(Base):
     __tablename__ = "b"
-    a_id = Column(Integer, ForeignKey("a.id"), nullable=False)
-    elements = relationship("C", collection_class=set)
-    key = Column(String)
+    a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+    elements: Mapped[set[C]] = relationship("C", collection_class=set)
+    key: Mapped[str]
 
-    values = association_proxy("elements", "value")
+    values: AssociationProxy[set[int]] = association_proxy("elements", "value")
     """Bridge the association from 'elements' over to the
     'value' element of C."""
 
-    def __init__(self, key, values=None):
+    def __init__(self, key: str, values: set[int] | None = None) -> None:
         self.key = key
         if values:
             self.values = values
@@ -72,10 +75,10 @@ class B(Base):
 
 class C(Base):
     __tablename__ = "c"
-    b_id = Column(Integer, ForeignKey("b.id"), nullable=False)
-    value = Column(Integer)
+    b_id: Mapped[int] = mapped_column(ForeignKey("b.id"))
+    value: Mapped[int]
 
-    def __init__(self, value):
+    def __init__(self, value: int) -> None:
         self.value = value
 
 
@@ -90,7 +93,7 @@ if __name__ == "__main__":
     session.add_all([A(collections={"1": {1, 2, 3}})])
     session.commit()
 
-    a1 = session.query(A).first()
+    a1 = session.scalars(select(A)).one()
     print(a1.collections["1"])
     a1.collections["1"].add(4)
     session.commit()
