@@ -413,7 +413,7 @@ class ClauseElement(
 
     def _default_compiler(self) -> SQLCompiler:
         dialect = self._default_dialect()
-        return dialect.statement_compiler(dialect, self)  # type: ignore
+        return dialect.statement_compiler(dialect, self)  # type: ignore[no-any-return] # noqa: E501
 
     def _clone(self, **kw: Any) -> Self:
         """Create a shallow copy of this ClauseElement.
@@ -2120,7 +2120,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         """
         if self.callable:
             # TODO: set up protocol for bind parameter callable
-            return self.callable()  # type: ignore
+            return self.callable()  # type: ignore[no-any-return]
         else:
             return self.value
 
@@ -2633,7 +2633,7 @@ class TextClause(
     def comparator(self):
         # TODO: this seems wrong, it seems like we might not
         # be using this method.
-        return self.type.comparator_factory(self)  # type: ignore
+        return self.type.comparator_factory(self)  # type: ignore[arg-type]
 
     def self_group(
         self, against: Optional[OperatorType] = None
@@ -3000,7 +3000,7 @@ class ExpressionClauseList(OperatorExpression[_T]):
             for clause in clauses
         )
         self._is_implicitly_boolean = operators.is_boolean(self.operator)
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
     @property
     def _flattened_operator_clauses(
@@ -3161,7 +3161,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
                 for to_flat in convert_clauses
             )
 
-            return cls._construct_raw(operator, flattened_clauses)  # type: ignore # noqa: E501
+            return cls._construct_raw(operator, flattened_clauses)  # type: ignore[arg-type] # noqa: E501
         else:
             assert lcc
             # just one element.  return it as a single boolean element,
@@ -3693,7 +3693,7 @@ class UnaryExpression(ColumnElement[_T]):
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
     def _wraps_unnamed_column(self):
         ungrouped = self.element._ungroup()
@@ -3964,7 +3964,7 @@ class BinaryExpression(OperatorExpression[_T]):
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
         self.negate = negate
         self._is_implicitly_boolean = operators.is_boolean(operator)
@@ -4014,7 +4014,7 @@ class BinaryExpression(OperatorExpression[_T]):
             # this is using the eq/ne operator given int hash values,
             # rather than Operator, so that "bool" can be based on
             # identity
-            return self.operator(*self._orig)  # type: ignore
+            return self.operator(*self._orig)  # type: ignore[call-overload]
         else:
             raise TypeError("Boolean value of this clause is not defined")
 
@@ -4123,7 +4123,7 @@ class Grouping(GroupedElement, ColumnElement[_T]):
         self.element = element
 
         # nulltype assignment issue
-        self.type = getattr(element, "type", type_api.NULLTYPE)  # type: ignore
+        self.type = getattr(element, "type", type_api.NULLTYPE)  # type: ignore[arg-type] # noqa: E501
         self._propagate_attrs = element._propagate_attrs
 
     def _with_binary_element_type(self, type_):
@@ -4527,7 +4527,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
         *criterion: _ColumnExpressionArgument[bool],
     ):
         self.func = func
-        self.filter.non_generative(self, *criterion)  # type: ignore
+        self.filter.non_generative(self, *criterion)  # type: ignore[attr-defined] # noqa: E501
 
     @_generative
     def filter(self, *criterion: _ColumnExpressionArgument[bool]) -> Self:
@@ -5025,7 +5025,7 @@ class ColumnClause(
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
         self.is_literal = is_literal
 
@@ -5389,7 +5389,7 @@ def _type_from_args(args: Sequence[ColumnElement[_T]]) -> TypeEngine[_T]:
         if not a.type._isnull:
             return a.type
     else:
-        return type_api.NULLTYPE  # type: ignore
+        return type_api.NULLTYPE  # type: ignore[return-value]
 
 
 def _corresponding_column_or_error(fromclause, column, require_embedded=False):

@@ -233,7 +233,7 @@ def instance_logger(
     else:
         name = _qual_logger_name_for_cls(instance.__class__)
 
-    instance._echo = echoflag  # type: ignore
+    instance._echo = echoflag  # type: ignore[misc]
 
     logger: Union[logging.Logger, InstanceLogger]
 
@@ -247,7 +247,7 @@ def instance_logger(
         # levels by calling logger._log()
         logger = InstanceLogger(echoflag, name)
 
-    instance.logger = logger  # type: ignore
+    instance.logger = logger  # type: ignore[misc]
 
 
 class echo_property:

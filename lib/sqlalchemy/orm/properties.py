@@ -229,14 +229,14 @@ class ColumnProperty(
     def columns_to_assign(self) -> List[Tuple[Column[Any], int]]:
         # mypy doesn't care about the isinstance here
         return [
-            (c, 0)  # type: ignore
+            (c, 0)  # type: ignore[misc]
             for c in self.columns
             if isinstance(c, Column) and c.table is None
         ]
 
     def _memoized_attr__renders_in_subqueries(self) -> bool:
         if ("query_expression", True) in self.strategy_key:
-            return self.strategy._have_default_expression  # type: ignore
+            return self.strategy._have_default_expression  # type: ignore[attr-defined, no-any-return]  # noqa: E501
 
         return ("deferred", True) not in self.strategy_key or (
             self not in self.parent._readonly_props
@@ -449,7 +449,7 @@ class ColumnProperty(
 
             ce = self.__clause_element__()
             try:
-                return ce.info  # type: ignore
+                return ce.info  # type: ignore[no-any-return]
             except AttributeError:
                 return self.prop.info
 

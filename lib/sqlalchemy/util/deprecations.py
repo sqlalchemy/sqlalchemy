@@ -395,7 +395,7 @@ def _decorate_with_warning(
 
     decorated = warned(func)
     decorated.__doc__ = doc
-    decorated._sa_warn = lambda: _warn_with_version(  # type: ignore
+    decorated._sa_warn = lambda: _warn_with_version(  # type: ignore[attr-defined] # noqa: E501
         message, version, wtype, stacklevel=3
     )
     return decorated

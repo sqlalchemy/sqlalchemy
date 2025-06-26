@@ -536,7 +536,7 @@ def _key_getters_for_crud_column(
         ) -> Union[str, Tuple[str, str]]:
             str_key = c_key_role(key)
             if hasattr(key, "table") and key.table in _et:
-                return (key.table.name, str_key)  # type: ignore
+                return (key.table.name, str_key)  # type: ignore[union-attr]
             else:
                 return str_key
 
@@ -544,7 +544,7 @@ def _key_getters_for_crud_column(
             col: ColumnClause[Any],
         ) -> Union[str, Tuple[str, str]]:
             if col.table in _et:
-                return (col.table.name, col.key)  # type: ignore
+                return (col.table.name, col.key)  # type: ignore[attr-defined]
             else:
                 return col.key
 
@@ -560,7 +560,7 @@ def _key_getters_for_crud_column(
         _column_as_key = functools.partial(
             coercions.expect_as_key, roles.DMLColumnRole
         )
-        _getattr_col_key = _col_bind_name = operator.attrgetter("key")  # type: ignore  # noqa: E501
+        _getattr_col_key = _col_bind_name = operator.attrgetter("key")  # type: ignore[assignment]  # noqa: E501
 
     return _column_as_key, _getattr_col_key, _col_bind_name
 
@@ -1285,7 +1285,7 @@ def _create_insert_prefetch_bind_param(
     param = _create_bind_param(
         compiler, c, None, process=process, name=name, **kw
     )
-    compiler.insert_prefetch.append(c)  # type: ignore
+    compiler.insert_prefetch.append(c)  # type: ignore[attr-defined]
     return param
 
 
@@ -1317,7 +1317,7 @@ def _create_update_prefetch_bind_param(
     param = _create_bind_param(
         compiler, c, None, process=process, name=name, **kw
     )
-    compiler.update_prefetch.append(c)  # type: ignore
+    compiler.update_prefetch.append(c)  # type: ignore[attr-defined]
     return param
 
 

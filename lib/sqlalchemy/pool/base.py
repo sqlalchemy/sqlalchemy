@@ -1036,7 +1036,7 @@ def _finalize_fairy(
     # which actually started failing when pytest warnings plugin was
     # turned on, due to util.warn() above
     if fairy is not None:
-        fairy.dbapi_connection = None  # type: ignore
+        fairy.dbapi_connection = None  # type: ignore[assignment]
         fairy._connection_record = None
     del dbapi_connection
     del connection_record
@@ -1474,7 +1474,7 @@ class _ConnectionFairy(PoolProxiedConnection):
         if not soft:
             # prevent any rollback / reset actions etc. on
             # the connection
-            self.dbapi_connection = None  # type: ignore
+            self.dbapi_connection = None  # type: ignore[assignment]
 
             # finalize
             self._checkin()
@@ -1496,7 +1496,7 @@ class _ConnectionFairy(PoolProxiedConnection):
 
             # can't get the descriptor assignment to work here
             # in pylance.  mypy is OK w/ it
-            self.info = self.info.copy()  # type: ignore
+            self.info = self.info.copy()  # type: ignore[misc]
 
             self._connection_record = None
 

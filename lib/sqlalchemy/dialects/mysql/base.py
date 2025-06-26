@@ -2974,9 +2974,9 @@ class MySQLDialect(default.DefaultDialect):
         if isinstance(
             e,
             (
-                self.dbapi.OperationalError,  # type: ignore
-                self.dbapi.ProgrammingError,  # type: ignore
-                self.dbapi.InterfaceError,  # type: ignore
+                self.dbapi.OperationalError,  # type: ignore[union-attr]
+                self.dbapi.ProgrammingError,  # type: ignore[union-attr]
+                self.dbapi.InterfaceError,  # type: ignore[union-attr]
             ),
         ) and self._extract_error_code(e) in (
             1927,
@@ -2989,7 +2989,7 @@ class MySQLDialect(default.DefaultDialect):
         ):
             return True
         elif isinstance(
-            e, (self.dbapi.InterfaceError, self.dbapi.InternalError)  # type: ignore  # noqa: E501
+            e, (self.dbapi.InterfaceError, self.dbapi.InternalError)  # type: ignore[union-attr]  # noqa: E501
         ):
             # if underlying connection is closed,
             # this is the error you get
@@ -3085,7 +3085,7 @@ class MySQLDialect(default.DefaultDialect):
             #
             # there's more "doesn't exist" kinds of messages but they are
             # less clear if mysql 8 would suddenly start using one of those
-            if self._extract_error_code(e.orig) in (1146, 1049, 1051):  # type: ignore  # noqa: E501
+            if self._extract_error_code(e.orig) in (1146, 1049, 1051):  # type: ignore[arg-type, operator]  # noqa: E501
                 return False
             raise
 
@@ -3263,7 +3263,7 @@ class MySQLDialect(default.DefaultDialect):
         if schema is not None:
             current_schema: str = schema
         else:
-            current_schema = self.default_schema_name  # type: ignore
+            current_schema = self.default_schema_name  # type: ignore[assignment] # noqa: E501
 
         charset = self._connection_charset
 
@@ -3424,7 +3424,7 @@ class MySQLDialect(default.DefaultDialect):
             def lower(s: str) -> str:
                 return s
 
-        default_schema_name: str = connection.dialect.default_schema_name  # type: ignore  # noqa: E501
+        default_schema_name: str = connection.dialect.default_schema_name  # type: ignore[assignment]  # noqa: E501
 
         # NOTE: using (table_schema, table_name, lower(column_name)) in (...)
         # is very slow since mysql does not seem able to properly use indexse.

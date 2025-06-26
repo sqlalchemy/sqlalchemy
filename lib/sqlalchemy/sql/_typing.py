@@ -384,7 +384,7 @@ def is_has_clause_element(s: object) -> TypeGuard[_HasClauseElement[Any]]:
 
 
 def is_insert_update(c: ClauseElement) -> TypeGuard[ValuesBase]:
-    return c.is_dml and (c.is_insert or c.is_update)  # type: ignore
+    return c.is_dml and (c.is_insert or c.is_update)  # type: ignore[attr-defined] # noqa: E501
 
 
 def _no_kw() -> exc.ArgumentError:
@@ -468,4 +468,4 @@ def NotNullable(
 
     .. versionadded:: 2.0.20
     """
-    return val  # type: ignore
+    return val  # type: ignore[return-value]

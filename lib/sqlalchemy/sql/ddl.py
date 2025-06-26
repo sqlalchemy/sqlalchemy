@@ -1300,7 +1300,7 @@ def sort_tables(
                 return None
 
     else:
-        _skip_fn = None  # type: ignore
+        _skip_fn = None  # type: ignore[assignment]
 
     return [
         t

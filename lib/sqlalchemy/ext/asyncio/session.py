@@ -1743,7 +1743,7 @@ class async_sessionmaker(Generic[_AS]):
         self,
         bind: Optional[_AsyncSessionBind] = None,
         *,
-        class_: Type[_AS] = AsyncSession,  # type: ignore
+        class_: Type[_AS] = AsyncSession,  # type: ignore[assignment]
         autoflush: bool = True,
         expire_on_commit: bool = True,
         info: Optional[_InfoType] = None,
@@ -1989,4 +1989,4 @@ async def close_all_sessions() -> None:
     await greenlet_spawn(_sync_close_all_sessions)
 
 
-_instance_state._async_provider = async_session  # type: ignore
+_instance_state._async_provider = async_session  # type: ignore[attr-defined]

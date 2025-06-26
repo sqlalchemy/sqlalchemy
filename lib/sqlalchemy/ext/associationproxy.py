@@ -400,7 +400,7 @@ class AssociationProxy(
             id(self),
         )
         if info:
-            self.info = info  # type: ignore
+            self.info = info  # type: ignore[misc]
 
         if (
             attribute_options
@@ -501,9 +501,9 @@ class AssociationProxy(
             # class, only on subclasses of it, which might be
             # different.  only return for the specific
             # object's current value
-            return inst._non_canonical_get_for_object(obj)  # type: ignore
+            return inst._non_canonical_get_for_object(obj)  # type: ignore[no-any-return] # noqa: E501
         else:
-            return inst  # type: ignore  # TODO
+            return inst  # type: ignore[no-any-return]  # TODO
 
     def _calc_owner(self, target_cls: Any) -> Any:
         # we might be getting invoked for a subclass
@@ -694,7 +694,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
 
     @property
     def _comparator(self) -> PropComparator[Any]:
-        return getattr(  # type: ignore
+        return getattr(  # type: ignore[no-any-return]
             self.owning_class, self.target_collection
         ).comparator
 
@@ -1703,7 +1703,7 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         # compatible with None.".
         if key not in self.col:
             self.col[key] = self._create(key, default)
-            return default  # type: ignore
+            return default  # type: ignore[return-value]
         else:
             return self[key]
 
@@ -1868,7 +1868,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         for member in removals:
             remover(member)
 
-    def __ior__(  # type: ignore
+    def __ior__(  # type: ignore[override]
         self, other: AbstractSet[_S]
     ) -> MutableSet[Union[_T, _S]]:
         if not collections._set_binops_check_strict(self, other):
@@ -1959,7 +1959,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         for value in add:
             self.add(value)
 
-    def __ixor__(self, other: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:  # type: ignore  # noqa: E501
+    def __ixor__(self, other: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:  # type: ignore[override]  # noqa: E501
         if not collections._set_binops_check_strict(self, other):
             return NotImplemented
 

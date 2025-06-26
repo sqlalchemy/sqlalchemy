@@ -126,7 +126,7 @@ class DescriptorProperty(MapperProperty[_T]):
             collection = False
 
             @property
-            def uses_objects(self) -> bool:  # type: ignore
+            def uses_objects(self) -> bool:  # type: ignore[override]
                 return prop.uses_objects
 
             def __init__(self, key: str):
@@ -231,9 +231,9 @@ class CompositeProperty(
         if isinstance(_class_or_attr, (Mapped, str, sql.ColumnElement)):
             self.attrs = (_class_or_attr,) + attrs
             # will initialize within declarative_scan
-            self.composite_class = None  # type: ignore
+            self.composite_class = None  # type: ignore[assignment]
         else:
-            self.composite_class = _class_or_attr  # type: ignore
+            self.composite_class = _class_or_attr  # type: ignore[assignment]
             self.attrs = attrs
 
         self.active_history = active_history
@@ -269,7 +269,7 @@ class CompositeProperty(
                     " method; can't get state"
                 ) from ae
             else:
-                return accessor()  # type: ignore
+                return accessor()  # type: ignore[no-any-return]
 
     def do_init(self) -> None:
         """Initialization which occurs after the :class:`.Composite`
@@ -645,7 +645,7 @@ class CompositeProperty(
         )
 
         proxy_attr = self.parent.class_manager[self.key]
-        proxy_attr.impl.dispatch = proxy_attr.dispatch  # type: ignore
+        proxy_attr.impl.dispatch = proxy_attr.dispatch  # type: ignore[assignment] # noqa: E501
         proxy_attr.impl.dispatch._active_history = self.active_history
 
         # TODO: need a deserialize hook here
@@ -662,7 +662,7 @@ class CompositeProperty(
         else:
 
             def get_values(val: Any) -> Tuple[Any]:
-                return val.__composite_values__()  # type: ignore
+                return val.__composite_values__()  # type: ignore[no-any-return] # noqa: E501
 
         attrs = [prop.key for prop in self.props]
 
@@ -762,7 +762,7 @@ class CompositeProperty(
         """
 
         # https://github.com/python/mypy/issues/4266
-        __hash__ = None  # type: ignore
+        __hash__ = None  # type: ignore[assignment]
 
         prop: RODescriptorReference[Composite[_PT]]
 
@@ -913,7 +913,7 @@ class ConcreteInheritedProperty(DescriptorProperty[_T]):
                 comparator_callable = p.comparator_factory
                 break
         assert comparator_callable is not None
-        return comparator_callable(p, mapper)  # type: ignore
+        return comparator_callable(p, mapper)  # type: ignore[no-any-return]
 
     def __init__(self) -> None:
         super().__init__()

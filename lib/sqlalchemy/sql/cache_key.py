@@ -285,7 +285,7 @@ class HasCacheKey:
                 elif meth is ANON_NAME:
                     elements = util.preloaded.sql_elements
                     if isinstance(obj, elements._anonymous_label):
-                        obj = obj.apply_map(anon_map)  # type: ignore
+                        obj = obj.apply_map(anon_map)  # type: ignore[arg-type]
                     result += (attrname, obj)
                 elif meth is CALL_GEN_CACHE_KEY:
                     result += (
@@ -318,10 +318,10 @@ class HasCacheKey:
                         # Join, Aliased, etc.
                         # see #8790
 
-                        if self._gen_static_annotations_cache_key:  # type: ignore  # noqa: E501
-                            result += self._annotations_cache_key  # type: ignore  # noqa: E501
+                        if self._gen_static_annotations_cache_key:  # type: ignore[attr-defined]  # noqa: E501
+                            result += self._annotations_cache_key  # type: ignore[attr-defined]  # noqa: E501
                         else:
-                            result += self._gen_annotations_cache_key(anon_map)  # type: ignore  # noqa: E501
+                            result += self._gen_annotations_cache_key(anon_map)  # type: ignore[attr-defined]  # noqa: E501
 
                     elif (
                         meth is InternalTraversal.dp_clauseelement_list
@@ -339,7 +339,7 @@ class HasCacheKey:
                             ),
                         )
                     else:
-                        result += meth(  # type: ignore
+                        result += meth(  # type: ignore[misc, operator]
                             attrname, obj, self, anon_map, bindparams
                         )
         return result
@@ -437,7 +437,7 @@ class CacheKey(NamedTuple):
     # with namedtuple
     # can't use "if not TYPE_CHECKING" because mypy rejects it
     # inside of a NamedTuple
-    def __hash__(self) -> Optional[int]:  # type: ignore
+    def __hash__(self) -> Optional[int]:  # type: ignore[override]
         """CacheKey itself is not hashable - hash the .key portion"""
         return None
 

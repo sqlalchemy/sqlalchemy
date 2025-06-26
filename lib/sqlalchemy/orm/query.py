@@ -280,7 +280,7 @@ class Query(
         # for the query(Entity).with_session(session) API which is likely in
         # some old recipes, however these are legacy as select() can now be
         # used.
-        self.session = session  # type: ignore
+        self.session = session  # type: ignore[assignment]
         self._set_entities(entities)
 
     def _set_propagate_attrs(self, values: Mapping[str, Any]) -> Self:
@@ -335,7 +335,7 @@ class Query(
             :meth:`.Result.tuples` - v2 equivalent method.
 
         """
-        return self.only_return_tuples(True)  # type: ignore
+        return self.only_return_tuples(True)  # type: ignore[return-value]
 
     def _entity_from_pre_ent_zero(self) -> Optional[_InternalEntityType[Any]]:
         if not self._raw_columns:
@@ -344,14 +344,14 @@ class Query(
         ent = self._raw_columns[0]
 
         if "parententity" in ent._annotations:
-            return ent._annotations["parententity"]  # type: ignore
+            return ent._annotations["parententity"]  # type: ignore[no-any-return] # noqa: E501
         elif "bundle" in ent._annotations:
-            return ent._annotations["bundle"]  # type: ignore
+            return ent._annotations["bundle"]  # type: ignore[no-any-return]
         else:
             # label, other SQL expression
             for element in visitors.iterate(ent):
                 if "parententity" in element._annotations:
-                    return element._annotations["parententity"]  # type: ignore  # noqa: E501
+                    return element._annotations["parententity"]  # type: ignore[no-any-return]  # noqa: E501
             else:
                 return None
 
@@ -366,7 +366,7 @@ class Query(
                 "a single mapped class." % methname
             )
 
-        return self._raw_columns[0]._annotations["parententity"]  # type: ignore  # noqa: E501
+        return self._raw_columns[0]._annotations["parententity"]  # type: ignore[no-any-return]  # noqa: E501
 
     def _set_select_from(
         self, obj: Iterable[_FromClauseArgument], set_base_alias: bool
@@ -568,7 +568,7 @@ class Query(
 
         return q._compile_state(
             use_legacy_query_style=legacy_query_style
-        ).statement  # type: ignore
+        ).statement  # type: ignore[return-value]
 
     def _statement_20(
         self, for_statement: bool = False, use_legacy_query_style: bool = True
@@ -581,7 +581,7 @@ class Query(
                 new_query = fn(self)
                 if new_query is not None and new_query is not self:
                     self = new_query
-                    if not fn._bake_ok:  # type: ignore
+                    if not fn._bake_ok:  # type: ignore[attr-defined]
                         self._compile_options += {"_bake_ok": False}
 
         compile_options = self._compile_options
@@ -1170,11 +1170,11 @@ class Query(
             :attr:`.ORMExecuteState.lazy_loaded_from`
 
         """
-        return self.load_options._lazy_loaded_from  # type: ignore
+        return self.load_options._lazy_loaded_from  # type: ignore[no-any-return] # noqa: E501
 
     @property
     def _current_path(self) -> PathRegistry:
-        return self._compile_options._current_path  # type: ignore
+        return self._compile_options._current_path  # type: ignore[no-any-return] # noqa: E501
 
     @_generative
     def correlate(
@@ -1306,16 +1306,16 @@ class Query(
             for prop in mapper.iterate_properties:
                 if (
                     isinstance(prop, relationships.RelationshipProperty)
-                    and prop.mapper is entity_zero.mapper  # type: ignore
+                    and prop.mapper is entity_zero.mapper  # type: ignore[union-attr] # noqa: E501
                 ):
-                    property = prop  # type: ignore  # noqa: A001
+                    property = prop  # type: ignore[assignment]  # noqa: A001
                     break
             else:
                 raise sa_exc.InvalidRequestError(
                     "Could not locate a property which relates instances "
                     "of class '%s' to instances of class '%s'"
                     % (
-                        entity_zero.mapper.class_.__name__,  # type: ignore
+                        entity_zero.mapper.class_.__name__,  # type: ignore[union-attr] # noqa: E501
                         instance.__class__.__name__,
                     )
                 )
@@ -1323,8 +1323,8 @@ class Query(
         return self.filter(
             with_parent(
                 instance,
-                property,  # type: ignore
-                entity_zero.entity,  # type: ignore
+                property,  # type: ignore[arg-type]
+                entity_zero.entity,  # type: ignore[union-attr]
             )
         )
 
@@ -1473,7 +1473,7 @@ class Query(
 
         """
         try:
-            return next(self._values_no_warn(column))[0]  # type: ignore
+            return next(self._values_no_warn(column))[0]  # type: ignore[arg-type, call-overload] # noqa: E501
         except StopIteration:
             return None
 
@@ -1610,7 +1610,7 @@ class Query(
         # Query has all the same fields as Select for this operation
         # this could in theory be based on a protocol but not sure if it's
         # worth it
-        _MemoizedSelectEntities._generate_for_statement(self)  # type: ignore
+        _MemoizedSelectEntities._generate_for_statement(self)  # type: ignore[arg-type] # noqa: E501
         self._set_entities(entities)
         return self
 
@@ -1673,12 +1673,12 @@ class Query(
         if self._compile_options._current_path:
             # opting for lower method overhead for the checks
             for opt in opts:
-                if not opt._is_core and opt._is_legacy_option:  # type: ignore
-                    opt.process_query_conditionally(self)  # type: ignore
+                if not opt._is_core and opt._is_legacy_option:  # type: ignore[attr-defined] # noqa: E501
+                    opt.process_query_conditionally(self)  # type: ignore[attr-defined] # noqa: E501
         else:
             for opt in opts:
-                if not opt._is_core and opt._is_legacy_option:  # type: ignore
-                    opt.process_query(self)  # type: ignore
+                if not opt._is_core and opt._is_legacy_option:  # type: ignore[attr-defined] # noqa: E501
+                    opt.process_query(self)  # type: ignore[attr-defined]
 
         self._with_options += opts
         return self
@@ -2750,7 +2750,7 @@ class Query(
 
             :meth:`_engine.Result.scalars` - v2 comparable method.
         """
-        return self._iter().all()  # type: ignore
+        return self._iter().all()  # type: ignore[return-value]
 
     @_generative
     @_assertions(_no_clauseelement_condition)
@@ -2803,9 +2803,9 @@ class Query(
         """
         # replicates limit(1) behavior
         if self._statement is not None:
-            return self._iter().first()  # type: ignore
+            return self._iter().first()  # type: ignore[return-value]
         else:
-            return self.limit(1)._iter().first()  # type: ignore
+            return self.limit(1)._iter().first()  # type: ignore[return-value]
 
     def one_or_none(self) -> Optional[_T]:
         """Return at most one result or raise an exception.
@@ -2831,7 +2831,7 @@ class Query(
             :meth:`_engine.Result.scalar_one_or_none` - v2 comparable method.
 
         """
-        return self._iter().one_or_none()  # type: ignore
+        return self._iter().one_or_none()  # type: ignore[return-value]
 
     def one(self) -> _T:
         """Return exactly one result or raise an exception.
@@ -2854,7 +2854,7 @@ class Query(
             :meth:`_engine.Result.scalar_one` - v2 comparable method.
 
         """
-        return self._iter().one()  # type: ignore
+        return self._iter().one()  # type: ignore[return-value]
 
     def scalar(self) -> Any:
         """Return the first element of the first result or None
@@ -2891,7 +2891,7 @@ class Query(
     def __iter__(self) -> Iterator[_T]:
         result = self._iter()
         try:
-            yield from result  # type: ignore
+            yield from result  # type: ignore[misc]
         except GeneratorExit:
             # issue #8710 - direct iteration is not re-usable after
             # an iterable block is broken, so close the result
@@ -3025,7 +3025,7 @@ class Query(
 
         # legacy: automatically set scalars, unique
         if result._attributes.get("is_single_entity", False):
-            result = result.scalars()  # type: ignore
+            result = result.scalars()  # type: ignore[assignment]
 
         if result._attributes.get("filtered", False):
             result = result.unique()
@@ -3188,7 +3188,7 @@ class Query(
 
         """
         col = sql.func.count(sql.literal_column("*"))
-        return (  # type: ignore
+        return (  # type: ignore[no-any-return]
             self._legacy_from_self(col).enable_eagerloads(False).scalar()
         )
 
@@ -3245,7 +3245,7 @@ class Query(
 
                 self = bulk_del.query
 
-        delete_ = sql.delete(*self._raw_columns)  # type: ignore
+        delete_ = sql.delete(*self._raw_columns)  # type: ignore[arg-type]
 
         if delete_args:
             delete_ = delete_.with_dialect_options(**delete_args)
@@ -3262,7 +3262,7 @@ class Query(
                 {"synchronize_session": synchronize_session}
             ),
         )
-        bulk_del.result = result  # type: ignore
+        bulk_del.result = result  # type: ignore[attr-defined]
         self.session.dispatch.after_bulk_delete(bulk_del)
         result.close()
 
@@ -3335,11 +3335,11 @@ class Query(
                     bulk_ud.query = new_query
             self = bulk_ud.query
 
-        upd = sql.update(*self._raw_columns)  # type: ignore
+        upd = sql.update(*self._raw_columns)  # type: ignore[arg-type]
 
         ppo = update_args.pop("preserve_parameter_order", False)
         if ppo:
-            upd = upd.ordered_values(*values)  # type: ignore
+            upd = upd.ordered_values(*values)  # type: ignore[arg-type]
         else:
             upd = upd.values(values)
         if update_args:
@@ -3357,7 +3357,7 @@ class Query(
                 {"synchronize_session": synchronize_session}
             ),
         )
-        bulk_ud.result = result  # type: ignore
+        bulk_ud.result = result  # type: ignore[attr-defined]
         self.session.dispatch.after_bulk_update(bulk_ud)
         result.close()
         return result.rowcount
@@ -3503,5 +3503,5 @@ class BulkDelete(BulkUD):
 class RowReturningQuery(Query[Row[Unpack[_Ts]]]):
     if TYPE_CHECKING:
 
-        def tuples(self) -> Query[Tuple[Unpack[_Ts]]]:  # type: ignore
+        def tuples(self) -> Query[Tuple[Unpack[_Ts]]]:  # type: ignore[override] # noqa: E501
             ...

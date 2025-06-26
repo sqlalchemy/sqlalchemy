@@ -129,14 +129,14 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
         updated by the given dictionary.
 
         """
-        return Annotated._as_annotated_instance(self, values)  # type: ignore
+        return Annotated._as_annotated_instance(self, values)  # type: ignore[return-value] # noqa: E501
 
     def _with_annotations(self, values: _AnnotationDict) -> Self:
         """return a copy of this ClauseElement with annotations
         replaced by the given dictionary.
 
         """
-        return Annotated._as_annotated_instance(self, values)  # type: ignore
+        return Annotated._as_annotated_instance(self, values)  # type: ignore[return-value] # noqa: E501
 
     @overload
     def _deannotate(
@@ -476,7 +476,7 @@ def _deep_annotate(
 
     if element is not None:
         element = cast(_SA, clone(element))
-    clone = None  # type: ignore  # remove gc cycles
+    clone = None  # type: ignore[assignment]  # remove gc cycles
     return element
 
 
@@ -516,7 +516,7 @@ def _deep_deannotate(
 
     if element is not None:
         element = cast(_SA, clone(element))
-    clone = None  # type: ignore  # remove gc cycles
+    clone = None  # type: ignore[assignment]  # remove gc cycles
     return element
 
 
@@ -571,9 +571,9 @@ def _new_annotation_type(
     # some classes include this even if they have traverse_internals
     # e.g. BindParameter, add it if present.
     if cls.__dict__.get("inherit_cache", False):
-        anno_cls.inherit_cache = True  # type: ignore
+        anno_cls.inherit_cache = True  # type: ignore[attr-defined]
     elif "inherit_cache" in cls.__dict__:
-        anno_cls.inherit_cache = cls.__dict__["inherit_cache"]  # type: ignore
+        anno_cls.inherit_cache = cls.__dict__["inherit_cache"]  # type: ignore[attr-defined] # noqa: E501
 
     anno_cls._is_column_operators = issubclass(cls, operators.ColumnOperators)
 

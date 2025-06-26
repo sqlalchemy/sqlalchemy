@@ -943,7 +943,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
                     return to_chop
                 elif (
                     c_token != f"{_RELATIONSHIP_TOKEN}:{_WILDCARD_TOKEN}"
-                    and c_token != p_token.key  # type: ignore
+                    and c_token != p_token.key  # type: ignore[union-attr]
                 ):
                     return None
 
@@ -1759,7 +1759,7 @@ class _LoadElement(
         )
 
         if not path:
-            return None  # type: ignore
+            return None  # type: ignore[return-value]
 
         assert opt.is_token_strategy == path.is_token
 
@@ -2348,7 +2348,7 @@ def _parse_attr_argument(
         # TODO: need to figure out this None thing being returned by
         # inspect(), it should not have None as an option in most cases
         # if at all
-        insp: InspectionAttr = inspect(attr)  # type: ignore
+        insp: InspectionAttr = inspect(attr)  # type: ignore[assignment]
     except sa_exc.NoInspectionAvailable as err:
         raise sa_exc.ArgumentError(
             "expected ORM mapped attribute for loader strategy argument"

@@ -551,7 +551,7 @@ class _class_resolver:
                 self._raise_for_name(n.args[0], n)
 
 
-_fallback_dict: Mapping[str, Any] = None  # type: ignore
+_fallback_dict: Mapping[str, Any] = None  # type: ignore[assignment]
 
 
 def _resolver(cls: Type[Any], prop: RelationshipProperty[Any]) -> Tuple[

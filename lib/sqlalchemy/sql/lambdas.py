@@ -481,7 +481,7 @@ class DeferredLambdaElement(LambdaElement):
         for deferred_copy_internals in self._transforms:
             expr = deferred_copy_internals(expr)
 
-        return expr  # type: ignore
+        return expr  # type: ignore[no-any-return]
 
     def _copy_internals(
         self, clone=_clone, deferred_copy_internals=None, **kw

@@ -696,7 +696,7 @@ class MapperProperty(
 
         """
 
-        return getattr(self.parent.class_, self.key)  # type: ignore
+        return getattr(self.parent.class_, self.key)  # type: ignore[no-any-return] # noqa: E501
 
     def do_init(self) -> None:
         """Perform subclass-specific initialization post-mapper-creation
@@ -979,7 +979,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         """
 
-        return self.operate(PropComparator.of_type_op, class_)  # type: ignore
+        return self.operate(PropComparator.of_type_op, class_)  # type: ignore[return-value] # noqa: E501
 
     def and_(
         self, *criteria: _ColumnExpressionArgument[bool]
@@ -1009,7 +1009,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
             :func:`.with_loader_criteria`
 
         """
-        return self.operate(operators.and_, *criteria)  # type: ignore
+        return self.operate(operators.and_, *criteria)  # type: ignore[return-value] # noqa: E501
 
     def any(
         self,
