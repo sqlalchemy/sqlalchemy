@@ -5232,7 +5232,8 @@ class CollationClause(ColumnElement[str]):
     __visit_name__ = "collation"
 
     _traverse_internals: _TraverseInternalsType = [
-        ("collation", InternalTraversal.dp_string)
+        ("collation", InternalTraversal.dp_string),
+        ("collation_schema", InternalTraversal.dp_string),
     ]
 
     @classmethod
@@ -5245,20 +5246,30 @@ class CollationClause(ColumnElement[str]):
 
         expr = coercions.expect(roles.ExpressionElementRole[str], expression)
 
+        try:
+            collation_schema, collation = collation.split(".")
+        except ValueError:
+            if "." in collation:
+                raise ValueError(f"Invalid collation {collation}") from None
+            collation_schema = None
+
         if expr.type._type_affinity is sqltypes.String:
-            collate_type = expr.type._with_collation(collation)
+            collate_type = expr.type._with_collation(
+                collation, collation_schema
+            )
         else:
             collate_type = expr.type
 
         return BinaryExpression(
             expr,
-            CollationClause(collation),
+            CollationClause(collation, collation_schema),
             operators.collate,
             type_=collate_type,
         )
 
-    def __init__(self, collation):
+    def __init__(self, collation, collation_schema=None):
         self.collation = collation
+        self.collation_schema = collation_schema
 
 
 class _IdentifiedClause(Executable, ClauseElement):
