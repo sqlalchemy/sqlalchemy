@@ -1929,7 +1929,9 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         self._index.update({k: (k, col) for k, col, _ in reversed(collection)})
 
     def add(
-        self, column: ColumnElement[Any], key: Optional[_COLKEY] = None
+        self,
+        column: ColumnElement[Any],
+        key: Optional[_COLKEY] = None,
     ) -> None:
         """Add a column to this :class:`_sql.ColumnCollection`.
 
@@ -1960,6 +1962,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
             (colkey, _column, _ColumnMetrics(self, _column))
         )
         self._colset.add(_column._deannotate())
+
         self._index[l] = (colkey, _column)
         if colkey not in self._index:
             self._index[colkey] = (colkey, _column)
@@ -2155,7 +2158,11 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
     """
 
     def add(  # type: ignore[override]
-        self, column: _NAMEDCOL, key: Optional[str] = None
+        self,
+        column: _NAMEDCOL,
+        key: Optional[str] = None,
+        *,
+        index: Optional[int] = None,
     ) -> None:
         if key is not None and column.key != key:
             raise exc.ArgumentError(
@@ -2175,21 +2182,42 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
             if existing is column:
                 return
 
-            self.replace(column)
+            self.replace(column, index=index)
 
             # pop out memoized proxy_set as this
             # operation may very well be occurring
             # in a _make_proxy operation
             util.memoized_property.reset(column, "proxy_set")
         else:
-            self._append_new_column(key, column)
+            self._append_new_column(key, column, index=index)
 
-    def _append_new_column(self, key: str, named_column: _NAMEDCOL) -> None:
-        l = len(self._collection)
-        self._collection.append(
-            (key, named_column, _ColumnMetrics(self, named_column))
-        )
+    def _append_new_column(
+        self, key: str, named_column: _NAMEDCOL, *, index: Optional[int] = None
+    ) -> None:
+        collection_length = len(self._collection)
+
+        if index is None:
+            l = collection_length
+        else:
+            if index < 0:
+                index = max(0, collection_length + index)
+            l = index
+
+        if index is None:
+            self._collection.append(
+                (key, named_column, _ColumnMetrics(self, named_column))
+            )
+        else:
+            self._collection.insert(
+                index, (key, named_column, _ColumnMetrics(self, named_column))
+            )
+
         self._colset.add(named_column._deannotate())
+
+        if index is not None:
+            for idx in reversed(range(index, collection_length)):
+                self._index[idx + 1] = self._index[idx]
+
         self._index[l] = (key, named_column)
         self._index[key] = (key, named_column)
 
@@ -2249,7 +2277,9 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
     def replace(
         self,
         column: _NAMEDCOL,
+        *,
         extra_remove: Optional[Iterable[_NAMEDCOL]] = None,
+        index: Optional[int] = None,
     ) -> None:
         """add the given column to this collection, removing unaliased
         versions of this column  as well as existing columns with the
@@ -2281,14 +2311,15 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
             remove_col.add(self._index[column.key][1])
 
         if not remove_col:
-            self._append_new_column(column.key, column)
+            self._append_new_column(column.key, column, index=index)
             return
         new_cols: List[Tuple[str, _NAMEDCOL, _ColumnMetrics[_NAMEDCOL]]] = []
-        replaced = False
-        for k, col, metrics in self._collection:
+        replace_index = None
+
+        for idx, (k, col, metrics) in enumerate(self._collection):
             if col in remove_col:
-                if not replaced:
-                    replaced = True
+                if replace_index is None:
+                    replace_index = idx
                     new_cols.append(
                         (column.key, column, _ColumnMetrics(self, column))
                     )
@@ -2302,8 +2333,26 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
                 for metrics in self._proxy_index.get(rc, ()):
                     metrics.dispose(self)
 
-        if not replaced:
-            new_cols.append((column.key, column, _ColumnMetrics(self, column)))
+        if replace_index is None:
+            if index is not None:
+                new_cols.insert(
+                    index, (column.key, column, _ColumnMetrics(self, column))
+                )
+
+            else:
+                new_cols.append(
+                    (column.key, column, _ColumnMetrics(self, column))
+                )
+        elif index is not None:
+            to_move = new_cols[replace_index]
+            effective_positive_index = (
+                index if index >= 0 else max(0, len(new_cols) + index)
+            )
+            new_cols.insert(index, to_move)
+            if replace_index > effective_positive_index:
+                del new_cols[replace_index + 1]
+            else:
+                del new_cols[replace_index]
 
         self._colset.add(column._deannotate())
         self._collection[:] = new_cols
