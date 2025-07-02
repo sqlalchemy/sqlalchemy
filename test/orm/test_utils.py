@@ -141,7 +141,7 @@ class ContextualWarningsTest(fixtures.TestBase):
                 "(This warning originated from the Session 'autoflush' "
                 "process, which was invoked automatically in response to a "
                 "user-initiated operation. Consider using ``no_autoflush`` "
-                "context manager if this warning happended while "
+                "context manager if this warning happened while "
                 "initializing objects.)"
             ),
         ):
