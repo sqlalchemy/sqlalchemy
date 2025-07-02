@@ -95,6 +95,27 @@ class VectorStorageFormat(Enum):
     """
 
 
+class VectorFormat(Enum):
+    """Enum representing the vector format,
+
+    See :ref:`oracle_vector_datatype` for background.
+
+    .. versionadded:: 2.0.42
+
+    """
+
+    SPARSE = "SPARSE"
+    """
+    A Sparse vector is a vector which has zero value for
+    most of its dimensions.
+    """
+    DENSE = "DENSE"
+    """
+    A Dense vector is a vector where most, if not all, elements
+    hold meaningful values.
+    """
+
+
 @dataclass
 class VectorIndexConfig:
     """Define the configuration for Oracle VECTOR Index.
@@ -196,17 +217,21 @@ class VECTOR(types.TypeEngine):
         VectorStorageFormat.FLOAT64: "d",  # Double
     }
 
-    def __init__(self, dim=None, storage_format=None):
+    def __init__(self, dim=None, storage_format=None, vector_format=None):
         """Construct a VECTOR.
 
         :param dim: integer. The dimension of the VECTOR datatype. This
          should be an integer value.
 
         :param storage_format: VectorStorageFormat. The VECTOR storage
-         type format. This may be Enum values form
+         type format. This should be Enum values form
          :class:`.VectorStorageFormat` INT8, BINARY, FLOAT32, or FLOAT64.
 
+        :param vector_format: VectorFormat. The Vector format. This should be
+         Enum values from :class:`.VectorFormat` SPARSE or DENSE.
+
         """
+
         if dim is not None and not isinstance(dim, int):
             raise TypeError("dim must be an interger")
         if storage_format is not None and not isinstance(
@@ -215,8 +240,14 @@ class VECTOR(types.TypeEngine):
             raise TypeError(
                 "storage_format must be an enum of type VectorStorageFormat"
             )
+        if vector_format is not None and not isinstance(
+            vector_format, VectorFormat
+        ):
+            raise TypeError("vector_type must be an enum of type VectorFormat")
+
         self.dim = dim
         self.storage_format = storage_format
+        self.vector_format = vector_format
 
     def _cached_bind_processor(self, dialect):
         """
@@ -233,8 +264,17 @@ class VECTOR(types.TypeEngine):
                 value = array.array(typecode, value)
                 return value
 
+            # Convert tuple to a SparseVector object
+            elif isinstance(value, tuple) and len(value) == 3:
+                return dialect.dbapi.SparseVector(*value)
+
             else:
-                raise TypeError("VECTOR accepts list or array.array()")
+                raise TypeError(
+                    """
+                    Invalid input for VECTOR: expected a list, an array.array,
+                    or a 3-element tuple
+                    """
+                )
 
         return process
 
@@ -246,6 +286,8 @@ class VECTOR(types.TypeEngine):
         def process(value):
             if isinstance(value, array.array):
                 return list(value)
+            else:
+                return value
 
         return process
 
