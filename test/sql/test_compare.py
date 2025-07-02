@@ -1665,8 +1665,8 @@ class HasCacheKeySubclass(fixtures.TestBase):
             {"columns", "name", "literal_binds"},
         ),
         "_FrameClause": (
-            {"upper_integer_bind", "upper_type"}
-            | {"lower_type", "lower_integer_bind"},
+            {"upper_bind", "upper_type"}
+            | {"lower_type", "lower_bind"},
             {"range_"},
         ),
         "_MemoizedSelectEntities": (

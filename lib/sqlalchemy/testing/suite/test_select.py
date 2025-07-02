@@ -42,6 +42,7 @@ from ... import tuple_
 from ... import TupleType
 from ... import union
 from ... import values
+from ... import Float
 from ...exc import DatabaseError
 from ...exc import ProgrammingError
 
@@ -1913,13 +1914,14 @@ class WindowFunctionTest(fixtures.TablesTest):
             Column("id", Integer, primary_key=True),
             Column("col1", Integer),
             Column("col2", Integer),
+            Column("col3", Float),
         )
 
     @classmethod
     def insert_data(cls, connection):
         connection.execute(
             cls.tables.some_table.insert(),
-            [{"id": i, "col1": i, "col2": i * 5} for i in range(1, 50)],
+            [{"id": i, "col1": i, "col2": i * 5, "col3": i + 0.5} for i in range(1, 50)],
         )
 
     def test_window(self, connection):
@@ -1933,6 +1935,20 @@ class WindowFunctionTest(fixtures.TablesTest):
         ).all()
 
         eq_(rows, [(95,) for i in range(19)])
+
+    def test_window_range(self, connection):
+        some_table = self.tables.some_table
+        rows = connection.execute(
+            select(
+                func.max(some_table.c.col3).over(
+                    partition_by=[some_table.c.col3],
+                    order_by=[some_table.c.col3.asc()],
+                    range_=(-1.25, 1.25),
+                )
+            ).where(some_table.c.col1 < 20)
+        ).all()
+
+        eq_(rows, [(i + 1.5,) for i in range(19)])
 
     def test_window_rows_between_w_caching(self, connection):
         some_table = self.tables.some_table
