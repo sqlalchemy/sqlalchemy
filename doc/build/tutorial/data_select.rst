@@ -392,6 +392,27 @@ of ORM entities::
     WHERE (user_account.name = :name_1 OR user_account.name = :name_2)
     AND address.user_id = user_account.id
 
+.. tip::
+
+    The rendering of parentheses is based on operator precedence rules (there's no
+    way to detect parentheses from a Python expression at runtime), so if we combine
+    AND and OR in a way that matches the natural precedence of AND, the rendered
+    expression might not have similar looking parentheses as our Python code::
+
+        >>> print(
+        ...     select(Address.email_address).where(
+        ...         or_(
+        ...             User.name == "squidward",
+        ...             and_(Address.user_id == User.id, User.name == "sandy"),
+        ...         )
+        ...     )
+        ... )
+        {printsql}SELECT address.email_address
+        FROM address, user_account
+        WHERE user_account.name = :name_1 OR address.user_id = user_account.id AND user_account.name = :name_2
+
+    More background on parenthesization is in the :ref:`operators_parentheses` in the Operator Reference.
+
 For simple "equality" comparisons against a single entity, there's also a
 popular method known as :meth:`_sql.Select.filter_by` which accepts keyword
 arguments that match to column keys or ORM attribute names.  It will filter

@@ -757,6 +757,49 @@ The above conjunction functions :func:`_sql.and_`, :func:`_sql.or_`,
 
   ..
 
+.. _operators_parentheses:
+
+Parentheses and Grouping
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Parenthesization of expressions is rendered based on operator precedence,
+not the placement of parentheses in Python code, since there is no means of
+detecting parentheses from interpreted Python expressions.  So an expression
+like::
+
+    >>> expr = or_(
+    ...     User.name == "squidward", and_(Address.user_id == User.id, User.name == "sandy")
+    ... )
+
+won't include parentheses, because the AND operator takes natural precedence over OR::
+
+    >>> print(expr)
+    user_account.name = :name_1 OR address.user_id = user_account.id AND user_account.name = :name_2
+
+Whereas this one, where OR would otherwise not be evaluated before the AND, does::
+
+    >>> expr = and_(
+    ...     Address.user_id == User.id, or_(User.name == "squidward", User.name == "sandy")
+    ... )
+    >>> print(expr)
+    address.user_id = user_account.id AND (user_account.name = :name_1 OR user_account.name = :name_2)
+
+The same behavior takes effect for math operators.  In the parenthesized
+Python expression below, the multiplication operator naturally takes precedence over
+the addition operator, therefore the SQL will not include parentheses::
+
+  >>> print(column("q") + (column("x") * column("y")))
+  {printsql}q + x * y{stop}
+
+Whereas this one, where the addition operator would not otherwise occur before
+the multiplication operator, does get parentheses::
+
+  >>> print(column("q") * (column("x") + column("y")))
+  {printsql}q * (x + y){stop}
+
+More background on this is in the FAQ at :ref:`faq_sql_expression_paren_rules`.
+
+
 ..  Setup code, not for display
 
     >>> conn.close()
