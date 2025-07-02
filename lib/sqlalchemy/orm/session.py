@@ -3045,7 +3045,7 @@ class Session(_SessionClassMethods, EventTarget):
         "This warning originated from the Session 'autoflush' process, "
         "which was invoked automatically in response to a user-initiated "
         "operation. Consider using ``no_autoflush`` context manager if this "
-        "warning happended while initializing objects.",
+        "warning happened while initializing objects.",
         sa_exc.SAWarning,
     )
     def _autoflush(self) -> None:
