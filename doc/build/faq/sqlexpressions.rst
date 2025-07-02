@@ -486,6 +486,8 @@ an expression that has left/right operands and an operator) using the
     >>> print((column("q1") + column("q2")).self_group().op("->")(column("p")))
     {printsql}(q1 + q2) -> p
 
+.. _faq_sql_expression_paren_rules:
+
 Why are the parentheses rules like this?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -555,3 +557,6 @@ Perhaps this change can be made at some point, however for the time being
 keeping the parenthesization rules more internally consistent seems to be
 the safer approach.
 
+.. seealso::
+
+    :ref:`operators_parentheses` - in the Operator Reference
