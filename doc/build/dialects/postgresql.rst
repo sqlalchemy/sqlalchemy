@@ -20,6 +20,23 @@ as well as array literals:
 * :class:`_postgresql.aggregate_order_by` - helper for PG's ORDER BY aggregate
   function syntax.
 
+BIT type
+--------
+
+PostgreSQL's BIT type is a so-called "bit string" that stores a string of
+ones and zeroes.   SQLAlchemy provides the :class:`_postgresql.BIT` type
+to represent columns and expressions of this type, as well as the
+:class:`_postgresql.BitString` value type which is a richly featured ``str``
+subclass that works with :class:`_postgresql.BIT`.
+
+* :class:`_postgresql.BIT` - the PostgreSQL BIT type
+
+* :class:`_postgresql.BitString` - Rich-featured ``str`` subclass returned
+  and accepted for columns and expressions that use :class:`_postgresql.BIT`.
+
+.. versionchanged:: 2.1  :class:`_postgresql.BIT` now works with the newly
+   added :class:`_postgresql.BitString` value type.
+
 .. _postgresql_json_types:
 
 JSON Types
@@ -454,6 +471,9 @@ construction arguments, are as follows:
     :member-order: bysource
 
 .. autoclass:: BIT
+
+.. autoclass:: BitString
+    :members:
 
 .. autoclass:: BYTEA
     :members: __init__
