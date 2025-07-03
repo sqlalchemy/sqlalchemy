@@ -94,6 +94,9 @@ construction arguments, are as follows:
 .. autoclass:: VectorDistanceType
   :members:
 
+.. autoclass:: VectorFormat
+  :members:
+
 
 .. _oracledb:
 
