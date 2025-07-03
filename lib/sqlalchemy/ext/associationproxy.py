@@ -99,6 +99,7 @@ def association_proxy(
     compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     hash: Union[_NoArg, bool, None] = _NoArg.NO_ARG,  # noqa: A002
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
 ) -> AssociationProxy[Any]:
     r"""Return a Python property implementing a view of a target
     attribute which references an attribute on members of the
@@ -243,7 +244,14 @@ def association_proxy(
         cascade_scalar_deletes=cascade_scalar_deletes,
         create_on_none_assignment=create_on_none_assignment,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only, hash
+            init,
+            repr,
+            default,
+            default_factory,
+            compare,
+            kw_only,
+            hash,
+            dataclass_metadata,
         ),
     )
 
