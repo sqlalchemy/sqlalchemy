@@ -1493,6 +1493,13 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 "Argument 'hash' is a dataclass argument"
             ),
         ),
+        (
+            "dataclass_metadata",
+            {},
+            exc.SADeprecationWarning(
+                "Argument 'dataclass_metadata' is a dataclass argument"
+            ),
+        ),
         argnames="argname, argument, assertion",
     )
     @testing.variation("use_annotated", [True, False, "control"])
@@ -1517,6 +1524,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "compare",
             "default_factory",
             "hash",
+            "dataclass_metadata",
         )
 
         if is_dataclass:
