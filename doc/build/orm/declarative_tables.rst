@@ -709,7 +709,7 @@ SQLAlchemy supports mapping union types inside the ``type_annotation_map`` to
 allow mapping database types that can support multiple Python types, such as
 :class:`_types.JSON` or :class:`_postgresql.JSONB`::
 
-    from typing import Union
+    from typing import Union, Optional
     from sqlalchemy import JSON
     from sqlalchemy.dialects import postgresql
     from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
