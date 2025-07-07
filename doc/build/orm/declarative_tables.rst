@@ -709,7 +709,7 @@ SQLAlchemy supports mapping union types inside the ``type_annotation_map`` to
 allow mapping database types that can support multiple Python types, such as
 :class:`_types.JSON` or :class:`_postgresql.JSONB`::
 
-    from typing import Union
+    from typing import Union, Optional
     from sqlalchemy import JSON
     from sqlalchemy.dialects import postgresql
     from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -1720,7 +1720,7 @@ associate additional parameters with the column.   Options include:
   collection when inspecting the history of the attribute.   This may incur
   additional SQL statements::
 
-    from sqlalchemy.orm import deferred
+    from sqlalchemy.orm import column_property
 
     user_table = Table(
         "user",
@@ -1958,7 +1958,7 @@ that selectable.   This is so that when an ORM object is loaded or persisted,
 it can be placed in the :term:`identity map` with an appropriate
 :term:`identity key`.
 
-In those cases where the a reflected table to be mapped does not include
+In those cases where a reflected table to be mapped does not include
 a primary key constraint, as well as in the general case for
 :ref:`mapping against arbitrary selectables <orm_mapping_arbitrary_subqueries>`
 where primary key columns might not be present, the
