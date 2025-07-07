@@ -1720,7 +1720,7 @@ associate additional parameters with the column.   Options include:
   collection when inspecting the history of the attribute.   This may incur
   additional SQL statements::
 
-    from sqlalchemy.orm import deferred
+    from sqlalchemy.orm import column_property
 
     user_table = Table(
         "user",
