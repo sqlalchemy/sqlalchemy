@@ -1958,7 +1958,7 @@ that selectable.   This is so that when an ORM object is loaded or persisted,
 it can be placed in the :term:`identity map` with an appropriate
 :term:`identity key`.
 
-In those cases where the a reflected table to be mapped does not include
+In those cases where a reflected table to be mapped does not include
 a primary key constraint, as well as in the general case for
 :ref:`mapping against arbitrary selectables <orm_mapping_arbitrary_subqueries>`
 where primary key columns might not be present, the
