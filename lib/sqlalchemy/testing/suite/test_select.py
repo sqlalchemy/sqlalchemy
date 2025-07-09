@@ -25,6 +25,7 @@ from ... import column
 from ... import Computed
 from ... import exists
 from ... import false
+from ... import Float
 from ... import ForeignKey
 from ... import func
 from ... import Identity
@@ -42,7 +43,6 @@ from ... import tuple_
 from ... import TupleType
 from ... import union
 from ... import values
-from ... import Float
 from ...exc import DatabaseError
 from ...exc import ProgrammingError
 
@@ -1919,9 +1919,16 @@ class WindowFunctionTest(fixtures.TablesTest):
 
     @classmethod
     def insert_data(cls, connection):
+        def row_factory(i):
+            return {
+                "id": i,
+                "col1": i,
+                "col2": i * 5,
+                "col3": i + 0.5,
+            }
         connection.execute(
             cls.tables.some_table.insert(),
-            [{"id": i, "col1": i, "col2": i * 5, "col3": i + 0.5} for i in range(1, 50)],
+            [row_factory(i) for i in range(1, 50)],
         )
 
     def test_window(self, connection):

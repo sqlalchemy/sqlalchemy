@@ -4231,7 +4231,9 @@ class Over(ColumnElement[_T]):
         element: ColumnElement[_T],
         partition_by: Optional[_ByArgument] = None,
         order_by: Optional[_ByArgument] = None,
-        range_: Optional[typing_Tuple[Optional[typing.Any], Optional[typing.Any]]] = None,
+        range_: Optional[
+            typing_Tuple[Optional[typing.Any], Optional[typing.Any]]
+        ] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ):
@@ -4252,8 +4254,8 @@ class Over(ColumnElement[_T]):
             )
         else:
             self.range_ = _FrameClause(range_) if range_ else None
-            self.rows = _FrameClause(self._interpret_int_range(rows)) if rows else None
-            self.groups = _FrameClause(self._interpret_int_range(groups)) if groups else None
+            self.rows = self._interpret_int_range(rows)
+            self.groups = self._interpret_int_range(groups)
 
     if not TYPE_CHECKING:
 
@@ -4272,15 +4274,18 @@ class Over(ColumnElement[_T]):
                 ]
             )
         )
-    
+
     def _interpret_int_range(self, rows):
+        if rows is None:
+            return None
         try:
             lower = rows[0] if rows[0] is None else int(rows[0])
             upper = rows[1] if rows[1] is None else int(rows[1])
         except ValueError as ve:
-            raise exc.ArgumentError("Integer or None expected for rows value and groups value") from ve
+            err = "Integer or None expected for rows value and groups value"
+            raise exc.ArgumentError(err) from ve
 
-        return lower, upper
+        return _FrameClause((lower, upper))
 
 
 class _FrameClauseType(Enum):
@@ -4315,9 +4320,15 @@ class _FrameClause(ClauseElement):
             lower_value, upper_value = range_
         except (ValueError, TypeError) as ve:
             raise exc.ArgumentError("2-tuple expected for range/rows") from ve
-        
-        lower_type = type_api.INTEGERTYPE if isinstance(lower_value, int) else type_api.NUMERICTYPE
-        upper_type = type_api.INTEGERTYPE if isinstance(upper_value, int) else type_api.NUMERICTYPE
+
+        if isinstance(lower_value, int):
+            lower_type = type_api.INTEGERTYPE
+        else:
+            lower_type = type_api.NUMERICTYPE
+        if isinstance(upper_value, int):
+            upper_type = type_api.INTEGERTYPE
+        else:
+            upper_type = type_api.NUMERICTYPE
 
         if lower_value is None:
             self.lower_type = _FrameClauseType.RANGE_UNBOUNDED
