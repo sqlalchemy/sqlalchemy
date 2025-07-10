@@ -2228,6 +2228,9 @@ class Session(_SessionClassMethods, EventTarget):
                 bind_arguments,
                 False,
             )
+        else:
+            # Issue #9809: unconditionally autoflush for Core statements
+            self._autoflush()
 
         bind = self.get_bind(**bind_arguments)
 

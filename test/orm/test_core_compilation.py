@@ -501,10 +501,8 @@ class PropagateAttrsTest(QueryTest):
                 r = s.execute(stmt)
                 r.close()
 
-        if expected:
-            eq_(before_flush.mock_calls, [mock.call()])
-        else:
-            eq_(before_flush.mock_calls, [])
+        # After issue #9809: unconditionally autoflush on all executions
+        eq_(before_flush.mock_calls, [mock.call()])
 
 
 class DMLTest(QueryTest, AssertsCompiledSQL):
