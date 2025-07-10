@@ -910,13 +910,16 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
                 asyncio.CancelledError,
                 OSError,
                 self.dbapi.asyncpg.PostgresError,
-            ):
+            ) as e:
                 # in the case where we are recycling an old connection
                 # that may have already been disconnected, close() will
                 # fail with the above timeout.  in this case, terminate
                 # the connection without any further waiting.
                 # see issue #8419
                 self._connection.terminate()
+                if isinstance(e, asyncio.CancelledError):
+                    # re-raise CancelledError if we were cancelled
+                    raise
         else:
             # not in a greenlet; this is the gc cleanup case
             self._connection.terminate()
