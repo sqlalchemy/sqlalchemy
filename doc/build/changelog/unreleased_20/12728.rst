@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12728
+
+    Re-raise catched ``CancelledError`` in the terminate method of the
+    asyncpg dialect to avoid possible hangs of the code execution.
+
