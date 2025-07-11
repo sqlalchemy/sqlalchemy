@@ -1874,9 +1874,23 @@ class PGCompiler(compiler.SQLCompiler):
 
         kw["eager_grouping"] = True
 
-        return self._generate_generic_binary(
-            binary, " -> " if not _cast_applied else " ->> ", **kw
-        )
+        if (
+            not _cast_applied
+            and isinstance(binary.left.type, _json.JSONB)
+            and self.dialect._supports_jsonb_subscripting
+        ):
+            # for pg14+JSONB use subscript notation: col['key'] instead
+            # of col -> 'key'
+            return "%s[%s]" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+        else:
+            # Fall back to arrow notation for older versions or when cast
+            # is applied
+            return self._generate_generic_binary(
+                binary, " -> " if not _cast_applied else " ->> ", **kw
+            )
 
     def visit_json_path_getitem_op_binary(
         self, binary, operator, _cast_applied=False, **kw
@@ -3233,6 +3247,7 @@ class PGDialect(default.DefaultDialect):
     _backslash_escapes = True
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
+    _supports_jsonb_subscripting = True
 
     def __init__(
         self,
@@ -3260,6 +3275,8 @@ class PGDialect(default.DefaultDialect):
             2,
         )
         self.supports_identity_columns = self.server_version_info >= (10,)
+
+        self._supports_jsonb_subscripting = self.server_version_info >= (14,)
 
     def get_isolation_level_values(self, dbapi_conn):
         # note the generic dialect doesn't have AUTOCOMMIT, however

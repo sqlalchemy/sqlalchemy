@@ -2675,21 +2675,86 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     @testing.combinations(
-        (lambda col: col["foo"] + " ", "(x -> %(x_1)s) || %(param_1)s"),
+        (
+            lambda col: col["foo"] + " ",
+            "(x -> %(x_1)s) || %(param_1)s",
+            "x[%(x_1)s] || %(param_1)s",
+        ),
         (
             lambda col: col["foo"] + " " + col["bar"],
             "(x -> %(x_1)s) || %(param_1)s || (x -> %(x_2)s)",
+            "x[%(x_1)s] || %(param_1)s || x[%(x_2)s]",
         ),
-        argnames="expr, expected",
+        argnames="expr, json_expected, jsonb_expected",
     )
     @testing.combinations((JSON(),), (JSONB(),), argnames="type_")
-    def test_eager_grouping_flag(self, expr, expected, type_):
+    def test_eager_grouping_flag(
+        self, expr, json_expected, jsonb_expected, type_
+    ):
         """test #10479"""
         col = Column("x", type_)
 
         expr = testing.resolve_lambda(expr, col=col)
 
+        # Choose expected result based on type
+        expected = (
+            jsonb_expected if isinstance(type_, JSONB) else json_expected
+        )
         self.assert_compile(expr, expected)
+
+    @testing.variation("pgversion", ["pg14", "pg13"])
+    def test_jsonb_subscripting(self, pgversion):
+        """test #10927 - PostgreSQL 14+ JSONB subscripting syntax"""
+        data = table("data", column("id", Integer), column("x", JSONB))
+
+        dialect = postgresql.dialect()
+
+        if pgversion.pg13:
+            dialect._supports_jsonb_subscripting = False
+
+        # Test SELECT with JSONB indexing
+        stmt = select(data.c.x["key"])
+        self.assert_compile(
+            stmt,
+            (
+                "SELECT data.x[%(x_1)s] AS anon_1 FROM data"
+                if pgversion.pg14
+                else "SELECT data.x -> %(x_1)s AS anon_1 FROM data"
+            ),
+            dialect=dialect,
+        )
+
+        # Test UPDATE with JSONB indexing (the original issue case)
+        stmt = update(data).values({data.c.x["new_key"]: data.c.x["old_key"]})
+        self.assert_compile(
+            stmt,
+            (
+                "UPDATE data SET x[%(x_1)s]=(data.x[%(x_2)s])"
+                if pgversion.pg14
+                else "UPDATE data SET x -> %(x_1)s=(data.x -> %(x_2)s)"
+            ),
+            dialect=dialect,
+        )
+
+    def test_json_still_uses_arrow_syntax(self):
+        """test #10927 - JSON type still uses arrow syntax even on PG 14+"""
+        data = table("data", column("id", Integer), column("x", JSON))
+
+        # Test PostgreSQL 14+ still uses arrow syntax for JSON (not JSONB)
+
+        # Test SELECT with JSON indexing
+        stmt = select(data.c.x["key"])
+        self.assert_compile(
+            stmt,
+            "SELECT data.x -> %(x_1)s AS anon_1 FROM data",
+        )
+
+        # Test UPDATE with JSON indexing
+        stmt = update(data).values({data.c.x["new_key"]: data.c.x["old_key"]})
+        self.assert_compile(
+            stmt,
+            "UPDATE data SET x -> %(x_1)s=(data.x -> %(x_2)s)",
+        )
 
     def test_range_custom_object_hook(self):
         # See issue #8884
