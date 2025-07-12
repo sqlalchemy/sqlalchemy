@@ -2387,7 +2387,14 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         options = []
         if domain.collation is not None:
-            options.append(f"COLLATE {self.preparer.quote(domain.collation)}")
+            collation = self.preparer.quote(domain.collation)
+            if domain.collation_schema is not None:
+                collation = (
+                    self.preparer.quote(domain.collation_schema)
+                    + "."
+                    + collation
+                )
+            options.append(f"COLLATE {collation}")
         if domain.default is not None:
             default = self.render_default_string(domain.default)
             options.append(f"DEFAULT {default}")
@@ -2907,6 +2914,8 @@ class ReflectedDomain(ReflectedNamedType):
     """
     collation: Optional[str]
     """The collation for the domain."""
+    collation_schema: Optional[str]
+    """The name of the schema in which the collation is defined."""
 
 
 class ReflectedEnum(ReflectedNamedType):
@@ -3765,6 +3774,9 @@ class PGDialect(default.DefaultDialect):
             .label("default")
         )
         relkinds = self._kind_to_relkinds(kind)
+        collation_namespace = pg_catalog.pg_namespace.alias(
+            "collation_namespace"
+        )
         query = (
             select(
                 pg_catalog.pg_attribute.c.attname.label("name"),
@@ -3776,6 +3788,8 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_attribute.c.attnotnull.label("not_null"),
                 pg_catalog.pg_class.c.relname.label("table_name"),
                 pg_catalog.pg_description.c.description.label("comment"),
+                pg_catalog.pg_collation.c.collname.label("collation"),
+                collation_namespace.c.nspname.label("collation_schema"),
                 generated,
                 identity,
             )
@@ -3800,6 +3814,24 @@ class PGDialect(default.DefaultDialect):
                     pg_catalog.pg_description.c.objsubid
                     == pg_catalog.pg_attribute.c.attnum,
                 ),
+            )
+            .outerjoin(
+                pg_catalog.pg_type,
+                pg_catalog.pg_type.c.oid == pg_catalog.pg_attribute.c.atttypid,
+            )
+            .outerjoin(
+                pg_catalog.pg_collation,
+                sql.and_(
+                    pg_catalog.pg_attribute.c.attcollation
+                    != pg_catalog.pg_type.c.typcollation,
+                    pg_catalog.pg_collation.c.oid
+                    == pg_catalog.pg_attribute.c.attcollation,
+                ),
+            )
+            .outerjoin(
+                collation_namespace,
+                collation_namespace.c.oid
+                == pg_catalog.pg_collation.c.collnamespace,
             )
             .where(self._pg_class_relkind_condition(relkinds))
             .order_by(
@@ -3856,6 +3888,8 @@ class PGDialect(default.DefaultDialect):
         domains: Dict[str, ReflectedDomain],
         enums: Dict[str, ReflectedEnum],
         type_description: str,
+        collation: Optional[str],
+        collation_schema: Optional[str],
     ) -> sqltypes.TypeEngine[Any]:
         """
         Attempts to reconstruct a column type defined in ischema_names based
@@ -3955,10 +3989,13 @@ class PGDialect(default.DefaultDialect):
                     domains,
                     enums,
                     type_description="DOMAIN '%s'" % domain["name"],
+                    collation=domain["collation"],
+                    collation_schema=domain["collation_schema"],
                 )
                 args = (domain["name"], data_type)
 
                 kwargs["collation"] = domain["collation"]
+                kwargs["collation_schema"] = domain["collation_schema"]
                 kwargs["default"] = domain["default"]
                 kwargs["not_null"] = not domain["nullable"]
                 kwargs["create_type"] = False
@@ -3987,6 +4024,10 @@ class PGDialect(default.DefaultDialect):
             )
             return sqltypes.NULLTYPE
 
+        if collation is not None:
+            kwargs["collation"] = collation
+            kwargs["collation_schema"] = collation_schema
+
         data_type = schema_type(*args, **kwargs)
         if array_dim >= 1:
             # postgres does not preserve dimensionality or size of array types.
@@ -4010,6 +4051,8 @@ class PGDialect(default.DefaultDialect):
                 domains,
                 enums,
                 type_description="column '%s'" % row_dict["name"],
+                collation=row_dict["collation"],
+                collation_schema=row_dict["collation_schema"],
             )
 
             default = row_dict["default"]
@@ -5123,6 +5166,9 @@ class PGDialect(default.DefaultDialect):
             .subquery("domain_constraints")
         )
 
+        collation_namespace = pg_catalog.pg_namespace.alias(
+            "collation_namespace"
+        )
         query = (
             select(
                 pg_catalog.pg_type.c.typname.label("name"),
@@ -5139,6 +5185,7 @@ class PGDialect(default.DefaultDialect):
                 con_sq.c.condefs,
                 con_sq.c.connames,
                 pg_catalog.pg_collation.c.collname,
+                collation_namespace.c.nspname.label("collnspname"),
             )
             .join(
                 pg_catalog.pg_namespace,
@@ -5149,6 +5196,11 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_collation,
                 pg_catalog.pg_type.c.typcollation
                 == pg_catalog.pg_collation.c.oid,
+            )
+            .outerjoin(
+                collation_namespace,
+                collation_namespace.c.oid
+                == pg_catalog.pg_collation.c.collnamespace,
             )
             .outerjoin(
                 con_sq,
@@ -5193,6 +5245,7 @@ class PGDialect(default.DefaultDialect):
                 "default": domain["default"],
                 "constraints": constraints,
                 "collation": domain["collname"],
+                "collation_schema": domain["collnspname"],
             }
             domains.append(domain_rec)
 
