@@ -248,8 +248,8 @@ In the preceding example, the ``Parent.child`` relationship is not typed as
 allowing ``None``; this follows from the ``Parent.child_id`` column itself
 not being nullable, as it is typed with ``Mapped[int]``.    If we wanted
 ``Parent.child`` to be a **nullable** many-to-one, we can set both
-``Parent.child_id`` and ``Parent.child`` to be ``Optional[]``, in which
-case the configuration would look like::
+``Parent.child_id`` and ``Parent.child`` to be ``Optional[]`` (or its
+equivalent), in which case the configuration would look like::
 
     from typing import Optional
 
