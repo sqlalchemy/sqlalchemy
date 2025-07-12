@@ -41,6 +41,7 @@ from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.dialects.oracle import oracledb
 from sqlalchemy.dialects.oracle import VECTOR
 from sqlalchemy.dialects.oracle import VectorDistanceType
+from sqlalchemy.dialects.oracle import VectorFormat
 from sqlalchemy.dialects.oracle import VectorIndexConfig
 from sqlalchemy.dialects.oracle import VectorIndexType
 from sqlalchemy.dialects.oracle import VectorStorageFormat
@@ -1145,6 +1146,48 @@ class TypesTest(fixtures.TestBase):
             t1.select().order_by((t1.c.embedding.l2_distance(query_vector)))
         ).first()
         eq_(res.embedding, [1, 2, 3])
+
+    @testing.only_on("oracle>=23.7")
+    def test_sparse_vector(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer),
+            Column(
+                "embedding",
+                VECTOR(
+                    dim=3,
+                    storage_format=VectorStorageFormat.INT8,
+                    vector_format=VectorFormat.SPARSE,
+                ),
+            ),
+        )
+        t1.create(connection)
+        eq_(t1.c.embedding.type.vector_format, VectorFormat.SPARSE)
+
+    @testing.only_on("oracle>=23.7")
+    def test_sparse_vector_insert(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer),
+            Column(
+                "embedding",
+                VECTOR(
+                    dim=10,
+                    storage_format=VectorStorageFormat.FLOAT32,
+                    vector_format=VectorFormat.SPARSE,
+                ),
+            ),
+        )
+        t1.create(connection)
+        sparse_vector = (10, [1, 2], array.array("f", [23.25, 221.625]))
+        connection.execute(t1.insert(), dict(id=1, embedding=sparse_vector))
+        result = connection.execute(t1.select()).first()
+        eq_(result[0], 1)
+        eq_(result[1].num_dimensions, 10)
+        eq_(result[1].indices, array.array("I", [1, 2]))
+        eq_(result[1].values, array.array("f", [23.25, 221.625]))
 
 
 class LOBFetchTest(fixtures.TablesTest):

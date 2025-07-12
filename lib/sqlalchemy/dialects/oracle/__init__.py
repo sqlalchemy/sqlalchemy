@@ -36,6 +36,7 @@ from .base import VECTOR
 from .base import VectorIndexConfig
 from .base import VectorIndexType
 from .vector import VectorDistanceType
+from .vector import VectorFormat
 from .vector import VectorStorageFormat
 
 # Alias oracledb also as oracledb_async
@@ -74,4 +75,5 @@ __all__ = (
     "VectorIndexType",
     "VectorIndexConfig",
     "VectorStorageFormat",
+    "VectorFormat",
 )
