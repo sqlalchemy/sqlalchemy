@@ -316,6 +316,13 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def ctes_with_values(self):
+        """target database supports CTES that ride on top of a VALUES
+        clause."""
+
+        return exclusions.closed()
+
+    @property
     def ctes_on_dml(self):
         """target database supports CTES which consist of INSERT, UPDATE
         or DELETE *within* the CTE, e.g. WITH x AS (UPDATE....)"""
