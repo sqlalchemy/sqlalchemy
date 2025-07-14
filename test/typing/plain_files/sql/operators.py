@@ -157,5 +157,5 @@ select().where(t1)
 
 # EXPECTED_TYPE: BinaryExpression[Any]
 reveal_type(col.op("->>")("field"))
-# EXPECTED_TYPE: Union[BinaryExpression[Any], Grouping[Any]]
+# EXPECTED_TYPE: BinaryExpression[Any] | Grouping[Any]
 reveal_type(col.op("->>")("field").self_group())

@@ -230,7 +230,7 @@ def t_result_scalar_accessors() -> None:
 
     r1 = result.scalar()
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(r1)
 
     r2 = result.scalar_one()
@@ -240,7 +240,7 @@ def t_result_scalar_accessors() -> None:
 
     r3 = result.scalar_one_or_none()
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(r3)
 
     r4 = result.scalars()
@@ -259,7 +259,7 @@ async def t_async_result_scalar_accessors() -> None:
 
     r1 = await result.scalar()
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(r1)
 
     r2 = await result.scalar_one()
@@ -269,7 +269,7 @@ async def t_async_result_scalar_accessors() -> None:
 
     r3 = await result.scalar_one_or_none()
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(r3)
 
     r4 = result.scalars()
@@ -413,14 +413,14 @@ def t_connection_execute_single_row_scalar() -> None:
 
     x = result.scalar()
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(x)
 
 
 def t_connection_scalar() -> None:
     obj = connection.scalar(single_stmt)
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(obj)
 
 
@@ -473,7 +473,7 @@ def t_session_execute_single() -> None:
 def t_session_scalar() -> None:
     obj = session.scalar(single_stmt)
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(obj)
 
 
@@ -527,7 +527,7 @@ async def t_async_connection_execute_single() -> None:
 async def t_async_connection_scalar() -> None:
     obj = await async_connection.scalar(single_stmt)
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(obj)
 
 
@@ -580,7 +580,7 @@ async def t_async_session_execute_single() -> None:
 async def t_async_session_scalar() -> None:
     obj = await async_session.scalar(single_stmt)
 
-    # EXPECTED_RE_TYPE: Union\[builtins.str\*?, None\]
+    # EXPECTED_RE_TYPE: builtins.str \| None
     reveal_type(obj)
 
 

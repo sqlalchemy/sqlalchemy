@@ -5734,7 +5734,7 @@ class MetaData(HasSchemaAttr):
     def clear(self) -> None:
         """Clear all Table objects from this MetaData."""
 
-        dict.clear(self.tables)  # type: ignore
+        dict.clear(self.tables)
         self._schemas.clear()
         self._fk_memos.clear()
 

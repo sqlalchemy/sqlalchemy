@@ -1204,9 +1204,9 @@ class _ClassScanMapperConfig(_MapperConfig):
             restored = None
 
         try:
-            dataclass_callable(
+            dataclass_callable(  # type: ignore[call-overload]
                 klass,
-                **{
+                **{  # type: ignore[call-overload,unused-ignore]
                     k: v
                     for k, v in dataclass_setup_arguments.items()
                     if v is not _NoArg.NO_ARG

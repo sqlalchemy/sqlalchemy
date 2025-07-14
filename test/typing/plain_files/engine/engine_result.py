@@ -31,11 +31,11 @@ def row_one(row: Row[int, str, bool]) -> None:
 def result_one(res: Result[int, str]) -> None:
     # EXPECTED_ROW_TYPE: Row[int, str]
     reveal_type(res.one())
-    # EXPECTED_ROW_TYPE: Optional[Row[int, str]]
+    # EXPECTED_ROW_TYPE: Row[int, str] | None
     reveal_type(res.one_or_none())
-    # EXPECTED_ROW_TYPE: Optional[Row[int, str]]
+    # EXPECTED_ROW_TYPE: Row[int, str] | None
     reveal_type(res.fetchone())
-    # EXPECTED_ROW_TYPE: Optional[Row[int, str]]
+    # EXPECTED_ROW_TYPE: Row[int, str] | None
     reveal_type(res.first())
     # EXPECTED_ROW_TYPE: Sequence[Row[int, str]]
     reveal_type(res.all())
@@ -67,7 +67,7 @@ def result_one(res: Result[int, str]) -> None:
 
     # EXPECTED_TYPE: int
     reveal_type(res.scalar_one())
-    # EXPECTED_TYPE: Union[int, None]
+    # EXPECTED_TYPE: int | None
     reveal_type(res.scalar_one_or_none())
-    # EXPECTED_TYPE: Union[int, None]
+    # EXPECTED_TYPE: int | None
     reveal_type(res.scalar())

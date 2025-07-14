@@ -139,7 +139,7 @@ class OrderedSet(Set[_T]):
             self._list.remove(element)
 
     def clear(self) -> None:
-        set.clear(self)  # type: ignore[arg-type]
+        set.clear(self)
         self._list = []
 
     def __getitem__(self, key: cython.Py_ssize_t) -> _T:

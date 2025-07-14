@@ -27,11 +27,11 @@ def test_col_get() -> None:
     col_alt = column("alt", Integer)
     tbl = table("mytable", col_id)
 
-    # EXPECTED_TYPE: Union[ColumnClause[Any], None]
+    # EXPECTED_TYPE: ColumnClause[Any] | None
     reveal_type(tbl.c.get("id"))
-    # EXPECTED_TYPE: Union[ColumnClause[Any], None]
+    # EXPECTED_TYPE: ColumnClause[Any] | None
     reveal_type(tbl.c.get("id", None))
-    # EXPECTED_TYPE: Union[ColumnClause[Any], ColumnClause[int]]
+    # EXPECTED_TYPE: ColumnClause[Any] | ColumnClause[int]
     reveal_type(tbl.c.get("alt", col_alt))
     col: ColumnElement[Any] = tbl.c.get("foo", literal("bar"))
     print(col)
