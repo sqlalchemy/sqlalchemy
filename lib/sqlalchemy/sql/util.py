@@ -1171,7 +1171,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                 # we are an alias of a table and we are not derived from an
                 # alias of a table (which nonetheless may be the same table
                 # as ours) so, same thing
-                return col  # type: ignore
+                return col
             else:
                 # other cases where we are a selectable and the element
                 # is another join or selectable that contains a table which our

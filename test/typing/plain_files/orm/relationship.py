@@ -131,10 +131,10 @@ class Engineer(Employee):
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str \| None\]
     reveal_type(User.extra)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str \| None\]
     reveal_type(User.extra_name)
 
     # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*?\]

@@ -33,11 +33,11 @@ def result_one(
 ) -> None:
     # EXPECTED_TYPE: Row[Tuple[int, str]]
     reveal_type(res.one())
-    # EXPECTED_TYPE: Union[Row[Tuple[int, str]], None]
+    # EXPECTED_TYPE: Row[Tuple[int, str]] | None
     reveal_type(res.one_or_none())
-    # EXPECTED_TYPE: Union[Row[Tuple[int, str]], None]
+    # EXPECTED_TYPE: Row[Tuple[int, str]] | None
     reveal_type(res.fetchone())
-    # EXPECTED_TYPE: Union[Row[Tuple[int, str]], None]
+    # EXPECTED_TYPE: Row[Tuple[int, str]] | None
     reveal_type(res.first())
     # EXPECTED_TYPE: Sequence[Row[Tuple[int, str]]]
     reveal_type(res.all())
@@ -69,7 +69,7 @@ def result_one(
 
     # EXPECTED_TYPE: Any
     reveal_type(res.scalar_one())
-    # EXPECTED_TYPE: Union[Any, None]
+    # EXPECTED_TYPE: Any | None
     reveal_type(res.scalar_one_or_none())
     # EXPECTED_TYPE: Any
     reveal_type(res.scalar())
@@ -87,7 +87,7 @@ def result_one(
 
     # EXPECTED_TYPE: float
     reveal_type(r_single.scalar_one())
-    # EXPECTED_TYPE: Union[float, None]
+    # EXPECTED_TYPE: float | None
     reveal_type(r_single.scalar_one_or_none())
-    # EXPECTED_TYPE: Union[float, None]
+    # EXPECTED_TYPE: float | None
     reveal_type(r_single.scalar())

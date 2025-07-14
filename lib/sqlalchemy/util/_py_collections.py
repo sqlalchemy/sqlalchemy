@@ -104,7 +104,7 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
 
         new = ImmutableDictBase.__new__(self.__class__)
         dict.__init__(new, self)
-        dict.update(new, __d)  # type: ignore
+        dict.update(new, __d)
         return new
 
     def _union_w_kw(
@@ -117,8 +117,8 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         new = ImmutableDictBase.__new__(self.__class__)
         dict.__init__(new, self)
         if __d:
-            dict.update(new, __d)  # type: ignore
-        dict.update(new, kw)  # type: ignore
+            dict.update(new, __d)
+        dict.update(new, kw)
         return new
 
     def merge_with(
@@ -130,7 +130,7 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
                 if new is None:
                     new = ImmutableDictBase.__new__(self.__class__)
                     dict.__init__(new, self)
-                dict.update(new, d)  # type: ignore
+                dict.update(new, d)
         if new is None:
             return self
 
