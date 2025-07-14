@@ -90,7 +90,8 @@ if typing.TYPE_CHECKING:
     from .context import _ORMCompileState
     from .context import QueryContext
     from .decl_api import RegistryType
-    from .decl_base import _ClassScanMapperConfig
+    from .decl_base import _ClassScanAbstractConfig
+    from .decl_base import _DeclarativeMapperConfig
     from .loading import _PopulatorDict
     from .mapper import Mapper
     from .path_registry import _AbstractEntityRegistry
@@ -169,7 +170,7 @@ class _IntrospectsAnnotations:
 
     def declarative_scan(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -286,15 +287,16 @@ class _AttributeOptions(NamedTuple):
     @classmethod
     def _get_arguments_for_make_dataclass(
         cls,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _ClassScanAbstractConfig,
         key: str,
         annotation: _AnnotationScanType,
         mapped_container: Optional[Any],
         elem: Any,
         dataclass_setup_arguments: _DataclassArguments,
+        enable_descriptor_defaults: bool,
     ) -> Union[
         Tuple[str, _AnnotationScanType],
-        Tuple[str, _AnnotationScanType, dataclasses.Field[Any]],
+        Tuple[str, _AnnotationScanType, dataclasses.Field[Any] | None],
     ]:
         """given attribute key, annotation, and value from a class, return
         the argument tuple we would pass to dataclasses.make_dataclass()
@@ -303,7 +305,10 @@ class _AttributeOptions(NamedTuple):
         """
         if isinstance(elem, _DCAttributeOptions):
             attribute_options = elem._get_dataclass_setup_options(
-                decl_scan, key, dataclass_setup_arguments
+                decl_scan,
+                key,
+                dataclass_setup_arguments,
+                enable_descriptor_defaults,
             )
             dc_field = attribute_options._as_dataclass_field(
                 key, dataclass_setup_arguments
@@ -315,14 +320,14 @@ class _AttributeOptions(NamedTuple):
             return (key, annotation, elem)
         elif mapped_container is not None:
             # it's Mapped[], but there's no "element", which means declarative
-            # did not actually do anything for this field.  this shouldn't
-            # happen.
-            # previously, this would occur because _scan_attributes would
-            # skip a field that's on an already mapped superclass, but it
-            # would still include it in the annotations, leading
-            # to issue #8718
-
-            assert False, "Mapped[] received without a mapping declaration"
+            # did not actually do anything for this field.
+            # prior to 2.1, this would never happen and we had a false
+            # assertion here, because the mapper _scan_attributes always
+            # generates a MappedColumn when one is not present
+            # (see issue #8718).  However, in 2.1 we handle this case for the
+            # non-mapped dataclass use case without the need to generate
+            # MappedColumn that gets thrown away anyway.
+            return (key, annotation)
 
         else:
             # plain dataclass field, not mapped.  Is only possible
@@ -378,9 +383,10 @@ class _DCAttributeOptions:
 
     def _get_dataclass_setup_options(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _ClassScanAbstractConfig,
         key: str,
         dataclass_setup_arguments: _DataclassArguments,
+        enable_descriptor_defaults: bool,
     ) -> _AttributeOptions:
         return self._attribute_options
 
@@ -394,24 +400,27 @@ class _DataclassDefaultsDontSet(_DCAttributeOptions):
 
     def _get_dataclass_setup_options(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _ClassScanAbstractConfig,
         key: str,
         dataclass_setup_arguments: _DataclassArguments,
+        enable_descriptor_defaults: bool,
     ) -> _AttributeOptions:
 
-        disable_descriptor_defaults = getattr(
-            decl_scan.cls, "_sa_disable_descriptor_defaults", False
+        disable_descriptor_defaults = (
+            not enable_descriptor_defaults
+            or getattr(decl_scan.cls, "_sa_disable_descriptor_defaults", False)
         )
+
+        if disable_descriptor_defaults:
+            return self._attribute_options
 
         dataclasses_default = self._attribute_options.dataclasses_default
         dataclasses_default_factory = (
             self._attribute_options.dataclasses_default_factory
         )
 
-        if (
-            dataclasses_default is not _NoArg.NO_ARG
-            and not callable(dataclasses_default)
-            and not disable_descriptor_defaults
+        if dataclasses_default is not _NoArg.NO_ARG and not callable(
+            dataclasses_default
         ):
             self._default_scalar_value = (
                 self._attribute_options.dataclasses_default
@@ -422,7 +431,6 @@ class _DataclassDefaultsDontSet(_DCAttributeOptions):
         elif (
             self._disable_dataclass_default_factory
             and dataclasses_default_factory is not _NoArg.NO_ARG
-            and not disable_descriptor_defaults
         ):
             return self._attribute_options._replace(
                 dataclasses_default=DONT_SET,

@@ -52,7 +52,8 @@ decorator.
 Dataclass conversion may be added to any Declarative class either by adding the
 :class:`_orm.MappedAsDataclass` mixin to a :class:`_orm.DeclarativeBase` class
 hierarchy, or for decorator mapping by using the
-:meth:`_orm.registry.mapped_as_dataclass` class decorator.
+:meth:`_orm.registry.mapped_as_dataclass` class decorator or its
+functional variant :func:`_orm.mapped_as_dataclass`.
 
 The :class:`_orm.MappedAsDataclass` mixin may be applied either
 to the Declarative ``Base`` class or any superclass, as in the example
@@ -231,13 +232,14 @@ and ``fullname`` is optional.  The ``id`` field, which we expect to be
 database-generated, is not part of the constructor at all::
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
 
@@ -268,13 +270,14 @@ but where the parameter is optional in the constructor::
 
     from sqlalchemy import func
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
 
@@ -323,6 +326,7 @@ emit a deprecation warning::
     from typing import Annotated
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
@@ -332,7 +336,7 @@ emit a deprecation warning::
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
         id: Mapped[intpk]
@@ -348,6 +352,7 @@ the other arguments can remain within the ``Annotated`` construct::
     from typing import Annotated
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
@@ -356,7 +361,7 @@ the other arguments can remain within the ``Annotated`` construct::
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
 
@@ -371,15 +376,19 @@ the other arguments can remain within the ``Annotated`` construct::
 Using mixins and abstract superclasses
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Any mixins or base classes that are used in a :class:`_orm.MappedAsDataclass`
-mapped class which include :class:`_orm.Mapped` attributes must themselves be
-part of a :class:`_orm.MappedAsDataclass`
-hierarchy, such as in the example below using a mixin::
+Mixin and abstract superclass are supported with the Declarative Dataclass
+Mapping by defining classes that are part of the :class:`_orm.MappedAsDataclass`
+hierarchy, either without including a declarative base or by setting
+``__abstract__ = True``.  The example below illustrates a class ``Mixin`` that is
+not itself mapped, but serves as part of the base for a mapped class::
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import MappedAsDataclass
 
 
     class Mixin(MappedAsDataclass):
         create_user: Mapped[int] = mapped_column()
-        update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+        update_user: Mapped[Optional[int]] = mapped_column(default=None)
 
 
     class Base(DeclarativeBase, MappedAsDataclass):
@@ -395,21 +404,77 @@ hierarchy, such as in the example below using a mixin::
         username: Mapped[str] = mapped_column()
         email: Mapped[str] = mapped_column()
 
-Python type checkers which support :pep:`681` will otherwise not consider
-attributes from non-dataclass mixins to be part of the dataclass.
+.. tip::
 
-.. deprecated:: 2.0.8  Using mixins and abstract bases within
-   :class:`_orm.MappedAsDataclass` or
-   :meth:`_orm.registry.mapped_as_dataclass` hierarchies which are not
-   themselves dataclasses is deprecated, as these fields are not supported
-   by :pep:`681` as belonging to the dataclass.  A warning is emitted for this
-   case which will later be an error.
+    When using :class:`_orm.MappedAsDataclass` without a declarative base in
+    the hiearchy, the target class is still turned into a real Python dataclass,
+    so that it may properly serve as a base for a mapped dataclass.   Using
+    :class:`_orm.MappedAsDataclass` (or the :func:`_orm.unmapped_dataclass` decorator
+    described later in this section) is required in order for the class to be correctly
+    recognized by type checkers as SQLAlchemy-enabled dataclasses.   Declarative
+    itself will reject mixins / abstract classes that are not themselves
+    Declarative Dataclasses (e.g. they can't be plain classes nor can they be
+    plain ``@dataclass`` classes).
 
-   .. seealso::
+    .. seealso::
 
-       :ref:`error_dcmx` - background on rationale
+        :ref:`error_dcmx` - further background
+
+Another example, where an abstract base combines :class:`_orm.MappedAsDataclass`
+with ``__abstract__ = True``::
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import MappedAsDataclass
 
 
+    class Base(DeclarativeBase, MappedAsDataclass):
+        pass
+
+
+    class AbstractUser(Base):
+        __abstract__ = True
+
+        create_user: Mapped[int] = mapped_column()
+        update_user: Mapped[Optional[int]] = mapped_column(default=None)
+
+
+    class User(AbstractUser):
+        __tablename__ = "sys_user"
+
+        uid: Mapped[str] = mapped_column(
+            String(50), init=False, default_factory=uuid4, primary_key=True
+        )
+        username: Mapped[str] = mapped_column()
+        email: Mapped[str] = mapped_column()
+
+Finally, for a hierarchy that's based on use of the :func:`_orm.mapped_as_dataclass`
+decorator, mixins may be defined using the :func:`_orm.unmapped_dataclass` decorator::
+
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm import mapped_as_dataclass
+    from sqlalchemy.orm import unmapped_dataclass
+
+
+    @unmapped_dataclass()
+    class Mixin:
+        create_user: Mapped[int] = mapped_column()
+        update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+
+
+    reg = registry()
+
+
+    @mapped_as_dataclass(reg)
+    class User(Mixin):
+        __tablename__ = "sys_user"
+
+        uid: Mapped[str] = mapped_column(
+            String(50), init=False, default_factory=uuid4, primary_key=True
+        )
+        username: Mapped[str] = mapped_column()
+        email: Mapped[str] = mapped_column()
+
+.. versionadded:: 2.1 Added :func:`_orm.unmapped_dataclass`
 
 .. _orm_declarative_dc_relationships:
 
@@ -429,6 +494,7 @@ scalar object references may make use of
 
     from sqlalchemy import ForeignKey
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
     from sqlalchemy.orm import relationship
@@ -436,7 +502,7 @@ scalar object references may make use of
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class Parent:
         __tablename__ = "parent"
         id: Mapped[int] = mapped_column(primary_key=True)
@@ -445,7 +511,7 @@ scalar object references may make use of
         )
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class Child:
         __tablename__ = "child"
         id: Mapped[int] = mapped_column(primary_key=True)
@@ -478,13 +544,14 @@ of the object, but will not be persisted by the ORM::
 
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class Data:
         __tablename__ = "data"
 
@@ -513,13 +580,14 @@ function, such as `bcrypt <https://pypi.org/project/bcrypt/>`_ or
     from typing import Optional
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
 
@@ -571,7 +639,8 @@ Integrating with Alternate Dataclass Providers such as Pydantic
     details which **explicitly resolve** these incompatibilities.
 
 SQLAlchemy's :class:`_orm.MappedAsDataclass` class
-and :meth:`_orm.registry.mapped_as_dataclass` method call directly into
+:meth:`_orm.registry.mapped_as_dataclass` method, and
+:func:`_orm.mapped_as_dataclass` functions call directly into
 the Python standard library ``dataclasses.dataclass`` class decorator, after
 the declarative mapping process has been applied to the class.  This
 function call may be swapped out for alternateive dataclasses providers,

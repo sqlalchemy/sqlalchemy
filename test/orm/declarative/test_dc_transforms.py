@@ -1,7 +1,6 @@
 import contextlib
 import dataclasses
 from dataclasses import InitVar
-import functools
 import inspect as pyinspect
 from itertools import product
 from typing import Annotated
@@ -46,7 +45,10 @@ from sqlalchemy.orm import registry as _RegistryType
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.orm import unmapped_dataclass
 from sqlalchemy.orm.attributes import LoaderCallableStatus
+from sqlalchemy.orm.base import _DeclarativeMapped
+from sqlalchemy.orm.base import _is_mapped_class
 from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -60,13 +62,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import Variation
-
-
-def _dataclass_mixin_warning(clsname, attrnames):
-    return testing.expect_deprecated(
-        rf"When transforming .* to a dataclass, attribute\(s\) "
-        rf"{attrnames} originates from superclass .*{clsname}"
-    )
+from sqlalchemy.util.typing import de_stringify_annotation
 
 
 class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
@@ -232,11 +228,10 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             foo: Mapped[str]
             bar: Mapped[str] = mapped_column()
 
-        with (
-            _dataclass_mixin_warning(
-                "_BaseMixin", "'create_user', 'update_user'"
-            ),
-            _dataclass_mixin_warning("SubMixin", "'foo', 'bar'"),
+        with testing.expect_raises_message(
+            exc.InvalidRequestError,
+            r"When transforming .* to a dataclass, attribute\(s\) "
+            r"'foo', 'bar' originates from superclass .*SubMixin",
         ):
 
             class User(SubMixin, Base):
@@ -1099,7 +1094,88 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
 
 
 class DataclassesForNonMappedClassesTest(fixtures.TestBase):
-    """test for cases added in #9179"""
+    """test for cases added in #9179 as well as #12854"""
+
+    @testing.variation("target", ["base", "mixin", "abstract"])
+    def test_unmapped_mixin_valid_dataclass(self, target: Variation):
+        """test new capability as of #12854.  The MappedAsDataclass mixin
+        creates the dataclass taking into account the mapped_column() and
+        other objects with dataclass attributes
+
+        """
+
+        if target.abstract:
+
+            class Base(DeclarativeBase):
+                pass
+
+            # A is only valid as a dataclass if the init=False parameters
+            # are taken into account.  This class was not possible in 2.0
+            # in this version, we go through the declarative process,
+            # due to __abstract__ the class is not mapped, MappedAsDataclass
+            # turns it into an unmapped dataclass
+            class A(MappedAsDataclass, Base):
+                __abstract__ = True
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                data: Mapped[str]
+
+                some_int: Mapped[int] = mapped_column(init=False, repr=False)
+
+                x: Mapped[int | None] = mapped_column(default=7)
+
+            class B(A):
+                __tablename__ = "a"
+
+        elif target.mixin:
+
+            class Base(DeclarativeBase):
+                pass
+
+            # A is only valid as a dataclass if the init=False parameters
+            # are taken into account.  This class was not possible in 2.0.
+            # in this version, the class does not go through the declarative
+            # process, MappedAsDataclass again turns it into an unmapped
+            # dataclass
+            class A(MappedAsDataclass):
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                data: Mapped[str]
+
+                some_int: Mapped[int] = mapped_column(init=False, repr=False)
+
+                x: Mapped[int | None] = mapped_column(default=7)
+
+            class B(Base, A):
+                __tablename__ = "a"
+
+        elif target.base:
+
+            class A:
+                pass
+
+            # works on the base class too
+            class Base(MappedAsDataclass, DeclarativeBase):
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                data: Mapped[str]
+
+                some_int: Mapped[int] = mapped_column(init=False, repr=False)
+
+                x: Mapped[int | None] = mapped_column(default=7)
+
+            class B(Base, A):
+                __tablename__ = "a"
+
+        else:
+            target.fail()
+
+        # mixin elements took effect as mapped columns
+        is_(B.__table__.primary_key.columns[0], B.__table__.c.id)
+        assert B.__table__.c.some_int.type._type_affinity is Integer
+
+        eq_regex(
+            repr(B(data="some data")), r".*B\(id=None, data='some data', x=7\)"
+        )
 
     def test_base_is_dc(self):
         class Parent(MappedAsDataclass, DeclarativeBase):
@@ -1304,11 +1380,51 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
 
         eq_regex(repr(Child(a=5, b=6, c=7)), r".*\.Child\(c=7\)")
 
-    # TODO: get this test to work with future anno mode as well
-    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
+    @testing.variation("decl_type", ["decorator", "mixin"])
+    def test_non_dc_mixin_error(self, decl_type: Variation):
+        class Mixin:
+            create_user: Mapped[int] = mapped_column()
+            update_user: Mapped[Optional[int]] = mapped_column(
+                default=None, init=False
+            )
+
+        if decl_type.mixin:
+
+            class Base(MappedAsDataclass, DeclarativeBase):
+                pass
+
+            bases = (Mixin, Base)
+        elif decl_type.decorator:
+            bases = (Mixin,)
+
+        else:
+            decl_type.fail()
+
+        with testing.expect_raises_message(
+            exc.InvalidRequestError,
+            r"When transforming .* to a dataclass, attribute\(s\) "
+            r"'create_user', 'update_user' originates from superclass .*Mixin",
+        ):
+
+            class User(*bases):
+                __tablename__ = "sys_user"
+
+                uid: Mapped[str] = mapped_column(
+                    String(50),
+                    init=False,
+                    default_factory=lambda: "x",
+                    primary_key=True,
+                )
+                username: Mapped[str] = mapped_column()
+                email: Mapped[str] = mapped_column()
+
+            if decl_type.decorator:
+                reg = registry()
+                User = mapped_as_dataclass(reg)(User)
+
     @testing.variation(
         "dataclass_scope",
-        ["on_base", "on_mixin", "on_base_class", "on_sub_class"],
+        ["on_base", "on_mixin", "on_base_class"],
     )
     @testing.variation(
         "test_alternative_callable",
@@ -1325,9 +1441,14 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             collected_annotations = {}
 
             def check_args(cls, **kw):
-                collected_annotations[cls] = getattr(
-                    cls, "__annotations__", {}
-                )
+                # de-stringify annotations to serve the cases
+                # in test_tm_future_annotations_sync.py
+                collected_annotations[cls] = {
+                    k: de_stringify_annotation(
+                        cls, v, __name__, locals(), include_generic=True
+                    )
+                    for k, v in getattr(cls, "__annotations__", {}).items()
+                }
                 return dataclasses.dataclass(cls, **kw)
 
             klass_kw = {"dataclass_callable": check_args}
@@ -1372,7 +1493,41 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
 
             expected_annotations[Mixin] = {}
 
-            non_dc_mixin = contextlib.nullcontext
+            class Book(Mixin, Base, **klass_kw):
+                id: Mapped[int] = mapped_column(
+                    Integer,
+                    primary_key=True,
+                    init=False,
+                )
+
+        elif dataclass_scope.on_base_class:
+
+            class Mixin:
+                @declared_attr.directive
+                @classmethod
+                def __tablename__(cls) -> str:
+                    return cls.__name__.lower()
+
+                @declared_attr.directive
+                @classmethod
+                def __mapper_args__(cls) -> Dict[str, Any]:
+                    return {
+                        "polymorphic_identity": cls.__name__,
+                        "polymorphic_on": "polymorphic_type",
+                    }
+
+            class Book(MappedAsDataclass, Mixin, Base, **klass_kw):
+                polymorphic_type: Mapped[str] = mapped_column(
+                    String,
+                    insert_default="book",
+                    init=False,
+                )
+
+                id: Mapped[int] = mapped_column(
+                    Integer,
+                    primary_key=True,
+                    init=False,
+                )
 
         else:
 
@@ -1390,89 +1545,117 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
                         "polymorphic_on": "polymorphic_type",
                     }
 
-                if dataclass_scope.on_base or dataclass_scope.on_base_class:
+            class Book(Mixin, Base):
+                polymorphic_type: Mapped[str] = mapped_column(
+                    String,
+                    insert_default="book",
+                    init=False,
+                )
 
-                    @declared_attr
-                    @classmethod
-                    def polymorphic_type(cls) -> Mapped[str]:
-                        return mapped_column(
-                            String,
-                            insert_default=cls.__name__,
-                            init=False,
-                        )
-
-                else:
-
-                    @declared_attr
-                    @classmethod
-                    def polymorphic_type(cls) -> Mapped[str]:
-                        return mapped_column(
-                            String,
-                            insert_default=cls.__name__,
-                        )
-
-            non_dc_mixin = functools.partial(
-                _dataclass_mixin_warning, "Mixin", "'polymorphic_type'"
-            )
-
-        if dataclass_scope.on_base_class:
-            with non_dc_mixin():
-
-                class Book(Mixin, MappedAsDataclass, Base, **klass_kw):
-                    id: Mapped[int] = mapped_column(
-                        Integer,
-                        primary_key=True,
-                        init=False,
-                    )
-
-        else:
-            if dataclass_scope.on_base:
-                local_non_dc_mixin = non_dc_mixin
-            else:
-                local_non_dc_mixin = contextlib.nullcontext
-
-            with local_non_dc_mixin():
-
-                class Book(Mixin, Base):
-                    if not dataclass_scope.on_sub_class:
-                        id: Mapped[int] = mapped_column(  # noqa: A001
-                            Integer, primary_key=True, init=False
-                        )
-                    else:
-                        id: Mapped[int] = mapped_column(  # noqa: A001
-                            Integer,
-                            primary_key=True,
-                        )
+                id: Mapped[int] = mapped_column(  # noqa: A001
+                    Integer, primary_key=True
+                )
 
         if MappedAsDataclass in Book.__mro__:
             expected_annotations[Book] = {"id": int, "polymorphic_type": str}
 
-        if dataclass_scope.on_sub_class:
-            with non_dc_mixin():
-
-                class Novel(MappedAsDataclass, Book, **klass_kw):
-                    id: Mapped[int] = mapped_column(  # noqa: A001
-                        ForeignKey("book.id"),
-                        primary_key=True,
-                        init=False,
-                    )
-                    description: Mapped[Optional[str]]
-
-        else:
-            with non_dc_mixin():
-
-                class Novel(Book):
-                    id: Mapped[int] = mapped_column(
-                        ForeignKey("book.id"),
-                        primary_key=True,
-                        init=False,
-                    )
-                    description: Mapped[Optional[str]]
+        class Novel(Book):
+            id: Mapped[int] = mapped_column(
+                ForeignKey("book.id"),
+                primary_key=True,
+                init=False,
+            )
+            description: Mapped[Optional[str]]
 
         expected_annotations[Novel] = {"id": int, "description": Optional[str]}
 
         if test_alternative_callable:
             eq_(collected_annotations, expected_annotations)
+
+        # check that mixin worked
+        eq_(inspect(Book).polymorphic_identity, "Book")
+        eq_(inspect(Novel).polymorphic_identity, "Novel")
+
+        n1 = Novel("the description")
+        eq_(n1.description, "the description")
+
+    @testing.variation(
+        "test_alternative_callable",
+        [True, False],
+    )
+    def test_unmapped_decorator(
+        self, registry: _RegistryType, test_alternative_callable
+    ):
+        expected_annotations = {}
+
+        dc_kw: dict[str, Any]
+
+        if test_alternative_callable:
+            collected_annotations = {}
+
+            def check_args(cls, **kw):
+                # de-stringify annotations to serve the cases
+                # in test_tm_future_annotations_sync.py
+                collected_annotations[cls] = {
+                    k: de_stringify_annotation(
+                        cls, v, __name__, locals(), include_generic=True
+                    )
+                    for k, v in getattr(cls, "__annotations__", {}).items()
+                }
+                return dataclasses.dataclass(cls, **kw)
+
+            dc_kw = {"dataclass_callable": check_args}
+        else:
+            dc_kw = {}
+
+        @unmapped_dataclass(**dc_kw)
+        class Mixin:
+            @declared_attr.directive
+            @classmethod
+            def __tablename__(cls) -> str:
+                return cls.__name__.lower()
+
+            @declared_attr.directive
+            @classmethod
+            def __mapper_args__(cls) -> Dict[str, Any]:
+                return {
+                    "polymorphic_identity": cls.__name__,
+                    "polymorphic_on": "polymorphic_type",
+                }
+
+        @registry.mapped_as_dataclass(**dc_kw)
+        class Book(Mixin):
+            polymorphic_type: Mapped[str] = mapped_column(
+                String,
+                insert_default="book",
+                init=False,
+            )
+
+            id: Mapped[int] = mapped_column(
+                Integer,
+                primary_key=True,
+                init=False,
+            )
+
+        @registry.mapped_as_dataclass(**dc_kw)
+        class Novel(Book):
+            id: Mapped[int] = mapped_column(
+                ForeignKey("book.id"),
+                primary_key=True,
+                init=False,
+            )
+            description: Mapped[Optional[str]]
+
+        expected_annotations[Book] = {"id": int, "polymorphic_type": str}
+        expected_annotations[Novel] = {"id": int, "description": Optional[str]}
+        expected_annotations[Mixin] = {}
+
+        if test_alternative_callable:
+            eq_(collected_annotations, expected_annotations)
+
+        # check that mixin worked
+        eq_(inspect(Book).polymorphic_identity, "Book")
+        eq_(inspect(Novel).polymorphic_identity, "Novel")
 
         n1 = Novel("the description")
         eq_(n1.description, "the description")
@@ -1572,6 +1755,11 @@ class DataclassArgsTest(fixtures.TestBase):
 
         a1 = create("some data", 15)
         some_int = a1.some_int
+
+        if not _is_mapped_class(cls):
+            a1.id = None
+            a1.some_int = some_int = 10
+
         eq_(
             dataclasses.asdict(a1),
             {"data": "some data", "id": None, "some_int": some_int, "x": 15},
@@ -1642,7 +1830,13 @@ class DataclassArgsTest(fixtures.TestBase):
     def _assert_repr(self, cls, create, dc_arguments):
         assert "__repr__" in cls.__dict__
         a1 = create("some data", 12)
-        eq_regex(repr(a1), r".*A\(id=None, data='some data', x=12\)")
+
+        if _is_mapped_class(cls):
+            eq_regex(repr(a1), r".*A\(id=None, data='some data', x=12\)")
+        else:
+            eq_regex(
+                repr(a1), r".*A\(id=.*MappedColumn.*, data='some data', x=12\)"
+            )
 
     def _assert_not_repr(self, cls, create, dc_arguments):
         assert "__repr__" not in cls.__dict__
@@ -1671,9 +1865,21 @@ class DataclassArgsTest(fixtures.TestBase):
         with expect_raises(TypeError):
             cls("Some data", 5)
 
+        if not _is_mapped_class(cls):
+            # for an unmapped dataclass, assert we can construct it
+            a1 = cls()
+
+            # then it has no "data" attribute
+            assert not hasattr(a1, "data")
+
+            # dataclass defaults don't work because we necessarily restored
+            # the mappedcolumn/column_property()/etc
+            assert isinstance(a1.x, _DeclarativeMapped)
+
+            return
+
         # behavior change in 2.1, even if init=False we set descriptor
         # defaults
-
         a1 = cls(data="some data")
         eq_(a1.data, "some data")
 
@@ -1710,7 +1916,7 @@ class DataclassArgsTest(fixtures.TestBase):
             )
             eq_(fas.kwonlyargs, [])
 
-    @testing.variation("decorator_type", ["fn", "method"])
+    @testing.variation("decorator_type", ["unmapped", "fn", "method"])
     def test_dc_arguments_decorator(
         self,
         dc_argument_fixture,
@@ -1718,7 +1924,9 @@ class DataclassArgsTest(fixtures.TestBase):
         registry: _RegistryType,
         decorator_type,
     ):
-        if decorator_type.fn:
+        if decorator_type.unmapped:
+            dec = unmapped_dataclass(**dc_argument_fixture[0])
+        elif decorator_type.fn:
             dec = mapped_as_dataclass(registry, **dc_argument_fixture[0])
         else:
             dec = registry.mapped_as_dataclass(**dc_argument_fixture[0])

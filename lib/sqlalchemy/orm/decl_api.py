@@ -47,12 +47,11 @@ from .base import _is_mapped_class
 from .base import Mapped
 from .base import ORMDescriptor
 from .decl_base import _add_attribute
-from .decl_base import _as_declarative
-from .decl_base import _ClassScanMapperConfig
 from .decl_base import _declarative_constructor
-from .decl_base import _DeferredMapperConfig
+from .decl_base import _DeclarativeMapperConfig
+from .decl_base import _DeferredDeclarativeConfig
 from .decl_base import _del_attribute
-from .decl_base import _mapper
+from .decl_base import _ORMClassConfigurator
 from .descriptor_props import Composite
 from .descriptor_props import Synonym
 from .descriptor_props import Synonym as _orm_synonym
@@ -190,7 +189,7 @@ class DeclarativeMeta(DeclarativeAttributeIntercept):
                 cls._sa_registry = reg
 
         if not cls.__dict__.get("__abstract__", False):
-            _as_declarative(reg, cls, dict_)
+            _ORMClassConfigurator._as_declarative(reg, cls, dict_)
         type.__init__(cls, classname, bases, dict_)
 
 
@@ -562,6 +561,43 @@ def _setup_declarative_base(cls: Type[Any]) -> None:
         cls.__init__ = cls.registry.constructor
 
 
+def _generate_dc_transforms(
+    cls_: Type[_O],
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    order: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    dataclass_callable: Union[
+        _NoArg, Callable[..., Type[Any]]
+    ] = _NoArg.NO_ARG,
+) -> None:
+    apply_dc_transforms: _DataclassArguments = {
+        "init": init,
+        "repr": repr,
+        "eq": eq,
+        "order": order,
+        "unsafe_hash": unsafe_hash,
+        "match_args": match_args,
+        "kw_only": kw_only,
+        "dataclass_callable": dataclass_callable,
+    }
+
+    if hasattr(cls_, "_sa_apply_dc_transforms"):
+        current = cls_._sa_apply_dc_transforms  # type: ignore[attr-defined]
+
+        _DeclarativeMapperConfig._assert_dc_arguments(current)
+
+        cls_._sa_apply_dc_transforms = {  # type: ignore  # noqa: E501
+            k: current.get(k, _NoArg.NO_ARG) if v is _NoArg.NO_ARG else v
+            for k, v in apply_dc_transforms.items()
+        }
+    else:
+        setattr(cls_, "_sa_apply_dc_transforms", apply_dc_transforms)
+
+
 class MappedAsDataclass(metaclass=DCTransformDeclarative):
     """Mixin class to indicate when mapping this class, also convert it to be
     a dataclass.
@@ -569,7 +605,14 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
     .. seealso::
 
         :ref:`orm_declarative_native_dataclasses` - complete background
-        on SQLAlchemy native dataclass mapping
+        on SQLAlchemy native dataclass mapping with
+        :class:`_orm.MappedAsDataclass`.
+
+        :ref:`orm_declarative_dc_mixins` - examples specific to using
+        :class:`_orm.MappedAsDataclass` to create mixins
+
+        :func:`_orm.mapped_as_dataclass` / :func:`_orm.unmapped_dataclass` -
+        decorator versions with equivalent functionality
 
     .. versionadded:: 2.0
 
@@ -589,41 +632,23 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
         ] = _NoArg.NO_ARG,
         **kw: Any,
     ) -> None:
-        apply_dc_transforms: _DataclassArguments = {
-            "init": init,
-            "repr": repr,
-            "eq": eq,
-            "order": order,
-            "unsafe_hash": unsafe_hash,
-            "match_args": match_args,
-            "kw_only": kw_only,
-            "dataclass_callable": dataclass_callable,
-        }
-        current_transforms: _DataclassArguments
-
-        if hasattr(cls, "_sa_apply_dc_transforms"):
-            current = cls._sa_apply_dc_transforms
-
-            _ClassScanMapperConfig._assert_dc_arguments(current)
-
-            cls._sa_apply_dc_transforms = current_transforms = {  # type: ignore  # noqa: E501
-                k: current.get(k, _NoArg.NO_ARG) if v is _NoArg.NO_ARG else v
-                for k, v in apply_dc_transforms.items()
-            }
-        else:
-            cls._sa_apply_dc_transforms = current_transforms = (
-                apply_dc_transforms
-            )
-
+        _generate_dc_transforms(
+            init=init,
+            repr=repr,
+            eq=eq,
+            order=order,
+            unsafe_hash=unsafe_hash,
+            match_args=match_args,
+            kw_only=kw_only,
+            dataclass_callable=dataclass_callable,
+            cls_=cls,
+        )
         super().__init_subclass__(**kw)
 
         if not _is_mapped_class(cls):
-            new_anno = (
-                _ClassScanMapperConfig._update_annotations_for_non_mapped_class
-            )(cls)
-            _ClassScanMapperConfig._apply_dataclasses_to_any_class(
-                current_transforms, cls, new_anno
-            )
+            # turn unmapped classes into "good enough" dataclasses to serve
+            # as a base or a mixin
+            _ORMClassConfigurator._as_unmapped_dataclass(cls, cls.__dict__)
 
 
 class DeclarativeBase(
@@ -835,7 +860,9 @@ class DeclarativeBase(
             _check_not_declarative(cls, DeclarativeBase)
             _setup_declarative_base(cls)
         else:
-            _as_declarative(cls._sa_registry, cls, cls.__dict__)
+            _ORMClassConfigurator._as_declarative(
+                cls._sa_registry, cls, cls.__dict__
+            )
         super().__init_subclass__(**kw)
 
 
@@ -957,7 +984,9 @@ class DeclarativeBaseNoMeta(
             _check_not_declarative(cls, DeclarativeBaseNoMeta)
             _setup_declarative_base(cls)
         else:
-            _as_declarative(cls._sa_registry, cls, cls.__dict__)
+            _ORMClassConfigurator._as_declarative(
+                cls._sa_registry, cls, cls.__dict__
+            )
         super().__init_subclass__(**kw)
 
 
@@ -1602,21 +1631,17 @@ class registry:
 
         """
 
-        def decorate(cls: Type[_O]) -> Type[_O]:
-            apply_dc_transforms: _DataclassArguments = {
-                "init": init,
-                "repr": repr,
-                "eq": eq,
-                "order": order,
-                "unsafe_hash": unsafe_hash,
-                "match_args": match_args,
-                "kw_only": kw_only,
-                "dataclass_callable": dataclass_callable,
-            }
-
-            setattr(cls, "_sa_apply_dc_transforms", apply_dc_transforms)
-            _as_declarative(self, cls, cls.__dict__)
-            return cls
+        decorate = mapped_as_dataclass(
+            self,
+            init=init,
+            repr=repr,
+            eq=eq,
+            order=order,
+            unsafe_hash=unsafe_hash,
+            match_args=match_args,
+            kw_only=kw_only,
+            dataclass_callable=dataclass_callable,
+        )
 
         if __cls:
             return decorate(__cls)
@@ -1661,7 +1686,7 @@ class registry:
             :meth:`_orm.registry.mapped_as_dataclass`
 
         """
-        _as_declarative(self, cls, cls.__dict__)
+        _ORMClassConfigurator._as_declarative(self, cls, cls.__dict__)
         return cls
 
     def as_declarative_base(self, **kw: Any) -> Callable[[Type[_T]], Type[_T]]:
@@ -1748,7 +1773,7 @@ class registry:
             :meth:`_orm.registry.map_imperatively`
 
         """
-        _as_declarative(self, cls, cls.__dict__)
+        _ORMClassConfigurator._as_declarative(self, cls, cls.__dict__)
         return cls.__mapper__  # type: ignore
 
     def map_imperatively(
@@ -1807,7 +1832,7 @@ class registry:
             :ref:`orm_declarative_mapping`
 
         """
-        return _mapper(self, class_, local_table, kw)
+        return _ORMClassConfigurator._mapper(self, class_, local_table, kw)
 
 
 RegistryType = registry
@@ -1912,16 +1937,23 @@ def mapped_as_dataclass(
     .. versionadded:: 2.0.44
 
     """
-    return registry.mapped_as_dataclass(
-        init=init,
-        repr=repr,
-        eq=eq,
-        order=order,
-        unsafe_hash=unsafe_hash,
-        match_args=match_args,
-        kw_only=kw_only,
-        dataclass_callable=dataclass_callable,
-    )
+
+    def decorate(cls: Type[_O]) -> Type[_O]:
+        _generate_dc_transforms(
+            init=init,
+            repr=repr,
+            eq=eq,
+            order=order,
+            unsafe_hash=unsafe_hash,
+            match_args=match_args,
+            kw_only=kw_only,
+            dataclass_callable=dataclass_callable,
+            cls_=cls,
+        )
+        _ORMClassConfigurator._as_declarative(registry, cls, cls.__dict__)
+        return cls
+
+    return decorate
 
 
 @inspection._inspects(
@@ -1930,6 +1962,98 @@ def mapped_as_dataclass(
 def _inspect_decl_meta(cls: Type[Any]) -> Optional[Mapper[Any]]:
     mp: Optional[Mapper[Any]] = _inspect_mapped_class(cls)
     if mp is None:
-        if _DeferredMapperConfig.has_cls(cls):
-            _DeferredMapperConfig.raise_unmapped_for_cls(cls)
+        if _DeferredDeclarativeConfig.has_cls(cls):
+            _DeferredDeclarativeConfig.raise_unmapped_for_cls(cls)
     return mp
+
+
+@compat_typing.dataclass_transform(
+    field_specifiers=(
+        MappedColumn,
+        RelationshipProperty,
+        Composite,
+        Synonym,
+        mapped_column,
+        relationship,
+        composite,
+        synonym,
+        deferred,
+    ),
+)
+@overload
+def unmapped_dataclass(__cls: Type[_O], /) -> Type[_O]: ...
+
+
+@overload
+def unmapped_dataclass(
+    __cls: Literal[None] = ...,
+    /,
+    *,
+    init: Union[_NoArg, bool] = ...,
+    repr: Union[_NoArg, bool] = ...,  # noqa: A002
+    eq: Union[_NoArg, bool] = ...,
+    order: Union[_NoArg, bool] = ...,
+    unsafe_hash: Union[_NoArg, bool] = ...,
+    match_args: Union[_NoArg, bool] = ...,
+    kw_only: Union[_NoArg, bool] = ...,
+    dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]] = ...,
+) -> Callable[[Type[_O]], Type[_O]]: ...
+
+
+def unmapped_dataclass(
+    __cls: Optional[Type[_O]] = None,
+    /,
+    *,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    order: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    dataclass_callable: Union[
+        _NoArg, Callable[..., Type[Any]]
+    ] = _NoArg.NO_ARG,
+) -> Union[Type[_O], Callable[[Type[_O]], Type[_O]]]:
+    """Decorator which allows the creation of dataclass-compatible mixins
+    within mapped class hierarchies based on the
+    :func:`_orm.mapped_as_dataclass` decorator.
+
+    Parameters are the same as those of :func:`_orm.mapped_as_dataclass`.
+    The decorator turns the given class into a SQLAlchemy-compatible dataclass
+    in the same way that :func:`_orm.mapped_as_dataclass` does, taking
+    into account :func:`_orm.mapped_column` and other attributes for dataclass-
+    specific directives, but not actually mapping the class.
+
+    To create unmapped dataclass mixins when using a class hierarchy defined
+    by :class:`.DeclarativeBase` and :class:`.MappedAsDataclass`, the
+    :class:`.MappedAsDataclass` class may be subclassed alone for a similar
+    effect.
+
+    .. versionadded:: 2.1
+
+    .. seealso::
+
+        :ref:`orm_declarative_dc_mixins` - background and example use.
+
+    """
+
+    def decorate(cls: Type[_O]) -> Type[_O]:
+        _generate_dc_transforms(
+            init=init,
+            repr=repr,
+            eq=eq,
+            order=order,
+            unsafe_hash=unsafe_hash,
+            match_args=match_args,
+            kw_only=kw_only,
+            dataclass_callable=dataclass_callable,
+            cls_=cls,
+        )
+        _ORMClassConfigurator._as_unmapped_dataclass(cls, cls.__dict__)
+        return cls
+
+    if __cls:
+        return decorate(__cls)
+    else:
+        return decorate

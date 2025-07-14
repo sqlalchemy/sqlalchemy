@@ -146,4 +146,6 @@ Class Mapping API
 
 .. autofunction:: synonym_for
 
+.. autofunction:: unmapped_dataclass
+
 

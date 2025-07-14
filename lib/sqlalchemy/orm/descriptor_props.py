@@ -71,7 +71,8 @@ if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .attributes import QueryableAttribute
     from .context import _ORMCompileState
-    from .decl_base import _ClassScanMapperConfig
+    from .decl_base import _ClassScanAbstractConfig
+    from .decl_base import _DeclarativeMapperConfig
     from .interfaces import _DataclassArguments
     from .mapper import Mapper
     from .properties import ColumnProperty
@@ -374,7 +375,7 @@ class CompositeProperty(
     @util.preload_module("sqlalchemy.orm.properties")
     def declarative_scan(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -469,7 +470,7 @@ class CompositeProperty(
     @util.preload_module("sqlalchemy.orm.decl_base")
     def _setup_for_dataclass(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -1092,14 +1093,16 @@ class SynonymProperty(DescriptorProperty[_T]):
 
     def _get_dataclass_setup_options(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _ClassScanAbstractConfig,
         key: str,
         dataclass_setup_arguments: _DataclassArguments,
+        enable_descriptor_defaults: bool,
     ) -> _AttributeOptions:
         dataclasses_default = self._attribute_options.dataclasses_default
         if (
             dataclasses_default is not _NoArg.NO_ARG
             and not callable(dataclasses_default)
+            and enable_descriptor_defaults
             and not getattr(
                 decl_scan.cls, "_sa_disable_descriptor_defaults", False
             )

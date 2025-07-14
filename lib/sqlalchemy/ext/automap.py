@@ -736,7 +736,7 @@ from ..orm import declarative_base as _declarative_base
 from ..orm import exc as orm_exc
 from ..orm import interfaces
 from ..orm import relationship
-from ..orm.decl_base import _DeferredMapperConfig
+from ..orm.decl_base import _DeferredDeclarativeConfig
 from ..orm.mapper import _CONFIGURE_MUTEX
 from ..schema import ForeignKeyConstraint
 from ..sql import and_
@@ -1266,11 +1266,11 @@ class AutomapBase:
 
         with _CONFIGURE_MUTEX:
             table_to_map_config: Union[
-                Dict[Optional[Table], _DeferredMapperConfig],
-                Dict[Table, _DeferredMapperConfig],
+                Dict[Optional[Table], _DeferredDeclarativeConfig],
+                Dict[Table, _DeferredDeclarativeConfig],
             ] = {
                 cast("Table", m.local_table): m
-                for m in _DeferredMapperConfig.classes_for_base(
+                for m in _DeferredDeclarativeConfig.classes_for_base(
                     cls, sort=False
                 )
             }
@@ -1324,7 +1324,7 @@ class AutomapBase:
                         (automap_base,),
                         clsdict,
                     )
-                    map_config = _DeferredMapperConfig.config_for_cls(
+                    map_config = _DeferredDeclarativeConfig.config_for_cls(
                         mapped_cls
                     )
                     assert map_config.cls.__name__ == newname
@@ -1374,7 +1374,7 @@ class AutomapBase:
                     generate_relationship,
                 )
 
-            for map_config in _DeferredMapperConfig.classes_for_base(
+            for map_config in _DeferredDeclarativeConfig.classes_for_base(
                 automap_base
             ):
                 map_config.map()
@@ -1490,10 +1490,10 @@ def _is_many_to_many(
 
 def _relationships_for_fks(
     automap_base: Type[Any],
-    map_config: _DeferredMapperConfig,
+    map_config: _DeferredDeclarativeConfig,
     table_to_map_config: Union[
-        Dict[Optional[Table], _DeferredMapperConfig],
-        Dict[Table, _DeferredMapperConfig],
+        Dict[Optional[Table], _DeferredDeclarativeConfig],
+        Dict[Table, _DeferredDeclarativeConfig],
     ],
     collection_class: type,
     name_for_scalar_relationship: NameForScalarRelationshipType,
@@ -1605,8 +1605,8 @@ def _m2m_relationship(
     m2m_const: List[ForeignKeyConstraint],
     table: Table,
     table_to_map_config: Union[
-        Dict[Optional[Table], _DeferredMapperConfig],
-        Dict[Table, _DeferredMapperConfig],
+        Dict[Optional[Table], _DeferredDeclarativeConfig],
+        Dict[Table, _DeferredDeclarativeConfig],
     ],
     collection_class: type,
     name_for_scalar_relationship: NameForCollectionRelationshipType,

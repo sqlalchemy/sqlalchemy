@@ -70,7 +70,7 @@ if TYPE_CHECKING:
     from ._typing import _ORMColumnExprArgument
     from ._typing import _RegistryType
     from .base import Mapped
-    from .decl_base import _ClassScanMapperConfig
+    from .decl_base import _DeclarativeMapperConfig
     from .mapper import Mapper
     from .session import Session
     from .state import _InstallLoaderCallableProto
@@ -205,7 +205,7 @@ class ColumnProperty(
 
     def declarative_scan(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -684,7 +684,7 @@ class MappedColumn(
 
     def _adjust_for_existing_column(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         key: str,
         given_column: Column[_T],
     ) -> Column[_T]:
@@ -709,7 +709,7 @@ class MappedColumn(
 
     def declarative_scan(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -750,7 +750,7 @@ class MappedColumn(
     @util.preload_module("sqlalchemy.orm.decl_base")
     def declarative_scan_for_composite(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -767,7 +767,7 @@ class MappedColumn(
     def _init_column_for_annotation(
         self,
         cls: Type[Any],
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         key: str,
         registry: _RegistryType,
         argument: _AnnotationScanType,

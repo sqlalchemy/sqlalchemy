@@ -1,0 +1,21 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 12854
+
+    Improvements to the use case of using :ref:`Declarative Dataclass Mapping
+    <orm_declarative_native_dataclasses>` with intermediary classes that are
+    unmapped.   As was the existing behavior, classes can subclass
+    :class:`_orm.MappedAsDataclass` alone without a declarative base to act as
+    mixins, or along with a declarative base as well as ``__abstract__ = True``
+    to define an abstract base.  However, the improved behavior scans ORM
+    attributes like :func:`_orm.mapped_column` in this case to create correct
+    ``dataclasses.field()`` constructs based on their arguments, allowing for
+    more natural ordering of fields without dataclass errors being thrown.
+    Additionally, added a new :func:`_orm.unmapped_dataclass` decorator
+    function, which may be used to create unmapped mixins in a mapped hierarchy
+    that is using the :func:`_orm.mapped_dataclass` decorator to create mapped
+    dataclasses.
+
+    .. seealso::
+
+        :ref:`orm_declarative_dc_mixins`

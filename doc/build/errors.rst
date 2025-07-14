@@ -1397,14 +1397,13 @@ notes at :ref:`migration_20_step_six` for an example.
 When transforming <cls> to a dataclass, attribute(s) originate from superclass <cls> which is not a dataclass.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This warning occurs when using the SQLAlchemy ORM Mapped Dataclasses feature
+This error occurs when using the SQLAlchemy ORM Mapped Dataclasses feature
 described at :ref:`orm_declarative_native_dataclasses` in conjunction with
 any mixin class or abstract base that is not itself declared as a
 dataclass, such as in the example below::
 
     from __future__ import annotations
 
-    import inspect
     from typing import Optional
     from uuid import uuid4
 
@@ -1434,18 +1433,17 @@ dataclass, such as in the example below::
         email: Mapped[str] = mapped_column()
 
 Above, since ``Mixin`` does not itself extend from :class:`_orm.MappedAsDataclass`,
-the following warning is generated:
+the following error is generated:
 
 .. sourcecode:: none
 
-    SADeprecationWarning: When transforming <class '__main__.User'> to a
-    dataclass, attribute(s) "create_user", "update_user" originates from
-    superclass <class
-    '__main__.Mixin'>, which is not a dataclass. This usage is deprecated and
-    will raise an error in SQLAlchemy 2.1. When declaring SQLAlchemy
-    Declarative Dataclasses, ensure that all mixin classes and other
-    superclasses which include attributes are also a subclass of
-    MappedAsDataclass.
+    sqlalchemy.exc.InvalidRequestError: When transforming <class
+    '__main__.User'> to a dataclass, attribute(s) 'create_user', 'update_user'
+    originates from superclass <class '__main__.Mixin'>, which is not a
+    dataclass.  When declaring SQLAlchemy Declarative Dataclasses, ensure that
+    all mixin classes and other superclasses which include attributes are also
+    a subclass of MappedAsDataclass or make use of the @unmapped_dataclass
+    decorator.
 
 The fix is to add :class:`_orm.MappedAsDataclass` to the signature of
 ``Mixin`` as well::
@@ -1453,6 +1451,41 @@ The fix is to add :class:`_orm.MappedAsDataclass` to the signature of
     class Mixin(MappedAsDataclass):
         create_user: Mapped[int] = mapped_column()
         update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+
+When using decorators like :func:`_orm.mapped_as_dataclass` to map, the
+:func:`_orm.unmapped_dataclass` may be used to indicate mixins::
+
+    from __future__ import annotations
+
+    from typing import Optional
+    from uuid import uuid4
+
+    from sqlalchemy import String
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm import unmapped_dataclass
+
+
+    @unmapped_dataclass
+    class Mixin:
+        create_user: Mapped[int] = mapped_column()
+        update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+
+
+    reg = registry()
+
+
+    @mapped_as_dataclass(reg)
+    class User(Mixin):
+        __tablename__ = "sys_user"
+
+        uid: Mapped[str] = mapped_column(
+            String(50), init=False, default_factory=uuid4, primary_key=True
+        )
+        username: Mapped[str] = mapped_column()
+        email: Mapped[str] = mapped_column()
 
 Python's :pep:`681` specification does not accommodate for attributes declared
 on superclasses of dataclasses that are not themselves dataclasses; per the
@@ -1482,14 +1515,12 @@ Above, the ``User`` class will not include ``create_user`` in its constructor
 nor will it attempt to interpret ``update_user`` as a dataclass attribute.
 This is because ``Mixin`` is not a dataclass.
 
-SQLAlchemy's dataclasses feature within the 2.0 series does not honor this
-behavior correctly; instead, attributes on non-dataclass mixins and
-superclasses are treated as part of the final dataclass configuration.  However
-type checkers such as Pyright and Mypy will not consider these fields as
-part of the dataclass constructor as they are to be ignored per :pep:`681`.
-Since their presence is ambiguous otherwise, SQLAlchemy 2.1 will require that
+Since type checkers such as Pyright and Mypy will not consider these fields as
+part of the dataclass constructor as they are to be ignored per :pep:`681`,
+their presence becomes ambiguous.  Therefore SQLAlchemy requires that
 mixin classes which have SQLAlchemy mapped attributes within a dataclass
-hierarchy have to themselves be dataclasses.
+hierarchy have to themselves be dataclasses using SQLAlchemy's unmapped
+dataclass feature.
 
 
 .. _error_dcte:

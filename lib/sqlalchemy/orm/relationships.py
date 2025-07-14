@@ -107,7 +107,7 @@ if typing.TYPE_CHECKING:
     from .base import Mapped
     from .clsregistry import _class_resolver
     from .clsregistry import _ModNS
-    from .decl_base import _ClassScanMapperConfig
+    from .decl_base import _DeclarativeMapperConfig
     from .dependency import _DependencyProcessor
     from .mapper import Mapper
     from .query import Query
@@ -1799,7 +1799,7 @@ class RelationshipProperty(
 
     def declarative_scan(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
