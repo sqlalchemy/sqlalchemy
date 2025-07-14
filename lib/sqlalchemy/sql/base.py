@@ -28,7 +28,6 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
-from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
@@ -70,6 +69,7 @@ if TYPE_CHECKING:
     from ._orm_types import DMLStrategyArgument
     from ._orm_types import SynchronizeSessionArgument
     from ._typing import _CLE
+    from ._util_cy import anon_map
     from .cache_key import CacheKey
     from .compiler import SQLCompiler
     from .dml import Delete
@@ -80,7 +80,6 @@ if TYPE_CHECKING:
     from .elements import ClauseList
     from .elements import ColumnClause  # noqa
     from .elements import ColumnElement
-    from .elements import KeyedColumnElement
     from .elements import NamedColumn
     from .elements import SQLCoreOperations
     from .elements import TextClause
@@ -120,7 +119,7 @@ class _NoArg(Enum):
         return f"_NoArg.{self.name}"
 
 
-NO_ARG: Final[Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG
+NO_ARG: Final = _NoArg.NO_ARG
 
 
 class _NoneName(Enum):
@@ -128,7 +127,7 @@ class _NoneName(Enum):
     """indicate a 'deferred' name that was ultimately the value None."""
 
 
-_NONE_NAME: Final[Literal[_NoneName.NONE_NAME]] = _NoneName.NONE_NAME
+_NONE_NAME: Final = _NoneName.NONE_NAME
 
 _T = TypeVar("_T", bound=Any)
 
@@ -381,7 +380,7 @@ class _DialectArgView(MutableMapping[str, Any]):
 
     """
 
-    __slots__: Tuple[str] = ("obj",)
+    __slots__ = ("obj",)
 
     def __init__(self, obj: DialectKWArgs) -> None:
         self.obj = obj
@@ -907,7 +906,7 @@ class Options(metaclass=_MetaOptions):
         return cls._state_dict_const
 
     @classmethod
-    def safe_merge(cls, other: Any) -> Any:
+    def safe_merge(cls, other: "Options") -> Any:
         d = other._state_dict()
 
         # only support a merge with another object of our class
@@ -1005,7 +1004,7 @@ class CacheableOptions(Options, HasCacheKey):
 
     @_gen_cache_key_inst.classlevel
     def _gen_cache_key(
-        cls, anon_map: Any, bindparams: List[BindParameter[Any]]
+        cls, anon_map: "anon_map", bindparams: List[BindParameter[Any]]
     ) -> Tuple[CacheableOptions, Any]:
         return (cls, ())
 
@@ -1308,12 +1307,7 @@ class Executable(roles.StatementRole):
         ) -> Any: ...
 
     @util.ro_non_memoized_property
-    def _all_selected_columns(
-        self,
-    ) -> Union[
-        Iterable[ColumnElement[Any] | TextClause],
-        Sequence[KeyedColumnElement[Any]],
-    ]:
+    def _all_selected_columns(self) -> _SelectIterable:
         raise NotImplementedError()
 
     @property
@@ -2254,7 +2248,7 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
     def extend(self, iter_: Iterable[_NAMEDCOL]) -> None:
         self._populate_separate_keys((col.key, col) for col in iter_)
 
-    def remove(self, column: _NAMEDCOL) -> Any:
+    def remove(self, column: _NAMEDCOL) -> None:  # type: ignore[override]
         if column not in self._colset:
             raise ValueError(
                 "Can't remove column %r; column is not in this collection"
@@ -2349,7 +2343,7 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
 class ReadOnlyColumnCollection(
     util.ReadOnlyContainer, ColumnCollection[_COLKEY, _COL_co]
 ):
-    __slots__: Tuple[str] = ("_parent",)
+    __slots__ = ("_parent",)
 
     def __init__(self, collection: ColumnCollection[_COLKEY, _COL_co]):
         object.__setattr__(self, "_parent", collection)
