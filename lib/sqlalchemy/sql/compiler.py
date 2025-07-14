@@ -4158,7 +4158,7 @@ class SQLCompiler(Compiled):
                 if cte.recursive:
                     self.ctes_recursive = True
                 text = self.preparer.format_alias(cte, cte_name)
-                if cte.recursive:
+                if cte.recursive or cte.element.name_cte_columns:
                     col_source = cte.element
 
                     # TODO: can we get at the .columns_plus_names collection
@@ -4379,7 +4379,13 @@ class SQLCompiler(Compiled):
         )
         return f"VALUES {tuples}"
 
-    def visit_values(self, element, asfrom=False, from_linter=None, **kw):
+    def visit_values(
+        self, element, asfrom=False, from_linter=None, visiting_cte=None, **kw
+    ):
+
+        if element._independent_ctes:
+            self._dispatch_independent_ctes(element, kw)
+
         v = self._render_values(element, **kw)
 
         if element._unnamed:
@@ -4400,7 +4406,12 @@ class SQLCompiler(Compiled):
                     name if name is not None else "(unnamed VALUES element)"
                 )
 
-            if name:
+            if visiting_cte is not None and visiting_cte.element is element:
+                if element._is_lateral:
+                    raise exc.CompileError(
+                        "Can't use a LATERAL VALUES expression inside of a CTE"
+                    )
+            elif name:
                 kw["include_table"] = False
                 v = "%s(%s)%s (%s)" % (
                     lateral,

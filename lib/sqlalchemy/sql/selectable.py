@@ -2526,6 +2526,14 @@ class HasCTE(roles.HasCTERole, SelectsRows):
     _independent_ctes: Tuple[CTE, ...] = ()
     _independent_ctes_opts: Tuple[_CTEOpts, ...] = ()
 
+    name_cte_columns: bool = False
+    """indicates if this HasCTE as contained within a CTE should compel the CTE
+    to render the column names of this object in the WITH clause.
+
+    .. versionadded:: 2.0.42
+
+    """
+
     @_generative
     def add_cte(self, *ctes: CTE, nest_here: bool = False) -> Self:
         r"""Add one or more :class:`_sql.CTE` constructs to this statement.
@@ -3306,7 +3314,7 @@ class ForUpdateArg(ClauseElement):
             self.of = None
 
 
-class Values(roles.InElementRole, Generative, LateralFromClause):
+class Values(roles.InElementRole, HasCTE, Generative, LateralFromClause):
     """Represent a ``VALUES`` construct that can be used as a FROM element
     in a statement.
 
@@ -3327,7 +3335,9 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
         ("_data", InternalTraversal.dp_dml_multi_values),
         ("name", InternalTraversal.dp_string),
         ("literal_binds", InternalTraversal.dp_boolean),
-    ]
+    ] + HasCTE._has_ctes_traverse_internals
+
+    name_cte_columns = True
 
     def __init__(
         self,
@@ -3350,6 +3360,10 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
     @property
     def _column_types(self) -> List[TypeEngine[Any]]:
         return [col.type for col in self._column_args]
+
+    @util.ro_non_memoized_property
+    def _all_selected_columns(self) -> _SelectIterable:
+        return self._column_args
 
     @_generative
     def alias(self, name: Optional[str] = None, flat: bool = False) -> Self:
@@ -3380,7 +3394,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
         return self
 
     @_generative
-    def lateral(self, name: Optional[str] = None) -> LateralFromClause:
+    def lateral(self, name: Optional[str] = None) -> Self:
         """Return a new :class:`_expression.Values` with the lateral flag set,
         so that
         it renders as LATERAL.

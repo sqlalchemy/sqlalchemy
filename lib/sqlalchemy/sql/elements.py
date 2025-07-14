@@ -89,6 +89,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
+    from .base import _EntityNamespace
     from .base import ColumnSet
     from .cache_key import _CacheKeyTraversalType
     from .cache_key import CacheKey
@@ -500,8 +501,8 @@ class ClauseElement(
             self = self._is_clone_of
         return self
 
-    @property
-    def entity_namespace(self):
+    @util.ro_non_memoized_property
+    def entity_namespace(self) -> _EntityNamespace:
         raise AttributeError(
             "This SQL expression has no entity namespace "
             "with which to filter from."

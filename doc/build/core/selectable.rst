@@ -154,6 +154,7 @@ The classes here are generated using the constructors listed at
 
 .. autoclass:: Values
    :members:
+   :inherited-members: ClauseElement, FromClause, HasTraverseInternals, Selectable
 
 .. autoclass:: ScalarValues
    :members:

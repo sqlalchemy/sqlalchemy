@@ -1619,7 +1619,14 @@ class HasCacheKeySubclass(fixtures.TestBase):
             | {"type_", "modifier", "element"},
         ),
         "Values": (
-            {"_column_args", "literal_binds", "name", "_data"},
+            {
+                "_column_args",
+                "literal_binds",
+                "name",
+                "_data",
+                "_independent_ctes",
+                "_independent_ctes_opts",
+            },
             {"columns", "name", "literal_binds"},
         ),
         "_FrameClause": (

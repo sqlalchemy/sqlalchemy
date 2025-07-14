@@ -5,6 +5,7 @@ from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
@@ -13,8 +14,6 @@ from sqlalchemy import true
 from sqlalchemy import values
 from sqlalchemy.engine import default
 from sqlalchemy.sql import func
-from sqlalchemy.sql import select
-from sqlalchemy.sql import Values
 from sqlalchemy.sql.compiler import FROM_LINTING
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import expect_raises_message
@@ -62,7 +61,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_wrong_number_of_elements(self):
-        v1 = Values(
+        v1 = values(
             column("CaseSensitive", Integer),
             column("has spaces", String),
             name="Spaces and Cases",
@@ -164,7 +163,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_column_quoting(self):
-        v1 = Values(
+        v1 = values(
             column("CaseSensitive", Integer),
             column("has spaces", String),
             column("number", Integer),
@@ -183,7 +182,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
         """test #9772"""
 
         people = self.tables.people
-        table_value_constructor = Values(
+        table_value_constructor = values(
             Column("v1", Integer), name="tvc"
         ).data(
             [
@@ -204,9 +203,9 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             "AS tvc (v1)) AS anon_1 FROM people",
         )
 
-    def test_values_in_cte_params(self):
+    def test_values_in_select_cte_params(self):
         cte1 = select(
-            Values(
+            values(
                 column("col1", String),
                 column("col2", Integer),
                 name="temp_table",
@@ -243,9 +242,9 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             dialect=dialect,
         )
 
-    def test_values_in_cte_literal_binds(self):
+    def test_values_in_select_cte_literal_binds(self):
         cte1 = select(
-            Values(
+            values(
                 column("col1", String),
                 column("col2", Integer),
                 name="temp_table",
@@ -267,6 +266,109 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={"col1_1": "q"},
         )
 
+    @testing.variation("values_named", [True, False])
+    @testing.variation("cte_named", [True, False])
+    @testing.variation("literal_binds", [True, False])
+    def test_direct_cte(self, values_named, cte_named, literal_binds):
+        """test #12734"""
+
+        cte1 = (
+            values(
+                column("col1", String),
+                column("col2", Integer),
+                literal_binds=bool(literal_binds),
+                name="some name" if values_named else None,
+            )
+            .data([("a", 2), ("b", 3)])
+            .cte("cte1" if cte_named else None)
+        )
+
+        stmt = select(cte1.c.col1)
+
+        if cte_named:
+            cte_name = "cte1"
+        elif values_named:
+            cte_name = "some_name_1"
+        else:
+            cte_name = "anon_1"
+
+        if literal_binds:
+            params = "('a', 2), ('b', 3)"
+        else:
+            params = "(:param_1, :param_2), (:param_3, :param_4)"
+        self.assert_compile(
+            stmt,
+            f"WITH {cte_name}(col1, col2) AS "
+            f"(VALUES {params}) "
+            f"SELECT {cte_name}.col1 FROM {cte_name}",
+            checkparams=(
+                {
+                    "param_1": "a",
+                    "param_2": 2,
+                    "param_3": "b",
+                    "param_4": 3,
+                }
+                if not literal_binds
+                else {}
+            ),
+        )
+
+    def test_add_cte_one(self):
+        cte1 = (
+            values(
+                column("col1", String),
+                column("col2", Integer),
+                name="some_name",
+            ).data([("a", 2), ("b", 3)])
+        ).add_cte(select(1).cte())
+
+        self.assert_compile(
+            cte1.select(),
+            "WITH anon_1 AS (SELECT 1) "
+            "SELECT some_name.col1, some_name.col2 FROM "
+            "(VALUES (:param_1, :param_2), "
+            "(:param_3, :param_4)) AS some_name (col1, col2)",
+        )
+
+    def test_add_cte_two(self):
+        cte1 = (
+            (
+                values(
+                    column("col1", String),
+                    column("col2", Integer),
+                    name="some_name",
+                ).data([("a", 2), ("b", 3)])
+            )
+            .add_cte(select(1).cte())
+            .cte()
+        )
+
+        self.assert_compile(
+            cte1.select(),
+            "WITH anon_1 AS (SELECT 1), some_name_1(col1, col2) AS "
+            "(VALUES (:param_1, :param_2), (:param_3, :param_4)) "
+            "SELECT some_name_1.col1, some_name_1.col2 FROM some_name_1",
+        )
+
+    def test_no_cte_with_lateral(self):
+        values_ = (
+            values(
+                column("col1", String),
+                column("col2", Integer),
+                name="some_name",
+            )
+            .data([("a", 2), ("b", 3)])
+            .lateral()
+        )
+
+        cte = values_.cte()
+
+        with expect_raises_message(
+            exc.CompileError,
+            "Can't use a LATERAL VALUES expression inside of a CTE",
+        ):
+            cte.select().compile()
+
     @testing.fixture
     def literal_parameter_fixture(self):
         def go(literal_binds, omit=None):
@@ -279,7 +381,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
                 for idx in omit:
                     cols[idx] = column(cols[idx].name)
 
-            return Values(
+            return values(
                 *cols, name="myvalues", literal_binds=literal_binds
             ).data([(1, "textA", 99), (2, "textB", 88)])
 
@@ -325,7 +427,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
                 for idx in omit:
                     cols[idx] = column(cols[idx].name)
 
-            return Values(
+            return values(
                 *cols, name="myvalues", literal_binds=literal_binds
             ).data(
                 [
@@ -416,17 +518,17 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_anon_alias(self):
         people = self.tables.people
-        values = (
-            Values(
+        values_ = (
+            values(
                 column("bookcase_id", Integer),
                 column("bookcase_owner_id", Integer),
             )
             .data([(1, 1), (2, 1), (3, 2), (3, 3)])
             .alias()
         )
-        stmt = select(people, values).select_from(
+        stmt = select(people, values_).select_from(
             people.join(
-                values, values.c.bookcase_owner_id == people.c.people_id
+                values_, values_.c.bookcase_owner_id == people.c.people_id
             )
         )
         self.assert_compile(
@@ -441,12 +543,12 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_with_join_unnamed(self):
         people = self.tables.people
-        values = Values(
+        values_ = values(
             column("column1", Integer),
             column("column2", Integer),
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        stmt = select(people, values).select_from(
-            people.join(values, values.c.column2 == people.c.people_id)
+        stmt = select(people, values_).select_from(
+            people.join(values_, values_.c.column2 == people.c.people_id)
         )
         self.assert_compile(
             stmt,
@@ -469,14 +571,14 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_with_join_named(self):
         people = self.tables.people
-        values = Values(
+        values_ = values(
             column("bookcase_id", Integer),
             column("bookcase_owner_id", Integer),
             name="bookcases",
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        stmt = select(people, values).select_from(
+        stmt = select(people, values_).select_from(
             people.join(
-                values, values.c.bookcase_owner_id == people.c.people_id
+                values_, values_.c.bookcase_owner_id == people.c.people_id
             )
         )
         self.assert_compile(
@@ -501,17 +603,18 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_with_aliased_join(self):
         people = self.tables.people
-        values = (
-            Values(
+        values_ = (
+            values(
                 column("bookcase_id", Integer),
                 column("bookcase_owner_id", Integer),
             )
             .data([(1, 1), (2, 1), (3, 2), (3, 3)])
             .alias("bookcases")
         )
-        stmt = select(people, values).select_from(
+
+        stmt = select(people, values_).select_from(
             people.join(
-                values, values.c.bookcase_owner_id == people.c.people_id
+                values_, values_.c.bookcase_owner_id == people.c.people_id
             )
         )
         self.assert_compile(
@@ -536,15 +639,15 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_with_standalone_aliased_join(self):
         people = self.tables.people
-        values = Values(
+        values_ = values(
             column("bookcase_id", Integer),
             column("bookcase_owner_id", Integer),
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        values = alias(values, "bookcases")
+        values_ = alias(values_, "bookcases")
 
-        stmt = select(people, values).select_from(
+        stmt = select(people, values_).select_from(
             people.join(
-                values, values.c.bookcase_owner_id == people.c.people_id
+                values_, values_.c.bookcase_owner_id == people.c.people_id
             )
         )
         self.assert_compile(
@@ -569,8 +672,8 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_lateral(self):
         people = self.tables.people
-        values = (
-            Values(
+        values_ = (
+            values(
                 column("bookcase_id", Integer),
                 column("bookcase_owner_id", Integer),
                 name="bookcases",
@@ -578,7 +681,9 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             .data([(1, 1), (2, 1), (3, 2), (3, 3)])
             .lateral()
         )
-        stmt = select(people, values).select_from(people.join(values, true()))
+        stmt = select(people, values_).select_from(
+            people.join(values_, true())
+        )
         self.assert_compile(
             stmt,
             "SELECT people.people_id, people.age, people.name, "
@@ -601,12 +706,12 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_from_linting_named(self):
         people = self.tables.people
-        values = Values(
+        values_ = values(
             column("bookcase_id", Integer),
             column("bookcase_owner_id", Integer),
             name="bookcases",
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        stmt = select(people, values)
+        stmt = select(people, values_)
 
         with testing.expect_warnings(
             r"SELECT statement has a cartesian product between FROM "
@@ -617,11 +722,11 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_from_linting_unnamed(self):
         people = self.tables.people
-        values = Values(
+        values_ = values(
             column("bookcase_id", Integer),
             column("bookcase_owner_id", Integer),
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        stmt = select(people, values)
+        stmt = select(people, values_)
 
         with testing.expect_warnings(
             r"SELECT statement has a cartesian product between FROM "
