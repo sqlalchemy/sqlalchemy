@@ -1908,8 +1908,12 @@ class MapperOptionsTest(_fixtures.FixtureTest):
                 joinedload(User.orders),
                 contains_eager(User.orders),
             ),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.orders -> Mapper\[Order\(orders\)\]\] conflict",
+            r"Loader strategy replacement "
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.orders -> "
+            r"Mapper\[Order\(orders\)\]\] "
+            r"is in conflict with existing strategy "
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.orders -> "
+            r"Mapper\[Order\(orders\)\]\]",
         ),
         (
             lambda User, Order: (
@@ -1925,13 +1929,19 @@ class MapperOptionsTest(_fixtures.FixtureTest):
                     Order.items
                 ),
             ),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.orders -> Mapper\[Order\(orders\)\]\] conflict",
+            r"Loader strategy replacement "
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.orders -> "
+            r"Mapper\[Order\(orders\)\]\] "
+            r"is in conflict with existing strategy "
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.orders -> "
+            r"Mapper\[Order\(orders\)\]\]",
         ),
         (
             lambda User: (defer(User.name), undefer(User.name)),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.name\] conflict",
+            r"Loader strategy replacement "
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.name\] "
+            r"is in conflict with existing strategy "
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.name\]",
         ),
     )
     def test_conflicts(self, make_opt, errmsg):
