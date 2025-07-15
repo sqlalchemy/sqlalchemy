@@ -269,7 +269,10 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
     @testing.variation("values_named", [True, False])
     @testing.variation("cte_named", [True, False])
     @testing.variation("literal_binds", [True, False])
-    def test_direct_cte(self, values_named, cte_named, literal_binds):
+    @testing.variation("recursive", [True, False])
+    def test_direct_cte(
+        self, values_named, cte_named, literal_binds, recursive
+    ):
         """test #12734"""
 
         cte1 = (
@@ -280,7 +283,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
                 name="some name" if values_named else None,
             )
             .data([("a", 2), ("b", 3)])
-            .cte("cte1" if cte_named else None)
+            .cte("cte1" if cte_named else None, recursive=bool(recursive))
         )
 
         stmt = select(cte1.c.col1)
@@ -296,9 +299,12 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             params = "('a', 2), ('b', 3)"
         else:
             params = "(:param_1, :param_2), (:param_3, :param_4)"
+
+        recursive_str = "RECURSIVE " if recursive else ""
+
         self.assert_compile(
             stmt,
-            f"WITH {cte_name}(col1, col2) AS "
+            f"WITH {recursive_str}{cte_name}(col1, col2) AS "
             f"(VALUES {params}) "
             f"SELECT {cte_name}.col1 FROM {cte_name}",
             checkparams=(
