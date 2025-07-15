@@ -138,8 +138,6 @@ jobs:
         os:
           - "ubuntu-22.04"
         python-version:
-          - "3.8"
-          - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
@@ -153,12 +151,6 @@ jobs:
           - tox-env: lint
             python-version: "3.12"
             os: "ubuntu-22.04"
-        exclude:
-          # run pep484 only on 3.10+
-          - tox-env: pep484
-            python-version: "3.8"
-          - tox-env: pep484
-            python-version: "3.9"
 
       fail-fast: false
 
