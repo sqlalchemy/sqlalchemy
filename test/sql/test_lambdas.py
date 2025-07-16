@@ -1523,7 +1523,7 @@ class LambdaElementTest(
         x = {"foo": "bar"}
 
         def mylambda():
-            return tt.c.q + x
+            return tt.c.q._null_operate(x)
 
         expr = coercions.expect(roles.WhereHavingRole, mylambda)
         is_(expr._resolved.right.type._type_affinity, JSON)

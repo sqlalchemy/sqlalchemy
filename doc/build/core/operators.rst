@@ -1,5 +1,7 @@
 .. highlight:: pycon+sql
 
+.. module:: sqlalchemy.sql.operators
+
 Operator Reference
 ===============================
 

@@ -724,13 +724,13 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
 
             @hybrid.hybrid_property
             def value(self):
-                return self._value - 5
+                return self._value + "18"
 
             if assignable:
 
                 @value.setter
                 def value(self, v):
-                    self._value = v + 5
+                    self._value = v + "5"
 
         return A
 
@@ -750,9 +750,9 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_set_get(self):
         A = self._fixture(True)
-        a1 = A(value=5)
-        eq_(a1.value, 5)
-        eq_(a1._value, 10)
+        a1 = A(value="5")
+        eq_(a1.value, "5518")
+        eq_(a1._value, "55")
 
 
 class PropertyOverrideTest(fixtures.TestBase, AssertsCompiledSQL):

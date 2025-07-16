@@ -36,6 +36,7 @@ from .operators import STRICTLY_LEFT_OF
 from .operators import STRICTLY_RIGHT_OF
 from ... import types as sqltypes
 from ...sql import operators
+from ...sql.operators import OperatorClass
 from ...sql.type_api import TypeEngine
 
 if TYPE_CHECKING:
@@ -710,6 +711,8 @@ class AbstractRange(sqltypes.TypeEngine[_T]):
     """Base class for single and multi Range SQL types."""
 
     render_bind_cast = True
+
+    operator_classes = OperatorClass.NUMERIC
 
     __abstract__ = True
 

@@ -49,6 +49,7 @@ from .cache_key import HasCacheKey
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
+from .operators import OperatorClass
 from .type_api import Emulated
 from .type_api import NativeForEmulated  # noqa
 from .type_api import to_instance as to_instance
@@ -187,6 +188,8 @@ class String(Concatenable, TypeEngine[str]):
     """
 
     __visit_name__ = "string"
+
+    operator_classes = OperatorClass.STRING
 
     def __init__(
         self,
@@ -345,6 +348,8 @@ class Integer(HasExpressionLookup, TypeEngine[int]):
 
     __visit_name__ = "integer"
 
+    operator_classes = OperatorClass.INTEGER
+
     if TYPE_CHECKING:
 
         @util.ro_memoized_property
@@ -432,6 +437,8 @@ class NumericCommon(HasExpressionLookup, TypeEngineMixin, Generic[_N]):
     """
 
     _default_decimal_return_scale = 10
+
+    operator_classes = OperatorClass.NUMERIC
 
     if TYPE_CHECKING:
 
@@ -811,6 +818,8 @@ class DateTime(
 
     __visit_name__ = "datetime"
 
+    operator_classes = OperatorClass.DATETIME
+
     def __init__(self, timezone: bool = False):
         """Construct a new :class:`.DateTime`.
 
@@ -859,6 +868,8 @@ class Date(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.date]):
 
     __visit_name__ = "date"
 
+    operator_classes = OperatorClass.DATETIME
+
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
@@ -899,6 +910,8 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
 
     __visit_name__ = "time"
 
+    operator_classes = OperatorClass.DATETIME
+
     def __init__(self, timezone: bool = False):
         self.timezone = timezone
 
@@ -932,6 +945,8 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
 
 class _Binary(TypeEngine[bytes]):
     """Define base behavior for binary types."""
+
+    operator_classes = OperatorClass.BINARY
 
     length: Optional[int]
 
@@ -2023,6 +2038,8 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
     __visit_name__ = "boolean"
     native = True
 
+    operator_classes = OperatorClass.BOOLEAN
+
     def __init__(
         self,
         create_constraint: bool = False,
@@ -2143,6 +2160,8 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
 
 
 class _AbstractInterval(HasExpressionLookup, TypeEngine[dt.timedelta]):
+    operator_classes = OperatorClass.DATETIME
+
     @util.memoized_property
     def _expression_adaptations(self):
         # Based on
@@ -2479,6 +2498,8 @@ class JSON(Indexable, TypeEngine[Any]):
     """  # noqa: E501
 
     __visit_name__ = "JSON"
+
+    operator_classes = OperatorClass.JSON
 
     hashable = False
     NULL = util.symbol("JSON_NULL")
@@ -2970,6 +2991,8 @@ class ARRAY(
 
     __visit_name__ = "ARRAY"
 
+    operator_classes = OperatorClass.ARRAY
+
     _is_array = True
 
     zero_indexes = False
@@ -3298,6 +3321,8 @@ class TupleType(TypeEngine[TupleAny]):
 
     _is_tuple_type = True
 
+    operator_classes = OperatorClass.TUPLE
+
     types: List[TypeEngine[Any]]
 
     def __init__(self, *types: _TypeEngineArgument[Any]):
@@ -3593,6 +3618,8 @@ class NullType(TypeEngine[None]):
 
     _isnull = True
 
+    operator_classes = OperatorClass.ANY
+
     def literal_processor(self, dialect):
         return None
 
@@ -3618,6 +3645,8 @@ class TableValueType(HasCacheKey, TypeEngine[Any]):
     """Refers to a table value type."""
 
     _is_table_value = True
+
+    operator_classes = OperatorClass.BASE
 
     _traverse_internals = [
         ("_elements", InternalTraversal.dp_clauseelement_list),
@@ -3698,6 +3727,8 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
     """  # noqa: E501
 
     __visit_name__ = "uuid"
+
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
 
     length: Optional[int] = None
     collation: Optional[str] = None

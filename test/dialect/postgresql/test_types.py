@@ -3399,8 +3399,8 @@ class TimestampTest(
         expr = column("bar", postgresql.INTERVAL) + column("foo", types.Date)
         eq_(expr.type._type_affinity, types.DateTime)
 
-        expr = column("bar", postgresql.INTERVAL) * column(
-            "foo", types.Numeric
+        expr = operators.null_op(
+            column("bar", postgresql.INTERVAL), column("foo", types.Numeric)
         )
         eq_(expr.type._type_affinity, types.Interval)
         assert isinstance(expr.type, postgresql.INTERVAL)
