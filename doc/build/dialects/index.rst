@@ -66,6 +66,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Amazon Athena                                  | pyathena_                             |
 +------------------------------------------------+---------------------------------------+
+| Amazon Aurora DSQL                             | aurora-dsql-sqlalchemy_               |
++------------------------------------------------+---------------------------------------+
 | Amazon Redshift (via psycopg2)                 | sqlalchemy-redshift_                  |
 +------------------------------------------------+---------------------------------------+
 | Apache Drill                                   | sqlalchemy-drill_                     |
@@ -182,3 +184,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-tidb: https://github.com/pingcap/sqlalchemy-tidb
 .. _ydb-sqlalchemy: https://github.com/ydb-platform/ydb-sqlalchemy/
 .. _denodo-sqlalchemy: https://pypi.org/project/denodo-sqlalchemy/
+.. _aurora-dsql-sqlalchemy: https://pypi.org/project/aurora-dsql-sqlalchemy/
