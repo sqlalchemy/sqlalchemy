@@ -1944,31 +1944,36 @@ class WindowFunctionTest(fixtures.TablesTest):
 
         eq_(rows, [(95,) for i in range(19)])
 
-    def test_window_range(self, connection):
+    def test_window_range_basic(self, connection):
         some_table = self.tables.some_table
-        # SQL Server only allows UNBOUNDED and CURRENT ROW in the RANGE clause
-        if config.db.dialect in ["mssql+aiodbc", "mssql+pymssql", "mssql+pyodbc"]:
-            rows = connection.execute(
-                select(
-                    func.max(some_table.c.col1).over(
-                        partition_by=[some_table.c.col2],
-                        order_by=[some_table.c.col2.asc()],
-                        range_=(_FrameClauseType.RANGE_UNBOUNDED, _FrameClauseType.RANGE_CURRENT)
-                    )
+        rows = connection.execute(
+            select(
+                func.max(some_table.c.col1).over(
+                    partition_by=[some_table.c.col2],
+                    order_by=[some_table.c.col2.asc()],
+                    range_=(0, 1)
                 )
-            )
-        else:
-            rows = connection.execute(
-                select(
-                    func.max(some_table.c.col3).over(
-                        partition_by=[some_table.c.col3],
-                        order_by=[some_table.c.col3.asc()],
-                        range_=(-1.25, 1.25),
-                    )
-                ).where(some_table.c.col1 < 20)
-            ).all()
+            ).where(some_table.c.col1 < 20)
+        ).all()
 
-            eq_(rows, [(i + 1.5,) for i in range(19)])
+        eq_(rows, [(i,) for i in range(1, 20)])
+    
+
+    @testing.requires.window_range_numeric
+    def test_window_range_numeric(self, connection):
+        some_table = self.tables.some_table
+        rows = connection.execute(
+            select(
+                func.max(some_table.c.col3).over(
+                    partition_by=[some_table.c.col3],
+                    order_by=[some_table.c.col3.asc()],
+                    range_=(-1.25, 1.25),
+                )
+            ).where(some_table.c.col1 < 20)
+        ).all()
+
+        eq_(rows, [(i + 0.5,) for i in range(1, 20)])
+
 
     def test_window_rows_between_w_caching(self, connection):
         some_table = self.tables.some_table

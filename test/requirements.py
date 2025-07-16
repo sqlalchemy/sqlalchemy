@@ -2128,3 +2128,8 @@ class DefaultRequirements(SuiteRequirements):
     def supports_bitwise_shift(self):
         """Target database supports bitwise left or right shift"""
         return fails_on(["oracle"])
+
+    @property
+    def window_range_numeric(self):
+        """Target database supports window functions with fractional RANGE values"""
+        return fails_on(["mssql"])
