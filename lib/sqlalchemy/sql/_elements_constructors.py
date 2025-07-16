@@ -357,7 +357,7 @@ def collate(
 
     The collation expression is also quoted if it is a case sensitive
     identifier, e.g. contains uppercase characters.
-
+    It may also be schema-qualified.
     """
     return CollationClause._create_collation_expression(expression, collation)
 
