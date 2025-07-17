@@ -2134,6 +2134,8 @@ class DefaultRequirements(SuiteRequirements):
         """Target database supports fractional RANGE values"""
         return skip_if(
             [
-                no_support("mssql", "Doesn't support fractional RANGE"),
+                no_support("mssql+aioodbc", "Doesn't support fractional RANGE"),
+                no_support("mssql+pymssql", "Doesn't support fractional RANGE"),
+                no_support("mssql+pyodbc", "Doesn't support fractional RANGE"),
             ]
         )
