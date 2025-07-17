@@ -4321,14 +4321,16 @@ class _FrameClause(ClauseElement):
         except (ValueError, TypeError) as ve:
             raise exc.ArgumentError("2-tuple expected for range/rows") from ve
 
+        lower_type_engine: TypeEngine[Any]
+        upper_type_engine: TypeEngine[Any]
         if isinstance(lower_value, int):
-            lower_type = type_api.INTEGERTYPE
+            lower_type_engine = type_api.INTEGERTYPE
         else:
-            lower_type = type_api.NUMERICTYPE
+            lower_type_engine = type_api.NUMERICTYPE
         if isinstance(upper_value, int):
-            upper_type = type_api.INTEGERTYPE
+            upper_type_engine = type_api.INTEGERTYPE
         else:
-            upper_type = type_api.NUMERICTYPE
+            upper_type_engine = type_api.NUMERICTYPE
 
         if lower_value is None:
             self.lower_type = _FrameClauseType.RANGE_UNBOUNDED
@@ -4338,10 +4340,10 @@ class _FrameClause(ClauseElement):
             self.lower_bind = None
         elif lower_value < 0:
             self.lower_type = _FrameClauseType.RANGE_PRECEDING
-            self.lower_bind = literal(abs(lower_value), lower_type)
+            self.lower_bind = literal(abs(lower_value), lower_type_engine)
         else:
             self.lower_type = _FrameClauseType.RANGE_FOLLOWING
-            self.lower_bind = literal(lower_value, lower_type)
+            self.lower_bind = literal(lower_value, lower_type_engine)
 
         if upper_value is None:
             self.upper_type = _FrameClauseType.RANGE_UNBOUNDED
@@ -4351,10 +4353,10 @@ class _FrameClause(ClauseElement):
             self.upper_bind = None
         elif upper_value < 0:
             self.upper_type = _FrameClauseType.RANGE_PRECEDING
-            self.upper_bind = literal(abs(upper_value), upper_type)
+            self.upper_bind = literal(abs(upper_value), upper_type_engine)
         else:
             self.upper_type = _FrameClauseType.RANGE_FOLLOWING
-            self.upper_bind = literal(upper_value, upper_type)
+            self.upper_bind = literal(upper_value, upper_type_engine)
 
 
 class WithinGroup(ColumnElement[_T]):

@@ -45,7 +45,6 @@ from ... import union
 from ... import values
 from ...exc import DatabaseError
 from ...exc import ProgrammingError
-from ...sql.elements import _FrameClauseType
 
 
 class CollateTest(fixtures.TablesTest):
@@ -1957,7 +1956,6 @@ class WindowFunctionTest(fixtures.TablesTest):
         ).all()
 
         eq_(rows, [(i,) for i in range(1, 20)])
-    
 
     @testing.requires.window_range_numeric
     def test_window_range_numeric(self, connection):
@@ -1973,7 +1971,6 @@ class WindowFunctionTest(fixtures.TablesTest):
         ).all()
 
         eq_(rows, [(i + 0.5,) for i in range(1, 20)])
-
 
     def test_window_rows_between_w_caching(self, connection):
         some_table = self.tables.some_table

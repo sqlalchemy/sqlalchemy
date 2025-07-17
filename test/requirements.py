@@ -2131,5 +2131,5 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def window_range_numeric(self):
-        """Target database supports window functions with fractional RANGE values"""
+        """Target database supports fractional RANGE values"""
         return fails_on(["mssql"])
