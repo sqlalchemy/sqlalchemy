@@ -2132,4 +2132,8 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def window_range_numeric(self):
         """Target database supports fractional RANGE values"""
-        return fails_on(["mssql"])
+        return skip_if(
+            [
+                no_support("mssql", "Doesn't support fractional RANGE"),
+            ]
+        )
