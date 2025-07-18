@@ -633,11 +633,12 @@ as the :paramref:`_orm.registry.type_annotation_map` parameter when
 constructing the :class:`_orm.registry`, which may be associated with
 the :class:`_orm.DeclarativeBase` superclass when first used.
 
-As an example, if we wish to make use of the :class:`_sqltypes.BIGINT` datatype for
-``int``, the :class:`_sqltypes.TIMESTAMP` datatype with ``timezone=True`` for
-``datetime.datetime``, and then only on Microsoft SQL Server we'd like to use
-:class:`_sqltypes.NVARCHAR` datatype when Python ``str`` is used,
-the registry and Declarative base could be configured as::
+As an example, if we wish to make use of the :class:`_sqltypes.BIGINT` datatype
+for ``int``, the :class:`_sqltypes.TIMESTAMP` datatype with ``timezone=True``
+for ``datetime.datetime``, and then for ``str`` types we'd like to see
+:class:`_sqltypes.NVARCHAR` when Microsoft SQL Server is used and
+``VARCHAR(255)`` when MySQL is used, the registry and Declarative base could be
+configured as::
 
     import datetime
 
@@ -649,7 +650,12 @@ the registry and Declarative base could be configured as::
         type_annotation_map = {
             int: BIGINT,
             datetime.datetime: TIMESTAMP(timezone=True),
-            str: String().with_variant(NVARCHAR, "mssql"),
+            # set up variants for str/String()
+            str: String()
+            # use NVARCHAR for MSSQL
+            .with_variant(NVARCHAR, "mssql")
+            # add a default VARCHAR length for MySQL
+            .with_variant(VARCHAR(255), "mysql"),
         }
 
 
@@ -666,7 +672,7 @@ first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatyp
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy.schema import CreateTable
-    >>> from sqlalchemy.dialects import mssql, postgresql
+    >>> from sqlalchemy.dialects import mssql, mysql, postgresql
     >>> print(CreateTable(SomeClass.__table__).compile(dialect=mssql.dialect()))
     {printsql}CREATE TABLE some_table (
       id BIGINT NOT NULL IDENTITY,
@@ -674,6 +680,20 @@ first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatyp
       status NVARCHAR(max) NOT NULL,
       PRIMARY KEY (id)
     )
+
+On MySQL, we get a VARCHAR column with an explcit length (required by
+MySQL):
+
+.. sourcecode:: pycon+sql
+
+    >>> print(CreateTable(SomeClass.__table__).compile(dialect=mysql.dialect()))
+    {printsql}CREATE TABLE some_table (
+        id BIGINT NOT NULL AUTO_INCREMENT,
+        date TIMESTAMP NOT NULL,
+        status VARCHAR(255) NOT NULL,
+        PRIMARY KEY (id)
+    )
+
 
 Then on the PostgreSQL backend, illustrating ``TIMESTAMP WITH TIME ZONE``:
 
