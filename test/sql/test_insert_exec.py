@@ -2959,3 +2959,211 @@ class IMVSentinelTest(fixtures.TestBase):
                 coll = set
 
             eq_(coll(result), coll(expected_data))
+
+    @testing.variation("kind", ["returning", "returning_default"])
+    @testing.variation("operation", ["none", "yield_per", "unique", "columns"])
+    @testing.variation("has_processor", [True, False])
+    @testing.variation("freeze", [True, False])
+    @testing.variation("driver_column_names", [True, False])
+    def test_generative_cases(
+        self,
+        connection,
+        metadata,
+        sort_by_parameter_order,
+        kind,
+        operation,
+        has_processor,
+        freeze,
+        driver_column_names,
+    ):
+        class MyInt(TypeDecorator):
+            cache_ok = True
+            impl = Integer
+
+            def result_processor(self, dialect, coltype):
+                return str
+
+        class MyStr(TypeDecorator):
+            cache_ok = True
+            impl = String(42)
+
+            def result_processor(self, dialect, coltype):
+                return str.upper
+
+        t1 = Table(
+            "t1",
+            metadata,
+            Column(
+                "id",
+                MyInt() if has_processor else Integer(),
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("data", MyStr() if has_processor else String(42)),
+            Column("w_d", String(42), server_default="foo"),
+        )
+
+        stmt = t1.insert()
+        data = [{"data": "a"}, {"data": "b"}, {"data": "c"}]
+        if kind.returning:
+            stmt = stmt.returning(
+                t1.c.data,
+                sort_by_parameter_order=bool(sort_by_parameter_order),
+            )
+            if has_processor:
+                expected = [("A",), ("B",), ("C",)]
+            else:
+                expected = [("a",), ("b",), ("c",)]
+        elif kind.returning_default:
+            stmt = stmt.return_defaults(
+                supplemental_cols=[t1.c.data],
+                sort_by_parameter_order=bool(sort_by_parameter_order),
+            )
+            if has_processor:
+                expected = [
+                    ("1", "A", "foo"),
+                    ("2", "B", "foo"),
+                    ("3", "C", "foo"),
+                ]
+            else:
+                expected = [(1, "a", "foo"), (2, "b", "foo"), (3, "c", "foo")]
+        else:
+            kind.fail()
+
+        if driver_column_names:
+            exec_options = {"driver_column_names": True}
+        else:
+            exec_options = {}
+        t1.create(connection)
+        r = connection.execute(stmt, data, execution_options=exec_options)
+
+        orig_expected = expected
+        if operation.none:
+            pass
+        elif operation.yield_per:
+            r = r.yield_per(2)
+        elif operation.unique:
+            r = r.unique()
+        elif operation.columns:
+            r = r.columns("data", "data")
+            if has_processor:
+                expected = [("A", "A"), ("B", "B"), ("C", "C")]
+            else:
+                expected = [("a", "a"), ("b", "b"), ("c", "c")]
+        else:
+            operation.fail()
+
+        if freeze:
+            rf = r.freeze()
+            res = rf().all()
+        else:
+            res = r.all()
+        eq_(res, expected)
+
+        rr = r._rewind(res)
+        if operation.unique:
+            # TODO: this seems like a bug. maybe just document it?
+            eq_(rr.all(), [])
+        else:
+            eq_(rr.all(), expected)
+
+        # re-execute to ensure it works also with the cache. The table is
+        # dropped and recreated to reset the autoincrement
+        t1.drop(connection)
+        t1.create(connection)
+        r2 = connection.execute(stmt, data, execution_options=exec_options)
+        eq_(r2.all(), orig_expected)
+
+    @testing.variation("sentinel", ["left", "right", "both"])
+    @testing.variation("has_processor", [True, False])
+    @testing.variation("freeze", [True, False])
+    @testing.skip_if(testing.requires.sqlite_file)
+    def test_splice_horizontally(
+        self, connection, metadata, sentinel, has_processor, freeze
+    ):
+        class MyInt(TypeDecorator):
+            cache_ok = True
+            impl = Integer
+
+            def result_processor(self, dialect, coltype):
+                return str
+
+        class MyStr(TypeDecorator):
+            cache_ok = True
+            impl = String(42)
+
+            def result_processor(self, dialect, coltype):
+                return str.upper
+
+        t1 = Table(
+            "t1",
+            metadata,
+            Column(
+                "id",
+                MyInt() if has_processor else Integer(),
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("data", MyStr() if has_processor else String(42)),
+        )
+        t2 = Table(
+            "t2",
+            metadata,
+            Column(
+                "pk",
+                MyInt() if has_processor else Integer(),
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("dd", MyStr() if has_processor else String(42)),
+        )
+
+        left = t1.insert().returning(
+            t1.c.data, sort_by_parameter_order=sentinel.left or sentinel.both
+        )
+        data_left = [{"data": "a"}, {"data": "b"}, {"data": "c"}]
+        right = t2.insert().returning(
+            t2.c.dd, sort_by_parameter_order=sentinel.right or sentinel.both
+        )
+        data_right = [{"dd": "x"}, {"dd": "y"}, {"dd": "z"}]
+        if has_processor:
+            expected = [("A", "X"), ("B", "Y"), ("C", "Z")]
+        else:
+            expected = [("a", "x"), ("b", "y"), ("c", "z")]
+
+        with config.db.connect() as c2:
+            t1.create(connection)
+            t2.create(c2)
+            rl = connection.execute(left, data_left)
+            rr = c2.execute(right, data_right)
+
+            r = rl.splice_horizontally(rr)
+            if freeze:
+                rf = r.freeze()
+                res = rf().all()
+            else:
+                res = r.all()
+            eq_(res, expected)
+            rr = r._rewind(res)
+            eq_(rr.all(), expected)
+
+    def test_sentinel_not_in_result(self, connection, metadata):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column(
+                "id",
+                Integer(),
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("data", String(42)),
+        )
+        stmt = t1.insert().returning(t1.c.data, sort_by_parameter_order=True)
+        t1.create(connection)
+        r = connection.execute(stmt, [{"data": "a"}, {"data": "b"}])
+
+        with expect_raises_message(IndexError, "list index out of range"):
+            r.scalars(1)
+        eq_(r.keys(), ["data"])
+        eq_(r.all(), [("a",), ("b",)])

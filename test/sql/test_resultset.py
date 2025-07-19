@@ -158,47 +158,95 @@ class CursorResultTest(fixtures.TablesTest):
         )
 
     @testing.requires.insert_executemany_returning
-    def test_splice_horizontally(self, connection):
+    @testing.variation("filters", ["unique", "sliced", "plain"])
+    def test_splice_horizontally(self, connection, filters):
         users = self.tables.users
         addresses = self.tables.addresses
 
-        r1 = connection.execute(
-            users.insert().returning(users.c.user_name, users.c.user_id),
-            [
-                dict(user_id=1, user_name="john"),
-                dict(user_id=2, user_name="jack"),
-            ],
-        )
+        if filters.unique:
+            r1 = connection.execute(
+                users.insert().returning(users.c.user_name),
+                [
+                    dict(user_id=1, user_name="john"),
+                    dict(user_id=2, user_name="john"),
+                ],
+            )
+            r2 = connection.execute(
+                addresses.insert().returning(
+                    addresses.c.address,
+                ),
+                [
+                    dict(address_id=1, user_id=1, address="foo@bar.com"),
+                    dict(address_id=2, user_id=2, address="foo@bar.com"),
+                ],
+            )
+        else:
+            r1 = connection.execute(
+                users.insert().returning(users.c.user_name, users.c.user_id),
+                [
+                    dict(user_id=1, user_name="john"),
+                    dict(user_id=2, user_name="jack"),
+                ],
+            )
+            r2 = connection.execute(
+                addresses.insert().returning(
+                    addresses.c.address_id,
+                    addresses.c.address,
+                    addresses.c.user_id,
+                ),
+                [
+                    dict(address_id=1, user_id=1, address="foo@bar.com"),
+                    dict(address_id=2, user_id=2, address="bar@bat.com"),
+                ],
+            )
 
-        r2 = connection.execute(
-            addresses.insert().returning(
-                addresses.c.address_id,
-                addresses.c.address,
-                addresses.c.user_id,
-            ),
-            [
-                dict(address_id=1, user_id=1, address="foo@bar.com"),
-                dict(address_id=2, user_id=2, address="bar@bat.com"),
-            ],
-        )
+        if filters.sliced:
+            r1 = r1.columns(users.c.user_name)
+            r2 = r2.columns(addresses.c.address, addresses.c.user_id)
+        elif filters.unique:
+            r1 = r1.unique()
+            r2 = r2.unique()
 
         rows = r1.splice_horizontally(r2).all()
-        eq_(
-            rows,
-            [
-                ("john", 1, 1, "foo@bar.com", 1),
-                ("jack", 2, 2, "bar@bat.com", 2),
-            ],
-        )
 
-        eq_(rows[0]._mapping[users.c.user_id], 1)
-        eq_(rows[0]._mapping[addresses.c.user_id], 1)
-        eq_(rows[1].address, "bar@bat.com")
+        if filters.sliced:
+            eq_(
+                rows,
+                [
+                    ("john", "foo@bar.com", 1),
+                    ("jack", "bar@bat.com", 2),
+                ],
+            )
+            eq_(rows[0]._mapping[users.c.user_name], "john")
+            eq_(rows[0].address, "foo@bar.com")
+        elif filters.unique:
+            eq_(
+                rows,
+                [
+                    ("john", "foo@bar.com"),
+                ],
+            )
+            eq_(rows[0]._mapping[users.c.user_name], "john")
+            eq_(rows[0].address, "foo@bar.com")
+        elif filters.plain:
+            eq_(
+                rows,
+                [
+                    ("john", 1, 1, "foo@bar.com", 1),
+                    ("jack", 2, 2, "bar@bat.com", 2),
+                ],
+            )
 
-        with expect_raises_message(
-            exc.InvalidRequestError, "Ambiguous column name 'user_id'"
-        ):
-            rows[0].user_id
+            eq_(rows[0]._mapping[users.c.user_id], 1)
+            eq_(rows[0]._mapping[addresses.c.user_id], 1)
+            eq_(rows[1].address, "bar@bat.com")
+
+            with expect_raises_message(
+                exc.InvalidRequestError, "Ambiguous column name 'user_id'"
+            ):
+                rows[0].user_id
+        else:
+            filters.fail()
 
     def test_keys_no_rows(self, connection):
         for i in range(2):

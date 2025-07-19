@@ -325,7 +325,7 @@ class SimpleResultMetaData(ResultMetaData):
         )
 
     def _index_for_key(self, key: Any, raiseerr: bool = True) -> int:
-        if int in key.__class__.__mro__:
+        if isinstance(key, int):
             key = self._keys[key]
         try:
             rec = self._keymap[key]
@@ -341,7 +341,7 @@ class SimpleResultMetaData(ResultMetaData):
         self, keys: Sequence[Any]
     ) -> Iterator[_KeyMapRecType]:
         for key in keys:
-            if int in key.__class__.__mro__:
+            if isinstance(key, int):
                 key = self._keys[key]
 
             try:
@@ -354,9 +354,7 @@ class SimpleResultMetaData(ResultMetaData):
     def _reduce(self, keys: Sequence[Any]) -> ResultMetaData:
         try:
             metadata_for_keys = [
-                self._keymap[
-                    self._keys[key] if int in key.__class__.__mro__ else key
-                ]
+                self._keymap[self._keys[key] if isinstance(key, int) else key]
                 for key in keys
             ]
         except KeyError as ke:
@@ -2187,7 +2185,8 @@ class FrozenResult(Generic[Unpack[_Ts]]):
         else:
             self.data = result.fetchall()
 
-    def rewrite_rows(self) -> Sequence[Sequence[Any]]:
+    def _rewrite_rows(self) -> Sequence[Sequence[Any]]:
+        # used only by the orm fn merge_frozen_result
         if self._source_supports_scalars:
             return [[elem] for elem in self.data]
         else:
