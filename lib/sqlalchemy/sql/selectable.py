@@ -1346,7 +1346,7 @@ class Join(roles.DMLTableRole, FromClause):
             c for c in self.right.c
         ]
 
-        primary_key.extend(  # type: ignore
+        primary_key.extend(
             sqlutil.reduce_columns(
                 (c for c in _columns if c.primary_key), self.onclause
             )
