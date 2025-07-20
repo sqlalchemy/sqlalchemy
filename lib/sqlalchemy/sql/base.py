@@ -69,7 +69,6 @@ if TYPE_CHECKING:
     from ._orm_types import DMLStrategyArgument
     from ._orm_types import SynchronizeSessionArgument
     from ._typing import _CLE
-    from ._util_cy import anon_map
     from .cache_key import CacheKey
     from .compiler import SQLCompiler
     from .dml import Delete
@@ -89,6 +88,7 @@ if TYPE_CHECKING:
     from .selectable import _SelectIterable
     from .selectable import FromClause
     from .selectable import Select
+    from .visitors import anon_map
     from ..engine import Connection
     from ..engine import CursorResult
     from ..engine.interfaces import _CoreMultiExecuteParams
