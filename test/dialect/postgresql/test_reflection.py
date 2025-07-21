@@ -2237,6 +2237,17 @@ class ReflectionTest(
         t = Table("t", MetaData(), autoload_with=connection)
         eq_(t.c.x.type.enums, [])
 
+    def test_enum_starts_with_interval(self, metadata, connection):
+        """Test for #12744"""
+        enum_type = postgresql.ENUM("day", "week", name="intervalunit")
+        t1 = Table("t1", metadata, Column("col", enum_type))
+        t1.create(connection)
+
+        insp = inspect(connection)
+        cols = insp.get_columns("t1")
+        is_true(isinstance(cols[0]["type"], postgresql.ENUM))
+        eq_(cols[0]["type"].enums, ["day", "week"])
+
     def test_reflection_with_unique_constraint(self, metadata, connection):
         insp = inspect(connection)
 
