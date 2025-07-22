@@ -5178,20 +5178,15 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_type_is_visible(pg_catalog.pg_type.c.oid).label(
                     "visible"
                 ),
+                pg_catalog.pg_type.c.oid.label("atttype_oid"),
                 pg_catalog.pg_namespace.c.nspname.label("schema"),
                 con_sq.c.condefs,
                 con_sq.c.connames,
-                pg_catalog.pg_collation.c.collname,
             )
             .join(
                 pg_catalog.pg_namespace,
                 pg_catalog.pg_namespace.c.oid
                 == pg_catalog.pg_type.c.typnamespace,
-            )
-            .outerjoin(
-                pg_catalog.pg_collation,
-                pg_catalog.pg_type.c.typcollation
-                == pg_catalog.pg_collation.c.oid,
             )
             .outerjoin(
                 con_sq,
@@ -5207,6 +5202,8 @@ class PGDialect(default.DefaultDialect):
     @reflection.cache
     def _load_domains(self, connection, schema=None, **kw):
         result = connection.execute(self._domain_query(schema))
+
+        collation_by_type = self._collation_by_type(connection, **kw)
 
         domains: List[ReflectedDomain] = []
         for domain in result.mappings():
@@ -5235,7 +5232,7 @@ class PGDialect(default.DefaultDialect):
                 "nullable": domain["nullable"],
                 "default": domain["default"],
                 "constraints": constraints,
-                "collation": domain["collname"],
+                "collation": collation_by_type.get(domain["atttype_oid"]),
             }
             domains.append(domain_rec)
 
@@ -5292,6 +5289,15 @@ class PGDialect(default.DefaultDialect):
     ) -> dict[int, Tuple[str, Optional[list[int]]]]:
         rows = connection.execute(self._pg_collation_query)
         return {oid: (name, types) for oid, name, types in rows}
+
+    @reflection.cache
+    def _collation_by_type(self, connection, **kw) -> dict[int, str]:
+        collations = self._load_collation_dict(connection, **kw)
+        return {
+            typoid: name
+            for (name, types) in collations.values()
+            for typoid in (types or ())
+        }
 
     def _set_backslash_escapes(self, connection):
         # this method is provided as an override hook for descendant
