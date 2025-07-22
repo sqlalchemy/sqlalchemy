@@ -3861,7 +3861,7 @@ class PGDialect(default.DefaultDialect):
             )
         )
 
-        collations = self._load_collation_dict(connection)
+        collations = self._load_collation_dict(connection, **kw)
 
         columns = self._get_columns_info(
             rows, domains, enums, collations, schema
@@ -5288,7 +5288,7 @@ class PGDialect(default.DefaultDialect):
 
     @reflection.cache
     def _load_collation_dict(
-        self, connection
+        self, connection, **kw
     ) -> dict[int, Tuple[str, Optional[list[int]]]]:
         rows = connection.execute(self._pg_collation_query)
         return {oid: (name, types) for oid, name, types in rows}
