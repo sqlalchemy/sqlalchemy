@@ -4034,19 +4034,18 @@ class PGDialect(default.DefaultDialect):
             table_cols = columns[(schema, row_dict["table_name"])]
 
             try:
-                collation_name, default_collation_for_types = collations[
+                collation, default_collation_for_types = collations[
                     row_dict["collation"]
                 ]
             except KeyError:
                 collation = None
             else:
                 # Only export the collation if distinct from type's default.
-                collation = (
-                    collation_name
-                    if default_collation_for_types is not None
-                    and row_dict["type"] not in default_collation_for_types
-                    else None
-                )
+                if (
+                    default_collation_for_types is not None
+                    and row_dict["type"] in default_collation_for_types
+                ):
+                    collation = None
 
             coltype = self._reflect_type(
                 row_dict["format_type"],
