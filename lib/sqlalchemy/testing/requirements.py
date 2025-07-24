@@ -690,6 +690,15 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def column_collation_reflection(self):
+        """Indicates if the database support column collation reflection.
+
+        This requirement also uses ``get_order_by_collation`` to get
+        an available collation.
+        """
+        return exclusions.closed()
+
+    @property
     def view_column_reflection(self):
         """target database must support retrieval of the columns in a view,
         similarly to how a table is inspected.
