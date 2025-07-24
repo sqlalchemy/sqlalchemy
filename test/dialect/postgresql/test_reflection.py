@@ -2714,9 +2714,10 @@ class ReflectionTest(
 
 class CustomTypeReflectionTest(fixtures.TestBase):
     class CustomType:
-        def __init__(self, arg1=None, arg2=None):
+        def __init__(self, arg1=None, arg2=None, collation=None):
             self.arg1 = arg1
             self.arg2 = arg2
+            self.collation = collation
 
     ischema_names = None
 
@@ -2742,6 +2743,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "format_type": sch,
                 "default": None,
                 "not_null": False,
+                "collation": "cc" if sch == "my_custom_type()" else None,
                 "comment": None,
                 "generated": "",
                 "identity_options": None,
@@ -2756,6 +2758,10 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             assert isinstance(column_info["type"], self.CustomType)
             eq_(column_info["type"].arg1, args[0])
             eq_(column_info["type"].arg2, args[1])
+            if sch == "my_custom_type()":
+                eq_(column_info["type"].collation, "cc")
+            else:
+                eq_(column_info["type"].collation, None)
 
     def test_clslevel(self):
         postgresql.PGDialect.ischema_names["my_custom_type"] = self.CustomType
@@ -2784,6 +2790,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "format_type": None,
                 "default": None,
                 "not_null": False,
+                "collation": None,
                 "comment": None,
                 "generated": "",
                 "identity_options": None,
