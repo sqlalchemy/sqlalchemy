@@ -780,7 +780,7 @@ class InPlaceGenerative(HasMemoized):
 
     __slots__ = ()
 
-    def _generate(self):
+    def _generate(self) -> Self:
         skip = self._memoized_keys
         # note __dict__ needs to be in __slots__ if this is used
         for k in skip:
