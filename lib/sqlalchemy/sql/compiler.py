@@ -1386,7 +1386,7 @@ class SQLCompiler(Compiled):
          these values may be disabled which means SQL expressions may
          be rendered inline, RETURNING may not be rendered, etc.
 
-         :param numeric_start_num: the starting number for numeric
+        :param numeric_start_num: the starting number for numeric
          bind parameters, if the dialect uses a numeric paramstyle.
 
         :param kwargs: additional keyword arguments to be consumed by the
