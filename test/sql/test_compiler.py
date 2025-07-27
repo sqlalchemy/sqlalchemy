@@ -823,6 +823,23 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=default.DefaultDialect(paramstyle="pyformat"),
         )
 
+    def test_numeric_start_num(self):
+        stmt = text("select :foo, :bar, :bat from sometable")
+
+        self.assert_compile(
+            stmt,
+            "select :2, :3, :4 from sometable",
+            dialect=default.DefaultDialect(paramstyle="numeric"),
+            numeric_start_num=2,
+        )
+
+        self.assert_compile(
+            stmt,
+            "select $2, $3, $4 from sometable",
+            dialect=default.DefaultDialect(paramstyle="numeric_dollar"),
+            numeric_start_num=2,
+        )
+
     def test_anon_param_name_on_keys(self):
         self.assert_compile(
             keyed.insert(),

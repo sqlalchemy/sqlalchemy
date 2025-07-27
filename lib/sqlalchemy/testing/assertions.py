@@ -529,6 +529,7 @@ class AssertsCompiledSQL:
         from_linting=False,
         check_param_order=True,
         use_literal_execute_for_simple_int=False,
+        numeric_start_num=None,
     ):
         if use_default_dialect:
             dialect = default.DefaultDialect()
@@ -584,6 +585,9 @@ class AssertsCompiledSQL:
 
         if from_linting or getattr(self, "assert_from_linting", False):
             kw["linting"] = sql.FROM_LINTING
+
+        if numeric_start_num is not None:
+            kw["numeric_start_num"] = numeric_start_num
 
         from sqlalchemy import orm
 

@@ -1365,6 +1365,7 @@ class SQLCompiler(Compiled):
         column_keys: Optional[Sequence[str]] = None,
         for_executemany: bool = False,
         linting: Linting = NO_LINTING,
+        numeric_start_num: Optional[int] = None,
         _supporting_against: Optional[SQLCompiler] = None,
         **kwargs: Any,
     ):
@@ -1384,6 +1385,9 @@ class SQLCompiler(Compiled):
          Depending on the backend and driver in use, support for retrieving
          these values may be disabled which means SQL expressions may
          be rendered inline, RETURNING may not be rendered, etc.
+
+         :param numeric_start_num: the starting number for numeric
+         bind parameters, if the dialect uses a numeric paramstyle.
 
         :param kwargs: additional keyword arguments to be consumed by the
          superclass.
@@ -1489,7 +1493,7 @@ class SQLCompiler(Compiled):
         if self.state is CompilerState.STRING_APPLIED:
             if self.positional:
                 if self._numeric_binds:
-                    self._process_numeric()
+                    self._process_numeric(numeric_start_num)
                 else:
                     self._process_positional()
 
@@ -1690,11 +1694,11 @@ class SQLCompiler(Compiled):
                 insert_crud_params=insert_crud_params,
             )
 
-    def _process_numeric(self):
+    def _process_numeric(self, start_num: Optional[int] = None):
         assert self._numeric_binds
         assert self.state is CompilerState.STRING_APPLIED
 
-        num = 1
+        num = start_num if start_num is not None else 1
         param_pos: Dict[str, str] = {}
         order: Iterable[str]
         if self._insertmanyvalues and self._values_bindparam is not None:
