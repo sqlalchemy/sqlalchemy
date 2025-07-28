@@ -64,7 +64,6 @@ from sqlalchemy.dialects.postgresql import INT8MULTIRANGE
 from sqlalchemy.dialects.postgresql import INT8RANGE
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import NamedType
 from sqlalchemy.dialects.postgresql import NUMMULTIRANGE
 from sqlalchemy.dialects.postgresql import NUMRANGE
 from sqlalchemy.dialects.postgresql import pg8000
@@ -85,6 +84,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql.ddl import CheckFirst
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -286,7 +287,6 @@ class NamedTypeTest(
         ("create_type", False, "create_type"),
         ("create_type", True, "create_type"),
         ("schema", "someschema", "schema"),
-        ("inherit_schema", False, "inherit_schema"),
         ("metadata", MetaData(), "metadata"),
         ("values_callable", lambda x: None, "values_callable"),
     )
@@ -298,17 +298,30 @@ class NamedTypeTest(
 
         eq_(getattr(e1_copy, attrname), value)
 
-    def test_enum_create_table(self, metadata, connection):
+    @testing.variation("type_exists", [True, False])
+    @testing.variation("type_meta", [True, False])
+    def test_enum_create_table(
+        self, metadata, connection, type_exists, type_meta
+    ):
         metadata = self.metadata
         t1 = Table(
             "table",
             metadata,
             Column("id", Integer, primary_key=True),
             Column(
-                "value", Enum("one", "two", "three", name="onetwothreetype")
+                "value",
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    name="onetwothreetype",
+                    metadata=metadata if type_meta else None,
+                ),
             ),
         )
-        t1.create(connection)
+        if type_exists:
+            t1.c.value.type.create(connection)
+        t1.create(connection)  # defaults to check the type
         t1.create(connection, checkfirst=True)  # check the create
         connection.execute(t1.insert(), dict(value="two"))
         connection.execute(t1.insert(), dict(value="three"))
@@ -318,12 +331,14 @@ class NamedTypeTest(
             [(1, "two"), (2, "three"), (3, "three")],
         )
 
-    def test_domain_create_table(self, metadata, connection):
+    @testing.variation("type_exists", [True, False])
+    def test_domain_create_table(self, metadata, connection, type_exists):
         metadata = self.metadata
         Email = DOMAIN(
             name="email",
             data_type=Text,
             check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+            metadata=metadata,
         )
         PosInt = DOMAIN(
             name="pos_int",
@@ -338,6 +353,9 @@ class NamedTypeTest(
             Column("email", Email),
             Column("number", PosInt),
         )
+        if type_exists:
+            Email.create(connection)
+            PosInt.create(connection)
         t1.create(connection)
         t1.create(connection, checkfirst=True)  # check the create
         connection.execute(
@@ -357,26 +375,110 @@ class NamedTypeTest(
         )
 
     @testing.combinations(
-        (ENUM("one", "two", "three", name="mytype"), "get_enums"),
+        CheckFirst.ALL, CheckFirst.TYPES, True, argnames="checkfirst"
+    )
+    def test_checkfirst(self, metadata, connection, checkfirst):
+        Value = Enum("a", "b", "c", name="value", metadata=metadata)
+        Value.create(connection)
+
+        # no error the second time
+        Table("t", metadata, Column("c", Value)).create(
+            connection, checkfirst=checkfirst
+        )
+
+    @testing.combinations(
+        CheckFirst.NONE,
+        CheckFirst.INDEXES,
+        CheckFirst.TABLES,
+        CheckFirst.SEQUENCES,
+        False,
+        argnames="checkfirst",
+    )
+    def test_no_checkfirst(self, metadata, connection, checkfirst):
+        Value = Enum("a", "b", "c", name="value", metadata=metadata)
+        Value.create(connection)
+
+        with expect_raises_message(exc.ProgrammingError, "value"):
+            Table("t", metadata, Column("c", Value)).create(
+                connection, checkfirst=checkfirst
+            )
+
+    @testing.variation("kind", ["enum", "domain"])
+    @testing.combinations(
+        {},
+        {"checkfirst": True},
+        {"checkfirst": False},
+        {"checkfirst": CheckFirst.TYPES},
+        {"checkfirst": CheckFirst.TABLES},
+        argnames="initial_checkfirst",
+    )
+    def test_create_behavior(
+        self, metadata, connection, kind: testing.Variation, initial_checkfirst
+    ):
+        metadata = self.metadata
+        Value = Enum("a", "b", "c", name="value", metadata=metadata)
+        PosInt = DOMAIN(
+            name="value",
+            data_type=Integer,
+            not_null=True,
+            check=r"VALUE > 0",
+        )
+        t1 = Table(
+            "tbl",
+            metadata,
+            Column("id", Integer, primary_key=True),
+        )
+        if kind.domain:
+            exists_fn = self._domain_exists
+            t1.append_column(Column("number", PosInt))
+        elif kind.enum:
+            exists_fn = self._enum_exists
+            t1.append_column(Column("value", Value))
+        else:
+            kind.fail()
+
+        t1.create(connection, **initial_checkfirst)
+
+        assert exists_fn("value", connection)
+        t1.drop(connection)
+        # drop did not remove named type
+        assert exists_fn("value", connection)
+        t1.create(connection)  # by default it checks for named types
+        with connection.begin_nested() as tr:
+            with expect_raises_message(exc.ProgrammingError, "tbl"):
+                t1.create(connection)  # but not for the table
+            tr.rollback()
+        t1.create(connection, checkfirst=True)  # check the create
+
+    @testing.combinations(
         (
-            DOMAIN(
+            lambda **kw: ENUM("one", "two", "three", name="mytype", **kw),
+            "get_enums",
+        ),
+        (
+            lambda **kw: DOMAIN(
                 name="mytype",
                 data_type=Text,
                 check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+                **kw,
             ),
             "get_domains",
         ),
-        argnames="datatype, method",
+        argnames="datatype_fn, method",
     )
+    @testing.variation("type_meta", [True, False])
     def test_drops_on_table(
-        self, connection, metadata, datatype: "NamedType", method
+        self, connection, metadata, datatype_fn, method, type_meta
     ):
+        datatype = (
+            datatype_fn(metadata=metadata) if type_meta else datatype_fn()
+        )
         table = Table("e1", metadata, Column("e1", datatype))
 
         table.create(connection)
         table.drop(connection)
 
-        assert "mytype" not in [
+        assert "mytype" in [
             e["name"] for e in getattr(inspect(connection), method)()
         ]
         table.create(connection)
@@ -384,7 +486,7 @@ class NamedTypeTest(
             e["name"] for e in getattr(inspect(connection), method)()
         ]
         table.drop(connection)
-        assert "mytype" not in [
+        assert "mytype" in [
             e["name"] for e in getattr(inspect(connection), method)()
         ]
 
@@ -463,7 +565,7 @@ class NamedTypeTest(
 
         t1.drop(conn)
 
-        assert "schema_mytype" not in [
+        assert "schema_mytype" in [
             e["name"]
             for e in getattr(inspect(conn), method)(
                 schema=testing.config.test_schema
@@ -474,7 +576,8 @@ class NamedTypeTest(
     @testing.combinations(
         ("inherit_schema_false",),
         ("inherit_schema_not_provided",),
-        ("metadata_schema_only",),
+        ("metadata_only",),
+        ("schema_only",),
         ("inherit_table_schema",),
         ("override_metadata_schema",),
         argnames="test_case",
@@ -502,9 +605,16 @@ class NamedTypeTest(
             else:
                 assert False
 
-        if test_case == "metadata_schema_only":
+        dep = expect_deprecated(
+            "the ``inherit_schema`` parameter is deprecated"
+        )
+
+        if test_case == "metadata_only":
             enum = make_type(metadata=metadata)
             assert_schema = testing.config.test_schema
+        elif test_case == "schema_only":
+            enum = make_type(schema=default_schema)
+            assert_schema = default_schema
         elif test_case == "override_metadata_schema":
             enum = make_type(
                 metadata=metadata,
@@ -512,14 +622,15 @@ class NamedTypeTest(
             )
             assert_schema = testing.config.test_schema_2
         elif test_case == "inherit_table_schema":
-            enum = make_type(metadata=metadata, inherit_schema=True)
+            with dep:
+                enum = make_type(metadata=metadata, inherit_schema=True)
             assert_schema = testing.config.test_schema_2
         elif test_case == "inherit_schema_not_provided":
             enum = make_type()
-            assert_schema = testing.config.test_schema_2
+            assert_schema = testing.config.test_schema
         elif test_case == "inherit_schema_false":
             enum = make_type(inherit_schema=False)
-            assert_schema = default_schema
+            assert_schema = testing.config.test_schema
         else:
             assert False
 
@@ -860,9 +971,6 @@ class NamedTypeTest(
                         dialect="postgresql",
                     ),
                 )
-                expected_drop.append(
-                    RegexSQL("DROP DOMAIN mytype", dialect="postgresql")
-                )
         else:
             type_exists = functools.partial(
                 self._enum_exists, "mytype", connection
@@ -877,9 +985,6 @@ class NamedTypeTest(
                         dialect="postgresql",
                     ),
                 )
-                expected_drop.append(
-                    RegexSQL("DROP TYPE mytype", dialect="postgresql")
-                )
 
         t1 = Table("e1", metadata, Column("c1", dt))
 
@@ -891,19 +996,18 @@ class NamedTypeTest(
 
             assert type_exists()
 
-            with self.sql_execution_asserter(connection) as drop_asserter:
-                t1.drop(connection, checkfirst=False)
         else:
             dt.create(bind=connection, checkfirst=False)
             assert type_exists()
 
             with self.sql_execution_asserter(connection) as create_asserter:
                 t1.create(connection, checkfirst=False)
-            with self.sql_execution_asserter(connection) as drop_asserter:
-                t1.drop(connection, checkfirst=False)
 
-            assert type_exists()
-            dt.drop(bind=connection, checkfirst=False)
+        with self.sql_execution_asserter(connection) as drop_asserter:
+            t1.drop(connection, checkfirst=False)
+
+        assert type_exists()
+        dt.drop(bind=connection, checkfirst=False)
 
         assert not type_exists()
 
@@ -1105,31 +1209,6 @@ class NamedTypeTest(
         ]
 
         assert_raises(exc.ProgrammingError, e1.drop, conn, checkfirst=False)
-
-    def test_remain_on_table_metadata_wide(self, metadata, future_connection):
-        connection = future_connection
-
-        e1 = Enum("one", "two", "three", name="myenum", metadata=metadata)
-        table = Table("e1", metadata, Column("c1", e1))
-
-        # need checkfirst here, otherwise enum will not be created
-        assert_raises_message(
-            sa.exc.ProgrammingError,
-            '.*type "myenum" does not exist',
-            table.create,
-            connection,
-        )
-        connection.rollback()
-
-        table.create(connection, checkfirst=True)
-        table.drop(connection)
-        table.create(connection, checkfirst=True)
-        table.drop(connection)
-        assert "myenum" in [e["name"] for e in inspect(connection).get_enums()]
-        metadata.drop_all(connection)
-        assert "myenum" not in [
-            e["name"] for e in inspect(connection).get_enums()
-        ]
 
     def test_non_native_dialect(self, metadata, testing_engine):
         engine = testing_engine()
@@ -2789,7 +2868,10 @@ class ArrayRoundTripTest:
             {"my_enum_1", "my_enum_2", "my_enum_3"},
         )
         t.drop(connection)
-        eq_(inspect(connection).get_enums(), [])
+        eq_(
+            {e["name"] for e in inspect(connection).get_enums()},
+            {"my_enum_1", "my_enum_2", "my_enum_3"},
+        )
 
     def _type_combinations(
         exclude_json=False,

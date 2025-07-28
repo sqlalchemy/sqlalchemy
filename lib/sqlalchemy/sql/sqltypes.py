@@ -63,8 +63,10 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..engine import processors
+from ..util import deprecated_params
 from ..util import langhelpers
 from ..util import OrderedDict
+from ..util import warn_deprecated
 from ..util.typing import is_literal
 from ..util.typing import is_pep695
 from ..util.typing import TupleAny
@@ -76,7 +78,6 @@ if TYPE_CHECKING:
     from .elements import ColumnElement
     from .operators import OperatorType
     from .schema import MetaData
-    from .schema import SchemaConst
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
     from .type_api import _LiteralProcessorType
@@ -1065,13 +1066,23 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
     _use_schema_map = True
 
     name: Optional[str]
+    metadata: Optional[MetaData]
 
+    @deprecated_params(
+        inherit_schema=(
+            "2.1",
+            "the ``inherit_schema`` parameter is deprecated."
+            "The schema will be inherited from the ``metadata`` object. "
+            "To keep using the table schema as the type schema, pass the "
+            "``schema`` parameter directly.",
+        )
+    )
     def __init__(
         self,
         name: Optional[str] = None,
-        schema: Optional[Union[str, Literal[SchemaConst.BLANK_SCHEMA]]] = None,
+        schema: Optional[Union[str, _NoArg]] = NO_ARG,
         metadata: Optional[MetaData] = None,
-        inherit_schema: Union[bool, _NoArg] = NO_ARG,
+        inherit_schema: bool = False,
         quote: Optional[bool] = None,
         create_type: bool = True,
         _create_events: bool = True,
@@ -1081,20 +1092,26 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             self.name = quoted_name(name, quote)
         else:
             self.name = None
-        self.schema = schema
-        self.metadata = metadata
-        self.create_type = create_type
-        if inherit_schema is True and schema is not None:
+
+        if schema is NO_ARG:
+            self._schema_provided = False
+            self.schema = None
+        elif inherit_schema:
             raise exc.ArgumentError(
                 "Ambiguously setting inherit_schema=True while "
-                "also passing a non-None schema argument"
+                "also passing a schema argument"
             )
-        self.inherit_schema = (
-            inherit_schema
-            if inherit_schema is not NO_ARG
-            else (schema is None and metadata is None)
-        )
+        else:
+            self._schema_provided = True
+            self.schema = schema
+        self._inherit_schema = inherit_schema
 
+        if metadata:
+            self._set_metadata(metadata)
+        else:
+            self.metadata = None
+
+        self.create_type = create_type
         self._create_events = _create_events
 
         if _create_events and self.metadata:
@@ -1111,6 +1128,14 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
 
         if _adapted_from:
             self.dispatch = self.dispatch._join(_adapted_from.dispatch)
+
+    @property
+    def inherit_schema(self) -> bool:
+        "Deprecated property ``inherit_schema``."
+        warn_deprecated(
+            "The ``inherit_schema`` property is deprecated.", "2.1"
+        )
+        return self._inherit_schema
 
     def _set_parent(self, parent, **kw):
         # set parent hook is when this type is associated with a column.
@@ -1137,13 +1162,10 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         return variant_mapping
 
     def _set_table(self, column, table):
-        if self.inherit_schema:
+        metadata_was_none = self._set_metadata(table.metadata)
+        if self._inherit_schema:
             self.schema = table.schema
-        elif self.metadata and self.schema is None and self.metadata.schema:
-            self.schema = self.metadata.schema
-
-        if self.schema is not None:
-            self.inherit_schema = False
+            self._inherit_schema = False
 
         if not self._create_events:
             return
@@ -1164,7 +1186,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
                 self._on_table_drop, variant_mapping=variant_mapping
             ),
         )
-        if self.metadata is None:
+        if metadata_was_none or self.metadata is not table.metadata:
             # if SchemaType were created w/ a metadata argument, these
             # events would already have been associated with that metadata
             # and would preclude an association with table.metadata
@@ -1185,6 +1207,21 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
                 ),
             )
 
+    def _set_metadata(self, metadata: MetaData) -> bool:
+        # when called from the ctor metadata is not assigned yet
+        if getattr(self, "metadata", None) is None:
+            self.metadata = metadata
+            if (
+                not self._inherit_schema
+                and not self._schema_provided
+                and metadata.schema
+            ):
+                self.schema = metadata.schema
+            self.metadata._register_object(self)
+            return True
+        else:
+            return False
+
     def copy(self, **kw):
         return self.adapt(
             cast("Type[TypeEngine[Any]]", self.__class__),
@@ -1193,6 +1230,11 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
                 kw.get("_to_metadata", self.metadata)
                 if self.metadata is not None
                 else None
+            ),
+            **(
+                {"schema": kw["schema"]}
+                if kw.get("schema", NO_ARG) is not NO_ARG
+                else {}
             ),
         )
 
@@ -1418,23 +1460,30 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         :param metadata: Associate this type directly with a ``MetaData``
            object. For types that exist on the target database as an
            independent schema construct (PostgreSQL), this type will be
-           created and dropped within ``create_all()`` and ``drop_all()``
-           operations. If the type is not associated with any ``MetaData``
-           object, it will associate itself with each ``Table`` in which it is
-           used, and will be created when any of those individual tables are
-           created, after a check is performed for its existence. The type is
-           only dropped when ``drop_all()`` is called for that ``Table``
-           object's metadata, however.
+           created and dropped within :meth:`_schema.MetaData.create_all` and
+           :meth:`_schema.MetaData.drop_all` operations. If the type is not
+           associated with any :class:`_schema.MetaData` object, it will
+           automatically associate itself with the :class:`_schema.MetaData`
+           object from the first :class:`_schema.Table` it's used in.
+           The type will be created when any table that uses it is created,
+           after a check is performed for its existence.
+           The type is only dropped when :meth:`_schema.MetaData.drop_all`
+           is called for the associated metadata.
+
+           .. versionchanged:: 2.1 named types like :class:`.Enum`,
+              :class:`_postgresql.ENUM` and :class:`_postgresql.DOMAIN` now
+              inherit the schema of the associated :class:`.MetaData`
+              automatically, even when only first associated with a
+              :class:`.Table`.
 
            The value of the :paramref:`_schema.MetaData.schema` parameter of
            the :class:`_schema.MetaData` object, if set, will be used as the
            default value of the :paramref:`_types.Enum.schema` on this object
            if an explicit value is not otherwise supplied.
 
-           .. versionchanged:: 1.4.12 :class:`_types.Enum` inherits the
-              :paramref:`_schema.MetaData.schema` parameter of the
-              :class:`_schema.MetaData` object if present, when passed using
-              the :paramref:`_types.Enum.metadata` parameter.
+           .. versionchanged:: 2.1 :class:`_types.Enum` will associate itself
+             with the metadata of the first ``Table`` it is used in, if a
+             metadata object is not provided.
 
         :param name: The name of this type. This is required for PostgreSQL
            and any future supported database which requires an explicitly
@@ -1448,8 +1497,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
          that are created and dropped separately from the table(s) they
          are used by.   Indicates that ``CREATE TYPE`` should be emitted,
          after optionally checking for the presence of the type, when the
-         parent table is being created; and additionally that ``DROP TYPE`` is
-         called when the table is dropped.  This parameter is equivalent to the
+         parent table is being created.  This parameter is equivalent to the
          parameter of the same name on the PostgreSQL-specific
          :class:`_postgresql.ENUM` datatype.
 
@@ -1480,37 +1528,22 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
            present.
 
            If not present, the schema name will be taken from the
-           :class:`_schema.MetaData` collection if passed as
-           :paramref:`_types.Enum.metadata`, for a :class:`_schema.MetaData`
-           that includes the :paramref:`_schema.MetaData.schema` parameter.
-
-           .. versionchanged:: 1.4.12 :class:`_types.Enum` inherits the
-              :paramref:`_schema.MetaData.schema` parameter of the
-              :class:`_schema.MetaData` object if present, when passed using
-              the :paramref:`_types.Enum.metadata` parameter.
-
-           Otherwise, the schema will be inherited from the associated
-           :class:`_schema.Table` object if any; when
-           :paramref:`_types.Enum.inherit_schema` is set to
-           ``False``, the owning table's schema is **not** used.
-
+           :class:`_schema.MetaData` collection if it
+           includes the :paramref:`_schema.MetaData.schema` parameter,
+           unless the deprecated :paramref:`.Enum.inherit_schema` parameter
+           is set to ``True``.
 
         :param quote: Set explicit quoting preferences for the type's name.
 
         :param inherit_schema: When ``True``, the "schema" from the owning
-           :class:`_schema.Table` will be copied to the "schema"
-           attribute of this :class:`.Enum`, replacing whatever value was
-           passed for the :paramref:`_types.Enum.schema` attribute.
-           This also takes effect when using the
-           :meth:`_schema.Table.to_metadata` operation.
-           Set to ``False`` to retain the schema value provided.
-           By default the behavior will be to inherit the table schema unless
-           either :paramref:`_types.Enum.schema` and / or
-           :paramref:`_types.Enum.metadata` are set.
+           :class:`_schema.Table`
+           will be copied to the "schema" attribute of this
+           :class:`.Enum`.
 
-           .. versionchanged:: 2.1 The default value of this parameter
-               was changed to ``True`` when :paramref:`_types.Enum.schema`
-               and :paramref:`_types.Enum.metadata` are not provided.
+           .. deprecated:: 2.1  Setting the :paramref:`.Enum.inherit_schema`
+             parameter is deprecated. Provide the schema directly if
+             the default behavior of using the :class:`_schema.MetaData`
+             schema is not desired.
 
         :param validate_strings: when True, string values that are being
            passed to the database in a SQL statement will be checked
@@ -1603,8 +1636,8 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             self,
             name=kw.pop("name", None),
             create_type=kw.pop("create_type", True),
-            inherit_schema=kw.pop("inherit_schema", NO_ARG),
-            schema=kw.pop("schema", None),
+            inherit_schema=kw.pop("inherit_schema", False),
+            schema=kw.pop("schema", NO_ARG),
             metadata=kw.pop("metadata", None),
             quote=kw.pop("quote", None),
             _create_events=kw.pop("_create_events", True),
@@ -1815,8 +1848,10 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                 ("native_enum", True),
                 ("create_constraint", False),
                 ("length", self._default_length),
+                ("schema", None),
             ],
             to_inspect=[Enum, SchemaType],
+            omit_kwarg=["schema", "inherit_schema"],
         )
 
     def as_generic(self, allow_nulltype=False):
@@ -1838,7 +1873,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         if self.name:
             kw.setdefault("name", self.name)
         kw.setdefault("schema", self.schema)
-        kw.setdefault("inherit_schema", self.inherit_schema)
         kw.setdefault("metadata", self.metadata)
         kw.setdefault("native_enum", self.native_enum)
         kw.setdefault("values_callable", self.values_callable)

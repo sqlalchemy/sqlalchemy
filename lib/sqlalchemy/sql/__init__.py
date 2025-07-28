@@ -17,6 +17,7 @@ from .compiler import FROM_LINTING as FROM_LINTING
 from .compiler import NO_LINTING as NO_LINTING
 from .compiler import WARN_LINTING as WARN_LINTING
 from .ddl import BaseDDLElement as BaseDDLElement
+from .ddl import CheckFirst as CheckFirst
 from .ddl import DDL as DDL
 from .ddl import DDLElement as DDLElement
 from .ddl import ExecutableDDLElement as ExecutableDDLElement

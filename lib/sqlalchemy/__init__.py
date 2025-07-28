@@ -57,6 +57,7 @@ from .pool import StaticPool as StaticPool
 from .schema import BaseDDLElement as BaseDDLElement
 from .schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .schema import CheckConstraint as CheckConstraint
+from .schema import CheckFirst as CheckFirst
 from .schema import Column as Column
 from .schema import ColumnDefault as ColumnDefault
 from .schema import Computed as Computed

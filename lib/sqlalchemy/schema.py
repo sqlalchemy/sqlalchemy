@@ -14,6 +14,7 @@ from .sql.ddl import _CreateDropBase as _CreateDropBase
 from .sql.ddl import _DropView as _DropView
 from .sql.ddl import AddConstraint as AddConstraint
 from .sql.ddl import BaseDDLElement as BaseDDLElement
+from .sql.ddl import CheckFirst as CheckFirst
 from .sql.ddl import CreateColumn as CreateColumn
 from .sql.ddl import CreateIndex as CreateIndex
 from .sql.ddl import CreateSchema as CreateSchema

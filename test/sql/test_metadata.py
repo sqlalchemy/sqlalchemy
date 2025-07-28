@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from contextlib import nullcontext
 import pickle
 
 import sqlalchemy as tsa
@@ -60,14 +61,15 @@ from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import Variation
-from sqlalchemy.testing.assertions import expect_warnings
 
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
@@ -810,6 +812,71 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 MetaData(connection)
             else:
                 MetaData(42)  # type: ignore
+
+    def test_metadata_schemas(self):
+        eq_(MetaData().schemas, ())
+        eq_(MetaData(schema="foo").schemas, ("foo",))
+
+        m1 = MetaData()
+        Table("t", m1, schema="x")
+        Table("t2", m1, schema="y")
+        eq_(sorted(m1.schemas), ["x", "y"])
+
+        m2 = MetaData(schema="w")
+        Table("t", m2, schema="x")
+        Table("t2", m2, schema="y")
+        eq_(sorted(m2.schemas), ["w", "x", "y"])
+
+    def test_get_schema_objects_empty(self):
+        eq_(MetaData().get_schema_objects(Enum), ())
+
+    def test_get_schema_objects(self):
+        class MyEnum(Enum):
+            pass
+
+        m1 = MetaData()
+        e = Enum("a", "b", name="foo")
+        e2 = MyEnum("a", "b", name="foo", schema="t", metadata=m1)
+        s = Sequence("s")
+        Table("t", m1, Column("c", e), Column("s", Integer, s))
+        eq_(m1.get_schema_objects(Enum), (e,))
+        eq_(m1.get_schema_objects(MyEnum), ())
+        eq_(m1.get_schema_objects(Enum, schema="t"), (e2,))
+        eq_(m1.get_schema_objects(MyEnum, schema="t"), (e2,))
+        eq_(m1.get_schema_objects(Sequence), (s,))
+
+    def test_get_schema_object_by_name(self):
+        class MyEnum(Enum):
+            pass
+
+        m1 = MetaData()
+        e = Enum("a", "b", name="foo")
+        e2 = Enum("x", "y", name="bar", metadata=m1)
+        e3 = MyEnum("x", "b", name="foo", schema="t", metadata=m1)
+        e4 = Enum("a", "y", name="baz", schema="t")
+        Table("t", m1, Column("c", e), Column("c2", e4))
+        eq_(m1.get_schema_object_by_name(Enum, "foo"), e)
+        eq_(m1.get_schema_object_by_name(Enum, "bar"), e2)
+        eq_(m1.get_schema_object_by_name(MyEnum, "bar"), None)
+        eq_(m1.get_schema_object_by_name(Enum, "baz"), None)
+        eq_(m1.get_schema_object_by_name(Enum, "foo", schema="t"), e3)
+        eq_(m1.get_schema_object_by_name(Enum, "foo", schema="t"), e3)
+        eq_(m1.get_schema_object_by_name(MyEnum, "foo", schema="t"), e3)
+        eq_(m1.get_schema_object_by_name(Enum, "baz", schema="t"), e4)
+        eq_(m1.get_schema_object_by_name(Enum, "bar", schema="t"), None)
+
+    def test_custom_schematype(self):
+        class FooType(sqltypes.SchemaType, sqltypes.TypeEngine):
+            pass
+
+        m1 = MetaData()
+        t1 = FooType(name="foo")
+        t2 = FooType(name="bar", metadata=m1)
+        Table("t", m1, Column("c", t1))
+        eq_(set(m1.get_schema_objects(FooType)), {t1, t2})
+        eq_(m1.get_schema_object_by_name(FooType, "foo"), t1)
+        eq_(m1.get_schema_object_by_name(FooType, "bar"), t2)
+        eq_(m1.get_schema_object_by_name(Enum, "bar"), None)
 
 
 class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
@@ -2519,16 +2586,12 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_adapt_to_schema(self):
         m = MetaData()
         type_ = self.MyType()
-        eq_(type_.inherit_schema, True)
         t1 = Table("x", m, Column("y", type_), schema="z")
-        eq_(t1.c.y.type.schema, "z")
+        eq_(t1.c.y.type.schema, None)
 
         adapted = t1.c.y.type.adapt(self.MyType)
 
-        eq_(type_.inherit_schema, False)
-        eq_(adapted.inherit_schema, False)
-
-        eq_(adapted.schema, "z")
+        eq_(adapted.schema, None)
 
         adapted2 = t1.c.y.type.adapt(self.MyType, schema="q")
         eq_(adapted2.schema, "q")
@@ -2538,6 +2601,27 @@ class SchemaTypeTest(fixtures.TestBase):
         type_ = self.MyType(schema="q")
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "q")
+
+    @property
+    def inherit_schema_deprecaeted(self):
+        return expect_deprecated(
+            "the ``inherit_schema`` parameter is deprecated"
+        )
+
+    @testing.combinations(
+        {}, {"inherit_schema": True}, {"inherit_schema": False}
+    )
+    def test_inherit_schema_deprecated(self, args):
+        if args.get("inherit_schema", False):
+            dep = self.inherit_schema_deprecaeted
+        else:
+            dep = nullcontext()
+        with dep:
+            typ = self.MyType(**args)
+        with expect_deprecated(
+            "The ``inherit_schema`` property is deprecated"
+        ):
+            eq_(typ.inherit_schema, args.get("inherit_schema", False))
 
     def test_inherit_schema_from_metadata(self):
         """test #6373"""
@@ -2549,7 +2633,8 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_inherit_schema_from_table_override_metadata(self):
         """test #6373"""
         m = MetaData(schema="q")
-        type_ = self.MyType(metadata=m, inherit_schema=True)
+        with self.inherit_schema_deprecaeted:
+            type_ = self.MyType(metadata=m, inherit_schema=True)
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "z")
 
@@ -2560,58 +2645,64 @@ class SchemaTypeTest(fixtures.TestBase):
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "e")
 
+    @combinations({}, {"schema": "m"})
+    def test_inherit_schema_mata(self, arg):
+        m = MetaData(**arg)
+        type_ = self.MyType()
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, arg.get("schema"))
+
     def test_inherit_schema(self):
         m = MetaData()
-        type_ = self.MyType(inherit_schema=True)
+        with self.inherit_schema_deprecaeted:
+            type_ = self.MyType(inherit_schema=True)
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "z")
 
-    @combinations({}, {"inherit_schema": False}, argnames="enum_kw")
     @combinations({}, {"schema": "m"}, argnames="meta_kw")
     @combinations({}, {"schema": "t"}, argnames="table_kw")
-    def test_independent_schema_enum_explicit_schema(
-        self, enum_kw, meta_kw, table_kw
-    ):
+    def test_independent_schema_enum_explicit_schema(self, meta_kw, table_kw):
         m = MetaData(**meta_kw)
-        type_ = sqltypes.Enum("a", schema="e", **enum_kw)
+        type_ = sqltypes.Enum("a", schema="e")
         t1 = Table("x", m, Column("y", type_), **table_kw)
         eq_(t1.c.y.type.schema, "e")
 
     def test_explicit_schema_w_inherit_raises(self):
-        with expect_raises_message(
-            exc.ArgumentError,
-            "Ambiguously setting inherit_schema=True while also passing "
-            "a non-None schema argument",
+        with (
+            expect_raises_message(
+                exc.ArgumentError,
+                "Ambiguously setting inherit_schema=True while also passing "
+                "a schema argument",
+            ),
+            self.inherit_schema_deprecaeted,
         ):
             sqltypes.Enum("a", schema="e", inherit_schema=True)
 
-    def test_independent_schema_off_no_explicit_schema(self):
+    def test_schema_none_does_not_inherits(self):
         m = MetaData(schema="m")
-        type_ = sqltypes.Enum("a", inherit_schema=False)
+        type_ = sqltypes.Enum("a", schema=None)
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, None)
 
-    def test_inherit_schema_enum_auto(self):
-        m = MetaData()
-        type_ = sqltypes.Enum("a", "b", "c")
+    @combinations("set_meta", "no_set_meta")
+    def test_schema_black_schema_set_none(self, case):
+        m = MetaData(schema="m")
+        kw = {"set_meta": {"metadata": m}, "no_set_meta": {}}
+        type_ = sqltypes.Enum("a", schema=None, **kw[case])
         t1 = Table("x", m, Column("y", type_), schema="z")
-        eq_(t1.c.y.type.schema, "z")
-
-    def test_inherit_schema_enum_meta(self):
-        m = MetaData(schema="q")
-        type_ = sqltypes.Enum("a", "b", "c")
-        t1 = Table("x", m, Column("y", type_), schema="z")
-        eq_(t1.c.y.type.schema, "z")
+        eq_(t1.c.y.type.schema, None)
 
     def test_inherit_schema_enum_set_meta(self):
         m = MetaData(schema="q")
         type_ = sqltypes.Enum("a", "b", "c", metadata=m)
+        eq_(type_.schema, "q")
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "q")
 
     def test_inherit_schema_enum_set_meta_explicit(self):
         m = MetaData(schema="q")
         type_ = sqltypes.Enum("a", "b", "c", metadata=m, schema="e")
+        eq_(type_.schema, "e")
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "e")
 
@@ -2629,13 +2720,9 @@ class SchemaTypeTest(fixtures.TestBase):
         m2 = MetaData()
         t2 = t1.to_metadata(m2)
 
-        if assign_metadata:
-            # metadata was transferred
-            # issue #11802
-            is_(t2.c.y.type.metadata, m2)
-        else:
-            # metadata isn't set
-            is_(t2.c.y.type.metadata, None)
+        # metadata was transferred
+        # issue #11802
+        is_(t2.c.y.type.metadata, m2)
 
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
@@ -2654,29 +2741,9 @@ class SchemaTypeTest(fixtures.TestBase):
         t2 = t1.to_metadata(m2)
         eq_(t2.c.y.type.schema, "z")
 
-    @testing.variation("inherit_schema", ["novalue", True, False])
-    def test_to_metadata_independent_schema(self, inherit_schema):
-        m1 = MetaData()
-
-        if inherit_schema.novalue:
-            type_ = self.MyType()
-        else:
-            type_ = self.MyType(inherit_schema=bool(inherit_schema))
-
-        t1 = Table("x", m1, Column("y", type_))
-
-        m2 = MetaData()
-        t2 = t1.to_metadata(m2, schema="bar")
-
-        if inherit_schema.novalue or inherit_schema:
-            eq_(t2.c.y.type.schema, "bar")
-        else:
-            eq_(t2.c.y.type.schema, None)
-
     @testing.combinations(
         ("name", "foobar", "name"),
         ("schema", "someschema", "schema"),
-        ("inherit_schema", True, "inherit_schema"),
         ("metadata", MetaData(), "metadata"),
     )
     def test_copy_args(self, argname, value, attrname):
@@ -2687,20 +2754,29 @@ class SchemaTypeTest(fixtures.TestBase):
 
         eq_(getattr(e1_copy, attrname), value)
 
-    def test_to_metadata_inherit_schema(self):
-        m1 = MetaData()
+    @testing.combinations({}, {"schema": "m"}, argnames="meta_schema")
+    @testing.combinations(True, False, argnames="inherit_schema")
+    @testing.combinations({}, {"schema": "t"}, argnames="table_schema")
+    def test_to_metadata_inherit_schema(
+        self, meta_schema, inherit_schema, table_schema
+    ):
+        m1 = MetaData(**meta_schema)
 
-        type_ = self.MyType(inherit_schema=True)
+        if inherit_schema:
+            with self.inherit_schema_deprecaeted:
+                type_ = self.MyType(inherit_schema=True)
+            schema_from = meta_schema | table_schema
+        else:
+            type_ = self.MyType()
+            schema_from = meta_schema
 
-        t1 = Table("x", m1, Column("y", type_))
-        # note that inherit_schema means the schema mutates to be that
-        # of the table
-        is_(type_.schema, None)
+        t1 = Table("x", m1, Column("y", type_), **table_schema)
+        eq_(type_.schema, schema_from.get("schema"))
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2, schema="bar")
 
-        eq_(t1.c.y.type.schema, None)
+        eq_(t1.c.y.type.schema, schema_from.get("schema"))
         eq_(t2.c.y.type.schema, "bar")
 
     def test_to_metadata_independent_events(self):
@@ -2712,12 +2788,12 @@ class SchemaTypeTest(fixtures.TestBase):
         m2 = MetaData()
         t2 = t1.to_metadata(m2)
 
-        t1.dispatch.before_create(t1, testing.db)
+        t1.dispatch.before_create(t1, testing.db, checkfirst=False)
         eq_(t1.c.y.type.evt_targets, (t1,))
         eq_(t2.c.y.type.evt_targets, ())
 
-        t2.dispatch.before_create(t2, testing.db)
-        t2.dispatch.before_create(t2, testing.db)
+        t2.dispatch.before_create(t2, testing.db, checkfirst=False)
+        t2.dispatch.before_create(t2, testing.db, checkfirst=False)
         eq_(t1.c.y.type.evt_targets, (t1,))
         eq_(t2.c.y.type.evt_targets, (t2, t2))
 
@@ -2732,7 +2808,7 @@ class SchemaTypeTest(fixtures.TestBase):
         is_true(y_copy.type._create_events)
 
         # for PostgreSQL, this will emit CREATE TYPE
-        m.dispatch.before_create(t1, testing.db)
+        m.dispatch.before_create(t1, testing.db, checkfirst=False)
         try:
             eq_(t1.c.y.type.evt_targets, (t1,))
         finally:
@@ -4688,11 +4764,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         ("info", {"foo": "bar"}),
         argnames="paramname, value",
     )
-    def test_merge_column(
-        self,
-        paramname,
-        value,
-    ):
+    def test_merge_column(self, paramname, value):
         args = []
         params = {}
         if paramname == "type" or isinstance(

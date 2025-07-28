@@ -321,6 +321,9 @@ DDL Expression Constructs API
 .. autoclass:: DDL
     :members:
 
+.. autoclass:: CheckFirst
+    :members:
+
 .. autoclass:: _CreateDropBase
 
 .. autoclass:: CreateTable
