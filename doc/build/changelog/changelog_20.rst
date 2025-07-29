@@ -10,7 +10,162 @@
 
 .. changelog::
     :version: 2.0.42
-    :include_notes_from: unreleased_20
+    :released: July 29, 2025
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 10674
+
+        Added ``dataclass_metadata`` argument to all ORM attribute constructors
+        that accept dataclasses parameters, e.g. :paramref:`.mapped_column.dataclass_metadata`,
+        :paramref:`.relationship.dataclass_metadata`, etc.
+        It's passed to the underlying dataclass ``metadata`` attribute
+        of the dataclass field. Pull request courtesy Sigmund Lahn.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 10927
+
+        Added support for PostgreSQL 14+ JSONB subscripting syntax. When connected
+        to PostgreSQL 14 or later, JSONB columns now automatically use the native
+        subscript notation ``jsonb_col['key']`` instead of the arrow operator
+        ``jsonb_col -> 'key'`` for both read and write operations. This provides
+        better compatibility with PostgreSQL's native JSONB subscripting feature
+        while maintaining backward compatibility with older PostgreSQL versions.
+        JSON columns continue to use the traditional arrow syntax regardless of
+        PostgreSQL version.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12593
+
+        Implemented the :func:`_orm.defer`, :func:`_orm.undefer` and
+        :func:`_orm.load_only` loader options to work for composite attributes, a
+        use case that had never been supported previously.
+
+    .. change::
+        :tags: bug, postgresql, reflection
+        :tickets: 12600
+
+        Fixed regression caused by :ticket:`10665` where the newly modified
+        constraint reflection query would fail on older versions of PostgreSQL
+        such as version 9.6.  Pull request courtesy Denis Laxalde.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 12648
+
+        Fixed yet another regression caused by by the DEFAULT rendering changes in
+        2.0.40 :ticket:`12425`, similar to :ticket:`12488`, this time where using a
+        CURRENT_TIMESTAMP function with a fractional seconds portion inside a
+        textual default value would also fail to be recognized as a
+        non-parenthesized server default.
+
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 12654
+
+        Reworked SQL Server column reflection to be based on the ``sys.columns``
+        table rather than ``information_schema.columns`` view.  By correctly using
+        the SQL Server ``object_id()`` function as a lead and joining to related
+        tables on object_id rather than names, this repairs a variety of issues in
+        SQL Server reflection, including:
+
+        * Issue where reflected column comments would not correctly line up
+          with the columns themselves in the case that the table had been ALTERed
+        * Correctly targets tables with awkward names such as names with brackets,
+          when reflecting not just the basic table / columns but also extended
+          information including IDENTITY, computed columns, comments which
+          did not work previously
+        * Correctly targets IDENTITY, computed status from temporary tables
+          which did not work previously
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12681
+
+        Fixed issue where :func:`.select` of a free-standing scalar expression that
+        has a unary operator applied, such as negation, would not apply result
+        processors to the selected column even though the correct type remains in
+        place for the unary expression.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12692
+
+        Hardening of the compiler's actions for UPDATE statements that access
+        multiple tables to report more specifically when tables or aliases are
+        referenced in the SET clause; on cases where the backend does not support
+        secondary tables in the SET clause, an explicit error is raised, and on the
+        MySQL or similar backends that support such a SET clause, more specific
+        checking for not-properly-included tables is performed.  Overall the change
+        is preventing these erroneous forms of UPDATE statements from being
+        compiled, whereas previously it was relied on the database to raise an
+        error, which was not always guaranteed to happen, or to be non-ambiguous,
+        due to cases where the parent table included the same column name as the
+        secondary table column being updated.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12692
+
+        Fixed bug where the ORM would pull in the wrong column into an UPDATE when
+        a key name inside of the :meth:`.ValuesBase.values` method could be located
+        from an ORM entity mentioned in the statement, but where that ORM entity
+        was not the actual table that the statement was inserting or updating.  An
+        extra check for this edge case is added to avoid this problem.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12728
+
+        Re-raise catched ``CancelledError`` in the terminate method of the
+        asyncpg dialect to avoid possible hangs of the code execution.
+
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 12734
+
+        The :func:`_sql.values` construct gains a new method :meth:`_sql.Values.cte`,
+        which allows creation of a named, explicit-columns :class:`.CTE` against an
+        unnamed ``VALUES`` expression, producing a syntax that allows column-oriented
+        selection from a ``VALUES`` construct on modern versions of PostgreSQL, SQLite,
+        and MariaDB.
+
+    .. change::
+        :tags: bug, reflection, postgresql
+        :tickets: 12744
+
+        Fixes bug that would mistakenly interpret a domain or enum type
+        with name starting in ``interval`` as an ``INTERVAL`` type while
+        reflecting a table.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 8664
+
+        Added ``postgresql_ops`` key to the ``dialect_options`` entry in reflected
+        dictionary. This maps names of columns used in the index to respective
+        operator class, if distinct from the default one for column's data type.
+        Pull request courtesy Denis Laxalde.
+
+        .. seealso::
+
+            :ref:`postgresql_operator_classes`
+
+    .. change::
+        :tags: engine
+
+        Improved validation of execution parameters passed to the
+        :meth:`_engine.Connection.execute` and similar methods to
+        provided a better error when tuples are passed in.
+        Previously the execution would fail with a difficult to
+        understand error message.
 
 .. changelog::
     :version: 2.0.41
