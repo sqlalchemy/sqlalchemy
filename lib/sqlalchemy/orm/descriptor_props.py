@@ -845,6 +845,26 @@ class CompositeProperty(
         def __ge__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.ge, other)
 
+        def desc(self) -> operators.OrderingOperators:  # type: ignore[override]  # noqa: E501
+            return expression.OrderByList(
+                [e.desc() for e in self._comparable_elements]
+            )
+
+        def asc(self) -> operators.OrderingOperators:  # type: ignore[override]  # noqa: E501
+            return expression.OrderByList(
+                [e.asc() for e in self._comparable_elements]
+            )
+
+        def nulls_first(self) -> operators.OrderingOperators:  # type: ignore[override]  # noqa: E501
+            return expression.OrderByList(
+                [e.nulls_first() for e in self._comparable_elements]
+            )
+
+        def nulls_last(self) -> operators.OrderingOperators:  # type: ignore[override]  # noqa: E501
+            return expression.OrderByList(
+                [e.nulls_last() for e in self._comparable_elements]
+            )
+
         # what might be interesting would be if we create
         # an instance of the composite class itself with
         # the columns as data members, then use "hybrid style" comparison

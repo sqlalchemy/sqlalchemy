@@ -197,6 +197,9 @@ The classes here are generated using the constructors listed at
    :members:
    :special-members:
 
+.. autoclass:: OrderByList
+   :members:
+
 .. autoclass:: Over
    :members:
 

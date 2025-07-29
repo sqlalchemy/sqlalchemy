@@ -2781,6 +2781,9 @@ class SQLCompiler(Compiled):
     def visit_element_list(self, element, **kw):
         return self._generate_delimited_list(element.clauses, " ", **kw)
 
+    def visit_order_by_list(self, element, **kw):
+        return self._generate_delimited_list(element.clauses, ", ", **kw)
+
     def visit_clauselist(self, clauselist, **kw):
         sep = clauselist.operator
         if sep is None:

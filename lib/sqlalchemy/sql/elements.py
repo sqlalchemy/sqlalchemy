@@ -2791,6 +2791,74 @@ class ElementList(DQLDMLClauseElement):
         self.clauses = tuple(clauses)
 
 
+class OrderByList(
+    roles.OrderByRole,
+    operators.OrderingOperators,
+    DQLDMLClauseElement,
+):
+    """Describe a list of clauses that will be comma separated to nest
+    within an ORDER BY.
+
+    .. versionadded:: 2.1
+
+    """
+
+    __visit_name__ = "order_by_list"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("clauses", InternalTraversal.dp_clauseelement_tuple),
+    ]
+
+    clauses: List[ColumnElement[Any]]
+
+    def __init__(
+        self,
+        clauses: Iterable[Union[OrderByList, _ColumnExpressionArgument[Any]]],
+    ):
+        text_converter_role: Type[roles.SQLRole] = roles.ByOfRole
+        self._text_converter_role = text_converter_role
+
+        self.clauses = [
+            coercions.expect(
+                text_converter_role, clause, apply_propagate_attrs=self
+            )
+            for clause in clauses
+        ]
+
+    def __iter__(self) -> Iterator[ColumnElement[Any]]:
+        return iter(self.clauses)
+
+    def __len__(self) -> int:
+        return len(self.clauses)
+
+    @property
+    def _select_iterable(self) -> _SelectIterable:
+        return itertools.chain.from_iterable(
+            [elem._select_iterable for elem in self.clauses]
+        )
+
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
+        return list(itertools.chain(*[c._from_objects for c in self.clauses]))
+
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[Any]]:
+        return self
+
+    def desc(self) -> OrderByList:
+        return OrderByList([e.desc() for e in self.clauses])
+
+    def asc(self) -> OrderByList:
+        return OrderByList([e.asc() for e in self.clauses])
+
+    def nulls_first(self) -> OrderByList:
+        return OrderByList([e.nulls_first() for e in self.clauses])
+
+    def nulls_last(self) -> OrderByList:
+        return OrderByList([e.nulls_last() for e in self.clauses])
+
+
 class ClauseList(
     roles.InElementRole,
     roles.OrderByRole,
@@ -2806,8 +2874,8 @@ class ClauseList(
 
     __visit_name__ = "clauselist"
 
-    # this is used only by the ORM in a legacy use case for
-    # composite attributes
+    # Used by ORM context.py to identify ClauseList objects in legacy
+    # composite attribute queries (see test_query_cols_legacy test)
     _is_clause_list = True
 
     _traverse_internals: _TraverseInternalsType = [
@@ -3751,6 +3819,7 @@ class UnaryExpression(ColumnElement[_T]):
     def _create_desc(
         cls, column: _ColumnExpressionOrStrLabelArgument[_T]
     ) -> UnaryExpression[_T]:
+
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.desc_op,

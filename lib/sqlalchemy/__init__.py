@@ -169,6 +169,7 @@ from .sql.expression import nullsfirst as nullsfirst
 from .sql.expression import nullslast as nullslast
 from .sql.expression import Operators as Operators
 from .sql.expression import or_ as or_
+from .sql.expression import OrderByList as OrderByList
 from .sql.expression import outerjoin as outerjoin
 from .sql.expression import outparam as outparam
 from .sql.expression import Over as Over

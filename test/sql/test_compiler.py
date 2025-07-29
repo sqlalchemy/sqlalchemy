@@ -51,6 +51,7 @@ from sqlalchemy import nullsfirst
 from sqlalchemy import nullslast
 from sqlalchemy import Numeric
 from sqlalchemy import or_
+from sqlalchemy import OrderByList
 from sqlalchemy import outerjoin
 from sqlalchemy import over
 from sqlalchemy import schema
@@ -8183,4 +8184,63 @@ class OmitFromStatementsTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(t1).order_by(t1.c.d),
             "SELECT t1.id, t1.a, t1.c, t1.e FROM t1 ORDER BY t1.d",
+        )
+
+
+class OrderByListTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_order_by_list(self):
+        """Test standalone OrderByList with various operators"""
+        col1 = Column("x", Integer)
+        col2 = Column("y", Integer)
+
+        # Test basic OrderByList creation
+        order_list = OrderByList([col1, col2])
+        self.assert_compile(
+            select(literal(1)).order_by(order_list),
+            "SELECT :param_1 AS anon_1 ORDER BY x, y",
+        )
+
+        # Test OrderByList with desc
+        order_list_desc = order_list.desc()
+        self.assert_compile(
+            select(literal(1)).order_by(order_list_desc),
+            "SELECT :param_1 AS anon_1 ORDER BY x DESC, y DESC",
+        )
+
+        # Test OrderByList with asc
+        order_list_asc = order_list.asc()
+        self.assert_compile(
+            select(literal(1)).order_by(order_list_asc),
+            "SELECT :param_1 AS anon_1 ORDER BY x ASC, y ASC",
+        )
+
+        # Test OrderByList with nulls_first
+        order_list_nf = order_list.nulls_first()
+        self.assert_compile(
+            select(literal(1)).order_by(order_list_nf),
+            "SELECT :param_1 AS anon_1 ORDER BY x NULLS FIRST, y NULLS FIRST",
+        )
+
+        # Test OrderByList with nulls_last
+        order_list_nl = order_list.nulls_last()
+        self.assert_compile(
+            select(literal(1)).order_by(order_list_nl),
+            "SELECT :param_1 AS anon_1 ORDER BY x NULLS LAST, y NULLS LAST",
+        )
+
+    def test_order_by_list_chained_ops(self):
+        """Test chained operations on OrderByList"""
+        col1 = Column("x", Integer)
+        col2 = Column("y", Integer)
+
+        order_list = OrderByList([col1, col2])
+
+        # Test chained desc().nulls_first()
+        chained = order_list.desc().nulls_first()
+        self.assert_compile(
+            select(literal(1)).order_by(chained),
+            "SELECT :param_1 AS anon_1 ORDER BY x DESC NULLS FIRST, "
+            "y DESC NULLS FIRST",
         )
