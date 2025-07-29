@@ -1,9 +1,9 @@
 .. change::
-    :tags: usecase, rom
+    :tags: usecase, orm
     :tickets: 10674
 
-    Added ``dataclass_metadata`` argument to a all column functions
-    used in the ORM that accept dataclasses parameters.
+    Added ``dataclass_metadata`` argument to all ORM attribute constructors
+    that accept dataclasses parameters, e.g. :paramref:`.mapped_column.dataclass_metadata`,
+    :paramref:`.relationship.dataclass_metadata`, etc.
     It's passed to the underlying dataclass ``metadata`` attribute
-    of the dataclass field.
-    Pull request courtesy Sigmund Lahn.
+    of the dataclass field. Pull request courtesy Sigmund Lahn.
