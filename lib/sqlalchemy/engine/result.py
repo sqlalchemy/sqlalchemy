@@ -2013,7 +2013,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         return self
 
     def columns(self, *col_expressions: _KeyIndexType) -> Self:
-        r"""Establish the columns that should be returned in each row."""
+        """Establish the columns that should be returned in each row."""
         return self._column_slices(col_expressions)
 
     def partitions(
