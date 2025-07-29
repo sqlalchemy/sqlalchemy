@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, reflection, postgresql
-    :tickets: 12744
-
-    Fixes bug that would mistakenly interpret a domain or enum type
-    with name starting in ``interval`` as an ``INTERVAL`` type while
-    reflecting a table.
