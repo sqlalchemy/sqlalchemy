@@ -29,6 +29,7 @@ from typing import Dict
 from typing import Generic
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
@@ -207,6 +208,7 @@ class _AttributeOptions(NamedTuple):
     dataclasses_compare: Union[_NoArg, bool]
     dataclasses_kw_only: Union[_NoArg, bool]
     dataclasses_hash: Union[_NoArg, bool, None]
+    dataclasses_dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None]
 
     def _as_dataclass_field(self, key: str) -> Any:
         """Return a ``dataclasses.Field`` object given these arguments."""
@@ -226,6 +228,8 @@ class _AttributeOptions(NamedTuple):
             kw["kw_only"] = self.dataclasses_kw_only
         if self.dataclasses_hash is not _NoArg.NO_ARG:
             kw["hash"] = self.dataclasses_hash
+        if self.dataclasses_dataclass_metadata is not _NoArg.NO_ARG:
+            kw["metadata"] = self.dataclasses_dataclass_metadata
 
         if "default" in kw and callable(kw["default"]):
             # callable defaults are ambiguous. deprecate them in favour of
@@ -263,7 +267,7 @@ class _AttributeOptions(NamedTuple):
         key: str,
         annotation: _AnnotationScanType,
         mapped_container: Optional[Any],
-        elem: _T,
+        elem: Any,
     ) -> Union[
         Tuple[str, _AnnotationScanType],
         Tuple[str, _AnnotationScanType, dataclasses.Field[Any]],
@@ -306,10 +310,12 @@ _DEFAULT_ATTRIBUTE_OPTIONS = _AttributeOptions(
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
+    _NoArg.NO_ARG,
 )
 
 _DEFAULT_READONLY_ATTRIBUTE_OPTIONS = _AttributeOptions(
     False,
+    _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,

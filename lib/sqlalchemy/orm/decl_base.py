@@ -1600,9 +1600,15 @@ class _ClassScanMapperConfig(_MapperConfig):
                                 "default_factory",
                                 "repr",
                                 "default",
+                                "dataclass_metadata",
                             ]
                         else:
-                            argnames = ["init", "default_factory", "repr"]
+                            argnames = [
+                                "init",
+                                "default_factory",
+                                "repr",
+                                "dataclass_metadata",
+                            ]
 
                         args = {
                             a
