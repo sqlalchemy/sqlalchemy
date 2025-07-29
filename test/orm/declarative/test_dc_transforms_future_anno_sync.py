@@ -920,6 +920,19 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(fields["value"].default, cd)
         eq_(fields["no_init"].default, cd)
 
+    def test_dataclass_metadata(self, dc_decl_base):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            value: Mapped[str] = mapped_column(
+                dataclass_metadata={"meta_key": "meta_value"}
+            )
+
+        fields = {f.name: f for f in dataclasses.fields(A)}
+
+        eq_(fields["id"].metadata, {})
+        eq_(fields["value"].metadata, {"meta_key": "meta_value"})
+
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
 
@@ -1884,9 +1897,10 @@ class DataclassArgsTest(fixtures.TestBase):
                 "compare": True,
                 "kw_only": False,
                 "hash": False,
+                "dataclass_metadata": None,
             }
             exp = interfaces._AttributeOptions(
-                False, False, None, list, True, False, False
+                False, False, None, list, True, False, False, None
             )
         else:
             kw = {}
@@ -1913,6 +1927,7 @@ class DataclassArgsTest(fixtures.TestBase):
                 _NoArg.NO_ARG,
                 _NoArg.NO_ARG,
                 True,
+                _NoArg.NO_ARG,
                 _NoArg.NO_ARG,
                 _NoArg.NO_ARG,
             )
