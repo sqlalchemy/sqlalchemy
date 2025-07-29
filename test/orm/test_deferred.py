@@ -534,8 +534,10 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         q2 = q.options(undefer(Order.user_id))
         with expect_raises_message(
             sa.exc.InvalidRequestError,
-            r"Loader strategies for ORM Path\[Mapper\[Order\(orders\)\] -> "
-            r"Order.user_id\] conflict",
+            r"Loader strategy replacement "
+            r"ORM Path\[Mapper\[Order\(orders\)\] -> Order.user_id\] "
+            r"is in conflict with existing strategy "
+            r"ORM Path\[Mapper\[Order\(orders\)\] -> Order.user_id\]",
         ):
             q2.all()
 
