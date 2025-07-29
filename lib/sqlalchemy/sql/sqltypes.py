@@ -3199,7 +3199,7 @@ class ARRAY(
 
     @property
     def python_type(self) -> Type[Any]:
-        return list
+        return list[self.item_type.python_type]
 
     def compare_values(self, x: Any, y: Any) -> bool:
         return x == y  # type: ignore[no-any-return]
