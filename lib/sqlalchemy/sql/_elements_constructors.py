@@ -1498,7 +1498,7 @@ def over(
     element: FunctionElement[_T],
     partition_by: Optional[_ByArgument] = None,
     order_by: Optional[_ByArgument] = None,
-    range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    range_: Optional[typing_Tuple[Optional[Any], Optional[Any]]] = None,
     rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
 ) -> Over[_T]:
