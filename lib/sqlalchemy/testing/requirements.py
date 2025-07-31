@@ -301,6 +301,21 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def window_range(self):
+        """Target backend supports RANGE in window functions with int frames"""
+        return exclusions.closed()
+
+    @property
+    def window_range_numeric(self):
+        """Target backend supports numeric values in RANGE"""
+        return exclusions.closed()
+
+    @property
+    def window_range_non_numeric(self):
+        """Target backend supports non-numeric values in RANGE"""
+        return exclusions.closed()
+
+    @property
     def ctes(self):
         """Target database supports CTEs"""
 

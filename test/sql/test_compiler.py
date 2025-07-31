@@ -92,6 +92,8 @@ from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.elements import CompilerColumnElement
+from sqlalchemy.sql.elements import FrameClause
+from sqlalchemy.sql.elements import FrameClauseType
 from sqlalchemy.sql.elements import Grouping
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
@@ -3176,6 +3178,32 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
+            select(func.row_number().over(order_by=expr, rows=(-10, 1))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid ROWS BETWEEN "
+            ":param_1 PRECEDING AND :param_2 FOLLOWING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 10, "param_2": 1},
+        )
+
+        RF = FrameClauseType.FOLLOWING
+        RP = FrameClauseType.PRECEDING
+
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=expr,
+                    rows=FrameClause(3, 2, RF, RP),
+                )
+            ),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid ROWS BETWEEN "
+            ":param_1 FOLLOWING AND :param_2 PRECEDING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 3, "param_2": 2},
+        )
+
+        self.assert_compile(
             select(func.row_number().over(order_by=expr, range_=(None, 0))),
             "SELECT row_number() OVER "
             "(ORDER BY mytable.myid RANGE BETWEEN "
@@ -3208,6 +3236,19 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ":param_1 PRECEDING AND :param_2 PRECEDING)"
             " AS anon_1 FROM mytable",
             checkparams={"param_1": 10, "param_2": 1},
+        )
+
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=expr, range_=FrameClause("a", "x", RP, RF)
+                )
+            ),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid RANGE BETWEEN "
+            ":param_1 PRECEDING AND :param_2 FOLLOWING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": "a", "param_2": "x"},
         )
 
         self.assert_compile(
@@ -3245,53 +3286,103 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 10, "param_2": 1},
         )
 
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=expr,
+                    groups=FrameClause(1, 3, RP, RF),
+                )
+            ),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            ":param_1 PRECEDING AND :param_2 FOLLOWING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 1, "param_2": 3},
+        )
+
     def test_over_invalid_framespecs(self):
-        assert_raises_message(
+        with expect_raises_message(
             exc.ArgumentError,
-            "Integer or None expected for range value",
-            func.row_number().over,
-            range_=("foo", 8),
-        )
+            "Integer or None expected for values in rows/groups frame",
+        ):
+            func.row_number().over(rows=("foo", 8))
 
-        assert_raises_message(
+        with expect_raises_message(
             exc.ArgumentError,
-            "Integer or None expected for range value",
-            func.row_number().over,
-            range_=(-5, "foo"),
-        )
+            "Integer or None expected for values in rows/groups frame",
+        ):
+            func.row_number().over(groups=(-5, "foo"))
 
-        assert_raises_message(
+        with expect_raises_message(
+            exc.ArgumentError,
+            "When using a tuple to specify a range only integer or none "
+            "values are allowed in the range frame. To specify a "
+            "different type use the FrameClause directly.",
+        ):
+            func.row_number().over(range_=(-5, "foo"))
+        with expect_raises_message(
+            exc.ArgumentError,
+            "2-tuple expected for range/rows/groups",
+        ):
+            func.row_number().over(rows=("foo",))
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "2-tuple expected for range/rows/groups",
+        ):
+            func.row_number().over(groups=(-5, "foo", 1))
+
+        with expect_raises_message(
+            exc.ArgumentError, "2-tuple expected for range/rows/groups"
+        ):
+            func.row_number().over(range_=(-5,))
+
+        with expect_raises_message(
             exc.ArgumentError,
             "only one of 'rows', 'range_', or 'groups' may be provided",
-            func.row_number().over,
-            range_=(-5, 8),
-            rows=(-2, 5),
-        )
+        ):
+            func.row_number().over(range_=(-5, 8), rows=(-2, 5))
 
-        assert_raises_message(
+        with expect_raises_message(
             exc.ArgumentError,
             "only one of 'rows', 'range_', or 'groups' may be provided",
-            func.row_number().over,
-            range_=(-5, 8),
-            groups=(None, None),
-        )
+        ):
+            func.row_number().over(range_=(-5, 8), groups=(None, None))
 
-        assert_raises_message(
+        with expect_raises_message(
             exc.ArgumentError,
             "only one of 'rows', 'range_', or 'groups' may be provided",
-            func.row_number().over,
-            rows=(-2, 5),
-            groups=(None, None),
-        )
+        ):
+            func.row_number().over(rows=(-2, 5), groups=(None, None))
 
-        assert_raises_message(
+        with expect_raises_message(
             exc.ArgumentError,
             "only one of 'rows', 'range_', or 'groups' may be provided",
-            func.row_number().over,
-            range_=(-5, 8),
-            rows=(-2, 5),
-            groups=(None, None),
-        )
+        ):
+            func.row_number().over(
+                range_=(-5, 8), rows=(-2, 5), groups=(None, None)
+            )
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Cannot specify a value for start with frame type " "CURRENT",
+        ):
+            FrameClause(
+                5,
+                None,
+                FrameClauseType.CURRENT,
+                FrameClauseType.UNBOUNDED,
+            )
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Cannot specify a value for end with frame type " "UNBOUNDED",
+        ):
+            FrameClause(
+                None,
+                5,
+                FrameClauseType.CURRENT,
+                FrameClauseType.UNBOUNDED,
+            )
 
     def test_over_within_group(self):
         from sqlalchemy import within_group

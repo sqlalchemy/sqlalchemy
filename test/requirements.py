@@ -914,6 +914,21 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def window_range(self):
+        """Target backend supports RANGE in window functions with int frames"""
+        return skip_if(["mssql"])
+
+    @property
+    def window_range_numeric(self):
+        """Target backend supports non-integer values in RANGE"""
+        return skip_if(["mssql"])
+
+    @property
+    def window_range_non_numeric(self):
+        """Target backend supports non-numeric values in RANGE"""
+        return only_if(["postgresql"])
+
+    @property
     def two_phase_transactions(self):
         """Target database must support two-phase transactions."""
 

@@ -2898,30 +2898,24 @@ class SQLCompiler(Compiled):
 
     def visit_frame_clause(self, frameclause, **kw):
 
-        if frameclause.lower_type is elements._FrameClauseType.RANGE_UNBOUNDED:
+        if frameclause.lower_type is elements.FrameClauseType.UNBOUNDED:
             left = "UNBOUNDED PRECEDING"
-        elif frameclause.lower_type is elements._FrameClauseType.RANGE_CURRENT:
+        elif frameclause.lower_type is elements.FrameClauseType.CURRENT:
             left = "CURRENT ROW"
         else:
-            val = self.process(frameclause.lower_integer_bind, **kw)
-            if (
-                frameclause.lower_type
-                is elements._FrameClauseType.RANGE_PRECEDING
-            ):
+            val = self.process(frameclause.lower_bind, **kw)
+            if frameclause.lower_type is elements.FrameClauseType.PRECEDING:
                 left = f"{val} PRECEDING"
             else:
                 left = f"{val} FOLLOWING"
 
-        if frameclause.upper_type is elements._FrameClauseType.RANGE_UNBOUNDED:
+        if frameclause.upper_type is elements.FrameClauseType.UNBOUNDED:
             right = "UNBOUNDED FOLLOWING"
-        elif frameclause.upper_type is elements._FrameClauseType.RANGE_CURRENT:
+        elif frameclause.upper_type is elements.FrameClauseType.CURRENT:
             right = "CURRENT ROW"
         else:
-            val = self.process(frameclause.upper_integer_bind, **kw)
-            if (
-                frameclause.upper_type
-                is elements._FrameClauseType.RANGE_PRECEDING
-            ):
+            val = self.process(frameclause.upper_bind, **kw)
+            if frameclause.upper_type is elements.FrameClauseType.PRECEDING:
                 right = f"{val} PRECEDING"
             else:
                 right = f"{val} FOLLOWING"

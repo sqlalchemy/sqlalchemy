@@ -127,6 +127,8 @@ from .sql.expression import Extract as Extract
 from .sql.expression import extract as extract
 from .sql.expression import false as false
 from .sql.expression import False_ as False_
+from .sql.expression import FrameClause as FrameClause
+from .sql.expression import FrameClauseType as FrameClauseType
 from .sql.expression import from_dml_column as from_dml_column
 from .sql.expression import FromClause as FromClause
 from .sql.expression import FromGrouping as FromGrouping

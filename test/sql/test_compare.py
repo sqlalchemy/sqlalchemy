@@ -58,6 +58,8 @@ from sqlalchemy.sql.elements import CollationClause
 from sqlalchemy.sql.elements import DMLTargetCopy
 from sqlalchemy.sql.elements import DQLDMLClauseElement
 from sqlalchemy.sql.elements import ElementList
+from sqlalchemy.sql.elements import FrameClause
+from sqlalchemy.sql.elements import FrameClauseType
 from sqlalchemy.sql.elements import Immutable
 from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.elements import OrderByList
@@ -487,6 +489,33 @@ class CoreFixtures:
             func.row_number().over(order_by=table_a.c.a, range_=(None, 10)),
             func.row_number().over(order_by=table_a.c.a, rows=(None, 20)),
             func.row_number().over(order_by=table_a.c.a, groups=(None, 20)),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=FrameClause(
+                    2,
+                    3,
+                    FrameClauseType.FOLLOWING,
+                    FrameClauseType.PRECEDING,
+                ),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                rows=FrameClause(
+                    2,
+                    3,
+                    FrameClauseType.FOLLOWING,
+                    FrameClauseType.PRECEDING,
+                ),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                groups=FrameClause(
+                    2,
+                    3,
+                    FrameClauseType.FOLLOWING,
+                    FrameClauseType.PRECEDING,
+                ),
+            ),
             func.row_number().over(order_by=table_a.c.b),
             func.row_number().over(
                 order_by=table_a.c.a, partition_by=table_a.c.b
@@ -1700,10 +1729,9 @@ class HasCacheKeySubclass(fixtures.TestBase):
             },
             {"columns", "name", "literal_binds"},
         ),
-        "_FrameClause": (
-            {"upper_integer_bind", "upper_type"}
-            | {"lower_type", "lower_integer_bind"},
-            {"range_"},
+        "FrameClause": (
+            {"upper_bind", "upper_type", "lower_type", "lower_bind"},
+            {"start", "end", "start_frame_type", "end_frame_type"},
         ),
         "_MemoizedSelectEntities": (
             {"_with_options", "_raw_columns", "_setup_joins"},
