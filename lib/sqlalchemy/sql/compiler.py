@@ -721,7 +721,7 @@ class FromLinter(collections.namedtuple("FromLinter", ["froms", "edges"])):
     """represents current state for the "cartesian product" detection
     feature."""
 
-    def lint(self, start=None):
+    def lint(self, start: Any = None) -> Tuple[Optional[Any], Optional[Any]]:
         froms = self.froms
         if not froms:
             return None, None
@@ -2177,9 +2177,9 @@ class SQLCompiler(Compiled):
             elif new_positiontup is not None:
                 new_positiontup.append(name)
 
-        def process_expanding(m):
+        def process_expanding(m: _RegexMatchStr) -> str:
             key = m.group(1)
-            expr = replacement_expressions[key]
+            expr: str = replacement_expressions[key]
 
             # if POSTCOMPILE included a bind_expression, render that
             # around each element
@@ -2703,7 +2703,12 @@ class SQLCompiler(Compiled):
     ) -> Optional[quoted_name]:
         return index.name
 
-    def visit_typeclause(self, typeclause, **kw):
+    def visit_typeclause(
+        self,
+        typeclause: elements.TypeClause,
+        type_: Optional[TypeEngine[Any]] = None,
+        **kw: Any,
+    ) -> Optional[str]:
         kw["type_expression"] = typeclause
         kw["identifier_preparer"] = self.preparer
         return self.dialect.type_compiler_instance.process(
@@ -2722,7 +2727,7 @@ class SQLCompiler(Compiled):
 
     def visit_textclause(
         self,
-        textclause: ColumnClause[Any],
+        textclause: elements.TextClause,
         add_to_result_map: Optional[_ResultMapAppender] = None,
         **kw: Any,
     ) -> str:
@@ -3194,7 +3199,12 @@ class SQLCompiler(Compiled):
                 "Unary expression has no operator or modifier"
             )
 
-    def visit_truediv_binary(self, binary, operator, **kw):
+    def visit_truediv_binary(
+        self,
+        binary: BinaryExpression[Any],
+        operator: operators.OperatorType,
+        **kw: Any,
+    ) -> str:
         if self.dialect.div_is_floordiv:
             return (
                 self.process(binary.left, **kw)
@@ -3221,7 +3231,12 @@ class SQLCompiler(Compiled):
                 + self.process(binary.right, **kw)
             )
 
-    def visit_floordiv_binary(self, binary, operator, **kw):
+    def visit_floordiv_binary(
+        self,
+        binary: BinaryExpression[Any],
+        operator: operators.OperatorType,
+        **kw: Any,
+    ) -> str:
         if (
             self.dialect.div_is_floordiv
             and binary.right.type._type_affinity is sqltypes.Integer
@@ -3238,7 +3253,12 @@ class SQLCompiler(Compiled):
                 + self.process(binary.right, **kw)
             )
 
-    def visit_is_true_unary_operator(self, element, operator, **kw):
+    def visit_is_true_unary_operator(
+        self,
+        element: UnaryExpression[Any],
+        operator: operators.OperatorType,
+        **kw: Any,
+    ) -> str:
         if (
             element._is_implicitly_boolean
             or self.dialect.supports_native_boolean
@@ -3247,7 +3267,12 @@ class SQLCompiler(Compiled):
         else:
             return "%s = 1" % self.process(element.element, **kw)
 
-    def visit_is_false_unary_operator(self, element, operator, **kw):
+    def visit_is_false_unary_operator(
+        self,
+        element: UnaryExpression[Any],
+        operator: operators.OperatorType,
+        **kw: Any,
+    ) -> str:
         if (
             element._is_implicitly_boolean
             or self.dialect.supports_native_boolean
@@ -3512,10 +3537,20 @@ class SQLCompiler(Compiled):
                     **kw,
                 )
 
-    def visit_function_as_comparison_op_binary(self, element, operator, **kw):
+    def visit_function_as_comparison_op_binary(
+        self,
+        element: UnaryExpression[Any],
+        operator: operators.OperatorType,
+        **kw: Any,
+    ) -> str:
         return self.process(element.sql_function, **kw)
 
-    def visit_mod_binary(self, binary, operator, **kw):
+    def visit_mod_binary(
+        self,
+        binary: BinaryExpression[Any],
+        operator: operators.OperatorType,
+        **kw: Any,
+    ) -> str:
         if self.preparer._double_percents:
             return (
                 self.process(binary.left, **kw)
@@ -3529,7 +3564,12 @@ class SQLCompiler(Compiled):
                 + self.process(binary.right, **kw)
             )
 
-    def visit_custom_op_binary(self, element, operator, **kw):
+    def visit_custom_op_binary(
+        self,
+        element: BinaryExpression[Any],
+        operator: operators.custom_op[Any],
+        **kw: Any,
+    ) -> str:
         kw["eager_grouping"] = operator.eager_grouping
         return self._generate_generic_binary(
             element,
@@ -3537,12 +3577,22 @@ class SQLCompiler(Compiled):
             **kw,
         )
 
-    def visit_custom_op_unary_operator(self, element, operator, **kw):
+    def visit_custom_op_unary_operator(
+        self,
+        element: UnaryExpression[Any],
+        operator: operators.custom_op[Any],
+        **kw: Any,
+    ) -> str:
         return self._generate_generic_unary_operator(
             element, self.escape_literal_column(operator.opstring) + " ", **kw
         )
 
-    def visit_custom_op_unary_modifier(self, element, operator, **kw):
+    def visit_custom_op_unary_modifier(
+        self,
+        element: UnaryExpression[Any],
+        operator: operators.custom_op[Any],
+        **kw: Any,
+    ) -> str:
         return self._generate_generic_unary_modifier(
             element, " " + self.escape_literal_column(operator.opstring), **kw
         )
@@ -3572,10 +3622,14 @@ class SQLCompiler(Compiled):
             text = "(%s)" % text
         return text
 
-    def _generate_generic_unary_operator(self, unary, opstring, **kw):
+    def _generate_generic_unary_operator(
+        self, unary: UnaryExpression[Any], opstring: str, **kw: Any
+    ) -> str:
         return opstring + unary.element._compiler_dispatch(self, **kw)
 
-    def _generate_generic_unary_modifier(self, unary, opstring, **kw):
+    def _generate_generic_unary_modifier(
+        self, unary: UnaryExpression[Any], opstring: str, **kw: Any
+    ) -> str:
         return unary.element._compiler_dispatch(self, **kw) + opstring
 
     @util.memoized_property
@@ -3583,7 +3637,7 @@ class SQLCompiler(Compiled):
         return elements.literal_column("'%'", type_=sqltypes.STRINGTYPE)
 
     def visit_ilike_case_insensitive_operand(
-        self, element: ColumnElement[Any], **kw: Any
+        self, element: UnaryExpression[Any], **kw: Any
     ) -> str:
         return f"lower({element.element._compiler_dispatch(self, **kw)})"
 
@@ -5592,7 +5646,13 @@ class SQLCompiler(Compiled):
         else:
             return ""
 
-    def visit_join(self, join, asfrom=False, from_linter=None, **kwargs):
+    def visit_join(
+        self,
+        join: selectable.Join,
+        asfrom: bool = False,
+        from_linter: Optional[FromLinter] = None,
+        **kwargs: Any,
+    ) -> str:
         if from_linter:
             from_linter.edges.update(
                 itertools.product(
@@ -5617,7 +5677,7 @@ class SQLCompiler(Compiled):
             )
             + " ON "
             # TODO: likely need asfrom=True here?
-            + join.onclause._compiler_dispatch(
+            + join.onclause._compiler_dispatch(  # type: ignore[union-attr]
                 self, from_linter=from_linter, **kwargs
             )
         )
