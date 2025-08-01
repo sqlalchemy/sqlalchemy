@@ -2756,6 +2756,32 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "UPDATE data SET x -> %(x_1)s=(data.x -> %(x_2)s)",
         )
 
+    def test_jsonb_functions_use_parentheses_with_subscripting(self):
+        """test #12778 - JSONB functions are parenthesized with [] syntax"""
+        data = table("data", column("id", Integer), column("x", JSONB))
+
+        # Test that JSONB functions are properly parenthesized with [] syntax
+        # This ensures correct PostgreSQL syntax: (function_call)[index]
+        # instead of the invalid: function_call[index]
+
+        stmt = select(func.jsonb_array_elements(data.c.x, type_=JSONB)["key"])
+        self.assert_compile(
+            stmt,
+            "SELECT "
+            "(jsonb_array_elements(data.x))[%(jsonb_array_elements_1)s] "
+            "AS anon_1 FROM data",
+        )
+
+        # Test with nested function calls
+        stmt = select(
+            func.jsonb_array_elements(data.c.x["items"], type_=JSONB)["key"]
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT (jsonb_array_elements(data.x[%(x_1)s]))"
+            "[%(jsonb_array_elements_1)s] AS anon_1 FROM data",
+        )
+
     def test_range_custom_object_hook(self):
         # See issue #8884
         from datetime import date
