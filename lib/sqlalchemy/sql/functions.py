@@ -745,9 +745,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         # expressions against getitem.  This may need to be made
         # more portable if in the future we support other DBs
         # besides postgresql.
-        if against is operators.getitem and isinstance(
-            self.type, sqltypes.ARRAY
-        ):
+        if against in (operators.getitem, operators.json_getitem_op):
             return Grouping(self)
         else:
             return super().self_group(against=against)

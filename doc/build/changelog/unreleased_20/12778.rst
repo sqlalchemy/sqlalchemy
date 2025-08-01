@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12778
+
+    Fixed regression in PostgreSQL dialect where JSONB subscription syntax
+    would generate incorrect SQL for JSONB-returning functions, causing syntax
+    errors. The dialect now properly wraps function calls and expressions in
+    parentheses when using the ``[]`` subscription syntax, generating
+    ``(function_call)[index]`` instead of ``function_call[index]`` to comply
+    with PostgreSQL syntax requirements.
