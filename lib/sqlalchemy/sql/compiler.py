@@ -82,6 +82,7 @@ from .base import _NONE_NAME
 from .base import _SentinelDefaultCharacterization
 from .base import NO_ARG
 from .elements import quoted_name
+from .functions import Function
 from .sqltypes import TupleType
 from .visitors import prefix_anon_map
 from .. import exc
@@ -118,7 +119,7 @@ if typing.TYPE_CHECKING:
     from .elements import Null
     from .elements import SavepointClause
     from .elements import True_
-    from .functions import Function
+    from .elements import UnaryExpression
     from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
