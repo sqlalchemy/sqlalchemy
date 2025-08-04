@@ -274,6 +274,13 @@ the DMLColumnRole to be able to accommodate.
 
 """
 
+_DMLOnlyColumnArgument = Union[
+    _HasClauseElement[_T],
+    roles.DMLColumnRole,
+    "SQLCoreOperations[_T]",
+]
+
+
 _DMLKey = TypeVar("_DMLKey", bound=_DMLColumnArgument)
 _DMLColumnKeyMapping = Mapping[_DMLKey, Any]
 

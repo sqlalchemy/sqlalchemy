@@ -87,6 +87,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _DMLOnlyColumnArgument
     from ._typing import _HasDialect
     from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
@@ -1949,6 +1950,29 @@ class WrapsColumnExpression(ColumnElement[_T]):
         if not wce._is_text_clause:
             return wce._proxy_key
         return super()._proxy_key
+
+
+class DMLTargetCopy(roles.InElementRole, KeyedColumnElement[_T]):
+    """Refer to another column's VALUES or SET expression in an INSERT or
+    UPDATE statement.
+
+    See the public-facing :func:`_sql.from_dml_column` constructor for
+    background.
+
+    .. versionadded:: 2.1
+
+
+    """
+
+    def __init__(self, column: _DMLOnlyColumnArgument[_T]):
+        self.column = coercions.expect(roles.ColumnArgumentRole, column)
+        self.type = self.column.type
+
+    __visit_name__ = "dmltargetcopy"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("column", InternalTraversal.dp_clauseelement),
+    ]
 
 
 class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
