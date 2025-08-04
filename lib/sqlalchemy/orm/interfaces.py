@@ -897,6 +897,11 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         return [(cast("_DMLColumnArgument", self.__clause_element__()), value)]
 
+    def _bulk_dml_setter(self, key: str) -> Optional[Callable[..., Any]]:
+        """return a callable that will process a bulk INSERT value"""
+
+        return None
+
     def adapt_to_entity(
         self, adapt_to_entity: AliasedInsp[Any]
     ) -> PropComparator[_T_co]:

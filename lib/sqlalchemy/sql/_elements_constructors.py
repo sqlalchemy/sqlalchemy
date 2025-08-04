@@ -1750,7 +1750,7 @@ def true() -> True_:
 
 
 def tuple_(
-    *clauses: _ColumnExpressionArgument[Any],
+    *clauses: _ColumnExpressionOrLiteralArgument[Any],
     types: Optional[Sequence[_TypeEngineArgument[Any]]] = None,
 ) -> Tuple:
     """Return a :class:`.Tuple`.

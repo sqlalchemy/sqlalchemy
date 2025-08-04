@@ -392,6 +392,11 @@ class QueryableAttribute(
 
         return self.comparator._bulk_update_tuples(value)
 
+    def _bulk_dml_setter(self, key: str) -> Optional[Callable[..., Any]]:
+        """return a callable that will process a bulk INSERT value"""
+
+        return self.comparator._bulk_dml_setter(key)
+
     def adapt_to_entity(self, adapt_to_entity: AliasedInsp[Any]) -> Self:
         assert not self._of_type
         return self.__class__(

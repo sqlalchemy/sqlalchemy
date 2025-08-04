@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+import dataclasses
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import from_dml_column
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import inspect
@@ -14,11 +19,14 @@ from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import tuple_
 from sqlalchemy.ext import hybrid
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import declared_attr
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
@@ -30,10 +38,13 @@ from sqlalchemy.sql import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 
@@ -1247,6 +1258,11 @@ class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
+    """Original DML test suite when we first added the ability for ORM
+    UPDATE to handle hybrid values.
+
+    """
+
     __dialect__ = "default"
 
     @classmethod
@@ -1532,6 +1548,405 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         )
         eq_(jill.uname, "first last")
         eq_(s.scalar(select(Person.first_name).where(Person.id == 3)), "first")
+
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql import SQLColumnExpression
+
+
+@dataclasses.dataclass(eq=False)
+class Point(hybrid.Comparator):
+    x: int | SQLColumnExpression[int]
+    y: int | SQLColumnExpression[int]
+
+    def operate(self, op, other, **kwargs):
+        return op(self.x, other.x) & op(self.y, other.y)
+
+    def __clause_element__(self):
+        return tuple_(self.x, self.y)
+
+
+class DMLTest(
+    fixtures.TestBase, AssertsCompiledSQL, testing.AssertsExecutionResults
+):
+    """updated DML test suite when #12496 was done, where we created the use
+    cases of "expansive" and "derived" hybrids and how their use cases
+    differ, and also added the bulk_dml hook as well as the from_dml_column
+    construct.
+
+
+    """
+
+    __dialect__ = "default"
+
+    @testing.fixture
+    def single_plain(self, decl_base):
+        """fixture with a single-col hybrid"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            x: Mapped[int]
+
+            @hybrid.hybrid_property
+            def x_plain(self):
+                return self.x
+
+        return A
+
+    @testing.fixture
+    def expand_plain(self, decl_base):
+        """fixture with an expand hybrid (deals w/ a value object that spans
+        multiple columns)"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            x: Mapped[int]
+            y: Mapped[int]
+
+            @hybrid.hybrid_property
+            def xy(self):
+                return Point(self.x, self.y)
+
+        return A
+
+    @testing.fixture
+    def expand_update(self, decl_base):
+        """fixture with an expand hybrid (deals w/ a value object that spans
+        multiple columns)"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            x: Mapped[int]
+            y: Mapped[int]
+
+            @hybrid.hybrid_property
+            def xy(self):
+                return Point(self.x, self.y)
+
+            @xy.inplace.update_expression
+            @classmethod
+            def _xy(cls, value):
+                return [(cls.x, value.x), (cls.y, value.y)]
+
+        return A
+
+    @testing.fixture
+    def expand_dml(self, decl_base):
+        """fixture with an expand hybrid (deals w/ a value object that spans
+        multiple columns)"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            x: Mapped[int]
+            y: Mapped[int]
+
+            @hybrid.hybrid_property
+            def xy(self):
+                return Point(self.x, self.y)
+
+            @xy.inplace.bulk_dml
+            @classmethod
+            def _xy(cls, mapping, value):
+                mapping["x"] = value.x
+                mapping["y"] = value.y
+
+        return A
+
+    @testing.fixture
+    def derived_update(self, decl_base):
+        """fixture with a derive hybrid (value is derived from other columns
+        with data that's not in the value object itself)
+        """
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            amount: Mapped[int]
+            rate: Mapped[float]
+
+            @hybrid.hybrid_property
+            def adjusted_amount(self):
+                return self.amount * self.rate
+
+            @adjusted_amount.inplace.update_expression
+            @classmethod
+            def _adjusted_amount(cls, value):
+                return [(cls.amount, value / from_dml_column(cls.rate))]
+
+        return A
+
+    @testing.fixture
+    def derived_dml(self, decl_base):
+        """fixture with a derive hybrid (value is derived from other columns
+        with data that's not in the value object itself)
+        """
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            amount: Mapped[int]
+            rate: Mapped[float]
+
+            @hybrid.hybrid_property
+            def adjusted_amount(self):
+                return self.amount * self.rate
+
+            @adjusted_amount.inplace.bulk_dml
+            @classmethod
+            def _adjusted_amount(cls, mapping, value):
+                mapping["amount"] = value / mapping["rate"]
+
+        return A
+
+    def test_single_plain_update_values(self, single_plain):
+        A = single_plain
+        self.assert_compile(
+            update(A).values({A.x_plain: 10}),
+            "UPDATE a SET x=:x",
+            checkparams={"x": 10},
+        )
+
+    def test_single_plain_insert_values(self, single_plain):
+        A = single_plain
+        self.assert_compile(
+            insert(A).values({A.x_plain: 10}),
+            "INSERT INTO a (x) VALUES (:x)",
+            checkparams={"x": 10},
+        )
+
+    @testing.variation("crud", ["insert", "update"])
+    def test_single_plain_bulk(self, crud, decl_base, single_plain):
+        A = single_plain
+
+        decl_base.metadata.create_all(testing.db)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Can't evaluate bulk DML statement; "
+            "please supply a bulk_dml decorated function",
+        ):
+            with Session(testing.db) as session:
+                session.execute(
+                    insert(A) if crud.insert else update(A),
+                    [
+                        {"x_plain": 10},
+                        {"x_plain": 11},
+                    ],
+                )
+
+    @testing.variation("keytype", ["attr", "string"])
+    def test_expand_plain_update_values(self, expand_plain, keytype):
+        A = expand_plain
+
+        # SQL tuple_ update happens instead due to __clause_element__
+        self.assert_compile(
+            update(A)
+            .where(A.xy == Point(10, 12))
+            .values({"xy" if keytype.string else A.xy: Point(5, 6)}),
+            "UPDATE a SET (x, y)=(:param_1, :param_2) "
+            "WHERE a.x = :x_1 AND a.y = :y_1",
+            {"param_1": 5, "param_2": 6, "x_1": 10, "y_1": 12},
+        )
+
+    @testing.variation("crud", ["insert", "update"])
+    def test_expand_update_bulk(self, crud, expand_update, decl_base):
+        A = expand_update
+        decl_base.metadata.create_all(testing.db)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Can't evaluate bulk DML statement; "
+            "please supply a bulk_dml decorated function",
+        ):
+            with Session(testing.db) as session:
+                session.execute(
+                    insert(A) if crud.insert else update(A),
+                    [
+                        {"xy": Point(3, 4)},
+                        {"xy": Point(5, 6)},
+                    ],
+                )
+
+    @testing.variation("crud", ["insert", "update"])
+    def test_expand_dml_bulk(self, crud, expand_dml, decl_base, connection):
+        A = expand_dml
+        decl_base.metadata.create_all(connection)
+
+        with self.sql_execution_asserter(connection) as asserter:
+            with Session(connection) as session:
+                session.execute(
+                    insert(A),
+                    [
+                        {"id": 1, "xy": Point(3, 4)},
+                        {"id": 2, "xy": Point(5, 6)},
+                    ],
+                )
+
+                if crud.update:
+                    session.execute(
+                        update(A),
+                        [
+                            {"id": 1, "xy": Point(10, 9)},
+                            {"id": 2, "xy": Point(7, 8)},
+                        ],
+                    )
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO a (id, x, y) VALUES (:id, :x, :y)",
+                [{"id": 1, "x": 3, "y": 4}, {"id": 2, "x": 5, "y": 6}],
+            ),
+            Conditional(
+                crud.update,
+                [
+                    CompiledSQL(
+                        "UPDATE a SET x=:x, y=:y WHERE a.id = :a_id",
+                        [
+                            {"x": 10, "y": 9, "a_id": 1},
+                            {"x": 7, "y": 8, "a_id": 2},
+                        ],
+                    )
+                ],
+                [],
+            ),
+        )
+
+    @testing.variation("keytype", ["attr", "string"])
+    def test_expand_update_insert_values(self, expand_update, keytype):
+        A = expand_update
+        self.assert_compile(
+            insert(A).values({"xy" if keytype.string else A.xy: Point(5, 6)}),
+            "INSERT INTO a (x, y) VALUES (:x, :y)",
+            checkparams={"x": 5, "y": 6},
+        )
+
+    @testing.variation("keytype", ["attr", "string"])
+    def test_expand_update_update_values(self, expand_update, keytype):
+        A = expand_update
+        self.assert_compile(
+            update(A).values({"xy" if keytype.string else A.xy: Point(5, 6)}),
+            "UPDATE a SET x=:x, y=:y",
+            checkparams={"x": 5, "y": 6},
+        )
+
+    #####################################################
+
+    @testing.variation("keytype", ["attr", "string"])
+    def test_derived_update_insert_values(self, derived_update, keytype):
+        A = derived_update
+        self.assert_compile(
+            insert(A).values(
+                {
+                    "rate" if keytype.string else A.rate: 1.5,
+                    (
+                        "adjusted_amount"
+                        if keytype.string
+                        else A.adjusted_amount
+                    ): 25,
+                }
+            ),
+            "INSERT INTO a (amount, rate) VALUES "
+            "((:param_1 / CAST(:rate AS FLOAT)), :rate)",
+            checkparams={"param_1": 25, "rate": 1.5},
+        )
+
+    @testing.variation("keytype", ["attr", "string"])
+    @testing.variation("rate_present", [True, False])
+    def test_derived_update_update_values(
+        self, derived_update, rate_present, keytype
+    ):
+        A = derived_update
+
+        if rate_present:
+            # when column is present in UPDATE SET, from_dml_column
+            # uses that expression
+            self.assert_compile(
+                update(A).values(
+                    {
+                        "rate" if keytype.string else A.rate: 1.5,
+                        (
+                            "adjusted_amount"
+                            if keytype.string
+                            else A.adjusted_amount
+                        ): 25,
+                    }
+                ),
+                "UPDATE a SET amount=(:param_1 / CAST(:rate AS FLOAT)), "
+                "rate=:rate",
+                checkparams={"param_1": 25, "rate": 1.5},
+            )
+        else:
+            # when column is not present in UPDATE SET, from_dml_column
+            # renders the column, which will work in an UPDATE, but not INSERT
+            self.assert_compile(
+                update(A).values(
+                    {
+                        (
+                            "adjusted_amount"
+                            if keytype.string
+                            else A.adjusted_amount
+                        ): 25
+                    }
+                ),
+                "UPDATE a SET amount=(:param_1 / CAST(a.rate AS FLOAT))",
+                checkparams={"param_1": 25},
+            )
+
+    @testing.variation("crud", ["insert", "update"])
+    def test_derived_dml_bulk(self, crud, derived_dml, decl_base, connection):
+        A = derived_dml
+        decl_base.metadata.create_all(connection)
+
+        with self.sql_execution_asserter(connection) as asserter:
+            with Session(connection) as session:
+                session.execute(
+                    insert(A),
+                    [
+                        {"rate": 1.5, "adjusted_amount": 25},
+                        {"rate": 2.5, "adjusted_amount": 25},
+                    ],
+                )
+
+                if crud.update:
+                    session.execute(
+                        update(A),
+                        [
+                            {"id": 1, "rate": 1.8, "adjusted_amount": 30},
+                            {"id": 2, "rate": 2.8, "adjusted_amount": 40},
+                        ],
+                    )
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO a (amount, rate) VALUES (:amount, :rate)",
+                [
+                    {"amount": 25 / 1.5, "rate": 1.5},
+                    {"amount": 25 / 2.5, "rate": 2.5},
+                ],
+            ),
+            Conditional(
+                crud.update,
+                [
+                    CompiledSQL(
+                        "UPDATE a SET amount=:amount, rate=:rate "
+                        "WHERE a.id = :a_id",
+                        [
+                            {"amount": 30 / 1.8, "rate": 1.8, "a_id": 1},
+                            {"amount": 40 / 2.8, "rate": 2.8, "a_id": 2},
+                        ],
+                    )
+                ],
+                [],
+            ),
+        )
 
 
 class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
