@@ -15,8 +15,10 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
+from sqlalchemy import Uuid
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
@@ -750,6 +752,48 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
             r"update 1 row\(s\); 0 were matched.",
             s.flush,
         )
+
+
+class PostUpdatePrefetchTest(fixtures.DeclarativeMappedTest):
+    """test #12748"""
+
+    run_setup_classes = "each"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = mapped_column(Integer, primary_key=True)
+
+            related = relationship(
+                "Related", post_update=True, cascade="all, delete-orphan"
+            )
+
+        class Related(Base):
+            __tablename__ = "related"
+
+            id = mapped_column(Integer, primary_key=True)
+            parent_id = mapped_column(ForeignKey("parent.id"))
+            version = mapped_column(Uuid)
+
+            __mapper_args__ = {
+                "version_id_col": version,
+                "version_id_generator": lambda v: uuid.uuid4(),
+            }
+
+    def test_random_versionids(self, connection):
+        Parent, Related = self.classes("Parent", "Related")
+
+        p1 = Parent(related=[Related(), Related(), Related()])
+        with Session(connection, expire_on_commit=False) as sess:
+            sess.add(p1)
+            sess.commit()
+
+        with Session(connection, expire_on_commit=False) as sess:
+            sess.delete(p1)
+            sess.commit()
 
 
 class NoBumpOnRelationshipTest(fixtures.MappedTest):
