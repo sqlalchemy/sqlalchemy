@@ -2130,6 +2130,40 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             is_(getattr(Element.__table__.c.data, paramname), override_value)
 
+    def test_use_existing_column_from_pep_593(self, decl_base):
+        """test #12787"""
+
+        global Label
+        Label = Annotated[
+            str, mapped_column(String(20), use_existing_column=True)
+        ]
+
+        class A(decl_base):
+            __tablename__ = "table_a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            discriminator: Mapped[int]
+
+            __mapper_args__ = {
+                "polymorphic_on": "discriminator",
+                "polymorphic_abstract": True,
+            }
+
+        class A_1(A):
+            label: Mapped[Label]
+
+            __mapper_args__ = {"polymorphic_identity": 1}
+
+        class A_2(A):
+            label: Mapped[Label]
+
+            __mapper_args__ = {"polymorphic_identity": 2}
+
+        is_(A_1.label.property.columns[0], A_2.label.property.columns[0])
+
+        eq_(A_1.label.property.columns[0].table, A.__table__)
+        eq_(A_2.label.property.columns[0].table, A.__table__)
+
     @testing.variation(
         "union",
         [
