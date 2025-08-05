@@ -1,0 +1,15 @@
+.. change::
+    :tags: usecase, engine
+    :tickets: 12784
+
+    Added new parameter :paramref:`.create_engine.skip_autocommit_rollback`
+    which provides for a per-dialect feature of preventing the DBAPI
+    ``.rollback()`` from being called under any circumstances, if the
+    connection is detected as being in "autocommit" mode.   This improves upon
+    a critical performance issue identified in MySQL dialects where the network
+    overhead of the ``.rollback()`` call remains prohibitive even if autocommit
+    mode is set.
+
+    .. seealso::
+
+        :ref:`dbapi_autocommit_skip_rollback`

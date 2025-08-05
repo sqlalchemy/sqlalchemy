@@ -134,8 +134,14 @@ The pool includes "reset on return" behavior which will call the ``rollback()``
 method of the DBAPI connection when the connection is returned to the pool.
 This is so that any existing transactional state is removed from the
 connection, which includes not just uncommitted data but table and row locks as
-well. For most DBAPIs, the call to ``rollback()`` is inexpensive, and if the
-DBAPI has already completed a transaction, the method should be a no-op.
+well. For most DBAPIs, the call to ``rollback()`` is relatively inexpensive.
+
+The "reset on return" feature takes place when a connection is :term:`released`
+back to the connection pool.  In modern SQLAlchemy, this reset on return
+behavior is shared between the :class:`.Connection` and the :class:`.Pool`,
+where the :class:`.Connection` itself, if it releases its transaction upon close,
+considers ``.rollback()`` to have been called, and instructs the pool to skip
+this step.
 
 
 Disabling Reset on Return for non-transactional connections
@@ -146,24 +152,39 @@ using a connection that is configured for
 :ref:`autocommit <dbapi_autocommit_understanding>` or when using a database
 that has no ACID capabilities such as the MyISAM engine of MySQL, the
 reset-on-return behavior can be disabled, which is typically done for
-performance reasons. This can be affected by using the
+performance reasons.
+
+As of SQLAlchemy 2.0.43, the :paramref:`.create_engine.skip_autocommit_rollback`
+parameter of :func:`.create_engine` provides the most complete means of
+preventing ROLLBACK from being emitted while under autocommit mode, as it
+blocks the DBAPI ``.rollback()`` method from being called by the dialect
+completely::
+
+    autocommit_engine = create_engine(
+        "mysql+mysqldb://scott:tiger@mysql80/test",
+        skip_autocommit_rollback=True,
+        isolation_level="AUTOCOMMIT",
+    )
+
+Detail on this pattern is at :ref:`dbapi_autocommit_skip_rollback`.
+
+The :class:`_pool.Pool` itself also has a parameter that can control its
+"reset on return" behavior, noting that in modern SQLAlchemy this is not
+the only path by which the DBAPI transaction is released, which is the
 :paramref:`_pool.Pool.reset_on_return` parameter of :class:`_pool.Pool`, which
 is also available from :func:`_sa.create_engine` as
 :paramref:`_sa.create_engine.pool_reset_on_return`, passing a value of ``None``.
-This is illustrated in the example below, in conjunction with the
-:paramref:`.create_engine.isolation_level` parameter setting of
-``AUTOCOMMIT``::
+This pattern looks as below::
 
-    non_acid_engine = create_engine(
-        "mysql://scott:tiger@host/db",
+    autocommit_engine = create_engine(
+        "mysql+mysqldb://scott:tiger@mysql80/test",
         pool_reset_on_return=None,
         isolation_level="AUTOCOMMIT",
     )
 
-The above engine won't actually perform ROLLBACK when connections are returned
-to the pool; since AUTOCOMMIT is enabled, the driver will also not perform
-any BEGIN operation.
-
+The above pattern will still see ROLLBACKs occur however as the :class:`.Connection`
+object implicitly starts transaction blocks in the SQLAlchemy 2.0 series,
+which still emit ROLLBACK independently of the pool's reset sequence.
 
 Custom Reset-on-Return Schemes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
