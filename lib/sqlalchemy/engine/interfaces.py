@@ -779,6 +779,14 @@ class Dialect(EventTarget):
     default_isolation_level: Optional[IsolationLevel]
     """the isolation that is implicitly present on new connections"""
 
+    skip_autocommit_rollback: bool
+    """Whether or not the :paramref:`.create_engine.skip_autocommit_rollback
+    parameter was set.
+
+    .. versionadded:: 2.0.43
+
+    """
+
     # create_engine()  -> isolation_level  currently goes here
     _on_connect_isolation_level: Optional[IsolationLevel]
 
@@ -2480,6 +2488,30 @@ class Dialect(EventTarget):
         """
 
         raise NotImplementedError()
+
+    def detect_autocommit_setting(self, dbapi_conn: DBAPIConnection) -> bool:
+        """Detect the current autocommit setting for a DBAPI connection.
+
+        :param dbapi_connection: a DBAPI connection object
+        :return: True if autocommit is enabled, False if disabled
+        :rtype: bool
+
+        This method inspects the given DBAPI connection to determine
+        whether autocommit mode is currently enabled. The specific
+        mechanism for detecting autocommit varies by database dialect
+        and DBAPI driver, however it should be done **without** network
+        round trips.
+
+        .. note::
+
+            Not all dialects support autocommit detection. Dialects
+            that do not support this feature will raise
+            :exc:`NotImplementedError`.
+
+        """
+        raise NotImplementedError(
+            "This dialect cannot detect autocommit on a DBAPI connection"
+        )
 
     def get_default_isolation_level(
         self, dbapi_conn: DBAPIConnection

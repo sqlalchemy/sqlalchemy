@@ -298,6 +298,9 @@ class MySQLDialect_mysqldb(MySQLDialect):
             "AUTOCOMMIT",
         )
 
+    def detect_autocommit_setting(self, dbapi_conn: DBAPIConnection) -> bool:
+        return dbapi_conn.get_autocommit()  # type: ignore[no-any-return]
+
     def set_isolation_level(
         self, dbapi_connection: DBAPIConnection, level: IsolationLevel
     ) -> None:

@@ -540,6 +540,9 @@ class PGDialect_pg8000(PGDialect):
             cursor.execute("COMMIT")
             cursor.close()
 
+    def detect_autocommit_setting(self, dbapi_conn) -> bool:
+        return bool(dbapi_conn.autocommit)
+
     def set_readonly(self, connection, value):
         cursor = connection.cursor()
         try:

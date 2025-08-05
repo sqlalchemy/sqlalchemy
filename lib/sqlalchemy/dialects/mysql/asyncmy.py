@@ -104,6 +104,9 @@ class AsyncAdapt_asyncmy_connection(AsyncAdapt_dbapi_connection):
     def autocommit(self, value: Any) -> None:
         self.await_(self._connection.autocommit(value))
 
+    def get_autocommit(self) -> bool:
+        return self._connection.get_autocommit()  # type: ignore
+
     def terminate(self) -> None:
         # it's not awaitable.
         self._connection.close()

@@ -170,6 +170,9 @@ class _PGDialect_common_psycopg(PGDialect):
     def _do_autocommit(self, connection, value):
         connection.autocommit = value
 
+    def detect_autocommit_setting(self, dbapi_connection):
+        return bool(dbapi_connection.autocommit)
+
     def do_ping(self, dbapi_connection):
         before_autocommit = dbapi_connection.autocommit
 
