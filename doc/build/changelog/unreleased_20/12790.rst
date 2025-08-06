@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12790
+
+    Improved the implementation of the :func:`_orm.selectin_polymorphic`
+    inheritance loader strategy to properly render the IN expressions using
+    chunks of 500 records each, in the same manner as that of the
+    :func:`_orm.selectinload` relationship loader strategy.  Previously, the IN
+    expression would be arbitrarily large, leading to failures on databases
+    that have limits on the size of IN expressions including Oracle Database.
