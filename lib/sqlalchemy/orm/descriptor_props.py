@@ -393,7 +393,9 @@ class CompositeProperty(
             self.composite_class = argument
 
         if is_dataclass(self.composite_class):
-            self._setup_for_dataclass(registry, cls, originating_module, key)
+            self._setup_for_dataclass(
+                decl_scan, registry, cls, originating_module, key
+            )
         else:
             for attr in self.attrs:
                 if (
@@ -437,6 +439,7 @@ class CompositeProperty(
     @util.preload_module("sqlalchemy.orm.decl_base")
     def _setup_for_dataclass(
         self,
+        decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -464,6 +467,7 @@ class CompositeProperty(
 
             if isinstance(attr, MappedColumn):
                 attr.declarative_scan_for_composite(
+                    decl_scan,
                     registry,
                     cls,
                     originating_module,

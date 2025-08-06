@@ -663,6 +663,31 @@ class MappedColumn(
         # Column will be merged into it in _init_column_for_annotation().
         return MappedColumn()
 
+    def _adjust_for_existing_column(
+        self,
+        decl_scan: _ClassScanMapperConfig,
+        key: str,
+        given_column: Column[_T],
+    ) -> Column[_T]:
+        if (
+            self._use_existing_column
+            and decl_scan.inherits
+            and decl_scan.single
+        ):
+            if decl_scan.is_deferred:
+                raise sa_exc.ArgumentError(
+                    "Can't use use_existing_column with deferred mappers"
+                )
+            supercls_mapper = class_mapper(decl_scan.inherits, False)
+
+            colname = (
+                given_column.name if given_column.name is not None else key
+            )
+            given_column = supercls_mapper.local_table.c.get(  # type: ignore[assignment] # noqa: E501
+                colname, given_column
+            )
+        return given_column
+
     def declarative_scan(
         self,
         decl_scan: _ClassScanMapperConfig,
@@ -677,21 +702,9 @@ class MappedColumn(
     ) -> None:
         column = self.column
 
-        if (
-            self._use_existing_column
-            and decl_scan.inherits
-            and decl_scan.single
-        ):
-            if decl_scan.is_deferred:
-                raise sa_exc.ArgumentError(
-                    "Can't use use_existing_column with deferred mappers"
-                )
-            supercls_mapper = class_mapper(decl_scan.inherits, False)
-
-            colname = column.name if column.name is not None else key
-            column = self.column = supercls_mapper.local_table.c.get(  # type: ignore[assignment] # noqa: E501
-                colname, column
-            )
+        column = self.column = self._adjust_for_existing_column(
+            decl_scan, key, self.column
+        )
 
         if column.key is None:
             column.key = key
@@ -708,6 +721,8 @@ class MappedColumn(
 
         self._init_column_for_annotation(
             cls,
+            decl_scan,
+            key,
             registry,
             extracted_mapped_annotation,
             originating_module,
@@ -716,6 +731,7 @@ class MappedColumn(
     @util.preload_module("sqlalchemy.orm.decl_base")
     def declarative_scan_for_composite(
         self,
+        decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -726,12 +742,14 @@ class MappedColumn(
         decl_base = util.preloaded.orm_decl_base
         decl_base._undefer_column_name(param_name, self.column)
         self._init_column_for_annotation(
-            cls, registry, param_annotation, originating_module
+            cls, decl_scan, key, registry, param_annotation, originating_module
         )
 
     def _init_column_for_annotation(
         self,
         cls: Type[Any],
+        decl_scan: _ClassScanMapperConfig,
+        key: str,
         registry: _RegistryType,
         argument: _AnnotationScanType,
         originating_module: Optional[str],
@@ -778,6 +796,11 @@ class MappedColumn(
             use_args_from = None
 
         if use_args_from is not None:
+
+            self.column = use_args_from._adjust_for_existing_column(
+                decl_scan, key, self.column
+            )
+
             if (
                 not self._has_insert_default
                 and use_args_from.column.default is not None
