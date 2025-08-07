@@ -1034,6 +1034,13 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def skip_autocommit_rollback(self):
+        """target dialect supports the detect_autocommit_setting() method and
+        uses the default implementation of do_rollback()"""
+
+        return exclusions.closed()
+
+    @property
     def isolation_level(self):
         """target dialect supports general isolation level settings.
 

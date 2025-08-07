@@ -448,6 +448,14 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def skip_autocommit_rollback(self):
+        return exclusions.skip_if(
+            ["mssql+pymssql"],
+            "DBAPI has no means of testing the autocommit status of a "
+            "connection",
+        )
+
+    @property
     def row_triggers(self):
         """Target must support standard statement-running EACH ROW triggers."""
 

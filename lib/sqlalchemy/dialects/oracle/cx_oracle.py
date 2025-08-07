@@ -1234,6 +1234,9 @@ class OracleDialect_cx_oracle(OracleDialect):
             with dbapi_connection.cursor() as cursor:
                 cursor.execute(f"ALTER SESSION SET ISOLATION_LEVEL={level}")
 
+    def detect_autocommit_setting(self, dbapi_conn) -> bool:
+        return bool(dbapi_conn.autocommit)
+
     def _detect_decimal_char(self, connection):
         # we have the option to change this setting upon connect,
         # or just look at what it is upon connect and convert.

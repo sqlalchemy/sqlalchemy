@@ -285,7 +285,7 @@ that loses not only "read committed" but also loses atomicity.
   :ref:`dbapi_autocommit_understanding`, that "autocommit" isolation level like
   any other isolation level does **not** affect the "transactional" behavior of
   the :class:`_engine.Connection` object, which continues to call upon DBAPI
-  ``.commit()`` and ``.rollback()`` methods (they just have no effect under
+  ``.commit()`` and ``.rollback()`` methods (they just have no net effect under
   autocommit), and for which the ``.begin()`` method assumes the DBAPI will
   start a transaction implicitly (which means that SQLAlchemy's "begin" **does
   not change autocommit mode**).
@@ -340,6 +340,8 @@ begin a transaction::
    set at this level. This because the option must be set on a DBAPI connection
    on a per-transaction basis.
 
+.. _dbapi_autocommit_engine:
+
 Setting Isolation Level or DBAPI Autocommit for an Engine
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -358,14 +360,20 @@ With the above setting, each new DBAPI connection the moment it's created will
 be set to use a ``"REPEATABLE READ"`` isolation level setting for all
 subsequent operations.
 
+.. tip::
+
+    Prefer to set frequently used isolation levels engine wide as illustrated
+    above compared to using per-engine or per-connection execution options for
+    maximum performance.
+
 .. _dbapi_autocommit_multiple:
 
 Maintaining Multiple Isolation Levels for a Single Engine
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The isolation level may also be set per engine, with a potentially greater
-level of flexibility, using either the
-:paramref:`_sa.create_engine.execution_options` parameter to
+level of flexibility but with a small per-connection performance overhead,
+using either the :paramref:`_sa.create_engine.execution_options` parameter to
 :func:`_sa.create_engine` or the :meth:`_engine.Engine.execution_options`
 method, the latter of which will create a copy of the :class:`.Engine` that
 shares the dialect and connection pool of the original engine, but has its own
@@ -408,6 +416,14 @@ copy of the original :class:`_engine.Engine`.  Both ``eng`` and
 The isolation level setting, regardless of which one it is, is unconditionally
 reverted when a connection is returned to the connection pool.
 
+.. note::
+
+    The execution options approach, whether used engine wide or per connection,
+    incurs a small performance penalty as isolation level instructions
+    are sent on connection acquire as well as connection release.   Consider
+    the engine-wide isolation setting at :ref:`dbapi_autocommit_engine` so
+    that connections are configured at the target isolation level permanently
+    as they are pooled.
 
 .. seealso::
 
@@ -457,8 +473,9 @@ committed, this rollback has no change on the state of the database.
 
 It is important to note that "autocommit" mode
 persists even when the :meth:`_engine.Connection.begin` method is called;
-the DBAPI will not emit any BEGIN to the database, nor will it emit
-COMMIT when :meth:`_engine.Connection.commit` is called.  This usage is also
+the DBAPI will not emit any BEGIN to the database.   When
+:meth:`_engine.Connection.commit` is called, the DBAPI may still emit the
+"COMMIT" instruction, but this is a no-op at the database level.  This usage is also
 not an error scenario, as it is expected that the "autocommit" isolation level
 may be applied to code that otherwise was written assuming a transactional context;
 the "isolation level" is, after all, a configurational detail of the transaction
@@ -483,7 +500,7 @@ it probably will have no effect due to autocommit mode:
 
     INFO sqlalchemy.engine.Engine BEGIN (implicit)
     ...
-    INFO sqlalchemy.engine.Engine COMMIT using DBAPI connection.commit(), DBAPI should ignore due to autocommit mode
+    INFO sqlalchemy.engine.Engine COMMIT using DBAPI connection.commit(), has no effect due to autocommit mode
 
 At the same time, even though we are using "DBAPI autocommit", SQLAlchemy's
 transactional semantics, that is, the in-Python behavior of :meth:`_engine.Connection.begin`
@@ -513,6 +530,43 @@ these blocks are not actually committing). The rationale for this design is to
 maintain a completely consistent usage pattern with the
 :class:`_engine.Connection` where DBAPI-autocommit mode can be changed
 independently without indicating any code changes elsewhere.
+
+.. _dbapi_autocommit_skip_rollback:
+
+Fully preventing ROLLBACK calls under autocommit
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 2.0.43
+
+A common use case is to use AUTOCOMMIT isolation mode to improve performance,
+and this is a particularly common practice on MySQL / MariaDB databases.
+When seeking this pattern, it should be preferred to set AUTOCOMMIT engine
+wide using the :paramref:`.create_engine.isolation_level` so that pooled
+connections are permanently set in autocommit mode.   The SQLAlchemy connection
+pool as well as the :class:`.Connection` will still seek to invoke the DBAPI
+``.rollback()`` method upon connection :term:`reset`, as their behavior
+remains agonstic of the isolation level that's configured on the connection.
+As this rollback still incurs a network round trip under most if not all
+DBAPI drivers, this additional network trip may be disabled using the
+:paramref:`.create_engine.skip_autocommit_rollback` parameter, which will
+apply a rule at the basemost portion of the dialect that invokes DBAPI
+``.rollback()`` to first check if the connection is configured in autocommit,
+using a method of detection that does not itself incur network overhead::
+
+    autocommit_engine = create_engine(
+        "mysql+mysqldb://scott:tiger@mysql80/test",
+        skip_autocommit_rollback=True,
+        isolation_level="AUTOCOMMIT",
+    )
+
+When DBAPI connections are returned to the pool by the :class:`.Connection`,
+whether the :class:`.Connection` or the pool attempts to reset the
+"transaction", the underlying DBAPI ``.rollback()`` method will be blocked
+based on a positive test of "autocommit".
+
+If the dialect in use does not support a no-network means of detecting
+autocommit, the dialect will raise ``NotImplementedError`` when a connection
+release is attempted.
 
 Changing Between Isolation Levels
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

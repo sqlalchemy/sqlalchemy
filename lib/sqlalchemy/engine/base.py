@@ -1112,10 +1112,16 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if self._still_open_and_dbapi_connection_is_valid:
             if self._echo:
                 if self._is_autocommit_isolation():
-                    self._log_info(
-                        "ROLLBACK using DBAPI connection.rollback(), "
-                        "DBAPI should ignore due to autocommit mode"
-                    )
+                    if self.dialect.skip_autocommit_rollback:
+                        self._log_info(
+                            "ROLLBACK will be skipped by "
+                            "skip_autocommit_rollback"
+                        )
+                    else:
+                        self._log_info(
+                            "ROLLBACK using DBAPI connection.rollback(); "
+                            "set skip_autocommit_rollback to prevent fully"
+                        )
                 else:
                     self._log_info("ROLLBACK")
             try:
@@ -1131,7 +1137,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             if self._is_autocommit_isolation():
                 self._log_info(
                     "COMMIT using DBAPI connection.commit(), "
-                    "DBAPI should ignore due to autocommit mode"
+                    "has no effect due to autocommit mode"
                 )
             else:
                 self._log_info("COMMIT")

@@ -17,6 +17,7 @@ from .. import eq_
 from .. import fixtures
 from .. import is_not_none
 from .. import is_true
+from .. import mock
 from .. import ne_
 from .. import provide_metadata
 from ..assertions import expect_raises
@@ -293,7 +294,11 @@ class AutocommitIsolationTest(fixtures.TablesTest):
             test_needs_acid=True,
         )
 
-    def _test_conn_autocommits(self, conn, autocommit):
+    def _test_conn_autocommits(self, conn, autocommit, ensure_table=False):
+        if ensure_table:
+            self.tables.some_table.create(conn, checkfirst=True)
+            conn.commit()
+
         trans = conn.begin()
         conn.execute(
             self.tables.some_table.insert(), {"id": 1, "data": "some data"}
@@ -335,6 +340,37 @@ class AutocommitIsolationTest(fixtures.TablesTest):
             ]
         )
         self._test_conn_autocommits(conn, False)
+
+    @testing.requires.skip_autocommit_rollback
+    @testing.variation("autocommit_setting", ["false", "engine", "option"])
+    @testing.variation("block_rollback", [True, False])
+    def test_autocommit_block(
+        self, testing_engine, autocommit_setting, block_rollback
+    ):
+        kw = {}
+        if bool(block_rollback):
+            kw["skip_autocommit_rollback"] = True
+        if autocommit_setting.engine:
+            kw["isolation_level"] = "AUTOCOMMIT"
+
+        engine = testing_engine(options=kw)
+
+        conn = engine.connect()
+        if autocommit_setting.option:
+            conn.execution_options(isolation_level="AUTOCOMMIT")
+        self._test_conn_autocommits(
+            conn,
+            autocommit_setting.engine or autocommit_setting.option,
+            ensure_table=True,
+        )
+        with mock.patch.object(
+            conn.connection, "rollback", wraps=conn.connection.rollback
+        ) as check_rollback:
+            conn.close()
+        if autocommit_setting.false or not block_rollback:
+            eq_(check_rollback.mock_calls, [mock.call()])
+        else:
+            eq_(check_rollback.mock_calls, [])
 
     @testing.requires.independent_readonly_connections
     @testing.variation("use_dialect_setting", [True, False])

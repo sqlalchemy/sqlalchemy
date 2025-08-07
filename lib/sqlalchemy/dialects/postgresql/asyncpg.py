@@ -1117,6 +1117,9 @@ class PGDialect_asyncpg(PGDialect):
     def set_isolation_level(self, dbapi_connection, level):
         dbapi_connection.set_isolation_level(self._isolation_lookup[level])
 
+    def detect_autocommit_setting(self, dbapi_conn) -> bool:
+        return bool(dbapi_conn.autocommit)
+
     def set_readonly(self, connection, value):
         connection.readonly = value
 
