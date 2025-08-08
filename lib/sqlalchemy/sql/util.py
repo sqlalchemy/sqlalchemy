@@ -1348,9 +1348,7 @@ class ColumnAdapter(ClauseAdapter):
     adapt_clause = traverse
     adapt_list = ClauseAdapter.copy_and_process
 
-    def adapt_check_present(
-        self, col: ColumnElement[Any]
-    ) -> Optional[ColumnElement[Any]]:
+    def adapt_check_present(self, col: _ET) -> Optional[_ET]:
         newcol = self.columns[col]
 
         if newcol is col and self._corresponding_column(col, True) is None:

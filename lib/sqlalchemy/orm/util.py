@@ -1187,14 +1187,27 @@ class AliasedInsp(
         if key:
             d["proxy_key"] = key
 
-        # IMO mypy should see this one also as returning the same type
-        # we put into it, but it's not
-        return (
-            self._adapter.traverse(expr)
-            ._annotate(d)
-            ._set_propagate_attrs(
-                {"compile_state_plugin": "orm", "plugin_subject": self}
-            )
+        # userspace adapt of an attribute from AliasedClass; validate that
+        # it actually was present
+        adapted = self._adapter.adapt_check_present(expr)
+        if adapted is None:
+            adapted = expr
+            if self._adapter.adapt_on_names:
+                util.warn_limited(
+                    "Did not locate an expression in selectable for "
+                    "attribute %r; ensure name is correct in expression",
+                    (key,),
+                )
+            else:
+                util.warn_limited(
+                    "Did not locate an expression in selectable for "
+                    "attribute %r; to match by name, use the "
+                    "adapt_on_names parameter",
+                    (key,),
+                )
+
+        return adapted._annotate(d)._set_propagate_attrs(
+            {"compile_state_plugin": "orm", "plugin_subject": self}
         )
 
     if TYPE_CHECKING:
