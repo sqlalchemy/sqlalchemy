@@ -64,8 +64,6 @@ from typing import Union
 from . import base
 from . import coercions
 from . import crud
-from . import ddl
-from . import dml
 from . import elements
 from . import functions
 from . import operators
@@ -95,6 +93,7 @@ from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
+    from . import ddl
     from .annotation import _AnnotationDict
     from .base import _AmbiguousTableNameMap
     from .base import CompileState
@@ -6509,7 +6508,7 @@ class SQLCompiler(Compiled):
     def update_tables_clause(
         self,
         update_stmt: Update,
-        from_table: dml._DMLTableElement,
+        from_table: _DMLTableElement,
         extra_froms: List[FromClause],
         **kw: Any,
     ) -> str:
@@ -6525,7 +6524,7 @@ class SQLCompiler(Compiled):
     def update_from_clause(
         self,
         update_stmt: Update,
-        from_table: dml._DMLTableElement,
+        from_table: _DMLTableElement,
         extra_froms: List[FromClause],
         from_hints: _FromHintsType,
         **kw: Any,
