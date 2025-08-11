@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 12787
-
-    Fixed issue where :paramref:`_orm.mapped_column.use_existing_column`
-    parameter in :func:`_orm.mapped_column` would not work when the
-    :func:`_orm.mapped_column` is used inside of an ``Annotated`` type alias in
-    polymorphic inheritance scenarios. The parameter is now properly recognized
-    and processed during declarative mapping configuration.

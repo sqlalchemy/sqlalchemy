@@ -10,7 +10,78 @@
 
 .. changelog::
     :version: 2.0.43
-    :include_notes_from: unreleased_20
+    :released: August 11, 2025
+
+    .. change::
+        :tags: usecase, oracle
+        :tickets: 12711
+
+        Extended :class:`_oracle.VECTOR` to support sparse vectors. This update
+        introduces :class:`_oracle.VectorStorageType` to specify sparse or dense
+        storage and added :class:`_oracle.SparseVector`. Pull request courtesy
+        Suraj Shaw.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12748
+
+        Fixed issue where using the ``post_update`` feature would apply incorrect
+        "pre-fetched" values to the ORM objects after a multi-row UPDATE process
+        completed.  These "pre-fetched" values would come from any column that had
+        an :paramref:`.Column.onupdate` callable or a version id generator used by
+        :paramref:`.orm.Mapper.version_id_generator`; for a version id generator
+        that delivered random identifiers like timestamps or UUIDs, this incorrect
+        data would lead to a DELETE statement against those same rows to fail in
+        the next step.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12778
+
+        Fixed regression in PostgreSQL dialect where JSONB subscription syntax
+        would generate incorrect SQL for JSONB-returning functions, causing syntax
+        errors. The dialect now properly wraps function calls and expressions in
+        parentheses when using the ``[]`` subscription syntax, generating
+        ``(function_call)[index]`` instead of ``function_call[index]`` to comply
+        with PostgreSQL syntax requirements.
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 12784
+
+        Added new parameter :paramref:`.create_engine.skip_autocommit_rollback`
+        which provides for a per-dialect feature of preventing the DBAPI
+        ``.rollback()`` from being called under any circumstances, if the
+        connection is detected as being in "autocommit" mode.   This improves upon
+        a critical performance issue identified in MySQL dialects where the network
+        overhead of the ``.rollback()`` call remains prohibitive even if autocommit
+        mode is set.
+
+        .. seealso::
+
+            :ref:`dbapi_autocommit_skip_rollback`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12787
+
+        Fixed issue where :paramref:`_orm.mapped_column.use_existing_column`
+        parameter in :func:`_orm.mapped_column` would not work when the
+        :func:`_orm.mapped_column` is used inside of an ``Annotated`` type alias in
+        polymorphic inheritance scenarios. The parameter is now properly recognized
+        and processed during declarative mapping configuration.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12790
+
+        Improved the implementation of the :func:`_orm.selectin_polymorphic`
+        inheritance loader strategy to properly render the IN expressions using
+        chunks of 500 records each, in the same manner as that of the
+        :func:`_orm.selectinload` relationship loader strategy.  Previously, the IN
+        expression would be arbitrarily large, leading to failures on databases
+        that have limits on the size of IN expressions including Oracle Database.
 
 .. changelog::
     :version: 2.0.42
