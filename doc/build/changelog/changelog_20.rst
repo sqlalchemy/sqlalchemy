@@ -9,6 +9,10 @@
 
 
 .. changelog::
+    :version: 2.0.44
+    :include_notes_from: unreleased_20
+
+.. changelog::
     :version: 2.0.43
     :released: August 11, 2025
 
