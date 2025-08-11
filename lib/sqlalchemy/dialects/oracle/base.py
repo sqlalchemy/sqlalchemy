@@ -729,8 +729,22 @@ VECTOR Datatype
 
 Oracle Database 23ai introduced a new VECTOR datatype for artificial intelligence
 and machine learning search operations. The VECTOR datatype is a homogeneous array
-of 8-bit signed integers, 8-bit unsigned integers (binary), 32-bit floating-point numbers,
-or 64-bit floating-point numbers.
+of 8-bit signed integers, 8-bit unsigned integers (binary), 32-bit floating-point
+numbers, or 64-bit floating-point numbers.
+
+A vector's storage type can be either DENSE or SPARSE. A dense vector contains
+meaningful values in most or all of its dimensions. In contrast, a sparse vector
+has non-zero values in only a few dimensions, with the majority being zero.
+
+Sparse vectors are represented by the total number of vector dimensions, an array
+of indices, and an array of values where each value’s location in the vector is
+indicated by the corresponding indices array position. All other vector values are
+treated as zero.
+
+The storage formats that can be used with sparse vectors are float32, float64, and
+int8. Note that the binary storage format cannot be used with sparse vectors.
+
+Sparse vectors are supported when you are using Oracle Database 23.7 or later.
 
 .. seealso::
 
@@ -738,17 +752,26 @@ or 64-bit floating-point numbers.
     <https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_ - in the documentation
     for the :ref:`oracledb` driver.
 
-.. versionadded:: 2.0.41
+.. versionadded:: 2.0.41 - Added VECTOR datatype
+
+.. versionadded:: 2.0.43 - Added DENSE/SPARSE support
 
 CREATE TABLE support for VECTOR
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-With the :class:`.VECTOR` datatype, you can specify the dimension for the data
-and the storage format. Valid values for storage format are enum values from
-:class:`.VectorStorageFormat`. To create a table that includes a
-:class:`.VECTOR` column::
+With the :class:`.VECTOR` datatype, you can specify the number of dimensions,
+the storage format, and the storage type for the data. Valid values for the
+storage format are enum members of :class:`.VectorStorageFormat`. Valid values
+for the storage type are enum members of :class:`.VectorStorageType`. If
+storage type is not specified, a DENSE vector is created by default.
 
-    from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
+To create a table that includes a :class:`.VECTOR` column::
+
+    from sqlalchemy.dialects.oracle import (
+        VECTOR,
+        VectorStorageFormat,
+        VectorStorageType,
+    )
 
     t = Table(
         "t1",
@@ -756,7 +779,11 @@ and the storage format. Valid values for storage format are enum values from
         Column("id", Integer, primary_key=True),
         Column(
             "embedding",
-            VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+            VECTOR(
+                dim=3,
+                storage_format=VectorStorageFormat.FLOAT32,
+                storage_type=VectorStorageType.SPARSE,
+            ),
         ),
         Column(...),
         ...,
@@ -764,31 +791,40 @@ and the storage format. Valid values for storage format are enum values from
 
 Vectors can also be defined with an arbitrary number of dimensions and formats.
 This allows you to specify vectors of different dimensions with the various
-storage formats mentioned above.
+storage formats mentioned below.
 
 **Examples**
 
-* In this case, the storage format is flexible, allowing any vector type data to be inserted,
-  such as INT8 or BINARY etc::
+* In this case, the storage format is flexible, allowing any vector type data to be
+  inserted, such as INT8 or BINARY etc::
 
     vector_col: Mapped[array.array] = mapped_column(VECTOR(dim=3))
 
-* The dimension is flexible in this case, meaning that any dimension vector can be used::
+* The dimension is flexible in this case, meaning that any dimension vector can
+  be used::
 
     vector_col: Mapped[array.array] = mapped_column(
         VECTOR(storage_format=VectorStorageType.INT8)
     )
 
-* Both the dimensions and the storage format are flexible::
+* Both the dimensions and the storage format are flexible. It creates a DENSE vector::
 
     vector_col: Mapped[array.array] = mapped_column(VECTOR)
+
+* To create a SPARSE vector with both dimensions and the storage format as flexible,
+  use the :attr:`.VectorStorageType.SPARSE` storage type::
+
+    vector_col: Mapped[array.array] = mapped_column(
+        VECTOR(storage_type=VectorStorageType.SPARSE)
+    )
 
 Python Datatypes for VECTOR
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 VECTOR data can be inserted using Python list or Python ``array.array()`` objects.
-Python arrays of type FLOAT (32-bit), DOUBLE (64-bit), or INT (8-bit signed integer)
-are used as bind values when inserting VECTOR columns::
+Python arrays of type FLOAT (32-bit), DOUBLE (64-bit), INT (8-bit signed integers),
+or BINARY (8-bit unsigned integers) are used as bind values when inserting
+VECTOR columns::
 
     from sqlalchemy import insert, select
 
@@ -798,12 +834,29 @@ are used as bind values when inserting VECTOR columns::
             {"id": 1, "embedding": [1, 2, 3]},
         )
 
+Data can be inserted into a sparse vector using the :class:`_oracle.SparseVector`
+class, creating an object consisting of the number of dimensions, an array of indices, and a
+corresponding array of values::
+
+    from sqlalchemy import insert, select
+    from sqlalchemy.dialects.oracle import SparseVector
+
+    sparse_val = SparseVector(10, [1, 2], array.array("d", [23.45, 221.22]))
+
+    with engine.begin() as conn:
+        conn.execute(
+            insert(t1),
+            {"id": 1, "embedding": sparse_val},
+        )
+
 VECTOR Indexes
 ~~~~~~~~~~~~~~
 
 The VECTOR feature supports an Oracle-specific parameter ``oracle_vector``
 on the :class:`.Index` construct, which allows the construction of VECTOR
 indexes.
+
+SPARSE vectors cannot be used in the creation of vector indexes.
 
 To utilize VECTOR indexing, set the ``oracle_vector`` parameter to True to use
 the default values provided by Oracle. HNSW is the default indexing method::
@@ -1157,14 +1210,16 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return "ROWID"
 
     def visit_VECTOR(self, type_, **kw):
-        if type_.dim is None and type_.storage_format is None:
-            return "VECTOR(*,*)"
-        elif type_.storage_format is None:
-            return f"VECTOR({type_.dim},*)"
-        elif type_.dim is None:
-            return f"VECTOR(*,{type_.storage_format.value})"
-        else:
-            return f"VECTOR({type_.dim},{type_.storage_format.value})"
+        dim = type_.dim if type_.dim is not None else "*"
+        storage_format = (
+            type_.storage_format.value
+            if type_.storage_format is not None
+            else "*"
+        )
+        storage_type = (
+            type_.storage_type.value if type_.storage_type is not None else "*"
+        )
+        return f"VECTOR({dim},{storage_format},{storage_type})"
 
 
 class OracleCompiler(compiler.SQLCompiler):

@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, oracle
+    :tickets: 12711
+
+    Extended :class:`_oracle.VECTOR` to support sparse vectors. This update
+    introduces :class:_oracle.VectorStorageType to specify sparse or dense
+    storage and added :class:`_oracle.SparseVector`. Pull request courtesy
+    Suraj Shaw.

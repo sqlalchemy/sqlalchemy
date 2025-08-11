@@ -13,6 +13,7 @@ import array
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+from typing import Union
 
 import sqlalchemy.types as types
 from sqlalchemy.types import Float
@@ -92,6 +93,27 @@ class VectorStorageFormat(Enum):
     FLOAT64 = "FLOAT64"
     """
     64-bit floating-point format.
+    """
+
+
+class VectorStorageType(Enum):
+    """Enum representing the vector type,
+
+    See :ref:`oracle_vector_datatype` for background.
+
+    .. versionadded:: 2.0.43
+
+    """
+
+    SPARSE = "SPARSE"
+    """
+    A Sparse vector is a vector which has zero value for
+    most of its dimensions.
+    """
+    DENSE = "DENSE"
+    """
+    A Dense vector is a vector where most, if not all, elements
+    hold meaningful values.
     """
 
 
@@ -176,6 +198,39 @@ class VectorIndexConfig:
                 )
 
 
+class SparseVector:
+    """
+    Lightweight SQLAlchemy-side version of SparseVector.
+    This mimics oracledb.SparseVector.
+
+    .. versionadded:: 2.0.43
+
+    """
+
+    def __init__(
+        self,
+        num_dimensions: int,
+        indices: Union[list, array.array],
+        values: Union[list, array.array],
+    ):
+        if not isinstance(indices, array.array) or indices.typecode != "I":
+            indices = array.array("I", indices)
+        if not isinstance(values, array.array):
+            values = array.array("d", values)
+        if len(indices) != len(values):
+            raise TypeError("indices and values must be of the same length!")
+
+        self.num_dimensions = num_dimensions
+        self.indices = indices
+        self.values = values
+
+    def __str__(self):
+        return (
+            f"SparseVector(num_dimensions={self.num_dimensions}, "
+            f"size={len(self.indices)}, typecode={self.values.typecode})"
+        )
+
+
 class VECTOR(types.TypeEngine):
     """Oracle VECTOR datatype.
 
@@ -196,17 +251,22 @@ class VECTOR(types.TypeEngine):
         VectorStorageFormat.FLOAT64: "d",  # Double
     }
 
-    def __init__(self, dim=None, storage_format=None):
+    def __init__(self, dim=None, storage_format=None, storage_type=None):
         """Construct a VECTOR.
 
         :param dim: integer. The dimension of the VECTOR datatype. This
          should be an integer value.
 
         :param storage_format: VectorStorageFormat. The VECTOR storage
-         type format. This may be Enum values form
+         type format. This should be Enum values form
          :class:`.VectorStorageFormat` INT8, BINARY, FLOAT32, or FLOAT64.
 
+        :param storage_type: VectorStorageType. The Vector storage type. This
+         should be Enum values from :class:`.VectorStorageType` SPARSE or
+         DENSE.
+
         """
+
         if dim is not None and not isinstance(dim, int):
             raise TypeError("dim must be an interger")
         if storage_format is not None and not isinstance(
@@ -215,12 +275,22 @@ class VECTOR(types.TypeEngine):
             raise TypeError(
                 "storage_format must be an enum of type VectorStorageFormat"
             )
+        if storage_type is not None and not isinstance(
+            storage_type, VectorStorageType
+        ):
+            raise TypeError(
+                "storage_type must be an enum of type VectorStorageType"
+            )
+
         self.dim = dim
         self.storage_format = storage_format
+        self.storage_type = storage_type
 
     def _cached_bind_processor(self, dialect):
         """
-        Convert a list to a array.array before binding it to the database.
+        Converts a Python-side SparseVector instance into an
+        oracledb.SparseVectormor a compatible array format before
+        binding it to the database.
         """
 
         def process(value):
@@ -233,19 +303,47 @@ class VECTOR(types.TypeEngine):
                 value = array.array(typecode, value)
                 return value
 
+            # Convert SqlAlchemy SparseVector to oracledb SparseVector object
+            elif isinstance(value, SparseVector):
+                return dialect.dbapi.SparseVector(
+                    value.num_dimensions,
+                    value.indices,
+                    value.values,
+                )
+
             else:
-                raise TypeError("VECTOR accepts list or array.array()")
+                raise TypeError(
+                    """
+                    Invalid input for VECTOR: expected a list, an array.array,
+                    or a SparseVector object.
+                    """
+                )
 
         return process
 
     def _cached_result_processor(self, dialect, coltype):
         """
-        Convert a array.array to list before binding it to the database.
+        Converts database-returned values into Python-native representations.
+        If the value is an oracledb.SparseVector, it is converted into the
+        SQLAlchemy-side SparseVector class.
+        If the value is a array.array, it is converted to a plain Python list.
+
         """
 
         def process(value):
-            if isinstance(value, array.array):
+            if value is None:
+                return None
+
+            elif isinstance(value, array.array):
                 return list(value)
+
+            # Convert Oracledb SparseVector to SqlAlchemy SparseVector object
+            elif isinstance(value, dialect.dbapi.SparseVector):
+                return SparseVector(
+                    num_dimensions=value.num_dimensions,
+                    indices=value.indices,
+                    values=value.values,
+                )
 
         return process
 
