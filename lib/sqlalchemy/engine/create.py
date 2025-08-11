@@ -171,18 +171,6 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
 
         :ref:`connections_toplevel`
 
-    :param skip_autocommit_rollback: When True, the dialect will
-       unconditionally skip all calls to the DBAPI ``connection.rollback()``
-       method if the DBAPI connection is confirmed to be in "autocommit" mode.
-       The availability of this feature is dialect specific; if not available,
-       a ``NotImplementedError`` is raised by the dialect when rollback occurs.
-
-       .. seealso::
-
-            :ref:`dbapi_autocommit_skip_rollback`
-
-       .. versionadded:: 2.0.43
-
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as
         additional keyword arguments.  See the example
@@ -521,6 +509,18 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         :ref:`sql_caching`
 
      .. versionadded:: 1.4
+
+    :param skip_autocommit_rollback: When True, the dialect will
+       unconditionally skip all calls to the DBAPI ``connection.rollback()``
+       method if the DBAPI connection is confirmed to be in "autocommit" mode.
+       The availability of this feature is dialect specific; if not available,
+       a ``NotImplementedError`` is raised by the dialect when rollback occurs.
+
+       .. seealso::
+
+            :ref:`dbapi_autocommit_skip_rollback`
+
+       .. versionadded:: 2.0.43
 
     :param use_insertmanyvalues: True by default, use the "insertmanyvalues"
      execution style for INSERT..RETURNING statements by default.
