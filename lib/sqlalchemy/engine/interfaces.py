@@ -775,7 +775,7 @@ class Dialect(EventTarget):
     """the isolation that is implicitly present on new connections"""
 
     skip_autocommit_rollback: bool
-    """Whether or not the :paramref:`.create_engine.skip_autocommit_rollback
+    """Whether or not the :paramref:`.create_engine.skip_autocommit_rollback`
     parameter was set.
 
     .. versionadded:: 2.0.43

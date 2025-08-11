@@ -544,7 +544,7 @@ When seeking this pattern, it should be preferred to set AUTOCOMMIT engine
 wide using the :paramref:`.create_engine.isolation_level` so that pooled
 connections are permanently set in autocommit mode.   The SQLAlchemy connection
 pool as well as the :class:`.Connection` will still seek to invoke the DBAPI
-``.rollback()`` method upon connection :term:`reset`, as their behavior
+``.rollback()`` method upon connection :term:`release`, as their behavior
 remains agonstic of the isolation level that's configured on the connection.
 As this rollback still incurs a network round trip under most if not all
 DBAPI drivers, this additional network trip may be disabled using the
