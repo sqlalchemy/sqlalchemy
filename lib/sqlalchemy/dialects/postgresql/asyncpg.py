@@ -561,6 +561,7 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
     _adapt_connection: AsyncAdapt_asyncpg_connection
     _connection: _AsyncpgConnection
     _cursor: Optional[_AsyncpgCursor]
+    _awaitable_cursor_close: bool = False
 
     def __init__(self, adapt_connection: AsyncAdapt_asyncpg_connection):
         self._adapt_connection = adapt_connection

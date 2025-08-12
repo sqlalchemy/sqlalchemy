@@ -896,6 +896,20 @@ class AsyncEngineTest(EngineFixture):
                     else:
                         testing.fail(method)
 
+    @async_test
+    @testing.requires.async_dialect_with_await_close
+    async def test_active_await_close(self, async_engine):
+        select_one_sql = select(1).compile(async_engine.sync_engine).string
+
+        async with async_engine.connect() as conn:
+            result = await conn.exec_driver_sql(select_one_sql)
+            eq_(result.scalar_one(), 1)
+            driver_cursor = result.context.cursor._cursor
+
+            with expect_raises(Exception):
+                # because the cursor should be closed
+                await driver_cursor.execute(select_one_sql)
+
 
 class AsyncCreatePoolTest(fixtures.TestBase):
     @config.fixture

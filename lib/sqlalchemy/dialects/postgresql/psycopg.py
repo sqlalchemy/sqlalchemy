@@ -568,6 +568,8 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
 class AsyncAdapt_psycopg_cursor(AsyncAdapt_dbapi_cursor):
     __slots__ = ()
 
+    _awaitable_cursor_close: bool = False
+
     def close(self):
         self._rows.clear()
         # Normal cursor just call _close() in a non-sync way.
