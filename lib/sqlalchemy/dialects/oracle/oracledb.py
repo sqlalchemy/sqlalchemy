@@ -736,6 +736,8 @@ class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
 
 class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
     _cursor: AsyncCursor
+    _awaitable_cursor_close: bool = False
+
     __slots__ = ()
 
     @property
@@ -748,10 +750,6 @@ class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
 
     def var(self, *args, **kwargs):
         return self._cursor.var(*args, **kwargs)
-
-    def close(self):
-        self._rows.clear()
-        self._cursor.close()
 
     def setinputsizes(self, *args: Any, **kwargs: Any) -> Any:
         return self._cursor.setinputsizes(*args, **kwargs)

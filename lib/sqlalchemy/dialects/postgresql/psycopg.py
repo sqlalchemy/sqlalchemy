@@ -585,6 +585,9 @@ class AsyncAdapt_psycopg_cursor:
     def arraysize(self, value):
         self._cursor.arraysize = value
 
+    async def _async_soft_close(self) -> None:
+        return
+
     def close(self):
         self._rows.clear()
         # Normal cursor just call _close() in a non-sync way.

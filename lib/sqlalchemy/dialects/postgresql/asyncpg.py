@@ -490,6 +490,7 @@ class AsyncAdapt_asyncpg_cursor:
     )
 
     server_side = False
+    _awaitable_cursor_close: bool = False
 
     def __init__(self, adapt_connection):
         self._adapt_connection = adapt_connection
@@ -500,6 +501,9 @@ class AsyncAdapt_asyncpg_cursor:
         self.arraysize = 1
         self.rowcount = -1
         self._invalidate_schema_cache_asof = 0
+
+    async def _async_soft_close(self) -> None:
+        return
 
     def close(self):
         self._rows.clear()

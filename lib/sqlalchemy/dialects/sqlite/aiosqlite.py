@@ -141,6 +141,9 @@ class AsyncAdapt_aiosqlite_cursor:
         self.description: Optional[_DBAPICursorDescription] = None
         self._rows: Deque[Any] = deque()
 
+    async def _async_soft_close(self) -> None:
+        return
+
     def close(self) -> None:
         self._rows.clear()
 

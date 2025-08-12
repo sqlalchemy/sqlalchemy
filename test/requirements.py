@@ -1600,6 +1600,12 @@ class DefaultRequirements(SuiteRequirements):
             )
         )
 
+    @property
+    def async_dialect_with_await_close(self):
+        """dialect's cursor has a close() method called with await"""
+
+        return only_on(["+aioodbc", "+aiomysql", "+asyncmy"])
+
     def _has_oracle_test_dblink(self, key):
         def check(config):
             assert config.db.dialect.name == "oracle"
