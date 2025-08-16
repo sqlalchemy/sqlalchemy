@@ -2,3 +2,8 @@
 host=ssh.gerrit.sqlalchemy.org
 project=sqlalchemy/sqlalchemy
 defaultbranch=rel_1_4
+
+# non-standard config, used by publishthing
+httphost=gerrit.sqlalchemy.org
+
+
