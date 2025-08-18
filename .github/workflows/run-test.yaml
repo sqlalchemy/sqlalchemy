@@ -4,7 +4,6 @@ on:
   # run on push in main or rel_* branches excluding changes are only on doc or example folders
   push:
     branches:
-      - arm64-runner
       - main
       - "rel_*"
       # branches used to test the workflow
