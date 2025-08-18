@@ -91,6 +91,7 @@ jobs:
           - os: "windows-latest"
             python-version: "pypy-3.10"
             architecture: x86
+          # Setup-python does not support any versions before 3.11 for arm64 windows
           - os: "windows-11-arm"
             python-version: "pypy-3.10"
           - os: "windows-11-arm"
