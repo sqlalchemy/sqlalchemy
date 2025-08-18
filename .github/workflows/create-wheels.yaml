@@ -7,6 +7,9 @@ on:
   # push:
   #   branches:
   #     - "go_wheel_*"
+  push:
+    branches:
+      - arm64-runner
 
 # env:
 #   # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
