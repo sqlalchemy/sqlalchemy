@@ -398,7 +398,6 @@ from weakref import WeakKeyDictionary
 from .. import event
 from .. import inspect
 from .. import types
-from .. import util
 from ..orm import Mapper
 from ..orm._typing import _ExternalEntityType
 from ..orm._typing import _O
@@ -416,7 +415,6 @@ from ..sql.base import SchemaEventTarget
 from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util import memoized_property
-from ..util.typing import TypeGuard
 
 _KT = TypeVar("_KT")  # Key type.
 _VT = TypeVar("_VT")  # Value type.
@@ -810,7 +808,7 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
 
     def __setitem__(self, key: _KT, value: _VT) -> None:
         """Detect dictionary set events and emit change events."""
-        super().__setitem__(key, value)
+        dict.__setitem__(self, key, value)
         self.changed()
 
     if TYPE_CHECKING:
@@ -829,17 +827,17 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
     else:
 
         def setdefault(self, *arg):  # noqa: F811
-            result = super().setdefault(*arg)
+            result = dict.setdefault(self, *arg)
             self.changed()
             return result
 
     def __delitem__(self, key: _KT) -> None:
         """Detect dictionary del events and emit change events."""
-        super().__delitem__(key)
+        dict.__delitem__(self, key)
         self.changed()
 
     def update(self, *a: Any, **kw: _VT) -> None:
-        super().update(*a, **kw)
+        dict.update(self, *a, **kw)
         self.changed()
 
     if TYPE_CHECKING:
@@ -857,17 +855,17 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
     else:
 
         def pop(self, *arg):  # noqa: F811
-            result = super().pop(*arg)
+            result = dict.pop(self, *arg)
             self.changed()
             return result
 
     def popitem(self) -> Tuple[_KT, _VT]:
-        result = super().popitem()
+        result = dict.popitem(self)
         self.changed()
         return result
 
     def clear(self) -> None:
-        super().clear()
+        dict.clear(self)
         self.changed()
 
     @classmethod
@@ -922,38 +920,29 @@ class MutableList(Mutable, List[_T]):
     def __setstate__(self, state: Iterable[_T]) -> None:
         self[:] = state
 
-    def is_scalar(self, value: _T | Iterable[_T]) -> TypeGuard[_T]:
-        return not util.is_non_string_iterable(value)
-
-    def is_iterable(self, value: _T | Iterable[_T]) -> TypeGuard[Iterable[_T]]:
-        return util.is_non_string_iterable(value)
-
     def __setitem__(
         self, index: SupportsIndex | slice, value: _T | Iterable[_T]
     ) -> None:
         """Detect list set events and emit change events."""
-        if isinstance(index, SupportsIndex) and self.is_scalar(value):
-            super().__setitem__(index, value)
-        elif isinstance(index, slice) and self.is_iterable(value):
-            super().__setitem__(index, value)
+        list.__setitem__(self, index, value)
         self.changed()
 
     def __delitem__(self, index: SupportsIndex | slice) -> None:
         """Detect list del events and emit change events."""
-        super().__delitem__(index)
+        list.__delitem__(self, index)
         self.changed()
 
     def pop(self, *arg: SupportsIndex) -> _T:
-        result = super().pop(*arg)
+        result = list.pop(self, *arg)
         self.changed()
         return result
 
     def append(self, x: _T) -> None:
-        super().append(x)
+        list.append(self, x)
         self.changed()
 
     def extend(self, x: Iterable[_T]) -> None:
-        super().extend(x)
+        list.extend(self, x)
         self.changed()
 
     def __iadd__(self, x: Iterable[_T]) -> MutableList[_T]:  # type: ignore[override,misc] # noqa: E501
@@ -961,23 +950,23 @@ class MutableList(Mutable, List[_T]):
         return self
 
     def insert(self, i: SupportsIndex, x: _T) -> None:
-        super().insert(i, x)
+        list.insert(self, i, x)
         self.changed()
 
     def remove(self, i: _T) -> None:
-        super().remove(i)
+        list.remove(self, i)
         self.changed()
 
     def clear(self) -> None:
-        super().clear()
+        list.clear(self)
         self.changed()
 
     def sort(self, **kw: Any) -> None:
-        super().sort(**kw)
+        list.sort(self, **kw)
         self.changed()
 
     def reverse(self) -> None:
-        super().reverse()
+        list.reverse(self)
         self.changed()
 
     @classmethod
@@ -1018,19 +1007,19 @@ class MutableSet(Mutable, Set[_T]):
     """
 
     def update(self, *arg: Iterable[_T]) -> None:
-        super().update(*arg)
+        set.update(self, *arg)
         self.changed()
 
     def intersection_update(self, *arg: Iterable[Any]) -> None:
-        super().intersection_update(*arg)
+        set.intersection_update(self, *arg)
         self.changed()
 
     def difference_update(self, *arg: Iterable[Any]) -> None:
-        super().difference_update(*arg)
+        set.difference_update(self, *arg)
         self.changed()
 
     def symmetric_difference_update(self, *arg: Iterable[_T]) -> None:
-        super().symmetric_difference_update(*arg)
+        set.symmetric_difference_update(self, *arg)
         self.changed()
 
     def __ior__(self, other: AbstractSet[_T]) -> MutableSet[_T]:  # type: ignore[override,misc] # noqa: E501
@@ -1050,24 +1039,24 @@ class MutableSet(Mutable, Set[_T]):
         return self
 
     def add(self, elem: _T) -> None:
-        super().add(elem)
+        set.add(self, elem)
         self.changed()
 
     def remove(self, elem: _T) -> None:
-        super().remove(elem)
+        set.remove(self, elem)
         self.changed()
 
     def discard(self, elem: _T) -> None:
-        super().discard(elem)
+        set.discard(self, elem)
         self.changed()
 
     def pop(self, *arg: Any) -> _T:
-        result = super().pop(*arg)
+        result = set.pop(self, *arg)
         self.changed()
         return result
 
     def clear(self) -> None:
-        super().clear()
+        set.clear(self)
         self.changed()
 
     @classmethod
