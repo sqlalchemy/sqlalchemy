@@ -133,7 +133,6 @@ class Foo(Base):
 
     def needs_update_getter(self) -> bool:
         return self.val
-        ...
 
     def needs_update_setter(self, value: bool) -> None:
         self.val = value
