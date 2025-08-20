@@ -1454,10 +1454,12 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         else:
             return self.fget(instance)
 
-    def __set__(self, instance: object, value: _T) -> None:
+    def __set__(
+        self, instance: object, value: Union[SQLCoreOperations[_T], _T]
+    ) -> None:
         if self.fset is None:
             raise AttributeError("can't set attribute")
-        self.fset(instance, value)
+        self.fset(instance, value)  # type: ignore[arg-type]
 
     def __delete__(self, instance: object) -> None:
         if self.fdel is None:
