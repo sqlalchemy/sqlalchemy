@@ -24,6 +24,7 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import FrozenSet
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -39,7 +40,6 @@ from .visitors import anon_map
 from .visitors import ExternallyTraversible
 from .visitors import InternalTraversal
 from .. import util
-from ..util.typing import Literal
 from ..util.typing import Self
 
 if TYPE_CHECKING:

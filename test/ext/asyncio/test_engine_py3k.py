@@ -754,7 +754,6 @@ class AsyncEngineTest(EngineFixture):
             with expect_raises(exc.TimeoutError):
                 await engine.connect()
 
-    @testing.requires.python310
     @async_test
     async def test_engine_aclose(self, async_engine):
         users = self.tables.users

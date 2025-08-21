@@ -22,6 +22,7 @@ from typing import cast
 from typing import Deque
 from typing import Dict
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Protocol
 from typing import Tuple
@@ -33,7 +34,6 @@ from .. import event
 from .. import exc
 from .. import log
 from .. import util
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ..engine.interfaces import DBAPIConnection

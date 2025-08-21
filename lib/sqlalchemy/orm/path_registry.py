@@ -32,6 +32,8 @@ from ..sql import visitors
 from ..sql.cache_key import HasCacheKey
 
 if TYPE_CHECKING:
+    from typing import TypeGuard
+
     from ._typing import _InternalEntityType
     from .interfaces import StrategizedProperty
     from .mapper import Mapper
@@ -41,7 +43,6 @@ if TYPE_CHECKING:
     from ..sql.elements import BindParameter
     from ..sql.visitors import anon_map
     from ..util.typing import _LiteralStar
-    from ..util.typing import TypeGuard
 
     def is_root(path: PathRegistry) -> TypeGuard[RootRegistry]: ...
 

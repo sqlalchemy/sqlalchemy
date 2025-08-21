@@ -96,11 +96,11 @@ Supported Platforms
 
 SQLAlchemy 2.1 supports the following platforms:
 
-* cPython 3.9 and higher
+* cPython 3.10 and higher
 * Python-3 compatible versions of `PyPy <http://pypy.org/>`_
 
 .. versionchanged:: 2.1
-   SQLAlchemy now targets Python 3.9 and above.
+   SQLAlchemy now targets Python 3.10 and above.
 
 
 Supported Installation Methods

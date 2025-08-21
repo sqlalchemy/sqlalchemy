@@ -10,6 +10,7 @@ from __future__ import annotations
 import typing
 from typing import Any
 from typing import Callable
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -46,7 +47,6 @@ from .elements import TypeCoerce
 from .elements import UnaryExpression
 from .elements import WithinGroup
 from .functions import FunctionElement
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import _ByArgument

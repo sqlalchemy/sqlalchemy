@@ -19,6 +19,7 @@ from typing import Callable
 from typing import Dict
 from typing import Generic
 from typing import Iterable
+from typing import Literal
 from typing import Optional
 from typing import Protocol
 from typing import Set
@@ -45,7 +46,6 @@ from .path_registry import PathRegistry
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 

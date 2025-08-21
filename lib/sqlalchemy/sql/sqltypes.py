@@ -21,8 +21,10 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import Generic
+from typing import get_args
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -62,10 +64,8 @@ from .. import util
 from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
-from ..util.typing import get_args
 from ..util.typing import is_literal
 from ..util.typing import is_pep695
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 
 if TYPE_CHECKING:

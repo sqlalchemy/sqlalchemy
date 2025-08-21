@@ -22,6 +22,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -91,7 +92,6 @@ from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import deprecated_params
 from ..util import IdentitySet
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack

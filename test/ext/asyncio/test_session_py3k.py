@@ -197,7 +197,6 @@ class AsyncSessionQueryTest(AsyncFixture):
         result = await async_session.scalar(stmt)
         eq_(result, 7)
 
-    @testing.requires.python310
     @async_test
     async def test_session_aclose(self, async_session):
         User = self.classes.User

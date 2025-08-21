@@ -22,6 +22,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Protocol
@@ -67,7 +68,6 @@ from .selectable import TableClause
 from .visitors import _ET
 from .. import exc
 from .. import util
-from ..util.typing import Literal
 from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:

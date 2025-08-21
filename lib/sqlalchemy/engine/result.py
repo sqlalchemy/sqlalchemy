@@ -22,6 +22,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -44,7 +45,6 @@ from ..sql.base import InPlaceGenerative
 from ..util import deprecated
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import NONE_SET
-from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple

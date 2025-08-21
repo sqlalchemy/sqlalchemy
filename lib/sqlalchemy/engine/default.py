@@ -28,6 +28,7 @@ from typing import cast
 from typing import Dict
 from typing import Final
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import MutableSequence
@@ -66,7 +67,6 @@ from ..sql.compiler import DDLCompiler
 from ..sql.compiler import InsertmanyvaluesSentinelOpts
 from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 

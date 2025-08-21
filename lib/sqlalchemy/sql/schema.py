@@ -44,6 +44,7 @@ from typing import Final
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -54,6 +55,7 @@ from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypedDict
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -86,9 +88,7 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..util import HasMemoized
-from ..util.typing import Literal
 from ..util.typing import Self
-from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
     from ._typing import _AutoIncrementType

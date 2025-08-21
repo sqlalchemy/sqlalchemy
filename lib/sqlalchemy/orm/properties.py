@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 from typing import cast
 from typing import Dict
+from typing import get_args
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -56,7 +57,6 @@ from ..sql.schema import Column
 from ..sql.schema import SchemaConst
 from ..sql.type_api import TypeEngine
 from ..util.typing import de_optionalize_union_types
-from ..util.typing import get_args
 from ..util.typing import includes_none
 from ..util.typing import is_a_type
 from ..util.typing import is_fwd_ref

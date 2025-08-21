@@ -97,6 +97,7 @@ from __future__ import annotations
 import collections
 import logging
 import re
+from types import NoneType
 from typing import cast
 from typing import TYPE_CHECKING
 
@@ -235,8 +236,6 @@ class _PsycopgMultiRange(ranges.AbstractMultiRangeImpl):
         psycopg_Multirange = cast(
             PGDialect_psycopg, dialect
         )._psycopg_Multirange
-
-        NoneType = type(None)
 
         def to_range(value):
             if isinstance(value, (str, NoneType, psycopg_Multirange)):

@@ -963,6 +963,7 @@ import codecs
 import datetime
 import operator
 import re
+from typing import Literal
 from typing import overload
 from typing import TYPE_CHECKING
 from uuid import UUID as _python_UUID
@@ -1010,7 +1011,6 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
 from ...util import update_wrapper
-from ...util.typing import Literal
 
 if TYPE_CHECKING:
     from ...sql.dml import DMLState

@@ -1591,12 +1591,6 @@ class SuiteRequirements(Requirements):
         return exclusions.only_if(check)
 
     @property
-    def python310(self):
-        return exclusions.only_if(
-            lambda: util.py310, "Python 3.10 or above required"
-        )
-
-    @property
     def python311(self):
         return exclusions.only_if(
             lambda: util.py311, "Python 3.11 or above required"

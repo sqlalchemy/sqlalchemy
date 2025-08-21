@@ -21,6 +21,7 @@ from typing import cast
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
@@ -44,7 +45,6 @@ from .selectable import Select
 from .selectable import TableClause
 from .. import exc
 from .. import util
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .compiler import _BindNameForColProtocol

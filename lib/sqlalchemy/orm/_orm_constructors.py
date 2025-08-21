@@ -8,10 +8,12 @@
 from __future__ import annotations
 
 import typing
+from typing import Annotated
 from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Iterable
+from typing import Literal
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -47,8 +49,6 @@ from ..sql.base import SchemaEventTarget
 from ..sql.schema import _InsertSentinelColumnDefault
 from ..sql.schema import SchemaConst
 from ..sql.selectable import FromClause
-from ..util.typing import Annotated
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ._typing import _EntityType

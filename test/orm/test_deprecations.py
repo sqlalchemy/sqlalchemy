@@ -424,7 +424,7 @@ class MiscDeprecationsTest(fixtures.TestBase):
 
     @testing.combinations(
         ("init", True),
-        ("kw_only", True, testing.requires.python310),
+        ("kw_only", True),
         ("default", 5),
         ("default_factory", lambda: 10),
         argnames="paramname, value",
@@ -436,7 +436,6 @@ class MiscDeprecationsTest(fixtures.TestBase):
         ):
             column_property(column("q"), **{paramname: value})
 
-    @testing.requires.python310
     def test_column_property_dc_attributes_still_function(self, dc_decl_base):
         with expect_deprecated(
             r"The column_property.init parameter is deprecated "

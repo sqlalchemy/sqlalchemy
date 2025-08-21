@@ -29,9 +29,11 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
+from typing import ParamSpec
 from typing import Sequence
 from typing import Set
 from typing import Tuple as typing_Tuple
@@ -76,8 +78,6 @@ from .. import inspection
 from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
-from ..util.typing import Literal
-from ..util.typing import ParamSpec
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack

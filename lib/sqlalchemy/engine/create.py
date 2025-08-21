@@ -32,6 +32,8 @@ from ..sql import compiler
 from ..util import immutabledict
 
 if typing.TYPE_CHECKING:
+    from typing import Literal
+
     from .base import Engine
     from .interfaces import _ExecuteOptions
     from .interfaces import _ParamStyle
@@ -42,7 +44,6 @@ if typing.TYPE_CHECKING:
     from ..pool import _CreatorWRecFnType
     from ..pool import _ResetStyleArgType
     from ..pool import Pool
-    from ..util.typing import Literal
 
 
 @overload

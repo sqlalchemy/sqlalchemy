@@ -23,6 +23,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -43,7 +44,6 @@ from ._immutabledict_cy import immutabledict as immutabledict
 from ._immutabledict_cy import ImmutableDictBase as ImmutableDictBase
 from ._immutabledict_cy import ReadOnlyContainer as ReadOnlyContainer
 from .typing import is_non_string_iterable
-from .typing import Literal
 
 
 _T = TypeVar("_T", bound=Any)

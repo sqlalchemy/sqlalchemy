@@ -8,11 +8,10 @@
 from __future__ import annotations
 
 from typing import Dict
+from typing import Literal
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
-
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .cache_key import CacheConst
