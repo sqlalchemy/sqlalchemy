@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11622
+
+    Improved association proxy to behave slightly better when the parent class
+    is used in an :func:`_orm.aliased` construct, so that the proxy as
+    delivered by the :class:`.Aliased` behaves appropriate in terms of that
+    aliased construct, including operators like ``.any()`` and ``.has()`` work
+    correctly.

@@ -69,6 +69,7 @@ if typing.TYPE_CHECKING:
     from ..orm.interfaces import MapperProperty
     from ..orm.interfaces import PropComparator
     from ..orm.mapper import Mapper
+    from ..orm.util import AliasedInsp
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _InfoType
 
@@ -1231,6 +1232,11 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance[_T]):
     _target_is_object: bool = True
     _is_canonical = True
 
+    def adapt_to_entity(
+        self, aliased_insp: AliasedInsp[Any]
+    ) -> AliasedAssociationProxyInstance[_T]:
+        return AliasedAssociationProxyInstance(self, aliased_insp)
+
     def contains(self, other: Any, **kw: Any) -> ColumnElement[bool]:
         """Produce a proxied 'contains' expression using EXISTS.
 
@@ -1281,6 +1287,44 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance[_T]):
         # is only allowed with a scalar.
         return self._comparator.has(
             getattr(self.target_class, self.value_attr) != obj
+        )
+
+
+class AliasedAssociationProxyInstance(ObjectAssociationProxyInstance[_T]):
+    def __init__(
+        self,
+        parent_instance: ObjectAssociationProxyInstance[_T],
+        aliased_insp: AliasedInsp[Any],
+    ) -> None:
+        self.parent = parent_instance.parent
+        self.owning_class = parent_instance.owning_class
+        self.aliased_insp = aliased_insp
+        self.target_collection = parent_instance.target_collection
+        self.collection_class = None
+        self.target_class = parent_instance.target_class
+        self.value_attr = parent_instance.value_attr
+
+    @property
+    def _comparator(self) -> PropComparator[Any]:
+        return getattr(  # type: ignore
+            self.aliased_insp.entity, self.target_collection
+        ).comparator
+
+    @property
+    def local_attr(self) -> SQLORMOperations[Any]:
+        """The 'local' class attribute referenced by this
+        :class:`.AssociationProxyInstance`.
+
+        .. seealso::
+
+            :attr:`.AssociationProxyInstance.attr`
+
+            :attr:`.AssociationProxyInstance.remote_attr`
+
+        """
+        return cast(
+            "SQLORMOperations[Any]",
+            getattr(self.aliased_insp.entity, self.target_collection),
         )
 
 
