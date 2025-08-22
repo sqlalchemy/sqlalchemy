@@ -94,6 +94,12 @@ construction arguments, are as follows:
 .. autoclass:: VectorDistanceType
   :members:
 
+.. autoclass:: VectorStorageType
+  :members:
+
+.. autoclass:: SparseVector
+  :members:
+
 
 .. _oracledb:
 

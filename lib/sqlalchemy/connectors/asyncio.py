@@ -23,7 +23,9 @@ from typing import Sequence
 from typing import TYPE_CHECKING
 
 from ..engine import AdaptedConnection
+from ..util import EMPTY_DICT
 from ..util.concurrency import await_
+from ..util.concurrency import in_greenlet
 
 if TYPE_CHECKING:
     from ..engine.interfaces import _DBAPICursorDescription
@@ -127,7 +129,10 @@ class AsyncAdapt_dbapi_cursor:
         "_connection",
         "_cursor",
         "_rows",
+        "_soft_closed_memoized",
     )
+
+    _awaitable_cursor_close: bool = True
 
     _cursor: AsyncIODBAPICursor
     _adapt_connection: AsyncAdapt_dbapi_connection
@@ -140,7 +145,7 @@ class AsyncAdapt_dbapi_cursor:
 
         cursor = self._make_new_cursor(self._connection)
         self._cursor = self._aenter_cursor(cursor)
-
+        self._soft_closed_memoized = EMPTY_DICT
         if not self.server_side:
             self._rows = collections.deque()
 
@@ -157,6 +162,8 @@ class AsyncAdapt_dbapi_cursor:
 
     @property
     def description(self) -> Optional[_DBAPICursorDescription]:
+        if "description" in self._soft_closed_memoized:
+            return self._soft_closed_memoized["description"]  # type: ignore[no-any-return]  # noqa: E501
         return self._cursor.description
 
     @property
@@ -175,10 +182,39 @@ class AsyncAdapt_dbapi_cursor:
     def lastrowid(self) -> int:
         return self._cursor.lastrowid
 
+    async def _async_soft_close(self) -> None:
+        """close the cursor but keep the results pending, and memoize the
+        description.
+
+        .. versionadded:: 2.0.44
+
+        """
+
+        if not self._awaitable_cursor_close or self.server_side:
+            return
+
+        self._soft_closed_memoized = self._soft_closed_memoized.union(
+            {
+                "description": self._cursor.description,
+            }
+        )
+        await self._cursor.close()
+
     def close(self) -> None:
-        # note we aren't actually closing the cursor here,
-        # we are just letting GC do it.  see notes in aiomysql dialect
         self._rows.clear()
+
+        # updated as of 2.0.44
+        # try to "close" the cursor based on what we know about the driver
+        # and if we are able to.  otherwise, hope that the asyncio
+        # extension called _async_soft_close() if the cursor is going into
+        # a sync context
+        if self._cursor is None or bool(self._soft_closed_memoized):
+            return
+
+        if not self._awaitable_cursor_close:
+            self._cursor.close()  # type: ignore[unused-coroutine]
+        elif in_greenlet():
+            await_(self._cursor.close())
 
     def execute(
         self,

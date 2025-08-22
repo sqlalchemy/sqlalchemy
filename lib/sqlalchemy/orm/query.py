@@ -3255,11 +3255,14 @@ class Query(
         for ext in self._syntax_extensions:
             delete_._apply_syntax_extension_to_self(ext)
 
-        result: CursorResult[Any] = self.session.execute(
-            delete_,
-            self._params,
-            execution_options=self._execution_options.union(
-                {"synchronize_session": synchronize_session}
+        result = cast(
+            "CursorResult[Any]",
+            self.session.execute(
+                delete_,
+                self._params,
+                execution_options=self._execution_options.union(
+                    {"synchronize_session": synchronize_session}
+                ),
             ),
         )
         bulk_del.result = result  # type: ignore
@@ -3350,11 +3353,14 @@ class Query(
         for ext in self._syntax_extensions:
             upd._apply_syntax_extension_to_self(ext)
 
-        result: CursorResult[Any] = self.session.execute(
-            upd,
-            self._params,
-            execution_options=self._execution_options.union(
-                {"synchronize_session": synchronize_session}
+        result = cast(
+            "CursorResult[Any]",
+            self.session.execute(
+                upd,
+                self._params,
+                execution_options=self._execution_options.union(
+                    {"synchronize_session": synchronize_session}
+                ),
             ),
         )
         bulk_ud.result = result  # type: ignore

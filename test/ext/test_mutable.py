@@ -566,6 +566,11 @@ class _MutableListTestBase(_MutableListTestFixture):
 
         eq_(f1.data, ["three", "two"])
 
+        # test 12802
+        f1.data[1] = ["four", "two"]
+        sess.commit()
+        eq_(f1.data, ["three", ["four", "two"]])
+
     def test_in_place_slice_mutation_int(self):
         sess = fixture_session()
 
@@ -577,6 +582,11 @@ class _MutableListTestBase(_MutableListTestFixture):
         sess.commit()
 
         eq_(f1.data, [1, 5, 6, 4])
+
+        # test 12802
+        f1.data[1:3] = [9, 8, 7]
+        sess.commit()
+        eq_(f1.data, [1, 9, 8, 7, 4])
 
     def test_in_place_slice_mutation_str(self):
         sess = fixture_session()
@@ -679,6 +689,19 @@ class _MutableListTestBase(_MutableListTestFixture):
         sess.commit()
 
         eq_(f1.data, [1, 5, 2])
+
+    def test_insert2(self):
+        # test #12802
+        sess = fixture_session()
+
+        f1 = Foo(data=[1, 2])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data.insert(1, [4, 2])
+        sess.commit()
+
+        eq_(f1.data, [1, [4, 2], 2])
 
     def test_remove(self):
         sess = fixture_session()
@@ -1269,6 +1292,9 @@ class MutableColumnCopyArrayTest(_MutableListTestBase, fixtures.MappedTest):
 
     def test_in_place_slice_mutation_str(self):
         """this test is hardcoded to integer, skip strings"""
+
+    def test_insert2(self):
+        """This test does not work with arrays, skip it"""
 
 
 class MutableListWithScalarPickleTest(

@@ -455,6 +455,9 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
 
             :ref:`pool_reset_on_return`
 
+            :ref:`dbapi_autocommit_skip_rollback` - a more modern approach
+            to using connections with no transactional instructions
+
     :param pool_timeout=30: number of seconds to wait before giving
         up on getting a connection from the pool. This is only used
         with :class:`~sqlalchemy.pool.QueuePool`. This can be a float but is
@@ -506,6 +509,18 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         :ref:`sql_caching`
 
      .. versionadded:: 1.4
+
+    :param skip_autocommit_rollback: When True, the dialect will
+       unconditionally skip all calls to the DBAPI ``connection.rollback()``
+       method if the DBAPI connection is confirmed to be in "autocommit" mode.
+       The availability of this feature is dialect specific; if not available,
+       a ``NotImplementedError`` is raised by the dialect when rollback occurs.
+
+       .. seealso::
+
+            :ref:`dbapi_autocommit_skip_rollback`
+
+       .. versionadded:: 2.0.43
 
     :param use_insertmanyvalues: True by default, use the "insertmanyvalues"
      execution style for INSERT..RETURNING statements by default.

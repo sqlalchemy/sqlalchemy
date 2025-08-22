@@ -1234,8 +1234,7 @@ class SyntaxExtension(roles.SyntaxExtensionRole):
         )
 
     def apply_to_insert(self, insert_stmt: Insert) -> None:
-        """Apply this :class:`.SyntaxExtension` to an
-        :class:`_sql.Insert`"""
+        """Apply this :class:`.SyntaxExtension` to an :class:`_sql.Insert`"""
         raise NotImplementedError(
             f"Extension {type(self).__name__} cannot be applied to insert"
         )

@@ -519,6 +519,12 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             dbapi_connection.isolation_level = ""
             return super().set_isolation_level(dbapi_connection, level)
 
+
+    def detect_autocommit_setting(
+        self, dbapi_connection: DBAPIConnection
+    ) -> bool:
+        return dbapi_connection.isolation_level is None
+
     def on_connect(self) -> Callable[[DBAPIConnection], None]:
         def regexp(a: str, b: Optional[str]) -> Optional[bool]:
             if b is None:

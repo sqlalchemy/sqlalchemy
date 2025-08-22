@@ -448,6 +448,14 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def skip_autocommit_rollback(self):
+        return exclusions.skip_if(
+            ["mssql+pymssql"],
+            "DBAPI has no means of testing the autocommit status of a "
+            "connection",
+        )
+
+    @property
     def row_triggers(self):
         """Target must support standard statement-running EACH ROW triggers."""
 
@@ -1591,6 +1599,12 @@ class DefaultRequirements(SuiteRequirements):
                 "Async dialect required",
             )
         )
+
+    @property
+    def async_dialect_with_await_close(self):
+        """dialect's cursor has a close() method called with await"""
+
+        return only_on(["+aioodbc", "+aiosqlite", "+aiomysql", "+asyncmy"])
 
     def _has_oracle_test_dblink(self, key):
         def check(config):
