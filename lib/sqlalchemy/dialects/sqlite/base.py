@@ -992,7 +992,10 @@ from __future__ import annotations
 import datetime
 import numbers
 import re
+from typing import Any
+from typing import Callable
 from typing import Optional
+from typing import TYPE_CHECKING
 
 from .json import JSON
 from .json import JSONIndexType
@@ -1024,6 +1027,13 @@ from ...types import SMALLINT  # noqa
 from ...types import TEXT  # noqa
 from ...types import TIMESTAMP  # noqa
 from ...types import VARCHAR  # noqa
+
+if TYPE_CHECKING:
+    from ...engine.interfaces import DBAPIConnection
+    from ...engine.interfaces import Dialect
+    from ...engine.interfaces import IsolationLevel
+    from ...sql.type_api import _BindProcessorType
+    from ...sql.type_api import _ResultProcessorType
 
 
 class _SQliteJson(JSON):
@@ -1163,7 +1173,9 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
                 "%(hour)02d:%(minute)02d:%(second)02d"
             )
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> Optional[_BindProcessorType[Any]]:
         datetime_datetime = datetime.datetime
         datetime_date = datetime.date
         format_ = self._storage_format
@@ -1199,7 +1211,9 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
         return process
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Optional[_ResultProcessorType[Any]]:
         if self._reg:
             return processors.str_to_datetime_processor_factory(
                 self._reg, datetime.datetime
@@ -1254,7 +1268,9 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
     _storage_format = "%(year)04d-%(month)02d-%(day)02d"
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> Optional[_BindProcessorType[Any]]:
         datetime_date = datetime.date
         format_ = self._storage_format
 
@@ -1275,7 +1291,9 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
         return process
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Optional[_ResultProcessorType[Any]]:
         if self._reg:
             return processors.str_to_datetime_processor_factory(
                 self._reg, datetime.date
@@ -2125,13 +2143,13 @@ class SQLiteDialect(default.DefaultDialect):
     )
     def __init__(
         self,
-        native_datetime=False,
-        json_serializer=None,
-        json_deserializer=None,
-        _json_serializer=None,
-        _json_deserializer=None,
-        **kwargs,
-    ):
+        native_datetime: bool = False,
+        json_serializer: Optional[Callable[..., Any]] = None,
+        json_deserializer: Optional[Callable[..., Any]] = None,
+        _json_serializer: Optional[Callable[..., Any]] = None,
+        _json_deserializer: Optional[Callable[..., Any]] = None,
+        **kwargs: Any,
+    ) -> None:
         default.DefaultDialect.__init__(self, **kwargs)
 
         if _json_serializer:
@@ -2199,7 +2217,9 @@ class SQLiteDialect(default.DefaultDialect):
     def get_isolation_level_values(self, dbapi_connection):
         return list(self._isolation_lookup)
 
-    def set_isolation_level(self, dbapi_connection, level):
+    def set_isolation_level(
+        self, dbapi_connection: DBAPIConnection, level: IsolationLevel
+    ) -> None:
         isolation_level = self._isolation_lookup[level]
 
         cursor = dbapi_connection.cursor()
