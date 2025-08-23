@@ -433,7 +433,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         partition_by: Optional[_ByArgument] = None,
         order_by: Optional[_ByArgument] = None,
         rows: Optional[Tuple[Optional[int], Optional[int]]] = None,
-        range_: Optional[Tuple[Optional[int], Optional[int]]] = None,
+        range_: Optional[Tuple[Optional[Any], Optional[Any]]] = None,
         groups: Optional[Tuple[Optional[int], Optional[int]]] = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this function.
