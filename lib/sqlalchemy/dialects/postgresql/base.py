@@ -1542,6 +1542,7 @@ import re
 from typing import Any
 from typing import cast
 from typing import Dict
+from typing import Final
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -1626,6 +1627,8 @@ from ...types import UUID as UUID
 from ...types import VARCHAR
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
+
+PG_DEFAULT_SCHEMA: Final[str] = "public"
 
 RESERVED_WORDS = {
     "all",
@@ -1765,7 +1768,7 @@ ischema_names = {
     "smallint": SMALLINT,
     "character varying": VARCHAR,
     "character": CHAR,
-    '"char"': sqltypes.String,
+    "char": sqltypes.String,
     "name": sqltypes.String,
     "text": TEXT,
     "numeric": NUMERIC,
@@ -2383,6 +2386,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_create_enum_type(self, create, **kw):
         type_ = create.element
 
+        if (
+            hasattr(type_, "schema")
+            and not getattr(type_, "schema")
+            and type_.name in ischema_names
+        ):
+            setattr(type_, "schema", PG_DEFAULT_SCHEMA)
+
         return "CREATE TYPE %s AS ENUM (%s)" % (
             self.preparer.format_type(type_),
             ", ".join(
@@ -2775,6 +2785,13 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_ENUM(self, type_, identifier_preparer=None, **kw):
         if identifier_preparer is None:
             identifier_preparer = self.dialect.identifier_preparer
+        if (
+            hasattr(type_, "schema")
+            and not getattr(type_, "schema")
+            and type_.name in ischema_names
+        ):
+            setattr(type_, "schema", PG_DEFAULT_SCHEMA)
+
         return identifier_preparer.format_type(type_)
 
     def visit_DOMAIN(self, type_, identifier_preparer=None, **kw):
