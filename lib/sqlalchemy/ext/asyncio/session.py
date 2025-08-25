@@ -11,6 +11,7 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import cast
+from typing import Concatenate
 from typing import Dict
 from typing import Generic
 from typing import Iterable
@@ -18,6 +19,7 @@ from typing import Iterator
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import ParamSpec
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -38,8 +40,6 @@ from ...orm import Session
 from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
-from ...util.typing import Concatenate
-from ...util.typing import ParamSpec
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack

@@ -19,6 +19,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
@@ -42,7 +43,6 @@ from ..sql.compiler import TypeCompiler as TypeCompiler
 from ..sql.compiler import TypeCompiler  # noqa
 from ..util import immutabledict
 from ..util.concurrency import await_
-from ..util.typing import Literal
 from ..util.typing import NotRequired
 
 if TYPE_CHECKING:

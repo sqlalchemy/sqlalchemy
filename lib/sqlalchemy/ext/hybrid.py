@@ -1146,11 +1146,14 @@ from __future__ import annotations
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Concatenate
 from typing import Generic
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import Optional
 from typing import overload
+from typing import ParamSpec
 from typing import Protocol
 from typing import Sequence
 from typing import Tuple
@@ -1170,9 +1173,6 @@ from ..sql import roles
 from ..sql._typing import is_has_clause_element
 from ..sql.elements import ColumnElement
 from ..sql.elements import SQLCoreOperations
-from ..util.typing import Concatenate
-from ..util.typing import Literal
-from ..util.typing import ParamSpec
 from ..util.typing import Self
 
 if TYPE_CHECKING:

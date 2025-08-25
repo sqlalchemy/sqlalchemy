@@ -16,6 +16,7 @@ import collections
 import itertools
 from typing import Any
 from typing import Dict
+from typing import Literal
 from typing import Optional
 from typing import Tuple
 from typing import TYPE_CHECKING
@@ -59,7 +60,6 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import Select
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .mapper import Mapper

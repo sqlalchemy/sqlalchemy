@@ -16,6 +16,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Generic
+from typing import Literal
 from typing import no_type_check
 from typing import Optional
 from typing import overload
@@ -35,7 +36,6 @@ from ..sql.elements import SQLColumnExpression
 from ..sql.elements import SQLCoreOperations
 from ..util import FastIntFlag
 from ..util.langhelpers import TypingOnly
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType

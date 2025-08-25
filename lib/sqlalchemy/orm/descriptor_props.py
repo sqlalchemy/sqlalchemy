@@ -20,6 +20,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import get_args
 from typing import List
 from typing import NoReturn
 from typing import Optional
@@ -55,7 +56,6 @@ from ..sql import expression
 from ..sql import operators
 from ..sql.base import _NoArg
 from ..sql.elements import BindParameter
-from ..util.typing import get_args
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
 from ..util.typing import TupleAny

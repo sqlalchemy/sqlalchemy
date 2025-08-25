@@ -16,6 +16,7 @@ from typing import Any
 from typing import cast
 from typing import Generic
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -36,8 +37,6 @@ from .operators import STRICTLY_RIGHT_OF
 from ... import types as sqltypes
 from ...sql import operators
 from ...sql.type_api import TypeEngine
-from ...util import py310
-from ...util.typing import Literal
 
 if TYPE_CHECKING:
     from ...sql.elements import ColumnElement
@@ -48,15 +47,8 @@ _T = TypeVar("_T", bound=Any)
 
 _BoundsType = Literal["()", "[)", "(]", "[]"]
 
-if py310:
-    dc_slots = {"slots": True}
-    dc_kwonly = {"kw_only": True}
-else:
-    dc_slots = {}
-    dc_kwonly = {}
 
-
-@dataclasses.dataclass(frozen=True, **dc_slots)
+@dataclasses.dataclass(frozen=True, slots=True)
 class Range(Generic[_T]):
     """Represent a PostgreSQL range.
 
@@ -85,32 +77,8 @@ class Range(Generic[_T]):
     upper: Optional[_T] = None
     """the upper bound"""
 
-    if TYPE_CHECKING:
-        bounds: _BoundsType = dataclasses.field(default="[)")
-        empty: bool = dataclasses.field(default=False)
-    else:
-        bounds: _BoundsType = dataclasses.field(default="[)", **dc_kwonly)
-        empty: bool = dataclasses.field(default=False, **dc_kwonly)
-
-    if not py310:
-
-        def __init__(
-            self,
-            lower: Optional[_T] = None,
-            upper: Optional[_T] = None,
-            *,
-            bounds: _BoundsType = "[)",
-            empty: bool = False,
-        ):
-            # no __slots__ either so we can update dict
-            self.__dict__.update(
-                {
-                    "lower": lower,
-                    "upper": upper,
-                    "bounds": bounds,
-                    "empty": empty,
-                }
-            )
+    bounds: _BoundsType = dataclasses.field(default="[)", kw_only=True)
+    empty: bool = dataclasses.field(default=False, kw_only=True)
 
     def __bool__(self) -> bool:
         return not self.empty

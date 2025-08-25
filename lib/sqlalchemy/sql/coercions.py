@@ -19,6 +19,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -39,7 +40,6 @@ from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     # elements lambdas schema selectable are set by __init__

@@ -41,6 +41,7 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import Generic
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Protocol
@@ -53,7 +54,6 @@ from typing import Union
 
 from .. import exc
 from .. import util
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import ColumnExpressionArgument

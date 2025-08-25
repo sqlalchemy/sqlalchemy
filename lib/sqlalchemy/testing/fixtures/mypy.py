@@ -19,7 +19,6 @@ import tempfile
 from .base import TestBase
 from .. import config
 from ..assertions import eq_
-from ... import util
 
 try:
     from mypy import version
@@ -206,8 +205,8 @@ class MypyTest(TestBase):
                         is_mypy = is_re = True
                         expected_msg = f'Revealed type is "{expected_msg}"'
 
-                    if mypy_14 and util.py310:
-                        # use_or_syntax, py310 and above
+                    if mypy_14:
+                        # use_or_syntax
                         # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L368  # noqa: E501
                         expected_msg = re.sub(
                             r"Optional\[(.*?)\]",

@@ -13,6 +13,7 @@ from typing import Callable
 from typing import Dict
 from typing import Generic
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -31,7 +32,6 @@ from ..sql import expression
 from ..sql import roles
 from ..util.langhelpers import Missing
 from ..util.langhelpers import MissingOr
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from . import AttributeEventToken

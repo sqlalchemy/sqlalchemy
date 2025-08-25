@@ -16,6 +16,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
+from typing import get_args
 from typing import Iterable
 from typing import List
 from typing import Mapping
@@ -67,7 +68,6 @@ from ..sql.schema import Column
 from ..sql.schema import Table
 from ..util import topological
 from ..util.typing import _AnnotationScanType
-from ..util.typing import get_args
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_literal
 

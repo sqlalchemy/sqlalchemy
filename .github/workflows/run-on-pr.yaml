@@ -62,7 +62,7 @@ jobs:
         os:
           - "ubuntu-22.04"
         python-version:
-          - "3.12"
+          - "3.13"
         tox-env:
           - mypy
           - lint

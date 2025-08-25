@@ -46,7 +46,6 @@ from ._collections import UniqueAppender as UniqueAppender
 from ._collections import update_copy as update_copy
 from ._collections import WeakPopulateDict as WeakPopulateDict
 from ._collections import WeakSequence as WeakSequence
-from .compat import anext_ as anext_
 from .compat import arm as arm
 from .compat import b as b
 from .compat import b64decode as b64decode
@@ -61,7 +60,6 @@ from .compat import inspect_getfullargspec as inspect_getfullargspec
 from .compat import is64bit as is64bit
 from .compat import local_dataclass_fields as local_dataclass_fields
 from .compat import osx as osx
-from .compat import py310 as py310
 from .compat import py311 as py311
 from .compat import py312 as py312
 from .compat import py313 as py313
@@ -130,7 +128,6 @@ from .langhelpers import (
     monkeypatch_proxied_specials as monkeypatch_proxied_specials,
 )
 from .langhelpers import non_memoized_property as non_memoized_property
-from .langhelpers import NoneType as NoneType
 from .langhelpers import only_once as only_once
 from .langhelpers import (
     parse_user_argument_for_enum as parse_user_argument_for_enum,

@@ -19,6 +19,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import Optional
 from typing import Tuple
@@ -42,7 +43,6 @@ from .operators import ColumnOperators
 from .. import exc
 from .. import inspection
 from .. import util
-from ..util.typing import Literal
 
 
 if TYPE_CHECKING:

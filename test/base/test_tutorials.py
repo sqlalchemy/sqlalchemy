@@ -14,7 +14,7 @@ from sqlalchemy.testing import skip_test
 
 
 class DocTest(fixtures.TestBase):
-    __requires__ = ("python310", "insert_returning", "insertmanyvalues")
+    __requires__ = ("insert_returning", "insertmanyvalues")
     __only_on__ = "sqlite+pysqlite"
 
     def _setup_logger(self):

@@ -26,6 +26,7 @@ from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypedDict
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -38,7 +39,6 @@ from .. import exc
 from .. import util
 from ..util.typing import Self
 from ..util.typing import TypeAliasType
-from ..util.typing import TypeGuard
 
 # these are back-assigned by sqltypes.
 if typing.TYPE_CHECKING:

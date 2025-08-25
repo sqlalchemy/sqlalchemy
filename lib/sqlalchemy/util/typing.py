@@ -13,13 +13,17 @@ from collections import deque
 import collections.abc as collections_abc
 import re
 import sys
+from types import NoneType
 import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import ForwardRef
 from typing import Generic
+from typing import get_args
+from typing import get_origin
 from typing import Iterable
+from typing import Literal
 from typing import Mapping
 from typing import NewType
 from typing import NoReturn
@@ -30,6 +34,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -38,20 +43,10 @@ import typing_extensions
 from . import compat
 
 if True:  # zimports removes the tailing comments
-    from typing_extensions import Annotated as Annotated  # 3.9
-    from typing_extensions import Concatenate as Concatenate  # 3.10
     from typing_extensions import (
         dataclass_transform as dataclass_transform,  # 3.11,
     )
-    from typing_extensions import get_args as get_args  # 3.10
-    from typing_extensions import get_origin as get_origin  # 3.10
-    from typing_extensions import (
-        Literal as Literal,
-    )  # 3.8 but has bugs before 3.10
     from typing_extensions import NotRequired as NotRequired  # 3.11
-    from typing_extensions import ParamSpec as ParamSpec  # 3.10
-    from typing_extensions import TypeAlias as TypeAlias  # 3.10
-    from typing_extensions import TypeGuard as TypeGuard  # 3.10
     from typing_extensions import TypeVarTuple as TypeVarTuple  # 3.11
     from typing_extensions import Self as Self  # 3.11
     from typing_extensions import TypeAliasType as TypeAliasType  # 3.12
@@ -68,14 +63,6 @@ _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
 TupleAny = Tuple[Any, ...]
-
-
-if compat.py310:
-    # why they took until py310 to put this in stdlib is beyond me,
-    # I've been wanting it since py27
-    from types import NoneType as NoneType
-else:
-    NoneType = type(None)  # type: ignore
 
 
 def is_fwd_none(typ: Any) -> bool:
@@ -344,10 +331,7 @@ def is_literal(type_: Any) -> bool:
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
-    return hasattr(type_, "__supertype__")
-    # doesn't work in 3.9, 3.8, 3.7 as it passes a closure, not an
-    # object instance
-    # isinstance(type, type_instances.NewType)
+    return isinstance(type_, _type_tuples.NewType)
 
 
 def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
@@ -598,20 +582,9 @@ def is_origin_of(
     if origin is None:
         return False
 
-    return _get_type_name(origin) in names and (
+    return origin.__name__ in names and (
         module is None or origin.__module__.startswith(module)
     )
-
-
-def _get_type_name(type_: Type[Any]) -> str:
-    if compat.py310:
-        return type_.__name__
-    else:
-        typ_name = getattr(type_, "__name__", None)
-        if typ_name is None:
-            typ_name = getattr(type_, "_name", None)
-
-        return typ_name  # type: ignore
 
 
 class DescriptorProto(Protocol):

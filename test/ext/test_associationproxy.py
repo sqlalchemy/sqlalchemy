@@ -3960,7 +3960,7 @@ class DeclOrmForms(fixtures.TestBase):
         {},
         {"repr": False},
         {"repr": True},
-        ({"kw_only": True}, testing.requires.python310),
+        {"kw_only": True},
         {"init": False},
         {"default_factory": True},
         argnames="field_kw",

@@ -18,6 +18,7 @@ from typing import Any
 from typing import cast
 from typing import Dict
 from typing import Iterable
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import TYPE_CHECKING
@@ -53,7 +54,6 @@ from ..sql.dml import DeleteDMLState
 from ..sql.dml import InsertDMLState
 from ..sql.dml import UpdateDMLState
 from ..util import EMPTY_DICT
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 

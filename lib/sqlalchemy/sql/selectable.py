@@ -26,6 +26,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
@@ -103,7 +104,6 @@ from .. import exc
 from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import warn_deprecated
-from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack

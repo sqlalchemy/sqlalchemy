@@ -9,6 +9,7 @@ from __future__ import annotations
 import operator
 from typing import Any
 from typing import AsyncIterator
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -30,7 +31,6 @@ from ...engine.row import RowMapping
 from ...sql.base import _generative
 from ...util import deprecated
 from ...util.concurrency import greenlet_spawn
-from ...util.typing import Literal
 from ...util.typing import Self
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple

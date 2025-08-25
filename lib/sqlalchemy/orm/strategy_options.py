@@ -17,6 +17,7 @@ from typing import cast
 from typing import Dict
 from typing import Final
 from typing import Iterable
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -52,7 +53,6 @@ from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
 from ..sql.base import _generative
-from ..util.typing import Literal
 from ..util.typing import Self
 
 _RELATIONSHIP_TOKEN: Final[Literal["relationship"]] = "relationship"

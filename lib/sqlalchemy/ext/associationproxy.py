@@ -29,6 +29,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import KeysView
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import MutableSequence
@@ -61,7 +62,6 @@ from ..orm.interfaces import _DEFAULT_ATTRIBUTE_OPTIONS
 from ..sql import operators
 from ..sql import or_
 from ..sql.base import _NoArg
-from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import SupportsKeysAndGetItem
 

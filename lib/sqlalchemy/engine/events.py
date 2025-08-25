@@ -11,6 +11,7 @@ from __future__ import annotations
 import typing
 from typing import Any
 from typing import Dict
+from typing import Literal
 from typing import Optional
 from typing import Tuple
 from typing import Type
@@ -24,7 +25,6 @@ from .interfaces import DBAPICursor
 from .interfaces import Dialect
 from .. import event
 from .. import exc
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 

@@ -13,6 +13,7 @@ from typing import Callable
 from typing import Dict
 from typing import Generic
 from typing import Iterable
+from typing import Literal
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -21,6 +22,7 @@ from typing import Protocol
 from typing import Set
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeAlias
 from typing import TypeVar
 from typing import Union
 
@@ -28,9 +30,7 @@ from . import roles
 from .. import exc
 from .. import util
 from ..inspection import Inspectable
-from ..util.typing import Literal
 from ..util.typing import TupleAny
-from ..util.typing import TypeAlias
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from datetime import time
     from datetime import timedelta
     from decimal import Decimal
+    from typing import TypeGuard
     from uuid import UUID
 
     from .base import Executable
@@ -76,7 +77,6 @@ if TYPE_CHECKING:
     from ..engine import Dialect
     from ..engine import Engine
     from ..engine.mock import MockConnection
-    from ..util.typing import TypeGuard
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)

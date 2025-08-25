@@ -184,6 +184,7 @@ import decimal
 import json as _py_json
 import re
 import time
+from types import NoneType
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -434,8 +435,6 @@ class _AsyncpgRange(ranges.AbstractSingleRangeImpl):
 class _AsyncpgMultiRange(ranges.AbstractMultiRangeImpl):
     def bind_processor(self, dialect):
         asyncpg_Range = dialect.dbapi.asyncpg.Range
-
-        NoneType = type(None)
 
         def to_range(value):
             if isinstance(value, (str, NoneType)):

@@ -34,6 +34,7 @@ from typing import FrozenSet
 from typing import Generic
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -49,7 +50,6 @@ import warnings
 
 from . import _collections
 from . import compat
-from .typing import Literal
 from .. import exc
 
 _T = TypeVar("_T")
@@ -136,24 +136,10 @@ if compat.py314:
         # away in future python as a separate mode
         return _vendored_get_annotations(obj, format=Format.FORWARDREF)
 
-elif compat.py310:
-
-    def get_annotations(obj: Any) -> Mapping[str, Any]:
-        return inspect.get_annotations(obj)
-
 else:
 
     def get_annotations(obj: Any) -> Mapping[str, Any]:
-        # https://docs.python.org/3/howto/annotations.html#annotations-howto
-        if isinstance(obj, type):
-            ann = obj.__dict__.get("__annotations__", None)
-        else:
-            ann = obj.__annotations__
-
-        if ann is None:
-            return _collections.EMPTY_DICT
-        else:
-            return cast("Mapping[str, Any]", ann)
+        return inspect.get_annotations(obj)
 
 
 def md5_hex(x: Any) -> str:
@@ -2001,9 +1987,6 @@ def chop_traceback(
     while start <= end and exclude_suffix.search(tb[end]):
         end -= 1
     return tb[start : end + 1]
-
-
-NoneType = type(None)
 
 
 def attrsetter(attrname):

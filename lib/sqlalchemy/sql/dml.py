@@ -28,6 +28,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -71,7 +72,6 @@ from .. import exc
 from .. import util
 from ..util.typing import Self
 from ..util.typing import TupleAny
-from ..util.typing import TypeGuard
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 

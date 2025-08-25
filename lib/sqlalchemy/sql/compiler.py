@@ -44,6 +44,7 @@ from typing import FrozenSet
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
@@ -83,7 +84,6 @@ from .visitors import prefix_anon_map
 from .. import exc
 from .. import util
 from ..util import FastIntFlag
-from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack

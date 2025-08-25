@@ -9,7 +9,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import requires
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
-from sqlalchemy.util import py310
 from sqlalchemy.util import py312
 from sqlalchemy.util import py314
 from sqlalchemy.util import typing as sa_typing
@@ -18,9 +17,7 @@ TV = typing.TypeVar("TV")
 
 
 def union_types():
-    res = [typing.Union[int, str]]
-    if py310:
-        res.append(int | str)
+    res = [typing.Union[int, str], int | str]
     return res
 
 
@@ -29,18 +26,17 @@ def null_union_types():
         typing.Optional[typing.Union[int, str]],
         typing.Union[int, str, None],
         typing.Union[int, str, "None"],
+        int | str | None,
+        typing.Optional[int | str],
+        typing.Union[int, str] | None,
+        typing.Optional[int] | str,
     ]
-    if py310:
-        res.append(int | str | None)
-        res.append(typing.Optional[int | str])
-        res.append(typing.Union[int, str] | None)
-        res.append(typing.Optional[int] | str)
     return res
 
 
 def generic_unions():
     res = union_types() + null_union_types()
-    if py310 and not py314:
+    if not py314:
         # for py310 through py313, remove new-style unions `int | str` that
         # are not generic
         new_ut = type(int | str)
@@ -190,12 +186,10 @@ def new_types():
     return [NT_str, NT_null, NT_union]
 
 
-A_str = typing_extensions.Annotated[str, "meta"]
-A_null_str = typing_extensions.Annotated[
-    typing.Union[str, None], "other_meta", "null"
-]
-A_union = typing_extensions.Annotated[typing.Union[str, int], "other_meta"]
-A_null_union = typing_extensions.Annotated[
+A_str = typing.Annotated[str, "meta"]
+A_null_str = typing.Annotated[typing.Union[str, None], "other_meta", "null"]
+A_union = typing.Annotated[typing.Union[str, int], "other_meta"]
+A_null_union = typing.Annotated[
     typing.Union[str, int, None], "other_meta", "null"
 ]
 
@@ -283,8 +277,7 @@ class TestTyping(fixtures.TestBase):
         eq_(sa_typing.is_pep593(str), False)
         eq_(sa_typing.is_pep593(None), False)
         eq_(sa_typing.is_pep593(typing_extensions.Annotated[int, "a"]), True)
-        if py310:
-            eq_(sa_typing.is_pep593(typing.Annotated[int, "a"]), True)
+        eq_(sa_typing.is_pep593(typing.Annotated[int, "a"]), True)
 
         for t in annotated_l():
             eq_(sa_typing.is_pep593(t), True)

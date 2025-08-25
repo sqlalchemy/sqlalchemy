@@ -15,26 +15,27 @@ import enum
 import inspect as _py_inspect
 import re
 import typing
+from typing import Annotated
 from typing import Any
 from typing import cast
 from typing import ClassVar
 from typing import Dict
 from typing import Generic
+from typing import get_args as get_args
 from typing import List
+from typing import Literal as Literal
 from typing import NewType
 from typing import Optional
 from typing import Set
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeAlias as TypeAlias
 from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 import uuid
 
 import typing_extensions
-from typing_extensions import get_args as get_args
-from typing_extensions import Literal as Literal
-from typing_extensions import TypeAlias as TypeAlias
 from typing_extensions import TypeAliasType
 
 from sqlalchemy import BIGINT
@@ -102,8 +103,6 @@ from sqlalchemy.testing import requires
 from sqlalchemy.testing import Variation
 from sqlalchemy.testing.assertions import ne_
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.util import compat
-from sqlalchemy.util.typing import Annotated
 
 TV = typing.TypeVar("TV")
 
@@ -128,15 +127,14 @@ _JsonPrimitive: TypeAlias = Union[str, int, float, bool, None]
 _JsonObject: TypeAlias = Dict[str, "_Json"]
 _JsonArray: TypeAlias = List["_Json"]
 _Json: TypeAlias = Union[_JsonObject, _JsonArray, _JsonPrimitive]
+_JsonPrimitivePep604: TypeAlias = str | int | float | bool | None
+_JsonObjectPep604: TypeAlias = dict[str, "_JsonPep604"]
+_JsonArrayPep604: TypeAlias = list["_JsonPep604"]
+_JsonPep604: TypeAlias = (
+    _JsonObjectPep604 | _JsonArrayPep604 | _JsonPrimitivePep604
+)
+_JsonPep695 = TypeAliasType("_JsonPep695", _JsonPep604)
 
-if compat.py310:
-    _JsonPrimitivePep604: TypeAlias = str | int | float | bool | None
-    _JsonObjectPep604: TypeAlias = dict[str, "_JsonPep604"]
-    _JsonArrayPep604: TypeAlias = list["_JsonPep604"]
-    _JsonPep604: TypeAlias = (
-        _JsonObjectPep604 | _JsonArrayPep604 | _JsonPrimitivePep604
-    )
-    _JsonPep695 = TypeAliasType("_JsonPep695", _JsonPep604)
 
 TypingTypeAliasType = getattr(typing, "TypeAliasType", TypeAliasType)
 
@@ -152,11 +150,10 @@ _UnionPep695 = TypeAliasType("_UnionPep695", Union[_SomeDict1, _SomeDict2])
 strtypalias_keyword = TypeAliasType(
     "strtypalias_keyword", Annotated[str, mapped_column(info={"hi": "there"})]
 )
-if compat.py310:
-    strtypalias_keyword_nested = TypeAliasType(
-        "strtypalias_keyword_nested",
-        int | Annotated[str, mapped_column(info={"hi": "there"})],
-    )
+strtypalias_keyword_nested = TypeAliasType(
+    "strtypalias_keyword_nested",
+    int | Annotated[str, mapped_column(info={"hi": "there"})],
+)
 strtypalias_ta: TypeAlias = Annotated[str, mapped_column(info={"hi": "there"})]
 strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
 _Literal695 = TypeAliasType(
@@ -633,11 +630,11 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         "argtype",
         [
             "type",
-            ("column", testing.requires.python310),
-            ("mapped_column", testing.requires.python310),
+            "column",
+            "mapped_column",
             "column_class",
             "ref_to_type",
-            ("ref_to_column", testing.requires.python310),
+            "ref_to_column",
         ],
     )
     def test_construct_lhs_sqlalchemy_type(self, decl_base, argtype):
@@ -1308,7 +1305,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             eq_(col.type.enums, ["a", "b"])
             is_(col.type.native_enum, False)
 
-    @testing.requires.python310
     def test_we_got_all_attrs_test_annotated(self):
         argnames = _py_inspect.getfullargspec(mapped_column)
         assert _annotated_names_tested.issuperset(argnames.kwonlyargs), (
@@ -1419,7 +1415,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             exc.SADeprecationWarning(
                 "Argument 'kw_only' is a dataclass argument "
             ),
-            testing.requires.python310,
         ),
         (
             "compare",
@@ -1427,7 +1422,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             exc.SADeprecationWarning(
                 "Argument 'compare' is a dataclass argument "
             ),
-            testing.requires.python310,
         ),
         (
             "default_factory",
@@ -1620,17 +1614,10 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         str50 = NewType("str50", str)
 
-        if compat.py310:
-            text = ".*str50"
-        else:
-            # NewTypes before 3.10 had a very bad repr
-            # <function NewType.<locals>.new_type at 0x...>
-            text = ".*NewType.*"
-
         with expect_raises_message(
             orm_exc.MappedAnnotationError,
             "Could not locate SQLAlchemy Core type for Python type "
-            f"{text} inside the 'data_one' attribute Mapped annotation",
+            ".*str50 inside the 'data_one' attribute Mapped annotation",
         ):
 
             class MyClass(decl_base):
@@ -1848,38 +1835,22 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             to_assert.fail()
 
     @testing.combinations(
-        (collections.abc.Sequence, (str,), testing.requires.python310),
-        (collections.abc.MutableSequence, (str,), testing.requires.python310),
-        (collections.abc.Mapping, (str, str), testing.requires.python310),
-        (
-            collections.abc.MutableMapping,
-            (str, str),
-            testing.requires.python310,
-        ),
-        (typing.Mapping, (str, str), testing.requires.python310),
-        (typing.MutableMapping, (str, str), testing.requires.python310),
+        (collections.abc.Sequence, (str,)),
+        (collections.abc.MutableSequence, (str,)),
+        (collections.abc.Mapping, (str, str)),
+        (collections.abc.MutableMapping, (str, str)),
+        (typing.Mapping, (str, str)),
+        (typing.MutableMapping, (str, str)),
         (typing.Sequence, (str,)),
         (typing.MutableSequence, (str,)),
-        (list, (str,), testing.requires.python310),
-        (
-            List,
-            (str,),
-        ),
-        (dict, (str, str), testing.requires.python310),
-        (
-            Dict,
-            (str, str),
-        ),
-        (list, None, testing.requires.python310),
-        (
-            List,
-            None,
-        ),
-        (dict, None, testing.requires.python310),
-        (
-            Dict,
-            None,
-        ),
+        (list, (str,)),
+        (List, (str,)),
+        (dict, (str, str)),
+        (Dict, (str, str)),
+        (list, None),
+        (List, None),
+        (dict, None),
+        (Dict, None),
         id_="sa",
         argnames="container_typ,args",
     )
@@ -2166,12 +2137,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     @testing.variation(
         "union",
-        [
-            "union",
-            ("pep604", requires.python310),
-            "union_null",
-            ("pep604_null", requires.python310),
-        ],
+        ["union", "pep604", "union_null", "pep604_null"],
     )
     def test_unions(self, union):
         global UnionType
@@ -2227,17 +2193,14 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             float_data: Mapped[float] = mapped_column()
             decimal_data: Mapped[Decimal] = mapped_column()
 
-            if compat.py310:
-                pep604_data: Mapped[float | Decimal] = mapped_column()
-                pep604_reverse: Mapped[Decimal | float] = mapped_column()
-                pep604_optional: Mapped[Decimal | float | None] = (
-                    mapped_column()
-                )
-                pep604_data_fwd: Mapped["float | Decimal"] = mapped_column()
-                pep604_reverse_fwd: Mapped["Decimal | float"] = mapped_column()
-                pep604_optional_fwd: Mapped["Decimal | float | None"] = (
-                    mapped_column()
-                )
+            pep604_data: Mapped[float | Decimal] = mapped_column()
+            pep604_reverse: Mapped[Decimal | float] = mapped_column()
+            pep604_optional: Mapped[Decimal | float | None] = mapped_column()
+            pep604_data_fwd: Mapped["float | Decimal"] = mapped_column()
+            pep604_reverse_fwd: Mapped["Decimal | float"] = mapped_column()
+            pep604_optional_fwd: Mapped["Decimal | float | None"] = (
+                mapped_column()
+            )
 
         info = [
             ("data", False),
@@ -2248,16 +2211,13 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             ("refer_union", "null" in union.name),
             ("refer_union_optional", True),
             ("unflat_union_optional_data", True),
+            ("pep604_data", False),
+            ("pep604_reverse", False),
+            ("pep604_optional", True),
+            ("pep604_data_fwd", False),
+            ("pep604_reverse_fwd", False),
+            ("pep604_optional_fwd", True),
         ]
-        if compat.py310:
-            info += [
-                ("pep604_data", False),
-                ("pep604_reverse", False),
-                ("pep604_optional", True),
-                ("pep604_data_fwd", False),
-                ("pep604_reverse_fwd", False),
-                ("pep604_optional_fwd", True),
-            ]
 
         for name, nullable in info:
             col = User.__table__.c[name]
@@ -2274,7 +2234,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         "union",
         [
             "union",
-            ("pep604", requires.python310),
+            "pep604",
             ("pep695", requires.python312),
         ],
     )
@@ -2321,8 +2281,8 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "optional",
             "optional_fwd_ref",
             "union_none",
-            ("pep604", testing.requires.python310),
-            ("pep604_fwd_ref", testing.requires.python310),
+            "pep604",
+            "pep604_fwd_ref",
         ],
     )
     @testing.variation("brackets", ["oneset", "twosets"])
@@ -2336,18 +2296,12 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         #12207"""
 
         class Base(DeclarativeBase):
-            if testing.requires.python310.enabled:
-                type_annotation_map = {
-                    Dict[str, Decimal]: JSON,
-                    dict[str, Decimal]: JSON,
-                    Union[List[int], List[str]]: JSON,
-                    list[int] | list[str]: JSON,
-                }
-            else:
-                type_annotation_map = {
-                    Dict[str, Decimal]: JSON,
-                    Union[List[int], List[str]]: JSON,
-                }
+            type_annotation_map = {
+                Dict[str, Decimal]: JSON,
+                dict[str, Decimal]: JSON,
+                Union[List[int], List[str]]: JSON,
+                list[int] | list[str]: JSON,
+            }
 
         if include_mc_type == "include_mc_type":
             mc = mapped_column(JSON)
@@ -2365,46 +2319,36 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             if brackets.oneset:
                 if option.not_optional:
                     json: Mapped[Dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
+                    json2: Mapped[dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
                 elif option.optional:
                     json: Mapped[Optional[Dict[str, Decimal]]] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[Optional[dict[str, Decimal]]] = mc2
+                    json2: Mapped[Optional[dict[str, Decimal]]] = mc2
                 elif option.optional_fwd_ref:
                     json: Mapped["Optional[Dict[str, Decimal]]"] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped["Optional[dict[str, Decimal]]"] = mc2
+                    json2: Mapped["Optional[dict[str, Decimal]]"] = mc2
                 elif option.union_none:
                     json: Mapped[Union[Dict[str, Decimal], None]] = mc
                     json2: Mapped[Union[None, Dict[str, Decimal]]] = mc2
                 elif option.pep604:
                     json: Mapped[dict[str, Decimal] | None] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[None | dict[str, Decimal]] = mc2
+                    json2: Mapped[None | dict[str, Decimal]] = mc2
                 elif option.pep604_fwd_ref:
                     json: Mapped["dict[str, Decimal] | None"] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped["None | dict[str, Decimal]"] = mc2
+                    json2: Mapped["None | dict[str, Decimal]"] = mc2
             elif brackets.twosets:
                 if option.not_optional:
                     json: Mapped[Union[List[int], List[str]]] = mapped_column()  # type: ignore  # noqa: E501
                 elif option.optional:
                     json: Mapped[Optional[Union[List[int], List[str]]]] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[
-                            Optional[Union[list[int], list[str]]]
-                        ] = mc2
+                    json2: Mapped[Optional[Union[list[int], list[str]]]] = mc2
                 elif option.optional_fwd_ref:
                     json: Mapped["Optional[Union[List[int], List[str]]]"] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[
-                            "Optional[Union[list[int], list[str]]]"
-                        ] = mc2
+                    json2: Mapped["Optional[Union[list[int], list[str]]]"] = (
+                        mc2
+                    )
                 elif option.union_none:
                     json: Mapped[Union[List[int], List[str], None]] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[Union[None, list[int], list[str]]] = mc2
+                    json2: Mapped[Union[None, list[int], list[str]]] = mc2
                 elif option.pep604:
                     json: Mapped[list[int] | list[str] | None] = mc
                     json2: Mapped[None | list[int] | list[str]] = mc2
@@ -2643,9 +2587,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data: Mapped[int_sub]
 
-    @testing.variation(
-        "dict_key", ["typing", ("plain", testing.requires.python310)]
-    )
+    @testing.variation("dict_key", ["typing", "plain"])
     def test_type_dont_mis_resolve_on_non_generic(self, dict_key):
         """test for #8859.
 
@@ -3302,9 +3244,9 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         "datatype",
         [
             "typing_sequence",
-            ("collections_sequence", testing.requires.python310),
+            "collections_sequence",
             "typing_mutable_sequence",
-            ("collections_mutable_sequence", testing.requires.python310),
+            "collections_mutable_sequence",
         ],
     )
     @testing.variation("include_explicit", [True, False])
@@ -3388,12 +3330,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     @testing.variation(
         "collection_type",
-        [
-            ("list", testing.requires.python310),
-            "List",
-            ("set", testing.requires.python310),
-            "Set",
-        ],
+        ["list", "List", "set", "Set"],
     )
     def test_14_style_anno_accepted_w_allow_unmapped(self, collection_type):
         """test for #8692 and #10385"""
@@ -3453,7 +3390,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ("optional",),
         ("optional_fwd_ref",),
         ("union_none",),
-        ("pep604", testing.requires.python310),
+        ("pep604",),
         argnames="optional_on_m2o",
     )
     def test_basic_bidirectional(self, decl_base, optional_on_m2o):

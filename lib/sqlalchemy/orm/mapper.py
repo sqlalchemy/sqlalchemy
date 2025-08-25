@@ -33,6 +33,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
@@ -88,7 +89,6 @@ from ..sql.schema import Table
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import HasMemoized
 from ..util import HasMemoized_ro_memoized_attribute
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
