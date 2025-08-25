@@ -1521,7 +1521,16 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.right),
         )
 
-    def visit_json_getitem_op_binary(self, binary, operator, **kw):
+    def visit_json_getitem_op_binary(
+        self, binary, operator, _cast_applied=False, **kw
+    ):
+        if (
+            not _cast_applied
+            and binary.type._type_affinity is not sqltypes.JSON
+        ):
+            kw["_cast_applied"] = True
+            return self.process(sql.cast(binary, binary.type), **kw)
+
         if binary.type._type_affinity is sqltypes.JSON:
             expr = "JSON_QUOTE(JSON_EXTRACT(%s, %s))"
         else:
@@ -1532,7 +1541,16 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
-    def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
+    def visit_json_path_getitem_op_binary(
+        self, binary, operator, _cast_applied=False, **kw
+    ):
+        if (
+            not _cast_applied
+            and binary.type._type_affinity is not sqltypes.JSON
+        ):
+            kw["_cast_applied"] = True
+            return self.process(sql.cast(binary, binary.type), **kw)
+
         if binary.type._type_affinity is sqltypes.JSON:
             expr = "JSON_QUOTE(JSON_EXTRACT(%s, %s))"
         else:
