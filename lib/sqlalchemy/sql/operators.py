@@ -499,7 +499,72 @@ class custom_op(OperatorType, Generic[_T]):
             )
 
 
-class ColumnOperators(Operators):
+class OrderingOperators(Operators):
+    """defines ORDER BY operators, which can operate as single expressions
+    or comma-separated lists
+
+    """
+
+    __slots__ = ()
+
+    if typing.TYPE_CHECKING:
+
+        def operate(
+            self, op: OperatorType, *other: Any, **kwargs: Any
+        ) -> OrderingOperators: ...
+
+        def reverse_operate(
+            self, op: OperatorType, other: Any, **kwargs: Any
+        ) -> OrderingOperators: ...
+
+    def desc(self) -> OrderingOperators:
+        """Produce a :func:`_expression.desc` clause against the
+        parent object."""
+        return self.operate(desc_op)
+
+    def asc(self) -> OrderingOperators:
+        """Produce a :func:`_expression.asc` clause against the
+        parent object."""
+        return self.operate(asc_op)
+
+    def nulls_first(self) -> OrderingOperators:
+        """Produce a :func:`_expression.nulls_first` clause against the
+        parent object.
+
+        .. versionchanged:: 1.4 The ``nulls_first()`` operator is
+           renamed from ``nullsfirst()`` in previous releases.
+           The previous name remains available for backwards compatibility.
+        """
+        return self.operate(nulls_first_op)
+
+    # deprecated 1.4; see #5435
+    if TYPE_CHECKING:
+
+        def nullsfirst(self) -> OrderingOperators: ...
+
+    else:
+        nullsfirst = nulls_first
+
+    def nulls_last(self) -> OrderingOperators:
+        """Produce a :func:`_expression.nulls_last` clause against the
+        parent object.
+
+        .. versionchanged:: 1.4 The ``nulls_last()`` operator is
+           renamed from ``nullslast()`` in previous releases.
+           The previous name remains available for backwards compatibility.
+        """
+        return self.operate(nulls_last_op)
+
+    # deprecated 1.4; see #5429
+    if TYPE_CHECKING:
+
+        def nullslast(self) -> OrderingOperators: ...
+
+    else:
+        nullslast = nulls_last
+
+
+class ColumnOperators(OrderingOperators):
     """Defines boolean, comparison, and other operators for
     :class:`_expression.ColumnElement` expressions.
 
@@ -1765,52 +1830,6 @@ class ColumnOperators(Operators):
             replacement=replacement,
             flags=flags,
         )
-
-    def desc(self) -> ColumnOperators:
-        """Produce a :func:`_expression.desc` clause against the
-        parent object."""
-        return self.operate(desc_op)
-
-    def asc(self) -> ColumnOperators:
-        """Produce a :func:`_expression.asc` clause against the
-        parent object."""
-        return self.operate(asc_op)
-
-    def nulls_first(self) -> ColumnOperators:
-        """Produce a :func:`_expression.nulls_first` clause against the
-        parent object.
-
-        .. versionchanged:: 1.4 The ``nulls_first()`` operator is
-           renamed from ``nullsfirst()`` in previous releases.
-           The previous name remains available for backwards compatibility.
-        """
-        return self.operate(nulls_first_op)
-
-    # deprecated 1.4; see #5435
-    if TYPE_CHECKING:
-
-        def nullsfirst(self) -> ColumnOperators: ...
-
-    else:
-        nullsfirst = nulls_first
-
-    def nulls_last(self) -> ColumnOperators:
-        """Produce a :func:`_expression.nulls_last` clause against the
-        parent object.
-
-        .. versionchanged:: 1.4 The ``nulls_last()`` operator is
-           renamed from ``nullslast()`` in previous releases.
-           The previous name remains available for backwards compatibility.
-        """
-        return self.operate(nulls_last_op)
-
-    # deprecated 1.4; see #5429
-    if TYPE_CHECKING:
-
-        def nullslast(self) -> ColumnOperators: ...
-
-    else:
-        nullslast = nulls_last
 
     def collate(self, collation: str) -> ColumnOperators:
         """Produce a :func:`_expression.collate` clause against

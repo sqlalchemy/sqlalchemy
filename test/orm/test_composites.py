@@ -3,11 +3,16 @@ import operator
 import random
 
 import sqlalchemy as sa
+from sqlalchemy import asc
+from sqlalchemy import desc
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import nulls_first
+from sqlalchemy import nulls_last
+from sqlalchemy import OrderByList
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -1798,6 +1803,10 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                     diff_y = clauses[1] - other.y
                     return diff_x * diff_x + diff_y * diff_y <= d * d
 
+                def desc(self):
+                    clauses = self.__clause_element__().clauses
+                    return OrderByList([clauses[0].desc(), clauses[1].asc()])
+
             self.mapper_registry.map_imperatively(
                 Edge,
                 edge,
@@ -1923,10 +1932,62 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         Edge = self.classes.Edge
         s = fixture_session()
         self.assert_compile(
-            s.query(Edge).order_by(Edge.start, Edge.end),
+            s.query(Edge).order_by(Edge.start, Edge.end.desc()),
             "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
             "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
-            "FROM edge ORDER BY edge.x1, edge.y1, edge.x2, edge.y2",
+            "FROM edge ORDER BY edge.x1, edge.y1, edge.x2 DESC, edge.y2 DESC",
+        )
+
+        self.assert_compile(
+            s.query(Edge).order_by(
+                Edge.start.asc().nulls_first(), Edge.end.nulls_last()
+            ),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge ORDER BY edge.x1 ASC NULLS FIRST, "
+            "edge.y1 ASC NULLS FIRST, edge.x2 NULLS LAST, edge.y2 NULLS LAST",
+        )
+
+        # Test using standalone ops syntax
+
+        self.assert_compile(
+            s.query(Edge).order_by(
+                nulls_first(asc(Edge.start)), nulls_last(Edge.end)
+            ),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge ORDER BY edge.x1 ASC NULLS FIRST, "
+            "edge.y1 ASC NULLS FIRST, edge.x2 NULLS LAST, edge.y2 NULLS LAST",
+        )
+
+    def test_order_by_custom(self):
+        """test #12769"""
+        self._fixture(True)
+        Edge = self.classes.Edge
+        s = fixture_session()
+
+        self.assert_compile(
+            s.query(Edge).order_by(Edge.start.desc()),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge "
+            "ORDER BY edge.x1 DESC, edge.y1 ASC",
+        )
+
+        self.assert_compile(
+            s.query(Edge).order_by(Edge.start.desc().nulls_first()),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge "
+            "ORDER BY edge.x1 DESC NULLS FIRST, edge.y1 ASC NULLS FIRST",
+        )
+
+        self.assert_compile(
+            s.query(Edge).order_by(desc(Edge.start)),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge "
+            "ORDER BY edge.x1 DESC, edge.y1 ASC",
         )
 
     def test_order_by_aliased(self):

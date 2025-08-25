@@ -4,9 +4,15 @@ import operator
 import pickle
 import re
 
+from sqlalchemy import all_
 from sqlalchemy import and_
+from sqlalchemy import any_
+from sqlalchemy import asc
 from sqlalchemy import between
 from sqlalchemy import bindparam
+from sqlalchemy import bitwise_not
+from sqlalchemy import desc
+from sqlalchemy import distinct
 from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import Integer
@@ -14,8 +20,11 @@ from sqlalchemy import join
 from sqlalchemy import LargeBinary
 from sqlalchemy import literal_column
 from sqlalchemy import not_
+from sqlalchemy import nulls_first
+from sqlalchemy import nulls_last
 from sqlalchemy import Numeric
 from sqlalchemy import or_
+from sqlalchemy import SQLColumnExpression
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
@@ -28,14 +37,10 @@ from sqlalchemy.engine import default
 from sqlalchemy.schema import Column
 from sqlalchemy.schema import MetaData
 from sqlalchemy.schema import Table
-from sqlalchemy.sql import all_
-from sqlalchemy.sql import any_
-from sqlalchemy.sql import asc
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import collate
 from sqlalchemy.sql import column
 from sqlalchemy.sql import compiler
-from sqlalchemy.sql import desc
 from sqlalchemy.sql import false
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import literal
@@ -56,6 +61,7 @@ from sqlalchemy.sql.expression import select
 from sqlalchemy.sql.expression import tuple_
 from sqlalchemy.sql.expression import UnaryExpression
 from sqlalchemy.sql.expression import union
+from sqlalchemy.sql.operators import ColumnOperators
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
@@ -64,6 +70,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import mock
 from sqlalchemy.testing import resolve_lambda
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.types import ARRAY
@@ -4925,3 +4932,77 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             select(py_op(c1, c2)),
             f"SELECT c1 {sql_op} c2 AS anon_1",
         )
+
+
+class StandaloneOperatorTranslateTest(
+    fixtures.TestBase, testing.AssertsCompiledSQL
+):
+    __dialect__ = "default"
+
+    def _combinations(fn):
+        return testing.combinations(
+            desc,
+            asc,
+            nulls_first,
+            nulls_last,
+            any_,
+            all_,
+            distinct,
+            bitwise_not,
+            collate,
+        )(fn)
+
+    @_combinations
+    def test_move(self, operator):
+        m1 = column("q")
+        m2 = mock.Mock()
+
+        class MyCustomThing(roles.ByOfRole, SQLColumnExpression):
+            def __clause_element__(self):
+                return m1
+
+            @property
+            def comparator(self):
+                return Comparator()
+
+            def operate(
+                self,
+                op,
+                *other,
+                **kwargs,
+            ):
+                return op(self.comparator, *other, **kwargs)
+
+            def reverse_operate(
+                self,
+                op,
+                *other,
+                **kwargs,
+            ):
+                return op(other, self.comparator, **kwargs)
+
+        class Comparator(ColumnOperators):
+            def _operate(self, *arg, **kw):
+                return m2
+
+        setattr(Comparator, operator.__name__, Comparator._operate)
+
+        mc = MyCustomThing()
+
+        if operator is collate:
+            result = operator(mc, "some collation")
+        else:
+            result = operator(mc)
+
+        is_(result, m2)
+
+    @_combinations
+    def test_text(self, operator):
+        if operator is collate:
+            result = operator(text("foo"), "some collation")
+        else:
+            result = operator(text("foo"))
+
+        # Assert that the operation completed without crashing
+        # and returned a valid SQL expression
+        assert result is not None

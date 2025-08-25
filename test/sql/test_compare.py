@@ -58,6 +58,7 @@ from sqlalchemy.sql.elements import DQLDMLClauseElement
 from sqlalchemy.sql.elements import ElementList
 from sqlalchemy.sql.elements import Immutable
 from sqlalchemy.sql.elements import Null
+from sqlalchemy.sql.elements import OrderByList
 from sqlalchemy.sql.elements import Slice
 from sqlalchemy.sql.elements import TypeClause
 from sqlalchemy.sql.elements import UnaryExpression
@@ -203,6 +204,13 @@ class CoreFixtures:
             table_a.c.a,
             ElementList([table_a.c.a]),
             ElementList([table_a.c.a, table_a.c.b]),
+        ),
+        lambda: (
+            table_a.c.a,
+            OrderByList([table_a.c.a]),
+            OrderByList(
+                [table_a.c.a, OrderByList([table_a.c.b, table_b.c.a])]
+            ),
         ),
         lambda: (_textual_label_reference("a"), _textual_label_reference("b")),
         lambda: (
