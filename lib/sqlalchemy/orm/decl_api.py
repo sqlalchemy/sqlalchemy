@@ -29,6 +29,8 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
+from typing import Annotated
+from typing import get_origin, get_args
 import weakref
 
 from . import attributes
@@ -1249,6 +1251,10 @@ class registry:
         else:
             python_type_type = python_type  # type: ignore[assignment]
             search = ((python_type, python_type_type),)
+
+            if get_origin(python_type.__value__) is Annotated:
+                type_alias_annotated_value = get_args(python_type)[0]
+                search = ((type_alias_annotated_value, python_type_type),)
 
         for pt, flattened in search:
             # we search through full __mro__ for types.  however...
