@@ -41,6 +41,7 @@ from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...connectors.asyncio import AsyncAdapt_terminate
 from ...util.concurrency import await_
 
 if TYPE_CHECKING:
@@ -72,7 +73,9 @@ class AsyncAdapt_asyncmy_ss_cursor(
         )
 
 
-class AsyncAdapt_asyncmy_connection(AsyncAdapt_dbapi_connection):
+class AsyncAdapt_asyncmy_connection(
+    AsyncAdapt_terminate, AsyncAdapt_dbapi_connection
+):
     __slots__ = ()
 
     _cursor_cls = AsyncAdapt_asyncmy_cursor
@@ -106,12 +109,15 @@ class AsyncAdapt_asyncmy_connection(AsyncAdapt_dbapi_connection):
     def get_autocommit(self) -> bool:
         return self._connection.get_autocommit()  # type: ignore
 
-    def terminate(self) -> None:
-        # it's not awaitable.
-        self._connection.close()
-
     def close(self) -> None:
         await_(self._connection.ensure_closed())
+
+    async def _terminate_graceful_close(self) -> None:
+        await self._connection.ensure_closed()
+
+    def _terminate_force_close(self) -> None:
+        # it's not awaitable.
+        self._connection.close()
 
 
 class AsyncAdapt_asyncmy_dbapi(AsyncAdapt_dbapi_module):
