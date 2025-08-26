@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12271
+
+    Improved the implementation of :meth:`.UpdateBase.returning` to use more
+    robust logic in setting up the ``.c`` collection of a derived statement
+    such as a CTE.  This fixes issues related to RETURNING clauses that feature
+    expressions based on returned columns with or without qualifying labels.
