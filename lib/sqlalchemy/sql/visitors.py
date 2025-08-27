@@ -22,6 +22,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -37,7 +38,6 @@ from ._util_cy import prefix_anon_map as prefix_anon_map  # noqa: F401
 from .. import exc
 from .. import util
 from ..util import langhelpers
-from ..util.typing import Literal
 from ..util.typing import Self
 
 if TYPE_CHECKING:

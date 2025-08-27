@@ -14,6 +14,7 @@ import re
 import typing
 from typing import Any
 from typing import Dict
+from typing import Literal
 from typing import Optional
 import warnings
 import weakref
@@ -24,7 +25,6 @@ from .util import gc_collect
 from .. import event
 from .. import pool
 from ..util import await_
-from ..util.typing import Literal
 
 
 if typing.TYPE_CHECKING:

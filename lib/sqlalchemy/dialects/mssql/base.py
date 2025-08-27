@@ -963,6 +963,7 @@ import codecs
 import datetime
 import operator
 import re
+from typing import Literal
 from typing import overload
 from typing import TYPE_CHECKING
 from uuid import UUID as _python_UUID
@@ -1010,7 +1011,6 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
 from ...util import update_wrapper
-from ...util.typing import Literal
 
 if TYPE_CHECKING:
     from ...sql.dml import DMLState
@@ -2479,7 +2479,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
             # the NULL handling is particularly weird with boolean, so
             # explicitly return numeric (BIT) constants
             type_expression = (
-                "WHEN 'true' THEN 1 WHEN 'false' THEN 0 ELSE NULL"
+                "WHEN 'true' THEN 1 WHEN 'false' THEN 0 ELSE "
+                "CAST(JSON_VALUE(%s, %s) AS BIT)"
+                % (
+                    self.process(binary.left, **kw),
+                    self.process(binary.right, **kw),
+                )
             )
         elif binary.type._type_affinity is sqltypes.String:
             # TODO: does this comment (from mysql) apply to here, too?

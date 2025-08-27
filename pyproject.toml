@@ -19,7 +19,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -29,7 +28,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database :: Front-Ends",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "typing-extensions >= 4.6.0",
 ]
@@ -118,7 +117,7 @@ tag-build = "dev"
 
 [tool.black]
 line-length = 79
-target-version = ['py39']
+target-version = ['py310']
 
 
 [tool.zimports]

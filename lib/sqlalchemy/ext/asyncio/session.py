@@ -11,6 +11,7 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import cast
+from typing import Concatenate
 from typing import Dict
 from typing import Generic
 from typing import Iterable
@@ -18,6 +19,7 @@ from typing import Iterator
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import ParamSpec
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -38,8 +40,6 @@ from ...orm import Session
 from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
-from ...util.typing import Concatenate
-from ...util.typing import ParamSpec
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
@@ -49,7 +49,6 @@ if TYPE_CHECKING:
     from .engine import AsyncConnection
     from .engine import AsyncEngine
     from ...engine import Connection
-    from ...engine import CursorResult
     from ...engine import Engine
     from ...engine import Result
     from ...engine import Row
@@ -70,7 +69,6 @@ if TYPE_CHECKING:
     from ...orm.session import _SessionBindKey
     from ...sql._typing import _InfoType
     from ...sql.base import Executable
-    from ...sql.dml import UpdateBase
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
@@ -413,18 +411,6 @@ class AsyncSession(ReversibleProxy[Session]):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> Result[Unpack[_Ts]]: ...
-
-    @overload
-    async def execute(
-        self,
-        statement: UpdateBase,
-        params: Optional[_CoreAnyExecuteParams] = None,
-        *,
-        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
-    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     async def execute(

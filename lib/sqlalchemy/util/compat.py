@@ -36,7 +36,6 @@ py314 = sys.version_info >= (3, 14)
 py313 = sys.version_info >= (3, 13)
 py312 = sys.version_info >= (3, 12)
 py311 = sys.version_info >= (3, 11)
-py310 = sys.version_info >= (3, 10)
 pypy = platform.python_implementation() == "PyPy"
 cpython = platform.python_implementation() == "CPython"
 
@@ -102,28 +101,6 @@ def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
 # making a protocol
 def md5_not_for_security() -> Any:
     return hashlib.md5(usedforsecurity=False)
-
-
-if py310:
-    anext_ = anext
-else:
-    _NOT_PROVIDED = object()
-    from collections.abc import AsyncIterator
-
-    async def anext_(async_iterator, default=_NOT_PROVIDED):
-        """vendored from https://github.com/python/cpython/pull/8895"""
-
-        if not isinstance(async_iterator, AsyncIterator):
-            raise TypeError(
-                f"anext expected an AsyncIterator, got {type(async_iterator)}"
-            )
-        anxt = type(async_iterator).__anext__
-        try:
-            return await anxt(async_iterator)
-        except StopAsyncIteration:
-            if default is _NOT_PROVIDED:
-                raise
-            return default
 
 
 def importlib_metadata_get(group):

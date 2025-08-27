@@ -34,6 +34,7 @@ from typing import Dict
 from typing import Generic
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Protocol
 from typing import Set
@@ -54,7 +55,6 @@ from .attributes import _is_collection_attribute_impl
 from .. import util
 from ..event import EventTarget
 from ..util import HasMemoized
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ._typing import _RegistryType

@@ -1,6 +1,5 @@
 from operator import is_not
-
-from typing_extensions import Annotated
+from typing import Annotated
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey

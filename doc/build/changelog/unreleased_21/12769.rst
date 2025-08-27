@@ -1,0 +1,21 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12769
+
+    Improved the behavior of standalone "operators" like :func:`_sql.desc`,
+    :func:`_sql.asc`, :func:`_sql.all_`, etc. so that they consult the given
+    expression object for an overriding method for that operator, even if the
+    object is not itself a ``ClauseElement``, such as if it's an ORM attribute.
+    This allows custom comparators for things like :func:`_orm.composite` to
+    provide custom implementations of methods like ``desc()``, ``asc()``, etc.
+
+
+.. change::
+    :tags: usecase, orm
+    :tickets: 12769
+
+    Added default implementations of :meth:`.ColumnOperators.desc`,
+    :meth:`.ColumnOperators.asc`, :meth:`.ColumnOperators.nulls_first`,
+    :meth:`.ColumnOperators.nulls_last` to :func:`_orm.composite` attributes,
+    by default applying the modifier to all contained columns.  Can be
+    overridden using a custom comparator.

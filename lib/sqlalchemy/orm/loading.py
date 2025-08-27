@@ -39,6 +39,7 @@ from .base import PassiveFlag
 from .context import _ORMCompileState
 from .context import FromStatement
 from .context import QueryContext
+from .strategies import _SelectInLoader
 from .util import _none_set
 from .util import state_str
 from .. import exc as sa_exc
@@ -1309,15 +1310,18 @@ def _load_subclass_via_in(
         if context.populate_existing:
             q2 = q2.execution_options(populate_existing=True)
 
-        context.session.execute(
-            q2,
-            dict(
-                primary_keys=[
-                    state.key[1][0] if zero_idx else state.key[1]
-                    for state, load_attrs in states
-                ]
-            ),
-        ).unique().scalars().all()
+        while states:
+            chunk = states[0 : _SelectInLoader._chunksize]
+            states = states[_SelectInLoader._chunksize :]
+            context.session.execute(
+                q2,
+                dict(
+                    primary_keys=[
+                        state.key[1][0] if zero_idx else state.key[1]
+                        for state, load_attrs in chunk
+                    ]
+                ),
+            ).unique().scalars().all()
 
     return do_load
 

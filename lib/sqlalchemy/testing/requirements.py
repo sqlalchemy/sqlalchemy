@@ -1034,6 +1034,13 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def skip_autocommit_rollback(self):
+        """target dialect supports the detect_autocommit_setting() method and
+        uses the default implementation of do_rollback()"""
+
+        return exclusions.closed()
+
+    @property
     def isolation_level(self):
         """target dialect supports general isolation level settings.
 
@@ -1582,12 +1589,6 @@ class SuiteRequirements(Requirements):
             return hasattr(TA_generic[int], "__value__")
 
         return exclusions.only_if(check)
-
-    @property
-    def python310(self):
-        return exclusions.only_if(
-            lambda: util.py310, "Python 3.10 or above required"
-        )
 
     @property
     def python311(self):

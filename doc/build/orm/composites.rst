@@ -178,6 +178,69 @@ well as with instances of the ``Vertex`` class, where the ``.start`` and
   :ref:`mutable_toplevel` extension must be used.  See the section
   :ref:`mutable_composites` for examples.
 
+Returning None for a Composite
+-------------------------------
+
+The composite attribute by default always returns an object when accessed,
+regardless of the values of its columns.  In the example below, a new
+``Vertex`` is created with no parameters; all column attributes ``x1``, ``y1``,
+``x2``, and ``y2`` start out as ``None``.   A ``Point`` object with ``None``
+values will be returned on access::
+
+    >>> v1 = Vertex()
+    >>> v1.start
+    Point(x=None, y=None)
+    >>> v1.end
+    Point(x=None, y=None)
+
+This behavior is consistent with persistent objects and individual attribute
+queries as well::
+
+    >>> start = session.scalars(
+    ...     select(Point.start).where(Point.x1 == None, Point.y1 == None)
+    ... ).first()
+    >>> start
+    Point(x=None, y=None)
+
+To support an optional ``Point`` field, we can make use
+of the :paramref:`_orm.composite.return_none_on` parameter, which allows
+the behavior to be customized with a lambda; this parameter is set automatically if we
+declare our composite fields as optional::
+
+    class Vertex(Base):
+        __tablename__ = "vertices"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        start: Mapped[Point | None] = composite(mapped_column("x1"), mapped_column("y1"))
+        end: Mapped[Point | None] = composite(mapped_column("x2"), mapped_column("y2"))
+
+Above, the :paramref:`_orm.composite.return_none_on` parameter is set equivalently as::
+
+    composite(
+        mapped_column("x1"),
+        mapped_column("y1"),
+        return_none_on=lambda *args: all(arg is None for arg in args),
+    )
+
+With the above setting, a value of ``None`` is returned if the columns themselves
+are both ``None``::
+
+    >>> v1 = Vertex()
+    >>> v1.start
+    None
+
+    >>> start = session.scalars(
+    ...     select(Point.start).where(Point.x1 == None, Point.y1 == None)
+    ... ).first()
+    >>> start
+    None
+
+.. versionchanged:: 2.1 - added the :paramref:`_orm.composite.return_none_on` parameter with
+   ORM Annotated Declarative support.
+
+   .. seealso::
+
+        :ref:`change_12570`
 
 
 .. _orm_composite_other_forms:

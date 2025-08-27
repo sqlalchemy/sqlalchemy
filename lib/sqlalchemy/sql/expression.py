@@ -28,6 +28,7 @@ from ._elements_constructors import desc as desc
 from ._elements_constructors import distinct as distinct
 from ._elements_constructors import extract as extract
 from ._elements_constructors import false as false
+from ._elements_constructors import from_dml_column as from_dml_column
 from ._elements_constructors import funcfilter as funcfilter
 from ._elements_constructors import label as label
 from ._elements_constructors import not_ as not_
@@ -81,6 +82,7 @@ from .elements import ClauseList as ClauseList
 from .elements import CollectionAggregate as CollectionAggregate
 from .elements import ColumnClause as ColumnClause
 from .elements import ColumnElement as ColumnElement
+from .elements import DMLTargetCopy as DMLTargetCopy
 from .elements import ExpressionClauseList as ExpressionClauseList
 from .elements import Extract as Extract
 from .elements import False_ as False_
@@ -90,6 +92,7 @@ from .elements import Label as Label
 from .elements import literal as literal
 from .elements import literal_column as literal_column
 from .elements import Null as Null
+from .elements import OrderByList as OrderByList
 from .elements import Over as Over
 from .elements import quoted_name as quoted_name
 from .elements import ReleaseSavepointClause as ReleaseSavepointClause

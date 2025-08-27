@@ -3941,7 +3941,8 @@ class PGDialect(default.DefaultDialect):
                 charlen = int(attype_args[0])
                 args = (charlen,)
 
-        elif attype.startswith("interval"):
+        # a domain or enum can start with interval, so be mindful of that.
+        elif attype == "interval" or attype.startswith("interval "):
             schema_type = INTERVAL
 
             field_match = re.match(r"interval (.+)", attype)

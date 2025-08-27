@@ -28,6 +28,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -71,7 +72,6 @@ from .. import exc
 from .. import util
 from ..util.typing import Self
 from ..util.typing import TupleAny
-from ..util.typing import TypeGuard
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -430,13 +430,26 @@ class UpdateBase(
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
-        columns._populate_separate_keys(
-            col._make_proxy(
-                fromclause, primary_key=primary_key, foreign_keys=foreign_keys
+        prox = [
+            c._make_proxy(
+                fromclause,
+                key=proxy_key,
+                name=required_label_name,
+                name_is_truncatable=True,
+                primary_key=primary_key,
+                foreign_keys=foreign_keys,
             )
-            for col in self._all_selected_columns
-            if is_column_element(col)
-        )
+            for (
+                required_label_name,
+                proxy_key,
+                fallback_label_name,
+                c,
+                repeated,
+            ) in (self._generate_columns_plus_names(False))
+            if is_column_element(c)
+        ]
+
+        columns._populate_separate_keys(prox)
 
     def params(self, *arg: Any, **kw: Any) -> NoReturn:
         """Set the parameters for the statement.

@@ -124,6 +124,7 @@ from .sql.expression import Extract as Extract
 from .sql.expression import extract as extract
 from .sql.expression import false as false
 from .sql.expression import False_ as False_
+from .sql.expression import from_dml_column as from_dml_column
 from .sql.expression import FromClause as FromClause
 from .sql.expression import FromGrouping as FromGrouping
 from .sql.expression import func as func
@@ -168,6 +169,7 @@ from .sql.expression import nullsfirst as nullsfirst
 from .sql.expression import nullslast as nullslast
 from .sql.expression import Operators as Operators
 from .sql.expression import or_ as or_
+from .sql.expression import OrderByList as OrderByList
 from .sql.expression import outerjoin as outerjoin
 from .sql.expression import outparam as outparam
 from .sql.expression import Over as Over

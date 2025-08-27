@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 12798
+
+    Improved the base implementation of the asyncio cursor such that it
+    includes the option for the underlying driver's cursor to be actively
+    closed in those cases where it requires ``await`` in order to complete the
+    close sequence, rather than relying on garbage collection to "close" it,
+    when a plain :class:`.Result` is returned that does not use ``await`` for
+    any of its methods.  The previous approach of relying on gc was fine for
+    MySQL and SQLite dialects but has caused problems with the aioodbc
+    implementation on top of SQL Server.   The new option is enabled
+    for those dialects which have an "awaitable" ``cursor.close()``, which
+    includes the aioodbc, aiomysql, and asyncmy dialects (aiosqlite is also
+    modified for 2.1 only).

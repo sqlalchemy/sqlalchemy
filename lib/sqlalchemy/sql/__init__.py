@@ -47,6 +47,7 @@ from .expression import exists as exists
 from .expression import extract as extract
 from .expression import false as false
 from .expression import False_ as False_
+from .expression import from_dml_column as from_dml_column
 from .expression import FromClause as FromClause
 from .expression import func as func
 from .expression import funcfilter as funcfilter

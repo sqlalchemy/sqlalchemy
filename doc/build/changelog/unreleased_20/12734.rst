@@ -1,9 +1,0 @@
-.. change::
-    :tags: usecase, sql
-    :tickets: 12734
-
-    The :func:`_sql.values` construct gains a new method :meth:`_sql.Values.cte`,
-    which allows creation of a named, explicit-columns :class:`.CTE` against an
-    unnamed ``VALUES`` expression, producing a syntax that allows column-oriented
-    selection from a ``VALUES`` construct on modern versions of PostgreSQL, SQLite,
-    and MariaDB.

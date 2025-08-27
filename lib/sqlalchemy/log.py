@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 import sys
 from typing import Any
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Set
@@ -30,7 +31,6 @@ from typing import TypeVar
 from typing import Union
 
 from .util import py311
-from .util.typing import Literal
 
 
 STACKLEVEL = True

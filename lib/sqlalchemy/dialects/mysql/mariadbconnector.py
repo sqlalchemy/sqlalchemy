@@ -253,6 +253,9 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
             "AUTOCOMMIT",
         )
 
+    def detect_autocommit_setting(self, dbapi_conn: DBAPIConnection) -> bool:
+        return bool(dbapi_conn.autocommit)
+
     def set_isolation_level(
         self, dbapi_connection: DBAPIConnection, level: IsolationLevel
     ) -> None:

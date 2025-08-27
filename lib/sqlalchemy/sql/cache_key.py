@@ -16,6 +16,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
@@ -32,7 +33,6 @@ from .visitors import prefix_anon_map
 from .. import util
 from ..inspection import inspect
 from ..util import HasMemoized
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from .elements import BindParameter

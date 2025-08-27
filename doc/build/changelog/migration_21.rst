@@ -328,6 +328,121 @@ This change includes the following API changes:
 
 :ticket:`12168`
 
+.. _change_12570:
+
+New rules for None-return for ORM Composites
+--------------------------------------------
+
+ORM composite attributes configured using :func:`_orm.composite` can now
+specify whether or not they should return ``None`` using a new parameter
+:paramref:`_orm.composite.return_none_on`.   By default, a composite
+attribute now returns a non-None object in all cases, whereas previously
+under 2.0, a ``None`` value would be returned for a pending object with
+``None`` values for all composite columns.
+
+Given a composite mapping::
+
+    import dataclasses
+
+
+    @dataclasses.dataclass
+    class Point:
+        x: int | None
+        y: int | None
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Vertex(Base):
+        __tablename__ = "vertices"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        start: Mapped[Point] = composite(mapped_column("x1"), mapped_column("y1"))
+        end: Mapped[Point] = composite(mapped_column("x2"), mapped_column("y2"))
+
+When constructing a pending ``Vertex`` object, the initial value of the
+``x1``, ``y1``, ``x2``, ``y2`` columns is ``None``.   Under version 2.0,
+accessing the composite at this stage would automatically return ``None``::
+
+    >>> v1 = Vertex()
+    >>> v1.start
+    None
+
+Under 2.1, the default behavior is to return the composite class with attributes
+set to ``None``::
+
+    >>> v1 = Vertex()
+    >>> v1.start
+    Point(x=None, y=None)
+
+This behavior is now consistent with other forms of access, such as accessing
+the attribute from a persistent object as well as querying for the attribute
+directly.  It is also consistent with the mapped annotation ``Mapped[Point]``.
+
+The behavior can be further controlled by applying the
+:paramref:`_orm.composite.return_none_on` parameter, which accepts a callable
+that returns True if the composite should be returned as None, given the
+arguments that would normally be passed to the composite class.  The typical callable
+here would return True (i.e. the value should be ``None``) for the case where all
+columns are ``None``::
+
+    class Vertex(Base):
+        __tablename__ = "vertices"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        start: Mapped[Point] = composite(
+            mapped_column("x1"),
+            mapped_column("y1"),
+            return_none_on=lambda x, y: x is None and y is None,
+        )
+        end: Mapped[Point] = composite(
+            mapped_column("x2"),
+            mapped_column("y2"),
+            return_none_on=lambda x, y: x is None and y is None,
+        )
+
+For the above class, any ``Vertex`` instance whether pending or persistent will
+return ``None`` for ``start`` and ``end`` if both composite columns for the attribute
+are ``None``::
+
+    >>> v1 = Vertex()
+    >>> v1.start
+    None
+
+The :paramref:`_orm.composite.return_none_on` parameter is also set
+automatically, if not otherwise set explicitly, when using
+:ref:`orm_declarative_mapped_column`; setting the left hand side to
+``Optional`` or ``| None`` will assign the above ``None``-handling callable::
+
+
+    class Vertex(Base):
+        __tablename__ = "vertices"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        # will apply return_none_on=lambda *args: all(arg is None for arg in args)
+        start: Mapped[Point | None] = composite(mapped_column("x1"), mapped_column("y1"))
+        end: Mapped[Point | None] = composite(mapped_column("x2"), mapped_column("y2"))
+
+The above object will return ``None`` for ``start`` and ``end`` automatically
+if the columns are also None::
+
+    >>> session.scalars(
+    ...     select(Vertex.start).where(Vertex.x1 == None, Vertex.y1 == None)
+    ... ).first()
+    None
+
+If :paramref:`_orm.composite.return_none_on` is set explicitly, that value will
+supersede the choice made by ORM Annotated Declarative.   This includes that
+the parameter may be explicitly set to ``None`` which will disable the ORM
+Annotated Declarative setting from taking place.
+
+:ticket:`12570`
+
 New Features and Improvements - Core
 =====================================
 
@@ -474,6 +589,96 @@ would appear in a valid ODBC connection string (i.e., the same as would be
 required if using the connection string directly with ``pyodbc.connect()``).
 
 :ticket:`11250`
+
+.. _change_12496:
+
+New Hybrid DML hook features
+----------------------------
+
+To complement the existing :meth:`.hybrid_property.update_expression` decorator,
+a new decorator :meth:`.hybrid_property.bulk_dml` is added, which works
+specifically with parameter dictionaries passed to :meth:`_orm.Session.execute`
+when dealing with ORM-enabled :func:`_dml.insert` or :func:`_dml.update`::
+
+    from typing import MutableMapping
+    from dataclasses import dataclass
+
+
+    @dataclass
+    class Point:
+        x: int
+        y: int
+
+
+    class Location(Base):
+        __tablename__ = "location"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        x: Mapped[int]
+        y: Mapped[int]
+
+        @hybrid_property
+        def coordinates(self) -> Point:
+            return Point(self.x, self.y)
+
+        @coordinates.inplace.bulk_dml
+        @classmethod
+        def _coordinates_bulk_dml(
+            cls, mapping: MutableMapping[str, Any], value: Point
+        ) -> None:
+            mapping["x"] = value.x
+            mapping["y"] = value.y
+
+Additionally, a new helper :func:`_sql.from_dml_column` is added, which may be
+used with the :meth:`.hybrid_property.update_expression` hook to indicate
+re-use of a column expression from elsewhere in the UPDATE statement's SET
+clause::
+
+    from sqlalchemy import from_dml_column
+
+
+    class Product(Base):
+        __tablename__ = "product"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        price: Mapped[float]
+        tax_rate: Mapped[float]
+
+        @hybrid_property
+        def total_price(self) -> float:
+            return self.price * (1 + self.tax_rate)
+
+        @total_price.inplace.update_expression
+        @classmethod
+        def _total_price_update_expression(cls, value: Any) -> List[Tuple[Any, Any]]:
+            return [(cls.price, value / (1 + from_dml_column(cls.tax_rate)))]
+
+In the above example, if the ``tax_rate`` column is also indicated in the
+SET clause of the UPDATE, that expression will be used for the ``total_price``
+expression rather than making use of the previous value of the ``tax_rate``
+column:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import update
+    >>> print(update(Product).values({Product.tax_rate: 0.08, Product.total_price: 125.00}))
+    {printsql}UPDATE product SET tax_rate=:tax_rate, price=(:param_1 / (:tax_rate + :param_2))
+
+When the target column is omitted, :func:`_sql.from_dml_column` falls back to
+using the original column expression:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import update
+    >>> print(update(Product).values({Product.total_price: 125.00}))
+    {printsql}UPDATE product SET price=(:param_1 / (tax_rate + :param_2))
+
+
+.. seealso::
+
+    :ref:`hybrid_bulk_update`
+
+:ticket:`12496`
 
 .. _change_10556:
 

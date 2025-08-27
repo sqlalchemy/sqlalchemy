@@ -28,6 +28,7 @@ from typing import cast
 from typing import Dict
 from typing import Final
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import MutableSequence
@@ -66,7 +67,6 @@ from ..sql.compiler import DDLCompiler
 from ..sql.compiler import InsertmanyvaluesSentinelOpts
 from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
@@ -310,6 +310,7 @@ class DefaultDialect(Dialect):
         # Linting.NO_LINTING constant
         compiler_linting: Linting = int(compiler.NO_LINTING),  # type: ignore
         server_side_cursors: bool = False,
+        skip_autocommit_rollback: bool = False,
         **kwargs: Any,
     ):
         if server_side_cursors:
@@ -333,6 +334,8 @@ class DefaultDialect(Dialect):
         self._ischema = None
 
         self.dbapi = dbapi
+
+        self.skip_autocommit_rollback = skip_autocommit_rollback
 
         if paramstyle is not None:
             self.paramstyle = paramstyle
@@ -706,6 +709,10 @@ class DefaultDialect(Dialect):
         pass
 
     def do_rollback(self, dbapi_connection):
+        if self.skip_autocommit_rollback and self.detect_autocommit_setting(
+            dbapi_connection
+        ):
+            return
         dbapi_connection.rollback()
 
     def do_commit(self, dbapi_connection):

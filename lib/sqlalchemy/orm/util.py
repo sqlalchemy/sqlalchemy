@@ -20,9 +20,11 @@ from typing import cast
 from typing import Dict
 from typing import FrozenSet
 from typing import Generic
+from typing import get_origin
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Match
 from typing import Optional
 from typing import Protocol
@@ -90,9 +92,7 @@ from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation as _de_stringify_annotation
 from ..util.typing import eval_name_only as _eval_name_only
 from ..util.typing import fixup_container_fwd_refs
-from ..util.typing import get_origin
 from ..util.typing import is_origin_of_cls
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 

@@ -29,14 +29,15 @@ jobs:
           - "ubuntu-22.04"
           - "ubuntu-22.04-arm"
           - "windows-latest"
+          - "windows-11-arm"
           - "macos-latest"
           - "macos-13"
         python-version:
-          - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14.0-alpha - 3.14"
           - "pypy-3.10"
         build-type:
           - "cext"
@@ -70,13 +71,11 @@ jobs:
           # windows des not have arm64 python
           - os: "windows-latest"
             architecture: arm64
-          # macos: latests uses arm macs. only 3.10+; no x86/x64
+          # macos: latests uses arm macs. no x86/x64
           - os: "macos-latest"
             architecture: x86
           - os: "macos-latest"
             architecture: x64
-          - os: "macos-latest"
-            python-version: "3.9"
           # macos 13: uses intel macs. no arm64, x86
           - os: "macos-13"
             architecture: arm64
@@ -90,6 +89,15 @@ jobs:
           - os: "windows-latest"
             python-version: "pypy-3.10"
             architecture: x86
+          # Setup-python does not support any versions before 3.11 for arm64 windows
+          - os: "windows-11-arm"
+            python-version: "pypy-3.10"
+          - os: "windows-11-arm"
+            python-version: "3.10"
+          - os: "windows-11-arm"
+            architecture: x86
+          - os: "windows-11-arm"
+            architecture: x64
 
       fail-fast: false
 
@@ -138,9 +146,9 @@ jobs:
           - pep484
 
         include:
-          # run lint only on 3.12
+          # run lint only on 3.13
           - tox-env: lint
-            python-version: "3.12"
+            python-version: "3.13"
             os: "ubuntu-22.04"
 
       fail-fast: false

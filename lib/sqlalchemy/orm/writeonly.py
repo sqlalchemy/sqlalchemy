@@ -25,6 +25,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -55,7 +56,6 @@ from ..sql import update
 from ..sql.dml import Delete
 from ..sql.dml import Insert
 from ..sql.dml import Update
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from . import QueryableAttribute

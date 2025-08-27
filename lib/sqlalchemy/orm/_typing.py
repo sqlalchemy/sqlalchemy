@@ -16,6 +16,7 @@ from typing import Protocol
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -27,7 +28,6 @@ from ..sql._orm_types import (
 )
 from ..sql._typing import _HasClauseElement
 from ..sql.elements import ColumnElement
-from ..util.typing import TypeGuard
 
 if TYPE_CHECKING:
     from .attributes import _AttributeImpl

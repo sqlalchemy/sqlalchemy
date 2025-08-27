@@ -53,10 +53,12 @@ from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.sql.elements import ClauseList
 from sqlalchemy.sql.elements import CollationClause
+from sqlalchemy.sql.elements import DMLTargetCopy
 from sqlalchemy.sql.elements import DQLDMLClauseElement
 from sqlalchemy.sql.elements import ElementList
 from sqlalchemy.sql.elements import Immutable
 from sqlalchemy.sql.elements import Null
+from sqlalchemy.sql.elements import OrderByList
 from sqlalchemy.sql.elements import Slice
 from sqlalchemy.sql.elements import TypeClause
 from sqlalchemy.sql.elements import UnaryExpression
@@ -202,6 +204,13 @@ class CoreFixtures:
             table_a.c.a,
             ElementList([table_a.c.a]),
             ElementList([table_a.c.a, table_a.c.b]),
+        ),
+        lambda: (
+            table_a.c.a,
+            OrderByList([table_a.c.a]),
+            OrderByList(
+                [table_a.c.a, OrderByList([table_a.c.b, table_b.c.a])]
+            ),
         ),
         lambda: (_textual_label_reference("a"), _textual_label_reference("b")),
         lambda: (
@@ -366,6 +375,10 @@ class CoreFixtures:
             bindparam("x", type_=Integer),
             bindparam("x", type_=String),
             bindparam(None),
+        ),
+        lambda: (
+            DMLTargetCopy(table_a.c.a),
+            DMLTargetCopy(table_a.c.b),
         ),
         lambda: (_OffsetLimitParam("x"), _OffsetLimitParam("y")),
         lambda: (func.foo(), func.foo(5), func.bar()),

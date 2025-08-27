@@ -14,7 +14,7 @@ are meaningful to the ORM.
 
 from __future__ import annotations
 
-from ..util.typing import Literal
+from typing import Literal
 
 SynchronizeSessionArgument = Literal[False, "auto", "evaluate", "fetch"]
 DMLStrategyArgument = Literal["bulk", "raw", "orm", "auto"]

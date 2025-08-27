@@ -14,12 +14,14 @@ from __future__ import annotations
 
 import functools
 import operator
+import re
 from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
@@ -43,7 +45,6 @@ from .selectable import Select
 from .selectable import TableClause
 from .. import exc
 from .. import util
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .compiler import _BindNameForColProtocol
@@ -52,6 +53,7 @@ if TYPE_CHECKING:
     from .dml import DMLState
     from .dml import ValuesBase
     from .elements import ColumnElement
+    from .elements import DMLTargetCopy
     from .elements import KeyedColumnElement
     from .schema import _SQLExprDefault
     from .schema import Column
@@ -166,6 +168,9 @@ def _get_crud_params(
     assert (
         "accumulate_bind_names" not in kw
     ), "Don't know how to handle insert within insert without a CTE"
+
+    bindmarkers: MutableMapping[ColumnElement[Any], DMLTargetCopy[Any]] = {}
+    kw["bindmarkers"] = bindmarkers
 
     # getters - these are normally just column.key,
     # but in the case of mysql multi-table update, the rules for
@@ -397,6 +402,26 @@ def _get_crud_params(
             cast("Callable[..., str]", _column_as_key),
             kw,
         )
+
+        if bindmarkers:
+            _replace_bindmarkers(
+                compiler,
+                _column_as_key,
+                bindmarkers,
+                compile_state,
+                values,
+                kw,
+            )
+            for m_v in multi_extended_values:
+                _replace_bindmarkers(
+                    compiler,
+                    _column_as_key,
+                    bindmarkers,
+                    compile_state,
+                    m_v,
+                    kw,
+                )
+
         return _CrudParams(values, multi_extended_values)
     elif (
         not values
@@ -417,6 +442,10 @@ def _get_crud_params(
         ]
         is_default_metavalue_only = True
 
+    if bindmarkers:
+        _replace_bindmarkers(
+            compiler, _column_as_key, bindmarkers, compile_state, values, kw
+        )
     return _CrudParams(
         values,
         [],
@@ -424,6 +453,45 @@ def _get_crud_params(
         use_insertmanyvalues=use_insertmanyvalues,
         use_sentinel_columns=use_sentinel_columns,
     )
+
+
+def _replace_bindmarkers(
+    compiler, _column_as_key, bindmarkers, compile_state, values, kw
+):
+    _expr_by_col_key = {
+        _column_as_key(col): compiled_str for col, _, compiled_str, _ in values
+    }
+
+    def replace_marker(m):
+        try:
+            return _expr_by_col_key[m.group(1)]
+        except KeyError as ke:
+            if dml.isupdate(compile_state):
+                return compiler.process(bindmarkers[m.group(1)].column, **kw)
+            else:
+                raise exc.CompileError(
+                    f"Can't resolve referenced column name in "
+                    f"INSERT statement: {m.group(1)!r}"
+                ) from ke
+
+    values[:] = [
+        (
+            col,
+            col_value,
+            re.sub(
+                r"__BINDMARKER_~~(.+?)~~",
+                replace_marker,
+                compiled_str,
+            ),
+            accumulated_bind_names,
+        )
+        for (
+            col,
+            col_value,
+            compiled_str,
+            accumulated_bind_names,
+        ) in values
+    ]
 
 
 @overload

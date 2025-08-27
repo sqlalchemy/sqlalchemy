@@ -45,6 +45,7 @@ from typing import FrozenSet
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Match
 from typing import MutableMapping
@@ -2863,6 +2864,9 @@ class SQLCompiler(Compiled):
     ) -> str:
         return self._generate_delimited_list(element.clauses, " ", **kw)
 
+    def visit_order_by_list(self, element, **kw):
+        return self._generate_delimited_list(element.clauses, ", ", **kw)
+
     def visit_clauselist(
         self, clauselist: ColumnClause[Any], **kw: Any
     ) -> str:
@@ -3920,6 +3924,16 @@ class SQLCompiler(Compiled):
             "%s dialect does not support regular expression replacements"
             % self.dialect.name
         )
+
+    def visit_dmltargetcopy(self, element, *, bindmarkers=None, **kw):
+        if bindmarkers is None:
+            raise exc.CompileError(
+                "DML target objects may only be used with "
+                "compiled INSERT or UPDATE statements"
+            )
+
+        bindmarkers[element.column.key] = element
+        return f"__BINDMARKER_~~{element.column.key}~~"
 
     def visit_bindparam(
         self,

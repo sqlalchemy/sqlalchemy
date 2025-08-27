@@ -14,16 +14,16 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Coroutine
+from typing import Literal
 from typing import NoReturn
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
 from .compat import py311
 from .langhelpers import memoized_property
-from .typing import Literal
 from .typing import Self
-from .typing import TypeGuard
 from .. import exc
 
 _T = TypeVar("_T")

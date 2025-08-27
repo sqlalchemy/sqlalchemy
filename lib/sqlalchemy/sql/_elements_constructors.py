@@ -10,6 +10,7 @@ from __future__ import annotations
 import typing
 from typing import Any
 from typing import Callable
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -20,6 +21,7 @@ from typing import TypeVar
 from typing import Union
 
 from . import coercions
+from . import operators
 from . import roles
 from .base import _NoArg
 from .coercions import _document_text_coercion
@@ -31,11 +33,13 @@ from .elements import CollationClause
 from .elements import CollectionAggregate
 from .elements import ColumnClause
 from .elements import ColumnElement
+from .elements import DMLTargetCopy
 from .elements import Extract
 from .elements import False_
 from .elements import FunctionFilter
 from .elements import Label
 from .elements import Null
+from .elements import OrderByList
 from .elements import Over
 from .elements import TextClause
 from .elements import True_
@@ -45,13 +49,13 @@ from .elements import TypeCoerce
 from .elements import UnaryExpression
 from .elements import WithinGroup
 from .functions import FunctionElement
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _DMLOnlyColumnArgument
     from ._typing import _TypeEngineArgument
     from .elements import BinaryExpression
     from .selectable import FromClause
@@ -111,7 +115,10 @@ def all_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         :func:`_expression.any_`
 
     """
-    return CollectionAggregate._create_all(expr)
+    if isinstance(expr, operators.ColumnOperators):
+        return expr.all_()
+    else:
+        return CollectionAggregate._create_all(expr)
 
 
 def and_(  # type: ignore[empty-body]
@@ -294,12 +301,27 @@ def any_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         :func:`_expression.all_`
 
     """
-    return CollectionAggregate._create_any(expr)
+    if isinstance(expr, operators.ColumnOperators):
+        return expr.any_()
+    else:
+        return CollectionAggregate._create_any(expr)
+
+
+@overload
+def asc(
+    column: Union[str, "ColumnElement[_T]"],
+) -> UnaryExpression[_T]: ...
+
+
+@overload
+def asc(
+    column: _ColumnExpressionOrStrLabelArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]: ...
 
 
 def asc(
     column: _ColumnExpressionOrStrLabelArgument[_T],
-) -> UnaryExpression[_T]:
+) -> Union[OrderByList, UnaryExpression[_T]]:
     """Produce an ascending ``ORDER BY`` clause element.
 
     e.g.::
@@ -337,7 +359,11 @@ def asc(
         :meth:`_expression.Select.order_by`
 
     """
-    return UnaryExpression._create_asc(column)
+
+    if isinstance(column, operators.OrderingOperators):
+        return column.asc()  # type: ignore[unused-ignore]
+    else:
+        return UnaryExpression._create_asc(column)
 
 
 def collate(
@@ -359,7 +385,12 @@ def collate(
     identifier, e.g. contains uppercase characters.
 
     """
-    return CollationClause._create_collation_expression(expression, collation)
+    if isinstance(expression, operators.ColumnOperators):
+        return expression.collate(collation)  # type: ignore
+    else:
+        return CollationClause._create_collation_expression(
+            expression, collation
+        )
 
 
 def between(
@@ -457,6 +488,41 @@ def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
     """
 
     return coercions.expect(roles.ExpressionElementRole, clause).__invert__()
+
+
+def from_dml_column(column: _DMLOnlyColumnArgument[_T]) -> DMLTargetCopy[_T]:
+    r"""A placeholder that may be used in compiled INSERT or UPDATE expressions
+    to refer to the SQL expression or value being applied to another column.
+
+    Given a table such as::
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+
+    The :func:`_sql.from_dml_column` construct allows automatic copying
+    of an expression assigned to a different column to be re-used::
+
+        >>> stmt = t.insert().values(x=func.foobar(3), y=from_dml_column(t.c.x) + 5)
+        >>> print(stmt)
+        INSERT INTO t (x, y) VALUES (foobar(:foobar_1), (foobar(:foobar_1) + :param_1))
+
+    The :func:`_sql.from_dml_column` construct is intended to be useful primarily
+    with event-based hooks such as those used by ORM hybrids.
+
+    .. seealso::
+
+        :ref:`hybrid_bulk_update`
+
+    .. versionadded:: 2.1
+
+
+    """  # noqa: E501
+
+    return DMLTargetCopy(column)
 
 
 def bindparam(
@@ -1046,9 +1112,21 @@ def column(
     return ColumnClause(text, type_, is_literal, _selectable)
 
 
+@overload
+def desc(
+    column: Union[str, "ColumnElement[_T]"],
+) -> UnaryExpression[_T]: ...
+
+
+@overload
 def desc(
     column: _ColumnExpressionOrStrLabelArgument[_T],
-) -> UnaryExpression[_T]:
+) -> Union[OrderByList, UnaryExpression[_T]]: ...
+
+
+def desc(
+    column: _ColumnExpressionOrStrLabelArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]:
     """Produce a descending ``ORDER BY`` clause element.
 
     e.g.::
@@ -1086,7 +1164,10 @@ def desc(
         :meth:`_expression.Select.order_by`
 
     """
-    return UnaryExpression._create_desc(column)
+    if isinstance(column, operators.OrderingOperators):
+        return column.desc()  # type: ignore[unused-ignore]
+    else:
+        return UnaryExpression._create_desc(column)
 
 
 def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
@@ -1135,7 +1216,10 @@ def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
         :data:`.func`
 
     """  # noqa: E501
-    return UnaryExpression._create_distinct(expr)
+    if isinstance(expr, operators.ColumnOperators):
+        return expr.distinct()
+    else:
+        return UnaryExpression._create_distinct(expr)
 
 
 def bitwise_not(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
@@ -1151,8 +1235,10 @@ def bitwise_not(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
 
 
     """
-
-    return UnaryExpression._create_bitwise_not(expr)
+    if isinstance(expr, operators.ColumnOperators):
+        return expr.bitwise_not()
+    else:
+        return UnaryExpression._create_bitwise_not(expr)
 
 
 def extract(field: str, expr: _ColumnExpressionArgument[Any]) -> Extract:
@@ -1299,7 +1385,21 @@ def null() -> Null:
     return Null._instance()
 
 
-def nulls_first(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
+@overload
+def nulls_first(
+    column: "ColumnElement[_T]",
+) -> UnaryExpression[_T]: ...
+
+
+@overload
+def nulls_first(
+    column: _ColumnExpressionArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]: ...
+
+
+def nulls_first(
+    column: _ColumnExpressionArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]:
     """Produce the ``NULLS FIRST`` modifier for an ``ORDER BY`` expression.
 
     :func:`.nulls_first` is intended to modify the expression produced
@@ -1342,10 +1442,27 @@ def nulls_first(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
         :meth:`_expression.Select.order_by`
 
     """  # noqa: E501
-    return UnaryExpression._create_nulls_first(column)
+    if isinstance(column, operators.OrderingOperators):
+        return column.nulls_first()
+    else:
+        return UnaryExpression._create_nulls_first(column)
 
 
-def nulls_last(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
+@overload
+def nulls_last(
+    column: "ColumnElement[_T]",
+) -> UnaryExpression[_T]: ...
+
+
+@overload
+def nulls_last(
+    column: _ColumnExpressionArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]: ...
+
+
+def nulls_last(
+    column: _ColumnExpressionArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]:
     """Produce the ``NULLS LAST`` modifier for an ``ORDER BY`` expression.
 
     :func:`.nulls_last` is intended to modify the expression produced
@@ -1386,7 +1503,10 @@ def nulls_last(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
         :meth:`_expression.Select.order_by`
 
     """  # noqa: E501
-    return UnaryExpression._create_nulls_last(column)
+    if isinstance(column, operators.OrderingOperators):
+        return column.nulls_last()
+    else:
+        return UnaryExpression._create_nulls_last(column)
 
 
 def or_(  # type: ignore[empty-body]
@@ -1713,7 +1833,7 @@ def true() -> True_:
 
 
 def tuple_(
-    *clauses: _ColumnExpressionArgument[Any],
+    *clauses: _ColumnExpressionOrLiteralArgument[Any],
     types: Optional[Sequence[_TypeEngineArgument[Any]]] = None,
 ) -> Tuple:
     """Return a :class:`.Tuple`.

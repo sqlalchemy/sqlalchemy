@@ -19,6 +19,7 @@ from typing import FrozenSet
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -74,7 +75,6 @@ from ..util.typing import CallableReference
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import is_generic
 from ..util.typing import is_literal
-from ..util.typing import Literal
 from ..util.typing import LITERAL_TYPES
 from ..util.typing import Self
 

@@ -20,6 +20,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import get_args
 from typing import List
 from typing import NoReturn
 from typing import Optional
@@ -44,7 +45,6 @@ from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
-from .util import _none_set
 from .util import de_stringify_annotation
 from .. import event
 from .. import exc as sa_exc
@@ -55,9 +55,11 @@ from ..sql import expression
 from ..sql import operators
 from ..sql.base import _NoArg
 from ..sql.elements import BindParameter
-from ..util.typing import get_args
+from ..util.typing import de_optionalize_union_types
+from ..util.typing import includes_none
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
+from ..util.typing import is_union
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
@@ -218,6 +220,9 @@ class CompositeProperty(
             None, Type[_CC], Callable[..., _CC], _CompositeAttrType[Any]
         ] = None,
         *attrs: _CompositeAttrType[Any],
+        return_none_on: Union[
+            _NoArg, None, Callable[..., bool]
+        ] = _NoArg.NO_ARG,
         attribute_options: Optional[_AttributeOptions] = None,
         active_history: bool = False,
         deferred: bool = False,
@@ -236,6 +241,7 @@ class CompositeProperty(
             self.composite_class = _class_or_attr  # type: ignore
             self.attrs = attrs
 
+        self.return_none_on = return_none_on
         self.active_history = active_history
         self.deferred = deferred
         self.group = group
@@ -251,6 +257,21 @@ class CompositeProperty(
         util.set_creation_order(self)
         self._create_descriptor()
         self._init_accessor()
+
+    @util.memoized_property
+    def _construct_composite(self) -> Callable[..., Any]:
+        return_none_on = self.return_none_on
+        if callable(return_none_on):
+
+            def construct(*args: Any) -> Any:
+                if return_none_on(*args):
+                    return None
+                else:
+                    return self.composite_class(*args)
+
+            return construct
+        else:
+            return self.composite_class
 
     def instrument_class(self, mapper: Mapper[Any]) -> None:
         super().instrument_class(mapper)
@@ -298,15 +319,8 @@ class CompositeProperty(
                     getattr(instance, key) for key in self._attribute_keys
                 ]
 
-                # current expected behavior here is that the composite is
-                # created on access if the object is persistent or if
-                # col attributes have non-None.  This would be better
-                # if the composite were created unconditionally,
-                # but that would be a behavioral change.
-                if self.key not in dict_ and (
-                    state.key is not None or not _none_set.issuperset(values)
-                ):
-                    dict_[self.key] = self.composite_class(*values)
+                if self.key not in dict_:
+                    dict_[self.key] = self._construct_composite(*values)
                     state.manager.dispatch.refresh(
                         state, self._COMPOSITE_FGET, [self.key]
                     )
@@ -399,10 +413,19 @@ class CompositeProperty(
                     cls, argument, originating_module, include_generic=True
                 )
 
+            if is_union(argument) and includes_none(argument):
+                if self.return_none_on is _NoArg.NO_ARG:
+                    self.return_none_on = lambda *args: all(
+                        arg is None for arg in args
+                    )
+                argument = de_optionalize_union_types(argument)
+
             self.composite_class = argument
 
         if is_dataclass(self.composite_class):
-            self._setup_for_dataclass(registry, cls, originating_module, key)
+            self._setup_for_dataclass(
+                decl_scan, registry, cls, originating_module, key
+            )
         else:
             for attr in self.attrs:
                 if (
@@ -446,6 +469,7 @@ class CompositeProperty(
     @util.preload_module("sqlalchemy.orm.decl_base")
     def _setup_for_dataclass(
         self,
+        decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -473,6 +497,7 @@ class CompositeProperty(
 
             if isinstance(attr, MappedColumn):
                 attr.declarative_scan_for_composite(
+                    decl_scan,
                     registry,
                     cls,
                     originating_module,
@@ -604,7 +629,7 @@ class CompositeProperty(
                 if k not in dict_:
                     return
 
-            dict_[self.key] = self.composite_class(
+            dict_[self.key] = self._construct_composite(
                 *[state.dict[key] for key in self._attribute_keys]
             )
 
@@ -708,12 +733,14 @@ class CompositeProperty(
 
         if has_history:
             return attributes.History(
-                [self.composite_class(*added)],
+                [self._construct_composite(*added)],
                 (),
-                [self.composite_class(*deleted)],
+                [self._construct_composite(*deleted)],
             )
         else:
-            return attributes.History((), [self.composite_class(*added)], ())
+            return attributes.History(
+                (), [self._construct_composite(*added)], ()
+            )
 
     def _comparator_factory(
         self, mapper: Mapper[Any]
@@ -736,7 +763,7 @@ class CompositeProperty(
             labels: Sequence[str],
         ) -> Callable[[Row[Unpack[TupleAny]]], Any]:
             def proc(row: Row[Unpack[TupleAny]]) -> Any:
-                return self.property.composite_class(
+                return self.property._construct_composite(
                     *[proc(row) for proc in procs]
                 )
 
@@ -810,6 +837,9 @@ class CompositeProperty(
 
             return list(zip(self._comparable_elements, values))
 
+        def _bulk_dml_setter(self, key: str) -> Optional[Callable[..., Any]]:
+            return self.prop._populate_composite_bulk_save_mappings_fn()
+
         @util.memoized_property
         def _comparable_elements(self) -> Sequence[QueryableAttribute[Any]]:
             if self._adapt_to_entity:
@@ -837,6 +867,26 @@ class CompositeProperty(
 
         def __ge__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.ge, other)
+
+        def desc(self) -> operators.OrderingOperators:  # type: ignore[override]  # noqa: E501
+            return expression.OrderByList(
+                [e.desc() for e in self._comparable_elements]
+            )
+
+        def asc(self) -> operators.OrderingOperators:  # type: ignore[override]  # noqa: E501
+            return expression.OrderByList(
+                [e.asc() for e in self._comparable_elements]
+            )
+
+        def nulls_first(self) -> operators.OrderingOperators:  # type: ignore[override]  # noqa: E501
+            return expression.OrderByList(
+                [e.nulls_first() for e in self._comparable_elements]
+            )
+
+        def nulls_last(self) -> operators.OrderingOperators:  # type: ignore[override]  # noqa: E501
+            return expression.OrderByList(
+                [e.nulls_last() for e in self._comparable_elements]
+            )
 
         # what might be interesting would be if we create
         # an instance of the composite class itself with

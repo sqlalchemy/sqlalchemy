@@ -43,6 +43,8 @@ used when building up SQLAlchemy Expression Language constructs.
 
 .. autofunction:: false
 
+.. autofunction:: from_dml_column
+
 .. autodata:: func
 
 .. autofunction:: lambda_stmt
@@ -174,6 +176,7 @@ The classes here are generated using the constructors listed at
    :special-members:
    :inherited-members:
 
+.. autoclass:: DMLTargetCopy
 
 .. autoclass:: Extract
    :members:
@@ -193,6 +196,9 @@ The classes here are generated using the constructors listed at
 .. autoclass:: Operators
    :members:
    :special-members:
+
+.. autoclass:: OrderByList
+   :members:
 
 .. autoclass:: Over
    :members:

@@ -40,6 +40,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -58,7 +59,6 @@ from .. import util
 from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
 from ..util.typing import Self
-from ..util.typing import TypeGuard
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -1234,8 +1234,7 @@ class SyntaxExtension(roles.SyntaxExtensionRole):
         )
 
     def apply_to_insert(self, insert_stmt: Insert) -> None:
-        """Apply this :class:`.SyntaxExtension` to an
-        :class:`_sql.Insert`"""
+        """Apply this :class:`.SyntaxExtension` to an :class:`_sql.Insert`"""
         raise NotImplementedError(
             f"Extension {type(self).__name__} cannot be applied to insert"
         )
@@ -2457,11 +2456,34 @@ def _entity_namespace(
             raise
 
 
+@overload
 def _entity_namespace_key(
     entity: Union[_HasEntityNamespace, ExternallyTraversible],
     key: str,
-    default: Union[SQLCoreOperations[Any], _NoArg] = NO_ARG,
-) -> SQLCoreOperations[Any]:
+) -> SQLCoreOperations[Any]: ...
+
+
+@overload
+def _entity_namespace_key(
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
+    key: str,
+    default: _NoArg,
+) -> SQLCoreOperations[Any]: ...
+
+
+@overload
+def _entity_namespace_key(
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
+    key: str,
+    default: _T,
+) -> Union[SQLCoreOperations[Any], _T]: ...
+
+
+def _entity_namespace_key(
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
+    key: str,
+    default: Union[SQLCoreOperations[Any], _T, _NoArg] = NO_ARG,
+) -> Union[SQLCoreOperations[Any], _T]:
     """Return an entry from an entity_namespace.
 
 

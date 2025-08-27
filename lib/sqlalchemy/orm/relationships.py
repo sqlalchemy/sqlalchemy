@@ -32,6 +32,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
@@ -94,7 +95,6 @@ from ..sql.util import join_condition
 from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
 from ..util.typing import de_optionalize_union_types
-from ..util.typing import Literal
 from ..util.typing import resolve_name_to_real_class_name
 
 if typing.TYPE_CHECKING:

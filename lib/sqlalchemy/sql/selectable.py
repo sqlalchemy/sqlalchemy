@@ -26,6 +26,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
@@ -103,7 +104,6 @@ from .. import exc
 from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import warn_deprecated
-from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
@@ -2358,10 +2358,11 @@ class SelectsRows(ReturnsRows):
         cols: Optional[_SelectIterable] = None,
     ) -> List[_ColumnsPlusNames]:
         """Generate column names as rendered in a SELECT statement by
-        the compiler.
+        the compiler, as well as tokens used to populate the .c. collection
+        on a :class:`.FromClause`.
 
         This is distinct from the _column_naming_convention generator that's
-        intended for population of .c collections and similar, which has
+        intended for population of the Select.selected_columns collection,
         different rules.   the collection returned here calls upon the
         _column_naming_convention as well.
 

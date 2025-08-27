@@ -13,6 +13,7 @@ from dataclasses import InitVar
 import functools
 import inspect as pyinspect
 from itertools import product
+from typing import Annotated
 from typing import Any
 from typing import ClassVar
 from typing import Dict
@@ -23,8 +24,6 @@ from typing import Set
 from typing import Type
 from typing import TypeVar
 from unittest import mock
-
-from typing_extensions import Annotated
 
 from sqlalchemy import BigInteger
 from sqlalchemy import Column
@@ -69,7 +68,6 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import Variation
-from sqlalchemy.util import compat
 
 
 def _dataclass_mixin_warning(clsname, attrnames):
@@ -734,7 +732,6 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         a2 = A(id=1, data="foo")
         eq_(a1, a2)
 
-    @testing.requires.python310
     def test_kw_only_attribute(self, dc_decl_base: Type[MappedAsDataclass]):
         class A(dc_decl_base):
             __tablename__ = "a"
@@ -767,7 +764,6 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             a.data = "y"
             ne_(hash(a), a_hash1)
 
-    @testing.requires.python310
     def test_kw_only_dataclass_constant(
         self, dc_decl_base: Type[MappedAsDataclass]
     ):
@@ -919,6 +915,19 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         fields = {f.name: f for f in dataclasses.fields(A)}
         eq_(fields["value"].default, cd)
         eq_(fields["no_init"].default, cd)
+
+    def test_dataclass_metadata(self, dc_decl_base):
+        class A(dc_decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            value: Mapped[str] = mapped_column(
+                dataclass_metadata={"meta_key": "meta_value"}
+            )
+
+        fields = {f.name: f for f in dataclasses.fields(A)}
+
+        eq_(fields["id"].metadata, {})
+        eq_(fields["value"].metadata, {"meta_key": "meta_value"})
 
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
@@ -1476,9 +1485,15 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
 
 
 class DataclassArgsTest(fixtures.TestBase):
-    dc_arg_names = ("init", "repr", "eq", "order", "unsafe_hash")
-    if compat.py310:
-        dc_arg_names += ("match_args", "kw_only")
+    dc_arg_names = (
+        "init",
+        "repr",
+        "eq",
+        "order",
+        "unsafe_hash",
+        "match_args",
+        "kw_only",
+    )
 
     @testing.fixture(params=product(dc_arg_names, (True, False)))
     def dc_argument_fixture(self, request: Any, registry: _RegistryType):
@@ -1494,9 +1509,9 @@ class DataclassArgsTest(fixtures.TestBase):
                 "eq": True,
                 "order": False,
                 "unsafe_hash": False,
+                "match_args": True,
+                "kw_only": False,
             }
-            if compat.py310:
-                default |= {"match_args": True, "kw_only": False}
             to_apply = {k: v for k, v in args.items() if v}
             effective = {**default, **to_apply}
             return to_apply, effective
@@ -1785,9 +1800,9 @@ class DataclassArgsTest(fixtures.TestBase):
             "eq": True,
             "order": True,
             "unsafe_hash": False,
+            "match_args": True,
+            "kw_only": False,
         }
-        if compat.py310:
-            effective |= {"match_args": True, "kw_only": False}
         self._assert_cls(A, effective)
 
     def test_dc_base_unsupported_argument(self, registry: _RegistryType):
@@ -1884,9 +1899,10 @@ class DataclassArgsTest(fixtures.TestBase):
                 "compare": True,
                 "kw_only": False,
                 "hash": False,
+                "dataclass_metadata": None,
             }
             exp = interfaces._AttributeOptions(
-                False, False, None, list, True, False, False
+                False, False, None, list, True, False, False, None
             )
         else:
             kw = {}
@@ -1913,6 +1929,7 @@ class DataclassArgsTest(fixtures.TestBase):
                 _NoArg.NO_ARG,
                 _NoArg.NO_ARG,
                 True,
+                _NoArg.NO_ARG,
                 _NoArg.NO_ARG,
                 _NoArg.NO_ARG,
             )

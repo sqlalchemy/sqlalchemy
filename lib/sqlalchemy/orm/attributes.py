@@ -26,6 +26,7 @@ from typing import ClassVar
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import NamedTuple
 from typing import Optional
 from typing import overload
@@ -33,6 +34,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -90,9 +92,7 @@ from ..sql import visitors
 from ..sql.cache_key import HasCacheKey
 from ..sql.visitors import _TraverseInternalsType
 from ..sql.visitors import InternalTraversal
-from ..util.typing import Literal
 from ..util.typing import Self
-from ..util.typing import TypeGuard
 
 if TYPE_CHECKING:
     from ._typing import _EntityType
@@ -391,6 +391,11 @@ class QueryableAttribute(
         """Return setter tuples for a bulk UPDATE."""
 
         return self.comparator._bulk_update_tuples(value)
+
+    def _bulk_dml_setter(self, key: str) -> Optional[Callable[..., Any]]:
+        """return a callable that will process a bulk INSERT value"""
+
+        return self.comparator._bulk_dml_setter(key)
 
     def adapt_to_entity(self, adapt_to_entity: AliasedInsp[Any]) -> Self:
         assert not self._of_type

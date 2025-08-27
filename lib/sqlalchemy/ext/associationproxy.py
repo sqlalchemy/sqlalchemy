@@ -29,6 +29,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import KeysView
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import MutableSequence
@@ -61,7 +62,6 @@ from ..orm.interfaces import _DEFAULT_ATTRIBUTE_OPTIONS
 from ..sql import operators
 from ..sql import or_
 from ..sql.base import _NoArg
-from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import SupportsKeysAndGetItem
 
@@ -69,6 +69,7 @@ if typing.TYPE_CHECKING:
     from ..orm.interfaces import MapperProperty
     from ..orm.interfaces import PropComparator
     from ..orm.mapper import Mapper
+    from ..orm.util import AliasedInsp
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _InfoType
 
@@ -99,6 +100,7 @@ def association_proxy(
     compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
     hash: Union[_NoArg, bool, None] = _NoArg.NO_ARG,  # noqa: A002
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
 ) -> AssociationProxy[Any]:
     r"""Return a Python property implementing a view of a target
     attribute which references an attribute on members of the
@@ -204,6 +206,12 @@ def association_proxy(
 
      .. versionadded:: 2.0.36
 
+    :param dataclass_metadata: Specific to
+     :ref:`orm_declarative_native_dataclasses`, supplies metadata
+     to be attached to the generated dataclass field.
+
+     .. versionadded:: 2.0.42
+
     :param info: optional, will be assigned to
      :attr:`.AssociationProxy.info` if present.
 
@@ -243,7 +251,14 @@ def association_proxy(
         cascade_scalar_deletes=cascade_scalar_deletes,
         create_on_none_assignment=create_on_none_assignment,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only, hash
+            init,
+            repr,
+            default,
+            default_factory,
+            compare,
+            kw_only,
+            hash,
+            dataclass_metadata,
         ),
     )
 
@@ -1217,6 +1232,11 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance[_T]):
     _target_is_object: bool = True
     _is_canonical = True
 
+    def adapt_to_entity(
+        self, aliased_insp: AliasedInsp[Any]
+    ) -> AliasedAssociationProxyInstance[_T]:
+        return AliasedAssociationProxyInstance(self, aliased_insp)
+
     def contains(self, other: Any, **kw: Any) -> ColumnElement[bool]:
         """Produce a proxied 'contains' expression using EXISTS.
 
@@ -1267,6 +1287,44 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance[_T]):
         # is only allowed with a scalar.
         return self._comparator.has(
             getattr(self.target_class, self.value_attr) != obj
+        )
+
+
+class AliasedAssociationProxyInstance(ObjectAssociationProxyInstance[_T]):
+    def __init__(
+        self,
+        parent_instance: ObjectAssociationProxyInstance[_T],
+        aliased_insp: AliasedInsp[Any],
+    ) -> None:
+        self.parent = parent_instance.parent
+        self.owning_class = parent_instance.owning_class
+        self.aliased_insp = aliased_insp
+        self.target_collection = parent_instance.target_collection
+        self.collection_class = None
+        self.target_class = parent_instance.target_class
+        self.value_attr = parent_instance.value_attr
+
+    @property
+    def _comparator(self) -> PropComparator[Any]:
+        return getattr(  # type: ignore
+            self.aliased_insp.entity, self.target_collection
+        ).comparator
+
+    @property
+    def local_attr(self) -> SQLORMOperations[Any]:
+        """The 'local' class attribute referenced by this
+        :class:`.AssociationProxyInstance`.
+
+        .. seealso::
+
+            :attr:`.AssociationProxyInstance.attr`
+
+            :attr:`.AssociationProxyInstance.remote_attr`
+
+        """
+        return cast(
+            "SQLORMOperations[Any]",
+            getattr(self.aliased_insp.entity, self.target_collection),
         )
 
 

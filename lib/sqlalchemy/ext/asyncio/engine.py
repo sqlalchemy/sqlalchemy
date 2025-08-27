@@ -11,11 +11,13 @@ import contextlib
 from typing import Any
 from typing import AsyncIterator
 from typing import Callable
+from typing import Concatenate
 from typing import Dict
 from typing import Generator
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import ParamSpec
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -40,8 +42,6 @@ from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
 from ...exc import ArgumentError
 from ...util.concurrency import greenlet_spawn
-from ...util.typing import Concatenate
-from ...util.typing import ParamSpec
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack

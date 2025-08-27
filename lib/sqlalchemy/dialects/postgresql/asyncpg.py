@@ -178,13 +178,15 @@ client using this setting passed to :func:`_asyncio.create_async_engine`::
 
 from __future__ import annotations
 
-import asyncio
 from collections import deque
 import decimal
 import json as _py_json
 import re
 import time
+from types import NoneType
 from typing import Any
+from typing import Awaitable
+from typing import Callable
 from typing import NoReturn
 from typing import Optional
 from typing import Protocol
@@ -216,6 +218,7 @@ from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...connectors.asyncio import AsyncAdapt_terminate
 from ...engine import processors
 from ...sql import sqltypes
 from ...util.concurrency import await_
@@ -433,8 +436,6 @@ class _AsyncpgMultiRange(ranges.AbstractMultiRangeImpl):
     def bind_processor(self, dialect):
         asyncpg_Range = dialect.dbapi.asyncpg.Range
 
-        NoneType = type(None)
-
         def to_range(value):
             if isinstance(value, (str, NoneType)):
                 return value
@@ -510,6 +511,12 @@ class PGIdentifierPreparer_asyncpg(PGIdentifierPreparer):
     pass
 
 
+class _AsyncpgTransaction(Protocol):
+    async def start(self) -> None: ...
+    async def commit(self) -> None: ...
+    async def rollback(self) -> None: ...
+
+
 class _AsyncpgConnection(Protocol):
     async def executemany(
         self, operation: Any, seq_of_parameters: Sequence[Tuple[Any, ...]]
@@ -529,11 +536,11 @@ class _AsyncpgConnection(Protocol):
         isolation: Optional[str] = None,
         readonly: bool = False,
         deferrable: bool = False,
-    ) -> Any: ...
+    ) -> _AsyncpgTransaction: ...
 
     def fetchrow(self, operation: str) -> Any: ...
 
-    async def close(self) -> None: ...
+    async def close(self, timeout: int = ...) -> None: ...
 
     def terminate(self) -> None: ...
 
@@ -553,6 +560,7 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
     _adapt_connection: AsyncAdapt_asyncpg_connection
     _connection: _AsyncpgConnection
     _cursor: Optional[_AsyncpgCursor]
+    _awaitable_cursor_close: bool = False
 
     def __init__(self, adapt_connection: AsyncAdapt_asyncpg_connection):
         self._adapt_connection = adapt_connection
@@ -571,7 +579,7 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
         adapt_connection = self._adapt_connection
 
         async with adapt_connection._execute_mutex:
-            if not adapt_connection._started:
+            if adapt_connection._transaction is None:
                 await adapt_connection._start_transaction()
 
             if parameters is None:
@@ -642,7 +650,7 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
                 self._invalidate_schema_cache_asof
             )
 
-            if not adapt_connection._started:
+            if adapt_connection._transaction is None:
                 await adapt_connection._start_transaction()
 
             try:
@@ -742,11 +750,14 @@ class AsyncAdapt_asyncpg_ss_cursor(
         )
 
 
-class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
+class AsyncAdapt_asyncpg_connection(
+    AsyncAdapt_terminate, AsyncAdapt_dbapi_connection
+):
     _cursor_cls = AsyncAdapt_asyncpg_cursor
     _ss_cursor_cls = AsyncAdapt_asyncpg_ss_cursor
 
     _connection: _AsyncpgConnection
+    _transaction: Optional[_AsyncpgTransaction]
 
     __slots__ = (
         "isolation_level",
@@ -754,7 +765,6 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
         "readonly",
         "deferrable",
         "_transaction",
-        "_started",
         "_prepared_statement_cache",
         "_prepared_statement_name_func",
         "_invalidate_schema_cache_asof",
@@ -772,7 +782,6 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
         self.readonly = False
         self.deferrable = False
         self._transaction = None
-        self._started = False
         self._invalidate_schema_cache_asof = time.time()
 
         if prepared_statement_cache_size:
@@ -826,7 +835,6 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
     def _handle_exception(self, error: Exception) -> NoReturn:
         if self._connection.is_closed():
             self._transaction = None
-            self._started = False
 
         if not isinstance(error, AsyncAdapt_asyncpg_dbapi.Error):
             exception_mapping = self.dbapi._asyncpg_error_translate
@@ -876,14 +884,14 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
             await self._connection.fetchrow(";")
 
     def set_isolation_level(self, level):
-        if self._started:
-            self.rollback()
+        self.rollback()
         self.isolation_level = self._isolation_setting = level
 
     async def _start_transaction(self):
         if self.isolation_level == "autocommit":
             return
 
+        assert self._transaction is None
         try:
             self._transaction = self._connection.transaction(
                 isolation=self.isolation_level,
@@ -893,46 +901,28 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
             await self._transaction.start()
         except Exception as error:
             self._handle_exception(error)
-        else:
-            self._started = True
 
-    async def _rollback_and_discard(self):
+    async def _call_and_discard(self, fn: Callable[[], Awaitable[Any]]):
         try:
-            await self._transaction.rollback()
+            await fn()
         finally:
-            # if asyncpg .rollback() was actually called, then whether or
-            # not it raised or succeeded, the transation is done, discard it
+            # if asyncpg fn was actually called, then whether or
+            # not it raised or succeeded, the transaction is done, discard it
             self._transaction = None
-            self._started = False
-
-    async def _commit_and_discard(self):
-        try:
-            await self._transaction.commit()
-        finally:
-            # if asyncpg .commit() was actually called, then whether or
-            # not it raised or succeeded, the transation is done, discard it
-            self._transaction = None
-            self._started = False
 
     def rollback(self):
-        if self._started:
-            assert self._transaction is not None
+        if self._transaction is not None:
             try:
-                await_(self._rollback_and_discard())
-                self._transaction = None
-                self._started = False
+                await_(self._call_and_discard(self._transaction.rollback))
             except Exception as error:
                 # don't dereference asyncpg transaction if we didn't
                 # actually try to call rollback() on it
                 self._handle_exception(error)
 
     def commit(self):
-        if self._started:
-            assert self._transaction is not None
+        if self._transaction is not None:
             try:
-                await_(self._commit_and_discard())
-                self._transaction = None
-                self._started = False
+                await_(self._call_and_discard(self._transaction.commit))
             except Exception as error:
                 # don't dereference asyncpg transaction if we didn't
                 # actually try to call commit() on it
@@ -943,33 +933,19 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
 
         await_(self._connection.close())
 
-    def terminate(self):
-        if util.concurrency.in_greenlet():
-            # in a greenlet; this is the connection was invalidated
-            # case.
-            try:
-                # try to gracefully close; see #10717
-                # timeout added in asyncpg 0.14.0 December 2017
-                await_(asyncio.shield(self._connection.close(timeout=2)))
-            except (
-                asyncio.TimeoutError,
-                asyncio.CancelledError,
-                OSError,
-                self.dbapi.asyncpg.PostgresError,
-            ) as e:
-                # in the case where we are recycling an old connection
-                # that may have already been disconnected, close() will
-                # fail with the above timeout.  in this case, terminate
-                # the connection without any further waiting.
-                # see issue #8419
-                self._connection.terminate()
-                if isinstance(e, asyncio.CancelledError):
-                    # re-raise CancelledError if we were cancelled
-                    raise
-        else:
-            # not in a greenlet; this is the gc cleanup case
-            self._connection.terminate()
-        self._started = False
+    def _terminate_handled_exceptions(self):
+        return super()._terminate_handled_exceptions() + (
+            self.dbapi.asyncpg.PostgresError,
+        )
+
+    async def _terminate_graceful_close(self) -> None:
+        # timeout added in asyncpg 0.14.0 December 2017
+        await self._connection.close(timeout=2)
+        self._transaction = None
+
+    def _terminate_force_close(self) -> None:
+        self._connection.terminate()
+        self._transaction = None
 
     @staticmethod
     def _default_name_func():
@@ -1147,6 +1123,9 @@ class PGDialect_asyncpg(PGDialect):
 
     def set_isolation_level(self, dbapi_connection, level):
         dbapi_connection.set_isolation_level(self._isolation_lookup[level])
+
+    def detect_autocommit_setting(self, dbapi_conn) -> bool:
+        return bool(dbapi_conn.autocommit)
 
     def set_readonly(self, connection, value):
         connection.readonly = value
