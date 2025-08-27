@@ -87,7 +87,6 @@ from .visitors import prefix_anon_map
 from .. import exc
 from .. import util
 from ..util import FastIntFlag
-from ..util.typing import Literal
 from ..util.typing import LiteralString
 from ..util.typing import Self
 from ..util.typing import TupleAny
