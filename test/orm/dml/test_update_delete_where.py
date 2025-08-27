@@ -355,7 +355,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         User = self.classes.User
 
-        s = Session(testing.db, future=True)
+        s = fixture_session()
 
         jill = s.query(User).filter(User.name == "jill").one()
 
@@ -380,7 +380,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         User = self.classes.User
 
-        s = Session(testing.db, future=True)
+        s = fixture_session()
 
         jill = s.query(User).filter(User.name == "jill").one()
 
@@ -902,10 +902,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([15, 27, 19, 27])),
         )
 
-    def test_update_future(self):
+    def test_update_newstyle(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session(testing.db, future=True)
+        sess = fixture_session()
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -956,10 +956,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
     @testing.variation("values_first", [True, False])
-    def test_update_future_lambda(self, values_first):
+    def test_update_newstyle_lambda(self, values_first):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session(testing.db, future=True)
+        sess = fixture_session()
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -1028,15 +1028,13 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
     @testing.combinations(
-        ("fetch", False),
-        ("fetch", True),
-        ("evaluate", False),
-        ("evaluate", True),
+        ("fetch",),
+        ("evaluate",),
     )
-    def test_update_with_loader_criteria(self, fetchstyle, future):
+    def test_update_with_loader_criteria(self, fetchstyle):
         User = self.classes.User
 
-        sess = Session(testing.db, future=True)
+        sess = fixture_session()
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -1059,15 +1057,13 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
     @testing.combinations(
-        ("fetch", False),
-        ("fetch", True),
-        ("evaluate", False),
-        ("evaluate", True),
+        ("fetch",),
+        ("evaluate",),
     )
-    def test_delete_with_loader_criteria(self, fetchstyle, future):
+    def test_delete_with_loader_criteria(self, fetchstyle):
         User = self.classes.User
 
-        sess = Session(testing.db, future=True)
+        sess = fixture_session()
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -1267,7 +1263,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_update_fetch_returning_lambda(self):
         User = self.classes.User
 
-        sess = Session(testing.db, future=True)
+        sess = fixture_session()
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -1538,7 +1534,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_delete_fetch_returning_lambda(self):
         User = self.classes.User
 
-        sess = Session(testing.db, future=True)
+        sess = fixture_session()
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -1810,7 +1806,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
         eq_(rowcount, 2)
 
-        # test future
         result = sess.execute(
             update(User).where(User.age > 19).values({"age": User.age - 10}),
             execution_options={"synchronize_session": synchronize_session},
@@ -2048,9 +2043,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
         eq_(m1.mock_calls[0][1][0], ["name", "age_int"])
 
-    def test_update_multi_values_error_future(self):
+    def test_update_multi_values_error(self):
         User = self.classes.User
-        session = Session(testing.db, future=True)
+        session = fixture_session()
 
         # Do update using a tuple and check that order is preserved
 
@@ -2067,9 +2062,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
             stmt,
         )
 
-    def test_update_preserve_parameter_order_future(self):
+    def test_update_preserve_parameter_order(self):
         User = self.classes.User
-        session = Session(testing.db, future=True)
+        session = fixture_session()
 
         # Do update using a tuple and check that order is preserved
 
@@ -2799,7 +2794,7 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         person = self.classes.Person.__table__
         engineer = self.classes.Engineer.__table__
 
-        sess = Session(testing.db, future=True)
+        sess = fixture_session()
         sess.query(person.join(engineer)).filter(person.c.name == "e2").update(
             {person.c.name: "updated", engineer.c.engineer_name: "e2a"},
         )
@@ -3156,7 +3151,7 @@ class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
         ("evaluate", False),
         ("evaluate", True),
     )
-    def test_update(self, fetchstyle, future):
+    def test_update(self, fetchstyle, newstyle):
         Staff, Sales, Support = self.classes("Staff", "Sales", "Support")
 
         sess = fixture_session()
@@ -3172,7 +3167,7 @@ class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
             .all()
         )
 
-        if future:
+        if newstyle:
             sess.execute(
                 update(Sales)
                 .filter_by(name="n1")
@@ -3206,14 +3201,14 @@ class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
         ("evaluate", False),
         ("evaluate", True),
     )
-    def test_delete(self, fetchstyle, future):
+    def test_delete(self, fetchstyle, newstyle):
         Staff, Sales, Support = self.classes("Staff", "Sales", "Support")
 
         sess = fixture_session()
         en1, en2 = sess.query(Sales).order_by(Sales.sales_stats).all()
         mn1, mn2 = sess.query(Support).order_by(Support.support_stats).all()
 
-        if future:
+        if newstyle:
             sess.execute(
                 delete(Sales)
                 .filter_by(name="n1")
