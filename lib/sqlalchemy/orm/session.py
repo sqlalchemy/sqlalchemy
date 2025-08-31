@@ -1484,6 +1484,7 @@ class Session(_SessionClassMethods, EventTarget):
     enable_baked_queries: bool
     twophase: bool
     join_transaction_mode: JoinTransactionMode
+    execution_options: _ExecuteOptions = util.EMPTY_DICT
     _query_cls: Type[Query[Any]]
     _close_state: _SessionCloseState
 
@@ -1503,6 +1504,7 @@ class Session(_SessionClassMethods, EventTarget):
         autocommit: Literal[False] = False,
         join_transaction_mode: JoinTransactionMode = "conditional_savepoint",
         close_resets_only: Union[bool, _NoArg] = _NoArg.NO_ARG,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ):
         r"""Construct a new :class:`_orm.Session`.
 
@@ -1597,6 +1599,15 @@ class Session(_SessionClassMethods, EventTarget):
               legacy and is not used by any of SQLAlchemy's internals. This
               flag therefore only affects applications that are making explicit
               use of this extension within their own code.
+
+        :param execution_options: optional dictionary of execution options
+           that will be applied to all calls to :meth:`_orm.Session.execute`,
+           :meth:`_orm.Session.scalars`, and similar.  Execution options
+           present in statements as well as options passed to methods like
+           :meth:`_orm.Session.execute` explicitly take precedence over
+           the session-wide options.
+
+           .. versionadded:: 2.1
 
         :param expire_on_commit:  Defaults to ``True``. When ``True``, all
            instances will be fully expired after each :meth:`~.commit`,
@@ -1759,6 +1770,10 @@ class Session(_SessionClassMethods, EventTarget):
         self.autoflush = autoflush
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
+        if execution_options:
+            self.execution_options = self.execution_options.union(
+                execution_options
+            )
 
         # the idea is that at some point NO_ARG will warn that in the future
         # the default will switch to close_resets_only=False.
@@ -2157,7 +2172,28 @@ class Session(_SessionClassMethods, EventTarget):
             compile_state_cls = None
             bind_arguments.setdefault("clause", statement)
 
-        execution_options = util.coerce_to_immutabledict(execution_options)
+        combined_execution_options: util.immutabledict[str, Any] = (
+            util.coerce_to_immutabledict(execution_options)
+        )
+        if self.execution_options:
+            # merge given execution options with session-wide execution
+            # options.  if the statement also has execution_options,
+            # maintain priority of session.execution_options ->
+            # statement.execution_options -> method passed execution_options
+            # by omitting from the base execution options those keys that
+            # will come from the statement
+            if statement._execution_options:
+                combined_execution_options = util.immutabledict(
+                    {
+                        k: v
+                        for k, v in self.execution_options.items()
+                        if k not in statement._execution_options
+                    }
+                ).union(combined_execution_options)
+            else:
+                combined_execution_options = self.execution_options.union(
+                    combined_execution_options
+                )
 
         if _parent_execute_state:
             events_todo = _parent_execute_state._remaining_events()
@@ -2176,12 +2212,12 @@ class Session(_SessionClassMethods, EventTarget):
                 # as "pre fetch" for DML, etc.
                 (
                     statement,
-                    execution_options,
+                    combined_execution_options,
                 ) = compile_state_cls.orm_pre_session_exec(
                     self,
                     statement,
                     params,
-                    execution_options,
+                    combined_execution_options,
                     bind_arguments,
                     True,
                 )
@@ -2190,7 +2226,7 @@ class Session(_SessionClassMethods, EventTarget):
                 self,
                 statement,
                 params,
-                execution_options,
+                combined_execution_options,
                 bind_arguments,
                 compile_state_cls,
                 events_todo,
@@ -2207,7 +2243,7 @@ class Session(_SessionClassMethods, EventTarget):
                         return fn_result
 
             statement = orm_exec_state.statement
-            execution_options = orm_exec_state.local_execution_options
+            combined_execution_options = orm_exec_state.local_execution_options
 
         if compile_state_cls is not None:
             # now run orm_pre_session_exec() "for real".   if there were
@@ -2217,12 +2253,12 @@ class Session(_SessionClassMethods, EventTarget):
             # autoflush will also be invoked in this step if enabled.
             (
                 statement,
-                execution_options,
+                combined_execution_options,
             ) = compile_state_cls.orm_pre_session_exec(
                 self,
                 statement,
                 params,
-                execution_options,
+                combined_execution_options,
                 bind_arguments,
                 False,
             )
@@ -2238,7 +2274,9 @@ class Session(_SessionClassMethods, EventTarget):
             if TYPE_CHECKING:
                 params = cast(_CoreSingleExecuteParams, params)
             return conn.scalar(
-                statement, params or {}, execution_options=execution_options
+                statement,
+                params or {},
+                execution_options=combined_execution_options,
             )
 
         if compile_state_cls:
@@ -2247,14 +2285,14 @@ class Session(_SessionClassMethods, EventTarget):
                     self,
                     statement,
                     params or {},
-                    execution_options,
+                    combined_execution_options,
                     bind_arguments,
                     conn,
                 )
             )
         else:
             result = conn.execute(
-                statement, params, execution_options=execution_options
+                statement, params, execution_options=combined_execution_options
             )
 
         if _scalar_result:
@@ -2331,6 +2369,13 @@ class Session(_SessionClassMethods, EventTarget):
          dictionary can provide a subset of the options that are accepted
          by :meth:`_engine.Connection.execution_options`, and may also
          provide additional options understood only in an ORM context.
+
+         The execution_options are passed along to methods like
+         :meth:`.Connection.execute` on :class:`.Connection` giving the
+         highest priority to execution_options that are passed to this
+         method explicitly, then the options that are present on the
+         statement object if any, and finally those options present
+         session-wide.
 
          .. seealso::
 
@@ -3876,6 +3921,8 @@ class Session(_SessionClassMethods, EventTarget):
 
         if options:
             statement = statement.options(*options)
+        if self.execution_options:
+            execution_options = self.execution_options.union(execution_options)
         return db_load_fn(
             self,
             statement,

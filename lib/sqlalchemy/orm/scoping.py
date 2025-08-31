@@ -58,6 +58,7 @@ if TYPE_CHECKING:
     from ..engine import RowMapping
     from ..engine.interfaces import _CoreAnyExecuteParams
     from ..engine.interfaces import _CoreSingleExecuteParams
+    from ..engine.interfaces import _ExecuteOptions
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.result import ScalarResult
     from ..sql._typing import _ColumnsClauseArgument
@@ -146,6 +147,7 @@ __all__ = ["scoped_session"]
         "autoflush",
         "no_autoflush",
         "info",
+        "execution_options",
     ],
 )
 class scoped_session(Generic[_S]):
@@ -773,6 +775,13 @@ class scoped_session(Generic[_S]):
          dictionary can provide a subset of the options that are accepted
          by :meth:`_engine.Connection.execution_options`, and may also
          provide additional options understood only in an ORM context.
+
+         The execution_options are passed along to methods like
+         :meth:`.Connection.execute` on :class:`.Connection` giving the
+         highest priority to execution_options that are passed to this
+         method explicitly, then the options that are present on the
+         statement object if any, and finally those options present
+         session-wide.
 
          .. seealso::
 
@@ -2144,6 +2153,19 @@ class scoped_session(Generic[_S]):
         """  # noqa: E501
 
         return self._proxied.info
+
+    @property
+    def execution_options(self) -> _ExecuteOptions:
+        r"""Proxy for the :attr:`_orm.Session.execution_options` attribute
+        on behalf of the :class:`_orm.scoping.scoped_session` class.
+
+        """  # noqa: E501
+
+        return self._proxied.execution_options
+
+    @execution_options.setter
+    def execution_options(self, attr: _ExecuteOptions) -> None:
+        self._proxied.execution_options = attr
 
     @classmethod
     def object_session(cls, instance: object) -> Optional[Session]:

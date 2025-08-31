@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from ...engine import RowMapping
     from ...engine import ScalarResult
     from ...engine.interfaces import _CoreAnyExecuteParams
+    from ...engine.interfaces import _ExecuteOptions
     from ...engine.interfaces import CoreExecuteOptionsParameter
     from ...event import dispatcher
     from ...orm._typing import _IdentityKeyType
@@ -203,6 +204,7 @@ class AsyncAttrs:
         "autoflush",
         "no_autoflush",
         "info",
+        "execution_options",
     ],
 )
 class AsyncSession(ReversibleProxy[Session]):
@@ -1586,6 +1588,19 @@ class AsyncSession(ReversibleProxy[Session]):
         """  # noqa: E501
 
         return self._proxied.info
+
+    @property
+    def execution_options(self) -> _ExecuteOptions:
+        r"""Proxy for the :attr:`_orm.Session.execution_options` attribute
+        on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.execution_options
+
+    @execution_options.setter
+    def execution_options(self, attr: _ExecuteOptions) -> None:
+        self._proxied.execution_options = attr
 
     @classmethod
     def object_session(cls, instance: object) -> Optional[Session]:

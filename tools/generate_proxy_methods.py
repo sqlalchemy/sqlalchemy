@@ -307,13 +307,26 @@ def process_class(
             "import annotations set up?"
         )
 
+        existing_doc = None
+
         if attr is not None:
             if isinstance(attr, property):
                 readonly = attr.fset is None
+                existing_doc = attr.__doc__
             elif isinstance(attr, langhelpers.generic_fn_descriptor):
                 readonly = True
-            else:
+                existing_doc = attr.__doc__
+            elif hasattr(attr, "__get__"):
                 readonly = not hasattr(attr, "__set__")
+                existing_doc = attr.__doc__
+            else:
+                # not a descriptor
+                readonly = False
+
+        else:
+            readonly = False
+
+        if existing_doc:
             doc = textwrap.indent(
                 inject_docstring_text(
                     attr.__doc__,
@@ -330,7 +343,6 @@ def process_class(
                 "    ",
             ).lstrip()
         else:
-            readonly = False
             doc = (
                 f"Proxy for the :attr:`{sphinx_symbol}.{name}` "
                 "attribute \n"
