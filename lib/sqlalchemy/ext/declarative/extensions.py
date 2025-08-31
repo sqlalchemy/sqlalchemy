@@ -40,7 +40,7 @@ class ConcreteBase:
     function automatically, against all tables mapped as a subclass
     to this class.   The function is called via the
     ``__declare_last__()`` function, which is essentially
-    a hook for the :meth:`.after_configured` event.
+    a hook for the :meth:`.MapperEvents.after_configured` event.
 
     :class:`.ConcreteBase` produces a mapped
     table for the class itself.  Compare to :class:`.AbstractConcreteBase`,
@@ -129,7 +129,7 @@ class AbstractConcreteBase(ConcreteBase):
     function automatically, against all tables mapped as a subclass
     to this class.   The function is called via the
     ``__declare_first__()`` function, which is essentially
-    a hook for the :meth:`.before_configured` event.
+    a hook for the :meth:`.MapperEvents.before_configured` event.
 
     :class:`.AbstractConcreteBase` applies :class:`_orm.Mapper` for its
     immediately inheriting class, as would occur for any other

@@ -23,6 +23,7 @@ from typing import TypeVar
 from typing import Union
 import weakref
 
+from . import decl_api
 from . import instrumentation
 from . import interfaces
 from . import mapperlib
@@ -64,6 +65,7 @@ if TYPE_CHECKING:
     from ..orm.context import QueryContext
     from ..orm.decl_api import DeclarativeAttributeIntercept
     from ..orm.decl_api import DeclarativeMeta
+    from ..orm.decl_api import registry
     from ..orm.mapper import Mapper
     from ..orm.state import InstanceState
 
@@ -814,7 +816,14 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
                 "event target, use the 'sqlalchemy.orm.Mapper' class.",
                 "2.0",
             )
-            return mapperlib.Mapper
+            target = mapperlib.Mapper
+
+        if identifier in ("before_configured", "after_configured"):
+            if target is mapperlib.Mapper:
+                return target
+            else:
+                return None
+
         elif isinstance(target, type):
             if issubclass(target, mapperlib.Mapper):
                 return target
@@ -841,16 +850,6 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             event_key.identifier,
             event_key._listen_fn,
         )
-
-        if (
-            identifier in ("before_configured", "after_configured")
-            and target is not mapperlib.Mapper
-        ):
-            util.warn(
-                "'before_configured' and 'after_configured' ORM events "
-                "only invoke with the Mapper class "
-                "as the target."
-            )
 
         if not raw or not retval:
             if not raw:
@@ -1000,6 +999,10 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             :meth:`.MapperEvents.after_configured`
 
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.RegistryEvents.after_configured`
+
             :meth:`.MapperEvents.mapper_configured`
 
         """
@@ -1052,6 +1055,10 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             :meth:`.MapperEvents.after_configured`
 
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.RegistryEvents.after_configured`
+
             :meth:`.MapperEvents.before_mapper_configured`
 
         """
@@ -1099,6 +1106,10 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             :meth:`.MapperEvents.after_configured`
 
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.RegistryEvents.after_configured`
+
         """
 
     @event._omit_standard_example
@@ -1142,6 +1153,10 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             :meth:`.MapperEvents.mapper_configured`
 
             :meth:`.MapperEvents.before_configured`
+
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.RegistryEvents.after_configured`
 
         """
 
@@ -3186,3 +3201,186 @@ class QueryEvents(event.Events[Query[Any]]):
         wrap._bake_ok = bake_ok  # type: ignore [attr-defined]
 
         event_key.base_listen(**kw)
+
+
+class RegistryEvents(event.Events["registry"]):
+    """Define events specific to :class:`_orm.registry` lifecycle.
+
+    The :class:`_orm.RegistryEvents` class defines events that are specific
+    to the lifecycle and operation of the :class:`_orm.registry` object.
+
+    e.g.::
+
+        from typing import Any
+
+        from sqlalchemy import event
+        from sqlalchemy.orm import registry
+        from sqlalchemy.orm import TypeResolve
+        from sqlalchemy.types import TypeEngine
+
+        reg = registry()
+
+
+        @event.listens_for(reg, "resolve_type_annotation")
+        def resolve_custom_type(
+            resolve_type: TypeResolve,
+        ) -> TypeEngine[Any] | None:
+            if python_type is MyCustomType:
+                return MyCustomSQLType()
+            return None
+
+    The events defined by :class:`_orm.RegistryEvents` include
+    :meth:`_orm.RegistryEvents.resolve_type_annotation`,
+    :meth:`_orm.RegistryEvents.before_configured`, and
+    :meth:`_orm.RegistryEvents.after_configured`.`.   These events may be
+    applied to a :class:`_orm.registry` object as shown in the preceding
+    example, as well as to a declarative base class directly, which will
+    automtically locate the registry for the event to be applied::
+
+        from typing import Any
+
+        from sqlalchemy import event
+        from sqlalchemy.orm import DeclarativeBase
+        from sqlalchemy.orm import registry as RegistryType
+        from sqlalchemy.orm import TypeResolve
+        from sqlalchemy.types import TypeEngine
+
+
+        class Base(DeclarativeBase):
+            pass
+
+
+        @event.listens_for(Base, "resolve_type_annotation")
+        def resolve_custom_type(
+            resolve_type: TypeResolve,
+        ) -> TypeEngine[Any] | None:
+            if resolve_type.resolved_type is MyCustomType:
+                return MyCustomSQLType()
+            else:
+                return None
+
+
+        @event.listens_for(Base, "after_configured")
+        def after_base_configured(registry: RegistryType) -> None:
+            print(f"Registry {registry} fully configured")
+
+    .. versionadded:: 2.1
+
+
+    """
+
+    _target_class_doc = "SomeRegistry"
+    _dispatch_target = decl_api.registry
+
+    @classmethod
+    def _accept_with(
+        cls,
+        target: Any,
+        identifier: str,
+    ) -> Any:
+        if isinstance(target, decl_api.registry):
+            return target
+        elif (
+            isinstance(target, type)
+            and "_sa_registry" in target.__dict__
+            and isinstance(target.__dict__["_sa_registry"], decl_api.registry)
+        ):
+            return target._sa_registry  # type: ignore[attr-defined]
+        else:
+            return None
+
+    @classmethod
+    def _listen(
+        cls,
+        event_key: _EventKey["registry"],
+        **kw: Any,
+    ) -> None:
+        identifier = event_key.identifier
+
+        # Only resolve_type_annotation needs retval=True
+        if identifier == "resolve_type_annotation":
+            kw["retval"] = True
+
+        event_key.base_listen(**kw)
+
+    def resolve_type_annotation(
+        self, resolve_type: decl_api.TypeResolve
+    ) -> Optional[Any]:
+        """Intercept and customize type annotation resolution.
+
+        This event is fired when the :class:`_orm.registry` attempts to
+        resolve a Python type annotation to a SQLAlchemy type. This is
+        particularly useful for handling advanced typing scenarios such as
+        nested :pep:`695` type aliases.
+
+        The :meth:`.RegistryEvents.resolve_type_annotation` event automatically
+        sets up ``retval=True`` when the event is set up, so that implementing
+        functions may return a resolved type, or ``None`` to indicate no type
+        was resolved, and the default resolution for the type should proceed.
+
+        :param resolve_type: A :class:`_orm.TypeResolve` object which contains
+         all the relevant information about the type, including a link to the
+         registry and its resolver function.
+
+        :return: A SQLAlchemy type to use for the given Python type.  If
+         ``None`` is returned, the default resolution behavior will proceed
+         from there.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :ref:`orm_declarative_resolve_type_event`
+
+        """
+
+    def before_configured(self, registry: "registry") -> None:
+        """Called before a series of mappers in this registry are configured.
+
+        This event is invoked each time the :func:`_orm.configure_mappers`
+        function is invoked and this registry has mappers that are part of
+        the configuration process.
+
+        Compared to the :meth:`.MapperEvents.before_configured` event hook,
+        this event is local to the mappers within a specific
+        :class:`_orm.registry` and not for all :class:`.Mapper` objects
+        globally.
+
+        :param registry: The :class:`_orm.registry` instance.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :meth:`.RegistryEvents.after_configured`
+
+            :meth:`.MapperEvents.before_configured`
+
+            :meth:`.MapperEvents.after_configured`
+
+        """
+
+    def after_configured(self, registry: "registry") -> None:
+        """Called after a series of mappers in this registry are configured.
+
+        This event is invoked each time the :func:`_orm.configure_mappers`
+        function completes and this registry had mappers that were part of
+        the configuration process.
+
+        Compared to the :meth:`.MapperEvents.after_configured` event hook, this
+        event is local to the mappers within a specific :class:`_orm.registry`
+        and not for all :class:`.Mapper` objects globally.
+
+        :param registry: The :class:`_orm.registry` instance.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.MapperEvents.before_configured`
+
+            :meth:`.MapperEvents.after_configured`
+
+        """

@@ -67,6 +67,7 @@ from .decl_api import mapped_as_dataclass as mapped_as_dataclass
 from .decl_api import MappedAsDataclass as MappedAsDataclass
 from .decl_api import registry as registry
 from .decl_api import synonym_for as synonym_for
+from .decl_api import TypeResolve as TypeResolve
 from .decl_api import unmapped_dataclass as unmapped_dataclass
 from .decl_base import MappedClassProtocol as MappedClassProtocol
 from .descriptor_props import Composite as Composite
@@ -79,6 +80,7 @@ from .events import InstanceEvents as InstanceEvents
 from .events import InstrumentationEvents as InstrumentationEvents
 from .events import MapperEvents as MapperEvents
 from .events import QueryEvents as QueryEvents
+from .events import RegistryEvents as RegistryEvents
 from .events import SessionEvents as SessionEvents
 from .identity import IdentityMap as IdentityMap
 from .instrumentation import ClassManager as ClassManager
