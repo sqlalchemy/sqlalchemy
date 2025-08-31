@@ -13,6 +13,7 @@ from typing import Type
 from typing import TYPE_CHECKING
 
 from ... import exc
+from ...sql import operators
 from ...sql import sqltypes
 from ...types import NVARCHAR
 from ...types import VARCHAR
@@ -309,6 +310,7 @@ class ROWID(sqltypes.TypeEngine):
     """
 
     __visit_name__ = "ROWID"
+    operator_classes = operators.OperatorClass.ANY
 
 
 class _OracleBoolean(sqltypes.Boolean):

@@ -18,7 +18,7 @@ from .operators import HAS_ANY
 from .operators import HAS_KEY
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
-
+from ...types import OperatorClass
 
 __all__ = ("HSTORE", "hstore")
 
@@ -104,6 +104,13 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     __visit_name__ = "HSTORE"
     hashable = False
     text_type = sqltypes.Text()
+
+    operator_classes = (
+        OperatorClass.BASE
+        | OperatorClass.CONTAINS
+        | OperatorClass.INDEXABLE
+        | OperatorClass.CONCATENABLE
+    )
 
     def __init__(self, text_type=None):
         """Construct a new :class:`.HSTORE`.

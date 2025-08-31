@@ -29,6 +29,7 @@ from .operators import PATH_MATCH
 from ... import types as sqltypes
 from ...sql import cast
 from ...sql._typing import _T
+from ...sql.operators import OperatorClass
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
@@ -282,6 +283,8 @@ class JSONB(JSON):
     """
 
     __visit_name__ = "JSONB"
+
+    operator_classes = OperatorClass.JSON | OperatorClass.CONCATENABLE
 
     class Comparator(JSON.Comparator[_T]):
         """Define comparison operations for :class:`_types.JSON`."""

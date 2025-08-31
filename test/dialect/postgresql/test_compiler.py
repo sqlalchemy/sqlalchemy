@@ -2677,29 +2677,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (
             lambda col: col["foo"] + " ",
-            "(x -> %(x_1)s) || %(param_1)s",
             "x[%(x_1)s] || %(param_1)s",
         ),
         (
             lambda col: col["foo"] + " " + col["bar"],
-            "(x -> %(x_1)s) || %(param_1)s || (x -> %(x_2)s)",
             "x[%(x_1)s] || %(param_1)s || x[%(x_2)s]",
         ),
-        argnames="expr, json_expected, jsonb_expected",
+        argnames="expr, expected",
     )
-    @testing.combinations((JSON(),), (JSONB(),), argnames="type_")
-    def test_eager_grouping_flag(
-        self, expr, json_expected, jsonb_expected, type_
-    ):
+    def test_eager_grouping_flag(self, expr, expected):
         """test #10479"""
-        col = Column("x", type_)
+        col = Column("x", JSONB)
 
         expr = testing.resolve_lambda(expr, col=col)
 
         # Choose expected result based on type
-        expected = (
-            jsonb_expected if isinstance(type_, JSONB) else json_expected
-        )
         self.assert_compile(expr, expected)
 
     @testing.variation("pgversion", ["pg14", "pg13"])
@@ -4258,7 +4250,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def setup_test(self):
         self.table = table(
-            "mytable", column("myid", Integer), column("name", String)
+            "mytable", column("myid", String), column("name", String)
         )
 
     def test_regexp_match(self):

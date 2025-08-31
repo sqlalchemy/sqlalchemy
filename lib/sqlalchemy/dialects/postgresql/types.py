@@ -19,6 +19,7 @@ from .bitstring import BitString
 from ...sql import sqltypes
 from ...sql import type_api
 from ...sql.type_api import TypeEngine
+from ...types import OperatorClass
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
@@ -57,6 +58,7 @@ class BYTEA(sqltypes.LargeBinary):
 
 
 class _NetworkAddressTypeMixin:
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
 
     def coerce_compared_value(
         self, op: Optional[OperatorType], value: Any
@@ -144,6 +146,8 @@ class OID(sqltypes.TypeEngine[int]):
 
     __visit_name__ = "OID"
 
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
+
 
 class REGCONFIG(sqltypes.TypeEngine[str]):
     """Provide the PostgreSQL REGCONFIG type.
@@ -153,6 +157,8 @@ class REGCONFIG(sqltypes.TypeEngine[str]):
     """
 
     __visit_name__ = "REGCONFIG"
+
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
 
 
 class TSQUERY(sqltypes.TypeEngine[str]):
@@ -164,11 +170,15 @@ class TSQUERY(sqltypes.TypeEngine[str]):
 
     __visit_name__ = "TSQUERY"
 
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
+
 
 class REGCLASS(sqltypes.TypeEngine[str]):
     """Provide the PostgreSQL REGCLASS type."""
 
     __visit_name__ = "REGCLASS"
+
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
@@ -274,6 +284,10 @@ class BIT(sqltypes.TypeEngine[BitString]):
     render_bind_cast = True
     __visit_name__ = "BIT"
 
+    operator_classes = (
+        OperatorClass.BASE | OperatorClass.COMPARISON | OperatorClass.BITWISE
+    )
+
     def __init__(
         self, length: Optional[int] = None, varying: bool = False
     ) -> None:
@@ -355,6 +369,8 @@ class TSVECTOR(sqltypes.TypeEngine[str]):
     """
 
     __visit_name__ = "TSVECTOR"
+
+    operator_classes = OperatorClass.STRING
 
 
 class CITEXT(sqltypes.TEXT):
