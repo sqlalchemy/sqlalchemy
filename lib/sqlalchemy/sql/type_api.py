@@ -18,7 +18,6 @@ from typing import ClassVar
 from typing import Dict
 from typing import Generic
 from typing import Mapping
-from typing import NewType
 from typing import Optional
 from typing import overload
 from typing import Protocol
@@ -31,6 +30,7 @@ from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
+from sqlalchemy.util.typing import _MatchedOnType
 from .base import SchemaEventTarget
 from .cache_key import CacheConst
 from .cache_key import NO_CACHE
@@ -42,7 +42,6 @@ from .visitors import Visitable
 from .. import exc
 from .. import util
 from ..util.typing import Self
-from ..util.typing import TypeAliasType
 
 # these are back-assigned by sqltypes.
 if typing.TYPE_CHECKING:
@@ -61,7 +60,6 @@ if typing.TYPE_CHECKING:
     from .sqltypes import TABLEVALUE as TABLEVALUE  # noqa: F401
     from ..engine.interfaces import DBAPIModule
     from ..engine.interfaces import Dialect
-    from ..util.typing import GenericProtocol
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -70,10 +68,6 @@ _O = TypeVar("_O", bound=object)
 _TE = TypeVar("_TE", bound="TypeEngine[Any]")
 _CT = TypeVar("_CT", bound=Any)
 _RT = TypeVar("_RT", bound=Any)
-
-_MatchedOnType = Union[
-    "GenericProtocol[Any]", TypeAliasType, NewType, Type[Any]
-]
 
 
 class _NoValueInList(Enum):

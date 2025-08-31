@@ -70,6 +70,22 @@ Types of things which occur at the :class:`_orm.Mapper` level include:
 .. autoclass:: sqlalchemy.orm.MapperEvents
    :members:
 
+Registry Events
+---------------
+
+Registry event hooks indicate things happening in reference to a particular
+:class:`_orm.registry`.   These include configurational events
+:meth:`_orm.RegistryEvents.before_configured` and
+:meth:`_orm.RegistryEvents.after_configured`, as well as a hook to customize
+type resolution :meth:`_orm.RegistryEvents.resolve_type_annotation`.
+
+.. autoclass:: sqlalchemy.orm.RegistryEvents
+   :members:
+
+.. autoclass:: sqlalchemy.orm.TypeResolve
+   :members:
+
+
 Instance Events
 ---------------
 

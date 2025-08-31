@@ -4108,6 +4108,12 @@ def configure_mappers() -> None:
       work; this can be used to establish additional options, properties, or
       related mappings before the operation proceeds.
 
+    * :meth:`.RegistryEvents.before_configured` - Like
+      :meth:`.MapperEvents.before_configured`, but local to a specific
+      :class:`_orm.registry`.
+
+      .. versionadded:: 2.1
+
     * :meth:`.MapperEvents.mapper_configured` - called as each individual
       :class:`_orm.Mapper` is configured within the process; will include all
       mapper state except for backrefs set up by other mappers that are still
@@ -4122,6 +4128,12 @@ def configure_mappers() -> None:
       unimported, and may also have mappings that are still to be configured,
       if they are in other :class:`_orm.registry` collections not part of the
       current scope of configuration.
+
+    * :meth:`.RegistryEvents.after_configured` - Like
+      :meth:`.MapperEvents.after_configured`, but local to a specific
+      :class:`_orm.registry`.
+
+      .. versionadded:: 2.1
 
     """
 
@@ -4151,26 +4163,35 @@ def _configure_registries(
                 return
 
             Mapper.dispatch._for_class(Mapper).before_configured()  # type: ignore # noqa: E501
+
             # initialize properties on all mappers
             # note that _mapper_registry is unordered, which
             # may randomly conceal/reveal issues related to
             # the order of mapper compilation
 
-            _do_configure_registries(registries, cascade)
+            registries_configured = list(
+                _do_configure_registries(registries, cascade)
+            )
+
         finally:
             _already_compiling = False
+    for reg in registries_configured:
+        reg.dispatch.after_configured(reg)
     Mapper.dispatch._for_class(Mapper).after_configured()  # type: ignore
 
 
 @util.preload_module("sqlalchemy.orm.decl_api")
 def _do_configure_registries(
     registries: Set[_RegistryType], cascade: bool
-) -> None:
+) -> Iterator[registry]:
     registry = util.preloaded.orm_decl_api.registry
 
     orig = set(registries)
 
     for reg in registry._recurse_with_dependencies(registries):
+        if reg._new_mappers:
+            reg.dispatch.before_configured(reg)
+
         has_skip = False
 
         for mapper in reg._mappers_to_configure():
@@ -4205,6 +4226,9 @@ def _do_configure_registries(
                     if not hasattr(exc, "_configure_failed"):
                         mapper._configure_failed = exc
                     raise
+
+        if reg._new_mappers:
+            yield reg
         if not has_skip:
             reg._new_mappers = False
 

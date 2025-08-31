@@ -63,6 +63,8 @@ from .state import InstanceState
 from .. import exc
 from .. import inspection
 from .. import util
+from ..event import dispatcher
+from ..event import EventTarget
 from ..sql import sqltypes
 from ..sql.base import _NoArg
 from ..sql.elements import SQLCoreOperations
@@ -86,7 +88,7 @@ if TYPE_CHECKING:
     from .interfaces import MapperProperty
     from .state import InstanceState  # noqa
     from ..sql._typing import _TypeEngineArgument
-    from ..sql.type_api import _MatchedOnType
+    from ..util.typing import _MatchedOnType
 
 _T = TypeVar("_T", bound=Any)
 
@@ -1103,7 +1105,7 @@ def declarative_base(
     )
 
 
-class registry:
+class registry(EventTarget):
     """Generalized registry for mapping classes.
 
     The :class:`_orm.registry` serves as the basis for maintaining a collection
@@ -1144,6 +1146,7 @@ class registry:
     _dependents: Set[_RegistryType]
     _dependencies: Set[_RegistryType]
     _new_mappers: bool
+    dispatch: dispatcher["registry"]
 
     def __init__(
         self,
@@ -1225,6 +1228,53 @@ class registry:
                 for typ, sqltype in type_annotation_map.items()
             }
         )
+
+    def _resolve_type_with_events(
+        self,
+        cls: Any,
+        key: str,
+        raw_annotation: _MatchedOnType,
+        extracted_type: _MatchedOnType,
+        *,
+        pep_593_type: Optional[_MatchedOnType] = None,
+        pep_695_type: Optional[_MatchedOnType] = None,
+    ) -> Optional[sqltypes.TypeEngine[Any]]:
+        """Resolve type with event support for custom type mapping.
+
+        This method fires the resolve_type_annotation event first to allow
+        custom resolution, then falls back to normal resolution.
+
+        """
+
+        if self.dispatch.resolve_type_annotation:
+            type_resolve = TypeResolve(
+                self,
+                cls,
+                key,
+                raw_annotation,
+                extracted_type,
+                pep_593_type,
+                pep_695_type,
+            )
+
+            for fn in self.dispatch.resolve_type_annotation:
+                result = fn(type_resolve)
+                if result is not None:
+                    return result  # type: ignore[no-any-return]
+
+        if pep_695_type is not None:
+            sqltype = self._resolve_type(pep_695_type)
+            if sqltype is not None:
+                return sqltype
+
+        sqltype = self._resolve_type(extracted_type)
+        if sqltype is not None:
+            return sqltype
+
+        if pep_593_type is not None:
+            sqltype = self._resolve_type(pep_593_type)
+
+        return sqltype
 
     def _resolve_type(
         self, python_type: _MatchedOnType
@@ -1813,6 +1863,98 @@ RegistryType = registry
 if not TYPE_CHECKING:
     # allow for runtime type resolution of ``ClassVar[_RegistryType]``
     _RegistryType = registry  # noqa
+
+
+class TypeResolve:
+    """Primary argument to the :meth:`.RegistryEvents.resolve_type_annotation`
+    event.
+
+    This object contains all the information needed to resolve a Python
+    type to a SQLAlchemy type.  The :attr:`.TypeResolve.primary_type` is
+    typically the main type that's resolved.  To resolve an arbitrary
+    Python type against the current type map, the :meth:`.TypeResolve.resolve`
+    method may be used.
+
+    .. versionadded:: 2.1
+
+    """
+
+    __slots__ = (
+        "registry",
+        "cls",
+        "key",
+        "raw_type",
+        "primary_type",
+        "pep_593_type",
+        "pep_695_type",
+    )
+
+    cls: Any
+    "The class being processed during declarative mapping"
+
+    registry: "registry"
+    "The :class:`registry` being used"
+
+    key: str
+    "String name of the ORM mapped attribute being processed"
+
+    raw_type: _MatchedOnType
+    """The type annotation object directly from the attribute's annotations.
+
+    It's recommended to look at :attr:`.TypeResolve.primary_type` or
+    one of :attr:`.TypeResolve.pep_593_type` or
+    :attr:`.TypeResolve.pep_695_type` rather than the raw type, as the raw
+    type will not be de-optionalized.
+
+    """
+
+    primary_type: _MatchedOnType
+    """The primary located type annotation within the raw annotation, which
+    will be a de-optionalized, :pep:`695` resolved form of the original type
+    """
+
+    pep_593_type: Optional[_MatchedOnType]
+    """The type extracted from a :pep:`593` ``Annotated`` construct, if the
+    type referred to one."""
+
+    pep_695_type: Optional[_MatchedOnType]
+    "The de-optionalized :pep:`695` type, if the raw type referred to one."
+
+    def __init__(
+        self,
+        registry: RegistryType,
+        cls: Any,
+        key: str,
+        raw_type: _MatchedOnType,
+        primary_type: _MatchedOnType,
+        pep_593_type: Optional[_MatchedOnType],
+        pep_695_type: Optional[_MatchedOnType],
+    ):
+        self.registry = registry
+        self.cls = cls
+        self.key = key
+        self.raw_type = raw_type
+        self.primary_type = primary_type
+        self.pep_593_type = pep_593_type
+        self.pep_695_type = pep_695_type
+
+    def resolve(
+        self, python_type: _MatchedOnType
+    ) -> Optional[sqltypes.TypeEngine[Any]]:
+        """Resolve the given python type using the type_annotation_map of
+        the :class:`registry`.
+
+        :param python_type: a Python type (e.g. ``int``, ``str``, etc.)  Any
+         type object that's present in
+         :paramref:`_orm.registry_type_annotation_map` should produce a
+         non-``None`` result.
+        :return: a SQLAlchemy :class:`.TypeEngine` instance
+         (e.g. :class:`.Integer`,
+         :class:`.String`, etc.), or ``None`` to indicate no type could be
+         matched.
+
+        """
+        return self.registry._resolve_type(python_type)
 
 
 def as_declarative(**kw: Any) -> Callable[[Type[_T]], Type[_T]]:
