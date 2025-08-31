@@ -1,0 +1,13 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 12838
+
+    The :func:`_orm.aliased` object now emits warnings when an attribute is
+    accessed on an aliased class that cannot be located in the target
+    selectable, for those cases where the :func:`_orm.aliased` is against a
+    different FROM clause than the regular mapped table (such as a subquery).
+    This helps users identify cases where column names don't match between the
+    aliased class and the underlying selectable. When
+    :paramref:`_orm.aliased.adapt_on_names` is ``True``, the warning suggests
+    checking the column name; when ``False``, it suggests using the
+    ``adapt_on_names`` parameter for name-based matching.
