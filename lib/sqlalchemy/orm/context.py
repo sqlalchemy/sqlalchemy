@@ -1828,17 +1828,14 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             # subquery of itself, i.e. _from_selectable(), apply adaption
             # to all SQL constructs.
             adapters.append(
-                (
-                    True,
-                    self._from_obj_alias.replace,
-                )
+                self._from_obj_alias.replace,
             )
 
         # this was *hopefully* the only adapter we were going to need
         # going forward...however, we unfortunately need _from_obj_alias
         # for query.union(), which we can't drop
         if self._polymorphic_adapters:
-            adapters.append((False, self._adapt_polymorphic_element))
+            adapters.append(self._adapt_polymorphic_element)
 
         if not adapters:
             return None
@@ -1848,15 +1845,10 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             # tagged as 'ORM' constructs ?
 
             def replace(elem):
-                is_orm_adapt = (
-                    "_orm_adapt" in elem._annotations
-                    or "parententity" in elem._annotations
-                )
-                for always_adapt, adapter in adapters:
-                    if is_orm_adapt or always_adapt:
-                        e = adapter(elem)
-                        if e is not None:
-                            return e
+                for adapter in adapters:
+                    e = adapter(elem)
+                    if e is not None:
+                        return e
 
             return visitors.replacement_traverse(clause, {}, replace)
 
@@ -2565,7 +2557,6 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             # finally run all the criteria through the "main" adapter, if we
             # have one, and concatenate to final WHERE criteria
             for crit in _where_criteria_to_add:
-                crit = sql_util._deep_annotate(crit, {"_orm_adapt": True})
                 crit = current_adapter(crit, False)
                 self._where_criteria += (crit,)
         else:

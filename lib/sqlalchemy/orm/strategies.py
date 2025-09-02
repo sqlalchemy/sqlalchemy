@@ -740,10 +740,7 @@ class _LazyLoader(
         ) = join_condition.create_lazy_clause(reverse_direction=True)
 
         if self.parent_property.order_by:
-            self._order_by = [
-                sql_util._deep_annotate(elem, {"_orm_adapt": True})
-                for elem in util.to_list(self.parent_property.order_by)
-            ]
+            self._order_by = util.to_list(self.parent_property.order_by)
         else:
             self._order_by = None
 
@@ -812,9 +809,7 @@ class _LazyLoader(
         )
 
     def _memoized_attr__simple_lazy_clause(self):
-        lazywhere = sql_util._deep_annotate(
-            self._lazywhere, {"_orm_adapt": True}
-        )
+        lazywhere = self._lazywhere
 
         criterion, bind_to_col = (lazywhere, self._bind_to_col)
 

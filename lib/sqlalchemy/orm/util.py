@@ -1755,30 +1755,6 @@ class Bundle(
         return proc
 
 
-def _orm_annotate(element: _SA, exclude: Optional[Any] = None) -> _SA:
-    """Deep copy the given ClauseElement, annotating each element with the
-    "_orm_adapt" flag.
-
-    Elements within the exclude collection will be cloned but not annotated.
-
-    """
-    return sql_util._deep_annotate(element, {"_orm_adapt": True}, exclude)
-
-
-def _orm_deannotate(element: _SA) -> _SA:
-    """Remove annotations that link a column to a particular mapping.
-
-    Note this doesn't affect "remote" and "foreign" annotations
-    passed by the :func:`_orm.foreign` and :func:`_orm.remote`
-    annotators.
-
-    """
-
-    return sql_util._deep_deannotate(
-        element, values=("_orm_adapt", "parententity")
-    )
-
-
 def _orm_full_deannotate(element: _SA) -> _SA:
     return sql_util._deep_deannotate(element)
 

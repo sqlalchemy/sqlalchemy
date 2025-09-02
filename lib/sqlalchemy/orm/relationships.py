@@ -40,6 +40,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 import weakref
@@ -65,8 +66,6 @@ from .interfaces import ONETOMANY
 from .interfaces import PropComparator
 from .interfaces import RelationshipDirection
 from .interfaces import StrategizedProperty
-from .util import _orm_annotate
-from .util import _orm_deannotate
 from .util import CascadeOptions
 from .. import exc as sa_exc
 from .. import Exists
@@ -394,7 +393,7 @@ class RelationshipProperty(
     synchronize_pairs: _ColumnPairs
     secondary_synchronize_pairs: Optional[_ColumnPairs]
 
-    local_remote_pairs: Optional[_ColumnPairs]
+    local_remote_pairs: _ColumnPairs
 
     direction: RelationshipDirection
 
@@ -515,7 +514,7 @@ class RelationshipProperty(
             )
 
         self.omit_join = omit_join
-        self.local_remote_pairs = _local_remote_pairs
+        self.local_remote_pairs = _local_remote_pairs or ()
         self.load_on_pending = load_on_pending
         self.comparator_factory = (
             comparator_factory or RelationshipProperty.Comparator
@@ -804,10 +803,8 @@ class RelationshipProperty(
                 if self.property.direction in [ONETOMANY, MANYTOMANY]:
                     return ~self._criterion_exists()
                 else:
-                    return _orm_annotate(
-                        self.property._optimized_compare(
-                            None, adapt_source=self.adapter
-                        )
+                    return self.property._optimized_compare(
+                        None, adapt_source=self.adapter
                     )
             elif self.property.uselist:
                 raise sa_exc.InvalidRequestError(
@@ -815,10 +812,8 @@ class RelationshipProperty(
                     "use contains() to test for membership."
                 )
             else:
-                return _orm_annotate(
-                    self.property._optimized_compare(
-                        other, adapt_source=self.adapter
-                    )
+                return self.property._optimized_compare(
+                    other, adapt_source=self.adapter
                 )
 
         def _criterion_exists(
@@ -882,10 +877,11 @@ class RelationshipProperty(
             # annotate the *local* side of the join condition, in the case
             # of pj + sj this is the full primaryjoin, in the case of just
             # pj its the local side of the primaryjoin.
+            j: ColumnElement[bool]
             if sj is not None:
-                j = _orm_annotate(pj) & sj
+                j = pj & sj
             else:
-                j = _orm_annotate(pj, exclude=self.property.remote_side)
+                j = pj
 
             if (
                 where_criteria is not None
@@ -1194,10 +1190,8 @@ class RelationshipProperty(
             """
             if other is None or isinstance(other, expression.Null):
                 if self.property.direction == MANYTOONE:
-                    return _orm_annotate(
-                        ~self.property._optimized_compare(
-                            None, adapt_source=self.adapter
-                        )
+                    return ~self.property._optimized_compare(
+                        None, adapt_source=self.adapter
                     )
 
                 else:
@@ -1209,7 +1203,10 @@ class RelationshipProperty(
                     "contains() to test for membership."
                 )
             else:
-                return _orm_annotate(self.__negated_contains_or_equals(other))
+                return self.__negated_contains_or_equals(other)
+
+        if TYPE_CHECKING:
+            property: RelationshipProperty[_PT]  # noqa: A001
 
         def _memoized_attr_property(self) -> RelationshipProperty[_PT]:
             self.prop.parent._check_configure()
@@ -1757,10 +1754,8 @@ class RelationshipProperty(
             rel_arg = getattr(init_args, attr)
             val = rel_arg.resolved
             if val is not None:
-                rel_arg.resolved = _orm_deannotate(
-                    coercions.expect(
-                        roles.ColumnArgumentRole, val, argname=attr
-                    )
+                rel_arg.resolved = coercions.expect(
+                    roles.ColumnArgumentRole, val, argname=attr
                 )
 
         secondary = init_args.secondary.resolved
@@ -2393,7 +2388,6 @@ class _JoinCondition:
         self._determine_joins()
         assert self.primaryjoin is not None
 
-        self._sanitize_joins()
         self._annotate_fks()
         self._annotate_remote()
         self._annotate_local()
@@ -2443,24 +2437,6 @@ class _JoinCondition:
             ",".join("%s" % col for col in self.local_columns),
         )
         log.info("%s relationship direction %s", self.prop, self.direction)
-
-    def _sanitize_joins(self) -> None:
-        """remove the parententity annotation from our join conditions which
-        can leak in here based on some declarative patterns and maybe others.
-
-        "parentmapper" is relied upon both by the ORM evaluator as well as
-        the use case in _join_fixture_inh_selfref_w_entity
-        that relies upon it being present, see :ticket:`3364`.
-
-        """
-
-        self.primaryjoin = _deep_deannotate(
-            self.primaryjoin, values=("parententity", "proxy_key")
-        )
-        if self.secondaryjoin is not None:
-            self.secondaryjoin = _deep_deannotate(
-                self.secondaryjoin, values=("parententity", "proxy_key")
-            )
 
     def _determine_joins(self) -> None:
         """Determine the 'primaryjoin' and 'secondaryjoin' attributes,

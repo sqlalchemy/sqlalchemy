@@ -6682,3 +6682,92 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
                 params=[{"id_1": "%", "param_1": "%", "primary_keys": [2]}],
             ),
         )
+
+
+class AnnotationsMaintainedTest(AssertsCompiledSQL, fixtures.TestBase):
+    """tests for #12843"""
+
+    __dialect__ = "default"
+
+    def test_annos_maintained(self, decl_base):
+        class User(decl_base):
+            __tablename__ = "user"
+            id = Column(Integer, primary_key=True)
+
+        class Address(decl_base):
+            __tablename__ = "address"
+            id = Column(Integer, primary_key=True)
+            user_id = Column(ForeignKey("user.id"))
+
+        User.addresses = relationship(
+            Address, primaryjoin=User.id == foreign(Address.user_id)
+        )
+
+        is_(
+            User.addresses.property.primaryjoin.left._annotations[
+                "parententity"
+            ],
+            User.__mapper__,
+        )
+        is_(
+            User.addresses.property.primaryjoin.right._annotations[
+                "parententity"
+            ],
+            Address.__mapper__,
+        )
+
+    @testing.variation("use_orm", [True, False])
+    def test_orm_operations_primaryjoin(self, decl_base, use_orm):
+        class Employee(decl_base):
+            __tablename__ = "employee"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50))
+            company_id = Column(Integer)
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+                "polymorphic_on": type,
+            }
+
+        class Engineer(Employee):
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+        class Company(decl_base):
+            __tablename__ = "company"
+            id = Column(Integer, primary_key=True)
+
+            employees_who_are_engineers = relationship(
+                Employee,
+                # this is a ridiculous primaryjoin and relationship,
+                # but we just need to see that the single inh clause
+                # generates, indicating we know we have an ORM entity
+                # for Engineer
+                primaryjoin=lambda: and_(
+                    foreign(Employee.company_id) == Company.id,
+                    Employee.id.in_(subq),
+                ),
+            )
+
+        if use_orm:
+            # will render "type IN <types>"
+            subq = (
+                select(Engineer)
+                .where(foreign(Engineer.company_id) == Company.id)
+                .correlate(Company)
+            )
+        else:
+            # will not render "type IN <types>"
+            subq = (
+                select(Engineer.__table__)
+                .where(foreign(Engineer.company_id) == Company.id)
+                .correlate(Company)
+            )
+
+        self.assert_compile(
+            select(Company).join(Company.employees_who_are_engineers),
+            "SELECT company.id FROM company JOIN employee "
+            "ON employee.company_id = company.id AND employee.id IN "
+            "(SELECT employee.id, employee.type, employee.company_id "
+            "FROM employee WHERE employee.company_id = company.id"
+            f"""{" AND employee.type IN (__[POSTCOMPILE_type_1])"
+                 if use_orm else ""})""",
+        )

@@ -1,17 +1,23 @@
 from contextlib import nullcontext
 
+from sqlalchemy import and_
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import foreign
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -23,6 +29,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -3102,4 +3109,116 @@ class JoinedLoadSpliceFromJoinedTest(
             "JOIN sub_model_element AS sub_model_element_1 "
             "ON base_model_1.id = sub_model_element_1.model_id"
             "",
+        )
+
+
+class SingleSubclassInRelationship(
+    AssertsCompiledSQL, fixtures.DeclarativeMappedTest
+):
+    """test for #12843 / discussion #12842"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class LogEntry(ComparableEntity, Base):
+            __tablename__ = "log_entry"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            timestamp: Mapped[int] = mapped_column(Integer)
+            type: Mapped[str]
+
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "log_entry",
+            }
+
+        class StartEntry(LogEntry):
+            __mapper_args__ = {
+                "polymorphic_identity": "start_entry",
+            }
+
+        StartAlias = aliased(StartEntry)
+
+        next_start_ts = (
+            select(func.min(StartAlias.timestamp))
+            .where(
+                StartAlias.timestamp > LogEntry.timestamp,
+            )
+            .scalar_subquery()
+        )
+
+        StartEntry.next_start_ts = column_property(next_start_ts)
+
+        LogAlias = aliased(LogEntry)
+
+        StartEntry.associated_entries = relationship(
+            LogAlias,
+            primaryjoin=and_(
+                foreign(LogAlias.timestamp) >= LogEntry.timestamp,
+                or_(
+                    next_start_ts == None,
+                    LogAlias.timestamp < next_start_ts,
+                ),
+            ),
+            viewonly=True,
+            order_by=LogAlias.id,
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        LogEntry, StartEntry = cls.classes.LogEntry, cls.classes.StartEntry
+
+        with Session(connection) as sess:
+            s1 = StartEntry(timestamp=1)
+            l1 = LogEntry(timestamp=2)
+            l2 = LogEntry(timestamp=3)
+
+            s2 = StartEntry(timestamp=4)
+            l3 = LogEntry(timestamp=5)
+
+            sess.add_all([s1, l1, l2, s2, l3])
+            sess.commit()
+
+    def test_assoc_entries(self):
+        LogEntry, StartEntry = self.classes.LogEntry, self.classes.StartEntry
+
+        sess = fixture_session()
+
+        s1 = sess.scalars(select(StartEntry).filter_by(timestamp=1)).one()
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            eq_(
+                s1.associated_entries,
+                [
+                    StartEntry(timestamp=1),
+                    LogEntry(timestamp=2),
+                    LogEntry(timestamp=3),
+                ],
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT log_entry_1.id AS log_entry_1_id, "
+                "log_entry_1.timestamp AS log_entry_1_timestamp, "
+                "log_entry_1.type AS log_entry_1_type "
+                "FROM log_entry AS log_entry_1 "
+                "WHERE log_entry_1.timestamp >= :param_1 AND "
+                "((SELECT min(log_entry_2.timestamp) AS min_1 "
+                "FROM log_entry AS log_entry_2 "
+                "WHERE log_entry_2.timestamp > :param_1 "
+                "AND log_entry_2.type IN (__[POSTCOMPILE_type_1])) IS NULL "
+                "OR log_entry_1.timestamp < "
+                "(SELECT min(log_entry_2.timestamp) AS min_1 "
+                "FROM log_entry AS log_entry_2 "
+                "WHERE log_entry_2.timestamp > :param_1 "
+                "AND log_entry_2.type IN (__[POSTCOMPILE_type_2]))) "
+                "ORDER BY log_entry_1.id",
+                params=[
+                    {
+                        "param_1": 1,
+                        "type_1": ["start_entry"],
+                        "type_2": ["start_entry"],
+                    }
+                ],
+            )
         )
