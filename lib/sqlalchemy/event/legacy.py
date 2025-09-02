@@ -18,6 +18,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import TypeVar
 
 from .registry import _ET
 from .registry import _ListenerFnType
@@ -29,14 +30,16 @@ if typing.TYPE_CHECKING:
     from .base import _HasEventsDispatch
 
 
-_LegacySignatureType = Tuple[str, List[str], Optional[Callable[..., Any]]]
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+_LegacySignatureType = Tuple[str, List[str], Callable[..., Any]]
 
 
 def _legacy_signature(
     since: str,
     argnames: List[str],
     converter: Optional[Callable[..., Any]] = None,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[[_F], _F]:
     """legacy sig decorator
 
 
@@ -48,13 +51,18 @@ def _legacy_signature(
 
     """
 
-    def leg(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def leg(fn: _F) -> _F:
         if not hasattr(fn, "_legacy_signatures"):
             fn._legacy_signatures = []  # type: ignore[attr-defined]
         fn._legacy_signatures.append((since, argnames, converter))  # type: ignore[attr-defined] # noqa: E501
         return fn
 
     return leg
+
+
+def _omit_standard_example(fn: _F) -> _F:
+    fn._omit_standard_example = True  # type: ignore[attr-defined]
+    return fn
 
 
 def _wrap_fn_for_legacy(
@@ -222,6 +230,10 @@ def _augment_fn_docs(
     parent_dispatch_cls: Type[_HasEventsDispatch[_ET]],
     fn: _ListenerFnType,
 ) -> str:
+    if getattr(fn, "_omit_standard_example", False):
+        assert fn.__doc__
+        return fn.__doc__
+
     header = (
         ".. container:: event_signatures\n\n"
         "     Example argument forms::\n"
