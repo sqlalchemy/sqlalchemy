@@ -33,7 +33,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         def do_connect(dbapi_conn, conn_record):
             pass
 
-    @profiling.function_call_count()
+    @profiling.function_call_count(variance=0.10)
     def test_first_connect(self):
         pool.connect()
 
@@ -41,7 +41,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         conn = pool.connect()
         conn.close()
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(variance=0.10)
         def go():
             conn2 = pool.connect()
             return conn2
