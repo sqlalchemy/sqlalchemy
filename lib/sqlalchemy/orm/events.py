@@ -974,44 +974,42 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
         """
 
+    @event._omit_standard_example
     def before_mapper_configured(
         self, mapper: Mapper[_O], class_: Type[_O]
     ) -> None:
         """Called right before a specific mapper is to be configured.
 
-        This event is intended to allow a specific mapper to be skipped during
-        the configure step, by returning the :attr:`.orm.interfaces.EXT_SKIP`
-        symbol which indicates to the :func:`.configure_mappers` call that this
-        particular mapper (or hierarchy of mappers, if ``propagate=True`` is
-        used) should be skipped in the current configuration run. When one or
-        more mappers are skipped, the "new mappers" flag will remain set,
-        meaning the :func:`.configure_mappers` function will continue to be
-        called when mappers are used, to continue to try to configure all
-        available mappers.
+        The :meth:`.MapperEvents.before_mapper_configured` event is invoked
+        for each mapper that is encountered when the
+        :func:`_orm.configure_mappers` function proceeds through the current
+        list of not-yet-configured mappers.   It is similar to the
+        :meth:`.MapperEvents.mapper_configured` event, except that it's invoked
+        right before the configuration occurs, rather than afterwards.
 
-        In comparison to the other configure-level events,
-        :meth:`.MapperEvents.before_configured`,
-        :meth:`.MapperEvents.after_configured`, and
-        :meth:`.MapperEvents.mapper_configured`, the
-        :meth:`.MapperEvents.before_mapper_configured` event provides for a
-        meaningful return value when it is registered with the ``retval=True``
-        parameter.
+        The :meth:`.MapperEvents.before_mapper_configured` event includes
+        the special capability where it can force the configure step for a
+        specific mapper to be skipped; to use this feature, establish
+        the event using the ``retval=True`` parameter and return
+        the :attr:`.orm.interfaces.EXT_SKIP` symbol to indicate the mapper
+        should be left unconfigured::
 
-        .. versionadded:: 1.3
-
-        e.g.::
-
+            from sqlalchemy import event
             from sqlalchemy.orm import EXT_SKIP
+            from sqlalchemy.orm import DeclarativeBase
 
-            Base = declarative_base()
 
-            DontConfigureBase = declarative_base()
+            class DontConfigureBase(DeclarativeBase):
+                pass
 
 
             @event.listens_for(
                 DontConfigureBase,
                 "before_mapper_configured",
+                # support return values for the event
                 retval=True,
+                # propagate the listener to all subclasses of
+                # DontConfigureBase
                 propagate=True,
             )
             def dont_configure(mapper, cls):
@@ -1056,15 +1054,14 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         event; this event invokes only after all known mappings have been
         fully configured.
 
-        The :meth:`.MapperEvents.mapper_configured` event, unlike
+        The :meth:`.MapperEvents.mapper_configured` event, unlike the
         :meth:`.MapperEvents.before_configured` or
-        :meth:`.MapperEvents.after_configured`,
-        is called for each mapper/class individually, and the mapper is
-        passed to the event itself.  It also is called exactly once for
-        a particular mapper.  The event is therefore useful for
-        configurational steps that benefit from being invoked just once
-        on a specific mapper basis, which don't require that "backref"
-        configurations are necessarily ready yet.
+        :meth:`.MapperEvents.after_configured` events, is called for each
+        mapper/class individually, and the mapper is passed to the event
+        itself.  It also is called exactly once for a particular mapper.  The
+        event is therefore useful for configurational steps that benefit from
+        being invoked just once on a specific mapper basis, which don't require
+        that "backref" configurations are necessarily ready yet.
 
         :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
@@ -1081,6 +1078,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """
         # TODO: need coverage for this event
 
+    @event._omit_standard_example
     def before_configured(self) -> None:
         """Called before a series of mappers have been configured.
 
@@ -1092,9 +1090,15 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         new mappers have been made available and new mapper use is
         detected.
 
+        Similar events to this one include
+        :meth:`.MapperEvents.after_configured`, which is invoked after a series
+        of mappers has been configured, as well as
+        :meth:`.MapperEvents.before_mapper_configured` and
+        :meth:`.MapperEvents.mapper_configured`, which are both invoked on a
+        per-mapper basis.
+
         This event can **only** be applied to the :class:`_orm.Mapper` class,
-        and not to individual mappings or mapped classes. It is only invoked
-        for all mappings as a whole::
+        and not to individual mappings or mapped classes::
 
             from sqlalchemy.orm import Mapper
 
@@ -1102,25 +1106,11 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             @event.listens_for(Mapper, "before_configured")
             def go(): ...
 
-        Contrast this event to :meth:`.MapperEvents.after_configured`,
-        which is invoked after the series of mappers has been configured,
-        as well as :meth:`.MapperEvents.before_mapper_configured`
-        and :meth:`.MapperEvents.mapper_configured`, which are both invoked
-        on a per-mapper basis.
-
-        Theoretically this event is called once per
-        application, but is actually called any time new mappers
-        are to be affected by a :func:`_orm.configure_mappers`
-        call.   If new mappings are constructed after existing ones have
-        already been used, this event will likely be called again.  To ensure
-        that a particular event is only called once and no further, the
-        ``once=True`` argument (new in 0.9.4) can be applied::
-
-            from sqlalchemy.orm import mapper
-
-
-            @event.listens_for(mapper, "before_configured", once=True)
-            def go(): ...
+        Typically, this event is called once per application, but in practice
+        may be called more than once, any time new mappers are to be affected
+        by a :func:`_orm.configure_mappers` call.   If new mappings are
+        constructed after existing ones have already been used, this event will
+        likely be called again.
 
         .. seealso::
 
@@ -1132,6 +1122,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
         """
 
+    @event._omit_standard_example
     def after_configured(self) -> None:
         """Called after a series of mappers have been configured.
 
@@ -1143,17 +1134,15 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         new mappers have been made available and new mapper use is
         detected.
 
-        Contrast this event to the :meth:`.MapperEvents.mapper_configured`
-        event, which is called on a per-mapper basis while the configuration
-        operation proceeds; unlike that event, when this event is invoked,
-        all cross-configurations (e.g. backrefs) will also have been made
-        available for any mappers that were pending.
-        Also contrast to :meth:`.MapperEvents.before_configured`,
-        which is invoked before the series of mappers has been configured.
+        Similar events to this one include
+        :meth:`.MapperEvents.before_configured`, which is invoked before a
+        series of mappers are configured, as well as
+        :meth:`.MapperEvents.before_mapper_configured` and
+        :meth:`.MapperEvents.mapper_configured`, which are both invoked on a
+        per-mapper basis.
 
         This event can **only** be applied to the :class:`_orm.Mapper` class,
-        and not to individual mappings or
-        mapped classes.  It is only invoked for all mappings as a whole::
+        and not to individual mappings or mapped classes::
 
             from sqlalchemy.orm import Mapper
 
@@ -1161,19 +1150,11 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             @event.listens_for(Mapper, "after_configured")
             def go(): ...
 
-        Theoretically this event is called once per
-        application, but is actually called any time new mappers
-        have been affected by a :func:`_orm.configure_mappers`
-        call.   If new mappings are constructed after existing ones have
-        already been used, this event will likely be called again.  To ensure
-        that a particular event is only called once and no further, the
-        ``once=True`` argument (new in 0.9.4) can be applied::
-
-            from sqlalchemy.orm import mapper
-
-
-            @event.listens_for(mapper, "after_configured", once=True)
-            def go(): ...
+        Typically, this event is called once per application, but in practice
+        may be called more than once, any time new mappers are to be affected
+        by a :func:`_orm.configure_mappers` call.   If new mappings are
+        constructed after existing ones have already been used, this event will
+        likely be called again.
 
         .. seealso::
 
