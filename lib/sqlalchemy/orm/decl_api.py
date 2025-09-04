@@ -78,6 +78,7 @@ from ..util.typing import flatten_newtype
 from ..util.typing import is_generic
 from ..util.typing import is_literal
 from ..util.typing import is_newtype
+from ..util.typing import is_pep593
 from ..util.typing import is_pep695
 from ..util.typing import Literal
 from ..util.typing import LITERAL_TYPES
@@ -1236,7 +1237,7 @@ class registry:
         )
 
     def _resolve_type(
-        self, python_type: _MatchedOnType, _do_fallbacks: bool = True
+        self, python_type: _MatchedOnType, _do_fallbacks: bool = False
     ) -> Optional[sqltypes.TypeEngine[Any]]:
         python_type_type: Type[Any]
         search: Iterable[Tuple[_MatchedOnType, Type[Any]]]
@@ -1288,12 +1289,14 @@ class registry:
             if is_pep695(python_type):
                 # NOTE: assume there aren't type alias types of new types.
                 python_type_to_check = python_type
-                while is_pep695(python_type_to_check):
+                while is_pep695(python_type_to_check) and not is_pep593(
+                    python_type_to_check
+                ):
                     python_type_to_check = python_type_to_check.__value__
                 python_type_to_check = de_optionalize_union_types(
                     python_type_to_check
                 )
-                kind = "TypeAliasType"
+                kind = "pep-695 type"
             if is_newtype(python_type):
                 python_type_to_check = flatten_newtype(python_type)
                 kind = "NewType"
@@ -1304,14 +1307,27 @@ class registry:
                 )
                 if res_after_fallback is not None:
                     assert kind is not None
-                    warn_deprecated(
-                        f"Matching the provided {kind} '{python_type}' on "
-                        "its resolved value without matching it in the "
-                        "type_annotation_map is deprecated; add this type to "
-                        "the type_annotation_map to allow it to match "
-                        "explicitly.",
-                        "2.0",
-                    )
+                    if kind == "pep-695 type":
+                        warn_deprecated(
+                            f"Matching to {kind} '{python_type}' in "
+                            "a recursive "
+                            "fashion without the recursed type being present "
+                            "in the type_annotation_map is deprecated; add "
+                            "this type or its recursed value to "
+                            "the type_annotation_map to allow it to match "
+                            "explicitly.",
+                            "2.0",
+                        )
+                    else:
+                        warn_deprecated(
+                            f"Matching the provided {kind} '{python_type}' on "
+                            "its resolved value without matching it in the "
+                            "type_annotation_map is deprecated; add this "
+                            "type to "
+                            "the type_annotation_map to allow it to match "
+                            "explicitly.",
+                            "2.0",
+                        )
                     return res_after_fallback
 
         return None

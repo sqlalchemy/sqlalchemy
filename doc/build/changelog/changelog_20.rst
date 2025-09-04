@@ -717,6 +717,9 @@
         :tags: bug, orm
         :tickets: 11955
 
+        .. note:: this change has been revised in version 2.0.44.  Simple matches
+           of ``TypeAliasType`` without a type map entry are no longer deprecated.
+
         Consistently handle ``TypeAliasType`` (defined in PEP 695) obtained with
         the ``type X = int`` syntax introduced in python 3.12. Now in all cases one
         such alias must be explicitly added to the type map for it to be usable
