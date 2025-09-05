@@ -25,6 +25,7 @@ from ... import column
 from ... import Computed
 from ... import exists
 from ... import false
+from ... import Float
 from ... import ForeignKey
 from ... import func
 from ... import Identity
@@ -1913,13 +1914,21 @@ class WindowFunctionTest(fixtures.TablesTest):
             Column("id", Integer, primary_key=True),
             Column("col1", Integer),
             Column("col2", Integer),
+            Column("col3", Float),
         )
 
     @classmethod
     def insert_data(cls, connection):
+        def row_factory(i):
+            return {
+                "id": i,
+                "col1": i,
+                "col2": i * 5,
+                "col3": i + 0.5,
+            }
         connection.execute(
             cls.tables.some_table.insert(),
-            [{"id": i, "col1": i, "col2": i * 5} for i in range(1, 50)],
+            [row_factory(i) for i in range(1, 50)],
         )
 
     def test_window(self, connection):
@@ -1933,6 +1942,35 @@ class WindowFunctionTest(fixtures.TablesTest):
         ).all()
 
         eq_(rows, [(95,) for i in range(19)])
+
+    def test_window_range_basic(self, connection):
+        some_table = self.tables.some_table
+        rows = connection.execute(
+            select(
+                func.max(some_table.c.col1).over(
+                    partition_by=[some_table.c.col2],
+                    order_by=[some_table.c.col2.asc()],
+                    range_=(0, 1)
+                )
+            ).where(some_table.c.col1 < 20)
+        ).all()
+
+        eq_(rows, [(i,) for i in range(1, 20)])
+
+    @testing.requires.window_range_numeric
+    def test_window_range_numeric(self, connection):
+        some_table = self.tables.some_table
+        rows = connection.execute(
+            select(
+                func.max(some_table.c.col3).over(
+                    partition_by=[some_table.c.col3],
+                    order_by=[some_table.c.col3.asc()],
+                    range_=(-1.25, 1.25),
+                )
+            ).where(some_table.c.col1 < 20)
+        ).all()
+
+        eq_(rows, [(i + 0.5,) for i in range(1, 20)])
 
     def test_window_rows_between_w_caching(self, connection):
         some_table = self.tables.some_table
