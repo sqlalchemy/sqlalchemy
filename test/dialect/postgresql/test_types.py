@@ -83,6 +83,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.testing import config
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -1239,6 +1240,121 @@ class NamedTypeTest(
         assert "my_enum" not in [
             e["name"] for e in inspect(connection).get_enums()
         ]
+
+    def _type_names_for_schema(self, connection, method_name, schema):
+        """Helper Function: Returns List of Names for given inspect method"""
+        return [
+            o["name"]
+            for o in getattr(inspect(connection), method_name)(schema=schema)
+        ]
+
+    @testing.variation("type_kind", ["enum", "domain"])
+    def test_builtin_name_conflict(self, connection, type_kind):
+        """Test ENUM/DOMAIN types named like PostgreSQL built-in types."""
+
+        if type_kind.enum:
+            type_cls = ENUM
+            method = "get_enums"
+            builtin_name = "text"  # reserved name in Postgres
+        else:
+            type_cls = DOMAIN
+            method = "get_domains"
+            builtin_name = "text"
+
+        explicit_schema = config.test_schema
+        dialect = postgresql.dialect()
+        dialect.default_schema_name = None
+
+        # Case 1: Compile-time Failure Without Schema...
+        t = (
+            type_cls("small", "medium", "large", name=builtin_name)
+            if type_kind.enum
+            else type_cls(name=builtin_name, data_type=Integer)
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            f"{type_cls.__name__} with name '{builtin_name}' requires "
+            "an explicit schema when no default_schema_name is configured",
+            t.compile,
+            dialect=dialect,
+        )
+
+        # Case 2: Explicit Schema Provided...
+        t2 = (
+            type_cls(
+                "spring",
+                "summer",
+                "autumn",
+                "winter",
+                name=builtin_name,
+                schema=explicit_schema,
+            )
+            if type_kind.enum
+            else type_cls(
+                name=builtin_name, data_type=Integer, schema=explicit_schema
+            )
+        )
+        metadata = MetaData()
+        Table("seasons_table", metadata, Column("season", t2))
+        metadata.create_all(connection)
+
+        eq_(
+            self._type_names_for_schema(connection, method, explicit_schema),
+            [builtin_name],
+        )
+        metadata.drop_all(connection)
+
+        # Case 3: schema inherited from table...
+        inherited_name = (
+            "status_enum_inherit" if type_kind.enum else "age_domain_inherit"
+        )
+        t3 = (
+            type_cls(
+                "active",
+                "inactive",
+                "archived",
+                name=inherited_name,
+                inherit_schema=True,
+            )
+            if type_kind.enum
+            else type_cls(
+                name=inherited_name, data_type=Integer, inherit_schema=True
+            )
+        )
+        metadata = MetaData()
+        Table(
+            "inherited_table",
+            metadata,
+            Column("col", t3),
+            schema=explicit_schema,
+        )
+        metadata.create_all(connection)
+
+        eq_(
+            self._type_names_for_schema(connection, method, explicit_schema),
+            [inherited_name],
+        )
+        metadata.drop_all(connection)
+
+        # Case 4: schema inherited from metadata...
+        meta_inherit_name = (
+            "priority_enum_meta" if type_kind.enum else "score_domain_meta"
+        )
+        metadata2 = MetaData(schema=explicit_schema)
+        t4 = (
+            type_cls("low", "medium", "high", name=meta_inherit_name)
+            if type_kind.enum
+            else type_cls(name=meta_inherit_name, data_type=Integer)
+        )
+        Table("meta_table", metadata2, Column("col", t4))
+        metadata2.create_all(connection)
+
+        eq_(
+            self._type_names_for_schema(connection, method, explicit_schema),
+            [meta_inherit_name],
+        )
+        metadata2.drop_all(connection)
 
 
 class DomainTest(
