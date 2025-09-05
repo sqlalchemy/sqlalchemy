@@ -462,7 +462,7 @@ class ARRAY(sqltypes.ARRAY[_T]):
             super_rp = process
             pattern = re.compile(r"^{(.*)}$")
 
-            def handle_raw_string(value: str) -> list[str]:
+            def handle_raw_string(value: str) -> Sequence[Optional[str]]:
                 inner = pattern.match(value).group(1)  # type: ignore[union-attr]  # noqa: E501
                 return _split_enum_values(inner)
 
@@ -483,10 +483,13 @@ class ARRAY(sqltypes.ARRAY[_T]):
         return process
 
 
-def _split_enum_values(array_string: str) -> list[str]:
+def _split_enum_values(array_string: str) -> Sequence[Optional[str]]:
     if '"' not in array_string:
         # no escape char is present so it can just split on the comma
-        return array_string.split(",") if array_string else []
+        return [
+            r if r != "NULL" else None
+            for r in (array_string.split(",") if array_string else [])
+        ]
 
     # handles quoted strings from:
     # r'abc,"quoted","also\\\\quoted", "quoted, comma", "esc \" quot", qpr'
@@ -503,5 +506,11 @@ def _split_enum_values(array_string: str) -> list[str]:
         elif in_quotes:
             result.append(tok.replace("_$ESC_QUOTE$_", '"'))
         else:
-            result.extend(re.findall(r"([^\s,]+),?", tok))
+            # interpret NULL (without quotes!) as None
+            result.extend(
+                [
+                    r if r != "NULL" else None
+                    for r in re.findall(r"([^\s,]+),?", tok)
+                ]
+            )
     return result
