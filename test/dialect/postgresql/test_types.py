@@ -468,7 +468,7 @@ class NamedTypeTest(
     ):
         """test #6373"""
 
-        metadata.schema = testing.config.test_schema
+        metadata.schema = testing.config.test_schema_2
         default_schema = testing.config.db.dialect.default_schema_name
 
         def make_type(**kw):
@@ -486,7 +486,7 @@ class NamedTypeTest(
 
         if test_case == "metadata_schema_only":
             enum = make_type(metadata=metadata)
-            assert_schema = testing.config.test_schema
+            assert_schema = testing.config.test_schema_2
         elif test_case == "override_metadata_schema":
             enum = make_type(
                 metadata=metadata,
