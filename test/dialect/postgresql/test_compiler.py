@@ -68,6 +68,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.functions import GenericFunction
+from sqlalchemy.testing import config
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -356,6 +357,60 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             render_schema_translate=True,
         )
 
+    def test_enum_with_builtin_name_schema_is_qualified(self):
+        for sch in (config.test_schema, config.test_schema_2):
+            e = Enum("active", "inactive", name="text", schema=sch)
+            self.assert_compile(
+                postgresql.CreateEnumType(e),
+                f"CREATE TYPE {sch}.text AS ENUM ('active', 'inactive')",
+            )
+
+            t = Table("user_status", MetaData(), Column("status", e))
+            self.assert_compile(
+                schema.CreateTable(t),
+                f"CREATE TABLE user_status (status {sch}.text)",
+            )
+
+    def test_drop_enum_with_builtin_name_is_qualified(self):
+        for sch in (config.test_schema, config.test_schema_2):
+            e = Enum("a", "b", name="text", schema=sch)
+            self.assert_compile(
+                postgresql.DropEnumType(e),
+                f"DROP TYPE {sch}.text",
+            )
+
+    def test_cast_enum_with_builtin_name(self):
+        for sch in (config.test_schema, config.test_schema_2):
+            e = Enum("opt1", "opt2", name="text", schema=sch)
+            stmt = select(cast(column("foo"), e))
+            self.assert_compile(
+                stmt,
+                f"SELECT CAST(foo AS {sch}.text) AS foo",
+            )
+
+    def test_compileerror_enum_without_schema_builtin_name(self):
+        e = Enum("yes", "no", name="text")
+        dialect = postgresql.dialect()
+        dialect.default_schema_name = None
+
+        with expect_raises_message(
+            exc.CompileError,
+            "ENUM with name 'text' requires an explicit schema "
+            "when no default_schema_name is configured",
+        ):
+            e.compile(dialect=dialect)
+
+    def test_schema_translate_for_builtin_name_enum(self):
+        for sch in (config.test_schema, config.test_schema_2):
+            e = Enum("hot", "cold", name="text", schema=sch)
+            schema_translate_map = {sch: "translated_schema"}
+            self.assert_compile(
+                postgresql.CreateEnumType(e),
+                "CREATE TYPE translated_schema.text AS ENUM ('hot', 'cold')",
+                schema_translate_map=schema_translate_map,
+                render_schema_translate=True,
+            )
+
     def test_domain(self):
         self.assert_compile(
             postgresql.CreateDomainType(
@@ -428,6 +483,60 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema_translate_map=schema_translate_map,
             render_schema_translate=True,
         )
+
+    def test_domain_with_builtin_name_schema_is_qualified(self):
+        for sch in (config.test_schema, config.test_schema_2):
+            d = DOMAIN("text", Integer, schema=sch)
+            self.assert_compile(
+                postgresql.CreateDomainType(d),
+                f"CREATE DOMAIN {sch}.text AS INTEGER ",
+            )
+
+            t = Table("doc", MetaData(), Column("body", d))
+            self.assert_compile(
+                schema.CreateTable(t),
+                f"CREATE TABLE doc (body {sch}.text)",
+            )
+
+    def test_drop_domain_with_builtin_name_is_qualified(self):
+        for sch in (config.test_schema, config.test_schema_2):
+            d = DOMAIN("text", Integer, schema=sch)
+            self.assert_compile(
+                postgresql.DropDomainType(d),
+                f"DROP DOMAIN {sch}.text",
+            )
+
+    def test_cast_domain_with_builtin_name(self):
+        for sch in (config.test_schema, config.test_schema_2):
+            d = DOMAIN("text", Integer, schema=sch)
+            stmt = select(cast(column("bar"), d))
+            self.assert_compile(
+                stmt,
+                f"SELECT CAST(bar AS {sch}.text) AS bar",
+            )
+
+    def test_compileerror_domain_without_schema_builtin_name(self):
+        d = DOMAIN("text", Integer)
+        dialect = postgresql.dialect()
+        dialect.default_schema_name = None
+
+        with expect_raises_message(
+            exc.CompileError,
+            "DOMAIN with name 'text' requires an explicit schema "
+            "when no default_schema_name is configured",
+        ):
+            d.compile(dialect=dialect)
+
+    def test_schema_translate_for_builtin_name_domain(self):
+        for sch in (config.test_schema, config.test_schema_2):
+            d = DOMAIN("text", Integer, schema=sch)
+            schema_translate_map = {sch: "translated_schema"}
+            self.assert_compile(
+                postgresql.CreateDomainType(d),
+                "CREATE DOMAIN translated_schema.text AS INTEGER ",
+                schema_translate_map=schema_translate_map,
+                render_schema_translate=True,
+            )
 
     def test_create_table_with_schema_type_schema_translate(self):
         e1 = Enum("x", "y", "z", name="somename")

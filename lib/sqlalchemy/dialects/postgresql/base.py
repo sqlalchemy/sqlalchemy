@@ -1765,7 +1765,7 @@ ischema_names = {
     "smallint": SMALLINT,
     "character varying": VARCHAR,
     "character": CHAR,
-    '"char"': sqltypes.String,
+    "char": sqltypes.String,
     "name": sqltypes.String,
     "text": TEXT,
     "numeric": NUMERIC,
@@ -2383,6 +2383,19 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_create_enum_type(self, create, **kw):
         type_ = create.element
 
+        if not type_.schema and type_.name in ischema_names:
+            if self.dialect.default_schema_name is None:
+                raise exc.CompileError(
+                    f"ENUM with name '{type_.name}' requires an explicit "
+                    "schema when no default_schema_name is configured"
+                )
+
+            # If schema is not given and name conflicts with a builtin type,
+            # attach it to the dialect's default_schema_name.
+            # This mutation is required so that CREATE TYPE places it
+            # in the correct schema and subsequent reflection sees it there.
+            type_.schema = self.dialect.default_schema_name
+
         return "CREATE TYPE %s AS ENUM (%s)" % (
             self.preparer.format_type(type_),
             ", ".join(
@@ -2398,6 +2411,19 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     def visit_create_domain_type(self, create, **kw):
         domain: DOMAIN = create.element
+
+        if not domain.schema and domain.name in ischema_names:
+            if self.dialect.default_schema_name is None:
+                raise exc.CompileError(
+                    f"DOMAIN with name '{domain.name}' requires an explicit "
+                    "schema when no default_schema_name is configured"
+                )
+
+            # If schema is not given and name conflicts with a builtin type,
+            # attach it to the dialect's default_schema_name.
+            # This mutation is required so that CREATE DOMAIN places it
+            # in the correct schema and subsequent reflection sees it there.
+            domain.schema = self.dialect.default_schema_name
 
         options = []
         if domain.collation is not None:
@@ -2775,11 +2801,39 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_ENUM(self, type_, identifier_preparer=None, **kw):
         if identifier_preparer is None:
             identifier_preparer = self.dialect.identifier_preparer
+
+        # Assign default schema for builtin names if schema not already set
+        if (
+            hasattr(type_, "schema")
+            and not getattr(type_, "schema")
+            and type_.name in ischema_names
+        ):
+            if self.dialect.default_schema_name is None:
+                raise exc.CompileError(
+                    f"ENUM with name '{type_.name}' requires an explicit "
+                    "schema when no default_schema_name is configured"
+                )
+            type_.schema = self.dialect.default_schema_name
+
         return identifier_preparer.format_type(type_)
 
     def visit_DOMAIN(self, type_, identifier_preparer=None, **kw):
         if identifier_preparer is None:
             identifier_preparer = self.dialect.identifier_preparer
+
+        # Assign default schema for builtin names if schema not already set
+        if (
+            hasattr(type_, "schema")
+            and not getattr(type_, "schema")
+            and type_.name in ischema_names
+        ):
+            if self.dialect.default_schema_name is None:
+                raise exc.CompileError(
+                    f"DOMAIN with name '{type_.name}' requires an explicit "
+                    "schema when no default_schema_name is configured"
+                )
+            type_.schema = self.dialect.default_schema_name
+
         return identifier_preparer.format_type(type_)
 
     def visit_TIMESTAMP(self, type_, **kw):
@@ -3262,8 +3316,14 @@ class PGDialect(default.DefaultDialect):
         self._json_deserializer = json_deserializer
         self._json_serializer = json_serializer
 
+        # Default schema name resolved during initialize(); None until then.
+        self.default_schema_name: Optional[str] = None
+
     def initialize(self, connection):
         super().initialize(connection)
+
+        # Resolve and cache the server current default schema (e.g. "public").
+        self.default_schema_name = self._get_default_schema_name(connection)
 
         # https://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
         self.supports_smallserial = self.server_version_info >= (9, 2)

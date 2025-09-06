@@ -497,6 +497,22 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
             check = coercions.expect(roles.DDLExpressionRole, check)
         self.check = check
         self.create_type = create_type
+
+        # To resolve ArgumentError("Ambiguously setting inherit_schema=True
+        # while ""also passing a non-None schema argument")
+        # we have to set inherit_schema flag with false if
+        # it got a schema implectly via default_dialect_schema
+
+        # Only force inherit_schema=False if schema is truly non-None
+        # i.e. we are explicitly binding to a schema to avoid conflicts
+        if kw.get("schema") is not None and (
+            kw.get("inherit_schema") is None or kw["inherit_schema"]
+        ):
+            kw["inherit_schema"] = False
+        # Otherwise, let it inherit normally
+        elif "schema" not in kw and kw.get("inherit_schema") is None:
+            kw["inherit_schema"] = True
+
         super().__init__(name=name, **kw)
 
     @classmethod
