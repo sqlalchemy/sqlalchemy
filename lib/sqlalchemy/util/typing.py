@@ -549,8 +549,9 @@ def includes_none(type_: Any) -> bool:
 def is_a_type(type_: Any) -> bool:
     return (
         isinstance(type_, type)
-        or hasattr(type_, "__origin__")
-        or type_.__module__ in ("typing", "typing_extensions")
+        or get_origin(type_) is not None
+        or getattr(type_, "__module__", None)
+        in ("typing", "typing_extensions")
         or type(type_).__mro__[0].__module__ in ("typing", "typing_extensions")
     )
 
