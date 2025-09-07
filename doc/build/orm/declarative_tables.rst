@@ -1246,7 +1246,7 @@ adding a ``FOREIGN KEY`` constraint as well as substituting
 .. _orm_declarative_mapped_column_generic_pep593:
 
 Mapping Whole Column Declarations to Generic Python Types
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Using the ``Annotated`` approach from the previous section, we may also
 create a generic version that will apply particular :func:`_orm.mapped_column`
@@ -1283,12 +1283,13 @@ The above type can now apply ``primary_key=True`` to any Python type::
         # will create a UUID primary key
         id: Mapped[PrimaryKey[uuid.UUID]]
 
-The type alias may also be defined equivalently using the pep-695 ``type``
-keyword in Python 3.12 or above::
+For a more shorthand approach, we may opt to use the :pep:`695` ``type``
+keyword (Python 3.12 or above) which allows us to skip having to define a
+``TypeVar`` variable::
 
     type PrimaryKey[T] = Annotated[T, mapped_column(primary_key=True)]
 
-.. versionadded:: 2.0.44 Generic pep-695 types may be used with pep-593
+.. versionadded:: 2.0.44 Generic :pep:`695` types may be used with :pep:`593`
     ``Annotated`` elements to create generic types that automatically
     deliver :func:`_orm.mapped_column` arguments.
 

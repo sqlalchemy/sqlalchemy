@@ -29,7 +29,6 @@ from typing import Optional
 from typing import Set
 from typing import Type
 from typing import TYPE_CHECKING
-from typing import TypeAlias as TypeAlias
 from typing import TypedDict
 from typing import TypeVar
 from typing import Union
@@ -104,78 +103,82 @@ from sqlalchemy.testing import Variation
 from sqlalchemy.testing.assertions import ne_
 from sqlalchemy.testing.fixtures import fixture_session
 
-TV = typing.TypeVar("TV")
 
-
-class _SomeDict1(TypedDict):
-    type: Literal["1"]
-
-
-class _SomeDict2(TypedDict):
-    type: Literal["2"]
-
-
-_UnionTypeAlias: TypeAlias = Union[_SomeDict1, _SomeDict2]
-
-_StrTypeAlias: TypeAlias = str
-
-
-_TypingLiteral = typing.Literal["a", "b"]
-_TypingExtensionsLiteral = typing_extensions.Literal["a", "b"]
-
-_JsonPrimitive: TypeAlias = Union[str, int, float, bool, None]
-_JsonObject: TypeAlias = Dict[str, "_Json"]
-_JsonArray: TypeAlias = List["_Json"]
-_Json: TypeAlias = Union[_JsonObject, _JsonArray, _JsonPrimitive]
-_JsonPrimitivePep604: TypeAlias = str | int | float | bool | None
-_JsonObjectPep604: TypeAlias = dict[str, "_JsonPep604"]
-_JsonArrayPep604: TypeAlias = list["_JsonPep604"]
-_JsonPep604: TypeAlias = (
-    _JsonObjectPep604 | _JsonArrayPep604 | _JsonPrimitivePep604
-)
-_JsonPep695 = TypeAliasType("_JsonPep695", _JsonPep604)
-
-
+# try to differentiate between typing_extensions.TypeAliasType
+# and typing.TypeAliasType
 TypingTypeAliasType = getattr(typing, "TypeAliasType", TypeAliasType)
 
-_StrPep695 = TypeAliasType("_StrPep695", str)
-_TypingStrPep695 = TypingTypeAliasType("_TypingStrPep695", str)
-_GenericPep695 = TypeAliasType("_GenericPep695", List[TV], type_params=(TV,))
-_TypingGenericPep695 = TypingTypeAliasType(
-    "_TypingGenericPep695", List[TV], type_params=(TV,)
-)
-_GenericPep695Typed = _GenericPep695[int]
-_TypingGenericPep695Typed = _TypingGenericPep695[int]
-_UnionPep695 = TypeAliasType("_UnionPep695", Union[_SomeDict1, _SomeDict2])
-strtypalias_keyword = TypeAliasType(
-    "strtypalias_keyword", Annotated[str, mapped_column(info={"hi": "there"})]
-)
-strtypalias_keyword_nested = TypeAliasType(
-    "strtypalias_keyword_nested",
-    int | Annotated[str, mapped_column(info={"hi": "there"})],
-)
-strtypalias_ta: TypeAlias = Annotated[str, mapped_column(info={"hi": "there"})]
-strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
-_Literal695 = TypeAliasType(
-    "_Literal695", Literal["to-do", "in-progress", "done"]
-)
-_TypingLiteral695 = TypingTypeAliasType(
-    "_TypingLiteral695", Literal["to-do", "in-progress", "done"]
-)
-_RecursiveLiteral695 = TypeAliasType("_RecursiveLiteral695", _Literal695)
 
-_GenericPep593TypeAlias = Annotated[TV, mapped_column(info={"hi": "there"})]
+@testing.fixture
+def pep_695_types():
+    global TV
+    global _UnionPep695, _TypingGenericPep695, _TypingStrPep695
+    global _TypingGenericPep695, _TypingGenericPep695Typed
+    global _TypingLiteral695
+    global _Literal695, _RecursiveLiteral695
+    global _StrPep695, _GenericPep695, _GenericPep695Typed, _GenericPep695Typed
 
-_GenericPep593Pep695 = TypingTypeAliasType(
-    "_GenericPep593Pep695",
-    Annotated[TV, mapped_column(info={"hi": "there"})],
-    type_params=(TV,),
-)
+    TV = typing.TypeVar("TV")
 
-_RecursivePep695Pep593 = TypingTypeAliasType(
-    "_RecursivePep695Pep593",
-    Annotated[_TypingStrPep695, mapped_column(info={"hi": "there"})],
-)
+    _StrPep695 = TypeAliasType("_StrPep695", str)  # type: ignore
+    _GenericPep695 = TypeAliasType(  # type: ignore
+        "_GenericPep695", List[TV], type_params=(TV,)
+    )
+    _GenericPep695Typed = _GenericPep695[int]
+
+    class _SomeDict1(TypedDict):
+        type: Literal["1"]
+
+    class _SomeDict2(TypedDict):
+        type: Literal["2"]
+
+    _Literal695 = TypeAliasType(  # type: ignore
+        "_Literal695", Literal["to-do", "in-progress", "done"]
+    )
+    _RecursiveLiteral695 = TypeAliasType(  # type: ignore
+        "_RecursiveLiteral695", _Literal695
+    )
+
+    _UnionPep695 = TypeAliasType(  # type: ignore
+        "_UnionPep695", Union[_SomeDict1, _SomeDict2]
+    )
+    _TypingStrPep695 = TypingTypeAliasType(  # type: ignore
+        "_TypingStrPep695", str
+    )
+
+    _TypingGenericPep695 = TypingTypeAliasType(  # type: ignore
+        "_TypingGenericPep695", List[TV], type_params=(TV,)  # type: ignore
+    )
+
+    _TypingGenericPep695Typed = _TypingGenericPep695[int]  # type: ignore
+
+    _TypingLiteral695 = TypingTypeAliasType(  # type: ignore
+        "_TypingLiteral695", Literal["to-do", "in-progress", "done"]
+    )
+
+
+@testing.fixture
+def pep_593_types(pep_695_types):
+    global _GenericPep593TypeAlias, _GenericPep593Pep695
+    global _RecursivePep695Pep593
+
+    _GenericPep593TypeAlias = Annotated[
+        TV, mapped_column(info={"hi": "there"})  # type: ignore
+    ]
+
+    _GenericPep593Pep695 = TypingTypeAliasType(  # type: ignore
+        "_GenericPep593Pep695",
+        Annotated[TV, mapped_column(info={"hi": "there"})],  # type: ignore
+        type_params=(TV,),
+    )
+
+    _RecursivePep695Pep593 = TypingTypeAliasType(  # type: ignore
+        "_RecursivePep695Pep593",
+        Annotated[
+            _TypingStrPep695,  # type: ignore
+            mapped_column(info={"hi": "there"}),
+        ],
+    )
 
 
 def expect_annotation_syntax_error(name):
@@ -217,15 +220,6 @@ class DeclarativeBaseTest(fixtures.TestBase):
 
         with expect_raises(AttributeError):
             Tab.non_existent
-
-
-_annotated_names_tested = set()
-
-
-def annotated_name_test_cases(*cases, **kw):
-    _annotated_names_tested.update([case[0] for case in cases])
-
-    return testing.combinations_list(cases, **kw)
 
 
 class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -632,7 +626,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         anno_str = Annotated[str, 50]
         anno_str_optional = Annotated[Optional[str], 30]
 
-        newtype_str = NewType("MyType", str)
+        newtype_str = NewType("newtype_str", str)
 
         anno_str_mc = Annotated[str, mapped_column()]
         anno_str_optional_mc = Annotated[Optional[str], mapped_column()]
@@ -771,6 +765,11 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_typing_literal_identity(self, decl_base):
         """See issue #11820"""
 
+        global _TypingLiteral, _TypingExtensionsLiteral
+
+        _TypingLiteral = typing.Literal["a", "b"]
+        _TypingExtensionsLiteral = typing_extensions.Literal["a", "b"]
+
         class Foo(decl_base):
             __tablename__ = "footable"
 
@@ -783,159 +782,176 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             eq_(col.type.enums, ["a", "b"])
             is_(col.type.native_enum, False)
 
+    @staticmethod
+    def annotated_name_test_cases():
+        return [
+            ("sort_order", 100, lambda sort_order: sort_order == 100),
+            ("nullable", False, lambda column: column.nullable is False),
+            (
+                "active_history",
+                True,
+                lambda column_property: column_property.active_history is True,
+            ),
+            (
+                "deferred",
+                True,
+                lambda column_property: column_property.deferred is True,
+            ),
+            (
+                "deferred",
+                _NoArg.NO_ARG,
+                lambda column_property: column_property is None,
+            ),
+            (
+                "deferred_group",
+                "mygroup",
+                lambda column_property: column_property.deferred is True
+                and column_property.group == "mygroup",
+            ),
+            (
+                "deferred_raiseload",
+                True,
+                lambda column_property: column_property.deferred is True
+                and column_property.raiseload is True,
+            ),
+            (
+                "server_default",
+                "25",
+                lambda column: column.server_default.arg == "25",
+            ),
+            (
+                "server_onupdate",
+                "25",
+                lambda column: column.server_onupdate.arg == "25",
+            ),
+            (
+                "default",
+                25,
+                lambda column: column.default.arg == 25,
+            ),
+            (
+                "insert_default",
+                25,
+                lambda column: column.default.arg == 25,
+            ),
+            (
+                "onupdate",
+                25,
+                lambda column: column.onupdate.arg == 25,
+            ),
+            ("doc", "some doc", lambda column: column.doc == "some doc"),
+            (
+                "comment",
+                "some comment",
+                lambda column: column.comment == "some comment",
+            ),
+            ("index", True, lambda column: column.index is True),
+            ("index", _NoArg.NO_ARG, lambda column: column.index is None),
+            ("index", False, lambda column: column.index is False),
+            ("unique", True, lambda column: column.unique is True),
+            ("unique", False, lambda column: column.unique is False),
+            (
+                "autoincrement",
+                True,
+                lambda column: column.autoincrement is True,
+            ),
+            ("system", True, lambda column: column.system is True),
+            ("primary_key", True, lambda column: column.primary_key is True),
+            ("type_", BIGINT, lambda column: isinstance(column.type, BIGINT)),
+            (
+                "info",
+                {"foo": "bar"},
+                lambda column: column.info == {"foo": "bar"},
+            ),
+            (
+                "use_existing_column",
+                True,
+                lambda mc: mc._use_existing_column is True,
+            ),
+            (
+                "quote",
+                True,
+                exc.SADeprecationWarning(
+                    "Can't use the 'key' or 'name' arguments in Annotated "
+                ),
+            ),
+            (
+                "key",
+                "mykey",
+                exc.SADeprecationWarning(
+                    "Can't use the 'key' or 'name' arguments in Annotated "
+                ),
+            ),
+            (
+                "name",
+                "mykey",
+                exc.SADeprecationWarning(
+                    "Can't use the 'key' or 'name' arguments in Annotated "
+                ),
+            ),
+            (
+                "kw_only",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'kw_only' is a dataclass argument "
+                ),
+            ),
+            (
+                "compare",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'compare' is a dataclass argument "
+                ),
+            ),
+            (
+                "default_factory",
+                lambda: 25,
+                exc.SADeprecationWarning(
+                    "Argument 'default_factory' is a dataclass argument "
+                ),
+            ),
+            (
+                "repr",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'repr' is a dataclass argument "
+                ),
+            ),
+            (
+                "init",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'init' is a dataclass argument"
+                ),
+            ),
+            (
+                "hash",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'hash' is a dataclass argument"
+                ),
+            ),
+            (
+                "dataclass_metadata",
+                {},
+                exc.SADeprecationWarning(
+                    "Argument 'dataclass_metadata' is a dataclass argument"
+                ),
+            ),
+        ]
+
     def test_we_got_all_attrs_test_annotated(self):
         argnames = _py_inspect.getfullargspec(mapped_column)
+        _annotated_names_tested = {
+            case[0] for case in self.annotated_name_test_cases()
+        }
         assert _annotated_names_tested.issuperset(argnames.kwonlyargs), (
             f"annotated attributes were not tested: "
             f"{set(argnames.kwonlyargs).difference(_annotated_names_tested)}"
         )
 
-    @annotated_name_test_cases(
-        ("sort_order", 100, lambda sort_order: sort_order == 100),
-        ("nullable", False, lambda column: column.nullable is False),
-        (
-            "active_history",
-            True,
-            lambda column_property: column_property.active_history is True,
-        ),
-        (
-            "deferred",
-            True,
-            lambda column_property: column_property.deferred is True,
-        ),
-        (
-            "deferred",
-            _NoArg.NO_ARG,
-            lambda column_property: column_property is None,
-        ),
-        (
-            "deferred_group",
-            "mygroup",
-            lambda column_property: column_property.deferred is True
-            and column_property.group == "mygroup",
-        ),
-        (
-            "deferred_raiseload",
-            True,
-            lambda column_property: column_property.deferred is True
-            and column_property.raiseload is True,
-        ),
-        (
-            "server_default",
-            "25",
-            lambda column: column.server_default.arg == "25",
-        ),
-        (
-            "server_onupdate",
-            "25",
-            lambda column: column.server_onupdate.arg == "25",
-        ),
-        (
-            "default",
-            25,
-            lambda column: column.default.arg == 25,
-        ),
-        (
-            "insert_default",
-            25,
-            lambda column: column.default.arg == 25,
-        ),
-        (
-            "onupdate",
-            25,
-            lambda column: column.onupdate.arg == 25,
-        ),
-        ("doc", "some doc", lambda column: column.doc == "some doc"),
-        (
-            "comment",
-            "some comment",
-            lambda column: column.comment == "some comment",
-        ),
-        ("index", True, lambda column: column.index is True),
-        ("index", _NoArg.NO_ARG, lambda column: column.index is None),
-        ("index", False, lambda column: column.index is False),
-        ("unique", True, lambda column: column.unique is True),
-        ("unique", False, lambda column: column.unique is False),
-        ("autoincrement", True, lambda column: column.autoincrement is True),
-        ("system", True, lambda column: column.system is True),
-        ("primary_key", True, lambda column: column.primary_key is True),
-        ("type_", BIGINT, lambda column: isinstance(column.type, BIGINT)),
-        ("info", {"foo": "bar"}, lambda column: column.info == {"foo": "bar"}),
-        (
-            "use_existing_column",
-            True,
-            lambda mc: mc._use_existing_column is True,
-        ),
-        (
-            "quote",
-            True,
-            exc.SADeprecationWarning(
-                "Can't use the 'key' or 'name' arguments in Annotated "
-            ),
-        ),
-        (
-            "key",
-            "mykey",
-            exc.SADeprecationWarning(
-                "Can't use the 'key' or 'name' arguments in Annotated "
-            ),
-        ),
-        (
-            "name",
-            "mykey",
-            exc.SADeprecationWarning(
-                "Can't use the 'key' or 'name' arguments in Annotated "
-            ),
-        ),
-        (
-            "kw_only",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'kw_only' is a dataclass argument "
-            ),
-        ),
-        (
-            "compare",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'compare' is a dataclass argument "
-            ),
-        ),
-        (
-            "default_factory",
-            lambda: 25,
-            exc.SADeprecationWarning(
-                "Argument 'default_factory' is a dataclass argument "
-            ),
-        ),
-        (
-            "repr",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'repr' is a dataclass argument "
-            ),
-        ),
-        (
-            "init",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'init' is a dataclass argument"
-            ),
-        ),
-        (
-            "hash",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'hash' is a dataclass argument"
-            ),
-        ),
-        (
-            "dataclass_metadata",
-            {},
-            exc.SADeprecationWarning(
-                "Argument 'dataclass_metadata' is a dataclass argument"
-            ),
-        ),
+    @testing.combinations_list(
+        annotated_name_test_cases(),
         argnames="argname, argument, assertion",
     )
     @testing.variation("use_annotated", [True, False, "control"])
@@ -1222,6 +1238,21 @@ class Pep593InterpretationTests(fixtures.TestBase, testing.AssertsCompiledSQL):
         self, decl_base: Type[DeclarativeBase], alias_type
     ):
         """test #11130"""
+
+        global strtypalias_keyword, strtypalias_keyword_nested
+        global strtypalias_ta, strtypalias_plain
+
+        strtypalias_keyword = TypeAliasType(
+            "strtypalias_keyword",
+            Annotated[str, mapped_column(info={"hi": "there"})],
+        )
+        strtypalias_keyword_nested = TypeAliasType(
+            "strtypalias_keyword_nested",
+            int | Annotated[str, mapped_column(info={"hi": "there"})],
+        )
+        strtypalias_ta = Annotated[str, mapped_column(info={"hi": "there"})]
+        strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
+
         if alias_type.typekeyword:
             decl_base.registry.update_type_annotation_map(
                 {strtypalias_keyword: VARCHAR(33)}  # noqa: F821
@@ -1265,8 +1296,9 @@ class Pep593InterpretationTests(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     @testing.requires.python312
     def test_no_recursive_pep593_from_pep695(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: Type[DeclarativeBase], pep_593_types
     ):
+
         def declare():
             class MyClass(decl_base):
                 __tablename__ = "my_table"
@@ -1800,7 +1832,11 @@ class Pep593InterpretationTests(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.variation("alias_type", ["plain", "pep695"])
     @testing.requires.python312
     def test_generic_typealias_pep593(
-        self, decl_base: Type[DeclarativeBase], alias_type: Variation, in_map
+        self,
+        decl_base: Type[DeclarativeBase],
+        alias_type: Variation,
+        in_map,
+        pep_593_types,
     ):
 
         if in_map:
@@ -2167,6 +2203,18 @@ class TypeResolutionTests(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_plain_typealias_as_typemap_keys(
         self, decl_base: Type[DeclarativeBase]
     ):
+
+        global _StrTypeAlias, _UnionTypeAlias
+
+        class _SomeDict1(TypedDict):
+            type: Literal["1"]
+
+        class _SomeDict2(TypedDict):
+            type: Literal["2"]
+
+        _StrTypeAlias = str
+        _UnionTypeAlias = Union[_SomeDict1, _SomeDict2]
+
         decl_base.registry.update_type_annotation_map(
             {_UnionTypeAlias: JSON, _StrTypeAlias: String(30)}
         )
@@ -2336,7 +2384,7 @@ class TypeResolutionTests(fixtures.TestBase, testing.AssertsCompiledSQL):
     )
     @testing.requires.python312
     def test_pep695_typealias_as_typemap_keys(
-        self, decl_base: Type[DeclarativeBase], type_
+        self, decl_base: Type[DeclarativeBase], type_, pep_695_types
     ):
         """test #10807, #12829"""
 
@@ -2533,6 +2581,20 @@ class TypeResolutionTests(fixtures.TestBase, testing.AssertsCompiledSQL):
     )
     def test_optional_in_annotation_map(self, union):
         """See issue #11370"""
+
+        global _Json, _JsonPep604, _JsonPep695
+
+        _JsonPrimitive = Union[str, int, float, bool, None]
+        _JsonObject = Dict[str, "_Json"]
+        _JsonArray = List["_Json"]
+        _Json = Union[_JsonObject, _JsonArray, _JsonPrimitive]
+        _JsonPrimitivePep604 = str | int | float | bool | None
+        _JsonObjectPep604 = dict[str, "_JsonPep604"]
+        _JsonArrayPep604 = list["_JsonPep604"]
+        _JsonPep604 = (
+            _JsonObjectPep604 | _JsonArrayPep604 | _JsonPrimitivePep604
+        )
+        _JsonPep695 = TypeAliasType("_JsonPep695", _JsonPep604)
 
         class Base(DeclarativeBase):
             if union.union:
@@ -2871,7 +2933,9 @@ class ResolveToEnumTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     )
     @testing.combinations(True, False, argnames="in_map")
     @testing.requires.python312
-    def test_pep695_literal_defaults_to_enum(self, decl_base, type_, in_map):
+    def test_pep695_literal_defaults_to_enum(
+        self, decl_base, type_, in_map, pep_695_types
+    ):
         """test #11305."""
 
         def declare():
