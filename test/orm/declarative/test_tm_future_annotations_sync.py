@@ -33,7 +33,6 @@ import uuid
 import typing_extensions
 from typing_extensions import get_args as get_args
 from typing_extensions import Literal as Literal
-from typing_extensions import TypeAlias as TypeAlias
 from typing_extensions import TypeAliasType
 from typing_extensions import TypedDict
 
@@ -105,81 +104,82 @@ from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.util import compat
 from sqlalchemy.util.typing import Annotated
 
-TV = typing.TypeVar("TV")
 
-
-class _SomeDict1(TypedDict):
-    type: Literal["1"]
-
-
-class _SomeDict2(TypedDict):
-    type: Literal["2"]
-
-
-_UnionTypeAlias: TypeAlias = Union[_SomeDict1, _SomeDict2]
-
-_StrTypeAlias: TypeAlias = str
-
-
-if compat.py38:
-    _TypingLiteral = typing.Literal["a", "b"]
-_TypingExtensionsLiteral = typing_extensions.Literal["a", "b"]
-
-_JsonPrimitive: TypeAlias = Union[str, int, float, bool, None]
-_JsonObject: TypeAlias = Dict[str, "_Json"]
-_JsonArray: TypeAlias = List["_Json"]
-_Json: TypeAlias = Union[_JsonObject, _JsonArray, _JsonPrimitive]
-
-if compat.py310:
-    _JsonPrimitivePep604: TypeAlias = str | int | float | bool | None
-    _JsonObjectPep604: TypeAlias = dict[str, "_JsonPep604"]
-    _JsonArrayPep604: TypeAlias = list["_JsonPep604"]
-    _JsonPep604: TypeAlias = (
-        _JsonObjectPep604 | _JsonArrayPep604 | _JsonPrimitivePep604
-    )
-    _JsonPep695 = TypeAliasType("_JsonPep695", _JsonPep604)
-
+# try to differentiate between typing_extensions.TypeAliasType
+# and typing.TypeAliasType
 TypingTypeAliasType = getattr(typing, "TypeAliasType", TypeAliasType)
 
-_StrPep695 = TypeAliasType("_StrPep695", str)
-_TypingStrPep695 = TypingTypeAliasType("_TypingStrPep695", str)
-_GenericPep695 = TypeAliasType("_GenericPep695", List[TV], type_params=(TV,))
-_TypingGenericPep695 = TypingTypeAliasType(
-    "_TypingGenericPep695", List[TV], type_params=(TV,)
-)
-_GenericPep695Typed = _GenericPep695[int]
-_TypingGenericPep695Typed = _TypingGenericPep695[int]
-_UnionPep695 = TypeAliasType("_UnionPep695", Union[_SomeDict1, _SomeDict2])
-strtypalias_keyword = TypeAliasType(
-    "strtypalias_keyword", Annotated[str, mapped_column(info={"hi": "there"})]
-)
-if compat.py310:
-    strtypalias_keyword_nested = TypeAliasType(
-        "strtypalias_keyword_nested",
-        int | Annotated[str, mapped_column(info={"hi": "there"})],
+
+@testing.fixture
+def pep_695_types():
+    global TV
+    global _UnionPep695, _TypingGenericPep695, _TypingStrPep695
+    global _TypingGenericPep695, _TypingGenericPep695Typed
+    global _TypingLiteral695
+    global _Literal695, _RecursiveLiteral695
+    global _StrPep695, _GenericPep695, _GenericPep695Typed, _GenericPep695Typed
+
+    TV = typing.TypeVar("TV")
+
+    _StrPep695 = TypeAliasType("_StrPep695", str)  # type: ignore
+    _GenericPep695 = TypeAliasType(  # type: ignore
+        "_GenericPep695", List[TV], type_params=(TV,)
     )
-strtypalias_ta: TypeAlias = Annotated[str, mapped_column(info={"hi": "there"})]
-strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
-_Literal695 = TypeAliasType(
-    "_Literal695", Literal["to-do", "in-progress", "done"]
-)
-_TypingLiteral695 = TypingTypeAliasType(
-    "_TypingLiteral695", Literal["to-do", "in-progress", "done"]
-)
-_RecursiveLiteral695 = TypeAliasType("_RecursiveLiteral695", _Literal695)
+    _GenericPep695Typed = _GenericPep695[int]
 
-_GenericPep593TypeAlias = Annotated[TV, mapped_column(info={"hi": "there"})]
+    class _SomeDict1(TypedDict):
+        type: Literal["1"]
 
-_GenericPep593Pep695 = TypingTypeAliasType(
-    "_GenericPep593Pep695",
-    Annotated[TV, mapped_column(info={"hi": "there"})],
-    type_params=(TV,),
-)
+    class _SomeDict2(TypedDict):
+        type: Literal["2"]
 
-_RecursivePep695Pep593 = TypingTypeAliasType(
-    "_RecursivePep695Pep593",
-    Annotated[_TypingStrPep695, mapped_column(info={"hi": "there"})],
-)
+    _Literal695 = TypeAliasType(  # type: ignore
+        "_Literal695", Literal["to-do", "in-progress", "done"]
+    )
+    _RecursiveLiteral695 = TypeAliasType(  # type: ignore
+        "_RecursiveLiteral695", _Literal695
+    )
+
+    _UnionPep695 = TypeAliasType(  # type: ignore
+        "_UnionPep695", Union[_SomeDict1, _SomeDict2]
+    )
+    _TypingStrPep695 = TypingTypeAliasType(  # type: ignore
+        "_TypingStrPep695", str
+    )
+
+    _TypingGenericPep695 = TypingTypeAliasType(  # type: ignore
+        "_TypingGenericPep695", List[TV], type_params=(TV,)  # type: ignore
+    )
+
+    _TypingGenericPep695Typed = _TypingGenericPep695[int]  # type: ignore
+
+    _TypingLiteral695 = TypingTypeAliasType(  # type: ignore
+        "_TypingLiteral695", Literal["to-do", "in-progress", "done"]
+    )
+
+
+@testing.fixture
+def pep_593_types(pep_695_types):
+    global _GenericPep593TypeAlias, _GenericPep593Pep695
+    global _RecursivePep695Pep593
+
+    _GenericPep593TypeAlias = Annotated[
+        TV, mapped_column(info={"hi": "there"})  # type: ignore
+    ]
+
+    _GenericPep593Pep695 = TypingTypeAliasType(  # type: ignore
+        "_GenericPep593Pep695",
+        Annotated[TV, mapped_column(info={"hi": "there"})],  # type: ignore
+        type_params=(TV,),
+    )
+
+    _RecursivePep695Pep593 = TypingTypeAliasType(  # type: ignore
+        "_RecursivePep695Pep593",
+        Annotated[
+            _TypingStrPep695,  # type: ignore
+            mapped_column(info={"hi": "there"}),
+        ],
+    )
 
 
 def expect_annotation_syntax_error(name):
@@ -221,15 +221,6 @@ class DeclarativeBaseTest(fixtures.TestBase):
 
         with expect_raises(AttributeError):
             Tab.non_existent
-
-
-_annotated_names_tested = set()
-
-
-def annotated_name_test_cases(*cases, **kw):
-    _annotated_names_tested.update([case[0] for case in cases])
-
-    return testing.combinations_list(cases, **kw)
 
 
 class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -636,7 +627,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         anno_str = Annotated[str, 50]
         anno_str_optional = Annotated[Optional[str], 30]
 
-        newtype_str = NewType("MyType", str)
+        newtype_str = NewType("newtype_str", str)
 
         anno_str_mc = Annotated[str, mapped_column()]
         anno_str_optional_mc = Annotated[Optional[str], mapped_column()]
@@ -775,6 +766,11 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_typing_literal_identity(self, decl_base):
         """See issue #11820"""
 
+        global _TypingLiteral, _TypingExtensionsLiteral
+
+        _TypingLiteral = typing.Literal["a", "b"]
+        _TypingExtensionsLiteral = typing_extensions.Literal["a", "b"]
+
         class Foo(decl_base):
             __tablename__ = "footable"
 
@@ -787,162 +783,187 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             eq_(col.type.enums, ["a", "b"])
             is_(col.type.native_enum, False)
 
-    @testing.requires.python310
+    @staticmethod
+    def annotated_name_test_cases():
+        return [
+            ("sort_order", 100, lambda sort_order: sort_order == 100),
+            ("nullable", False, lambda column: column.nullable is False),
+            (
+                "active_history",
+                True,
+                lambda column_property: column_property.active_history is True,
+            ),
+            (
+                "deferred",
+                True,
+                lambda column_property: column_property.deferred is True,
+            ),
+            (
+                "deferred",
+                _NoArg.NO_ARG,
+                lambda column_property: column_property is None,
+            ),
+            (
+                "deferred_group",
+                "mygroup",
+                lambda column_property: column_property.deferred is True
+                and column_property.group == "mygroup",
+            ),
+            (
+                "deferred_raiseload",
+                True,
+                lambda column_property: column_property.deferred is True
+                and column_property.raiseload is True,
+            ),
+            (
+                "server_default",
+                "25",
+                lambda column: column.server_default.arg == "25",
+            ),
+            (
+                "server_onupdate",
+                "25",
+                lambda column: column.server_onupdate.arg == "25",
+            ),
+            (
+                "default",
+                25,
+                lambda column: column.default.arg == 25,
+            ),
+            (
+                "insert_default",
+                25,
+                lambda column: column.default.arg == 25,
+            ),
+            (
+                "onupdate",
+                25,
+                lambda column: column.onupdate.arg == 25,
+            ),
+            ("doc", "some doc", lambda column: column.doc == "some doc"),
+            (
+                "comment",
+                "some comment",
+                lambda column: column.comment == "some comment",
+            ),
+            ("index", True, lambda column: column.index is True),
+            ("index", _NoArg.NO_ARG, lambda column: column.index is None),
+            ("index", False, lambda column: column.index is False),
+            ("unique", True, lambda column: column.unique is True),
+            ("unique", False, lambda column: column.unique is False),
+            (
+                "autoincrement",
+                True,
+                lambda column: column.autoincrement is True,
+            ),
+            ("system", True, lambda column: column.system is True),
+            ("primary_key", True, lambda column: column.primary_key is True),
+            ("type_", BIGINT, lambda column: isinstance(column.type, BIGINT)),
+            (
+                "info",
+                {"foo": "bar"},
+                lambda column: column.info == {"foo": "bar"},
+            ),
+            (
+                "use_existing_column",
+                True,
+                lambda mc: mc._use_existing_column is True,
+            ),
+            (
+                "quote",
+                True,
+                exc.SADeprecationWarning(
+                    "Can't use the 'key' or 'name' arguments in Annotated "
+                ),
+            ),
+            (
+                "key",
+                "mykey",
+                exc.SADeprecationWarning(
+                    "Can't use the 'key' or 'name' arguments in Annotated "
+                ),
+            ),
+            (
+                "name",
+                "mykey",
+                exc.SADeprecationWarning(
+                    "Can't use the 'key' or 'name' arguments in Annotated "
+                ),
+            ),
+            (
+                "kw_only",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'kw_only' is a dataclass argument "
+                ),
+                testing.requires.python310,
+            ),
+            (
+                "compare",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'compare' is a dataclass argument "
+                ),
+                testing.requires.python310,
+            ),
+            (
+                "default_factory",
+                lambda: 25,
+                exc.SADeprecationWarning(
+                    "Argument 'default_factory' is a dataclass argument "
+                ),
+            ),
+            (
+                "repr",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'repr' is a dataclass argument "
+                ),
+            ),
+            (
+                "init",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'init' is a dataclass argument"
+                ),
+            ),
+            (
+                "hash",
+                True,
+                exc.SADeprecationWarning(
+                    "Argument 'hash' is a dataclass argument"
+                ),
+            ),
+            (
+                "dataclass_metadata",
+                {},
+                exc.SADeprecationWarning(
+                    "Argument 'dataclass_metadata' is a dataclass argument"
+                ),
+            ),
+        ]
+
+    if not compat.py310:
+        annotated_name_test_cases = annotated_name_test_cases.__func__
+        static_annotated_name_test_cases = staticmethod(
+            annotated_name_test_cases
+        )
+    else:
+        static_annotated_name_test_cases = annotated_name_test_cases
+
     def test_we_got_all_attrs_test_annotated(self):
         argnames = _py_inspect.getfullargspec(mapped_column)
+        _annotated_names_tested = {
+            case[0] for case in self.static_annotated_name_test_cases()
+        }
         assert _annotated_names_tested.issuperset(argnames.kwonlyargs), (
             f"annotated attributes were not tested: "
             f"{set(argnames.kwonlyargs).difference(_annotated_names_tested)}"
         )
 
-    @annotated_name_test_cases(
-        ("sort_order", 100, lambda sort_order: sort_order == 100),
-        ("nullable", False, lambda column: column.nullable is False),
-        (
-            "active_history",
-            True,
-            lambda column_property: column_property.active_history is True,
-        ),
-        (
-            "deferred",
-            True,
-            lambda column_property: column_property.deferred is True,
-        ),
-        (
-            "deferred",
-            _NoArg.NO_ARG,
-            lambda column_property: column_property is None,
-        ),
-        (
-            "deferred_group",
-            "mygroup",
-            lambda column_property: column_property.deferred is True
-            and column_property.group == "mygroup",
-        ),
-        (
-            "deferred_raiseload",
-            True,
-            lambda column_property: column_property.deferred is True
-            and column_property.raiseload is True,
-        ),
-        (
-            "server_default",
-            "25",
-            lambda column: column.server_default.arg == "25",
-        ),
-        (
-            "server_onupdate",
-            "25",
-            lambda column: column.server_onupdate.arg == "25",
-        ),
-        (
-            "default",
-            25,
-            lambda column: column.default.arg == 25,
-        ),
-        (
-            "insert_default",
-            25,
-            lambda column: column.default.arg == 25,
-        ),
-        (
-            "onupdate",
-            25,
-            lambda column: column.onupdate.arg == 25,
-        ),
-        ("doc", "some doc", lambda column: column.doc == "some doc"),
-        (
-            "comment",
-            "some comment",
-            lambda column: column.comment == "some comment",
-        ),
-        ("index", True, lambda column: column.index is True),
-        ("index", _NoArg.NO_ARG, lambda column: column.index is None),
-        ("index", False, lambda column: column.index is False),
-        ("unique", True, lambda column: column.unique is True),
-        ("unique", False, lambda column: column.unique is False),
-        ("autoincrement", True, lambda column: column.autoincrement is True),
-        ("system", True, lambda column: column.system is True),
-        ("primary_key", True, lambda column: column.primary_key is True),
-        ("type_", BIGINT, lambda column: isinstance(column.type, BIGINT)),
-        ("info", {"foo": "bar"}, lambda column: column.info == {"foo": "bar"}),
-        (
-            "use_existing_column",
-            True,
-            lambda mc: mc._use_existing_column is True,
-        ),
-        (
-            "quote",
-            True,
-            exc.SADeprecationWarning(
-                "Can't use the 'key' or 'name' arguments in Annotated "
-            ),
-        ),
-        (
-            "key",
-            "mykey",
-            exc.SADeprecationWarning(
-                "Can't use the 'key' or 'name' arguments in Annotated "
-            ),
-        ),
-        (
-            "name",
-            "mykey",
-            exc.SADeprecationWarning(
-                "Can't use the 'key' or 'name' arguments in Annotated "
-            ),
-        ),
-        (
-            "kw_only",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'kw_only' is a dataclass argument "
-            ),
-            testing.requires.python310,
-        ),
-        (
-            "compare",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'compare' is a dataclass argument "
-            ),
-            testing.requires.python310,
-        ),
-        (
-            "default_factory",
-            lambda: 25,
-            exc.SADeprecationWarning(
-                "Argument 'default_factory' is a dataclass argument "
-            ),
-        ),
-        (
-            "repr",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'repr' is a dataclass argument "
-            ),
-        ),
-        (
-            "init",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'init' is a dataclass argument"
-            ),
-        ),
-        (
-            "hash",
-            True,
-            exc.SADeprecationWarning(
-                "Argument 'hash' is a dataclass argument"
-            ),
-        ),
-        (
-            "dataclass_metadata",
-            {},
-            exc.SADeprecationWarning(
-                "Argument 'dataclass_metadata' is a dataclass argument"
-            ),
-        ),
+    @testing.requires.python310
+    @testing.combinations_list(
+        annotated_name_test_cases(),
         argnames="argname, argument, assertion",
     )
     @testing.variation("use_annotated", [True, False, "control"])
@@ -1059,269 +1080,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             is_(result, merging)
         else:
             is_(result, orig)
-
-    @testing.variation(
-        "union",
-        [
-            "union",
-            ("pep604", requires.python310),
-            "union_null",
-            ("pep604_null", requires.python310),
-        ],
-    )
-    def test_unions(self, union):
-        global UnionType
-        our_type = Numeric(10, 2)
-
-        if union.union:
-            UnionType = Union[float, Decimal]
-        elif union.union_null:
-            UnionType = Union[float, Decimal, None]
-        elif union.pep604:
-            UnionType = float | Decimal
-        elif union.pep604_null:
-            UnionType = float | Decimal | None
-        else:
-            union.fail()
-
-        class Base(DeclarativeBase):
-            type_annotation_map = {UnionType: our_type}
-
-        class User(Base):
-            __tablename__ = "users"
-
-            id: Mapped[int] = mapped_column(primary_key=True)
-
-            data: Mapped[Union[float, Decimal]]
-            reverse_data: Mapped[Union[Decimal, float]]
-
-            optional_data: Mapped[Optional[Union[float, Decimal]]] = (
-                mapped_column()
-            )
-
-            # use Optional directly
-            reverse_optional_data: Mapped[Optional[Union[Decimal, float]]] = (
-                mapped_column()
-            )
-
-            # use Union with None, same as Optional but presents differently
-            # (Optional object with __origin__ Union vs. Union)
-            reverse_u_optional_data: Mapped[Union[Decimal, float, None]] = (
-                mapped_column()
-            )
-
-            refer_union: Mapped[UnionType]
-            refer_union_optional: Mapped[Optional[UnionType]]
-
-            # py38, 37 does not automatically flatten unions, add extra tests
-            # for this.  maintain these in order to catch future regressions
-            # in the behavior of ``Union``
-            unflat_union_optional_data: Mapped[
-                Union[Union[Decimal, float, None], None]
-            ] = mapped_column()
-
-            float_data: Mapped[float] = mapped_column()
-            decimal_data: Mapped[Decimal] = mapped_column()
-
-            if compat.py310:
-                pep604_data: Mapped[float | Decimal] = mapped_column()
-                pep604_reverse: Mapped[Decimal | float] = mapped_column()
-                pep604_optional: Mapped[Decimal | float | None] = (
-                    mapped_column()
-                )
-                pep604_data_fwd: Mapped["float | Decimal"] = mapped_column()
-                pep604_reverse_fwd: Mapped["Decimal | float"] = mapped_column()
-                pep604_optional_fwd: Mapped["Decimal | float | None"] = (
-                    mapped_column()
-                )
-
-        info = [
-            ("data", False),
-            ("reverse_data", False),
-            ("optional_data", True),
-            ("reverse_optional_data", True),
-            ("reverse_u_optional_data", True),
-            ("refer_union", "null" in union.name),
-            ("refer_union_optional", True),
-            ("unflat_union_optional_data", True),
-        ]
-        if compat.py310:
-            info += [
-                ("pep604_data", False),
-                ("pep604_reverse", False),
-                ("pep604_optional", True),
-                ("pep604_data_fwd", False),
-                ("pep604_reverse_fwd", False),
-                ("pep604_optional_fwd", True),
-            ]
-
-        for name, nullable in info:
-            col = User.__table__.c[name]
-            is_(col.type, our_type, name)
-            is_(col.nullable, nullable, name)
-
-        is_true(isinstance(User.__table__.c.float_data.type, Float))
-        ne_(User.__table__.c.float_data.type, our_type)
-
-        is_true(isinstance(User.__table__.c.decimal_data.type, Numeric))
-        ne_(User.__table__.c.decimal_data.type, our_type)
-
-    @testing.variation(
-        "union",
-        [
-            "union",
-            ("pep604", requires.python310),
-            ("pep695", requires.python312),
-        ],
-    )
-    def test_optional_in_annotation_map(self, union):
-        """See issue #11370"""
-
-        class Base(DeclarativeBase):
-            if union.union:
-                type_annotation_map = {_Json: JSON}
-            elif union.pep604:
-                type_annotation_map = {_JsonPep604: JSON}
-            elif union.pep695:
-                type_annotation_map = {_JsonPep695: JSON}  # noqa: F821
-            else:
-                union.fail()
-
-        class A(Base):
-            __tablename__ = "a"
-
-            id: Mapped[int] = mapped_column(primary_key=True)
-            if union.union:
-                json1: Mapped[_Json]
-                json2: Mapped[_Json] = mapped_column(nullable=False)
-            elif union.pep604:
-                json1: Mapped[_JsonPep604]
-                json2: Mapped[_JsonPep604] = mapped_column(nullable=False)
-            elif union.pep695:
-                json1: Mapped[_JsonPep695]  # noqa: F821
-                json2: Mapped[_JsonPep695] = mapped_column(  # noqa: F821
-                    nullable=False
-                )
-            else:
-                union.fail()
-
-        is_(A.__table__.c.json1.type._type_affinity, JSON)
-        is_(A.__table__.c.json2.type._type_affinity, JSON)
-        is_true(A.__table__.c.json1.nullable)
-        is_false(A.__table__.c.json2.nullable)
-
-    @testing.variation(
-        "option",
-        [
-            "not_optional",
-            "optional",
-            "optional_fwd_ref",
-            "union_none",
-            ("pep604", testing.requires.python310),
-            ("pep604_fwd_ref", testing.requires.python310),
-        ],
-    )
-    @testing.variation("brackets", ["oneset", "twosets"])
-    @testing.combinations(
-        "include_mc_type", "derive_from_anno", argnames="include_mc_type"
-    )
-    def test_optional_styles_nested_brackets(
-        self, option, brackets, include_mc_type
-    ):
-        """composed types test, includes tests that were added later for
-        #12207"""
-
-        class Base(DeclarativeBase):
-            if testing.requires.python310.enabled:
-                type_annotation_map = {
-                    Dict[str, Decimal]: JSON,
-                    dict[str, Decimal]: JSON,
-                    Union[List[int], List[str]]: JSON,
-                    list[int] | list[str]: JSON,
-                }
-            else:
-                type_annotation_map = {
-                    Dict[str, Decimal]: JSON,
-                    Union[List[int], List[str]]: JSON,
-                }
-
-        if include_mc_type == "include_mc_type":
-            mc = mapped_column(JSON)
-            mc2 = mapped_column(JSON)
-        else:
-            mc = mapped_column()
-            mc2 = mapped_column()
-
-        class A(Base):
-            __tablename__ = "a"
-
-            id: Mapped[int] = mapped_column(primary_key=True)
-            data: Mapped[str] = mapped_column()
-
-            if brackets.oneset:
-                if option.not_optional:
-                    json: Mapped[Dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
-                elif option.optional:
-                    json: Mapped[Optional[Dict[str, Decimal]]] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[Optional[dict[str, Decimal]]] = mc2
-                elif option.optional_fwd_ref:
-                    json: Mapped["Optional[Dict[str, Decimal]]"] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped["Optional[dict[str, Decimal]]"] = mc2
-                elif option.union_none:
-                    json: Mapped[Union[Dict[str, Decimal], None]] = mc
-                    json2: Mapped[Union[None, Dict[str, Decimal]]] = mc2
-                elif option.pep604:
-                    json: Mapped[dict[str, Decimal] | None] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[None | dict[str, Decimal]] = mc2
-                elif option.pep604_fwd_ref:
-                    json: Mapped["dict[str, Decimal] | None"] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped["None | dict[str, Decimal]"] = mc2
-            elif brackets.twosets:
-                if option.not_optional:
-                    json: Mapped[Union[List[int], List[str]]] = mapped_column()  # type: ignore  # noqa: E501
-                elif option.optional:
-                    json: Mapped[Optional[Union[List[int], List[str]]]] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[
-                            Optional[Union[list[int], list[str]]]
-                        ] = mc2
-                elif option.optional_fwd_ref:
-                    json: Mapped["Optional[Union[List[int], List[str]]]"] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[
-                            "Optional[Union[list[int], list[str]]]"
-                        ] = mc2
-                elif option.union_none:
-                    json: Mapped[Union[List[int], List[str], None]] = mc
-                    if testing.requires.python310.enabled:
-                        json2: Mapped[Union[None, list[int], list[str]]] = mc2
-                elif option.pep604:
-                    json: Mapped[list[int] | list[str] | None] = mc
-                    json2: Mapped[None | list[int] | list[str]] = mc2
-                elif option.pep604_fwd_ref:
-                    json: Mapped["list[int] | list[str] | None"] = mc
-                    json2: Mapped["None | list[int] | list[str]"] = mc2
-            else:
-                brackets.fail()
-
-        is_(A.__table__.c.json.type._type_affinity, JSON)
-        if hasattr(A, "json2"):
-            is_(A.__table__.c.json2.type._type_affinity, JSON)
-            if option.not_optional:
-                is_false(A.__table__.c.json2.nullable)
-            else:
-                is_true(A.__table__.c.json2.nullable)
-
-        if option.not_optional:
-            is_false(A.__table__.c.json.nullable)
-        else:
-            is_true(A.__table__.c.json.nullable)
 
     @testing.variation("optional", [True, False])
     @testing.variation("provide_type", [True, False])
@@ -1551,6 +1309,21 @@ class Pep593InterpretationTests(fixtures.TestBase, testing.AssertsCompiledSQL):
         self, decl_base: Type[DeclarativeBase], alias_type
     ):
         """test #11130"""
+
+        global strtypalias_keyword, strtypalias_keyword_nested
+        global strtypalias_ta, strtypalias_plain
+
+        strtypalias_keyword = TypeAliasType(
+            "strtypalias_keyword",
+            Annotated[str, mapped_column(info={"hi": "there"})],
+        )
+        strtypalias_keyword_nested = TypeAliasType(
+            "strtypalias_keyword_nested",
+            int | Annotated[str, mapped_column(info={"hi": "there"})],
+        )
+        strtypalias_ta = Annotated[str, mapped_column(info={"hi": "there"})]
+        strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
+
         if alias_type.typekeyword:
             decl_base.registry.update_type_annotation_map(
                 {strtypalias_keyword: VARCHAR(33)}  # noqa: F821
@@ -1594,8 +1367,9 @@ class Pep593InterpretationTests(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     @testing.requires.python312
     def test_no_recursive_pep593_from_pep695(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: Type[DeclarativeBase], pep_593_types
     ):
+
         def declare():
             class MyClass(decl_base):
                 __tablename__ = "my_table"
@@ -1615,39 +1389,6 @@ class Pep593InterpretationTests(fixtures.TestBase, testing.AssertsCompiledSQL):
             r"are resolvable by the registry",
         ):
             declare()
-
-    @testing.variation("in_map", [True, False])
-    @testing.variation("alias_type", ["plain", "pep695"])
-    @testing.requires.python312
-    def test_generic_typealias_pep593(
-        self, decl_base: Type[DeclarativeBase], alias_type: Variation, in_map
-    ):
-
-        if in_map:
-            decl_base.registry.update_type_annotation_map(
-                {
-                    _GenericPep593TypeAlias[str]: VARCHAR(33),
-                    _GenericPep593Pep695[str]: VARCHAR(33),
-                }
-            )
-
-        class MyClass(decl_base):
-            __tablename__ = "my_table"
-
-            id: Mapped[int] = mapped_column(primary_key=True)
-
-            if alias_type.plain:
-                data_one: Mapped[_GenericPep593TypeAlias[str]]  # noqa: F821
-            elif alias_type.pep695:
-                data_one: Mapped[_GenericPep593Pep695[str]]  # noqa: F821
-            else:
-                alias_type.fail()
-
-        eq_(MyClass.data_one.expression.info, {"hi": "there"})
-        if in_map:
-            eq_(MyClass.data_one.expression.type.length, 33)
-        else:
-            eq_(MyClass.data_one.expression.type.length, None)
 
     def test_extract_base_type_from_pep593(
         self, decl_base: Type[DeclarativeBase]
@@ -2174,6 +1915,43 @@ class Pep593InterpretationTests(fixtures.TestBase, testing.AssertsCompiledSQL):
         eq_(A_1.label.property.columns[0].table, A.__table__)
         eq_(A_2.label.property.columns[0].table, A.__table__)
 
+    @testing.variation("in_map", [True, False])
+    @testing.variation("alias_type", ["plain", "pep695"])
+    @testing.requires.python312
+    def test_generic_typealias_pep593(
+        self,
+        decl_base: Type[DeclarativeBase],
+        alias_type: Variation,
+        in_map,
+        pep_593_types,
+    ):
+
+        if in_map:
+            decl_base.registry.update_type_annotation_map(
+                {
+                    _GenericPep593TypeAlias[str]: VARCHAR(33),
+                    _GenericPep593Pep695[str]: VARCHAR(33),
+                }
+            )
+
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if alias_type.plain:
+                data_one: Mapped[_GenericPep593TypeAlias[str]]  # noqa: F821
+            elif alias_type.pep695:
+                data_one: Mapped[_GenericPep593Pep695[str]]  # noqa: F821
+            else:
+                alias_type.fail()
+
+        eq_(MyClass.data_one.expression.info, {"hi": "there"})
+        if in_map:
+            eq_(MyClass.data_one.expression.type.length, 33)
+        else:
+            eq_(MyClass.data_one.expression.type.length, None)
+
 
 class TypeResolutionTests(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
@@ -2563,6 +2341,18 @@ class TypeResolutionTests(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_plain_typealias_as_typemap_keys(
         self, decl_base: Type[DeclarativeBase]
     ):
+
+        global _StrTypeAlias, _UnionTypeAlias
+
+        class _SomeDict1(TypedDict):
+            type: Literal["1"]
+
+        class _SomeDict2(TypedDict):
+            type: Literal["2"]
+
+        _StrTypeAlias = str
+        _UnionTypeAlias = Union[_SomeDict1, _SomeDict2]
+
         decl_base.registry.update_type_annotation_map(
             {_UnionTypeAlias: JSON, _StrTypeAlias: String(30)}
         )
@@ -2683,7 +2473,7 @@ class TypeResolutionTests(fixtures.TestBase, testing.AssertsCompiledSQL):
     )
     @testing.requires.python312
     def test_pep695_typealias_as_typemap_keys(
-        self, decl_base: Type[DeclarativeBase], type_
+        self, decl_base: Type[DeclarativeBase], type_, pep_695_types
     ):
         """test #10807, #12829"""
 
@@ -2782,6 +2572,343 @@ class TypeResolutionTests(fixtures.TestBase, testing.AssertsCompiledSQL):
                 data_one: Mapped[str50]
 
         is_true(isinstance(MyClass.data_one.type, String))
+
+    @testing.variation(
+        "union",
+        [
+            "union",
+            ("pep604", requires.python310),
+            "union_null",
+            ("pep604_null", requires.python310),
+        ],
+    )
+    def test_unions(self, union):
+        global UnionType
+        our_type = Numeric(10, 2)
+
+        if union.union:
+            UnionType = Union[float, Decimal]
+        elif union.union_null:
+            UnionType = Union[float, Decimal, None]
+        elif union.pep604:
+            UnionType = float | Decimal
+        elif union.pep604_null:
+            UnionType = float | Decimal | None
+        else:
+            union.fail()
+
+        class Base(DeclarativeBase):
+            type_annotation_map = {UnionType: our_type}
+
+        class User(Base):
+            __tablename__ = "users"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            data: Mapped[Union[float, Decimal]]
+            reverse_data: Mapped[Union[Decimal, float]]
+
+            optional_data: Mapped[Optional[Union[float, Decimal]]] = (
+                mapped_column()
+            )
+
+            # use Optional directly
+            reverse_optional_data: Mapped[Optional[Union[Decimal, float]]] = (
+                mapped_column()
+            )
+
+            # use Union with None, same as Optional but presents differently
+            # (Optional object with __origin__ Union vs. Union)
+            reverse_u_optional_data: Mapped[Union[Decimal, float, None]] = (
+                mapped_column()
+            )
+
+            refer_union: Mapped[UnionType]
+            refer_union_optional: Mapped[Optional[UnionType]]
+
+            # py38, 37 does not automatically flatten unions, add extra tests
+            # for this.  maintain these in order to catch future regressions
+            # in the behavior of ``Union``
+            unflat_union_optional_data: Mapped[
+                Union[Union[Decimal, float, None], None]
+            ] = mapped_column()
+
+            float_data: Mapped[float] = mapped_column()
+            decimal_data: Mapped[Decimal] = mapped_column()
+
+            if compat.py310:
+                pep604_data: Mapped[float | Decimal] = mapped_column()
+                pep604_reverse: Mapped[Decimal | float] = mapped_column()
+                pep604_optional: Mapped[Decimal | float | None] = (
+                    mapped_column()
+                )
+                pep604_data_fwd: Mapped["float | Decimal"] = mapped_column()
+                pep604_reverse_fwd: Mapped["Decimal | float"] = mapped_column()
+                pep604_optional_fwd: Mapped["Decimal | float | None"] = (
+                    mapped_column()
+                )
+
+        info = [
+            ("data", False),
+            ("reverse_data", False),
+            ("optional_data", True),
+            ("reverse_optional_data", True),
+            ("reverse_u_optional_data", True),
+            ("refer_union", "null" in union.name),
+            ("refer_union_optional", True),
+            ("unflat_union_optional_data", True),
+        ]
+        if compat.py310:
+            info += [
+                ("pep604_data", False),
+                ("pep604_reverse", False),
+                ("pep604_optional", True),
+                ("pep604_data_fwd", False),
+                ("pep604_reverse_fwd", False),
+                ("pep604_optional_fwd", True),
+            ]
+
+        for name, nullable in info:
+            col = User.__table__.c[name]
+            is_(col.type, our_type, name)
+            is_(col.nullable, nullable, name)
+
+        is_true(isinstance(User.__table__.c.float_data.type, Float))
+        ne_(User.__table__.c.float_data.type, our_type)
+
+        is_true(isinstance(User.__table__.c.decimal_data.type, Numeric))
+        ne_(User.__table__.c.decimal_data.type, our_type)
+
+    @testing.variation(
+        "union",
+        [
+            "union",
+            ("pep604", requires.python310),
+            ("pep695", requires.python312),
+        ],
+    )
+    def test_optional_in_annotation_map(self, union):
+        """See issue #11370"""
+
+        global _Json, _JsonPep604, _JsonPep695
+
+        _JsonPrimitive = Union[str, int, float, bool, None]
+        _JsonObject = Dict[str, "_Json"]
+        _JsonArray = List["_Json"]
+        _Json = Union[_JsonObject, _JsonArray, _JsonPrimitive]
+        if requires.python310.enabled:
+            _JsonPrimitivePep604 = str | int | float | bool | None
+            _JsonObjectPep604 = dict[str, "_JsonPep604"]
+            _JsonArrayPep604 = list["_JsonPep604"]
+            _JsonPep604 = (
+                _JsonObjectPep604 | _JsonArrayPep604 | _JsonPrimitivePep604
+            )
+            _JsonPep695 = TypeAliasType("_JsonPep695", _JsonPep604)
+
+        class Base(DeclarativeBase):
+            if union.union:
+                type_annotation_map = {_Json: JSON}
+            elif union.pep604:
+                type_annotation_map = {_JsonPep604: JSON}
+            elif union.pep695:
+                type_annotation_map = {_JsonPep695: JSON}  # noqa: F821
+            else:
+                union.fail()
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            if union.union:
+                json1: Mapped[_Json]
+                json2: Mapped[_Json] = mapped_column(nullable=False)
+            elif union.pep604:
+                json1: Mapped[_JsonPep604]
+                json2: Mapped[_JsonPep604] = mapped_column(nullable=False)
+            elif union.pep695:
+                json1: Mapped[_JsonPep695]  # noqa: F821
+                json2: Mapped[_JsonPep695] = mapped_column(  # noqa: F821
+                    nullable=False
+                )
+            else:
+                union.fail()
+
+        is_(A.__table__.c.json1.type._type_affinity, JSON)
+        is_(A.__table__.c.json2.type._type_affinity, JSON)
+        is_true(A.__table__.c.json1.nullable)
+        is_false(A.__table__.c.json2.nullable)
+
+    @testing.variation(
+        "option",
+        [
+            "not_optional",
+            "optional",
+            "optional_fwd_ref",
+            "union_none",
+            ("pep604", testing.requires.python310),
+            ("pep604_fwd_ref", testing.requires.python310),
+        ],
+    )
+    @testing.variation("brackets", ["oneset", "twosets"])
+    @testing.combinations(
+        "include_mc_type", "derive_from_anno", argnames="include_mc_type"
+    )
+    def test_optional_styles_nested_brackets(
+        self, option, brackets, include_mc_type
+    ):
+        """composed types test, includes tests that were added later for
+        #12207"""
+
+        class Base(DeclarativeBase):
+            if testing.requires.python310.enabled:
+                type_annotation_map = {
+                    Dict[str, Decimal]: JSON,
+                    dict[str, Decimal]: JSON,
+                    Union[List[int], List[str]]: JSON,
+                    list[int] | list[str]: JSON,
+                }
+            else:
+                type_annotation_map = {
+                    Dict[str, Decimal]: JSON,
+                    Union[List[int], List[str]]: JSON,
+                }
+
+        if include_mc_type == "include_mc_type":
+            mc = mapped_column(JSON)
+            mc2 = mapped_column(JSON)
+        else:
+            mc = mapped_column()
+            mc2 = mapped_column()
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column()
+
+            if brackets.oneset:
+                if option.not_optional:
+                    json: Mapped[Dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
+                elif option.optional:
+                    json: Mapped[Optional[Dict[str, Decimal]]] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[Optional[dict[str, Decimal]]] = mc2
+                elif option.optional_fwd_ref:
+                    json: Mapped["Optional[Dict[str, Decimal]]"] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped["Optional[dict[str, Decimal]]"] = mc2
+                elif option.union_none:
+                    json: Mapped[Union[Dict[str, Decimal], None]] = mc
+                    json2: Mapped[Union[None, Dict[str, Decimal]]] = mc2
+                elif option.pep604:
+                    json: Mapped[dict[str, Decimal] | None] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[None | dict[str, Decimal]] = mc2
+                elif option.pep604_fwd_ref:
+                    json: Mapped["dict[str, Decimal] | None"] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped["None | dict[str, Decimal]"] = mc2
+            elif brackets.twosets:
+                if option.not_optional:
+                    json: Mapped[Union[List[int], List[str]]] = mapped_column()  # type: ignore  # noqa: E501
+                elif option.optional:
+                    json: Mapped[Optional[Union[List[int], List[str]]]] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[
+                            Optional[Union[list[int], list[str]]]
+                        ] = mc2
+                elif option.optional_fwd_ref:
+                    json: Mapped["Optional[Union[List[int], List[str]]]"] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[
+                            "Optional[Union[list[int], list[str]]]"
+                        ] = mc2
+                elif option.union_none:
+                    json: Mapped[Union[List[int], List[str], None]] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[Union[None, list[int], list[str]]] = mc2
+                elif option.pep604:
+                    json: Mapped[list[int] | list[str] | None] = mc
+                    json2: Mapped[None | list[int] | list[str]] = mc2
+                elif option.pep604_fwd_ref:
+                    json: Mapped["list[int] | list[str] | None"] = mc
+                    json2: Mapped["None | list[int] | list[str]"] = mc2
+            else:
+                brackets.fail()
+
+        is_(A.__table__.c.json.type._type_affinity, JSON)
+        if hasattr(A, "json2"):
+            is_(A.__table__.c.json2.type._type_affinity, JSON)
+            if option.not_optional:
+                is_false(A.__table__.c.json2.nullable)
+            else:
+                is_true(A.__table__.c.json2.nullable)
+
+        if option.not_optional:
+            is_false(A.__table__.c.json.nullable)
+        else:
+            is_true(A.__table__.c.json.nullable)
+
+    @testing.variation("optional", [True, False])
+    @testing.variation("provide_type", [True, False])
+    @testing.variation("add_to_type_map", [True, False])
+    def test_recursive_type(
+        self, decl_base, optional, provide_type, add_to_type_map
+    ):
+        """test #9553"""
+
+        global T
+
+        T = Dict[str, Optional["T"]]
+
+        if not provide_type and not add_to_type_map:
+            with expect_raises_message(
+                sa_exc.ArgumentError,
+                r"Could not locate SQLAlchemy.*" r".*ForwardRef\('T'\).*",
+            ):
+
+                class TypeTest(decl_base):
+                    __tablename__ = "my_table"
+
+                    id: Mapped[int] = mapped_column(primary_key=True)
+                    if optional:
+                        type_test: Mapped[Optional[T]] = mapped_column()
+                    else:
+                        type_test: Mapped[T] = mapped_column()
+
+            return
+
+        else:
+            if add_to_type_map:
+                decl_base.registry.update_type_annotation_map({T: JSON()})
+
+            class TypeTest(decl_base):
+                __tablename__ = "my_table"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+
+                if add_to_type_map:
+                    if optional:
+                        type_test: Mapped[Optional[T]] = mapped_column()
+                    else:
+                        type_test: Mapped[T] = mapped_column()
+                else:
+                    if optional:
+                        type_test: Mapped[Optional[T]] = mapped_column(JSON())
+                    else:
+                        type_test: Mapped[T] = mapped_column(JSON())
+
+        if optional:
+            is_(TypeTest.__table__.c.type_test.nullable, True)
+        else:
+            is_(TypeTest.__table__.c.type_test.nullable, False)
+
+        self.assert_compile(
+            select(TypeTest),
+            "SELECT my_table.id, my_table.type_test FROM my_table",
+        )
 
 
 class ResolveToEnumTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -2914,6 +3041,119 @@ class ResolveToEnumTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         eq_(MyClass.__table__.c.data.type.length, 9)
         is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
         eq_(MyClass.__table__.c.data.type.name, "fooenum")  # and not 'enum'
+
+    @testing.variation(
+        "type_",
+        [
+            "literal",
+            "literal_typing",
+            "recursive",
+            "not_literal",
+            "not_literal_typing",
+            "generic",
+            "generic_typing",
+            "generic_typed",
+            "generic_typed_typing",
+        ],
+    )
+    @testing.combinations(True, False, argnames="in_map")
+    @testing.requires.python312
+    def test_pep695_literal_defaults_to_enum(
+        self, decl_base, type_, in_map, pep_695_types
+    ):
+        """test #11305."""
+
+        def declare():
+            class Foo(decl_base):
+                __tablename__ = "footable"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                if type_.recursive:
+                    status: Mapped[_RecursiveLiteral695]  # noqa: F821
+                elif type_.literal:
+                    status: Mapped[_Literal695]  # noqa: F821
+                elif type_.literal_typing:
+                    status: Mapped[_TypingLiteral695]  # noqa: F821
+                elif type_.not_literal:
+                    status: Mapped[_StrPep695]  # noqa: F821
+                elif type_.not_literal_typing:
+                    status: Mapped[_TypingStrPep695]  # noqa: F821
+                elif type_.generic:
+                    status: Mapped[_GenericPep695]  # noqa: F821
+                elif type_.generic_typing:
+                    status: Mapped[_TypingGenericPep695]  # noqa: F821
+                elif type_.generic_typed:
+                    status: Mapped[_GenericPep695Typed]  # noqa: F821
+                elif type_.generic_typed_typing:
+                    status: Mapped[_TypingGenericPep695Typed]  # noqa: F821
+                else:
+                    type_.fail()
+
+            return Foo
+
+        if in_map:
+            decl_base.registry.update_type_annotation_map(
+                {
+                    _Literal695: Enum(enum.Enum),  # noqa: F821
+                    _TypingLiteral695: Enum(enum.Enum),  # noqa: F821
+                    _RecursiveLiteral695: Enum(enum.Enum),  # noqa: F821
+                    _StrPep695: Enum(enum.Enum),  # noqa: F821
+                    _TypingStrPep695: Enum(enum.Enum),  # noqa: F821
+                    _GenericPep695: Enum(enum.Enum),  # noqa: F821
+                    _TypingGenericPep695: Enum(enum.Enum),  # noqa: F821
+                    _GenericPep695Typed: Enum(enum.Enum),  # noqa: F821
+                    _TypingGenericPep695Typed: Enum(enum.Enum),  # noqa: F821
+                }
+            )
+            if type_.recursive:
+                with expect_deprecated(
+                    "Mapping recursive TypeAliasType '.+' that resolve to "
+                    "literal to generate an Enum is deprecated. SQLAlchemy "
+                    "2.1 will not support this use case. Please avoid using "
+                    "recursing TypeAliasType",
+                ):
+                    Foo = declare()
+            elif type_.literal or type_.literal_typing:
+                Foo = declare()
+            else:
+                with expect_raises_message(
+                    exc.ArgumentError,
+                    "Can't associate TypeAliasType '.+' to an Enum "
+                    "since it's not a direct alias of a Literal. Only "
+                    "aliases in this form `type my_alias = Literal.'a', "
+                    "'b'.` are supported when generating Enums.",
+                ):
+                    declare()
+        elif type_.literal or type_.literal_typing:
+            Foo = declare()
+            col = Foo.__table__.c.status
+            is_true(isinstance(col.type, Enum))
+            eq_(col.type.enums, ["to-do", "in-progress", "done"])
+            is_(col.type.native_enum, False)
+        elif type_.not_literal or type_.not_literal_typing:
+            Foo = declare()
+            col = Foo.__table__.c.status
+            is_true(isinstance(col.type, String))
+        elif type_.recursive:
+            with expect_deprecated(
+                "Matching to pep-695 type '_Literal695' in a "
+                "recursive fashion "
+                "without the recursed type being present in the "
+                "type_annotation_map is deprecated; add this type or its "
+                "recursed value to the type_annotation_map to allow it to "
+                "match explicitly."
+            ):
+                Foo = declare()
+        else:
+            with expect_raises_message(
+                orm_exc.MappedAnnotationError,
+                r"Could not locate SQLAlchemy Core type when resolving "
+                r"for Python type "
+                r"indicated by '.+' inside the Mapped\[\] "
+                r"annotation for the 'status' attribute",
+            ):
+                declare()
+            return
 
     @testing.variation(
         "sqltype",
@@ -3090,117 +3330,6 @@ class ResolveToEnumTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     status: Mapped[NotReallyStrings]
 
             is_true(isinstance(Foo.__table__.c.status.type, JSON))
-
-    @testing.variation(
-        "type_",
-        [
-            "literal",
-            "literal_typing",
-            "recursive",
-            "not_literal",
-            "not_literal_typing",
-            "generic",
-            "generic_typing",
-            "generic_typed",
-            "generic_typed_typing",
-        ],
-    )
-    @testing.combinations(True, False, argnames="in_map")
-    @testing.requires.python312
-    def test_pep695_literal_defaults_to_enum(self, decl_base, type_, in_map):
-        """test #11305."""
-
-        def declare():
-            class Foo(decl_base):
-                __tablename__ = "footable"
-
-                id: Mapped[int] = mapped_column(primary_key=True)
-                if type_.recursive:
-                    status: Mapped[_RecursiveLiteral695]  # noqa: F821
-                elif type_.literal:
-                    status: Mapped[_Literal695]  # noqa: F821
-                elif type_.literal_typing:
-                    status: Mapped[_TypingLiteral695]  # noqa: F821
-                elif type_.not_literal:
-                    status: Mapped[_StrPep695]  # noqa: F821
-                elif type_.not_literal_typing:
-                    status: Mapped[_TypingStrPep695]  # noqa: F821
-                elif type_.generic:
-                    status: Mapped[_GenericPep695]  # noqa: F821
-                elif type_.generic_typing:
-                    status: Mapped[_TypingGenericPep695]  # noqa: F821
-                elif type_.generic_typed:
-                    status: Mapped[_GenericPep695Typed]  # noqa: F821
-                elif type_.generic_typed_typing:
-                    status: Mapped[_TypingGenericPep695Typed]  # noqa: F821
-                else:
-                    type_.fail()
-
-            return Foo
-
-        if in_map:
-            decl_base.registry.update_type_annotation_map(
-                {
-                    _Literal695: Enum(enum.Enum),  # noqa: F821
-                    _TypingLiteral695: Enum(enum.Enum),  # noqa: F821
-                    _RecursiveLiteral695: Enum(enum.Enum),  # noqa: F821
-                    _StrPep695: Enum(enum.Enum),  # noqa: F821
-                    _TypingStrPep695: Enum(enum.Enum),  # noqa: F821
-                    _GenericPep695: Enum(enum.Enum),  # noqa: F821
-                    _TypingGenericPep695: Enum(enum.Enum),  # noqa: F821
-                    _GenericPep695Typed: Enum(enum.Enum),  # noqa: F821
-                    _TypingGenericPep695Typed: Enum(enum.Enum),  # noqa: F821
-                }
-            )
-            if type_.recursive:
-                with expect_deprecated(
-                    "Mapping recursive TypeAliasType '.+' that resolve to "
-                    "literal to generate an Enum is deprecated. SQLAlchemy "
-                    "2.1 will not support this use case. Please avoid using "
-                    "recursing TypeAliasType",
-                ):
-                    Foo = declare()
-            elif type_.literal or type_.literal_typing:
-                Foo = declare()
-            else:
-                with expect_raises_message(
-                    exc.ArgumentError,
-                    "Can't associate TypeAliasType '.+' to an Enum "
-                    "since it's not a direct alias of a Literal. Only "
-                    "aliases in this form `type my_alias = Literal.'a', "
-                    "'b'.` are supported when generating Enums.",
-                ):
-                    declare()
-        elif type_.literal or type_.literal_typing:
-            Foo = declare()
-            col = Foo.__table__.c.status
-            is_true(isinstance(col.type, Enum))
-            eq_(col.type.enums, ["to-do", "in-progress", "done"])
-            is_(col.type.native_enum, False)
-        elif type_.not_literal or type_.not_literal_typing:
-            Foo = declare()
-            col = Foo.__table__.c.status
-            is_true(isinstance(col.type, String))
-        elif type_.recursive:
-            with expect_deprecated(
-                "Matching to pep-695 type '_Literal695' in a "
-                "recursive fashion "
-                "without the recursed type being present in the "
-                "type_annotation_map is deprecated; add this type or its "
-                "recursed value to the type_annotation_map to allow it to "
-                "match explicitly."
-            ):
-                Foo = declare()
-        else:
-            with expect_raises_message(
-                orm_exc.MappedAnnotationError,
-                r"Could not locate SQLAlchemy Core type when resolving "
-                r"for Python type "
-                r"indicated by '.+' inside the Mapped\[\] "
-                r"annotation for the 'status' attribute",
-            ):
-                declare()
-            return
 
 
 class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):

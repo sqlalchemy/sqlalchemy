@@ -4,19 +4,20 @@
 
     The way ORM Annotated Declarative interprets Python :pep:`695` type aliases
     in ``Mapped[]`` annotations has been refined to expand the lookup scheme. A
-    PEP 695 type can now be resolved based on either its direct presence in
+    :pep:`695` type can now be resolved based on either its direct presence in
     :paramref:`_orm.registry.type_annotation_map` or its immediate resolved
-    value, as long as a recursive lookup across multiple pep-695 types is not
-    required for it to resolve. This change reverses part of the restrictions
-    introduced in 2.0.37 as part of :ticket:`11955`, which deprecated (and
-    disallowed in 2.1) the ability to resolve any PEP 695 type that was not
-    explicitly present in :paramref:`_orm.registry.type_annotation_map`.
-    Recursive lookups of PEP 695 types remains deprecated in 2.0 and disallowed
-    in version 2.1, as do implicit lookups of ``NewType`` types without an
-    entry in :paramref:`_orm.registry.type_annotation_map`.
+    value, as long as a recursive lookup across multiple :pep:`695` types is
+    not required for it to resolve. This change reverses part of the
+    restrictions introduced in 2.0.37 as part of :ticket:`11955`, which
+    deprecated (and disallowed in 2.1) the ability to resolve any :pep:`695`
+    type that was not explicitly present in
+    :paramref:`_orm.registry.type_annotation_map`. Recursive lookups of
+    :pep:`695` types remains deprecated in 2.0 and disallowed in version 2.1,
+    as do implicit lookups of ``NewType`` types without an entry in
+    :paramref:`_orm.registry.type_annotation_map`.
 
-    Additionally, new support has been added for generic PEP 695 aliases that
-    refer to PEP 593 ``Annotated`` constructs containing
+    Additionally, new support has been added for generic :pep:`695` aliases that
+    refer to :pep:`593` ``Annotated`` constructs containing
     :func:`_orm.mapped_column` configurations. See the sections below for
     examples.
 
