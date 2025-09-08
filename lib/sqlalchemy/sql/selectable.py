@@ -113,6 +113,7 @@ and_ = BooleanClauseList.and_
 
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import DeclarativeBase
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _FromClauseArgument
@@ -175,9 +176,10 @@ _ForUpdateOfArgument = Union[
     Union[
         "_ColumnExpressionArgument[Any]",
         "_FromClauseArgument",
+        Type[DeclarativeBase],
     ],
     # or sequence of single column elements
-    Sequence["_ColumnExpressionArgument[Any]"],
+     Sequence[Union["_ColumnExpressionArgument[Any]", Type[DeclarativeBase]]],
 ]
 
 
