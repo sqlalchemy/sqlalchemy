@@ -95,7 +95,7 @@ Or may be applied directly to classes that extend from the Declarative base::
         id: Mapped[int] = mapped_column(init=False, primary_key=True)
         name: Mapped[str]
 
-When using the decorator form, only the :meth:`_orm.registry.mapped_as_dataclass`
+When using the decorator form, the :meth:`_orm.registry.mapped_as_dataclass`
 decorator is supported::
 
     from sqlalchemy.orm import Mapped
@@ -112,6 +112,28 @@ decorator is supported::
 
         id: Mapped[int] = mapped_column(init=False, primary_key=True)
         name: Mapped[str]
+
+The same method is available in a standalone function form, which may
+have better compatibility with some versions of the mypy type checker::
+
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+
+    reg = registry()
+
+
+    @mapped_as_dataclass(reg)
+    class User:
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+
+.. versionadded:: 2.0.44 Added :func:`_orm.mapped_as_dataclass` after observing
+   mypy compatibility issues with the method form of the same feature
 
 Class level feature configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,8 +164,9 @@ class configuration arguments are passed as class-level parameters::
         id: Mapped[int] = mapped_column(init=False, primary_key=True)
         name: Mapped[str]
 
-When using the decorator form with :meth:`_orm.registry.mapped_as_dataclass`,
-class configuration arguments are passed to the decorator directly::
+When using the decorator form with :meth:`_orm.registry.mapped_as_dataclass` or
+:func:`_orm.mapped_as_dataclass`, class configuration arguments are passed to
+the decorator directly::
 
     from sqlalchemy.orm import registry
     from sqlalchemy.orm import Mapped
