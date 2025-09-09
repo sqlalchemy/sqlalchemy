@@ -45,6 +45,7 @@ from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import interfaces
 from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_as_dataclass
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import MappedColumn
@@ -326,7 +327,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
     @testing.exclusions.closed(
         "doesn't work for future annotations mode yet"
     )  # noqa: E501
-    @testing.variation("dc_type", ["decorator", "superclass"])
+    @testing.variation("dc_type", ["fn_decorator", "decorator", "superclass"])
     def test_dataclass_fn(self, dc_type: Variation):
         annotations = {}
 
@@ -334,7 +335,19 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             annotations[kls] = kls.__annotations__
             return dataclasses.dataclass(kls, **kw)  # type: ignore
 
-        if dc_type.decorator:
+        if dc_type.fn_decorator:
+            reg = registry()
+
+            @mapped_as_dataclass(reg, dataclass_callable=dc_callable)
+            class MappedClass:
+                __tablename__ = "mapped_class"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                name: Mapped[str]
+
+            eq_(annotations, {MappedClass: {"id": int, "name": str}})
+
+        elif dc_type.decorator:
             reg = registry()
 
             @reg.mapped_as_dataclass(dataclass_callable=dc_callable)
@@ -818,7 +831,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             "are not being mixed. ",
         ):
 
-            @registry.mapped_as_dataclass
+            @mapped_as_dataclass(registry)
             class Foo(Mixin):
                 bar_value: Mapped[float] = mapped_column(default=78)
 
@@ -1003,7 +1016,7 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
     def test_replace_operation_works_w_history_etc(
         self, registry: _RegistryType
     ):
-        @registry.mapped_as_dataclass
+        @mapped_as_dataclass(registry)
         class A:
             __tablename__ = "a"
 
@@ -1016,7 +1029,7 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
                 default_factory=list
             )
 
-        @registry.mapped_as_dataclass
+        @mapped_as_dataclass(registry)
         class B:
             __tablename__ = "b"
 
@@ -1716,13 +1729,20 @@ class DataclassArgsTest(fixtures.TestBase):
             )
             eq_(fas.kwonlyargs, [])
 
+    @testing.variation("decorator_type", ["fn", "method"])
     def test_dc_arguments_decorator(
         self,
         dc_argument_fixture,
         mapped_expr_constructor,
         registry: _RegistryType,
+        decorator_type,
     ):
-        @registry.mapped_as_dataclass(**dc_argument_fixture[0])
+        if decorator_type.fn:
+            dec = mapped_as_dataclass(registry, **dc_argument_fixture[0])
+        else:
+            dec = registry.mapped_as_dataclass(**dc_argument_fixture[0])
+
+        @dec
         class A:
             __tablename__ = "a"
 

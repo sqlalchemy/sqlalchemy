@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 12855
+
+    Added new decorator :func:`_orm.mapped_as_dataclass`, which is a function
+    based form of :meth:`_orm.registry.mapped_as_dataclass`; the method form
+    :meth:`_orm.registry.mapped_as_dataclass` does not seem to be correctly
+    recognized within the scope of :pep:`681` in recent mypy versions.

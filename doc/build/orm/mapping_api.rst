@@ -4,18 +4,27 @@
 Class Mapping API
 =================
 
-.. autoclass:: registry
-    :members:
-
 .. autofunction:: add_mapped_attribute
-
-.. autofunction:: column_property
-
-.. autofunction:: declarative_base
 
 .. autofunction:: as_declarative
 
-.. autofunction:: mapped_column
+.. autofunction:: class_mapper
+
+.. autofunction:: clear_mappers
+
+.. autofunction:: column_property
+
+.. autofunction:: configure_mappers
+
+.. autofunction:: declarative_base
+
+.. autoclass:: DeclarativeBase
+    :members:
+    :special-members: __table__, __mapper__, __mapper_args__, __tablename__, __table_args__
+
+.. autoclass:: DeclarativeBaseNoMeta
+    :members:
+    :special-members: __table__, __mapper__, __mapper_args__, __tablename__, __table_args__
 
 .. autoclass:: declared_attr
 
@@ -107,39 +116,34 @@ Class Mapping API
             :class:`_orm.declared_attr`
 
 
-.. autoclass:: DeclarativeBase
-    :members:
-    :special-members: __table__, __mapper__, __mapper_args__, __tablename__, __table_args__
-
-.. autoclass:: DeclarativeBaseNoMeta
-    :members:
-    :special-members: __table__, __mapper__, __mapper_args__, __tablename__, __table_args__
-
 .. autofunction:: has_inherited_table
-
-.. autofunction:: synonym_for
-
-.. autofunction:: object_mapper
-
-.. autofunction:: class_mapper
-
-.. autofunction:: configure_mappers
-
-.. autofunction:: clear_mappers
 
 .. autofunction:: sqlalchemy.orm.util.identity_key
 
-.. autofunction:: polymorphic_union
+.. autofunction:: mapped_as_dataclass
 
-.. autofunction:: orm_insert_sentinel
-
-.. autofunction:: reconstructor
-
-.. autoclass:: Mapper
-   :members:
+.. autofunction:: mapped_column
 
 .. autoclass:: MappedAsDataclass
     :members:
 
 .. autoclass:: MappedClassProtocol
     :no-members:
+
+.. autoclass:: Mapper
+   :members:
+
+.. autofunction:: object_mapper
+
+.. autofunction:: orm_insert_sentinel
+
+.. autofunction:: polymorphic_union
+
+.. autofunction:: reconstructor
+
+.. autoclass:: registry
+    :members:
+
+.. autofunction:: synonym_for
+
+

@@ -1594,6 +1594,8 @@ class registry:
             :ref:`orm_declarative_native_dataclasses` - complete background
             on SQLAlchemy native dataclass mapping
 
+            :func:`_orm.mapped_as_dataclass` - functional version that may
+            provide better compatibility with mypy
 
         .. versionadded:: 2.0
 
@@ -1853,6 +1855,73 @@ def as_declarative(**kw: Any) -> Callable[[Type[_T]], Type[_T]]:
     return registry(
         metadata=metadata, class_registry=class_registry
     ).as_declarative_base(**kw)
+
+
+@compat_typing.dataclass_transform(
+    field_specifiers=(
+        MappedColumn,
+        RelationshipProperty,
+        Composite,
+        Synonym,
+        mapped_column,
+        relationship,
+        composite,
+        synonym,
+        deferred,
+    ),
+)
+def mapped_as_dataclass(
+    registry: RegistryType,
+    /,
+    *,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    order: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    dataclass_callable: Union[
+        _NoArg, Callable[..., Type[Any]]
+    ] = _NoArg.NO_ARG,
+) -> Callable[[Type[_O]], Type[_O]]:
+    """Standalone function form of :meth:`_orm.registry.mapped_as_dataclass`
+    which may have better compatibility with mypy.
+
+    The :class:`_orm.registry` is passed as the first argument to the
+    decorator.
+
+    e.g.::
+
+        from sqlalchemy.orm import Mapped
+        from sqlalchemy.orm import mapped_as_dataclass
+        from sqlalchemy.orm import mapped_column
+        from sqlalchemy.orm import registry
+
+        some_registry = registry()
+
+
+        @mapped_as_dataclass(some_registry)
+        class Relationships:
+            __tablename__ = "relationships"
+
+            entity_id1: Mapped[int] = mapped_column(primary_key=True)
+            entity_id2: Mapped[int] = mapped_column(primary_key=True)
+            level: Mapped[int] = mapped_column(Integer)
+
+    .. versionadded:: 2.0.44
+
+    """
+    return registry.mapped_as_dataclass(
+        init=init,
+        repr=repr,
+        eq=eq,
+        order=order,
+        unsafe_hash=unsafe_hash,
+        match_args=match_args,
+        kw_only=kw_only,
+        dataclass_callable=dataclass_callable,
+    )
 
 
 @inspection._inspects(
