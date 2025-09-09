@@ -1222,11 +1222,11 @@ class HybridExtensionType(InspectionAttrExtensionType):
 
 
 class _HybridGetterType(Protocol[_T_co]):
-    def __call__(s, self: Any) -> _T_co: ...
+    def __call__(s, self: Any, /) -> _T_co: ...
 
 
 class _HybridSetterType(Protocol[_T_con]):
-    def __call__(s, self: Any, value: _T_con) -> None: ...
+    def __call__(s, self: Any, value: _T_con, /) -> None: ...
 
 
 class _HybridUpdaterType(Protocol[_T_con]):
@@ -1247,12 +1247,12 @@ class _HybridBulkDMLType(Protocol[_T_co]):
 
 
 class _HybridDeleterType(Protocol[_T_co]):
-    def __call__(s, self: Any) -> None: ...
+    def __call__(s, self: Any, /) -> None: ...
 
 
 class _HybridExprCallableType(Protocol[_T_co]):
     def __call__(
-        s, cls: Any
+        s, cls: Any, /
     ) -> Union[_HasClauseElement[_T_co], SQLColumnExpression[_T_co]]: ...
 
 
