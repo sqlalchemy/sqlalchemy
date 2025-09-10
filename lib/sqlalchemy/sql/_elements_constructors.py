@@ -25,6 +25,7 @@ from . import operators
 from . import roles
 from .base import _NoArg
 from .coercions import _document_text_coercion
+from .elements import AggregateOrderBy
 from .elements import BindParameter
 from .elements import BooleanClauseList
 from .elements import Case
@@ -1980,3 +1981,54 @@ def within_group(
 
     """
     return WithinGroup(element, *order_by)
+
+
+def aggregate_order_by(
+    target: _ColumnExpressionArgument[_T], *order_by: _ColumnExpressionArgument[Any]
+) -> AggregateOrderBy[_T]:
+    r"""Produce an :class:`.AggregateOrderBy` object against an expression.
+
+    Used against aggregate functions that support ordering within the
+    aggregation, including :class:`_functions.array_agg`,
+    :class:`_functions.string_agg`, etc.
+
+    :func:`_expression.aggregate_order_by` is usually called directly
+    as a standalone function, e.g.::
+
+        from sqlalchemy import func, select
+        from sqlalchemy.sql import aggregate_order_by
+
+        stmt = select(
+            func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        )
+
+    The above statement would produce SQL similar to
+    ``SELECT array_agg(a ORDER BY b DESC) FROM table``.
+
+    Similarly for string aggregation::
+
+        stmt = select(
+            func.string_agg(
+                table.c.a, aggregate_order_by(literal_column("','"), table.c.a)
+            )
+        )
+
+    Would produce:
+
+    .. sourcecode:: sql
+
+        SELECT string_agg(a, ',' ORDER BY a) FROM table;
+
+    :param target: a column expression that will be used as the first
+     argument of the aggregate ORDER BY construct.
+    :param \*order_by: one or more column elements that will be used
+     as the ORDER BY clause of the aggregate ORDER BY construct.
+
+    .. seealso::
+
+        :class:`.AggregateOrderBy`
+
+        :class:`_functions.array_agg`
+
+    """
+    return AggregateOrderBy(target, *order_by)

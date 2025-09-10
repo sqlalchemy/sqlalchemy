@@ -13,6 +13,7 @@ from __future__ import annotations
 from ._dml_constructors import delete as delete
 from ._dml_constructors import insert as insert
 from ._dml_constructors import update as update
+from ._elements_constructors import aggregate_order_by as aggregate_order_by
 from ._elements_constructors import all_ as all_
 from ._elements_constructors import and_ as and_
 from ._elements_constructors import any_ as any_
@@ -78,6 +79,7 @@ from .elements import BooleanClauseList as BooleanClauseList
 from .elements import Case as Case
 from .elements import Cast as Cast
 from .elements import ClauseElement as ClauseElement
+from .elements import AggregateOrderBy as AggregateOrderBy
 from .elements import ClauseList as ClauseList
 from .elements import CollectionAggregate as CollectionAggregate
 from .elements import ColumnClause as ColumnClause

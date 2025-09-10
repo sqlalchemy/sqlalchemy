@@ -2914,6 +2914,12 @@ class SQLCompiler(Compiled):
             funcfilter.criterion._compiler_dispatch(self, **kwargs),
         )
 
+    def visit_aggregate_order_by(self, aggregate_order_by, **kwargs):
+        return "%s ORDER BY %s" % (
+            aggregate_order_by.target._compiler_dispatch(self, **kwargs),
+            aggregate_order_by.order_by._compiler_dispatch(self, **kwargs),
+        )
+
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)
         return "EXTRACT(%s FROM %s)" % (

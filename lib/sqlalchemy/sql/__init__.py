@@ -20,6 +20,7 @@ from .ddl import BaseDDLElement as BaseDDLElement
 from .ddl import DDL as DDL
 from .ddl import DDLElement as DDLElement
 from .ddl import ExecutableDDLElement as ExecutableDDLElement
+from .expression import aggregate_order_by as aggregate_order_by
 from .expression import Alias as Alias
 from .expression import alias as alias
 from .expression import all_ as all_
