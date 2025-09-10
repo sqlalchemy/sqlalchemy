@@ -17,6 +17,7 @@ from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import literal
 from sqlalchemy import literal_column
+from sqlalchemy import MetaData
 from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import Sequence
@@ -34,6 +35,7 @@ from sqlalchemy.dialects import sqlite
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import aggregate_order_by
 from sqlalchemy.sql import column
 from sqlalchemy.sql import functions
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -41,6 +43,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
+from sqlalchemy.sql import util
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.functions import GenericFunction
@@ -1062,6 +1065,70 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "some_comparison_4": "p",
                 "some_comparison_5": "r",
             },
+        )
+
+    def test_aggregate_order_by_one(self):        
+        table = Table("table1", MetaData(), Column("a", Integer), Column("b", Integer))
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select(expr)
+
+        # note this tests that the object exports FROM objects
+        # correctly
+        self.assert_compile(
+            stmt,
+            "SELECT array_agg(table1.a ORDER BY table1.b DESC) "
+            "AS array_agg_1 FROM table1",
+        )
+
+    def test_aggregate_order_by_two(self):        
+        table = Table("table1", MetaData(), Column("a", Integer), Column("b", Integer))
+        expr = func.string_agg(
+            table.c.a, aggregate_order_by(literal_column("','"), table.c.a)
+        )
+        stmt = select(expr)
+
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(table1.a, ',' ORDER BY table1.a) "
+            "AS string_agg_1 FROM table1",
+        )
+
+    def test_aggregate_order_by_multi_col(self):        
+        table = Table("table1", MetaData(), Column("a", Integer), Column("b", Integer))
+        expr = func.string_agg(
+            table.c.a,
+            aggregate_order_by(
+                literal_column("','"), table.c.a, table.c.b.desc()
+            ),
+        )
+        stmt = select(expr)
+
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(table1.a, "
+            "',' ORDER BY table1.a, table1.b DESC) "
+            "AS string_agg_1 FROM table1",
+        )
+
+    def test_aggregate_order_by_no_arg(self):        
+        assert_raises_message(
+            TypeError,
+            "at least one ORDER BY element is required",
+            aggregate_order_by,
+            literal_column("','"),
+        )
+
+    def test_aggregate_order_by_adapt(self):        
+        table = Table("table1", MetaData(), Column("a", Integer), Column("b", Integer))
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select(expr)
+
+        a1 = table.alias("foo")
+        stmt2 = util.ClauseAdapter(a1).traverse(stmt)
+        self.assert_compile(
+            stmt2,
+            "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 "
+            "FROM table1 AS foo",
         )
 
 

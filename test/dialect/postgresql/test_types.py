@@ -42,7 +42,6 @@ from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg
 from sqlalchemy.dialects.postgresql import asyncpg
@@ -81,6 +80,7 @@ from sqlalchemy.exc import CompileError
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import aggregate_order_by
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes

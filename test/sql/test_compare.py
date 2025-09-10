@@ -32,6 +32,7 @@ from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import values
 from sqlalchemy.schema import Sequence
+from sqlalchemy.sql import aggregate_order_by
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import dml
@@ -453,6 +454,12 @@ class CoreFixtures:
             func.percentile_cont(0.5).within_group(
                 table_a.c.a, table_a.c.b, column("q")
             ),
+        ),
+        lambda: (
+            aggregate_order_by(table_a.c.a, table_a.c.a),
+            aggregate_order_by(table_a.c.a, table_a.c.b),
+            aggregate_order_by(table_a.c.b, table_a.c.a),
+            aggregate_order_by(table_a.c.a, table_a.c.a.desc()),
         ),
         lambda: (
             func.is_equal("a", "b").as_comparison(1, 2),
@@ -1468,6 +1475,37 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         ne_(ck1, ck3)
         is_not(ck1, None)
         is_not(ck3, None)
+
+    def test_aggregate_order_by(self):
+        """test #8574"""
+
+        self._run_cache_key_fixture(
+            lambda: (
+                aggregate_order_by(column("a"), column("a")),
+                aggregate_order_by(column("a"), column("b")),
+                aggregate_order_by(column("a"), column("a").desc()),
+                aggregate_order_by(column("a"), column("a").nulls_first()),
+                aggregate_order_by(
+                    column("a"), column("a").desc().nulls_first()
+                ),
+                aggregate_order_by(column("a", Integer), column("b")),
+                aggregate_order_by(column("a"), column("b"), column("c")),
+                aggregate_order_by(column("a"), column("c"), column("b")),
+                aggregate_order_by(
+                    column("a"), column("b").desc(), column("c")
+                ),
+                aggregate_order_by(
+                    column("a"), column("b").nulls_first(), column("c")
+                ),
+                aggregate_order_by(
+                    column("a"), column("b").desc().nulls_first(), column("c")
+                ),
+                aggregate_order_by(
+                    column("a", Integer), column("a"), column("b")
+                ),
+            ),
+            compare_values=False,
+        )
 
 
 def all_hascachekey_subclasses(ignore_subclasses=()):

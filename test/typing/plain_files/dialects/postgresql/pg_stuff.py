@@ -10,7 +10,8 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import Text
 from sqlalchemy import UniqueConstraint
-from sqlalchemy.dialects.postgresql import aggregate_order_by
+from sqlalchemy.dialects.postgresql import aggregate_order_by as pg_aggregate_order_by
+from sqlalchemy.sql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import DATERANGE
@@ -154,3 +155,26 @@ stmt_array_agg_order_by_2 = select(
 
 # EXPECTED_TYPE: Select[Sequence[str]]
 reveal_type(stmt_array_agg_order_by_2)
+
+# Test backwards compatibility - both should work the same
+stmt_array_agg_order_by_1_backwards_compat = select(
+    func.array_agg(
+        pg_aggregate_order_by(
+            Column("title", type_=Text),
+            Column("date", type_=DATERANGE).desc(),
+            Column("id", type_=Integer),
+        ),
+    )
+)
+
+# EXPECTED_TYPE: Select[Tuple[Sequence[Any]]]
+reveal_type(stmt_array_agg_order_by_1_backwards_compat)
+
+stmt_array_agg_order_by_2_backwards_compat = select(
+    func.array_agg(
+        pg_aggregate_order_by(Test.ident_str, Test.id.desc(), Test.ident),
+    )
+)
+
+# EXPECTED_TYPE: Select[Tuple[Sequence[str]]]
+reveal_type(stmt_array_agg_order_by_2_backwards_compat)

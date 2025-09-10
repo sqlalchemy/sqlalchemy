@@ -41,7 +41,6 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
 from sqlalchemy import VARCHAR
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
@@ -66,7 +65,6 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
-from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
@@ -2252,60 +2250,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
-    def test_aggregate_order_by_one(self):
-        m = MetaData()
-        table = Table("table1", m, Column("a", Integer), Column("b", Integer))
-        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
-        stmt = select(expr)
-
-        # note this tests that the object exports FROM objects
-        # correctly
-        self.assert_compile(
-            stmt,
-            "SELECT array_agg(table1.a ORDER BY table1.b DESC) "
-            "AS array_agg_1 FROM table1",
-        )
-
-    def test_aggregate_order_by_two(self):
-        m = MetaData()
-        table = Table("table1", m, Column("a", Integer), Column("b", Integer))
-        expr = func.string_agg(
-            table.c.a, aggregate_order_by(literal_column("','"), table.c.a)
-        )
-        stmt = select(expr)
-
-        self.assert_compile(
-            stmt,
-            "SELECT string_agg(table1.a, ',' ORDER BY table1.a) "
-            "AS string_agg_1 FROM table1",
-        )
-
-    def test_aggregate_order_by_multi_col(self):
-        m = MetaData()
-        table = Table("table1", m, Column("a", Integer), Column("b", Integer))
-        expr = func.string_agg(
-            table.c.a,
-            aggregate_order_by(
-                literal_column("','"), table.c.a, table.c.b.desc()
-            ),
-        )
-        stmt = select(expr)
-
-        self.assert_compile(
-            stmt,
-            "SELECT string_agg(table1.a, "
-            "',' ORDER BY table1.a, table1.b DESC) "
-            "AS string_agg_1 FROM table1",
-        )
-
-    def test_aggregate_orcer_by_no_arg(self):
-        assert_raises_message(
-            TypeError,
-            "at least one ORDER BY element is required",
-            aggregate_order_by,
-            literal_column("','"),
-        )
-
     def test_pg_array_agg_implicit_pg_array(self):
         expr = pg_array_agg(column("data", Integer))
         assert isinstance(expr.type, PG_ARRAY)
@@ -2337,20 +2281,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         assert isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
-
-    def test_aggregate_order_by_adapt(self):
-        m = MetaData()
-        table = Table("table1", m, Column("a", Integer), Column("b", Integer))
-        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
-        stmt = select(expr)
-
-        a1 = table.alias("foo")
-        stmt2 = sql_util.ClauseAdapter(a1).traverse(stmt)
-        self.assert_compile(
-            stmt2,
-            "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 "
-            "FROM table1 AS foo",
-        )
 
     def test_array_agg_w_filter_subscript(self):
         series = func.generate_series(1, 100).alias("series")
@@ -4460,37 +4390,6 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class CacheKeyTest(fixtures.CacheKeyFixture, fixtures.TestBase):
-    def test_aggregate_order_by(self):
-        """test #8574"""
-
-        self._run_cache_key_fixture(
-            lambda: (
-                aggregate_order_by(column("a"), column("a")),
-                aggregate_order_by(column("a"), column("b")),
-                aggregate_order_by(column("a"), column("a").desc()),
-                aggregate_order_by(column("a"), column("a").nulls_first()),
-                aggregate_order_by(
-                    column("a"), column("a").desc().nulls_first()
-                ),
-                aggregate_order_by(column("a", Integer), column("b")),
-                aggregate_order_by(column("a"), column("b"), column("c")),
-                aggregate_order_by(column("a"), column("c"), column("b")),
-                aggregate_order_by(
-                    column("a"), column("b").desc(), column("c")
-                ),
-                aggregate_order_by(
-                    column("a"), column("b").nulls_first(), column("c")
-                ),
-                aggregate_order_by(
-                    column("a"), column("b").desc().nulls_first(), column("c")
-                ),
-                aggregate_order_by(
-                    column("a", Integer), column("a"), column("b")
-                ),
-            ),
-            compare_values=False,
-        )
-
     def test_array_equivalent_keys_one_element(self):
         self._run_cache_key_equal_fixture(
             lambda: (
