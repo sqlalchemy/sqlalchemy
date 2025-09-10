@@ -23,6 +23,7 @@ from . import coercions
 from . import roles
 from .base import _NoArg
 from .coercions import _document_text_coercion
+from .elements import AggregateOrderBy
 from .elements import BindParameter
 from .elements import BooleanClauseList
 from .elements import Case
@@ -1870,3 +1871,52 @@ def within_group(
 
     """
     return WithinGroup(element, *order_by)
+
+
+def aggregate_order_by(
+    target: _ColumnExpressionArgument[_T], *order_by: _ColumnExpressionArgument[Any]
+) -> AggregateOrderBy[_T]:
+    """Produce an :class:`.AggregateOrderBy` object.
+
+    Used for aggregating functions that support ordering, typically used within
+    aggregate functions like :func:`.func.array_agg` or :func:`.func.string_agg`.
+
+    E.g.::
+
+        from sqlalchemy import func, select
+        from sqlalchemy.sql import aggregate_order_by
+
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select(expr)
+
+    would represent the expression:
+
+    .. sourcecode:: sql
+
+        SELECT array_agg(a ORDER BY b DESC) FROM table;
+
+    Similarly::
+
+        expr = func.string_agg(
+            table.c.a, aggregate_order_by(literal_column("','"), table.c.a)
+        )
+        stmt = select(expr)
+
+    Would represent:
+
+    .. sourcecode:: sql
+
+        SELECT string_agg(a, ',' ORDER BY a) FROM table;
+
+    The ORDER BY argument may be multiple terms.
+
+    .. versionadded:: 2.0.X Moved from PostgreSQL-specific to core functionality
+
+    .. seealso::
+
+        :class:`.AggregateOrderBy`
+
+        :class:`_functions.array_agg`
+
+    """
+    return AggregateOrderBy(target, *order_by)
