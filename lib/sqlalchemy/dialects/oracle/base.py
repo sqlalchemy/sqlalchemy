@@ -1001,6 +1001,7 @@ from ...sql import selectable as sa_selectable
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql import visitors
+from ...sql.compiler import AggregateOrderByStyle
 from ...sql.visitors import InternalTraversal
 from ...types import BLOB
 from ...types import CHAR
@@ -1712,7 +1713,9 @@ class OracleCompiler(compiler.SQLCompiler):
             )
 
     def visit_aggregate_strings_func(self, fn, **kw):
-        return "LISTAGG%s" % self.function_argspec(fn, **kw)
+        return super().visit_aggregate_strings_func(
+            fn, use_function_name="LISTAGG", **kw
+        )
 
     def _visit_bitwise(self, binary, fn_name, custom_right=None, **kw):
         left = self.process(binary.left, **kw)
@@ -1970,6 +1973,8 @@ class OracleDialect(default.DefaultDialect):
     supports_default_metavalue = True
     supports_empty_insert = False
     supports_identity_columns = True
+
+    aggregate_order_by_style = AggregateOrderByStyle.WITHIN_GROUP
 
     statement_compiler = OracleCompiler
     ddl_compiler = OracleDDLCompiler

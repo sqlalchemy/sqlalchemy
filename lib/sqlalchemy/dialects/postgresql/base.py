@@ -2022,7 +2022,9 @@ class PGCompiler(compiler.SQLCompiler):
         return value
 
     def visit_aggregate_strings_func(self, fn, **kw):
-        return "string_agg%s" % self.function_argspec(fn)
+        return super().visit_aggregate_strings_func(
+            fn, use_function_name="string_agg", **kw
+        )
 
     def visit_pow_func(self, fn, **kw):
         return f"power{self.function_argspec(fn)}"

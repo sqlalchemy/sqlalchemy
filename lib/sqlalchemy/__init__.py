@@ -80,6 +80,8 @@ from .sql import ColumnExpressionArgument as ColumnExpressionArgument
 from .sql import NotNullable as NotNullable
 from .sql import Nullable as Nullable
 from .sql import SelectLabelStyle as SelectLabelStyle
+from .sql.expression import aggregate_order_by as aggregate_order_by
+from .sql.expression import AggregateOrderBy as AggregateOrderBy
 from .sql.expression import Alias as Alias
 from .sql.expression import alias as alias
 from .sql.expression import AliasedReturnsRows as AliasedReturnsRows

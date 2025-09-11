@@ -25,6 +25,7 @@ from . import operators
 from . import roles
 from .base import _NoArg
 from .coercions import _document_text_coercion
+from .elements import AggregateOrderBy
 from .elements import BindParameter
 from .elements import BooleanClauseList
 from .elements import Case
@@ -1948,20 +1949,24 @@ def within_group(
 
     Used against so-called "ordered set aggregate" and "hypothetical
     set aggregate" functions, including :class:`.percentile_cont`,
-    :class:`.rank`, :class:`.dense_rank`, etc.
+    :class:`.rank`, :class:`.dense_rank`, etc.  This feature is typically
+    used by Oracle Database, Microsoft SQL Server.
+
+    For generalized ORDER BY of aggregate functions on all included
+    backends, including PostgreSQL, MySQL/MariaDB, SQLite as well as Oracle
+    and SQL Server, the :func:`_sql.aggregate_order_by` provides a more
+    general approach that compiles to "WITHIN GROUP" only on those backends
+    which require it.
 
     :func:`_expression.within_group` is usually called using
     the :meth:`.FunctionElement.within_group` method, e.g.::
 
-        from sqlalchemy import within_group
-
         stmt = select(
-            department.c.id,
             func.percentile_cont(0.5).within_group(department.c.salary.desc()),
         )
 
     The above statement would produce SQL similar to
-    ``SELECT department.id, percentile_cont(0.5)
+    ``SELECT percentile_cont(0.5)
     WITHIN GROUP (ORDER BY department.salary DESC)``.
 
     :param element: a :class:`.FunctionElement` construct, typically
@@ -1974,9 +1979,62 @@ def within_group(
         :ref:`tutorial_functions_within_group` - in the
         :ref:`unified_tutorial`
 
+        :func:`_sql.aggregate_order_by` - helper for PostgreSQL, MySQL,
+         SQLite aggregate functions
+
         :data:`.expression.func`
 
         :func:`_expression.over`
 
     """
     return WithinGroup(element, *order_by)
+
+
+def aggregate_order_by(
+    element: FunctionElement[_T], *order_by: _ColumnExpressionArgument[Any]
+) -> AggregateOrderBy[_T]:
+    r"""Produce a :class:`.AggregateOrderBy` object against a function.
+
+    Used for aggregating functions such as :class:`_functions.array_agg`,
+    ``group_concat``, ``json_agg`` on backends that support ordering via an
+    embedded ``ORDER BY`` parameter, e.g. PostgreSQL, MySQL/MariaDB, SQLite.
+    When used on backends like Oracle and SQL Server, SQL compilation uses that
+    of :class:`.WithinGroup`.  On PostgreSQL, compilation is fixed at embedded
+    ``ORDER BY``; for set aggregation functions where PostgreSQL requires the
+    use of ``WITHIN GROUP``, :func:`_expression.within_group` should be used
+    explicitly.
+
+    :func:`_expression.aggregate_order_by` is usually called using
+    the :meth:`.FunctionElement.aggregate_order_by` method, e.g.::
+
+        stmt = select(
+            func.array_agg(department.c.code).aggregate_order_by(
+                department.c.code.desc()
+            ),
+        )
+
+    which would produce an expression resembling:
+
+    .. sourcecode:: sql
+
+        SELECT array_agg(department.code ORDER BY department.code DESC)
+        AS array_agg_1 FROM department
+
+    The ORDER BY argument may also be multiple terms.
+
+    When using the backend-agnostic :class:`_functions.aggregate_strings`
+    string aggregation function, use the
+    :paramref:`_functions.aggregate_strings.order_by` parameter to indicate a
+    dialect-agnostic ORDER BY expression.
+
+    .. versionadded:: 2.0.44 Generalized the PostgreSQL-specific
+       :func:`_postgresql.aggregate_order_by` function to a method on
+       :class:`.Function` that is backend agnostic.
+
+    .. seealso::
+
+        :class:`_functions.aggregate_strings` - backend-agnostic string
+        concatenation function which also supports ORDER BY
+
+    """  # noqa: E501
+    return AggregateOrderBy(element, *order_by)

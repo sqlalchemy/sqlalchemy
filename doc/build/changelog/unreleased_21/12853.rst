@@ -1,0 +1,17 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 12853
+
+    Added new generalized aggregate function ordering to functions via the
+    :func:`_functions.FunctionElement.aggregate_order_by` method, which
+    receives an expression and generates the appropriate embedded "ORDER BY" or
+    "WITHIN GROUP (ORDER BY)" phrase depending on backend database.  This new
+    function supersedes the use of the PostgreSQL
+    :func:`_postgresql.aggregate_order_by` function, which remains present for
+    backward compatibility.   To complement the new parameter, the
+    :paramref:`_functions.aggregate_strings.order_by` which adds ORDER BY
+    capability to the :class:`_functions.aggregate_strings` dialect-agnostic
+    function which works for all included backends. Thanks much to Reuven
+    Starodubski with help on this patch.
+
+

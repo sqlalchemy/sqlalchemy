@@ -63,13 +63,13 @@ from ..sql import type_api
 from ..sql import util as sql_util
 from ..sql._typing import is_tuple_type
 from ..sql.base import _NoArg
+from ..sql.compiler import AggregateOrderByStyle
 from ..sql.compiler import DDLCompiler
 from ..sql.compiler import InsertmanyvaluesSentinelOpts
 from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
-
 
 if typing.TYPE_CHECKING:
     from types import ModuleType
@@ -161,6 +161,8 @@ class DefaultDialect(Dialect):
     update_returning_multifrom = False
     delete_returning_multifrom = False
     insert_returning = False
+
+    aggregate_order_by_style = AggregateOrderByStyle.INLINE
 
     cte_follows_insert = False
 

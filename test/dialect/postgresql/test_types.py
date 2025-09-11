@@ -2110,25 +2110,31 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         is_(expr.type.item_type.__class__, Integer)
 
     @testing.combinations(
-        ("original", False, False),
-        ("just_enum", True, False),
-        ("just_order_by", False, True),
-        ("issue_5989", True, True),
-        id_="iaa",
-        argnames="with_enum, using_aggregate_order_by",
+        ("original", False),
+        ("just_enum", True),
+        ("just_order_by", False),
+        ("issue_5989", True),
+        id_="ia",
+        argnames="with_enum",
     )
-    def test_array_agg_specific(self, with_enum, using_aggregate_order_by):
+    @testing.variation("order_by_type", ["none", "legacy", "core"])
+    def test_array_agg_specific(self, with_enum, order_by_type):
         element = ENUM(name="pgenum") if with_enum else Integer()
         element_type = type(element)
-        expr = (
-            array_agg(
+
+        if order_by_type.none:
+            expr = array_agg(column("q", element))
+        elif order_by_type.legacy:
+            expr = array_agg(
                 aggregate_order_by(
                     column("q", element), column("idx", Integer)
                 )
             )
-            if using_aggregate_order_by
-            else array_agg(column("q", element))
-        )
+        elif order_by_type.core:
+            expr = array_agg(column("q", element)).aggregate_order_by(
+                column("idx", Integer)
+            )
+
         is_(expr.type.__class__, postgresql.ARRAY)
         is_(expr.type.item_type.__class__, element_type)
 

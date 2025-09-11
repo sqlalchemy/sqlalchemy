@@ -58,20 +58,14 @@ class aggregate_order_by(expression.ColumnElement[_T]):
 
         SELECT array_agg(a ORDER BY b DESC) FROM table;
 
-    Similarly::
-
-        expr = func.string_agg(
-            table.c.a, aggregate_order_by(literal_column("','"), table.c.a)
-        )
-        stmt = select(expr)
-
-    Would represent:
-
-    .. sourcecode:: sql
-
-        SELECT string_agg(a, ',' ORDER BY a) FROM table;
+    .. legacy:: An improved dialect-agnostic form of this function is now
+       available in Core by calling the
+       :meth:`_functions.Function.aggregate_order_by` method on any function
+       defined by the backend as an aggregate function.
 
     .. seealso::
+
+        :func:`_sql.aggregate_order_by` - Core level function
 
         :class:`_functions.array_agg`
 
