@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12596
+
+    Updated the :func:`_sql.over` clause to allow fractional values in
+    :paramref:`_sql.over.range_`. Previously, only integer values
+    were allowed and any other values would lead to a failure.
