@@ -32,6 +32,9 @@ from .base import _generative
 from .base import Executable
 from .base import SchemaVisitor
 from .elements import ClauseElement
+from .schema import Table
+from .selectable import Selectable
+from .selectable import TableClause
 from .. import exc
 from .. import util
 from ..util import topological
@@ -47,8 +50,6 @@ if typing.TYPE_CHECKING:
     from .schema import Index
     from .schema import SchemaItem
     from .schema import Sequence as Sequence  # noqa: F401
-    from .schema import Table
-    from .selectable import TableClause
     from ..engine.base import Connection
     from ..engine.interfaces import CacheStats
     from ..engine.interfaces import CompiledCacheType
@@ -542,6 +543,91 @@ class CreateTable(_CreateBase["Table"]):
         super().__init__(element, if_not_exists=if_not_exists)
         self.columns = [CreateColumn(column) for column in element.columns]
         self.include_foreign_key_constraints = include_foreign_key_constraints
+
+
+class CreateTableAs(ExecutableDDLElement):
+    """Represent a CREATE TABLE ... AS (CTAS) statement.
+
+    This creates a new table directly from the output of a SELECT.
+    The set of columns in the new table is derived from the
+    SELECT list; constraints, indexes, and defaults are not copied.
+
+    :param selectable: :class:`_sql.Selectable`
+        The SELECT (or other selectable) providing the columns and rows.
+
+    :param target: str | :class:`_sql.TableClause`
+        Table name or object. If passed as a string, it must be
+        unqualified; use the ``schema`` argument for qualification.
+
+    :param schema: str, optional
+        Schema or owner name.  If both ``schema`` and the target object
+        specify a schema, they must match.
+
+    :param temporary: bool, default False.
+        If True, render ``TEMPORARY`` (PostgreSQL, MySQL, SQLite), or
+        a ``#<name>`` temporary table on SQL Server.  Dialects that do
+        not support this option will raise :class:`.CompileError`.
+
+    :param if_not_exists: bool, default False.
+        If True, render ``IF NOT EXISTS`` where supported
+        (PostgreSQL, MySQL, SQLite).  Dialects that do not support this
+        option will raise :class:`.CompileError`.
+    """
+
+    __visit_name__ = "create_table_as"
+    inherit_cache = False
+
+    def __init__(
+        self,
+        selectable: Selectable,
+        element: Union[str, TableClause],
+        *,
+        schema: Optional[str] = None,
+        temporary: bool = False,
+        if_not_exists: bool = False,
+    ):
+        if isinstance(element, TableClause):
+            t_name = element.name
+            t_schema = element.schema
+
+            if not t_name or not str(t_name).strip():
+                raise exc.ArgumentError("Table name must be non-empty")
+
+            if (
+                schema is not None
+                and t_schema is not None
+                and schema != t_schema
+            ):
+                raise exc.ArgumentError(
+                    f"Conflicting schema: target={t_schema!r}, "
+                    f"schema={schema!r}"
+                )
+            final_schema = (
+                schema
+                if (schema is not None and t_schema is None)
+                else t_schema
+            )
+        elif isinstance(element, str):
+            if not element.strip():
+                raise exc.ArgumentError("Table name must be non-empty")
+            if "." in element:
+                raise exc.ArgumentError(
+                    "Target string must be unqualified (use schema=)."
+                )
+            t_name = element
+            final_schema = schema
+        else:
+            raise exc.ArgumentError("target must be a string, TableClause")
+
+        self.table = TableClause(t_name, schema=final_schema)
+        self.schema = final_schema
+        self.selectable = selectable
+        self.temporary = bool(temporary)
+        self.if_not_exists = bool(if_not_exists)
+
+    @property
+    def generated_table(self) -> TableClause:
+        return self.table
 
 
 class _DropView(_DropBase["Table"]):

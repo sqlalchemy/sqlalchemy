@@ -138,6 +138,7 @@ if TYPE_CHECKING:
     from .base import ReadOnlyColumnCollection
     from .cache_key import _CacheKeyTraversalType
     from .compiler import SQLCompiler
+    from .ddl import CreateTableAs
     from .dml import Delete
     from .dml import Update
     from .elements import BinaryExpression
@@ -148,6 +149,7 @@ if TYPE_CHECKING:
     from .functions import Function
     from .schema import ForeignKey
     from .schema import ForeignKeyConstraint
+    from .schema import Table
     from .sqltypes import TableValueType
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
@@ -6822,6 +6824,24 @@ class Select(
 
         """
         return CompoundSelect._create_intersect_all(self, *other)
+
+    def into(
+        self,
+        target: Union[str, TableClause, Table],
+        *,
+        schema: Optional[str] = None,
+        temporary: bool = False,
+        if_not_exists: bool = False,
+    ) -> "CreateTableAs":
+        from .ddl import CreateTableAs
+
+        return CreateTableAs(
+            self,
+            target,
+            schema=schema,
+            temporary=temporary,
+            if_not_exists=if_not_exists,
+        )
 
 
 class ScalarSelect(
