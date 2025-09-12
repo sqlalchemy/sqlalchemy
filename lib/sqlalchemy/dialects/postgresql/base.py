@@ -2394,7 +2394,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_drop_enum_type(self, drop, **kw):
         type_ = drop.element
 
-        return "DROP TYPE %s" % (self.preparer.format_type(type_))
+        return "DROP TYPE " f"{self.preparer.format_type(type_)}"
 
     def visit_create_domain_type(self, create, **kw):
         domain: DOMAIN = create.element
@@ -2419,14 +2419,15 @@ class PGDDLCompiler(compiler.DDLCompiler):
             options.append(f"CHECK ({check})")
 
         return (
-            f"CREATE DOMAIN {self.preparer.format_type(domain)} AS "
+            "CREATE DOMAIN "
+            f"{self.preparer.format_type(domain)} AS "
             f"{self.type_compiler.process(domain.data_type)} "
             f"{' '.join(options)}"
         )
 
     def visit_drop_domain_type(self, drop, **kw):
         domain = drop.element
-        return f"DROP DOMAIN {self.preparer.format_type(domain)}"
+        return "DROP DOMAIN" f" {self.preparer.format_type(domain)}"
 
     def visit_create_index(self, create, **kw):
         preparer = self.preparer
@@ -2866,6 +2867,38 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             )
         return value
 
+    def _get_schema_for_type(self, type_):
+        """Resolve effective schema for ENUM/DOMAIN.
+
+        Applies schema translation maps, falls back to dialect default
+        schema (excluding "public" to preserve legacy behavior), and
+        enforces explicit schema for builtin names when unresolved.
+        """
+        schema = getattr(type_, "schema", None)
+
+        # Apply schema translation first (if available)
+        if getattr(self, "schema_translate_map", None):
+            schema = self.schema_translate_map.get(schema, None)
+
+        # Fall back to dialect default schema (omit "public")
+        if schema is None:
+            default_schema = getattr(self.dialect, "default_schema_name", None)
+            if default_schema != "public":
+                schema = default_schema
+
+        # Raise error for builtin names if schema still unresolved
+        if (
+            schema is None
+            and getattr(type_, "name", None) in self.dialect.ischema_names
+        ):
+            raise exc.CompileError(
+                f"{type_.__class__.__name__.upper()} with name "
+                f"'{type_.name}' requires an explicit schema when "
+                "no default_schema_name is configured"
+            )
+
+        return schema
+
     def format_type(self, type_, use_schema=True):
         if not type_.name:
             raise exc.CompileError(
@@ -2873,7 +2906,11 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             )
 
         name = self.quote(type_.name)
-        effective_schema = self.schema_for_object(type_)
+
+        # prefer schema from object, fall back to override
+        effective_schema = self.schema_for_object(
+            type_
+        ) or self._get_schema_for_type(type_)
 
         if (
             not self.omit_schema
