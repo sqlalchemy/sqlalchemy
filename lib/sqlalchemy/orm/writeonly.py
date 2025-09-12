@@ -423,7 +423,7 @@ class _WriteOnlyAttributeImpl(
         initiator: Optional[AttributeEventToken],
         passive: PassiveFlag = PassiveFlag.PASSIVE_NO_FETCH,
     ) -> None:
-        if initiator is not self:
+        if initiator is not self:  # type: ignore[comparison-overlap]
             self.fire_append_event(state, dict_, value, initiator)
 
     def remove(
@@ -434,7 +434,7 @@ class _WriteOnlyAttributeImpl(
         initiator: Optional[AttributeEventToken],
         passive: PassiveFlag = PassiveFlag.PASSIVE_NO_FETCH,
     ) -> None:
-        if initiator is not self:
+        if initiator is not self:  # type: ignore[comparison-overlap]
             self.fire_remove_event(state, dict_, value, initiator)
 
     def pop(

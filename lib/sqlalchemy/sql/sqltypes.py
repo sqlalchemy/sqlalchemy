@@ -3050,8 +3050,8 @@ class ARRAY(
         self.zero_indexes = zero_indexes
 
     class Comparator(
-        Indexable.Comparator[Sequence[_T]],
-        Concatenable.Comparator[Sequence[_T]],
+        Indexable.Comparator[Sequence[_CT]],
+        Concatenable.Comparator[Sequence[_CT]],
     ):
         """Define comparison operations for :class:`_types.ARRAY`.
 
@@ -3062,7 +3062,7 @@ class ARRAY(
 
         __slots__ = ()
 
-        type: ARRAY[_T]
+        type: ARRAY[_CT]
 
         @overload
         def _setup_getitem(

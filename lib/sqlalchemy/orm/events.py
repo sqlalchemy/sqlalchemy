@@ -713,7 +713,8 @@ class _InstanceEventsHold(_EventsHold[_ET]):
     def resolve(self, class_: Type[_O]) -> Optional[ClassManager[_O]]:
         return instrumentation.opt_manager_of_class(class_)
 
-    class HoldInstanceEvents(_EventsHold.HoldEvents[_ET], InstanceEvents):  # type: ignore [misc] # noqa: E501
+    # this fails on pyright if you use Any.  Fails on mypy if you use _ET
+    class HoldInstanceEvents(_EventsHold.HoldEvents[_ET], InstanceEvents):  # type: ignore[valid-type,misc] # noqa: E501
         pass
 
     dispatch = event.dispatcher(HoldInstanceEvents)
@@ -1502,7 +1503,8 @@ class _MapperEventsHold(_EventsHold[_ET]):
     ) -> Optional[Mapper[_T]]:
         return _mapper_or_none(class_)
 
-    class HoldMapperEvents(_EventsHold.HoldEvents[_ET], MapperEvents):  # type: ignore [misc] # noqa: E501
+    # this fails on pyright if you use Any.  Fails on mypy if you use _ET
+    class HoldMapperEvents(_EventsHold.HoldEvents[_ET], MapperEvents):  # type: ignore[valid-type,misc] # noqa: E501
         pass
 
     dispatch = event.dispatcher(HoldMapperEvents)
