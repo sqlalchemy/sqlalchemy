@@ -84,6 +84,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.testing import config
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -1240,6 +1241,111 @@ class NamedTypeTest(
         assert "my_enum" not in [
             e["name"] for e in inspect(connection).get_enums()
         ]
+
+    def _setup_type(self, type_kind, name, **kw):
+        """Create ENUM or DOMAIN with given name and args."""
+        if type_kind.enum:
+            return ENUM("a", "b", "c", name=name, **kw)
+        else:
+            return DOMAIN(name=name, data_type=Integer, **kw)
+
+    def _method_for(self, type_kind):
+        """Return inspector method name for given type."""
+        return "get_enums" if type_kind.enum else "get_domains"
+
+    def _type_names_for_schema(self, connection, method_name, schema):
+        """Fetch type names from inspector for a schema."""
+        insp = inspect(connection)
+        method = getattr(insp, method_name)
+        return [t["name"] for t in method(schema=schema)]
+
+    @testing.variation("type_kind", ["enum", "domain"])
+    def test_builtin_name_conflict_compiletime_failure(
+        self, connection, type_kind
+    ):
+        """Case 1: Fails if builtin name used without schema/default."""
+        dialect = postgresql.dialect()
+        dialect.default_schema_name = None
+        builtin_name = "text"
+
+        t = self._setup_type(type_kind, builtin_name)
+
+        assert_raises_message(
+            exc.CompileError,
+            f"{t.__class__.__name__.upper()} with "
+            f"name '{builtin_name}' requires an explicit schema "
+            "when no default_schema_name is configured",
+            t.compile,
+            dialect=dialect,
+        )
+
+    @testing.variation("type_kind", ["enum", "domain"])
+    def test_builtin_name_conflict_explicit_schema(
+        self, connection, type_kind
+    ):
+        """Case 2: Works with explicit schema."""
+        explicit_schema = config.test_schema
+        builtin_name = "text"
+        t = self._setup_type(type_kind, builtin_name, schema=explicit_schema)
+
+        metadata = MetaData()
+        Table("t", metadata, Column("c", t))
+        metadata.create_all(connection)
+
+        eq_(
+            self._type_names_for_schema(
+                connection, self._method_for(type_kind), explicit_schema
+            ),
+            [builtin_name],
+        )
+        metadata.drop_all(connection)
+
+    @testing.variation("type_kind", ["enum", "domain"])
+    def test_builtin_name_conflict_inherit_schema_from_table(
+        self, connection, type_kind
+    ):
+        """Case 3: Inherits schema from table."""
+        explicit_schema = config.test_schema
+        inherited_name = (
+            "status_enum_inherit" if type_kind.enum else "age_domain_inherit"
+        )
+
+        t = self._setup_type(type_kind, inherited_name, inherit_schema=True)
+
+        metadata = MetaData()
+        Table("t", metadata, Column("c", t), schema=explicit_schema)
+        metadata.create_all(connection)
+
+        eq_(
+            self._type_names_for_schema(
+                connection, self._method_for(type_kind), explicit_schema
+            ),
+            [inherited_name],
+        )
+        metadata.drop_all(connection)
+
+    @testing.variation("type_kind", ["enum", "domain"])
+    def test_builtin_name_conflict_inherit_schema_from_metadata(
+        self, connection, type_kind
+    ):
+        """Case 4: Inherits schema from metadata."""
+        explicit_schema = config.test_schema
+        meta_inherit_name = (
+            "priority_enum_meta" if type_kind.enum else "score_domain_meta"
+        )
+
+        metadata = MetaData(schema=explicit_schema)
+        t = self._setup_type(type_kind, meta_inherit_name)
+        Table("t", metadata, Column("c", t))
+        metadata.create_all(connection)
+
+        eq_(
+            self._type_names_for_schema(
+                connection, self._method_for(type_kind), explicit_schema
+            ),
+            [meta_inherit_name],
+        )
+        metadata.drop_all(connection)
 
 
 class DomainTest(
