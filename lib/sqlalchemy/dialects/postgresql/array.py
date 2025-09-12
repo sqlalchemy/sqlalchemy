@@ -44,6 +44,7 @@ if TYPE_CHECKING:
 
 
 _T = TypeVar("_T", bound=typing_Any)
+_CT = TypeVar("_CT", bound=typing_Any)
 
 
 def Any(
@@ -357,7 +358,7 @@ class ARRAY(sqltypes.ARRAY[_T]):
         self.dimensions = dimensions
         self.zero_indexes = zero_indexes
 
-    class Comparator(sqltypes.ARRAY.Comparator[_T]):
+    class Comparator(sqltypes.ARRAY.Comparator[_CT]):
         """Define comparison operations for :class:`_types.ARRAY`.
 
         Note that these operations are in addition to those provided
