@@ -4570,6 +4570,110 @@ class FunctionFilter(Generative, ColumnElement[_T]):
         )
 
 
+class AggregateOrderBy(ColumnElement[_T]):
+    """Represent an aggregate ORDER BY expression.
+
+    E.g.::
+
+        from sqlalchemy import func, select
+        from sqlalchemy.sql import aggregate_order_by
+
+        expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
+        stmt = select(expr)
+
+    would represent the expression:
+
+    .. sourcecode:: sql
+
+        SELECT array_agg(a ORDER BY b DESC) FROM table;
+
+    Similarly::
+
+        expr = func.string_agg(
+            table.c.a, aggregate_order_by(literal_column("','"), table.c.a)
+        )
+        stmt = select(expr)
+
+    Would represent:
+
+    .. sourcecode:: sql
+
+        SELECT string_agg(a, ',' ORDER BY a) FROM table;
+
+    The ORDER BY argument may be multiple terms.
+
+    .. versionadded:: 2.0.X Moved from PostgreSQL-specific to core functionality
+
+    .. seealso::
+
+        :class:`_functions.array_agg`
+
+    """
+
+    __visit_name__ = "aggregate_order_by"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("target", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
+        ("order_by", InternalTraversal.dp_clauseelement),
+    ]
+
+    @overload
+    def __init__(
+        self,
+        target: ColumnElement[_T],
+        *order_by: _ColumnExpressionArgument[Any],
+    ): ...
+
+    @overload
+    def __init__(
+        self,
+        target: _ColumnExpressionArgument[_T],
+        *order_by: _ColumnExpressionArgument[Any],
+    ): ...
+
+    def __init__(
+        self,
+        target: _ColumnExpressionArgument[_T],
+        *order_by: _ColumnExpressionArgument[Any],
+    ):
+        self.target: ClauseElement = coercions.expect(
+            roles.ExpressionElementRole, target
+        )
+        self.type = self.target.type
+
+        _lob = len(order_by)
+        self.order_by: ClauseElement
+        if _lob == 0:
+            raise TypeError("at least one ORDER BY element is required")
+        elif _lob == 1:
+            self.order_by = coercions.expect(
+                roles.ExpressionElementRole, order_by[0]
+            )
+        else:
+            self.order_by = ClauseList(
+                *order_by, _literal_as_text_role=roles.ExpressionElementRole
+            )
+
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Self:
+        return self
+
+    def get_children(self, **kwargs: Any) -> Iterable[ClauseElement]:
+        return self.target, self.order_by
+
+    def _copy_internals(
+        self, clone: _CloneCallableType = _clone, **kw: Any
+    ) -> None:
+        self.target = clone(self.target, **kw)
+        self.order_by = clone(self.order_by, **kw)
+
+    @property
+    def _from_objects(self) -> List[FromClause]:
+        return self.target._from_objects + self.order_by._from_objects
+
+
 class NamedColumn(KeyedColumnElement[_T]):
     is_literal = False
     table: Optional[FromClause] = None
