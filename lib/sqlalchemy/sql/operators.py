@@ -12,6 +12,8 @@
 
 from __future__ import annotations
 
+from enum import auto
+from enum import Flag
 from enum import IntEnum
 from operator import add as _uncast_add
 from operator import and_ as _uncast_and_
@@ -41,6 +43,7 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import Generic
+from typing import Hashable
 from typing import Literal
 from typing import Optional
 from typing import overload
@@ -65,7 +68,59 @@ _T = TypeVar("_T", bound=Any)
 _FN = TypeVar("_FN", bound=Callable[..., Any])
 
 
-class OperatorType(Protocol):
+class OperatorClass(Flag):
+    """Describes a class of SQLAlchemy built-in operators that should be
+    available on a particular type.
+
+    The :class:`.OperatorClass` should be present on the
+    :attr:`.TypeEngine.operator_classes` attribute of any particular type.
+
+    The enums here can be ORed together to provide sets of operators merged
+    together.
+
+    .. versionadded:: 2.1
+
+    """
+
+    UNSPECIFIED = auto()
+    BASE = auto()
+    BOOLEAN_ALGEBRA = auto()
+    COMPARISON = auto()
+    INDEXABLE = auto()  # noqa: F811
+    CONTAINS = auto()
+    CONCATENABLE = auto()
+    STRING_MATCH = auto()
+    MATH = auto()
+    BITWISE = auto()
+    DATE_ARITHEMETIC = auto()
+    JSON_GETITEM = auto()
+
+    STRING = (
+        BASE | COMPARISON | STRING_MATCH | CONTAINS | CONCATENABLE | INDEXABLE
+    )
+    INTEGER = BASE | COMPARISON | MATH | BITWISE
+    NUMERIC = BASE | COMPARISON | MATH | BITWISE
+    BOOLEAN = BASE | COMPARISON | BOOLEAN_ALGEBRA | COMPARISON
+    BINARY = BASE | COMPARISON | CONTAINS | CONCATENABLE | INDEXABLE
+    DATETIME = BASE | COMPARISON | DATE_ARITHEMETIC
+    JSON = BASE | COMPARISON | INDEXABLE | JSON_GETITEM
+    ARRAY = BASE | COMPARISON | CONTAINS | CONCATENABLE | INDEXABLE
+    TUPLE = BASE | COMPARISON | CONTAINS | CONCATENABLE | INDEXABLE
+
+    ANY = (
+        STRING
+        | INTEGER
+        | NUMERIC
+        | BOOLEAN
+        | DATETIME
+        | BINARY
+        | JSON
+        | ARRAY
+        | TUPLE
+    )
+
+
+class OperatorType(Hashable, Protocol):
     """describe an op() function."""
 
     __slots__ = ()
@@ -208,6 +263,11 @@ class Operators:
         """
         return self.operate(inv)
 
+    def _null_operate(self, other: Any) -> Operators:
+        """A 'null' operation available on all types, used for testing."""
+
+        return self.operate(null_op, other)
+
     def op(
         self,
         opstring: str,
@@ -217,6 +277,7 @@ class Operators:
             Union[Type[TypeEngine[Any]], TypeEngine[Any]]
         ] = None,
         python_impl: Optional[Callable[..., Any]] = None,
+        operator_class: OperatorClass = OperatorClass.BASE,
     ) -> Callable[[Any], Operators]:
         """Produce a generic operator function.
 
@@ -292,6 +353,13 @@ class Operators:
 
          .. versionadded:: 2.0
 
+        :param operator_class: optional :class:`.OperatorClass` which will be
+         applied to the :class:`.custom_op` created, which provides hints
+         as to which datatypes are appropriate for this operator.   Defaults
+         to :attr:`.OperatorClass.BASE` which is appropriate for all
+         datatypes.
+
+         .. versionadded:: 2.1
 
         .. seealso::
 
@@ -304,10 +372,11 @@ class Operators:
         """
         operator = custom_op(
             opstring,
-            precedence,
-            is_comparison,
-            return_type,
+            precedence=precedence,
+            is_comparison=is_comparison,
+            return_type=return_type,
             python_impl=python_impl,
+            operator_class=operator_class,
         )
 
         def against(other: Any) -> Operators:
@@ -418,11 +487,13 @@ class custom_op(OperatorType, Generic[_T]):
         "eager_grouping",
         "return_type",
         "python_impl",
+        "operator_class",
     )
 
     def __init__(
         self,
         opstring: str,
+        *,
         precedence: int = 0,
         is_comparison: bool = False,
         return_type: Optional[
@@ -431,6 +502,7 @@ class custom_op(OperatorType, Generic[_T]):
         natural_self_precedent: bool = False,
         eager_grouping: bool = False,
         python_impl: Optional[Callable[..., Any]] = None,
+        operator_class: OperatorClass = OperatorClass.BASE,
     ):
         self.opstring = opstring
         self.precedence = precedence
@@ -441,6 +513,7 @@ class custom_op(OperatorType, Generic[_T]):
             return_type._to_instance(return_type) if return_type else None
         )
         self.python_impl = python_impl
+        self.operator_class = operator_class
 
     def __eq__(self, other: Any) -> bool:
         return (
@@ -460,6 +533,7 @@ class custom_op(OperatorType, Generic[_T]):
             self.natural_self_precedent,
             self.eager_grouping,
             self.return_type._static_cache_key if self.return_type else None,
+            self.operator_class,
         )
 
     @overload
@@ -2544,6 +2618,18 @@ def bitwise_rshift_op(a: Any, b: Any) -> Any:
     return a.bitwise_rshift(b)
 
 
+@_operator_fn
+def null_op(a: Any, b: Any) -> Any:
+    """a 'null' operator that provides a boolean operation.
+
+    Does not compile in a SQL context, used for testing operators only.
+
+    .. versionadded:: 2.1
+
+    """
+    return a._null_operate(b)
+
+
 def is_comparison(op: OperatorType) -> bool:
     return op in _comparison or isinstance(op, custom_op) and op.is_comparison
 
@@ -2637,6 +2723,7 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     bitwise_and_op: 7,
     bitwise_lshift_op: 7,
     bitwise_rshift_op: 7,
+    null_op: 7,
     filter_op: 6,
     concat_op: 5,
     match_op: 5,
@@ -2676,6 +2763,99 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     exists: 0,
     _asbool: -10,
 }
+
+
+# Mapping of OperatorType objects to their corresponding OperatorClass
+# Derived from unified_operator_lookup in default_comparator.py
+_OPERATOR_CLASSES: util.immutabledict[OperatorType, OperatorClass] = (
+    util.immutabledict(
+        {
+            # BASE operators
+            null_op: OperatorClass.BASE,
+            # COMPARISON operators
+            lt: OperatorClass.COMPARISON,
+            le: OperatorClass.COMPARISON,
+            ne: OperatorClass.COMPARISON,
+            gt: OperatorClass.COMPARISON,
+            ge: OperatorClass.COMPARISON,
+            eq: OperatorClass.COMPARISON,
+            is_distinct_from: OperatorClass.COMPARISON,
+            is_not_distinct_from: OperatorClass.COMPARISON,
+            in_op: OperatorClass.COMPARISON,
+            not_in_op: OperatorClass.COMPARISON,
+            is_: OperatorClass.COMPARISON,
+            is_not: OperatorClass.COMPARISON,
+            between_op: OperatorClass.COMPARISON,
+            not_between_op: OperatorClass.COMPARISON,
+            desc_op: OperatorClass.COMPARISON,
+            asc_op: OperatorClass.COMPARISON,
+            nulls_first_op: OperatorClass.COMPARISON,
+            nulls_last_op: OperatorClass.COMPARISON,
+            distinct_op: OperatorClass.COMPARISON,
+            any_op: OperatorClass.COMPARISON,
+            all_op: OperatorClass.COMPARISON,
+            # BOOLEAN_ALGEBRA operators
+            and_: OperatorClass.BOOLEAN_ALGEBRA,
+            or_: OperatorClass.BOOLEAN_ALGEBRA,
+            inv: OperatorClass.BOOLEAN_ALGEBRA | OperatorClass.BITWISE,
+            # CONCATENABLE | MATH | DATE_ARITHMETIC | BITWISE operators
+            add: OperatorClass.CONCATENABLE
+            | OperatorClass.MATH
+            | OperatorClass.DATE_ARITHEMETIC
+            | OperatorClass.BITWISE,
+            # CONCATENABLE | BITWISE operators
+            concat_op: OperatorClass.CONCATENABLE | OperatorClass.BITWISE,
+            # INDEXABLE operators
+            getitem: OperatorClass.INDEXABLE,
+            # CONTAINS operators
+            contains_op: OperatorClass.CONTAINS,
+            icontains_op: OperatorClass.CONTAINS,
+            contains: OperatorClass.CONTAINS,
+            not_contains_op: OperatorClass.CONTAINS,
+            not_icontains_op: OperatorClass.CONTAINS,
+            # STRING_MATCH operators
+            like_op: OperatorClass.STRING_MATCH,
+            ilike_op: OperatorClass.STRING_MATCH,
+            not_like_op: OperatorClass.STRING_MATCH,
+            not_ilike_op: OperatorClass.STRING_MATCH,
+            startswith_op: OperatorClass.STRING_MATCH,
+            istartswith_op: OperatorClass.STRING_MATCH,
+            endswith_op: OperatorClass.STRING_MATCH,
+            iendswith_op: OperatorClass.STRING_MATCH,
+            not_startswith_op: OperatorClass.STRING_MATCH,
+            not_istartswith_op: OperatorClass.STRING_MATCH,
+            not_endswith_op: OperatorClass.STRING_MATCH,
+            not_iendswith_op: OperatorClass.STRING_MATCH,
+            collate: OperatorClass.STRING_MATCH,
+            match_op: OperatorClass.STRING_MATCH,
+            not_match_op: OperatorClass.STRING_MATCH,
+            regexp_match_op: OperatorClass.STRING_MATCH,
+            not_regexp_match_op: OperatorClass.STRING_MATCH,
+            regexp_replace_op: OperatorClass.STRING_MATCH,
+            # BITWISE operators
+            lshift: OperatorClass.BITWISE,
+            rshift: OperatorClass.BITWISE,
+            bitwise_xor_op: OperatorClass.BITWISE,
+            bitwise_or_op: OperatorClass.BITWISE,
+            bitwise_and_op: OperatorClass.BITWISE,
+            bitwise_not_op: OperatorClass.BITWISE,
+            bitwise_lshift_op: OperatorClass.BITWISE,
+            bitwise_rshift_op: OperatorClass.BITWISE,
+            # MATH operators
+            matmul: OperatorClass.MATH,
+            pow_: OperatorClass.MATH,
+            neg: OperatorClass.MATH,
+            mul: OperatorClass.MATH,
+            sub: OperatorClass.MATH | OperatorClass.DATE_ARITHEMETIC,
+            truediv: OperatorClass.MATH,
+            floordiv: OperatorClass.MATH,
+            mod: OperatorClass.MATH,
+            # JSON_GETITEM operators
+            json_path_getitem_op: OperatorClass.JSON_GETITEM,
+            json_getitem_op: OperatorClass.JSON_GETITEM,
+        }
+    )
+)
 
 
 def is_precedent(

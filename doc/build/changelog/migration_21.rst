@@ -705,3 +705,98 @@ the existing ``asyncpg.BitString`` type.
 :ticket:`10556`
 
 
+.. _change_12736:
+
+Operator classes added to validate operator usage with datatypes
+----------------------------------------------------------------
+
+SQLAlchemy 2.1 introduces a new "operator classes" system that provides
+validation when SQL operators are used with specific datatypes. This feature
+helps catch usage of operators that are not appropriate for a given datatype
+during the initial construction of expression objects. A simple example is an
+integer or numeric column used with a "string match" operator. When an
+incompatible operation is used, a deprecation warning is emitted; in a future
+major release this will raise :class:`.InvalidRequestError`.
+
+The initial motivation for this new system is to revise the use of the
+:meth:`.ColumnOperators.contains` method when used with :class:`_types.JSON` columns.
+The :meth:`.ColumnOperators.contains` method in the case of the :class:`_types.JSON`
+datatype makes use of the string-oriented version of the method, that
+assumes string data and uses LIKE to match substrings.  This is not compatible
+with the same-named method that is defined by the PostgreSQL
+:class:`_postgresql.JSONB` type, which uses PostgreSQL's native JSONB containment
+operators. Because :class:`_types.JSON` data is normally stored as a plain string,
+:meth:`.ColumnOperators.contains` would "work", and even in trivial cases
+behave similarly to that of :class:`_postgresql.JSONB`. However, since the two
+operations are not actually compatible at all, this mis-use can easily lead to
+unexpected inconsistencies.
+
+Code that uses :meth:`.ColumnOperators.contains` with :class:`_types.JSON` columns will
+now emit a deprecation warning::
+
+    from sqlalchemy import JSON, select, Column
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class MyTable(Base):
+        __tablename__ = "my_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        json_column: Mapped[dict] = mapped_column(JSON)
+
+
+    # This will now emit a deprecation warning
+    select(MyTable).filter(MyTable.json_column.contains("some_value"))
+
+Above, using :meth:`.ColumnOperators.contains` with :class:`_types.JSON` columns
+is considered to be inappropriate, since :meth:`.ColumnOperators.contains`
+works as a simple string search without any awareness of JSON structuring.
+To explicitly indicate that the JSON data should be searched as a string
+using LIKE, the
+column should first be cast (using either :func:`_sql.cast` for a full CAST,
+or :func:`_sql.type_coerce` for a Python-side cast) to :class:`.String`::
+
+    from sqlalchemy import type_coerce, String
+
+    # Explicit string-based matching
+    select(MyTable).filter(type_coerce(MyTable.json_column, String).contains("some_value"))
+
+This change forces code to distinguish between using string-based "contains"
+with a :class:`_types.JSON` column and using PostgreSQL's JSONB containment
+operator with :class:`_postgresql.JSONB` columns as separate, explicitly-stated operations.
+
+The operator class system involves a mapping of SQLAlchemy operators listed
+out in :mod:`sqlalchemy.sql.operators` to operator class combinations that come
+from the :class:`.OperatorClass` enumeration, which are reconciled at
+expression construction time with datatypes using the
+:attr:`.TypeEngine.operator_classes` attribute.  A custom user defined type
+may want to set this attribute to indicate the kinds of operators that make
+sense::
+
+    from sqlalchemy.types import UserDefinedType
+    from sqlalchemy.sql.sqltypes import OperatorClass
+
+
+    class ComplexNumber(UserDefinedType):
+        operator_classes = OperatorClass.MATH
+
+The above ``ComplexNumber`` datatype would then validate that operators
+used are included in the "math" operator class.   By default, user defined
+types made with :class:`.UserDefinedType` are left open to accept all
+operators by default, whereas classes defined with :class:`.TypeDecorator`
+will make use of the operator classes declared by the "impl" type.
+
+.. seealso::
+
+    :paramref:`.Operators.op.operator_class` - define an operator class when creating custom operators
+
+    :class:`.OperatorClass`
+
+:ticket:`12736`
+
+
+`

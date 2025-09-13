@@ -15,6 +15,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import evaluator
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql.operators import OperatorClass
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -48,13 +49,16 @@ def eval_eq(clause, testcases=None):
 class EvaluateTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
+        class LiberalJson(JSON):
+            operator_classes = JSON.operator_classes | OperatorClass.MATH
+
         Table(
             "users",
             metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(64)),
             Column("othername", String(64)),
-            Column("json", JSON),
+            Column("json", LiberalJson),
         )
 
     @classmethod
@@ -368,7 +372,7 @@ class EvaluateTest(fixtures.MappedTest):
             {"foo": "bar"},
             evaluator.UnevaluatableError,
             r"Cannot evaluate math operator \"add\" for "
-            r"datatypes JSON, INTEGER",
+            r"datatypes LiberalJson\(\), INTEGER",
         ),
         (
             lambda User: User.json + {"bar": "bat"},
@@ -376,7 +380,7 @@ class EvaluateTest(fixtures.MappedTest):
             {"foo": "bar"},
             evaluator.UnevaluatableError,
             r"Cannot evaluate concatenate operator \"concat_op\" for "
-            r"datatypes JSON, JSON",
+            r"datatypes LiberalJson\(\), LiberalJson\(\)",
         ),
         (
             lambda User: User.json - 12,
@@ -384,7 +388,7 @@ class EvaluateTest(fixtures.MappedTest):
             {"foo": "bar"},
             evaluator.UnevaluatableError,
             r"Cannot evaluate math operator \"sub\" for "
-            r"datatypes JSON, INTEGER",
+            r"datatypes LiberalJson\(\), INTEGER",
         ),
         (
             lambda User: User.json - "foo",
@@ -392,7 +396,7 @@ class EvaluateTest(fixtures.MappedTest):
             {"foo": "bar"},
             evaluator.UnevaluatableError,
             r"Cannot evaluate math operator \"sub\" for "
-            r"datatypes JSON, VARCHAR",
+            r"datatypes LiberalJson\(\), VARCHAR",
         ),
     )
     def test_math_op_type_exclusions(

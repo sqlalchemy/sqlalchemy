@@ -1764,7 +1764,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def setup_test(self):
         self.table = table(
-            "mytable", column("myid", Integer), column("name", String)
+            "mytable", column("myid", String), column("name", String)
         )
 
     def test_regexp_match(self):

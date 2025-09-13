@@ -193,6 +193,10 @@ The classes here are generated using the constructors listed at
 .. autoclass:: Null
    :members:
 
+.. autoclass:: OperatorClass
+   :members:
+   :undoc-members:
+
 .. autoclass:: Operators
    :members:
    :special-members:

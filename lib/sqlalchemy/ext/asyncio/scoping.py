@@ -114,6 +114,7 @@ _Ts = TypeVarTuple("_Ts")
         "autoflush",
         "no_autoflush",
         "info",
+        "execution_options",
     ],
     use_intermediate_variable=["get"],
 )
@@ -1570,6 +1571,25 @@ class async_scoped_session(Generic[_AS]):
         """  # noqa: E501
 
         return self._proxied.info
+
+    @property
+    def execution_options(self) -> Any:
+        r"""Proxy for the :attr:`_orm.Session.execution_options` attribute
+        on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class
+            on behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+
+        """  # noqa: E501
+
+        return self._proxied.execution_options
+
+    @execution_options.setter
+    def execution_options(self, attr: Any) -> None:
+        self._proxied.execution_options = attr
 
     @classmethod
     async def close_all(cls) -> None:

@@ -170,6 +170,99 @@ class AsyncSessionTest(AsyncFixture):
         not_in(u1, s1)
         not_in(u2, s2)
 
+    @async_test
+    @testing.variation("session_type", ["plain", "sessionmaker"])
+    @testing.variation("merge", [True, False])
+    @testing.variation("method", ["scalar", "execute", "scalars", "get"])
+    @testing.variation("add_statement_options", [True, False])
+    async def test_execution_options(
+        self,
+        async_engine,
+        session_type: testing.Variation,
+        merge: testing.Variation,
+        method: testing.Variation,
+        add_statement_options: testing.Variation,
+    ):
+        User = self.classes.User
+
+        session_execution_options = {
+            "populate_existing": True,
+            "autoflush": False,
+            "opt1": "z",
+            "opt5": "q",
+        }
+
+        expected_opts = session_execution_options
+
+        if add_statement_options:
+            statement_options = {"opt2": "w", "opt4": "y", "opt5": "w"}
+            expected_opts = {**expected_opts, **statement_options}
+        else:
+            statement_options = {}
+
+        if merge:
+            query_opts = {
+                "compiled_cache": {},
+                "opt1": "q",
+                "opt2": "p",
+                "opt3": "r",
+                "populate_existing": False,
+            }
+            expected_opts = {**expected_opts, **query_opts}
+        else:
+            query_opts = {}
+
+        if session_type.plain:
+            sess = AsyncSession(
+                async_engine, execution_options=session_execution_options
+            )
+        elif session_type.sessionmaker:
+            maker = async_sessionmaker(
+                async_engine, execution_options=session_execution_options
+            )
+            sess = maker()
+        else:
+            session_type.fail()
+
+        gather_options = {}
+
+        @event.listens_for(sess.sync_session, "do_orm_execute")
+        def check(ctx) -> None:
+            assert not gather_options
+            gather_options.update(ctx.execution_options)
+
+        if method.scalar:
+            statement = select(User).limit(1)
+            if add_statement_options:
+                statement = statement.execution_options(**statement_options)
+            await sess.scalar(statement, execution_options=query_opts)
+        elif method.execute:
+            statement = select(User).limit(1)
+            if add_statement_options:
+                statement = statement.execution_options(**statement_options)
+            await sess.execute(statement, execution_options=query_opts)
+        elif method.scalars:
+            statement = select(User).limit(1)
+            if add_statement_options:
+                statement = statement.execution_options(**statement_options)
+            await sess.scalars(statement, execution_options=query_opts)
+        elif method.get:
+            if add_statement_options:
+                await sess.get(
+                    User,
+                    1,
+                    execution_options={**statement_options, **query_opts},
+                )
+            else:
+                await sess.get(User, 1, execution_options=query_opts)
+        else:
+            method.fail()
+
+        await sess.close()
+
+        for key, value in expected_opts.items():
+            eq_(gather_options[key], value)
+
 
 class AsyncSessionQueryTest(AsyncFixture):
     @async_test

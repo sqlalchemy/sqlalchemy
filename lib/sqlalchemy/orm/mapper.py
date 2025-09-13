@@ -3821,10 +3821,7 @@ class Mapper(
                     _reconcile_to_other=False,
                 )
 
-        primary_key = [
-            sql_util._deep_annotate(pk, {"_orm_adapt": True})
-            for pk in self.primary_key
-        ]
+        primary_key = list(self.primary_key)
 
         in_expr: ColumnElement[Any]
 

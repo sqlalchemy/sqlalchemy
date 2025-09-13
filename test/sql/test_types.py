@@ -3879,7 +3879,7 @@ class ExpressionTest(
         expr = column("bar", types.Interval) + column("foo", types.Date)
         eq_(expr.type._type_affinity, types.DateTime)
 
-        expr = column("bar", types.Interval) * column("foo", types.Numeric)
+        expr = column("bar", types.Interval) - column("foo", types.Numeric)
         eq_(expr.type._type_affinity, types.Interval)
 
     @testing.combinations(

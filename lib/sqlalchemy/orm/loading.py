@@ -581,9 +581,7 @@ def _load_on_pk_identity(
                     "release."
                 )
 
-        q._where_criteria = (
-            sql_util._deep_annotate(_get_clause, {"_orm_adapt": True}),
-        )
+        q._where_criteria = (_get_clause,)
 
         params = {
             _get_params[primary_key].key: id_val

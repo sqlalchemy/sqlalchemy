@@ -1,0 +1,13 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 12659
+
+    Added support for per-session execution options that are merged into all
+    queries executed within that session. The :class:`_orm.Session`,
+    :class:`_orm.sessionmaker`, :class:`_orm.scoped_session`,
+    :class:`_ext.asyncio.AsyncSession`, and
+    :class:`_ext.asyncio.async_sessionmaker` constructors now accept an
+    :paramref:`_orm.Session.execution_options` parameter that will be applied
+    to all explicit query executions (e.g. using :meth:`_orm.Session.execute`,
+    :meth:`_orm.Session.get`, :meth:`_orm.Session.scalars`) for that session
+    instance.

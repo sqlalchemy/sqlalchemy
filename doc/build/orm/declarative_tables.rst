@@ -814,7 +814,6 @@ is described in the next section, :ref:`orm_declarative_type_map_pep695_types`.
 Support for Type Alias Types (defined by PEP 695) and NewType
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-
 In contrast to the typing lookup described in
 :ref:`orm_declarative_type_map_union_types`, Python typing also includes two
 ways to create a composed type in a more formal way, using ``typing.NewType`` as
@@ -823,12 +822,19 @@ differently from ordinary type aliases (i.e. assigning a type to a variable
 name), and this difference is honored in how SQLAlchemy resolves these
 types from the type map.
 
-.. versionchanged:: 2.0.37  The behaviors described in this section for ``typing.NewType``
-   as well as :pep:`695` ``type`` have been formalized and corrected.
-   Deprecation warnings are now emitted for "loose matching" patterns that have
-   worked in some 2.0 releases, but are to be removed in SQLAlchemy 2.1.
+.. versionchanged:: 2.0.44  Support for resolving pep-695 types without a
+   corresponding entry in :paramref:`_orm.registry.type_annotation_map`
+   has been expanded, reversing part of the restrictions introduced in 2.0.37.
    Please ensure SQLAlchemy is up to date before attempting to use the features
    described in this section.
+
+.. versionchanged:: 2.0.37  The behaviors described in this section for ``typing.NewType``
+   as well as :pep:`695` ``type`` were formalized to disallow these types
+   from being implicitly resolvable without entries in
+   :paramref:`_orm.registry.type_annotation_map`, with deprecation warnings
+   emitted when these patterns were detected. As of 2.0.44, a pep-695 type
+   is implicitly resolvable as long as the type it resolves to is present
+   in the type map.
 
 The typing module allows the creation of "new types" using ``typing.NewType``::
 
@@ -837,110 +843,115 @@ The typing module allows the creation of "new types" using ``typing.NewType``::
     nstr30 = NewType("nstr30", str)
     nstr50 = NewType("nstr50", str)
 
-Additionally, in Python 3.12, a new feature defined by :pep:`695` was introduced which
-provides the ``type`` keyword to accomplish a similar task; using
-``type`` produces an object that is similar in many ways to ``typing.NewType``
-which is internally referred to as ``typing.TypeAliasType``::
+The ``NewType`` construct creates types that are analogous to creating a
+subclass of the referenced type.
+
+Additionally, :pep:`695` introduced in Python 3.12 provides a new ``type``
+keyword for creating type aliases with greater separation of concerns from plain
+aliases, as well as succinct support for generics without requiring explicit
+use of ``TypeVar`` or ``Generic`` elements. Types created by the ``type``
+keyword are represented at runtime by ``typing.TypeAliasType``::
 
     type SmallInt = int
     type BigInt = int
     type JsonScalar = str | float | bool | None
 
-For the purposes of how SQLAlchemy treats these type objects when used
-for SQL type lookup inside of :class:`_orm.Mapped`, it's important to note
-that Python does not consider two equivalent ``typing.TypeAliasType``
-or ``typing.NewType`` objects to be equal::
+Both ``NewType`` and pep-695 ``type`` constructs may be used as arguments
+within :class:`_orm.Mapped` annotations, where they will be resolved to Python
+types using the following rules:
 
-    # two typing.NewType objects are not equal even if they are both str
-    >>> nstr50 == nstr30
-    False
+* When a ``TypeAliasType`` or ``NewType`` object is present in the
+  :paramref:`_orm.registry.type_annotation_map`, it will resolve directly::
 
-    # two TypeAliasType objects are not equal even if they are both int
-    >>> SmallInt == BigInt
-    False
+    from typing import NewType
+    from sqlalchemy import String, BigInteger
 
-    # an equivalent union is not equal to JsonScalar
-    >>> JsonScalar == str | float | bool | None
-    False
+    nstr30 = NewType("nstr30", str)
+    type BigInt = int
 
-This is the opposite behavior from how ordinary unions are compared, and
-informs the correct behavior for SQLAlchemy's ``type_annotation_map``. When
-using ``typing.NewType`` or :pep:`695` ``type`` objects, the type object is
-expected to be explicit within the ``type_annotation_map`` for it to be matched
-from a :class:`_orm.Mapped` type, where the same object must be stated in order
-for a match to be made (excluding whether or not the type inside of
-:class:`_orm.Mapped` also unions on ``None``). This is distinct from the
-behavior described at :ref:`orm_declarative_type_map_union_types`, where a
-plain ``Union`` that is referenced directly will match to other ``Unions``
-based on the composition, rather than the object identity, of a particular type
-in ``type_annotation_map``.
 
-In the example below, the composed types for ``nstr30``, ``nstr50``,
-``SmallInt``, ``BigInt``, and ``JsonScalar`` have no overlap with each other
-and can be named distinctly within each :class:`_orm.Mapped` construct, and
-are also all explicit in ``type_annotation_map``.   Any of these types may
-also be unioned with ``None`` or declared as ``Optional[]`` without affecting
-the lookup, only deriving column nullability::
+    class Base(DeclarativeBase):
+        type_annotation_map = {nstr30: String(30), BigInt: BigInteger}
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        # BigInt is in the type_annotation_map.  So this
+        # will resolve to sqlalchemy.BigInteger
+        id: Mapped[BigInt] = mapped_column(primary_key=True)
+
+        # nstr30 is in the type_annotation_map.  So this
+        # will resolve to sqlalchemy.String(30)
+        data: Mapped[nstr30]
+
+* A ``TypeAliasType`` that refers **directly** to another type present
+  in the type map will resolve against that type::
+
+    type PlainInt = int
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        # PlainInt refers to int, which is one of the default types
+        # already in the type_annotation_map.   So this
+        # will resolve to sqlalchemy.Integer via the int type
+        id: Mapped[PlainInt] = mapped_column(primary_key=True)
+
+* A ``TypeAliasType`` that refers to another pep-695 ``TypeAliasType``
+  not present in the type map will not resolve (emits a deprecation
+  warning in 2.0), as this would involve a recursive lookup::
+
+    type PlainInt = int
+    type AlsoAnInt = PlainInt
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        # AlsoAnInt refers to PlainInt, which is not in the type_annotation_map.
+        # This will emit a deprecation warning in 2.0, will fail in 2.1
+        id: Mapped[AlsoAnInt] = mapped_column(primary_key=True)
+
+* A ``NewType`` that is not in the type map will not resolve (emits a
+  deprecation warning in 2.0). Since ``NewType`` is analogous to creating an
+  entirely new type with different semantics than the type it extends, these
+  must be explicitly matched in the type map::
+
 
     from typing import NewType
 
-    from sqlalchemy import SmallInteger, BigInteger, JSON, String
-    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-    from sqlalchemy.schema import CreateTable
-
     nstr30 = NewType("nstr30", str)
-    nstr50 = NewType("nstr50", str)
-    type SmallInt = int
-    type BigInt = int
-    type JsonScalar = str | float | bool | None
 
 
-    class TABase(DeclarativeBase):
-        type_annotation_map = {
-            nstr30: String(30),
-            nstr50: String(50),
-            SmallInt: SmallInteger,
-            BigInteger: BigInteger,
-            JsonScalar: JSON,
-        }
+    class Base(DeclarativeBase):
+        pass
 
 
-    class SomeClass(TABase):
+    class SomeClass(Base):
         __tablename__ = "some_table"
 
-        id: Mapped[int] = mapped_column(primary_key=True)
-        normal_str: Mapped[str]
+        # a NewType is a new kind of type, so this will emit a deprecation
+        # warning in 2.0 and fail in 2.1, as nstr30 is not present
+        # in the type_annotation_map.
+        id: Mapped[nstr30] = mapped_column(primary_key=True)
 
-        short_str: Mapped[nstr30]
-        long_str_nullable: Mapped[nstr50 | None]
+For all of the above examples, any type that is combined with ``Optional[]``
+or ``| None`` will consider this to indicate the column is nullable, if
+no other directive for nullability is present.
 
-        small_int: Mapped[SmallInt]
-        big_int: Mapped[BigInteger]
-        scalar_col: Mapped[JsonScalar]
+.. seealso::
 
-a CREATE TABLE for the above mapping will illustrate the different variants
-of integer and string we've configured, and looks like:
-
-.. sourcecode:: pycon+sql
-
-    >>> print(CreateTable(SomeClass.__table__))
-    {printsql}CREATE TABLE some_table (
-        id INTEGER NOT NULL,
-        normal_str VARCHAR NOT NULL,
-        short_str VARCHAR(30) NOT NULL,
-        long_str_nullable VARCHAR(50),
-        small_int SMALLINT NOT NULL,
-        big_int BIGINT NOT NULL,
-        scalar_col JSON,
-        PRIMARY KEY (id)
-    )
-
-Regarding nullability, the ``JsonScalar`` type includes ``None`` in its
-definition, which indicates a nullable column.   Similarly the
-``long_str_nullable`` column applies a union of ``None`` to ``nstr50``,
-which matches to the ``nstr50`` type in the ``type_annotation_map`` while
-also applying nullability to the mapped column.  The other columns all remain
-NOT NULL as they are not indicated as optional.
+    :ref:`orm_declarative_mapped_column_generic_pep593`
 
 
 .. _orm_declarative_mapped_column_type_map_pep593:
@@ -1230,6 +1241,58 @@ adding a ``FOREIGN KEY`` constraint as well as substituting
    to indicate further arguments for :func:`_orm.relationship` and similar
    will raise a ``NotImplementedError`` exception at runtime, but
    may be implemented in future releases.
+
+
+.. _orm_declarative_mapped_column_generic_pep593:
+
+Mapping Whole Column Declarations to Generic Python Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Using the ``Annotated`` approach from the previous section, we may also
+create a generic version that will apply particular :func:`_orm.mapped_column`
+elements across many different Python/SQL types in one step.  Below
+illustrates a plain alias against a generic form of ``Annotated`` that
+will apply the ``primary_key=True`` option to any column to which it's applied::
+
+    from typing import Annotated
+    from typing import TypeVar
+
+    T = TypeVar("T", bound=Any)
+
+    PrimaryKey = Annotated[T, mapped_column(primary_key=True)]
+
+The above type can now apply ``primary_key=True`` to any Python type::
+
+    import uuid
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class A(Base):
+        __tablename__ = "a"
+
+        # will create an Integer primary key
+        id: Mapped[PrimaryKey[int]]
+
+
+    class B(Base):
+        __tablename__ = "b"
+
+        # will create a UUID primary key
+        id: Mapped[PrimaryKey[uuid.UUID]]
+
+For a more shorthand approach, we may opt to use the :pep:`695` ``type``
+keyword (Python 3.12 or above) which allows us to skip having to define a
+``TypeVar`` variable::
+
+    type PrimaryKey[T] = Annotated[T, mapped_column(primary_key=True)]
+
+.. versionadded:: 2.0.44 Generic :pep:`695` types may be used with :pep:`593`
+    ``Annotated`` elements to create generic types that automatically
+    deliver :func:`_orm.mapped_column` arguments.
+
 
 .. _orm_declarative_mapped_column_enums:
 

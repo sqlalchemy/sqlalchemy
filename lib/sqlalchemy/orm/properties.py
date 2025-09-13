@@ -788,11 +788,19 @@ class MappedColumn(
         if not self._has_nullable:
             self.column.nullable = nullable
 
-        our_type = de_optionalize_union_types(argument)
-
         find_mapped_in: Tuple[Any, ...] = ()
         our_type_is_pep593 = False
         raw_pep_593_type = None
+        raw_pep_695_type = None
+
+        our_type: Any = de_optionalize_union_types(argument)
+
+        if is_pep695(our_type):
+            raw_pep_695_type = our_type
+            our_type = de_optionalize_union_types(raw_pep_695_type.__value__)
+            our_args = get_args(raw_pep_695_type)
+            if our_args:
+                our_type = our_type[our_args]
 
         if is_pep593(our_type):
             our_type_is_pep593 = True
@@ -802,9 +810,6 @@ class MappedColumn(
             if nullable:
                 raw_pep_593_type = de_optionalize_union_types(raw_pep_593_type)
             find_mapped_in = pep_593_components[1:]
-        elif is_pep695(argument) and is_pep593(argument.__value__):
-            # do not support nested annotation inside unions ets
-            find_mapped_in = get_args(argument.__value__)[1:]
 
         use_args_from: Optional[MappedColumn[Any]]
         for elem in find_mapped_in:
@@ -900,6 +905,9 @@ class MappedColumn(
             else:
                 checks = [our_type]
 
+            if raw_pep_695_type is not None:
+                checks.insert(0, raw_pep_695_type)
+
             for check_type in checks:
                 new_sqltype = registry._resolve_type(check_type)
                 if new_sqltype is not None:
@@ -914,17 +922,35 @@ class MappedColumn(
                         "attribute Mapped annotation is the SQLAlchemy type "
                         f"{our_type}. Expected a Python type instead"
                     )
-                elif is_a_type(our_type):
+                elif is_a_type(checks[0]):
+                    if len(checks) == 1:
+                        detail = (
+                            "the type object is not resolvable by the registry"
+                        )
+                    elif len(checks) == 2:
+                        detail = (
+                            f"neither '{checks[0]}' nor '{checks[1]}' "
+                            "are resolvable by the registry"
+                        )
+                    else:
+                        detail = (
+                            f"""none of {
+                                ", ".join(f"'{t}'" for t in checks)
+                            } """
+                            "are resolvable by the registry"
+                        )
                     raise orm_exc.MappedAnnotationError(
-                        "Could not locate SQLAlchemy Core type for Python "
-                        f"type {our_type} inside the {self.column.key!r} "
-                        "attribute Mapped annotation"
+                        "Could not locate SQLAlchemy Core type when resolving "
+                        f"for Python type indicated by '{checks[0]}' inside "
+                        "the "
+                        f"Mapped[] annotation for the {self.column.key!r} "
+                        f"attribute; {detail}"
                     )
                 else:
                     raise orm_exc.MappedAnnotationError(
                         f"The object provided inside the {self.column.key!r} "
                         "attribute Mapped annotation is not a Python type, "
-                        f"it's the object {our_type!r}. Expected a Python "
+                        f"it's the object {argument!r}. Expected a Python "
                         "type."
                     )
 

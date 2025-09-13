@@ -116,6 +116,7 @@ from .lambdas import LambdaElement as LambdaElement
 from .lambdas import StatementLambdaElement as StatementLambdaElement
 from .operators import ColumnOperators as ColumnOperators
 from .operators import custom_op as custom_op
+from .operators import OperatorClass as OperatorClass
 from .operators import Operators as Operators
 from .selectable import Alias as Alias
 from .selectable import AliasedReturnsRows as AliasedReturnsRows

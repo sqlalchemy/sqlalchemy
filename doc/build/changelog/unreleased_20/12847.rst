@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12847
+
+    Fixed issue where selecting an enum array column containing NULL values
+    would fail to parse properly in the PostgreSQL dialect. The
+    :func:`._split_enum_values` function now correctly handles NULL entries by
+    converting them to Python ``None`` values.
