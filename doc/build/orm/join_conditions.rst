@@ -1057,7 +1057,14 @@ conjunction with :class:`_query.Query` as follows:
 
         @property
         def addresses(self):
-            return object_session(self).query(Address).with_parent(self).filter(...).all()
+            # query using any kind of filter() criteria
+            return (
+                object_session(self)
+                .query(Address)
+                .filter(Address.user_id == self.id)
+                .filter(...)
+                .all()
+            )
 
 In other cases, the descriptor can be built to make use of existing in-Python
 data.  See the section on :ref:`mapper_hybrids` for more general discussion
