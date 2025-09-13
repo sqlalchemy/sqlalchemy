@@ -2394,7 +2394,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_drop_enum_type(self, drop, **kw):
         type_ = drop.element
 
-        return "DROP TYPE " f"{self.preparer.format_type(type_)}"
+        return "DROP TYPE %s" % (self.preparer.format_type(type_))
 
     def visit_create_domain_type(self, create, **kw):
         domain: DOMAIN = create.element
@@ -2419,15 +2419,14 @@ class PGDDLCompiler(compiler.DDLCompiler):
             options.append(f"CHECK ({check})")
 
         return (
-            "CREATE DOMAIN "
-            f"{self.preparer.format_type(domain)} AS "
+            f"CREATE DOMAIN {self.preparer.format_type(domain)} AS "
             f"{self.type_compiler.process(domain.data_type)} "
             f"{' '.join(options)}"
         )
 
     def visit_drop_domain_type(self, drop, **kw):
         domain = drop.element
-        return "DROP DOMAIN" f" {self.preparer.format_type(domain)}"
+        return f"DROP DOMAIN {self.preparer.format_type(domain)}"
 
     def visit_create_index(self, create, **kw):
         preparer = self.preparer
