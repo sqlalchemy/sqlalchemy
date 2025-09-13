@@ -2866,6 +2866,39 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             )
         return value
 
+    def _get_schema_for_type(self, type_):
+        """Resolve effective schema for ENUM/DOMAIN.
+
+        Applies schema translation maps, falls back to dialect default
+        schema (excluding "public" to preserve legacy behavior), and
+        enforces explicit schema for builtin names when unresolved.
+        """
+
+        schema = self.schema_for_object(type_)
+
+        # Apply schema translation first (if available)
+        if getattr(self, "schema_translate_map", None):
+            schema = self.schema_translate_map.get(schema, None)
+
+        # Fall back to dialect default schema (omit "public")
+        if schema is None:
+            default_schema = getattr(self.dialect, "default_schema_name", None)
+            if default_schema != "public":
+                schema = default_schema
+
+        # Raise error for builtin names if schema still unresolved
+        if (
+            schema is None
+            and getattr(type_, "name", None) in self.dialect.ischema_names
+        ):
+            raise exc.CompileError(
+                f"{type_.__class__.__name__.upper()} with name "
+                f"'{type_.name}' requires an explicit schema when "
+                "no default_schema_name is configured"
+            )
+
+        return schema
+
     def format_type(self, type_, use_schema=True):
         if not type_.name:
             raise exc.CompileError(
@@ -2873,7 +2906,9 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             )
 
         name = self.quote(type_.name)
-        effective_schema = self.schema_for_object(type_)
+
+        # prefer schema from object, fall back to override
+        effective_schema = self._get_schema_for_type(type_)
 
         if (
             not self.omit_schema
