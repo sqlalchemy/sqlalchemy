@@ -2873,7 +2873,8 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
         schema (excluding "public" to preserve legacy behavior), and
         enforces explicit schema for builtin names when unresolved.
         """
-        schema = getattr(type_, "schema", None)
+
+        schema = self.schema_for_object(type_)
 
         # Apply schema translation first (if available)
         if getattr(self, "schema_translate_map", None):
@@ -2907,9 +2908,7 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
         name = self.quote(type_.name)
 
         # prefer schema from object, fall back to override
-        effective_schema = self.schema_for_object(
-            type_
-        ) or self._get_schema_for_type(type_)
+        effective_schema = self._get_schema_for_type(type_)
 
         if (
             not self.omit_schema
