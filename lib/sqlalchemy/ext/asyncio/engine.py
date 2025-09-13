@@ -189,7 +189,8 @@ class AsyncConnectable:
         "default_isolation_level",
     ],
 )
-class AsyncConnection(
+# "Class has incompatible disjoint bases" - no idea
+class AsyncConnection(  # type:ignore[misc]
     ProxyComparable[Connection],
     StartableContext["AsyncConnection"],
     AsyncConnectable,
@@ -998,7 +999,8 @@ class AsyncConnection(
     ],
     attributes=["url", "pool", "dialect", "engine", "name", "driver", "echo"],
 )
-class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
+# "Class has incompatible disjoint bases" - no idea
+class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):  # type: ignore[misc]  # noqa:E501
     """An asyncio proxy for a :class:`_engine.Engine`.
 
     :class:`_asyncio.AsyncEngine` is acquired using the
