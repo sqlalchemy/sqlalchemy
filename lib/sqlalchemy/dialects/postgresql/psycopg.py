@@ -59,6 +59,126 @@ The asyncio version of the dialect may also be specified explicitly using the
     dialect shares most of its behavior with the ``psycopg2`` dialect.
     Further documentation is available there.
 
+Connection Pooling
+------------------
+
+Applications with multiple concurrent users should use connection pooling. A
+minimal sized connection pool is also beneficial for long-running, single-user
+applications that do not frequently use a connection.
+
+``psycopg`` provides its own connection pool implementation that may be used
+in place of SQLAlchemy's pooling functionality. This pool implementation
+provides support for fixed and dynamic pool sizes (including automatic
+downsizing for unused connections), connection health pre-checks, and support
+for both synchronous and asynchronous code environments.
+
+To take advantage of ``psycopg``'s pool,
+
+- Create a custom ``psycopg.Connection`` subclass that returns "closed"
+  checked-out pool connections to the pool.
+- Create a ``psycopg_pool.ConnectionPool`` instance that uses this connection
+  class along with the desired pool configuration.
+- Create a ``sqlalchemy.engine`` that:
+
+  - Sets the ``create_engine.pool_class`` parameter to ``NullPool`` to disable
+    SQLAlchemy's pooling.
+  - Sets the ``create_engine.creator`` parameter to use the Psycopg 3 pool to
+    obtain new connections.
+
+Here is an example that uses ``psycopg_pool.ConnectionPool``::
+
+    import psycopg
+    import psycopg_pool
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+
+    # Define a custom connection class that overrides the close() method
+    class MyConnection(psycopg.Connection):
+        def close(self):
+            if pool := getattr(self, "_pool", None):
+                # Connection currently checked out from its pool;
+                # instead of closing it, return it to the pool.
+                pool.putconn(self)
+            else:
+                # Connection being removed from its pool, or not part of any pool;
+                # close the connection for real.
+                super().close()
+
+    # Create a connection pool that uses the custom connection class
+    mypool = psycopg_pool.ConnectionPool(
+        connection_class=MyConnection,
+        conninfo="postgresql://scott:tiger@localhost/test",
+        min_size=1,   # Minimum pool size
+        max_size=5,   # Maximum pool size
+        max_idle=60,  # Maximum idle time (seconds) for unused pool connections
+    )
+
+    # Create an engine that uses the connection pool to get a connection
+    engine = create_engine(
+        url="postgresql+psycopg://",  # Only need the dialect now
+        poolclass=NullPool,           # Disable SQLAlchemy's default connection pool
+        creator=mypool.getconn,       # Use Psycopg 3 connection pool to obtain connections
+    )
+
+Here is an example that uses ``psycopg_pool.AsyncConnectionPool``::
+
+    import psycopg
+    import psycopg_pool
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    # Define a custom connection class that overrides the close() method
+    class MyAsyncConnection(psycopg.AsyncConnection):
+        async def close(self):
+            if pool := getattr(self, "_pool", None):
+                # Connection currently checked out from its pool;
+                # instead of closing it, return it to the pool.
+                await pool.putconn(self)
+            else:
+                # Connection being removed from its pool, or not part of any pool;
+                # close the connection for real.
+                await super().close()
+
+    async def my_async_code():
+        # Create a connection pool that uses the custom connection class
+        # (must be created inside an async event loop)
+        mypool = psycopg_pool.AsyncConnectionPool(
+            connection_class=MyAsyncConnection,
+            conninfo="postgresql://scott:tiger@localhost/test",
+            min_size=1,   # Minimum pool size
+            max_size=5,   # Maximum pool size
+            max_idle=60,  # Maximum idle time (seconds) for unused pool connections
+            open=False,   # See comment below
+        )
+
+        # Must explicitly open AsyncConnectionPool outside constructor
+        # (https://www.psycopg.org/psycopg3/docs/advanced/pool.html#other-ways-to-create-a-pool)
+        await mypool.open()
+
+        # Create an engine that uses the connection pool to get a connection
+        engine = create_async_engine(
+            url="postgresql+psycopg://",   # Only need the dialect now
+            poolclass=NullPool,            # Disable SQLAlchemy's default connection pool
+            async_creator=mypool.getconn,  # Use Psycopg 3 connection pool to obtain connections
+        )
+
+The resulting engine may then be used normally. Internally, Psycopg 3 handles
+connection pooling::
+
+    with engine.connect() as conn:
+        print(conn.scalar(text("select 1 from dual")))
+
+``psycopg_pool.ConnectionPool`` uses the ``logging`` module to log key pool
+operations to the ``psycopg.pool`` logger. To monitor or debug logging
+behaviors, you can set the threshold for this logger to ``INFO``.
+
+.. seealso::
+
+    `Connection pools <https://www.psycopg.org/psycopg3/docs/advanced/pool.html>`_ -
+    the Psycopg 3 documentation for ``psycopg_pool.ConnectionPool``,
+    which provides more information on available configuration parameters,
+    logging, and more.
+
 Using a different Cursor class
 ------------------------------
 
