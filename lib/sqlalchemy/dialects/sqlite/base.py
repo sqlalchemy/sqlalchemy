@@ -2387,7 +2387,10 @@ class SQLiteDialect(default.DefaultDialect):
                 )
                 # remove create table
                 match = re.match(
-                    r"create table .*?\((.*)\)$",
+                    (
+                        r"create table .*?\((.*)\)"
+                        r"(?:\s*,?\s*(?:WITHOUT\s+ROWID|STRICT))*$"
+                    ),
                     tablesql.strip(),
                     re.DOTALL | re.IGNORECASE,
                 )
