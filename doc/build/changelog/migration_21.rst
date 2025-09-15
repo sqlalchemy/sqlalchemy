@@ -443,52 +443,6 @@ Annotated Declarative setting from taking place.
 
 :ticket:`12570`
 
-.. _change_9832:
-
-New RegistryEvents System for ORM Mapping Customization
---------------------------------------------------------
-
-SQLAlchemy 2.1 introduces :class:`.RegistryEvents`, providing for event
-hooks that are specific to a :class:`_orm.registry`.  These events include
-:meth:`_orm.RegistryEvents.before_configured` and :meth:`_orm.RegistryEvents.after_configured`
-to complement the same-named events that can be established on a
-:class:`_orm.Mapper`, as well as :meth:`_orm.RegistryEvents.resolve_type_annotation`
-that allows programmatic access to the ORM Annotated Declarative type resolution
-process.  Examples are provided illustrating how to define resolution schemes
-for any kind of type hierarchy in an automated fashion, including :pep:`695`
-type aliases.
-
-E.g.::
-
-  from sqlalchemy import event
-  from sqlalchemy.orm import DeclarativeBase
-
-
-  class Base(DeclarativeBase):
-      pass
-
-
-  @event.listens_for(Base, "resolve_type_annotation")
-  def resolve_custom_type(resolve_type):
-      if resolve_type.primary_type is MyCustomType:
-          return MyCustomSQLType()
-      else:
-          return None
-
-
-  @event.listens_for(Base, "after_configured")
-  def after_base_configured(registry):
-      print(f"Registry {registry} fully configured")
-
-.. seealso::
-
-    :ref:`orm_declarative_resolve_type_event` - Complete documentation on using
-    the :meth:`.RegistryEvents.resolve_type_annotation` event
-
-    :class:`.RegistryEvents` - Complete API reference for all registry events
-
-:ticket:`9832`
-
 New Features and Improvements - Core
 =====================================
 

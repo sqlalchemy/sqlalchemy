@@ -80,9 +80,9 @@ if TYPE_CHECKING:
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
     from .type_api import _LiteralProcessorType
+    from .type_api import _MatchedOnType
     from .type_api import _ResultProcessorType
     from ..engine.interfaces import Dialect
-    from ..util.typing import _MatchedOnType
 
 _T = TypeVar("_T", bound="Any")
 _CT = TypeVar("_CT", bound=Any)

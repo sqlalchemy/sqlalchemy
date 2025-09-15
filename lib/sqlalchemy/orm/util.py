@@ -92,7 +92,6 @@ from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation as _de_stringify_annotation
 from ..util.typing import eval_name_only as _eval_name_only
 from ..util.typing import fixup_container_fwd_refs
-from ..util.typing import GenericProtocol
 from ..util.typing import is_origin_of_cls
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
@@ -124,7 +123,6 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import Selectable
     from ..sql.visitors import anon_map
     from ..util.typing import _AnnotationScanType
-    from ..util.typing import _MatchedOnType
 
 _T = TypeVar("_T", bound=Any)
 
@@ -165,7 +163,7 @@ class _DeStringifyAnnotation(Protocol):
         *,
         str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
         include_generic: bool = False,
-    ) -> _MatchedOnType: ...
+    ) -> Type[Any]: ...
 
 
 de_stringify_annotation = cast(
@@ -2367,16 +2365,15 @@ def _extract_mapped_subtype(
             else:
                 return annotated, None
 
-        generic_annotated = cast(GenericProtocol[Any], annotated)
-        if len(generic_annotated.__args__) != 1:
+        if len(annotated.__args__) != 1:
             raise orm_exc.MappedAnnotationError(
                 "Expected sub-type for Mapped[] annotation"
             )
 
         return (
             # fix dict/list/set args to be ForwardRef, see #11814
-            fixup_container_fwd_refs(generic_annotated.__args__[0]),
-            generic_annotated.__origin__,
+            fixup_container_fwd_refs(annotated.__args__[0]),
+            annotated.__origin__,
         )
 
 

@@ -73,10 +73,6 @@ _AnnotationScanType = Union[
     Type[Any], str, ForwardRef, NewType, TypeAliasType, "GenericProtocol[Any]"
 ]
 
-_MatchedOnType = Union[
-    "GenericProtocol[Any]", TypeAliasType, NewType, Type[Any]
-]
-
 
 class ArgsTypeProtocol(Protocol):
     """protocol for types that have ``__args__``
@@ -389,27 +385,11 @@ def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
         return {res}
 
 
-@overload
-def is_fwd_ref(
-    type_: _AnnotationScanType,
-    check_generic: bool = ...,
-    check_for_plain_string: Literal[False] = ...,
-) -> TypeGuard[ForwardRef]: ...
-
-
-@overload
-def is_fwd_ref(
-    type_: _AnnotationScanType,
-    check_generic: bool = ...,
-    check_for_plain_string: bool = ...,
-) -> TypeGuard[Union[str, ForwardRef]]: ...
-
-
 def is_fwd_ref(
     type_: _AnnotationScanType,
     check_generic: bool = False,
     check_for_plain_string: bool = False,
-) -> TypeGuard[Union[str, ForwardRef]]:
+) -> TypeGuard[ForwardRef]:
     if check_for_plain_string and isinstance(type_, str):
         return True
     elif isinstance(type_, _type_instances.ForwardRef):
@@ -431,10 +411,6 @@ def de_optionalize_union_types(type_: str) -> str: ...
 
 @overload
 def de_optionalize_union_types(type_: Type[Any]) -> Type[Any]: ...
-
-
-@overload
-def de_optionalize_union_types(type_: _MatchedOnType) -> _MatchedOnType: ...
 
 
 @overload

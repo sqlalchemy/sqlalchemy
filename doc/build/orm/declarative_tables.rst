@@ -956,8 +956,8 @@ no other directive for nullability is present.
 
 .. _orm_declarative_mapped_column_type_map_pep593:
 
-Mapping Multiple Type Configurations to Python Types with pep-593 Annotated
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Mapping Multiple Type Configurations to Python Types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 As individual Python types may be associated with :class:`_types.TypeEngine`
@@ -1064,8 +1064,8 @@ more open ended.
 
 .. _orm_declarative_mapped_column_pep593:
 
-Mapping Whole Column Declarations to Python Types using pep-593
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Mapping Whole Column Declarations to Python Types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 The previous section illustrated using :pep:`593` ``Annotated`` type
@@ -1578,150 +1578,7 @@ In the above configuration, the ``my_literal`` datatype will resolve to a
 :class:`._sqltypes.JSON` instance.  Other ``Literal`` variants will continue
 to resolve to :class:`_sqltypes.Enum` datatypes.
 
-.. _orm_declarative_resolve_type_event:
 
-Resolving Types Programmatically with Events
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. versionadded:: 2.1
-
-The :paramref:`_orm.registry.type_annotation_map` is the usual
-way to customize how :func:`_orm.mapped_column` types are assigned to Python
-types.   But for automation of whole classes of types or other custom rules,
-the type map resolution can be augmented and/or replaced using the
-:meth:`.RegistryEvents.resolve_type_annotation` hook.
-
-This event hook allows for dynamic type resolution that goes beyond the static
-mappings possible with :paramref:`_orm.registry.type_annotation_map`. It's
-particularly useful when working with generic types, complex type hierarchies,
-or when you need to implement custom logic for determining SQL types based
-on Python type annotations.
-
-Basic Type Resolution with :meth:`.RegistryEvents.resolve_type_annotation`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Basic type resolution can be set up by registering the event against
-a :class:`_orm.registry` or :class:`_orm.DeclarativeBase` class. The event
-receives several parameters that allow inspection of the type annotation
-and provide hooks for custom resolution logic.
-
-The following example shows how to use the hook to resolve custom type aliases
-to appropriate SQL types::
-
-    from __future__ import annotations
-
-    from typing import Annotated, get_origin, get_args
-    from sqlalchemy import String, Integer, event
-    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-    # Define some custom type aliases
-    UserId = int
-    Username = str
-    LongText = Annotated[str, "long"]
-
-
-    class Base(DeclarativeBase):
-        pass
-
-
-    @event.listens_for(Base.registry, "resolve_type_annotation")
-    def resolve_custom_types(resolve_type):
-        # Handle our custom type aliases
-        if resolve_type.primary_type is UserId:
-            return Integer
-        elif resolve_type.primary_type is Username:
-            return String(50)
-        elif resolve_type.pep_593_type:
-            inner_type, *metadata = get_args(resolve_type.primary_type)
-            if inner_type is str and "long" in metadata:
-                return String(1000)
-
-        # Fall back to default resolution
-        return None
-
-
-    class User(Base):
-        __tablename__ = "user"
-
-        id: Mapped[UserId] = mapped_column(primary_key=True)
-        name: Mapped[Username]
-        description: Mapped[LongText]
-
-In this example, the event handler checks for specific type aliases and
-returns appropriate SQL types. When the handler returns ``None``, the
-default type resolution logic is used.
-
-Programmatic Resolution of pep-695 and NewType types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-As detailed in :ref:`orm_declarative_type_map_pep695_types`, SQLAlchemy now
-automatically resolves :pep:`695` ``type`` aliases, but does not
-automatically resolve types made using ``typing.NewType`` without
-these types being explicitly present in :paramref:`_orm.registry.type_annotation_map`.
-
-The :meth:`.RegistryEvents.resolve_type_annotation` event provides a way
-to programmatically handle these types. This is particularly useful when you have
-many ``NewType`` instances that would be cumbersome
-to list individually in the type annotation map::
-
-   from __future__ import annotations
-
-   from typing import Annotated
-   from typing import NewType
-
-   from sqlalchemy import event
-   from sqlalchemy import String
-   from sqlalchemy.orm import DeclarativeBase
-   from sqlalchemy.orm import Mapped
-   from sqlalchemy.orm import mapped_column
-
-   # Multiple NewType instances
-   IntPK = NewType("IntPK", int)
-   UserId = NewType("UserId", int)
-   ProductId = NewType("ProductId", int)
-   CategoryName = NewType("CategoryName", str)
-
-   # PEP 695 type alias that recursively refers to another PEP 695 type
-   type OrderId = Annotated[IntPK, mapped_column(primary_key=True)]
-
-
-   class Base(DeclarativeBase):
-       pass
-
-
-   @event.listens_for(Base.registry, "resolve_type_annotation")
-   def resolve_newtype_and_pep695(resolve_type):
-       # Handle NewType instances by checking their supertype
-       if hasattr(resolve_type.primary_type, "__supertype__"):
-           supertype = resolve_type.primary_type.__supertype__
-           if supertype is int:
-               # return default resolution for int
-               return resolve_type.resolve(int)
-           elif supertype is str:
-               return String(100)
-
-       # detect nested pep-695 IntPK type
-       if resolve_type.primary_type is IntPK or resolve_type.pep_593_type is IntPK:
-           return resolve_type.resolve(int)
-
-       return None
-
-
-   class Order(Base):
-       __tablename__ = "order"
-
-       id: Mapped[OrderId]
-       user_id: Mapped[UserId]
-       product_id: Mapped[ProductId]
-       category_name: Mapped[CategoryName]
-
-This approach allows you to handle entire categories of types programmatically
-rather than having to enumerate each one in the type annotation map.
-
-
-.. seealso::
-
-    :meth:`.RegistryEvents.resolve_type_annotation`
 
 .. _orm_imperative_table_configuration:
 
