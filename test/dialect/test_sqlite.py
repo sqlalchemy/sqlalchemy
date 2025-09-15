@@ -3980,6 +3980,25 @@ class ComputedReflectionTest(fixtures.TestBase):
                 x INTEGER GENERATED ALWAYS AS (INSTR(s, ",")) STORED,
                 y INTEGER GENERATED ALWAYS AS (INSTR(x, ",")) STORED
             );""",
+            """CREATE TABLE test9 (
+                id INTEGER PRIMARY KEY,
+                s VARCHAR,
+                x VARCHAR GENERATED ALWAYS AS (s || 'x')
+            ) WITHOUT ROWID;""",
+            """CREATE TABLE test10 (
+                s TEXT,
+                x TEXT GENERATED ALWAYS AS (s || 'x')
+            ) STRICT;""",
+            """CREATE TABLE test11 (
+                id INTEGER PRIMARY KEY,
+                s TEXT,
+                x TEXT GENERATED ALWAYS AS (s || 'x')
+            ) STRICT, WITHOUT ROWID;""",
+            """CREATE TABLE test12 (
+                id INTEGER PRIMARY KEY,
+                s TEXT,
+                x TEXT GENERATED ALWAYS AS (s || 'x')
+            ) WITHOUT ROWID, STRICT;""",
         ]
 
         with testing.db.begin() as conn:
@@ -4013,6 +4032,10 @@ class ComputedReflectionTest(fixtures.TestBase):
             "x": {"text": 'INSTR(s, ",")', "stored": True},
             "y": {"text": 'INSTR(x, ",")', "stored": True},
         },
+        "test9": {"x": {"text": "s || 'x'", "stored": False}},
+        "test10": {"x": {"text": "s || 'x'", "stored": False}},
+        "test11": {"x": {"text": "s || 'x'", "stored": False}},
+        "test12": {"x": {"text": "s || 'x'", "stored": False}},
     }
 
     def test_reflection(self, connection):
