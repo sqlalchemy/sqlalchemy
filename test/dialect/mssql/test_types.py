@@ -32,6 +32,7 @@ from sqlalchemy import Time
 from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
+from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.dialects.mssql import NTEXT
 from sqlalchemy.dialects.mssql import ROWVERSION
@@ -961,12 +962,17 @@ class TypeRoundTripTest(
             ),
             None,
             True,
+            testing.fails_if(
+                "+mssqlpython",
+                "mssql-python does not seem to report this as an error",
+            ),
         ),
         (
             "dto_param_datetime_naive",
             lambda: datetime.datetime(2007, 10, 30, 11, 2, 32, 123456),
             0,
             False,
+            testing.fails_if("+pymssql", "seems to fail on pymssql"),
         ),
         (
             "dto_param_string_one",
@@ -981,11 +987,15 @@ class TypeRoundTripTest(
             0,
             False,
         ),
-        ("dto_param_string_invalid", lambda: "this is not a date", 0, True),
+        (
+            "dto_param_string_invalid",
+            lambda: "this is not a date",
+            0,
+            True,
+        ),
         id_="iaaa",
         argnames="dto_param_value, expected_offset_hours, should_fail",
     )
-    @testing.skip_if("+pymssql", "offsets dont seem to work")
     def test_datetime_offset(
         self,
         datetimeoffset_fixture,
@@ -1271,14 +1281,7 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class StringRoundTripTest(fixtures.TestBase):
-    """tests for #8661
-
-
-    at the moment most of these are using the default setinputsizes enabled
-    behavior, with the exception of the plain executemany() calls for inserts.
-
-
-    """
+    """tests for #8661 as well as other string issues"""
 
     __only_on__ = "mssql"
     __backend__ = True
@@ -1432,6 +1435,36 @@ class StringRoundTripTest(fixtures.TestBase):
             select(t.c.data).where(t.c.data != data).order_by(t.c.id)
         )
         eq_(result.all(), ["some other data %d" % i for i in range(3)])
+
+    @testing.combinations(
+        (3,),
+        (9,),
+        (10,),
+        (15,),
+        argnames="size",
+    )
+    @testing.variation("fetchtype", ["all", "one"])
+    def test_cp1252_varchar(
+        self, size, fetchtype: testing.Variation, metadata, connection
+    ):
+        """test for mssql-python's issue with small varchar + cp1252 strings"""
+
+        t = Table("t", metadata, Column("data", VARCHAR(size)))
+
+        t.create(connection)
+
+        data = "réveillé réveillé"[0:size]
+        connection.execute(t.insert(), {"data": data})
+
+        if fetchtype.all:
+            result = connection.execute(select(t.c.data))
+            rows = result.all()
+            received = rows[0][0]
+        elif fetchtype.one:
+            received = connection.scalar(select(t.c.data))
+        else:
+            fetchtype.fail()
+        eq_(received, data)
 
 
 class UniqueIdentifierTest(test_types.UuidTest):

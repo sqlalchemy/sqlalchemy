@@ -161,6 +161,12 @@ PyODBC
 ------
 .. automodule:: sqlalchemy.dialects.mssql.pyodbc
 
+.. _mssql_python:
+
+mssql-python
+------------
+.. automodule:: sqlalchemy.dialects.mssql.mssqlpython
+
 pymssql
 -------
 .. automodule:: sqlalchemy.dialects.mssql.pymssql

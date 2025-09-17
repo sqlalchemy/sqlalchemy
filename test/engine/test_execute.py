@@ -52,6 +52,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing import provision
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.provision import normalize_sequence
@@ -793,6 +794,10 @@ class ExecuteDriverTest(fixtures.TablesTest):
     @testing.fails_on(
         "+mysqlconnector",
         "Exception doesn't come back exactly the same from pickle",
+    )
+    @testing.fails_on(
+        "+mssqlpython",
+        "Exception pickling not working due to additional parameter",
     )
     @testing.fails_on(
         "oracle+cx_oracle",
@@ -3039,7 +3044,11 @@ class HandleErrorTest(fixtures.TestBase):
         conn = engine.connect()
 
         def boom(connection):
-            raise engine.dialect.dbapi.OperationalError("rollback failed")
+            raise provision.dbapi_error(
+                config,
+                engine.dialect.dbapi.OperationalError,
+                "rollback failed",
+            )
 
         with patch.object(conn.dialect, "do_rollback", boom):
             assert_raises_message(
@@ -3066,7 +3075,11 @@ class HandleErrorTest(fixtures.TestBase):
         conn = engine.connect()
 
         def boom(connection):
-            raise engine.dialect.dbapi.OperationalError("rollback failed")
+            raise provision.dbapi_error(
+                config,
+                engine.dialect.dbapi.OperationalError,
+                "rollback failed",
+            )
 
         @event.listens_for(conn, "begin")
         def _do_begin(conn):
@@ -3256,7 +3269,11 @@ class HandleErrorTest(fixtures.TestBase):
             with patch.object(
                 conn.dialect,
                 "get_isolation_level",
-                Mock(side_effect=ProgrammingError("random error")),
+                Mock(
+                    side_effect=provision.dbapi_error(
+                        config, ProgrammingError, "random error"
+                    )
+                ),
             ):
                 assert_raises(MySpecialException, conn.get_isolation_level)
 
@@ -3532,7 +3549,9 @@ class OnConnectTest(fixtures.TestBase):
         dialect = testing.db.dialect
         dbapi = dialect.dbapi
         assert not dialect.is_disconnect(
-            dbapi.OperationalError("test"), None, None
+            provision.dbapi_error(config, dbapi.OperationalError, "test"),
+            None,
+            None,
         )
 
     def test_dont_create_transaction_on_initialize(self):

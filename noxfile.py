@@ -52,7 +52,10 @@ DB_CLI_NAMES = {
         "nogreenlet": {"cx_oracle", "oracledb"},
         "greenlet": {"oracledb_async"},
     },
-    "mssql": {"nogreenlet": {"pyodbc", "pymssql"}, "greenlet": {"aioodbc"}},
+    "mssql": {
+        "nogreenlet": {"pyodbc", "pymssql", "mssqlpython"},
+        "greenlet": {"aioodbc"},
+    },
 }
 
 

@@ -8,6 +8,7 @@
 
 from . import aioodbc  # noqa
 from . import base  # noqa
+from . import mssqlpython  # noqa
 from . import pymssql  # noqa
 from . import pyodbc  # noqa
 from .base import BIGINT

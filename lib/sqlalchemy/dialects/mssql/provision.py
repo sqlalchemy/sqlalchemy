@@ -16,6 +16,7 @@ from ...schema import ForeignKeyConstraint
 from ...schema import MetaData
 from ...schema import Table
 from ...testing.provision import create_db
+from ...testing.provision import dbapi_error
 from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
 from ...testing.provision import generate_driver_url
@@ -39,8 +40,10 @@ def generate_driver_url(url, driver, query_str):
 
     new_url = url.set(drivername="%s+%s" % (backend, driver))
 
-    if driver not in ("pyodbc", "aioodbc"):
+    if driver == "pymssql" and url.get_driver_name() != "pymssql":
         new_url = new_url.set(query="")
+    elif driver == "mssqlpython" and url.get_driver_name() != "mssqlpython":
+        new_url = new_url.set(query={"Encrypt": "No"})
 
     if driver == "aioodbc":
         new_url = new_url.update_query_dict({"MARS_Connection": "Yes"})
@@ -183,3 +186,11 @@ def normalize_sequence(cfg, sequence):
     if sequence.start is None:
         sequence.start = 1
     return sequence
+
+
+@dbapi_error.for_db("mssql")
+def dbapi_error(cfg, cls, message):
+    if cfg.db.driver == "mssqlpython":
+        return cls(message, "placeholder for mssqlpython")
+    else:
+        return cls(message)

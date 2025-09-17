@@ -893,6 +893,7 @@ class DefaultDialect(Dialect):
                         Dict[Tuple[Any, ...], Any],
                         Dict[Any, Any],
                     ]
+
                     if composite_sentinel:
                         rows_by_sentinel = {
                             tuple(
