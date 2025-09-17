@@ -105,14 +105,39 @@
         :tags: usecase, postgresql
         :tickets: 10927
 
-        Added support for PostgreSQL 14+ JSONB subscripting syntax. When connected
-        to PostgreSQL 14 or later, JSONB columns now automatically use the native
-        subscript notation ``jsonb_col['key']`` instead of the arrow operator
-        ``jsonb_col -> 'key'`` for both read and write operations. This provides
-        better compatibility with PostgreSQL's native JSONB subscripting feature
-        while maintaining backward compatibility with older PostgreSQL versions.
-        JSON columns continue to use the traditional arrow syntax regardless of
-        PostgreSQL version.
+        Added support for PostgreSQL 14+ :class:`.JSONB` subscripting syntax.
+        When connected to PostgreSQL 14 or later, JSONB columns now
+        automatically use the native subscript notation ``jsonb_col['key']``
+        instead of the arrow operator ``jsonb_col -> 'key'`` for both read and
+        write operations. This provides better compatibility with PostgreSQL's
+        native JSONB subscripting feature while maintaining backward
+        compatibility with older PostgreSQL versions. JSON columns continue to
+        use the traditional arrow syntax regardless of PostgreSQL version.
+
+        .. warning::
+
+          **For applications that have indexes against JSONB subscript
+          expressions**
+
+          This change caused an unintended side effect for indexes that were
+          created against expressions that use subscript notation, e.g.
+          ``Index("ix_entity_json_ab_text", data["a"]["b"].astext)``. If these
+          indexes were generated with the older syntax e.g. ``((entity.data ->
+          'a') ->> 'b')``, they will not be used by the PostgreSQL query
+          planner when a query is made using SQLAlchemy 2.0.42 or higher on
+          PostgreSQL versions 14 or higher. This occurs because the new text
+          will resemble ``(entity.data['a'] ->> 'b')`` which will fail to
+          produce the exact textual syntax match required by the PostgreSQL
+          query planner.  Therefore, for users upgrading to SQLAlchemy 2.0.42
+          or higher, existing indexes that were created against :class:`.JSONB`
+          expressions that use subscripting would need to be dropped and
+          re-created in order for them to work with the new query syntax, e.g.
+          an expression like ``((entity.data -> 'a') ->> 'b')`` would become
+          ``(entity.data['a'] ->> 'b')``.
+
+          .. seealso::
+
+                :ticket:`12868` - discussion of this issue
 
     .. change::
         :tags: bug, orm
