@@ -4392,8 +4392,13 @@ class GenerativeSelect(DialectKWArgs, SelectBase, Generative):
             stmt = stmt.order_by(None).order_by(new_col)
 
         :param \*clauses: a series of :class:`_expression.ColumnElement`
-         constructs
-         which will be used to generate an ORDER BY clause.
+         constructs which will be used to generate an ORDER BY clause.
+
+         Alternatively, an individual entry may also be the string name of a
+         label located elsewhere in the columns clause of the statement which
+         will be matched and rendered in a backend-specific way based on
+         context; see :ref:`tutorial_order_by_label` for background on string
+         label matching in ORDER BY and GROUP BY expressions.
 
         .. seealso::
 
@@ -4433,8 +4438,13 @@ class GenerativeSelect(DialectKWArgs, SelectBase, Generative):
             stmt = select(table.c.name, func.max(table.c.stat)).group_by(table.c.name)
 
         :param \*clauses: a series of :class:`_expression.ColumnElement`
-         constructs
-         which will be used to generate an GROUP BY clause.
+         constructs which will be used to generate an GROUP BY clause.
+
+         Alternatively, an individual entry may also be the string name of a
+         label located elsewhere in the columns clause of the statement which
+         will be matched and rendered in a backend-specific way based on
+         context; see :ref:`tutorial_order_by_label` for background on string
+         label matching in ORDER BY and GROUP BY expressions.
 
         .. seealso::
 
