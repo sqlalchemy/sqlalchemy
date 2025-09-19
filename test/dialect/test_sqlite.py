@@ -3852,117 +3852,142 @@ class ComputedReflectionTest(fixtures.TestBase):
     __only_on__ = "sqlite"
     __backend__ = True
 
-    @classmethod
-    def setup_test_class(cls):
-        tables = [
+    @testing.combinations(
+        (
             """CREATE TABLE test1 (
                 s VARCHAR,
                 x VARCHAR GENERATED ALWAYS AS (s || 'x')
             );""",
+            "test1",
+            {"x": {"text": "s || 'x'", "stored": False}},
+        ),
+        (
             """CREATE TABLE test2 (
                 s VARCHAR,
                 x VARCHAR GENERATED ALWAYS AS (s || 'x'),
                 y VARCHAR GENERATED ALWAYS AS (s || 'y')
             );""",
+            "test2",
+            {
+                "x": {"text": "s || 'x'", "stored": False},
+                "y": {"text": "s || 'y'", "stored": False},
+            },
+        ),
+        (
             """CREATE TABLE test3 (
                 s VARCHAR,
                 x INTEGER GENERATED ALWAYS AS (INSTR(s, ","))
             );""",
+            "test3",
+            {"x": {"text": 'INSTR(s, ",")', "stored": False}},
+        ),
+        (
             """CREATE TABLE test4 (
                 s VARCHAR,
                 x INTEGER GENERATED ALWAYS AS (INSTR(s, ",")),
                 y INTEGER GENERATED ALWAYS AS (INSTR(x, ",")));""",
+            "test4",
+            {
+                "x": {"text": 'INSTR(s, ",")', "stored": False},
+                "y": {"text": 'INSTR(x, ",")', "stored": False},
+            },
+        ),
+        (
             """CREATE TABLE test5 (
                 s VARCHAR,
                 x VARCHAR GENERATED ALWAYS AS (s || 'x') STORED
             );""",
+            "test5",
+            {"x": {"text": "s || 'x'", "stored": True}},
+        ),
+        (
             """CREATE TABLE test6 (
                 s VARCHAR,
                 x VARCHAR GENERATED ALWAYS AS (s || 'x') STORED,
                 y VARCHAR GENERATED ALWAYS AS (s || 'y') STORED
             );""",
+            "test6",
+            {
+                "x": {"text": "s || 'x'", "stored": True},
+                "y": {"text": "s || 'y'", "stored": True},
+            },
+        ),
+        (
             """CREATE TABLE test7 (
                 s VARCHAR,
                 x INTEGER GENERATED ALWAYS AS (INSTR(s, ",")) STORED
             );""",
+            "test7",
+            {"x": {"text": 'INSTR(s, ",")', "stored": True}},
+        ),
+        (
             """CREATE TABLE test8 (
                 s VARCHAR,
                 x INTEGER GENERATED ALWAYS AS (INSTR(s, ",")) STORED,
                 y INTEGER GENERATED ALWAYS AS (INSTR(x, ",")) STORED
             );""",
+            "test8",
+            {
+                "x": {"text": 'INSTR(s, ",")', "stored": True},
+                "y": {"text": 'INSTR(x, ",")', "stored": True},
+            },
+        ),
+        (
             """CREATE TABLE test9 (
                 id INTEGER PRIMARY KEY,
                 s VARCHAR,
                 x VARCHAR GENERATED ALWAYS AS (s || 'x')
             ) WITHOUT ROWID;""",
-            """CREATE TABLE test10 (
+            "test9",
+            {"x": {"text": "s || 'x'", "stored": False}},
+        ),
+        (
+            """CREATE TABLE test_strict1 (
                 s TEXT,
                 x TEXT GENERATED ALWAYS AS (s || 'x')
             ) STRICT;""",
-            """CREATE TABLE test11 (
+            "test_strict1",
+            {"x": {"text": "s || 'x'", "stored": False}},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        (
+            """CREATE TABLE test_strict2 (
                 id INTEGER PRIMARY KEY,
                 s TEXT,
                 x TEXT GENERATED ALWAYS AS (s || 'x')
             ) STRICT, WITHOUT ROWID;""",
-            """CREATE TABLE test12 (
+            "test_strict2",
+            {"x": {"text": "s || 'x'", "stored": False}},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        (
+            """CREATE TABLE test_strict3 (
                 id INTEGER PRIMARY KEY,
                 s TEXT,
                 x TEXT GENERATED ALWAYS AS (s || 'x')
             ) WITHOUT ROWID, STRICT;""",
-        ]
+            "test_strict3",
+            {"x": {"text": "s || 'x'", "stored": False}},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        argnames="table_ddl,table_name,spec",
+        id_="asa",
+    )
+    @testing.requires.computed_columns
+    def test_reflection(
+        self, metadata, connection, table_ddl, table_name, spec
+    ):
+        connection.exec_driver_sql(table_ddl)
 
-        with testing.db.begin() as conn:
-            for ct in tables:
-                conn.exec_driver_sql(ct)
+        tbl = Table(table_name, metadata, autoload_with=connection)
+        seen = set(spec).intersection(tbl.c.keys())
 
-    @classmethod
-    def teardown_test_class(cls):
-        with testing.db.begin() as conn:
-            for tn in cls.res:
-                conn.exec_driver_sql(f"DROP TABLE {tn}")
-
-    res = {
-        "test1": {"x": {"text": "s || 'x'", "stored": False}},
-        "test2": {
-            "x": {"text": "s || 'x'", "stored": False},
-            "y": {"text": "s || 'y'", "stored": False},
-        },
-        "test3": {"x": {"text": 'INSTR(s, ",")', "stored": False}},
-        "test4": {
-            "x": {"text": 'INSTR(s, ",")', "stored": False},
-            "y": {"text": 'INSTR(x, ",")', "stored": False},
-        },
-        "test5": {"x": {"text": "s || 'x'", "stored": True}},
-        "test6": {
-            "x": {"text": "s || 'x'", "stored": True},
-            "y": {"text": "s || 'y'", "stored": True},
-        },
-        "test7": {"x": {"text": 'INSTR(s, ",")', "stored": True}},
-        "test8": {
-            "x": {"text": 'INSTR(s, ",")', "stored": True},
-            "y": {"text": 'INSTR(x, ",")', "stored": True},
-        },
-        "test9": {"x": {"text": "s || 'x'", "stored": False}},
-        "test10": {"x": {"text": "s || 'x'", "stored": False}},
-        "test11": {"x": {"text": "s || 'x'", "stored": False}},
-        "test12": {"x": {"text": "s || 'x'", "stored": False}},
-    }
-
-    def test_reflection(self, connection):
-        meta = MetaData()
-        meta.reflect(connection)
-        eq_(len(meta.tables), len(self.res))
-        for tbl in meta.tables.values():
-            data = self.res[tbl.name]
-            seen = set()
-            for col in tbl.c:
-                if col.name not in data:
-                    is_(col.computed, None)
-                else:
-                    info = data[col.name]
-                    seen.add(col.name)
-                    msg = f"{tbl.name}-{col.name}"
-                    is_true(bool(col.computed))
-                    eq_(col.computed.sqltext.text, info["text"], msg)
-                    eq_(col.computed.persisted, info["stored"], msg)
-            eq_(seen, data.keys())
+        for col in tbl.c:
+            if col.name not in seen:
+                is_(col.computed, None)
+            else:
+                info = spec[col.name]
+                msg = f"{tbl.name}-{col.name}"
+                is_true(bool(col.computed))
+                eq_(col.computed.sqltext.text, info["text"], msg)
+                eq_(col.computed.persisted, info["stored"], msg)
