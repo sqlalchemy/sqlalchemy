@@ -1666,25 +1666,18 @@ function which produces a JSON array.  Ordering of the elements passed
 to these functions is supported using the :meth:`_functions.FunctionElement.aggregate_order_by`
 method, which will render ORDER BY in the appropriate part of the function::
 
-    >>> with engine.connect() as conn:
-    ...     result = conn.execute(
-    ...         select(
-    ...             func.group_concat(user_table.c.name).aggregate_order_by(
-    ...                 user_table.c.name.desc()
-    ...             )
-    ...         )
-    ...     )
-    ...     print(result.all())
-    {execsql}BEGIN (implicit)
-    SELECT group_concat(user_account.name ORDER BY user_account.name DESC) AS group_concat_1
+    >>> stmt = select(
+    ...     func.group_concat(user_table.c.name).aggregate_order_by(user_table.c.name.desc())
+    ... )
+    >>> print(stmt)
+    {printsql}SELECT group_concat(user_account.name ORDER BY user_account.name DESC) AS group_concat_1
     FROM user_account
-    [...] ()
-    {stop}[('spongebob,sandy,patrick',)]
-    {printsql}ROLLBACK{stop}
 
 .. tip:: The above demonstration shows use of the ``group_concat()`` function
-   on SQLite to concatenate strings.  As this type of function varies
-   highly on all backends, SQLAlchemy also provides a backend-agnostic
+   available on SQLite which concatenates strings; the ORDER BY feature
+   for SQLite requires SQLite 3.44.0 or greater.  As the availability, name
+   and specific syntax of the string aggregation functions varies
+   widely by backend, SQLAlchemy also provides a backend-agnostic
    version specifically for concatenating strings called
    :func:`_functions.aggregate_strings`.
 

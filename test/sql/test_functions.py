@@ -1431,7 +1431,9 @@ class ExecuteTest(fixtures.TestBase):
 
     @testing.variation("unicode_value", [True, False])
     @testing.variation("unicode_separator", [True, False])
-    @testing.variation("use_order_by", [True, False])
+    @testing.variation(
+        "use_order_by", [(True, testing.requires.aggregate_order_by), False]
+    )
     @testing.only_on(
         ["postgresql", "sqlite", "mysql", "mariadb", "oracle", "mssql"]
     )
@@ -1498,9 +1500,7 @@ class ExecuteTest(fixtures.TestBase):
 
         eq_(value, expected)
 
-    @testing.only_on(
-        ["postgresql", "sqlite", "mysql", "mariadb", "oracle", "mssql"]
-    )
+    @testing.requires.aggregate_order_by
     def test_aggregate_order_by(
         self,
         connection,

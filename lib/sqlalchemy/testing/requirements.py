@@ -1250,6 +1250,14 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def aggregate_order_by(self):
+        """target database can use ORDER BY or equivalent in an aggregate
+        function, and dialect supports aggregate_order_by().
+
+        """
+        return exclusions.closed()
+
+    @property
     def recursive_fk_cascade(self):
         """target database must support ON DELETE CASCADE on a self-referential
         foreign key

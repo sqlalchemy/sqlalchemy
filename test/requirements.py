@@ -1144,6 +1144,24 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["mssql", "sqlite"])
 
     @property
+    def aggregate_order_by(self):
+        """target database can use ORDER BY or equivalent in an aggregate
+        function, and dialect supports aggregate_order_by().
+
+        """
+
+        return only_on(
+            [
+                "postgresql",
+                "sqlite >= 3.44.0",
+                "mysql",
+                "mariadb",
+                "oracle",
+                "mssql",
+            ]
+        )
+
+    @property
     def tuple_valued_builtin_functions(self):
         return only_on(
             lambda config: self._sqlite_json(config)
