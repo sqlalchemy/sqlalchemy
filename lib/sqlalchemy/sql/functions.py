@@ -40,6 +40,7 @@ from .base import Executable
 from .base import Generative
 from .base import HasMemoized
 from .elements import _type_from_args
+from .elements import AggregateOrderBy
 from .elements import BinaryExpression
 from .elements import BindParameter
 from .elements import Cast
@@ -469,6 +470,32 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             groups=groups,
         )
 
+    def aggregate_order_by(
+        self, *order_by: _ColumnExpressionArgument[Any]
+    ) -> AggregateOrderBy[_T]:
+        r"""Produce a :class:`.AggregateOrderBy` object against a function.
+
+        Used for aggregating functions such as :class:`_functions.array_agg`,
+        ``group_concat``, ``json_agg`` on backends that support ordering via an
+        embedded ORDER BY parameter, e.g. PostgreSQL, MySQL/MariaDB, SQLite.
+        When used on backends like Oracle and SQL Server, SQL compilation uses
+        that of :class:`.WithinGroup`.
+
+        See :func:`_expression.aggregate_order_by` for a full description.
+
+        .. versionadded:: 2.0.44 Generalized the PostgreSQL-specific
+          :func:`_postgresql.aggregate_order_by` function to a method on
+          :class:`.Function` that is backend agnostic.
+
+        .. seealso::
+
+            :class:`_functions.aggregate_strings` - backend-agnostic string
+            concatenation function which also supports ORDER BY
+
+        """
+
+        return AggregateOrderBy(self, *order_by)
+
     def within_group(
         self, *order_by: _ColumnExpressionArgument[Any]
     ) -> WithinGroup[_T]:
@@ -476,7 +503,11 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         Used against so-called "ordered set aggregate" and "hypothetical
         set aggregate" functions, including :class:`.percentile_cont`,
-        :class:`.rank`, :class:`.dense_rank`, etc.
+        :class:`.rank`, :class:`.dense_rank`, etc.  This feature is typically
+        used by PostgreSQL, Oracle Database, and Microsoft SQL Server.
+
+        For simple ORDER BY expressions within aggregate functions on
+        PostgreSQL, MySQL/MariaDB, SQLite, see :func:`_sql.aggregate_order_by`.
 
         See :func:`_expression.within_group` for a full description.
 
@@ -2127,17 +2158,36 @@ class aggregate_strings(GenericFunction[str]):
 
         stmt = select(func.aggregate_strings(table.c.str_col, "."))
 
-    The return type of this function is :class:`.String`.
-
     .. versionadded:: 2.0.21
 
-    """
+    To add ordering to the expression, use the
+    :meth:`_functions.FunctionElement.aggregate_order_by` modifier method,
+    which will emit ORDER BY within the appropriate part of the column
+    expression (varies by backend)::
+
+        stmt = select(
+            func.aggregate_strings(table.c.str_col, ".").aggregate_order_by(
+                table.c.str_col
+            )
+        )
+
+    .. versionadded:: 2.1 added :meth:`_functions.FunctionElement.aggregate_order_by`
+       for all aggregate functions.
+
+    :param clause: the SQL expression to be concatenated
+
+    :param separator: separator string
+
+
+    """  # noqa: E501
 
     type = sqltypes.String()
     _has_args = True
     inherit_cache = True
 
     def __init__(
-        self, clause: _ColumnExpressionArgument[Any], separator: str
+        self,
+        clause: _ColumnExpressionArgument[Any],
+        separator: str,
     ) -> None:
         super().__init__(clause, separator)

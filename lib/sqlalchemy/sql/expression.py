@@ -13,6 +13,7 @@ from __future__ import annotations
 from ._dml_constructors import delete as delete
 from ._dml_constructors import insert as insert
 from ._dml_constructors import update as update
+from ._elements_constructors import aggregate_order_by as aggregate_order_by
 from ._elements_constructors import all_ as all_
 from ._elements_constructors import and_ as and_
 from ._elements_constructors import any_ as any_
@@ -72,6 +73,7 @@ from .dml import Update as Update
 from .dml import UpdateBase as UpdateBase
 from .dml import ValuesBase as ValuesBase
 from .elements import _truncated_label as _truncated_label
+from .elements import AggregateOrderBy as AggregateOrderBy
 from .elements import BinaryExpression as BinaryExpression
 from .elements import BindParameter as BindParameter
 from .elements import BooleanClauseList as BooleanClauseList

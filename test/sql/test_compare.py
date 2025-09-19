@@ -32,6 +32,7 @@ from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import values
 from sqlalchemy.schema import Sequence
+from sqlalchemy.sql import aggregate_order_by
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import dml
@@ -424,6 +425,24 @@ class CoreFixtures:
             .alias("foo"),
             func.json_to_recordset("{foo}").column_valued(),
             func.json_to_recordset("{foo}").scalar_table_valued("foo"),
+        ),
+        lambda: (
+            aggregate_order_by(column("a"), column("a")),
+            aggregate_order_by(column("a"), column("b")),
+            aggregate_order_by(column("a"), column("a").desc()),
+            aggregate_order_by(column("a"), column("a").nulls_first()),
+            aggregate_order_by(column("a"), column("a").desc().nulls_first()),
+            aggregate_order_by(column("a", Integer), column("b")),
+            aggregate_order_by(column("a"), column("b"), column("c")),
+            aggregate_order_by(column("a"), column("c"), column("b")),
+            aggregate_order_by(column("a"), column("b").desc(), column("c")),
+            aggregate_order_by(
+                column("a"), column("b").nulls_first(), column("c")
+            ),
+            aggregate_order_by(
+                column("a"), column("b").desc().nulls_first(), column("c")
+            ),
+            aggregate_order_by(column("a", Integer), column("a"), column("b")),
         ),
         lambda: (table_a.table_valued(), table_b.table_valued()),
         lambda: (True_(), False_()),

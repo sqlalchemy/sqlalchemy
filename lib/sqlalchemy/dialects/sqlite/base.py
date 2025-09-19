@@ -1452,7 +1452,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return "length%s" % self.function_argspec(fn)
 
     def visit_aggregate_strings_func(self, fn, **kw):
-        return "group_concat%s" % self.function_argspec(fn)
+        return super().visit_aggregate_strings_func(
+            fn, use_function_name="group_concat", **kw
+        )
 
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
