@@ -1,14 +1,17 @@
 # NOTE: typing implementation is full of heuristic so unit test it to avoid
 # unexpected breakages.
 
+import operator
 import typing
+from typing import cast
 
 import typing_extensions
 
+from sqlalchemy import Column
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import requires
-from sqlalchemy.testing.assertions import eq_
-from sqlalchemy.testing.assertions import is_
 from sqlalchemy.util import py312
 from sqlalchemy.util import py314
 from sqlalchemy.util import typing as sa_typing
@@ -238,6 +241,17 @@ def exec_code(code: str, *vars: str) -> typing.Any:
     if len(vars) == 1:
         return scope[vars[0]]
     return [scope[name] for name in vars]
+
+
+class TestGenerics(fixtures.TestBase):
+    def test_traversible_is_generic(self):
+        """test #6759"""
+        col = Column[int]
+
+        # looked in the source for typing._GenericAlias.
+        # col.__origin__ is Column, but it's not public API.
+        # __reduce__ could change too but seems good enough for now
+        eq_(cast(object, col).__reduce__(), (operator.getitem, (Column, int)))
 
 
 class TestTestingThings(fixtures.TestBase):
