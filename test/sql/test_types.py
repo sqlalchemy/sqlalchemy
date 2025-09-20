@@ -1030,8 +1030,8 @@ class TypeDecoratorSpecialCasesTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(expr2.right.type._type_affinity, Integer)
 
         self.assert_compile(
-            column("q", ArrayDec).any(7, operator=operators.lt),
-            "%(q_1)s < ANY (q)",
+            7 < column("q", ArrayDec).any_(),
+            "%(param_1)s < ANY (q)",
             dialect="postgresql",
         )
 

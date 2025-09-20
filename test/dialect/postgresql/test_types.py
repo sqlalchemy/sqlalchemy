@@ -106,6 +106,17 @@ from sqlalchemy.types import UserDefinedType
 from ...engine.test_ddlevents import DDLEventWCreateHarness
 
 
+def _array_any_deprecation():
+    return testing.expect_deprecated(
+        r"The ARRAY.Comparator.any\(\) and "
+        r"ARRAY.Comparator.all\(\) methods "
+        r"for arrays are deprecated for removal, along with the "
+        r"PG-specific Any\(\) "
+        r"and All\(\) functions. See any_\(\) and all_\(\) functions for "
+        "modern use. "
+    )
+
+
 class MiscTypesTest(AssertsCompiledSQL, fixtures.TestBase):
     __dialect__ = postgresql.dialect()
 
@@ -2001,21 +2012,25 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             checkparams={"x_1": 3},
         )
 
-    def test_array_any(self):
+    def test_array_deprecated_any(self):
         col = column("x", postgresql.ARRAY(Integer))
-        self.assert_compile(
-            select(col.any(7, operator=operators.lt)),
-            "SELECT %(x_1)s < ANY (x) AS anon_1",
-            checkparams={"x_1": 7},
-        )
 
-    def test_array_all(self):
+        with _array_any_deprecation():
+            self.assert_compile(
+                select(col.any(7, operator=operators.lt)),
+                "SELECT %(x_1)s < ANY (x) AS anon_1",
+                checkparams={"x_1": 7},
+            )
+
+    def test_array_deprecated_all(self):
         col = column("x", postgresql.ARRAY(Integer))
-        self.assert_compile(
-            select(col.all(7, operator=operators.lt)),
-            "SELECT %(x_1)s < ALL (x) AS anon_1",
-            checkparams={"x_1": 7},
-        )
+
+        with _array_any_deprecation():
+            self.assert_compile(
+                select(col.all(7, operator=operators.lt)),
+                "SELECT %(x_1)s < ALL (x) AS anon_1",
+                checkparams={"x_1": 7},
+            )
 
     def test_array_contains(self):
         col = column("x", postgresql.ARRAY(Integer))
@@ -2621,9 +2636,7 @@ class ArrayRoundTripTest:
         connection.execute(arrtable.insert(), dict(intarr=[4, 5, 6]))
         eq_(
             connection.scalar(
-                select(arrtable.c.intarr).where(
-                    postgresql.Any(5, arrtable.c.intarr)
-                )
+                select(arrtable.c.intarr).where(5 == any_(arrtable.c.intarr))
             ),
             [4, 5, 6],
         )
@@ -2631,14 +2644,43 @@ class ArrayRoundTripTest:
     def test_array_all_exec(self, connection):
         arrtable = self.tables.arrtable
         connection.execute(arrtable.insert(), dict(intarr=[4, 5, 6]))
+
         eq_(
             connection.scalar(
-                select(arrtable.c.intarr).where(
-                    arrtable.c.intarr.all(4, operator=operators.le)
-                )
+                select(arrtable.c.intarr).where(4 <= all_(arrtable.c.intarr))
             ),
             [4, 5, 6],
         )
+
+    def test_array_any_deprecated_exec(self, connection):
+        arrtable = self.tables.arrtable
+        connection.execute(arrtable.insert(), dict(intarr=[4, 5, 6]))
+
+        with _array_any_deprecation():
+            eq_(
+                connection.scalar(
+                    select(arrtable.c.intarr).where(
+                        postgresql.Any(5, arrtable.c.intarr)
+                    )
+                ),
+                [4, 5, 6],
+            )
+
+    def test_array_all_deprecated_exec(self, connection):
+        arrtable = self.tables.arrtable
+        connection.execute(arrtable.insert(), dict(intarr=[4, 5, 6]))
+
+        with _array_any_deprecation():
+            eq_(
+                connection.scalar(
+                    select(arrtable.c.intarr).where(
+                        postgresql.All(
+                            4, arrtable.c.intarr, operator=operators.le
+                        )
+                    )
+                ),
+                [4, 5, 6],
+            )
 
     def test_tuple_flag(self, connection, metadata):
         t1 = Table(
@@ -3314,21 +3356,22 @@ class ArrayEnum(fixtures.TestBase):
 
     @_enum_combinations
     @testing.combinations("all", "any", argnames="fn")
-    def test_any_all_legacy_roundtrip(
+    def test_any_all_deprecated_roundtrip(
         self, array_of_enum_fixture, connection, array_cls, enum_cls, fn
     ):
         """test #6515"""
 
         tbl, MyEnum = array_of_enum_fixture(array_cls, enum_cls)
 
-        if fn == "all":
-            expr = tbl.c.pyenum_col.all(MyEnum.b)
-            result = [([MyEnum.b],)]
-        elif fn == "any":
-            expr = tbl.c.pyenum_col.any(MyEnum.b)
-            result = [([MyEnum.a, MyEnum.b],), ([MyEnum.b],)]
-        else:
-            assert False
+        with _array_any_deprecation():
+            if fn == "all":
+                expr = tbl.c.pyenum_col.all(MyEnum.b)
+                result = [([MyEnum.b],)]
+            elif fn == "any":
+                expr = tbl.c.pyenum_col.any(MyEnum.b)
+                result = [([MyEnum.a, MyEnum.b],), ([MyEnum.b],)]
+            else:
+                assert False
         sel = select(tbl.c.pyenum_col).where(expr).order_by(tbl.c.id)
         eq_(connection.execute(sel).fetchall(), result)
 

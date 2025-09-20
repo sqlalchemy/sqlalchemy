@@ -1,7 +1,9 @@
 import random
 import re
 
+from sqlalchemy import all_
 from sqlalchemy import and_
+from sqlalchemy import any_
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
 from sqlalchemy import case
@@ -1853,6 +1855,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             x, """SELECT pg_table.col1, pg_table."variadic" FROM pg_table"""
         )
 
+    def _array_any_deprecation(self):
+        return testing.expect_deprecated(
+            r"The ARRAY.Comparator.any\(\) and "
+            r"ARRAY.Comparator.all\(\) methods "
+            r"for arrays are deprecated for removal, along with the "
+            r"PG-specific Any\(\) "
+            r"and All\(\) functions. See any_\(\) and all_\(\) functions for "
+            "modern use. "
+        )
+
     def test_array(self):
         c = Column("x", postgresql.ARRAY(Integer))
 
@@ -1899,51 +1911,134 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"x_1": [3]},
             dialect=PGDialect_psycopg2(),
         )
+
+    def test_array_modern_any_all(self):
+        c = Column("x", postgresql.ARRAY(Integer))
+
         self.assert_compile(
-            postgresql.Any(4, c),
-            "%(x_1)s = ANY (x)",
-            checkparams={"x_1": 4},
+            4 == c.any_(),
+            "%(param_1)s = ANY (x)",
+            checkparams={"param_1": 4},
         )
 
         self.assert_compile(
-            c.any(5),
-            "%(x_1)s = ANY (x)",
-            checkparams={"x_1": 5},
+            5 == any_(c),
+            "%(param_1)s = ANY (x)",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
-            ~c.any(5),
-            "NOT (%(x_1)s = ANY (x))",
-            checkparams={"x_1": 5},
+            ~(c.any_() == 5),
+            "NOT (%(param_1)s = ANY (x))",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
-            c.all(5),
-            "%(x_1)s = ALL (x)",
-            checkparams={"x_1": 5},
+            ~(5 == c.any_()),
+            "NOT (%(param_1)s = ANY (x))",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
-            ~c.all(5),
-            "NOT (%(x_1)s = ALL (x))",
-            checkparams={"x_1": 5},
+            5 != any_(c),
+            "%(param_1)s != ANY (x)",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
-            c.any(5, operator=operators.ne),
-            "%(x_1)s != ANY (x)",
-            checkparams={"x_1": 5},
+            6 > all_(c),
+            "%(param_1)s > ALL (x)",
+            checkparams={"param_1": 6},
         )
+
         self.assert_compile(
-            postgresql.All(6, c, operator=operators.gt),
-            "%(x_1)s > ALL (x)",
-            checkparams={"x_1": 6},
+            7 < all_(c),
+            "%(param_1)s < ALL (x)",
+            checkparams={"param_1": 7},
         )
+
         self.assert_compile(
-            c.all(7, operator=operators.lt),
-            "%(x_1)s < ALL (x)",
-            checkparams={"x_1": 7},
+            c.all_() == 5,
+            "%(param_1)s = ALL (x)",
+            checkparams={"param_1": 5},
         )
+
+        self.assert_compile(
+            5 == c.all_(),
+            "%(param_1)s = ALL (x)",
+            checkparams={"param_1": 5},
+        )
+
+        self.assert_compile(
+            ~(5 == all_(c)),
+            "NOT (%(param_1)s = ALL (x))",
+            checkparams={"param_1": 5},
+        )
+
+        self.assert_compile(
+            ~(all_(c) == 5),
+            "NOT (%(param_1)s = ALL (x))",
+            checkparams={"param_1": 5},
+        )
+
+    def test_array_deprecated_any_all(self):
+        c = Column("x", postgresql.ARRAY(Integer))
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                postgresql.Any(4, c),
+                "%(x_1)s = ANY (x)",
+                checkparams={"x_1": 4},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                c.any(5),
+                "%(x_1)s = ANY (x)",
+                checkparams={"x_1": 5},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                ~c.any(5),
+                "NOT (%(x_1)s = ANY (x))",
+                checkparams={"x_1": 5},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                c.any(5, operator=operators.ne),
+                "%(x_1)s != ANY (x)",
+                checkparams={"x_1": 5},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                postgresql.All(6, c, operator=operators.gt),
+                "%(x_1)s > ALL (x)",
+                checkparams={"x_1": 6},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                c.all(7, operator=operators.lt),
+                "%(x_1)s < ALL (x)",
+                checkparams={"x_1": 7},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                c.all(5),
+                "%(x_1)s = ALL (x)",
+                checkparams={"x_1": 5},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                ~c.all(5),
+                "NOT (%(x_1)s = ALL (x))",
+                checkparams={"x_1": 5},
+            )
 
     @testing.combinations(
         (lambda c: c.overlap, "&&"),
