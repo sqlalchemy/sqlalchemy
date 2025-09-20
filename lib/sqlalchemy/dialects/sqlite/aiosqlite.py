@@ -189,6 +189,7 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
 
 class AsyncAdapt_aiosqlite_dbapi(AsyncAdapt_dbapi_module):
     def __init__(self, aiosqlite: ModuleType, sqlite: ModuleType):
+        super().__init__(aiosqlite, dbapi_module=sqlite)
         self.aiosqlite = aiosqlite
         self.sqlite = sqlite
         self.paramstyle = "qmark"

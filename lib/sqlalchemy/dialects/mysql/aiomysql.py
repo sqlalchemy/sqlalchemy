@@ -112,6 +112,7 @@ class AsyncAdapt_aiomysql_connection(
 
 class AsyncAdapt_aiomysql_dbapi(AsyncAdapt_dbapi_module):
     def __init__(self, aiomysql: ModuleType, pymysql: ModuleType):
+        super().__init__(aiomysql, dbapi_module=pymysql)
         self.aiomysql = aiomysql
         self.pymysql = pymysql
         self.paramstyle = "format"

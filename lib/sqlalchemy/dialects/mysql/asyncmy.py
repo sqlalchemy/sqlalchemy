@@ -122,6 +122,7 @@ class AsyncAdapt_asyncmy_connection(
 
 class AsyncAdapt_asyncmy_dbapi(AsyncAdapt_dbapi_module):
     def __init__(self, asyncmy: ModuleType):
+        super().__init__(asyncmy)
         self.asyncmy = asyncmy
         self.paramstyle = "format"
         self._init_dbapi_attributes()

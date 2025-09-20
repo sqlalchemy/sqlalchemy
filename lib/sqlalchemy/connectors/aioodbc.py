@@ -14,6 +14,7 @@ from .asyncio import AsyncAdapt_dbapi_connection
 from .asyncio import AsyncAdapt_dbapi_cursor
 from .asyncio import AsyncAdapt_dbapi_ss_cursor
 from .pyodbc import PyODBCConnector
+from ..connectors.asyncio import AsyncAdapt_dbapi_module
 from ..util.concurrency import await_
 
 if TYPE_CHECKING:
@@ -92,8 +93,9 @@ class AsyncAdapt_aioodbc_connection(AsyncAdapt_dbapi_connection):
             super().close()
 
 
-class AsyncAdapt_aioodbc_dbapi:
+class AsyncAdapt_aioodbc_dbapi(AsyncAdapt_dbapi_module):
     def __init__(self, aioodbc, pyodbc):
+        super().__init__(aioodbc, dbapi_module=pyodbc)
         self.aioodbc = aioodbc
         self.pyodbc = pyodbc
         self.paramstyle = pyodbc.paramstyle
