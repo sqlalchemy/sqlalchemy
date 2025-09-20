@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12874
+
+    Fixed issue where the :func:`_sql.any_` and :func:`_sql.all_` aggregation
+    operators would not correctly coerce the datatype of the compared value, in
+    those cases where the compared value were not a simple int/str etc., such
+    as a Python ``Enum`` or other custom value.   This would lead to execution
+    time errors for these values.  This issue is essentially the same as
+    :ticket:`6515` which was for the now-legacy :meth:`.ARRAY.any` and
+    :meth:`.ARRAY.all` methods.
