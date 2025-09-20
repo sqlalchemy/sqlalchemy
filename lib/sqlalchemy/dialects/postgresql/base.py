@@ -2877,6 +2877,22 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
         name = self.quote(type_.name)
         effective_schema = self.schema_for_object(type_)
 
+        # a built-in type with the same name will obscure this type, so raise
+        # for that case.  this applies really to any visible type with the same
+        # name in any other visible schema that would not be appropriate for
+        # us to check against, so this is not a robust check, but
+        # at least do something for an obvious built-in name conflict
+        if (
+            effective_schema is None
+            and type_.name in self.dialect.ischema_names
+        ):
+            raise exc.CompileError(
+                f"{type_!r} has name "
+                f"'{type_.name}' that matches an existing type, and "
+                "requires an explicit schema name in order to be rendered "
+                "in DDL."
+            )
+
         if (
             not self.omit_schema
             and use_schema

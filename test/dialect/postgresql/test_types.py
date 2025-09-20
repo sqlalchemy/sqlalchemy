@@ -1241,6 +1241,65 @@ class NamedTypeTest(
             e["name"] for e in inspect(connection).get_enums()
         ]
 
+    @testing.variation("type_type", ["enum", "domain"])
+    @testing.variation("use_schema", ["none", "default", "explicit"])
+    def test_builtin_name_conflict(
+        self,
+        connection,
+        metadata,
+        type_type: testing.Variation,
+        use_schema: testing.Variation,
+    ):
+        """test #12761"""
+
+        if use_schema.none:
+            kw = {}
+        elif use_schema.default:
+            kw = {"schema": testing.db.dialect.default_schema_name}
+        elif use_schema.explicit:
+            kw = {"schema": testing.config.test_schema}
+        else:
+            use_schema.fail()
+
+        if type_type.enum:
+            type_ = ENUM("a", "b", "c", name="text", **kw)
+        elif type_type.domain:
+            type_ = DOMAIN(name="text", data_type=Integer, **kw)
+        else:
+            type_type.fail()
+
+        Table("t", metadata, Column("c", type_))
+
+        if use_schema.none:
+            with expect_raises_message(
+                exc.CompileError,
+                r"(ENUM.*|DOMAIN.*) has name 'text' that "
+                r"matches an existing type,",
+            ):
+                metadata.create_all(connection)
+            return
+
+        metadata.create_all(connection)
+
+        type_names = (
+            {elem["name"] for elem in inspect(connection).get_enums(**kw)}
+            if type_type.enum
+            else {
+                elem["name"] for elem in inspect(connection).get_domains(**kw)
+            }
+        )
+
+        assert "text" in type_names
+
+        cols = inspect(connection).get_columns("t")
+
+        if type_type.enum:
+            assert isinstance(cols[0]["type"], ENUM)
+        elif type_type.domain:
+            assert isinstance(cols[0]["type"], DOMAIN)
+        else:
+            type_type.fail()
+
 
 class DomainTest(
     AssertsCompiledSQL, fixtures.TestBase, AssertsExecutionResults
