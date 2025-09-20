@@ -99,11 +99,8 @@ def all_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         # would render 'NULL = ALL(somearray)'
         all_(mytable.c.somearray) == None
 
-    .. versionchanged:: 1.4.26  repaired the use of any_() / all_()
-       comparing to NULL on the right side to be flipped to the left.
-
     The column-level :meth:`_sql.ColumnElement.all_` method (not to be
-    confused with :class:`_types.ARRAY` level
+    confused with the deprecated :class:`_types.ARRAY` level
     :meth:`_types.ARRAY.Comparator.all`) is shorthand for
     ``all_(col)``::
 
@@ -285,11 +282,8 @@ def any_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         # would render 'NULL = ANY(somearray)'
         any_(mytable.c.somearray) == None
 
-    .. versionchanged:: 1.4.26  repaired the use of any_() / all_()
-       comparing to NULL on the right side to be flipped to the left.
-
     The column-level :meth:`_sql.ColumnElement.any_` method (not to be
-    confused with :class:`_types.ARRAY` level
+    confused with the deprecated :class:`_types.ARRAY` level
     :meth:`_types.ARRAY.Comparator.any`) is shorthand for
     ``any_(col)``::
 

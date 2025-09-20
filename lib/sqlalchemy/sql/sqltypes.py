@@ -3116,17 +3116,20 @@ class ARRAY(
                 "ARRAY type; please use the dialect-specific ARRAY type"
             )
 
+        @util.deprecated(
+            "2.1",
+            message="The :meth:`_types.ARRAY.Comparator.any` and "
+            ":meth:`_types.ARRAY.Comparator.all` methods for arrays are "
+            "deprecated for removal, along with the PG-specific "
+            ":func:`_postgresql.Any` and "
+            ":func:`_postgresql.All` functions. See :func:`_sql.any_` and "
+            ":func:`_sql.all_` functions for modern use.",
+        )
         @util.preload_module("sqlalchemy.sql.elements")
         def any(
             self, other: Any, operator: Optional[OperatorType] = None
         ) -> ColumnElement[bool]:
             """Return ``other operator ANY (array)`` clause.
-
-            .. legacy:: This method is an :class:`_types.ARRAY` - specific
-                construct that is now superseded by the :func:`_sql.any_`
-                function, which features a different calling style. The
-                :func:`_sql.any_` function is also mirrored at the method level
-                via the :meth:`_sql.ColumnOperators.any_` method.
 
             Usage of array-specific :meth:`_types.ARRAY.Comparator.any`
             is as follows::
@@ -3165,17 +3168,20 @@ class ARRAY(
                 ),
             )
 
+        @util.deprecated(
+            "2.1",
+            message="The :meth:`_types.ARRAY.Comparator.any` and "
+            ":meth:`_types.ARRAY.Comparator.all` methods for arrays are "
+            "deprecated for removal, along with the PG-specific "
+            ":func:`_postgresql.Any` and "
+            ":func:`_postgresql.All` functions. See :func:`_sql.any_` and "
+            ":func:`_sql.all_` functions for modern use.",
+        )
         @util.preload_module("sqlalchemy.sql.elements")
         def all(
             self, other: Any, operator: Optional[OperatorType] = None
         ) -> ColumnElement[bool]:
             """Return ``other operator ALL (array)`` clause.
-
-            .. legacy:: This method is an :class:`_types.ARRAY` - specific
-                construct that is now superseded by the :func:`_sql.all_`
-                function, which features a different calling style. The
-                :func:`_sql.all_` function is also mirrored at the method level
-                via the :meth:`_sql.ColumnOperators.all_` method.
 
             Usage of array-specific :meth:`_types.ARRAY.Comparator.all`
             is as follows::

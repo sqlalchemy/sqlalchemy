@@ -55,6 +55,15 @@ def Any(
     """A synonym for the ARRAY-level :meth:`.ARRAY.Comparator.any` method.
     See that method for details.
 
+    .. deprecated:: 2.1
+
+        The :meth:`_types.ARRAY.Comparator.any` and
+        :meth:`_types.ARRAY.Comparator.all` methods for arrays are deprecated
+        for removal, along with the PG-specific :func:`_postgresql.Any` and
+        :func:`_postgresql.All` functions. See :func:`_sql.any_` and
+        :func:`_sql.all_` functions for modern use.
+
+
     """
 
     return arrexpr.any(other, operator)  # type: ignore[no-any-return, union-attr]  # noqa: E501
@@ -67,6 +76,14 @@ def All(
 ) -> ColumnElement[bool]:
     """A synonym for the ARRAY-level :meth:`.ARRAY.Comparator.all` method.
     See that method for details.
+
+    .. deprecated:: 2.1
+
+        The :meth:`_types.ARRAY.Comparator.any` and
+        :meth:`_types.ARRAY.Comparator.all` methods for arrays are deprecated
+        for removal, along with the PG-specific :func:`_postgresql.Any` and
+        :func:`_postgresql.All` functions. See :func:`_sql.any_` and
+        :func:`_sql.all_` functions for modern use.
 
     """
 
