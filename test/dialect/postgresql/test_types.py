@@ -10,6 +10,7 @@ import re
 import uuid
 
 import sqlalchemy as sa
+from sqlalchemy import all_
 from sqlalchemy import any_
 from sqlalchemy import ARRAY
 from sqlalchemy import cast
@@ -3294,6 +3295,26 @@ class ArrayEnum(fixtures.TestBase):
     @_enum_combinations
     @testing.combinations("all", "any", argnames="fn")
     def test_any_all_roundtrip(
+        self, array_of_enum_fixture, connection, array_cls, enum_cls, fn
+    ):
+        """test for #12874. originally from the legacy use case in #6515"""
+
+        tbl, MyEnum = array_of_enum_fixture(array_cls, enum_cls)
+
+        if fn == "all":
+            expr = MyEnum.b == all_(tbl.c.pyenum_col)
+            result = [([MyEnum.b],)]
+        elif fn == "any":
+            expr = MyEnum.b == any_(tbl.c.pyenum_col)
+            result = [([MyEnum.a, MyEnum.b],), ([MyEnum.b],)]
+        else:
+            assert False
+        sel = select(tbl.c.pyenum_col).where(expr).order_by(tbl.c.id)
+        eq_(connection.execute(sel).fetchall(), result)
+
+    @_enum_combinations
+    @testing.combinations("all", "any", argnames="fn")
+    def test_any_all_legacy_roundtrip(
         self, array_of_enum_fixture, connection, array_cls, enum_cls, fn
     ):
         """test #6515"""
