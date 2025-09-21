@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 11956
+
+    Refactored all asyncio dialects so that exceptions which occur on failed
+    connection attempts are appropriately wrapped with SQLAlchemy exception
+    objects, allowing for consistent error handling.

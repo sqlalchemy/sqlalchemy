@@ -834,12 +834,12 @@ class AsyncAdapt_asyncpg_connection(
 
         return prepared_stmt, attributes
 
-    def _handle_exception(self, error: Exception) -> NoReturn:
-        if self._connection.is_closed():
-            self._transaction = None
-
+    @classmethod
+    def _handle_exception_no_connection(
+        cls, dbapi: Any, error: Exception
+    ) -> NoReturn:
         if not isinstance(error, AsyncAdapt_asyncpg_dbapi.Error):
-            exception_mapping = self.dbapi._asyncpg_error_translate
+            exception_mapping = dbapi._asyncpg_error_translate
 
             for super_ in type(error).__mro__:
                 if super_ in exception_mapping:
@@ -848,10 +848,13 @@ class AsyncAdapt_asyncpg_connection(
                         message, error
                     )
                     raise translated_error from error
-            else:
-                super()._handle_exception(error)
-        else:
-            super()._handle_exception(error)
+        super()._handle_exception_no_connection(dbapi, error)
+
+    def _handle_exception(self, error: Exception) -> NoReturn:
+        if self._connection.is_closed():
+            self._transaction = None
+
+        super()._handle_exception(error)
 
     @property
     def autocommit(self):
@@ -967,11 +970,13 @@ class AsyncAdapt_asyncpg_dbapi(AsyncAdapt_dbapi_module):
             "prepared_statement_name_func", None
         )
 
-        return AsyncAdapt_asyncpg_connection(
-            self,
-            await_(creator_fn(*arg, **kw)),
-            prepared_statement_cache_size=prepared_statement_cache_size,
-            prepared_statement_name_func=prepared_statement_name_func,
+        return await_(
+            AsyncAdapt_asyncpg_connection.create(
+                self,
+                creator_fn(*arg, **kw),
+                prepared_statement_cache_size=prepared_statement_cache_size,
+                prepared_statement_name_func=prepared_statement_name_func,
+            )
         )
 
     class Error(AsyncAdapt_Error):

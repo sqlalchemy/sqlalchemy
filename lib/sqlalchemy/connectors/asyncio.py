@@ -15,6 +15,7 @@ import sys
 import types
 from typing import Any
 from typing import AsyncIterator
+from typing import Awaitable
 from typing import Deque
 from typing import Iterator
 from typing import NoReturn
@@ -364,6 +365,20 @@ class AsyncAdapt_dbapi_connection(AdaptedConnection):
 
     _connection: AsyncIODBAPIConnection
 
+    @classmethod
+    async def create(
+        cls,
+        dbapi: Any,
+        connection_awaitable: Awaitable[AsyncIODBAPIConnection],
+        **kw: Any,
+    ) -> Self:
+        try:
+            connection = await connection_awaitable
+        except Exception as error:
+            cls._handle_exception_no_connection(dbapi, error)
+        else:
+            return cls(dbapi, connection, **kw)
+
     def __init__(self, dbapi: Any, connection: AsyncIODBAPIConnection):
         self.dbapi = dbapi
         self._connection = connection
@@ -385,10 +400,16 @@ class AsyncAdapt_dbapi_connection(AdaptedConnection):
         cursor.execute(operation, parameters)
         return cursor
 
-    def _handle_exception(self, error: Exception) -> NoReturn:
+    @classmethod
+    def _handle_exception_no_connection(
+        cls, dbapi: Any, error: Exception
+    ) -> NoReturn:
         exc_info = sys.exc_info()
 
         raise error.with_traceback(exc_info[2])
+
+    def _handle_exception(self, error: Exception) -> NoReturn:
+        self._handle_exception_no_connection(self.dbapi, error)
 
     def rollback(self) -> None:
         try:
