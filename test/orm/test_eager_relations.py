@@ -3133,6 +3133,89 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ],
         )
 
+    @testing.fixture
+    def issue_11226_fixture(self):
+        users, items, order_items, Order, Item, User, orders = (
+            self.tables.users,
+            self.tables.items,
+            self.tables.order_items,
+            self.classes.Order,
+            self.classes.Item,
+            self.classes.User,
+            self.tables.orders,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties=dict(
+                items=relationship(
+                    Item, secondary=order_items, order_by=items.c.id
+                ),
+                user=relationship(User),
+            ),
+        )
+        self.mapper_registry.map_imperatively(Item, items)
+
+    def test_nested_for_group_by(self, issue_11226_fixture):
+        """test issue #11226"""
+
+        Order, Item = self.classes("Order", "Item")
+
+        stmt = (
+            select(Order, func.count(Item.id))
+            .join(Order.items)
+            .group_by(Order.id)
+            .options(joinedload(Order.user))
+        )
+
+        # the query has a many-to-one joinedload, but also a GROUP BY.
+        # eager loading needs to use nested form so that the eager joins
+        # can be added to the outside of the GROUP BY query.
+        # change #11226 liberalizes the conditions where we do nested form
+        # to include non-multi-row eager loads, when the columns list is
+        # otherwise sensitive to more columns being added.
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.id, anon_1.user_id, anon_1.address_id, "
+            "anon_1.description, anon_1.isopen, anon_1.count_1, "
+            "users_1.id AS id_1, users_1.name "
+            "FROM (SELECT orders.id AS id, orders.user_id AS user_id, "
+            "orders.address_id AS address_id, "
+            "orders.description AS description, orders.isopen AS isopen, "
+            "count(items.id) AS count_1 "
+            "FROM orders "
+            "JOIN order_items AS order_items_1 "
+            "ON orders.id = order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id "
+            "GROUP BY orders.id) "
+            "AS anon_1 "
+            "LEFT OUTER JOIN users AS users_1 ON users_1.id = anon_1.user_id",
+        )
+
+    def test_nested_for_distinct(self, issue_11226_fixture):
+        """test issue #11226"""
+
+        Order, Item = self.classes("Order", "Item")
+
+        stmt = select(Order).distinct().options(joinedload(Order.user))
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.id, anon_1.user_id, anon_1.address_id, "
+            "anon_1.description, anon_1.isopen, "
+            "users_1.id AS id_1, users_1.name "
+            "FROM (SELECT DISTINCT orders.id AS id, "
+            "orders.user_id AS user_id, orders.address_id AS address_id, "
+            "orders.description AS description, orders.isopen AS isopen "
+            "FROM orders) AS anon_1 "
+            "LEFT OUTER JOIN users AS users_1 ON users_1.id = anon_1.user_id",
+        )
+
 
 class SelectUniqueTest(_fixtures.FixtureTest):
     run_inserts = "once"
