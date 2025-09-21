@@ -2448,10 +2448,7 @@ class _JoinedLoader(_AbstractRelationshipLoader):
         # whether or not the Query will wrap the selectable in a subquery,
         # and then attach eager load joins to that (i.e., in the case of
         # LIMIT/OFFSET etc.)
-        should_nest_selectable = (
-            compile_state.multi_row_eager_loaders
-            and compile_state._should_nest_selectable
-        )
+        should_nest_selectable = compile_state._should_nest_selectable
 
         query_entity_key = None
 
