@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 10604
+
+    Added new parameter :paramref:`.Enum.create_type` to the Core
+    :class:`.Enum` class. This parameter is automatically passed to the
+    corresponding :class:`_postgresql.ENUM` native type during DDL operations,
+    allowing control over whether the PostgreSQL ENUM type is implicitly
+    created or dropped within DDL operations that are otherwise targeting
+    tables only. This provides control over the
+    :paramref:`_postgresql.ENUM.create_type` behavior without requiring
+    explicit creation of a :class:`_postgresql.ENUM` object.

@@ -255,6 +255,12 @@ class NamedTypeTest(
 
     __only_on__ = "postgresql > 8.3"
 
+    def _enum_exists(self, name, connection):
+        return name in {d["name"] for d in inspect(connection).get_enums()}
+
+    def _domain_exists(self, name, connection):
+        return name in {d["name"] for d in inspect(connection).get_domains()}
+
     def test_native_enum_warnings(self):
         """test #6106"""
 
@@ -800,28 +806,109 @@ class NamedTypeTest(
         connection.execute(t1.insert(), {"bar": "Ü"})
         eq_(connection.scalar(select(t1.c.bar)), "Ü")
 
-    @testing.combinations(
-        (ENUM("one", "two", "three", name="mytype", create_type=False),),
-        (
-            DOMAIN(
+    @testing.variation("datatype", ["enum", "native_enum", "domain"])
+    @testing.variation("createtype", [True, False])
+    def test_create_type_parameter(
+        self, metadata, connection, datatype, createtype
+    ):
+
+        if datatype.enum:
+            dt = Enum(
+                "one",
+                "two",
+                "three",
+                name="mytype",
+                create_type=bool(createtype),
+            )
+        elif datatype.native_enum:
+            dt = ENUM(
+                "one",
+                "two",
+                "three",
+                name="mytype",
+                create_type=bool(createtype),
+            )
+        elif datatype.domain:
+            dt = DOMAIN(
                 name="mytype",
                 data_type=Text,
                 check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
-                create_type=False,
-            ),
-        ),
-        argnames="datatype",
-    )
-    def test_disable_create(self, metadata, connection, datatype):
-        metadata = self.metadata
+                create_type=bool(createtype),
+            )
 
-        t1 = Table("e1", metadata, Column("c1", datatype))
-        # table can be created separately
-        # without conflict
-        datatype.create(bind=connection)
-        t1.create(connection)
-        t1.drop(connection)
-        datatype.drop(bind=connection)
+        else:
+            assert False
+
+        expected_create = [
+            RegexSQL(
+                r"CREATE TABLE e1 \(c1 mytype\)",
+                dialect="postgresql",
+            )
+        ]
+
+        expected_drop = [RegexSQL("DROP TABLE e1", dialect="postgresql")]
+
+        if datatype.domain:
+            type_exists = functools.partial(
+                self._domain_exists, "mytype", connection
+            )
+            if createtype:
+                expected_create.insert(
+                    0,
+                    RegexSQL(
+                        r"CREATE DOMAIN mytype AS TEXT CHECK \(VALUE .*\)",
+                        dialect="postgresql",
+                    ),
+                )
+                expected_drop.append(
+                    RegexSQL("DROP DOMAIN mytype", dialect="postgresql")
+                )
+        else:
+            type_exists = functools.partial(
+                self._enum_exists, "mytype", connection
+            )
+
+            if createtype:
+                expected_create.insert(
+                    0,
+                    RegexSQL(
+                        r"CREATE TYPE mytype AS ENUM "
+                        r"\('one', 'two', 'three'\)",
+                        dialect="postgresql",
+                    ),
+                )
+                expected_drop.append(
+                    RegexSQL("DROP TYPE mytype", dialect="postgresql")
+                )
+
+        t1 = Table("e1", metadata, Column("c1", dt))
+
+        assert not type_exists()
+
+        if createtype:
+            with self.sql_execution_asserter(connection) as create_asserter:
+                t1.create(connection, checkfirst=False)
+
+            assert type_exists()
+
+            with self.sql_execution_asserter(connection) as drop_asserter:
+                t1.drop(connection, checkfirst=False)
+        else:
+            dt.create(bind=connection, checkfirst=False)
+            assert type_exists()
+
+            with self.sql_execution_asserter(connection) as create_asserter:
+                t1.create(connection, checkfirst=False)
+            with self.sql_execution_asserter(connection) as drop_asserter:
+                t1.drop(connection, checkfirst=False)
+
+            assert type_exists()
+            dt.drop(bind=connection, checkfirst=False)
+
+        assert not type_exists()
+
+        create_asserter.assert_(*expected_create)
+        drop_asserter.assert_(*expected_drop)
 
     def test_enum_dont_keep_checking(self, metadata, connection):
         metadata = self.metadata
@@ -1395,53 +1482,6 @@ class DomainTest(
                 (3, "example@gmail.co.uk", 99),
             ],
         )
-
-    @testing.combinations(
-        tuple(
-            [
-                DOMAIN(
-                    name="mytype",
-                    data_type=Text,
-                    check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
-                    create_type=True,
-                ),
-            ]
-        ),
-        tuple(
-            [
-                DOMAIN(
-                    name="mytype",
-                    data_type=Text,
-                    check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
-                    create_type=False,
-                ),
-            ]
-        ),
-        argnames="domain",
-    )
-    def test_create_drop_domain_with_table(self, connection, metadata, domain):
-        table = Table("e1", metadata, Column("e1", domain))
-
-        def _domain_names():
-            return {d["name"] for d in inspect(connection).get_domains()}
-
-        assert "mytype" not in _domain_names()
-
-        if domain.create_type:
-            table.create(connection)
-            assert "mytype" in _domain_names()
-        else:
-            with expect_raises(exc.ProgrammingError):
-                table.create(connection)
-            connection.rollback()
-
-            domain.create(connection)
-            assert "mytype" in _domain_names()
-            table.create(connection)
-
-        table.drop(connection)
-        if domain.create_type:
-            assert "mytype" not in _domain_names()
 
     @testing.combinations(
         (Integer, "value > 0", 4),
