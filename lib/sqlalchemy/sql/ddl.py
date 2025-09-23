@@ -555,12 +555,12 @@ class CreateTableAs(ExecutableDDLElement):
     :param selectable: :class:`_sql.Selectable`
         The SELECT (or other selectable) providing the columns and rows.
 
-    :param target: str | :class:`_sql.TableClause`
+    :param element: str | :class:`_sql.TableClause`
         Table name or object. If passed as a string, it must be
         unqualified; use the ``schema`` argument for qualification.
 
     :param schema: str, optional
-        Schema or owner name.  If both ``schema`` and the target object
+        Schema or owner name.  If both ``schema`` and the element object
         specify a schema, they must match.
 
     :param temporary: bool, default False.
@@ -599,7 +599,7 @@ class CreateTableAs(ExecutableDDLElement):
                 and schema != t_schema
             ):
                 raise exc.ArgumentError(
-                    f"Conflicting schema: target={t_schema!r}, "
+                    f"Conflicting schema: element={t_schema!r}, "
                     f"schema={schema!r}"
                 )
             final_schema = (
