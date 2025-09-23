@@ -81,9 +81,12 @@ class AsyncAdapt_asyncmy_connection(
     _cursor_cls = AsyncAdapt_asyncmy_cursor
     _ss_cursor_cls = AsyncAdapt_asyncmy_ss_cursor
 
-    def _handle_exception(self, error: Exception) -> NoReturn:
+    @classmethod
+    def _handle_exception_no_connection(
+        cls, dbapi: Any, error: Exception
+    ) -> NoReturn:
         if isinstance(error, AttributeError):
-            raise self.dbapi.InternalError(
+            raise dbapi.InternalError(
                 "network operation failed due to asyncmy attribute error"
             )
 
@@ -153,9 +156,11 @@ class AsyncAdapt_asyncmy_dbapi(AsyncAdapt_dbapi_module):
     def connect(self, *arg: Any, **kw: Any) -> AsyncAdapt_asyncmy_connection:
         creator_fn = kw.pop("async_creator_fn", self.asyncmy.connect)
 
-        return AsyncAdapt_asyncmy_connection(
-            self,
-            await_(creator_fn(*arg, **kw)),
+        return await_(
+            AsyncAdapt_asyncmy_connection.create(
+                self,
+                creator_fn(*arg, **kw),
+            )
         )
 
 

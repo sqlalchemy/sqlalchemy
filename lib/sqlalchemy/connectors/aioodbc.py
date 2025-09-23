@@ -130,9 +130,11 @@ class AsyncAdapt_aioodbc_dbapi(AsyncAdapt_dbapi_module):
     def connect(self, *arg, **kw):
         creator_fn = kw.pop("async_creator_fn", self.aioodbc.connect)
 
-        return AsyncAdapt_aioodbc_connection(
-            self,
-            await_(creator_fn(*arg, **kw)),
+        return await_(
+            AsyncAdapt_aioodbc_connection.create(
+                self,
+                creator_fn(*arg, **kw),
+            )
         )
 
 

@@ -696,8 +696,8 @@ class PsycopgAdaptDBAPI(AsyncAdapt_dbapi_module):
         creator_fn = kw.pop(
             "async_creator_fn", self.psycopg.AsyncConnection.connect
         )
-        return AsyncAdapt_psycopg_connection(
-            self, await_(creator_fn(*arg, **kw))
+        return await_(
+            AsyncAdapt_psycopg_connection.create(self, creator_fn(*arg, **kw))
         )
 
 

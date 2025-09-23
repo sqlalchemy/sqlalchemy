@@ -850,8 +850,8 @@ class OracledbAdaptDBAPI(AsyncAdapt_dbapi_module):
 
     def connect(self, *arg, **kw):
         creator_fn = kw.pop("async_creator_fn", self.oracledb.connect_async)
-        return AsyncAdapt_oracledb_connection(
-            self, await_(creator_fn(*arg, **kw))
+        return await_(
+            AsyncAdapt_oracledb_connection.create(self, creator_fn(*arg, **kw))
         )
 
 
