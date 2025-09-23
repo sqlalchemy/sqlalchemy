@@ -2694,6 +2694,40 @@ class MSDDLCompiler(compiler.DDLCompiler):
             self.preparer.format_table(drop.element.table),
         )
 
+    def visit_create_table_as(self, element, **kw):
+        prep = self.preparer
+
+        # SQL Server doesn't support CREATE TABLE AS, use SELECT INTO instead
+        # Format: SELECT columns INTO new_table FROM source WHERE ...
+
+        qualified = prep.format_table(element.table)
+
+        # Get the inner SELECT SQL
+        inner_kw = dict(kw)
+        inner_kw["literal_binds"] = True
+        select_sql = self.sql_compiler.process(element.selectable, **inner_kw)
+
+        # Inject INTO clause before FROM keyword
+        # Find FROM position (case-insensitive)
+        select_upper = select_sql.upper()
+        from_idx = select_upper.find(" FROM ")
+        if from_idx == -1:
+            from_idx = select_upper.find("\nFROM ")
+
+        if from_idx == -1:
+            raise exc.CompileError(
+                "Could not find FROM keyword in selectable for CREATE TABLE AS"
+            )
+
+        # Insert INTO clause before FROM
+        result = (
+            select_sql[:from_idx]
+            + f"INTO {qualified} "
+            + select_sql[from_idx:]
+        )
+
+        return result
+
     def visit_primary_key_constraint(self, constraint, **kw):
         if len(constraint) == 0:
             return ""

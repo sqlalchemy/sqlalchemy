@@ -62,6 +62,7 @@ from .schema import Column as Column
 from .schema import ColumnDefault as ColumnDefault
 from .schema import Computed as Computed
 from .schema import Constraint as Constraint
+from .schema import CreateTableAs as CreateTableAs
 from .schema import DDL as DDL
 from .schema import DDLElement as DDLElement
 from .schema import DefaultClause as DefaultClause

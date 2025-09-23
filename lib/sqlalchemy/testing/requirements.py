@@ -48,6 +48,18 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def create_table_as(self):
+        """target platform supports CREATE TABLE AS SELECT."""
+
+        return exclusions.closed()
+
+    @property
+    def create_temp_table_as(self):
+        """target platform supports CREATE TEMPORARY TABLE AS SELECT."""
+
+        return exclusions.closed()
+
+    @property
     def table_ddl_if_exists(self):
         """target platform supports IF NOT EXISTS / IF EXISTS for tables."""
 

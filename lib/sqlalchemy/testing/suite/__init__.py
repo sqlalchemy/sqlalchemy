@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from .test_create_table_as import *  # noqa
 from .test_cte import *  # noqa
 from .test_ddl import *  # noqa
 from .test_dialect import *  # noqa

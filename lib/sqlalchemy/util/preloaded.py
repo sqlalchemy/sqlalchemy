@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import strategies as _orm_strategies
     from sqlalchemy.orm import strategy_options as _orm_strategy_options
     from sqlalchemy.orm import util as _orm_util
+    from sqlalchemy.sql import ddl as _sql_ddl
     from sqlalchemy.sql import default_comparator as _sql_default_comparator
     from sqlalchemy.sql import dml as _sql_dml
     from sqlalchemy.sql import elements as _sql_elements
@@ -79,6 +80,7 @@ if TYPE_CHECKING:
     orm_strategy_options = _orm_strategy_options
     orm_state = _orm_state
     orm_util = _orm_util
+    sql_ddl = _sql_ddl
     sql_default_comparator = _sql_default_comparator
     sql_dml = _sql_dml
     sql_elements = _sql_elements

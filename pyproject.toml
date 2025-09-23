@@ -182,7 +182,7 @@ lint = [
     "flake8-rst-docstrings",
     "pydocstyle<4.0.0",
     "pygments",
-    "black==25.1.0",
+    "black==25.9.0",
     "slotscheck>=0.17.0",
     "zimports",  # required by generate_tuple_map_overloads
 ]

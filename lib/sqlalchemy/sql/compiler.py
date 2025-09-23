@@ -94,6 +94,7 @@ if typing.TYPE_CHECKING:
     from .base import CompileState
     from .base import Executable
     from .cache_key import CacheKey
+    from .ddl import CreateTableAs
     from .ddl import ExecutableDDLElement
     from .dml import Delete
     from .dml import Insert
@@ -6936,6 +6937,24 @@ class DDLCompiler(Compiled):
 
         text += "\n)%s\n\n" % self.post_create_table(table)
         return text
+
+    def visit_create_table_as(self, element: CreateTableAs, **kw: Any) -> str:
+        prep = self.preparer
+
+        inner_kw = dict(kw)
+        inner_kw["literal_binds"] = True
+        select_sql = self.sql_compiler.process(element.selectable, **inner_kw)
+
+        parts = [
+            "CREATE",
+            "TEMPORARY" if element.temporary else None,
+            "TABLE",
+            "IF NOT EXISTS" if element.if_not_exists else None,
+            prep.format_table(element.table),
+            "AS",
+            select_sql,
+        ]
+        return " ".join(p for p in parts if p)
 
     def visit_create_column(self, create, first_pk=False, **kw):
         column = create.element

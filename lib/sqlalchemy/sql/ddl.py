@@ -29,11 +29,14 @@ from typing import Tuple
 from typing import TypeVar
 from typing import Union
 
+from . import coercions
 from . import roles
 from .base import _generative
 from .base import Executable
 from .base import SchemaVisitor
 from .elements import ClauseElement
+from .selectable import SelectBase
+from .selectable import TableClause
 from .. import exc
 from .. import util
 from ..util import topological
@@ -47,10 +50,10 @@ if typing.TYPE_CHECKING:
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
     from .schema import Index
+    from .schema import MetaData
     from .schema import SchemaItem
     from .schema import Sequence as Sequence  # noqa: F401
     from .schema import Table
-    from .selectable import TableClause
     from ..engine.base import Connection
     from ..engine.interfaces import CacheStats
     from ..engine.interfaces import CompiledCacheType
@@ -544,6 +547,152 @@ class CreateTable(_CreateBase["Table"]):
         super().__init__(element, if_not_exists=if_not_exists)
         self.columns = [CreateColumn(column) for column in element.columns]
         self.include_foreign_key_constraints = include_foreign_key_constraints
+
+
+class CreateTableAs(ExecutableDDLElement):
+    """Represent a CREATE TABLE ... AS statement.
+
+    This creates a new table directly from the output of a SELECT.
+    The set of columns in the new table is derived from the
+    SELECT list; constraints, indexes, and defaults are not copied.
+
+    E.g.::
+
+        from sqlalchemy import select
+        from sqlalchemy.sql.ddl import CreateTableAs
+
+        # Create a new table from a SELECT
+        stmt = CreateTableAs(
+            select(users.c.id, users.c.name).where(users.c.status == "active"),
+            "active_users",
+        )
+
+        with engine.begin() as conn:
+            conn.execute(stmt)
+
+        # With optional flags
+        stmt = CreateTableAs(
+            select(users.c.id, users.c.name),
+            "temp_snapshot",
+            temporary=True,
+            if_not_exists=True,
+        )
+
+    The generated table object can be accessed via the :attr:`.table` property,
+    which will be an instance of :class:`.Table`; by default this is associated
+    with a local :class:`.MetaData` construct::
+
+        stmt = CreateTableAs(select(users.c.id, users.c.name), "active_users")
+        active_users_table = stmt.table
+
+    To associate the :class:`.Table` with an existing :class:`.MetaData`,
+    use the :paramref:`_schema.CreateTableAs.metadata` parameter::
+
+        stmt = CreateTableAs(
+            select(users.c.id, users.c.name),
+            "active_users",
+            metadata=some_metadata,
+        )
+        active_users_table = stmt.table
+
+    .. versionadded:: 2.1
+
+    :param selectable: :class:`_sql.Select`
+        The SELECT statement providing the columns and rows.
+
+    :param table_name: str
+        Table name as a string. Must be unqualified; use the ``schema``
+        argument for qualification.
+
+    :param metadata: :class:`_schema.MetaData`, optional
+        If provided, the :class:`_schema.Table` object available via the
+        :attr:`.table` attribute will be associated with this
+        :class:`.MetaData`.  Otherwise, a new, empty :class:`.MetaData`
+        is created.
+
+    :param schema: str, optional schema or owner name.
+
+    :param temporary: bool, default False.
+        If True, render ``TEMPORARY``
+
+    :param if_not_exists: bool, default False.
+        If True, render ``IF NOT EXISTS``
+
+    .. seealso::
+
+        :ref:`tutorial_create_table_as` - in the :ref:`unified_tutorial`
+
+        :meth:`_sql.SelectBase.into` - convenience method to create a
+        :class:`_schema.CreateTableAs` from a SELECT statement
+
+
+
+    """
+
+    __visit_name__ = "create_table_as"
+    inherit_cache = False
+
+    table: Table
+    """:class:`.Table` object representing the table that this
+    :class:`.CreateTableAs` would generate when executed."""
+
+    def __init__(
+        self,
+        selectable: SelectBase,
+        table_name: str,
+        *,
+        metadata: Optional["MetaData"] = None,
+        schema: Optional[str] = None,
+        temporary: bool = False,
+        if_not_exists: bool = False,
+    ):
+        # Coerce selectable to a Select statement
+        selectable = coercions.expect(roles.DMLSelectRole, selectable)
+
+        if isinstance(table_name, str):
+            if not table_name:
+                raise exc.ArgumentError("Table name must be non-empty")
+
+            if "." in table_name:
+                raise exc.ArgumentError(
+                    "Target string must be unqualified (use schema=)."
+                )
+
+        self.schema = schema
+        self.selectable = selectable
+        self.temporary = bool(temporary)
+        self.if_not_exists = bool(if_not_exists)
+        self.metadata = metadata
+        self.table_name = table_name
+        self._gen_table()
+
+    @util.preload_module("sqlalchemy.sql.schema")
+    def _gen_table(self):
+        MetaData = util.preloaded.sql_schema.MetaData
+        Column = util.preloaded.sql_schema.Column
+        Table = util.preloaded.sql_schema.Table
+        MetaData = util.preloaded.sql_schema.MetaData
+
+        column_name_type_pairs = (
+            (name, col_element.type)
+            for _, name, _, col_element, _ in (
+                self.selectable._generate_columns_plus_names(
+                    anon_for_dupe_key=False
+                )
+            )
+        )
+
+        if self.metadata is None:
+            self.metadata = metadata = MetaData()
+        else:
+            metadata = self.metadata
+
+        self.table = Table(
+            self.table_name,
+            metadata,
+            *(Column(name, typ) for name, typ in column_name_type_pairs),
+            schema=self.schema,
+        )
 
 
 class _DropView(_DropBase["Table"]):

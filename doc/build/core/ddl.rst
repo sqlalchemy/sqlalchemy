@@ -329,6 +329,8 @@ DDL Expression Constructs API
 .. autoclass:: CreateTable
     :members:
 
+.. autoclass:: CreateTableAs
+    :members:
 
 .. autoclass:: DropTable
     :members:
