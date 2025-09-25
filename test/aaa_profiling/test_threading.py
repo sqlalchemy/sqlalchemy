@@ -47,6 +47,7 @@ def run_threaded(func, *thread_args, nthreads=NUM_THREADS, **thread_kwargs):
     return results, errors
 
 
+@testing.add_to_marker.memory_intensive
 class EngineThreadSafetyTest(fixtures.TablesTest):
     run_dispose_bind = "once"
 
@@ -123,6 +124,7 @@ class EngineThreadSafetyTest(fixtures.TablesTest):
         eq_(errors, [])
 
 
+@testing.add_to_marker.memory_intensive
 class SessionThreadingTest(fixtures.MappedTest):
     run_dispose_bind = "once"
 
@@ -135,7 +137,7 @@ class SessionThreadingTest(fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("name", String(50)),
-            Column("thread_id", Integer),
+            Column("thread_id", String(50)),
         )
 
     @classmethod
