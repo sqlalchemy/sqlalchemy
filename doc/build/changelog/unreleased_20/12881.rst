@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 12881
+
+    Implemented initial support for free-threaded Python by adding new tests
+    and reworking the test harness and GitHub Actions to include Python 3.13t
+    and Python 3.14t in test runs. Two concurrency issues have been identified
+    and fixed: the first involves initialization of the ``.c`` collection on a
+    ``FromClause``, a continuation of :ticket:`12302`, where an optional mutex
+    under free-threading is added; the second involves synchronization of the
+    pool "first_connect" event, which first received thread synchronization in
+    :ticket:`2964`, however under free-threading the creation of the mutex
+    itself runs under the same free-threading mutex. Initial pull request and
+    test suite courtesy Lysandros Nikolaou.

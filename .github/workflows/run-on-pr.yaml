@@ -27,6 +27,7 @@ jobs:
         python-version:
           - "3.13"
         build-type:
+          - "cext-greenlet"
           - "cext"
           - "nocext"
         architecture:
@@ -52,7 +53,7 @@ jobs:
           pip list
 
       - name: Run tests
-        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
+        run: tox -e github-${{ matrix.build-type }} -- ${{ matrix.pytest-args }}
 
   run-tox:
     name: ${{ matrix.tox-env }}-${{ matrix.python-version }}
