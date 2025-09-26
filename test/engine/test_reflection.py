@@ -250,15 +250,34 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         is_true(t1.c.t2id.references(t2.c.id))
 
     def test_reflect_forwards_multiple_kwargs(self, connection, metadata):
-        with mock.patch(
-            "sqlalchemy.engine.reflection.Inspector.get_table_names",
-            return_value=None,
-        ) as mocked:
+        with (
+            mock.patch(
+                "sqlalchemy.engine.reflection.Inspector.get_table_names",
+                return_value=None,
+            ) as mocked_get_table_names,
+            mock.patch(
+                "sqlalchemy.engine.reflection.Inspector.get_view_names",
+                return_value=set(),
+            ) as mocked_get_view_names,
+            mock.patch(
+                (
+                    "sqlalchemy.engine.reflection.Inspector."
+                    "get_materialized_view_names"
+                ),
+                return_value=set(),
+            ) as mocked_get_materialized_view_names,
+        ):
             metadata.reflect(
-                bind=connection, flag1=True, flag2=123, flag3="abc"
+                bind=connection, flag1=True, flag2=123, flag3="abc", views=True
             )
 
-            mocked.assert_called_once_with(
+            mocked_get_table_names.assert_called_once_with(
+                None, flag1=True, flag2=123, flag3="abc"
+            )
+            mocked_get_view_names.assert_called_once_with(
+                None, flag1=True, flag2=123, flag3="abc"
+            )
+            mocked_get_materialized_view_names.assert_called_once_with(
                 None, flag1=True, flag2=123, flag3="abc"
             )
 

@@ -5943,9 +5943,13 @@ class MetaData(HasSchemaAttr):
             )
             if views:
                 kind = util.preloaded.engine_reflection.ObjectKind.ANY
-                available.update(insp.get_view_names(schema))
+                available.update(insp.get_view_names(schema, **dialect_kwargs))
                 try:
-                    available.update(insp.get_materialized_view_names(schema))
+                    available.update(
+                        insp.get_materialized_view_names(
+                            schema, **dialect_kwargs
+                        )
+                    )
                 except NotImplementedError:
                     pass
 
