@@ -249,6 +249,19 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         t2 = meta2.tables["t2"]
         is_true(t1.c.t2id.references(t2.c.id))
 
+    def test_reflect_forwards_multiple_kwargs(self, connection, metadata):
+        with mock.patch(
+            "sqlalchemy.engine.reflection.Inspector.get_table_names",
+            return_value=None,
+        ) as mocked:
+            metadata.reflect(
+                bind=connection, flag1=True, flag2=123, flag3="abc"
+            )
+
+            mocked.assert_called_once_with(
+                None, flag1=True, flag2=123, flag3="abc"
+            )
+
     def test_nonexistent(self, connection):
         meta = MetaData()
         assert_raises(

@@ -5939,7 +5939,7 @@ class MetaData(HasSchemaAttr):
 
             kind = util.preloaded.engine_reflection.ObjectKind.TABLE
             available: util.OrderedSet[str] = util.OrderedSet(
-                insp.get_table_names(schema)
+                insp.get_table_names(schema, **dialect_kwargs)
             )
             if views:
                 kind = util.preloaded.engine_reflection.ObjectKind.ANY
