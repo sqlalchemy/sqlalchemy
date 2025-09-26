@@ -6,6 +6,8 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
+"""asyncio-related concurrency functions."""
+
 from __future__ import annotations
 
 import asyncio

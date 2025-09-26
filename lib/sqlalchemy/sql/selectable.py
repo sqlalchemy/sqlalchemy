@@ -912,25 +912,28 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return self._columns.as_readonly()
 
     def _setup_collections(self) -> None:
-        assert "_columns" not in self.__dict__
-        assert "primary_key" not in self.__dict__
-        assert "foreign_keys" not in self.__dict__
+        with util.mini_gil:
+            # detect another thread that raced ahead
+            if "_columns" in self.__dict__:
+                assert "primary_key" in self.__dict__
+                assert "foreign_keys" in self.__dict__
+                return
 
-        _columns: ColumnCollection[Any, Any] = ColumnCollection()
-        primary_key = ColumnSet()
-        foreign_keys: Set[KeyedColumnElement[Any]] = set()
+            _columns: ColumnCollection[Any, Any] = ColumnCollection()
+            primary_key = ColumnSet()
+            foreign_keys: Set[KeyedColumnElement[Any]] = set()
 
-        self._populate_column_collection(
-            columns=_columns,
-            primary_key=primary_key,
-            foreign_keys=foreign_keys,
-        )
+            self._populate_column_collection(
+                columns=_columns,
+                primary_key=primary_key,
+                foreign_keys=foreign_keys,
+            )
 
-        # assigning these three collections separately is not itself atomic,
-        # but greatly reduces the surface for problems
-        self._columns = _columns
-        self.primary_key = primary_key  # type: ignore
-        self.foreign_keys = foreign_keys  # type: ignore
+            # assigning these three collections separately is not itself
+            # atomic, but greatly reduces the surface for problems
+            self._columns = _columns
+            self.primary_key = primary_key  # type: ignore
+            self.foreign_keys = foreign_keys  # type: ignore
 
     @util.ro_non_memoized_property
     def entity_namespace(self) -> _EntityNamespace:
