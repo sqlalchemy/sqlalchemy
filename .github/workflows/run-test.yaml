@@ -39,8 +39,14 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14.0-alpha - 3.14"
           - "pypy-3.10"
         build-type:
+          # builds greenlet, runs asyncio tests.  includes aiosqlite driver
+          - "cext-greenlet"
+
+          # these do not install greenlet at all and skip asyncio tests.
+          # does not include aiosqlite driver
           - "cext"
           - "nocext"
         architecture:
@@ -52,14 +58,35 @@ jobs:
           # autocommit tests fail on the ci for some reason
           - python-version: "pypy-3.10"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
-          - os: "ubuntu-22.04"
-            pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
-          - os: "ubuntu-22.04-arm"
-            pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
-
 
         exclude:
-          # linux does not have x86 / arm64 python
+          # cext-greenlet only runs on ubuntu x64 and arm64
+          - build-type: "cext-greenlet"
+            os: "windows-latest"
+          - build-type: "cext-greenlet"
+            os: "windows-11-arm"
+          - build-type: "cext-greenlet"
+            os: "macos-latest"
+          - build-type: "cext-greenlet"
+            os: "macos-13"
+
+          # the threaded pythons are not stable under greenlet. Even
+          # though we can run individual tests, when you run the whole suite
+          # with xdist and the greenlet wrapper, the workers keep crashing
+          # and getting replaced
+          - build-type: "cext-greenlet"
+            python-version: "3.13t"
+
+          - build-type: "cext-greenlet"
+            python-version: "3.14t-dev"
+
+          # skip py 3.14 on x64, because greenlet builds are not on
+          # pypi and these dont compile yet
+          - architecture: x64
+            python-version:
+                - "3.14.0-alpha - 3.14"
+                - "3.14t-dev"
+          # linux do not have x86 / arm64 python
           - os: "ubuntu-22.04"
             architecture: x86
           - os: "ubuntu-22.04"
@@ -113,12 +140,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
 
-      - name: Remove greenlet
-        if: ${{ matrix.no-greenlet == 'true' }}
-        shell: pwsh
-        run: |
-          (cat setup.cfg) | %{$_ -replace "^\s*greenlet.+",""} | set-content setup.cfg
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -126,7 +147,10 @@ jobs:
           pip list
 
       - name: Run tests
-        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
+        run: tox -e github-${{ matrix.build-type }} -- ${{ matrix.pytest-args }}
+        env:
+          # under free threading, make sure to disable GIL
+          PYTHON_GIL: ${{ contains(matrix.python-version, 't') && '0' || '' }}
         continue-on-error: ${{ matrix.python-version == 'pypy-3.10' }}
 
   run-tox:
@@ -138,8 +162,6 @@ jobs:
         os:
           - "ubuntu-22.04"
         python-version:
-          - "3.10"
-          - "3.11"
           - "3.12"
           - "3.13"
         tox-env:
