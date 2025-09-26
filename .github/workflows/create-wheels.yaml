@@ -21,7 +21,7 @@ jobs:
         # emulated wheels on linux take too much time, split wheels into multiple runs
         python:
           - "cp310-* cp311-*"
-          - "cp312-* cp313-*"
+          - "cp312-* cp313-* cp313t-*"
         wheel_mode:
           - compiled
         os:
@@ -81,10 +81,11 @@ jobs:
 
       - name: Build compiled wheels
         if: ${{ matrix.wheel_mode == 'compiled' }}
-        uses: pypa/cibuildwheel@v2.22.0
+        uses: pypa/cibuildwheel@v3.2.0
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
+          CIBW_ENABLE: "cpython-freethreading"
           # setting it here does not work on linux
           # PYTHONNOUSERSITE: "1"
 
