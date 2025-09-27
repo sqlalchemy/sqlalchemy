@@ -1907,3 +1907,8 @@ class SuiteRequirements(Requirements):
         """Target backend supports custom ESCAPE characters
         with LIKE comparisons"""
         return exclusions.open()
+
+    @property
+    def window_range_numeric(self):
+        """Target backend supports fractional values in RANGE"""
+        return exclusions.closed()
