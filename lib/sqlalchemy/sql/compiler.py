@@ -6937,6 +6937,25 @@ class DDLCompiler(Compiled):
         text += "\n)%s\n\n" % self.post_create_table(table)
         return text
 
+    def visit_create_table_as(self, element, **kw):
+        """Default CTAS emission.
+
+        Render a generic CREATE TABLE AS form and let dialects override to
+        add features (TEMPORARY, IF NOT EXISTS, SELECT INTO on MSSQL, etc.).
+
+        Keep **bind parameters** in the inner SELECT (no literal_binds)
+        """
+        # target identifier (schema-qualified if present)
+        qualified = self.preparer.format_table(element.table)
+
+        # inner SELECT — keep binds so DDL vs DML
+        # differences are handled by backends
+        inner_kw = dict(kw)
+        inner_kw.pop("literal_binds", None)
+        select_sql = self.sql_compiler.process(element.selectable, **inner_kw)
+
+        return f"CREATE TABLE {qualified} AS {select_sql}"
+
     def visit_create_column(self, create, first_pk=False, **kw):
         column = create.element
 

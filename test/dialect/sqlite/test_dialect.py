@@ -3,7 +3,9 @@
 import os
 
 from sqlalchemy import and_
+from sqlalchemy import bindparam
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import Computed
 from sqlalchemy import create_engine
 from sqlalchemy import DefaultClause
@@ -11,12 +13,14 @@ from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import pool
 from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import types as sqltypes
@@ -26,6 +30,8 @@ from sqlalchemy.dialects.sqlite import pysqlite as pysqlite_dialect
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.schema import FetchedValue
+from sqlalchemy.sql.ddl import CreateTableAs
+from sqlalchemy.sql.ddl import DropTable
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
@@ -528,6 +534,319 @@ class AttachedDBTest(fixtures.TablesTest):
         row = connection.execute(ct.select().union(ct.select())).first()
         eq_(row._mapping["id"], 1)
         eq_(row._mapping["name"], "foo")
+
+
+class CreateTableAsDDLTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = sqlite.dialect()
+
+    @testing.fixture
+    def src_table(self):
+        return table("src", column("id"), column("name"))
+
+    @testing.fixture
+    def src_two_tables(self):
+        a = table("a", column("id"), column("name"))
+        b = table("b", column("id"), column("name"))
+        return a, b
+
+    def test_schema_main(self, src_table):
+        src = src_table
+        stmt = CreateTableAs(
+            select(src.c.id).select_from(src),
+            "dst",
+            schema="main",
+        )
+        self.assert_compile(
+            stmt,
+            "CREATE TABLE main.dst AS SELECT src.id FROM src",
+        )
+
+    def test_temporary_no_schema(self, src_table):
+        src = src_table
+        stmt = CreateTableAs(
+            select(src.c.id, src.c.name).select_from(src),
+            "dst",
+            temporary=True,
+        )
+        self.assert_compile(
+            stmt,
+            "CREATE TEMPORARY TABLE dst AS "
+            "SELECT src.id, src.name FROM src",
+        )
+
+    def test_select_shape_where_order_limit(self, src_table):
+        src = src_table
+        sel = (
+            select(src.c.id, src.c.name)
+            .select_from(src)
+            .where(src.c.id > literal(10))
+            .order_by(src.c.name)
+            .limit(5)
+            .offset(0)
+        )
+        stmt = CreateTableAs(sel, "dst")
+        self.assert_compile(
+            stmt,
+            "CREATE TABLE dst AS "
+            "SELECT src.id, src.name FROM src "
+            "WHERE src.id > 10 ORDER BY src.name LIMIT 5 OFFSET 0",
+        )
+
+    def test_inline_binds(self, src_table):
+        src = src_table
+        sel = select(
+            literal(1).label("x"), literal("a").label("y")
+        ).select_from(src)
+        stmt = CreateTableAs(sel, "dst")
+        self.assert_compile(
+            stmt,
+            "CREATE TABLE dst AS SELECT 1 AS x, 'a' AS y FROM src",
+        )
+
+    def test_explicit_temp_schema_without_keyword(self, src_table):
+        # When not using temporary but schema is temp (any case), qualify
+        src = src_table
+        stmt = CreateTableAs(
+            select(src.c.id).select_from(src),
+            "dst",
+            schema="TEMP",
+        )
+        self.assert_compile(
+            stmt,
+            'CREATE TABLE "TEMP".dst AS SELECT src.id FROM src',
+        )
+
+    def test_if_not_exists(self, src_table):
+        src = src_table
+        stmt = CreateTableAs(
+            select(src.c.id, src.c.name).select_from(src),
+            "dst",
+            if_not_exists=True,
+        )
+        self.assert_compile(
+            stmt,
+            "CREATE TABLE IF NOT EXISTS dst AS "
+            "SELECT src.id, src.name FROM src",
+        )
+
+    def test_union_all_smoke(self, src_two_tables):
+        # Proves CTAS wraps a UNION ALL and preserves compound ordering.
+        a, b = src_two_tables
+        u = (
+            select(a.c.id)
+            .select_from(a)
+            .union_all(select(b.c.id).select_from(b))
+            .order_by("id")  # order-by on the compound
+            .limit(3)
+        )
+        stmt = CreateTableAs(u, "dst")
+        self.assert_compile(
+            stmt,
+            "CREATE TABLE dst AS "
+            "SELECT a.id FROM a UNION ALL SELECT b.id FROM b "
+            "ORDER BY id LIMIT 3 OFFSET 0",
+        )
+
+    def test_cte_smoke(self, src_two_tables):
+        # Proves CTAS works with a WITH-CTE wrapper and labeled column.
+        a, _ = src_two_tables
+        cte = select(a.c.id.label("aid")).select_from(a).cte("u")
+        stmt = CreateTableAs(select(cte.c.aid), "dst")
+        self.assert_compile(
+            stmt,
+            "CREATE TABLE dst AS "
+            "WITH u AS (SELECT a.id AS aid FROM a) "
+            "SELECT u.aid FROM u",
+        )
+
+    def test_union_all_with_inlined_literals_smoke(self, src_two_tables):
+        # Proves literal_binds=True behavior applies across branches.
+        a, b = src_two_tables
+        u = (
+            select(literal(1).label("x"))
+            .select_from(a)
+            .union_all(select(literal("b").label("x")).select_from(b))
+        )
+        stmt = CreateTableAs(u, "dst")
+        self.assert_compile(
+            stmt,
+            "CREATE TABLE dst AS "
+            "SELECT 1 AS x FROM a UNION ALL SELECT 'b' AS x FROM b",
+        )
+
+
+class CreateTableAsSQLiteBehavior(fixtures.TestBase):
+    __only_on__ = "sqlite"
+    __backend__ = True
+
+    @testing.fixture
+    def ctas_manager(self, connection):
+        """Executes CreateTableAs and drops them after the test"""
+
+        created_tables = []
+
+        def execute_ctas(stmt: CreateTableAs):
+            connection.execute(stmt)
+            created_tables.append(stmt.generated_table)
+            return stmt
+
+        yield execute_ctas
+
+        for t in created_tables:
+            connection.execute(DropTable(t, if_exists=True))
+
+    @testing.fixture
+    def source_table(self, connection):
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE IF NOT EXISTS src (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            )"""
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO src (name) VALUES ('a'), ('b')"
+        )
+        yield table("src", column("id"), column("name"))
+        connection.exec_driver_sql("DROP TABLE IF EXISTS src")
+
+    @testing.fixture
+    def seeded_tables(self, connection):
+        connection.exec_driver_sql("CREATE TABLE a (id INTEGER)")
+        connection.exec_driver_sql("CREATE TABLE b (id INTEGER)")
+
+        def seed(a_values, b_values):
+            if a_values:
+                stmt_a = text("INSERT INTO a (id) VALUES (:v)")
+                connection.execute(stmt_a, [{"v": v} for v in a_values])
+            if b_values:
+                stmt_b = text("INSERT INTO b (id) VALUES (:v)")
+                connection.execute(stmt_b, [{"v": v} for v in b_values])
+
+        yield seed
+
+        connection.exec_driver_sql("DROP TABLE a")
+        connection.exec_driver_sql("DROP TABLE b")
+
+    def test_create_table_as_creates_table_and_copies_rows(
+        self, connection, source_table, ctas_manager
+    ):
+        src = source_table
+        stmt = CreateTableAs(
+            select(src.c.id, src.c.name).select_from(src),
+            "dst",
+        )
+        ctas_manager(stmt)
+
+        insp = inspect(connection)
+        cols = insp.get_columns("dst")
+        assert [c["name"] for c in cols] == ["id", "name"]
+
+        # In SQLite CREATE TABLE AS does NOT carry over PK/constraints
+        pk = insp.get_pk_constraint("dst")["constrained_columns"]
+        assert pk == []
+
+        # data copied
+        count = connection.exec_driver_sql("SELECT COUNT(*) FROM dst").scalar()
+        assert count == 2
+
+    def test_if_not_exists_does_not_error(
+        self, connection, source_table, ctas_manager
+    ):
+        src = source_table
+        stmt = CreateTableAs(
+            select(src.c.id).select_from(src),
+            "dst",
+            if_not_exists=True,
+        )
+        # first run creates; second run should not error
+        ctas_manager(stmt)
+        ctas_manager(stmt)
+
+        exists = connection.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='dst'"
+        ).fetchall()
+        assert exists
+
+    def test_temporary_with_temp_schema_ok(
+        self, connection, source_table, ctas_manager
+    ):
+        src = source_table
+        stmt = CreateTableAs(
+            select(src.c.id).select_from(src),
+            "dst_tmp",
+            temporary=True,
+            schema="temp",  # accepted; still emits CREATE TEMPORARY TABLE ...
+        )
+        ctas_manager(stmt)
+
+        # verify it was created as a temp table
+        assert (
+            connection.exec_driver_sql(
+                "SELECT name FROM sqlite_temp_master "
+                "WHERE type='table' AND name='dst_tmp'"
+            ).fetchone()
+            is not None
+        )
+
+    def test_literal_inlining_inside_select(
+        self, connection, source_table, ctas_manager
+    ):
+        src = source_table
+        sel = select(
+            (src.c.id + 1).label("id2"),
+            literal("x").label("tag"),
+        ).select_from(src)
+
+        stmt = CreateTableAs(sel, "dst2")
+        ctas_manager(stmt)
+
+        rows = connection.exec_driver_sql(
+            "SELECT COUNT(*), MIN(tag), MAX(tag) FROM dst2"
+        ).fetchone()
+        assert rows[0] == 2 and rows[1] == "x" and rows[2] == "x"
+
+    def test_create_table_as_with_bind_param_executes(
+        self, connection, source_table, ctas_manager
+    ):
+        src = source_table
+        sel = (
+            select(src.c.id, src.c.name)
+            .select_from(src)
+            .where(src.c.name == bindparam("p", value="a"))
+        )
+
+        stmt = CreateTableAs(sel, "dst_bind")
+        ctas_manager(stmt)
+
+        rows = connection.exec_driver_sql(
+            "SELECT COUNT(*), MIN(name), MAX(name) FROM dst_bind"
+        ).fetchone()
+        assert rows[0] == 1 and rows[1] == "a" and rows[2] == "a"
+
+    def test_compound_select_smoke(
+        self, connection, seeded_tables, ctas_manager
+    ):
+        # UNION ALL + ORDER/LIMIT survives inside CTAS
+        seeded_tables(a_values=[1, 3], b_values=[2, 4])
+
+        sel = (
+            select(text("id"))
+            .select_from(text("a"))
+            .union_all(select(text("id")).select_from(text("b")))
+            .order_by(text("id"))
+            .limit(3)
+        )
+        stmt = CreateTableAs(sel, "dst_union")
+        ctas_manager(stmt)
+
+        vals = [
+            r[0]
+            for r in connection.exec_driver_sql(
+                "SELECT id FROM dst_union ORDER BY id"
+            ).fetchall()
+        ]
+        assert vals == [1, 2, 3]
 
 
 class InsertTest(fixtures.TestBase, AssertsExecutionResults):
