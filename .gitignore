@@ -10,6 +10,7 @@
 *.orig
 *,cover
 /.tox
+/.nox
 /venv/
 .venv
 *.egg-info
