@@ -408,7 +408,7 @@ class DefaultRequirements(SuiteRequirements):
         gc.collect() is called, as well as clean out unreferenced subclasses.
 
         """
-        return self.cpython + skip_if("+aiosqlite")
+        return self.cpython + self.only_linux + skip_if("+aiosqlite")
 
     @property
     def memory_process_intensive(self):
