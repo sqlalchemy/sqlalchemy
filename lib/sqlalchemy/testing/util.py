@@ -56,6 +56,15 @@ else:
         pass
 
 
+def super_collect():
+    for i in range(50):
+        remaining = gc.collect()
+        if not remaining:
+            break
+    else:
+        raise ValueError("Could not collect all garbage")
+
+
 def picklers():
     nt = namedtuple("picklers", ["loads", "dumps"])
 

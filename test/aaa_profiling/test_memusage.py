@@ -55,6 +55,7 @@ from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.testing.util import super_collect
 from ..orm import _fixtures
 
 
@@ -1803,9 +1804,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         # on this being gc'ed
         user_is = user._sa_instance_state
         del user
-        gc_collect()
-        gc_collect()
-        gc_collect()
+        super_collect()
         assert user_is.obj() is None
 
         assert len(s.identity_map) == 0
@@ -1854,7 +1853,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         assert len(s.dirty) == 1
         assert None not in s.dirty
         s.flush()
-        gc_collect()
+        super_collect()
         assert not s.dirty
 
         assert not s.identity_map
@@ -1885,7 +1884,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         eq_(user, User(name="ed", addresses=[Address(email_address="ed1")]))
 
         del user
-        gc_collect()
+        super_collect()
         assert len(s.identity_map) == 0
 
         user = s.query(User).options(joinedload(User.addresses)).one()
@@ -1927,7 +1926,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         eq_(user, User(name="ed", address=Address(email_address="ed1")))
 
         del user
-        gc_collect()
+        super_collect()
         assert len(s.identity_map) == 0
 
         user = s.query(User).options(joinedload(User.address)).one()
