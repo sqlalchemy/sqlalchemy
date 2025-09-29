@@ -122,6 +122,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | MonetDB                                        | sqlalchemy-monetdb_                   |
 +------------------------------------------------+---------------------------------------+
+| OceanBase                                      | oceanbase-sqlalchemy_                 |
++------------------------------------------------+---------------------------------------+
 | OpenGauss                                      | openGauss-sqlalchemy_                 |
 +------------------------------------------------+---------------------------------------+
 | Rockset                                        | rockset-sqlalchemy_                   |
@@ -180,6 +182,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-hsqldb: https://pypi.org/project/sqlalchemy-hsqldb/
 .. _databricks: https://docs.databricks.com/en/dev-tools/sqlalchemy.html
 .. _clickhouse-sqlalchemy: https://pypi.org/project/clickhouse-sqlalchemy/
+.. _oceanbase-sqlalchemy: https://github.com/oceanbase/ecology-plugins/tree/main/oceanbase-sqlalchemy-plugin
 .. _sqlalchemy-kinetica: https://github.com/kineticadb/sqlalchemy-kinetica/
 .. _sqlalchemy-tidb: https://github.com/pingcap/sqlalchemy-tidb
 .. _ydb-sqlalchemy: https://github.com/ydb-platform/ydb-sqlalchemy/
