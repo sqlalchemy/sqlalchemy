@@ -27,11 +27,19 @@ from black.mode import TargetVersion
 
 
 home = Path(__file__).parent.parent
+include_paths = (
+    re.compile(r"lib/sqlalchemy"),
+    re.compile(r"examples/"),
+    re.compile(r"test/"),
+    re.compile(r"tools/"),
+    re.compile(r"doc/build"),
+    re.compile(r"[^/]+\.rst"),
+    re.compile(r"setup.py|reap_dbs.py"),
+)
+
 ignore_paths = (
-    re.compile(r"changelog/unreleased_\d{2}"),
+    re.compile(r".*/changelog/unreleased_\d{2}"),
     re.compile(r"README\.unittests\.rst"),
-    re.compile(r"\.tox"),
-    re.compile(rf"{home.as_posix()}/build"),
 )
 
 CUSTOM_TARGET_VERSIONS = {"declarative_tables.rst": "PY312"}
@@ -319,13 +327,13 @@ def format_file(
 
 def iter_files(directory: str) -> Iterator[Path]:
     dir_path = home / directory
-    yield from (
-        file
-        for file in chain(
-            dir_path.glob("./**/*.rst"), dir_path.glob("./**/*.py")
-        )
-        if not any(pattern.search(file.as_posix()) for pattern in ignore_paths)
-    )
+
+    for file in chain(dir_path.glob("./**/*.rst"), dir_path.glob("./**/*.py")):
+        local = file.relative_to(home).as_posix()
+        if any(pattern.match(local) for pattern in include_paths) and not any(
+            pattern.match(local) for pattern in ignore_paths
+        ):
+            yield file
 
 
 def main(
