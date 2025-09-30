@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 12884
+
+    Fixed issue where :meth:`_schema.MetaData.reflect` did not forward
+    dialect-specific keyword arguments to the :class:`_engine.Inspector`
+    methods, causing options like ``oracle_resolve_synonyms`` to be ignored
+    during reflection. The method now ensures that all extra kwargs passed to
+    :meth:`_schema.MetaData.reflect` are forwarded to
+    :meth:`_engine.Inspector.get_table_names` and related reflection methods.
+    Pull request courtesy Lukáš Kožušník.
