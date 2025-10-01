@@ -1527,6 +1527,16 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def only_linux(self):
+        return exclusions.only_if(self._running_on_linux())
+
+    def _running_on_linux(self):
+        return exclusions.LambdaPredicate(
+            lambda: platform.system() == "Linux",
+            description="running on Linux",
+        )
+
+    @property
     def timing_intensive(self):
         from . import config
 
@@ -1664,7 +1674,7 @@ class SuiteRequirements(Requirements):
         gc.collect() is called, as well as clean out unreferenced subclasses.
 
         """
-        return self.cpython + self.gil_enabled
+        return self.cpython + self.gil_enabled + self.only_linux
 
     @property
     def no_coverage(self):

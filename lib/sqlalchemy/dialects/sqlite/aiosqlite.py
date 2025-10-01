@@ -177,18 +177,22 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
         except Exception as error:
             self._handle_exception(error)
 
-    def _handle_exception(self, error: Exception) -> NoReturn:
+    @classmethod
+    def _handle_exception_no_connection(
+        cls, dbapi: Any, error: Exception
+    ) -> NoReturn:
         if isinstance(error, ValueError) and error.args[0].lower() in (
             "no active connection",
             "connection closed",
         ):
-            raise self.dbapi.sqlite.OperationalError(error.args[0]) from error
+            raise dbapi.sqlite.OperationalError(error.args[0]) from error
         else:
-            super()._handle_exception(error)
+            super()._handle_exception_no_connection(dbapi, error)
 
 
 class AsyncAdapt_aiosqlite_dbapi(AsyncAdapt_dbapi_module):
     def __init__(self, aiosqlite: ModuleType, sqlite: ModuleType):
+        super().__init__(aiosqlite, dbapi_module=sqlite)
         self.aiosqlite = aiosqlite
         self.sqlite = sqlite
         self.paramstyle = "qmark"

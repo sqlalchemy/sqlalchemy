@@ -587,6 +587,7 @@ from . import cx_oracle as _cx_oracle
 from ... import exc
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...engine import default
 from ...util import await_
@@ -838,8 +839,9 @@ class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
         return await_(self._connection.tpc_rollback(*args, **kwargs))
 
 
-class OracledbAdaptDBAPI:
+class OracledbAdaptDBAPI(AsyncAdapt_dbapi_module):
     def __init__(self, oracledb) -> None:
+        super().__init__(oracledb)
         self.oracledb = oracledb
 
         for k, v in self.oracledb.__dict__.items():
@@ -848,8 +850,8 @@ class OracledbAdaptDBAPI:
 
     def connect(self, *arg, **kw):
         creator_fn = kw.pop("async_creator_fn", self.oracledb.connect_async)
-        return AsyncAdapt_oracledb_connection(
-            self, await_(creator_fn(*arg, **kw))
+        return await_(
+            AsyncAdapt_oracledb_connection.create(self, creator_fn(*arg, **kw))
         )
 
 

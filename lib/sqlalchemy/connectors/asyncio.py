@@ -12,8 +12,10 @@ from __future__ import annotations
 import asyncio
 import collections
 import sys
+import types
 from typing import Any
 from typing import AsyncIterator
+from typing import Awaitable
 from typing import Deque
 from typing import Iterator
 from typing import NoReturn
@@ -25,6 +27,7 @@ from typing import Type
 from typing import TYPE_CHECKING
 
 from ..engine import AdaptedConnection
+from ..exc import EmulatedDBAPIException
 from ..util import EMPTY_DICT
 from ..util.concurrency import await_
 from ..util.concurrency import in_greenlet
@@ -122,6 +125,32 @@ class AsyncAdapt_dbapi_module:
         IntegrityError = DBAPIModule.IntegrityError
 
         def __getattr__(self, key: str) -> Any: ...
+
+    def __init__(
+        self,
+        driver: types.ModuleType,
+        *,
+        dbapi_module: types.ModuleType | None = None,
+    ):
+        self.driver = driver
+        self.dbapi_module = dbapi_module
+
+    @property
+    def exceptions_module(self) -> types.ModuleType:
+        """Return the module which we think will have the exception hierarchy.
+
+        For an asyncio driver that wraps a plain DBAPI like aiomysql,
+        aioodbc, aiosqlite, etc. these exceptions will be from the
+        dbapi_module.  For a "pure" driver like asyncpg these will come
+        from the driver module.
+
+        .. versionadded:: 2.1
+
+        """
+        if self.dbapi_module is not None:
+            return self.dbapi_module
+        else:
+            return self.driver
 
 
 class AsyncAdapt_dbapi_cursor:
@@ -336,6 +365,20 @@ class AsyncAdapt_dbapi_connection(AdaptedConnection):
 
     _connection: AsyncIODBAPIConnection
 
+    @classmethod
+    async def create(
+        cls,
+        dbapi: Any,
+        connection_awaitable: Awaitable[AsyncIODBAPIConnection],
+        **kw: Any,
+    ) -> Self:
+        try:
+            connection = await connection_awaitable
+        except Exception as error:
+            cls._handle_exception_no_connection(dbapi, error)
+        else:
+            return cls(dbapi, connection, **kw)
+
     def __init__(self, dbapi: Any, connection: AsyncIODBAPIConnection):
         self.dbapi = dbapi
         self._connection = connection
@@ -357,10 +400,16 @@ class AsyncAdapt_dbapi_connection(AdaptedConnection):
         cursor.execute(operation, parameters)
         return cursor
 
-    def _handle_exception(self, error: Exception) -> NoReturn:
+    @classmethod
+    def _handle_exception_no_connection(
+        cls, dbapi: Any, error: Exception
+    ) -> NoReturn:
         exc_info = sys.exc_info()
 
         raise error.with_traceback(exc_info[2])
+
+    def _handle_exception(self, error: Exception) -> NoReturn:
+        self._handle_exception_no_connection(self.dbapi, error)
 
     def rollback(self) -> None:
         try:
@@ -416,3 +465,12 @@ class AsyncAdapt_terminate:
     def _terminate_force_close(self) -> None:
         """Terminate the connection"""
         raise NotImplementedError
+
+
+class AsyncAdapt_Error(EmulatedDBAPIException):
+    """Provide for the base of DBAPI ``Error`` base class for dialects
+    that need to emulate the DBAPI exception hierarchy.
+
+    .. versionadded:: 2.1
+
+    """

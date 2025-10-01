@@ -39,7 +39,6 @@ Some key internal constructs are listed here.
 .. autoclass:: sqlalchemy.engine.default.DefaultExecutionContext
     :members:
 
-
 .. autoclass:: sqlalchemy.engine.ExecutionContext
     :members:
 

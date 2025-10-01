@@ -30,6 +30,7 @@ from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
+from sqlalchemy.connectors.asyncio import AsyncAdapt_dbapi_module
 from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Connection
@@ -51,6 +52,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import ne_
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.provision import normalize_sequence
@@ -385,13 +387,40 @@ class ExecuteTest(fixtures.TablesTest):
 
     def test_exception_wrapping_dbapi(self):
         with testing.db.connect() as conn:
-            # engine does not have exec_driver_sql
             assert_raises_message(
                 tsa.exc.DBAPIError,
                 r"not_a_valid_statement",
                 conn.exec_driver_sql,
                 "not_a_valid_statement",
             )
+
+    def test_exception_wrapping_orig_accessors(self):
+        de = None
+
+        with testing.db.connect() as conn:
+            try:
+                conn.exec_driver_sql("not_a_valid_statement")
+            except tsa.exc.DBAPIError as de_caught:
+                de = de_caught
+
+        assert isinstance(de.orig, conn.dialect.dbapi.Error)
+
+        # get the driver module name, the one which we know will provide
+        # for exceptions
+        top_level_dbapi_module = conn.dialect.dbapi
+        if isinstance(top_level_dbapi_module, AsyncAdapt_dbapi_module):
+            driver_module = top_level_dbapi_module.exceptions_module
+        else:
+            driver_module = top_level_dbapi_module
+        top_level_dbapi_module = driver_module.__name__.split(".")[0]
+
+        # check that it's not us
+        ne_(top_level_dbapi_module, "sqlalchemy")
+
+        # then make sure driver_exception is from that module
+        assert type(de.driver_exception).__module__.startswith(
+            top_level_dbapi_module
+        )
 
     @testing.requires.sqlite
     def test_exception_wrapping_non_dbapi_error(self):

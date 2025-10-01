@@ -1,0 +1,28 @@
+.. change::
+    :tags: feature, asyncio
+    :tickets: 8047
+
+    The "emulated" exception hierarchies for the asyncio
+    drivers such as asyncpg, aiomysql, aioodbc, etc. have been standardized
+    on a common base :class:`.EmulatedDBAPIException`, which is now what's
+    available from the :attr:`.StatementException.orig` attribute on a
+    SQLAlchemy :class:`.DBAPIError` object.   Within :class:`.EmulatedDBAPIException`
+    and the subclasses in its hiearchy, the original driver-level exception is
+    also now avaliable via the :attr:`.EmulatedDBAPIException.orig` attribute,
+    and is also available from :class:`.DBAPIError` directly using the
+    :attr:`.DBAPIError.driver_exception` attribute.
+
+
+
+.. change::
+    :tags: feature, postgresql
+    :tickets: 8047
+
+    Added additional emulated error classes for the subclasses of
+    ``asyncpg.exception.IntegrityError`` including ``RestrictViolationError``,
+    ``NotNullViolationError``, ``ForeignKeyViolationError``,
+    ``UniqueViolationError`` ``CheckViolationError``,
+    ``ExclusionViolationError``.  These exceptions are not directly thrown by
+    SQLAlchemy's asyncio emulation, however are available from the
+    newly added :attr:`.DBAPIError.driver_exception` attribute when a
+    :class:`.IntegrityError` is caught.

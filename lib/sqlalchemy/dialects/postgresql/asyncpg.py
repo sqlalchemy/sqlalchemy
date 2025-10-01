@@ -217,7 +217,9 @@ from ... import exc
 from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...connectors.asyncio import AsyncAdapt_Error
 from ...connectors.asyncio import AsyncAdapt_terminate
 from ...engine import processors
 from ...sql import sqltypes
@@ -832,26 +834,27 @@ class AsyncAdapt_asyncpg_connection(
 
         return prepared_stmt, attributes
 
+    @classmethod
+    def _handle_exception_no_connection(
+        cls, dbapi: Any, error: Exception
+    ) -> NoReturn:
+        if not isinstance(error, AsyncAdapt_asyncpg_dbapi.Error):
+            exception_mapping = dbapi._asyncpg_error_translate
+
+            for super_ in type(error).__mro__:
+                if super_ in exception_mapping:
+                    message = error.args[0]
+                    translated_error = exception_mapping[super_](
+                        message, error
+                    )
+                    raise translated_error from error
+        super()._handle_exception_no_connection(dbapi, error)
+
     def _handle_exception(self, error: Exception) -> NoReturn:
         if self._connection.is_closed():
             self._transaction = None
 
-        if not isinstance(error, AsyncAdapt_asyncpg_dbapi.Error):
-            exception_mapping = self.dbapi._asyncpg_error_translate
-
-            for super_ in type(error).__mro__:
-                if super_ in exception_mapping:
-                    translated_error = exception_mapping[super_](
-                        "%s: %s" % (type(error), error)
-                    )
-                    translated_error.pgcode = translated_error.sqlstate = (
-                        getattr(error, "sqlstate", None)
-                    )
-                    raise translated_error from error
-            else:
-                super()._handle_exception(error)
-        else:
-            super()._handle_exception(error)
+        super()._handle_exception(error)
 
     @property
     def autocommit(self):
@@ -952,8 +955,9 @@ class AsyncAdapt_asyncpg_connection(
         return None
 
 
-class AsyncAdapt_asyncpg_dbapi:
+class AsyncAdapt_asyncpg_dbapi(AsyncAdapt_dbapi_module):
     def __init__(self, asyncpg):
+        super().__init__(asyncpg)
         self.asyncpg = asyncpg
         self.paramstyle = "numeric_dollar"
 
@@ -966,17 +970,29 @@ class AsyncAdapt_asyncpg_dbapi:
             "prepared_statement_name_func", None
         )
 
-        return AsyncAdapt_asyncpg_connection(
-            self,
-            await_(creator_fn(*arg, **kw)),
-            prepared_statement_cache_size=prepared_statement_cache_size,
-            prepared_statement_name_func=prepared_statement_name_func,
+        return await_(
+            AsyncAdapt_asyncpg_connection.create(
+                self,
+                creator_fn(*arg, **kw),
+                prepared_statement_cache_size=prepared_statement_cache_size,
+                prepared_statement_name_func=prepared_statement_name_func,
+            )
         )
 
-    class Error(Exception):
-        pass
+    class Error(AsyncAdapt_Error):
 
-    class Warning(Exception):  # noqa
+        pgcode: str | None
+
+        sqlstate: str | None
+
+        detail: str | None
+
+        def __init__(self, message, error=None):
+            super().__init__(message, error)
+            self.detail = getattr(error, "detail", None)
+            self.pgcode = self.sqlstate = getattr(error, "sqlstate", None)
+
+    class Warning(AsyncAdapt_Error):  # noqa
         pass
 
     class InterfaceError(Error):
@@ -997,6 +1013,24 @@ class AsyncAdapt_asyncpg_dbapi:
     class IntegrityError(DatabaseError):
         pass
 
+    class RestrictViolationError(IntegrityError):
+        pass
+
+    class NotNullViolationError(IntegrityError):
+        pass
+
+    class ForeignKeyViolationError(IntegrityError):
+        pass
+
+    class UniqueViolationError(IntegrityError):
+        pass
+
+    class CheckViolationError(IntegrityError):
+        pass
+
+    class ExclusionViolationError(IntegrityError):
+        pass
+
     class DataError(DatabaseError):
         pass
 
@@ -1007,7 +1041,7 @@ class AsyncAdapt_asyncpg_dbapi:
         pass
 
     class InvalidCachedStatementError(NotSupportedError):
-        def __init__(self, message):
+        def __init__(self, message, error=None):
             super().__init__(
                 message + " (SQLAlchemy asyncpg dialect will now invalidate "
                 "all prepared caches in response to this exception)",
@@ -1030,6 +1064,12 @@ class AsyncAdapt_asyncpg_dbapi:
             asyncpg.exceptions.InterfaceError: self.InterfaceError,
             asyncpg.exceptions.InvalidCachedStatementError: self.InvalidCachedStatementError,  # noqa: E501
             asyncpg.exceptions.InternalServerError: self.InternalServerError,
+            asyncpg.exceptions.RestrictViolationError: self.RestrictViolationError,  # noqa: E501
+            asyncpg.exceptions.NotNullViolationError: self.NotNullViolationError,  # noqa: E501
+            asyncpg.exceptions.ForeignKeyViolationError: self.ForeignKeyViolationError,  # noqa: E501
+            asyncpg.exceptions.UniqueViolationError: self.UniqueViolationError,
+            asyncpg.exceptions.CheckViolationError: self.CheckViolationError,
+            asyncpg.exceptions.ExclusionViolationError: self.ExclusionViolationError,  # noqa: E501
         }
 
     def Binary(self, value):

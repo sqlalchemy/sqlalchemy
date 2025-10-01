@@ -308,9 +308,9 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
                 "always refers to ENUM.   Use sqlalchemy.types.Enum for "
                 "non-native enum."
             )
-        self.create_type = create_type
         if name is not _NoArg.NO_ARG:
             kw["name"] = name
+        kw["create_type"] = create_type
         super().__init__(*enums, **kw)
 
     def coerce_compared_value(self, op, value):
@@ -335,6 +335,7 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
         """
         kw.setdefault("validate_strings", impl.validate_strings)
         kw.setdefault("name", impl.name)
+        kw.setdefault("create_type", impl.create_type)
         kw.setdefault("schema", impl.schema)
         kw.setdefault("inherit_schema", impl.inherit_schema)
         kw.setdefault("metadata", impl.metadata)
@@ -342,8 +343,6 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
         kw.setdefault("values_callable", impl.values_callable)
         kw.setdefault("omit_aliases", impl._omit_aliases)
         kw.setdefault("_adapted_from", impl)
-        if type_api._is_native_for_emulated(impl.__class__):
-            kw.setdefault("create_type", impl.create_type)
 
         return cls(**kw)
 
@@ -496,8 +495,7 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         if check is not None:
             check = coercions.expect(roles.DDLExpressionRole, check)
         self.check = check
-        self.create_type = create_type
-        super().__init__(name=name, **kw)
+        super().__init__(name=name, create_type=create_type, **kw)
 
     @classmethod
     def __test_init__(cls):

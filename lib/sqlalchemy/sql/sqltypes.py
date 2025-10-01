@@ -1073,6 +1073,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         metadata: Optional[MetaData] = None,
         inherit_schema: Union[bool, _NoArg] = NO_ARG,
         quote: Optional[bool] = None,
+        create_type: bool = True,
         _create_events: bool = True,
         _adapted_from: Optional[SchemaType] = None,
     ):
@@ -1082,7 +1083,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             self.name = None
         self.schema = schema
         self.metadata = metadata
-
+        self.create_type = create_type
         if inherit_schema is True and schema is not None:
             raise exc.ArgumentError(
                 "Ambiguously setting inherit_schema=True while "
@@ -1442,6 +1443,21 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
            class was used, its name (converted to lower case) is used by
            default.
 
+        :param create_type: Defaults to True.  This parameter only applies
+         to backends such as PostgreSQL which use explicitly named types
+         that are created and dropped separately from the table(s) they
+         are used by.   Indicates that ``CREATE TYPE`` should be emitted,
+         after optionally checking for the presence of the type, when the
+         parent table is being created; and additionally that ``DROP TYPE`` is
+         called when the table is dropped.  This parameter is equivalent to the
+         parameter of the same name on the PostgreSQL-specific
+         :class:`_postgresql.ENUM` datatype.
+
+          .. versionadded:: 2.1 - The dialect agnostic :class:`.Enum` class
+             now includes the same :paramref:`.Enum.create_type` parameter that
+             was already available on the PostgreSQL native
+             :class:`_postgresql.ENUM` implementation.
+
         :param native_enum: Use the database's native ENUM type when
            available. Defaults to True. When False, uses VARCHAR + check
            constraint for all backends. When False, the VARCHAR length can be
@@ -1586,6 +1602,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         SchemaType.__init__(
             self,
             name=kw.pop("name", None),
+            create_type=kw.pop("create_type", True),
             inherit_schema=kw.pop("inherit_schema", NO_ARG),
             schema=kw.pop("schema", None),
             metadata=kw.pop("metadata", None),

@@ -115,6 +115,7 @@ from .types import CITEXT
 from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...sql import sqltypes
 from ...util.concurrency import await_
@@ -681,8 +682,9 @@ class AsyncAdapt_psycopg_connection(AsyncAdapt_dbapi_connection):
             return AsyncAdapt_psycopg_cursor(self)
 
 
-class PsycopgAdaptDBAPI:
+class PsycopgAdaptDBAPI(AsyncAdapt_dbapi_module):
     def __init__(self, psycopg, ExecStatus) -> None:
+        super().__init__(psycopg)
         self.psycopg = psycopg
         self.ExecStatus = ExecStatus
 
@@ -694,8 +696,8 @@ class PsycopgAdaptDBAPI:
         creator_fn = kw.pop(
             "async_creator_fn", self.psycopg.AsyncConnection.connect
         )
-        return AsyncAdapt_psycopg_connection(
-            self, await_(creator_fn(*arg, **kw))
+        return await_(
+            AsyncAdapt_psycopg_connection.create(self, creator_fn(*arg, **kw))
         )
 
 
