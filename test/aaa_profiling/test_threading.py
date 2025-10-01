@@ -113,14 +113,14 @@ class EngineThreadSafetyTest(fixtures.TablesTest):
 
         metadata.create_all(self.bind)
 
-        def create_table():
+        def select_table_metadata():
             table_key = threading.current_thread().name
             assert table_key in metadata.tables, f"{table_key} does not exist"
             with self.bind.connect() as conn:
                 # Will raise if it cannot connect so erros will be populated
                 conn.execute(sa.select(metadata.tables[table_key]))
 
-        _, errors = run_threaded(create_table)
+        _, errors = run_threaded(select_table_metadata)
         eq_(errors, [])
 
 

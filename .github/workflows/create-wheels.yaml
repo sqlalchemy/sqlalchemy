@@ -21,7 +21,8 @@ jobs:
         # emulated wheels on linux take too much time, split wheels into multiple runs
         python:
           - "cp310-* cp311-*"
-          - "cp312-* cp313-* cp313t-*"
+          - "cp312-* cp313-*"
+          - "cp313t-*"
         wheel_mode:
           - compiled
         os:
