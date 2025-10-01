@@ -53,6 +53,7 @@ from typing import Protocol
 from typing import Sequence as _typing_Sequence
 from typing import Set
 from typing import Tuple
+from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypedDict
 from typing import TypeGuard
@@ -75,6 +76,7 @@ from .base import Executable
 from .base import SchemaEventTarget as SchemaEventTarget
 from .base import SchemaVisitable as SchemaVisitable
 from .coercions import _document_text_coercion
+from .ddl import CheckFirst
 from .elements import ClauseElement
 from .elements import ColumnClause
 from .elements import ColumnElement
@@ -104,6 +106,7 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .elements import KeyedColumnElement
     from .functions import Function
+    from .sqltypes import SchemaType
     from .type_api import TypeEngine
     from .visitors import anon_map
     from ..engine import Connection
@@ -1308,7 +1311,11 @@ class Table(
         metadata._add_table(self.name, self.schema, self)
         self.metadata = metadata
 
-    def create(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
+    def create(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.TYPES,
+    ) -> None:
         """Issue a ``CREATE`` statement for this
         :class:`_schema.Table`, using the given
         :class:`.Connection` or :class:`.Engine`
@@ -1320,9 +1327,14 @@ class Table(
 
         """
 
+        # the default is to only check for schema objects
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
+    def drop(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+    ) -> None:
         """Issue a ``DROP`` statement for this
         :class:`_schema.Table`, using the given
         :class:`.Connection` or :class:`.Engine` for connectivity.
@@ -3846,6 +3858,8 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     column: Optional[Column[Any]]
     data_type: Optional[TypeEngine[int]]
 
+    metadata: Optional[MetaData]
+
     @util.deprecated_params(
         order=(
             "2.1",
@@ -4028,14 +4042,16 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
             self.schema = schema = metadata.schema
         else:
             self.schema = quoted_name.construct(schema, quote_schema)
-        self.metadata = metadata
         self._key = _get_table_key(name, schema)
-        if metadata:
-            self._set_metadata(metadata)
         if data_type is not None:
             self.data_type = to_instance(data_type)
         else:
             self.data_type = None
+
+        if metadata:
+            self._set_metadata(metadata)
+        else:
+            self.metadata = None
 
     @util.preload_module("sqlalchemy.sql.functions")
     def next_value(self) -> Function[int]:
@@ -4045,12 +4061,6 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
         """
         return util.preloaded.sql_functions.func.next_value(self)
-
-    def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
-        column = parent
-        assert isinstance(column, Column)
-        super()._set_parent(column)
-        column._on_table_attach(self._set_table)
 
     def _copy(self) -> Sequence:
         return Sequence(
@@ -4064,19 +4074,33 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
             **self.dialect_kwargs,
         )
 
+    def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
+        assert isinstance(parent, Column)
+        super()._set_parent(parent, **kw)
+        parent._on_table_attach(self._set_table)
+
     def _set_table(self, column: Column[Any], table: Table) -> None:
         self._set_metadata(table.metadata)
 
     def _set_metadata(self, metadata: MetaData) -> None:
         self.metadata = metadata
-        self.metadata._sequences[self._key] = self
+        self.metadata._register_object(self)
+        metadata._sequences[self._key] = self
 
-    def create(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
+    def create(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.SEQUENCES,
+    ) -> None:
         """Creates this sequence in the database."""
 
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
+    def drop(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.SEQUENCES,
+    ) -> None:
         """Drops this sequence from the database."""
 
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
@@ -5441,7 +5465,11 @@ class Index(
                 assert False
         self.expressions = self._table_bound_expressions = exprs
 
-    def create(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
+    def create(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+    ) -> None:
         """Issue a ``CREATE`` statement for this
         :class:`.Index`, using the given
         :class:`.Connection` or :class:`.Engine`` for connectivity.
@@ -5453,7 +5481,11 @@ class Index(
         """
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
+    def drop(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+    ) -> None:
         """Issue a ``DROP`` statement for this
         :class:`.Index`, using the given
         :class:`.Connection` or :class:`.Engine` for connectivity.
@@ -5667,6 +5699,7 @@ class MetaData(HasSchemaAttr):
         self._fk_memos: Dict[Tuple[str, Optional[str]], List[ForeignKey]] = (
             collections.defaultdict(list)
         )
+        self._objects: Set[Union[HasSchemaAttr, SchemaType]] = set()
 
     tables: util.FacadeDict[str, Table]
     """A dictionary of :class:`_schema.Table`
@@ -5721,6 +5754,7 @@ class MetaData(HasSchemaAttr):
             "sequences": self._sequences,
             "fk_memos": self._fk_memos,
             "naming_convention": self.naming_convention,
+            "objects": self._objects,
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
@@ -5730,13 +5764,16 @@ class MetaData(HasSchemaAttr):
         self._sequences = state["sequences"]
         self._schemas = state["schemas"]
         self._fk_memos = state["fk_memos"]
+        self._objects = state.get("objects", set())
 
     def clear(self) -> None:
-        """Clear all Table objects from this MetaData."""
+        """Clear all objects from this MetaData."""
 
         dict.clear(self.tables)
         self._schemas.clear()
         self._fk_memos.clear()
+        self._sequences.clear()
+        self._objects.clear()
 
     def remove(self, table: Table) -> None:
         """Remove the given Table object from this MetaData."""
@@ -6011,7 +6048,7 @@ class MetaData(HasSchemaAttr):
         self,
         bind: _CreateDropBind,
         tables: Optional[_typing_Sequence[Table]] = None,
-        checkfirst: bool = True,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.ALL,
     ) -> None:
         """Create all tables stored in this metadata.
 
@@ -6026,9 +6063,9 @@ class MetaData(HasSchemaAttr):
           Optional list of ``Table`` objects, which is a subset of the total
           tables in the ``MetaData`` (others are ignored).
 
-        :param checkfirst:
-          Defaults to True, don't issue CREATEs for tables already present
-          in the target database.
+        :param checkfirst: A boolean value or instance of :class:`.CheckFirst`.
+          Indicates which objects should be checked for within a separate pass
+          before creating schema objects.
 
         """
         bind._run_ddl_visitor(
@@ -6039,7 +6076,7 @@ class MetaData(HasSchemaAttr):
         self,
         bind: _CreateDropBind,
         tables: Optional[_typing_Sequence[Table]] = None,
-        checkfirst: bool = True,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.ALL,
     ) -> None:
         """Drop all tables stored in this metadata.
 
@@ -6054,14 +6091,78 @@ class MetaData(HasSchemaAttr):
           Optional list of ``Table`` objects, which is a subset of the
           total tables in the ``MetaData`` (others are ignored).
 
-        :param checkfirst:
-          Defaults to True, only issue DROPs for tables confirmed to be
-          present in the target database.
+        :param checkfirst: A boolean value or instance of :class:`.CheckFirst`.
+          Indicates which objects should be checked for within a separate pass
+          before dropping schema objects.
 
         """
         bind._run_ddl_visitor(
             ddl.SchemaDropper, self, checkfirst=checkfirst, tables=tables
         )
+
+    @property
+    def schemas(self) -> _typing_Sequence[str]:
+        """A sequence of schema names that are present in this MetaData."""
+        schemas = self._schemas
+        if self.schema:
+            schemas = schemas | {self.schema}
+        return tuple(schemas)
+
+    def get_schema_objects(
+        self,
+        kind: Type[_T],
+        *,
+        schema: Union[str, None, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
+    ) -> _typing_Sequence[_T]:
+        """Return a sequence of schema objects of the given kind.
+
+        This method can be used to return :class:`_sqltypes.Enum`,
+        :class:`.Sequence`, etc. objects registered in this
+        :class:`_schema.MetaData`.
+
+        :param kind: a type that indicates what object to return, such as
+         :class:`Enum` or :class:`Sequence`.
+        :param schema: Optional, a schema name to filter the objects by. If
+         not provided the default schema of the metadata is used.
+
+        """
+
+        if schema is _NoArg.NO_ARG:
+            schema = self.schema
+        return tuple(
+            obj
+            for obj in self._objects
+            if isinstance(obj, kind) and obj.schema == schema
+        )
+
+    def get_schema_object_by_name(
+        self,
+        kind: Type[_T],
+        name: str,
+        *,
+        schema: Union[str, None, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
+    ) -> Optional[_T]:
+        """Return a schema objects of the given kind and name if found.
+
+        This method can be used to return :class:`_sqltypes.Enum`,
+        :class:`.Sequence`, etc. objects registered in this
+        :class:`_schema.MetaData`.
+
+        :param kind: a type that indicates what object to return, such as
+         :class:`Enum` or :class:`Sequence`.
+        :param name: the name of the object to return.
+        :param schema: Optional, a schema name to filter the objects by. If
+         not provided the default schema of the metadata is used.
+
+        """
+
+        for obj in self.get_schema_objects(kind, schema=schema):
+            if getattr(obj, "name", None) == name:
+                return obj
+        return None
+
+    def _register_object(self, obj: Union[HasSchemaAttr, SchemaType]) -> None:
+        self._objects.add(obj)
 
 
 class Computed(FetchedValue, SchemaItem):

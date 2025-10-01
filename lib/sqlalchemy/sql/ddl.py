@@ -14,6 +14,8 @@ to invoke them for a create/drop call.
 from __future__ import annotations
 
 import contextlib
+from enum import auto
+from enum import Flag
 import typing
 from typing import Any
 from typing import Callable
@@ -905,12 +907,61 @@ class InvokeDropDDLBase(InvokeDDLBase):
         )
 
 
+class CheckFirst(Flag):
+    """Enumeration for the :paramref:`.MetaData.create_all.checkfirst`
+    parameter passed to methods like :meth:`.MetaData.create_all`,
+    :meth:`.MetaData.drop_all`, :meth:`.Table.create`, :meth:`.Table.drop` and
+    others.
+
+    This enumeration indicates what kinds of objects should be "checked"
+    with a separate query before emitting CREATE or DROP for that object.
+
+    Can use ``CheckFirst(bool_value)`` to convert from a boolean value.
+
+    .. versionadded:: 2.1
+
+    """
+
+    NONE = 0  # equivalent to False
+    """No items should be checked"""
+
+    # avoid 1 so that bool True doesn't match by value
+    TABLES = 2
+    """Check for tables"""
+
+    INDEXES = auto()
+    """Check for indexes"""
+
+    SEQUENCES = auto()
+    """Check for sequences"""
+
+    TYPES = auto()
+    """Check for custom datatypes that are created server-side
+
+    This is currently used by PostgreSQL.
+
+    """
+
+    ALL = TABLES | INDEXES | SEQUENCES | TYPES  # equivalent to True
+
+    @classmethod
+    def _missing_(cls, value: object) -> Any:
+        if isinstance(value, bool):
+            return cls.ALL if value else cls.NONE
+        return super()._missing_(value)
+
+
 class SchemaGenerator(InvokeCreateDDLBase):
     def __init__(
-        self, dialect, connection, checkfirst=False, tables=None, **kwargs
+        self,
+        dialect,
+        connection,
+        checkfirst=CheckFirst.NONE,
+        tables=None,
+        **kwargs,
     ):
         super().__init__(connection, **kwargs)
-        self.checkfirst = checkfirst
+        self.checkfirst = CheckFirst(checkfirst)
         self.tables = tables
         self.preparer = dialect.identifier_preparer
         self.dialect = dialect
@@ -921,19 +972,25 @@ class SchemaGenerator(InvokeCreateDDLBase):
         effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or not self.dialect.has_table(
-            self.connection, table.name, schema=effective_schema
+        return (
+            not self.checkfirst & CheckFirst.TABLES
+            or not self.dialect.has_table(
+                self.connection, table.name, schema=effective_schema
+            )
         )
 
     def _can_create_index(self, index):
         effective_schema = self.connection.schema_for_object(index.table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or not self.dialect.has_index(
-            self.connection,
-            index.table.name,
-            index.name,
-            schema=effective_schema,
+        return (
+            not self.checkfirst & CheckFirst.INDEXES
+            or not self.dialect.has_index(
+                self.connection,
+                index.table.name,
+                index.name,
+                schema=effective_schema,
+            )
         )
 
     def _can_create_sequence(self, sequence):
@@ -942,7 +999,7 @@ class SchemaGenerator(InvokeCreateDDLBase):
         return self.dialect.supports_sequences and (
             (not self.dialect.sequences_optional or not sequence.optional)
             and (
-                not self.checkfirst
+                not self.checkfirst & CheckFirst.SEQUENCES
                 or not self.dialect.has_sequence(
                     self.connection, sequence.name, schema=effective_schema
                 )
@@ -1061,10 +1118,15 @@ class SchemaGenerator(InvokeCreateDDLBase):
 
 class SchemaDropper(InvokeDropDDLBase):
     def __init__(
-        self, dialect, connection, checkfirst=False, tables=None, **kwargs
+        self,
+        dialect,
+        connection,
+        checkfirst=CheckFirst.NONE,
+        tables=None,
+        **kwargs,
     ):
         super().__init__(connection, **kwargs)
-        self.checkfirst = checkfirst
+        self.checkfirst = CheckFirst(checkfirst)
         self.tables = tables
         self.preparer = dialect.identifier_preparer
         self.dialect = dialect
@@ -1153,19 +1215,25 @@ class SchemaDropper(InvokeDropDDLBase):
         effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or self.dialect.has_table(
-            self.connection, table.name, schema=effective_schema
+        return (
+            not self.checkfirst & CheckFirst.TABLES
+            or self.dialect.has_table(
+                self.connection, table.name, schema=effective_schema
+            )
         )
 
     def _can_drop_index(self, index):
         effective_schema = self.connection.schema_for_object(index.table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or self.dialect.has_index(
-            self.connection,
-            index.table.name,
-            index.name,
-            schema=effective_schema,
+        return (
+            not self.checkfirst & CheckFirst.INDEXES
+            or self.dialect.has_index(
+                self.connection,
+                index.table.name,
+                index.name,
+                schema=effective_schema,
+            )
         )
 
     def _can_drop_sequence(self, sequence):
@@ -1173,7 +1241,7 @@ class SchemaDropper(InvokeDropDDLBase):
         return self.dialect.supports_sequences and (
             (not self.dialect.sequences_optional or not sequence.optional)
             and (
-                not self.checkfirst
+                not self.checkfirst & CheckFirst.SEQUENCES
                 or self.dialect.has_sequence(
                     self.connection, sequence.name, schema=effective_schema
                 )
