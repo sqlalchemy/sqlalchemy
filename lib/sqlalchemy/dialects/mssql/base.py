@@ -3479,6 +3479,9 @@ join sys.schemas as sch on
 where
     tab.name = :tabname
     and sch.name = :schname
+order by
+    ind_col.index_id,
+    ind_col.key_ordinal
             """
             )
             .bindparams(
