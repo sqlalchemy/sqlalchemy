@@ -2699,6 +2699,7 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
             ],
         )
 
+    @testing.requires.indexes_check_column_order
     def test_index_column_order(self, metadata, inspect_for_table):
          """test for #12894"""
          with inspect_for_table("sa_multi_index") as (schema, inspector):

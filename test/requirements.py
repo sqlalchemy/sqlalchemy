@@ -668,6 +668,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def indexes_check_column_order(self):
+        return exclusions.open()
+
+    @property
     def indexes_with_expressions(self):
         return only_on(["postgresql", "sqlite>=3.9.0", "oracle"])
 
