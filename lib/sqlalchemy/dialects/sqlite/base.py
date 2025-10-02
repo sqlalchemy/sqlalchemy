@@ -1737,6 +1737,23 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return colspec
 
+    def visit_create_table_as(self, element, **kw):
+        prep = self.preparer
+        select_sql = self.sql_compiler.process(
+            element.selectable, literal_binds=True
+        )
+
+        parts = [
+            "CREATE",
+            "TEMPORARY" if element.temporary else None,
+            "TABLE",
+            "IF NOT EXISTS" if element.if_not_exists else None,
+            prep.format_table(element.table),
+            "AS",
+            select_sql,
+        ]
+        return " ".join(p for p in parts if p)
+
     def visit_primary_key_constraint(self, constraint, **kw):
         # for columns with sqlite_autoincrement=True,
         # the PRIMARY KEY constraint can only be inline
