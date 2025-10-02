@@ -715,6 +715,46 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             CreateIndex(idx), "CREATE NONCLUSTERED INDEX idx_x ON t (x)"
         )
 
+    def test_index_column_order_clustered(self, metadata, connection):
+        """test for #12894"""
+        test_table = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            Column("y", Integer),
+            PrimaryKeyConstraint('id', mssql_clustered=False),
+        )
+        Index(
+            "idx_x",
+            test_table.c.y,
+            test_table.c.id,
+            test_table.c.x,
+            mssql_clustered=True,
+        )
+        metadata.create_all(connection)
+        indexes = testing.db.dialect.get_indexes(connection, "t", None)
+        eq_(indexes[0]["column_names"], ["y", "id", "x"])
+
+    def test_index_column_order_nonclustered(self, metadata, connection):
+        """test for #12894"""
+        test_table = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+        Index(
+            "idx_x",
+            test_table.c.y,
+            test_table.c.id,
+            test_table.c.x,
+        )
+        metadata.create_all(connection)
+        indexes = testing.db.dialect.get_indexes(connection, "t", None)
+        eq_(indexes[0]["column_names"], ["y", "id", "x"])
+
     @testing.only_if("mssql>=12")
     def test_index_reflection_colstore_clustered(self, metadata, connection):
         t1 = Table(
