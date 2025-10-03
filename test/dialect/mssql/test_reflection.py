@@ -723,7 +723,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column("id", Integer, primary_key=True),
             Column("x", Integer),
             Column("y", Integer),
-            PrimaryKeyConstraint('id', mssql_clustered=False),
+            PrimaryKeyConstraint("id", mssql_clustered=False),
         )
         Index(
             "idx_x",
