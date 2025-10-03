@@ -797,6 +797,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def indexes_check_column_order(self):
+        """target database supports CREATE INDEX with column order check."""
+        return exclusions.closed()
+
+    @property
     def indexes_with_expressions(self):
         """target database supports CREATE INDEX against SQL expressions."""
         return exclusions.closed()
