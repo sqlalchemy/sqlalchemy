@@ -26,6 +26,7 @@ import sys
 
 from . import config
 from .util import gc_collect
+from ..util import freethreading
 from ..util import has_compiled_ext
 
 
@@ -99,6 +100,8 @@ class ProfileStatsFile:
 
         # keep it at 2.7, 3.1, 3.2, etc. for now.
         py_version = ".".join([str(v) for v in sys.version_info[0:2]])
+        if freethreading:
+            py_version += "t"
 
         platform_tokens = [
             platform.machine(),
