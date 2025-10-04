@@ -87,6 +87,7 @@ if typing.TYPE_CHECKING:
     from .interfaces import ConnectArgsType
     from .interfaces import DBAPIConnection
     from .interfaces import DBAPIModule
+    from .interfaces import DBAPIType
     from .interfaces import IsolationLevel
     from .row import Row
     from .url import URL
@@ -1244,7 +1245,9 @@ class DefaultExecutionContext(ExecutionContext):
     # a hook for SQLite's translation of
     # result column names
     # NOTE: pyhive is using this hook, can't remove it :(
-    _translate_colname: Optional[Callable[[str], str]] = None
+    _translate_colname: Optional[
+        Callable[[str], Tuple[str, Optional[str]]]
+    ] = None
 
     _expanded_parameters: Mapping[str, List[str]] = util.immutabledict()
     """used by set_input_sizes().
@@ -1800,7 +1803,9 @@ class DefaultExecutionContext(ExecutionContext):
     def post_exec(self):
         pass
 
-    def get_result_processor(self, type_, colname, coltype):
+    def get_result_processor(
+        self, type_: TypeEngine[Any], colname: str, coltype: DBAPIType
+    ) -> Optional[_ResultProcessorType[Any]]:
         """Return a 'result processor' for a given type as present in
         cursor.description.
 
@@ -1810,7 +1815,7 @@ class DefaultExecutionContext(ExecutionContext):
         """
         return type_._cached_result_processor(self.dialect, coltype)
 
-    def get_lastrowid(self):
+    def get_lastrowid(self) -> int:
         """return self.cursor.lastrowid, or equivalent, after an INSERT.
 
         This may involve calling special cursor functions, issuing a new SELECT
@@ -2064,7 +2069,7 @@ class DefaultExecutionContext(ExecutionContext):
             getter(row, param) for row, param in zip(rows, compiled_params)
         ]
 
-    def lastrow_has_defaults(self):
+    def lastrow_has_defaults(self) -> bool:
         return (self.isinsert or self.isupdate) and bool(
             cast(SQLCompiler, self.compiled).postfetch
         )

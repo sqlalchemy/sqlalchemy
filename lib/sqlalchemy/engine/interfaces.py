@@ -1228,6 +1228,13 @@ class Dialect(EventTarget):
     tuple_in_values: bool
     """target database supports tuple IN, i.e. (x, y) IN ((q, p), (r, z))"""
 
+    requires_name_normalize: bool
+    """Indicates symbol names are returned by the database in
+    UPPERCASED if they are case insensitive within the database.
+    If this is True, the methods normalize_name()
+    and denormalize_name() must be provided.
+    """
+
     _bind_typing_render_casts: bool
 
     _type_memos: MutableMapping[TypeEngine[Any], _TypeMemoDict]
