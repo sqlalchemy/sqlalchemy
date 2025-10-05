@@ -836,7 +836,9 @@ class TypeEngine(Visitable, Generic[_T]):
 
         return self
 
-    def _with_collation(self, collation: str) -> Self:
+    def _with_collation(
+        self, collation: str, collation_schema: Optional[str]
+    ) -> Self:
         """set up error handling for the collate expression"""
         raise NotImplementedError("this datatype does not support collation")
 
@@ -1872,10 +1874,12 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         tt.impl = tt.impl_instance = typedesc
         return tt
 
-    def _with_collation(self, collation: str) -> Self:
+    def _with_collation(
+        self, collation: str, collation_schema: Optional[str]
+    ) -> Self:
         tt = self._copy_with_check()
         tt.impl = tt.impl_instance = self.impl_instance._with_collation(
-            collation
+            collation, collation_schema
         )
         return tt
 

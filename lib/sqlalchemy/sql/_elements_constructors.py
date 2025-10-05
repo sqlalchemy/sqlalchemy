@@ -378,7 +378,7 @@ def collate(
 
     The collation expression is also quoted if it is a case sensitive
     identifier, e.g. contains uppercase characters.
-
+    It may also be schema-qualified.
     """
     if isinstance(expression, operators.ColumnOperators):
         return expression.collate(collation)  # type: ignore

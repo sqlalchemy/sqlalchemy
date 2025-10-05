@@ -2317,6 +2317,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT x COLLATE bar AS anon_1",
         )
 
+        # schema-qualified
+        self.assert_compile(
+            select(column("x").collate("ns.coll")),
+            "SELECT x COLLATE ns.coll AS anon_1",
+        )
+
         # WHERE clause
         self.assert_compile(
             select(column("x")).where(column("x").collate("bar") == "foo"),

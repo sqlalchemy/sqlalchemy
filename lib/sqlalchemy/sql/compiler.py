@@ -2687,7 +2687,9 @@ class SQLCompiler(Compiled):
             return schema_prefix + self.preparer.quote(tablename) + "." + name
 
     def visit_collation(self, element, **kw):
-        return self.preparer.format_collation(element.collation)
+        return self.preparer.format_collation(
+            element.collation, element.collation_schema
+        )
 
     def visit_fromclause(self, fromclause, **kwargs):
         return fromclause.name
@@ -7444,33 +7446,46 @@ class GenericTypeCompiler(TypeCompiler):
         return "NCLOB"
 
     def _render_string_type(
-        self, name: str, length: Optional[int], collation: Optional[str]
+        self,
+        name: str,
+        length: Optional[int],
+        collation: Optional[str],
+        collation_schema: Optional[str],
     ) -> str:
         text = name
         if length:
             text += f"({length})"
         if collation:
-            text += f' COLLATE "{collation}"'
+            if collation_schema is not None:
+                text += f' COLLATE "{collation_schema}"."{collation}"'
+            else:
+                text += f' COLLATE "{collation}"'
         return text
 
     def visit_CHAR(self, type_: sqltypes.CHAR, **kw: Any) -> str:
-        return self._render_string_type("CHAR", type_.length, type_.collation)
+        return self._render_string_type(
+            "CHAR", type_.length, type_.collation, type_.collation_schema
+        )
 
     def visit_NCHAR(self, type_: sqltypes.NCHAR, **kw: Any) -> str:
-        return self._render_string_type("NCHAR", type_.length, type_.collation)
+        return self._render_string_type(
+            "NCHAR", type_.length, type_.collation, type_.collation_schema
+        )
 
     def visit_VARCHAR(self, type_: sqltypes.String, **kw: Any) -> str:
         return self._render_string_type(
-            "VARCHAR", type_.length, type_.collation
+            "VARCHAR", type_.length, type_.collation, type_.collation_schema
         )
 
     def visit_NVARCHAR(self, type_: sqltypes.NVARCHAR, **kw: Any) -> str:
         return self._render_string_type(
-            "NVARCHAR", type_.length, type_.collation
+            "NVARCHAR", type_.length, type_.collation, type_.collation_schema
         )
 
     def visit_TEXT(self, type_: sqltypes.Text, **kw: Any) -> str:
-        return self._render_string_type("TEXT", type_.length, type_.collation)
+        return self._render_string_type(
+            "TEXT", type_.length, type_.collation, type_.collation_schema
+        )
 
     def visit_UUID(self, type_: sqltypes.Uuid[Any], **kw: Any) -> str:
         return "UUID"
@@ -7489,7 +7504,9 @@ class GenericTypeCompiler(TypeCompiler):
 
     def visit_uuid(self, type_: sqltypes.Uuid[Any], **kw: Any) -> str:
         if not type_.native_uuid or not self.dialect.supports_native_uuid:
-            return self._render_string_type("CHAR", length=32, collation=None)
+            return self._render_string_type(
+                "CHAR", length=32, collation=None, collation_schema=None
+            )
         else:
             return self.visit_UUID(type_, **kw)
 
@@ -7848,11 +7865,14 @@ class IdentifierPreparer:
         else:
             return ident
 
-    def format_collation(self, collation_name):
+    def format_collation(self, collation_name, collation_schema):
         if self.quote_case_sensitive_collations:
-            return self.quote(collation_name)
+            name = self.quote(collation_name)
         else:
-            return collation_name
+            name = collation_name
+        if collation_schema is not None:
+            return self.quote_schema(collation_schema) + "." + name
+        return name
 
     def format_sequence(
         self, sequence: schema.Sequence, use_schema: bool = True

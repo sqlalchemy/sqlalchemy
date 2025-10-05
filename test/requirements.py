@@ -176,6 +176,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql"])
 
     @property
+    def column_collation_reflection(self):
+        return only_on(["postgresql"])
+
+    @property
     def unbounded_varchar(self):
         """Target database must support VARCHAR with no length"""
 
