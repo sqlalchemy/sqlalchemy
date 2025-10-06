@@ -1,0 +1,12 @@
+.. change::
+    :tags: feature, postgresql
+    :tickets: 12866
+
+    Support for ``VIRTUAL`` computed columns on PostgreSQL 18 and later has
+    been added. The default behavior when :paramref:`.Computed.persisted` is
+    not specified has been changed to align with PostgreSQL 18's default of
+    ``VIRTUAL``. When :paramref:`.Computed.persisted` is not specified, no
+    keyword is rendered on PostgreSQL 18 and later; on older versions a
+    warning is emitted and ``STORED`` is used as the default. To explicitly
+    request ``STORED`` behavior on all PostgreSQL versions, specify
+    ``persisted=True``.

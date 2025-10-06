@@ -1385,6 +1385,54 @@ that are subject to the action::
 
 .. versionadded:: 2.0.40
 
+.. _postgresql_computed_column_notes:
+
+Computed Columns (GENERATED ALWAYS AS)
+---------------------------------------
+
+SQLAlchemy's support for the "GENERATED ALWAYS AS" SQL instruction, which
+establishes a dynamic, automatically populated value for a column, is available
+using the :ref:`computed_ddl` feature of SQLAlchemy DDL.   E.g.::
+
+    from sqlalchemy import Table, Column, MetaData, Integer, Computed
+
+    metadata_obj = MetaData()
+
+    square = Table(
+        "square",
+        metadata_obj,
+        Column("id", Integer, primary_key=True),
+        Column("side", Integer),
+        Column("area", Integer, Computed("side * side")),
+        Column("perimeter", Integer, Computed("4 * side", persisted=True)),
+    )
+
+There are two general varieties of the "computed" column, ``VIRTUAL`` and ``STORED``.
+A ``STORED`` computed column computes and persists its value at INSERT/UPDATE time,
+while a ``VIRTUAL`` computed column computes its value on access without persisting it.
+This preference is indicated using the :paramref:`.Computed.persisted` parameter,
+which defaults to ``None`` to use the database default behavior.
+
+For PostgreSQL, prior to version 18 only the ``STORED`` variant was supported,
+requiring the ``STORED`` keyword to be emitted explicitly. PostgreSQL 18 added
+support for ``VIRTUAL`` columns and made ``VIRTUAL`` the default behavior.
+
+To accommodate this change, SQLAlchemy's behavior when
+:paramref:`.Computed.persisted` is not specified depends on the PostgreSQL
+version: on PostgreSQL 18 and later, no keyword is rendered, allowing the
+database to use its default of ``VIRTUAL``; on PostgreSQL 17 and earlier,
+``STORED`` is rendered and a warning is emitted. To ensure consistent
+``STORED`` behavior across all PostgreSQL versions, explicitly set
+``persisted=True``.
+
+.. versionchanged:: 2.1
+
+   PostgreSQL 18+ now defaults to ``VIRTUAL`` when :paramref:`.Computed.persisted`
+   is not specified.  A warning is emitted for older versions of PostgreSQL
+   when this parameter is not indicated.
+
+
+
 
 .. _postgresql_table_valued_overview:
 
@@ -2680,11 +2728,23 @@ class PGDDLCompiler(compiler.DDLCompiler):
         return "".join(table_opts)
 
     def visit_computed_column(self, generated, **kw):
+        if self.dialect.supports_virtual_generated_columns:
+            return super().visit_computed_column(generated, **kw)
         if generated.persisted is False:
             raise exc.CompileError(
                 "PostrgreSQL computed columns do not support 'virtual' "
                 "persistence; set the 'persisted' flag to None or True for "
                 "PostgreSQL support."
+            )
+        elif generated.persisted is None:
+            util.warn(
+                f"Computed column {generated.column} is being created as "
+                "'STORED' since the current PostgreSQL version does not "
+                "support VIRTUAL columns. On PostgreSQL 18+, when "
+                "'persisted' is not "
+                "specified, no keyword will be rendered and VIRTUAL will be "
+                "used by default. Set 'persisted=True' to ensure STORED "
+                "behavior across all PostgreSQL versions."
             )
 
         return "GENERATED ALWAYS AS (%s) STORED" % self.sql_compiler.process(
@@ -3219,6 +3279,7 @@ class PGDialect(default.DefaultDialect):
     supports_native_boolean = True
     supports_native_uuid = True
     supports_smallserial = True
+    supports_virtual_generated_columns = True
 
     supports_sequences = True
     sequences_optional = True
@@ -3359,6 +3420,10 @@ class PGDialect(default.DefaultDialect):
         self.supports_identity_columns = self.server_version_info >= (10,)
 
         self._supports_jsonb_subscripting = self.server_version_info >= (14,)
+
+        self.supports_virtual_generated_columns = self.server_version_info >= (
+            18,
+        )
 
     def get_isolation_level_values(self, dbapi_conn):
         # note the generic dialect doesn't have AUTOCOMMIT, however
@@ -4156,8 +4221,7 @@ class PGDialect(default.DefaultDialect):
 
             # If a zero byte or blank string depending on driver (is also
             # absent for older PG versions), then not a generated column.
-            # Otherwise, s = stored. (Other values might be added in the
-            # future.)
+            # Otherwise, s = stored, v = virtual.
             if generated not in (None, "", b"\x00"):
                 computed = dict(
                     sqltext=default, persisted=generated in ("s", b"s")

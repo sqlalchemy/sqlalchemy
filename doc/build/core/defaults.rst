@@ -649,7 +649,7 @@ Example::
         Column("perimeter", Integer, Computed("4 * side")),
     )
 
-The DDL for the ``square`` table when run on a PostgreSQL 12 backend will look
+The DDL for the ``square`` table when run on a PostgreSQL 18 backend [#pgnote]_ will look
 like:
 
 .. sourcecode:: sql
@@ -657,8 +657,8 @@ like:
     CREATE TABLE square (
         id SERIAL NOT NULL,
         side INTEGER,
-        area INTEGER GENERATED ALWAYS AS (side * side) STORED,
-        perimeter INTEGER GENERATED ALWAYS AS (4 * side) STORED,
+        area INTEGER GENERATED ALWAYS AS (side * side),
+        perimeter INTEGER GENERATED ALWAYS AS (4 * side),
         PRIMARY KEY (id)
     )
 
@@ -692,7 +692,7 @@ eagerly fetched.
 
 * MariaDB 10.x series and onwards
 
-* PostgreSQL as of version 12
+* PostgreSQL as of version 12 [#pgnote]_
 
 * Oracle Database - with the caveat that RETURNING does not work correctly with
   UPDATE (a warning will be emitted to this effect when the UPDATE..RETURNING
@@ -711,7 +711,10 @@ DDL is emitted to the database.
 
 .. seealso::
 
-    :class:`.Computed`
+    :class:`.Computed` - produces a GENERATED ALWAYS AS phrase for :class:`.Column`
+
+    .. [#pgnote] :ref:`postgresql_computed_column_notes` - notes for GENERATED ALWAYS AS
+       on PostgreSQL including behavioral changes as of PostgreSQL 18
 
 .. _identity_ddl:
 
