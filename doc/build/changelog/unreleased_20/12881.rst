@@ -10,5 +10,6 @@
     under free-threading is added; the second involves synchronization of the
     pool "first_connect" event, which first received thread synchronization in
     :ticket:`2964`, however under free-threading the creation of the mutex
-    itself runs under the same free-threading mutex. Initial pull request and
-    test suite courtesy Lysandros Nikolaou.
+    itself runs under the same free-threading mutex. Support for free-threaded
+    wheels on Pypi is implemented as well within the 2.1 series only.  Initial
+    pull request and test suite courtesy Lysandros Nikolaou.
