@@ -36,6 +36,7 @@ from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import dml
+from sqlalchemy.sql import Executable
 from sqlalchemy.sql import False_
 from sqlalchemy.sql import func
 from sqlalchemy.sql import operators
@@ -1468,10 +1469,6 @@ class HasCacheKeySubclass(fixtures.TestBase):
         super_traverse = {}
         # ignore_super = self.ignore_super.get(cls.__name__, set())
         for s in cls.mro()[1:]:
-            # if s.__name__ in ignore_super:
-            #     continue
-            if s.__name__ == "Executable":
-                continue
             for attr in s.__dict__:
                 if not attr.endswith("_traverse_internals"):
                     continue
@@ -1649,6 +1646,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
                 NoInit,
                 SingletonConstant,
                 DialectKWArgs,
+                Executable,
             ]
         )
     )
