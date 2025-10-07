@@ -1788,6 +1788,9 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
                 fn()
             except Exception as err:
                 error = err
+                with testing.db.begin() as conn:
+                    conn.execute(self.tables.addresses.delete())
+                    conn.execute(self.tables.users.delete())
                 continue
             else:
                 break
