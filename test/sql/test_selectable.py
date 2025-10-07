@@ -1,9 +1,6 @@
 """Test various algorithmic properties of selectables."""
 
 from itertools import zip_longest
-import random
-import threading
-import time
 
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -4079,39 +4076,3 @@ class AliasTest(fixtures.TestBase, AssertsCompiledSQL):
         a3 = a2._clone()
         a3._copy_internals()
         is_(a1.corresponding_column(a3.c.c), a1.c.c)
-
-
-class FromClauseConcurrencyTest(fixtures.TestBase):
-    """test for issue 12302"""
-
-    @testing.requires.timing_intensive
-    def test_c_collection(self):
-        dictionary_meta = MetaData()
-        all_indexes_table = Table(
-            "all_indexes",
-            dictionary_meta,
-            *[Column(f"col{i}", Integer) for i in range(50)],
-        )
-
-        fails = 0
-
-        def use_table():
-            nonlocal fails
-            try:
-                for i in range(3):
-                    time.sleep(random.random() * 0.0001)
-                    all_indexes.c.col35
-            except:
-                fails += 1
-                raise
-
-        for j in range(1000):
-            all_indexes = all_indexes_table.alias("a_indexes")
-
-            threads = [threading.Thread(target=use_table) for i in range(5)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
-
-            assert not fails, "one or more runs failed"

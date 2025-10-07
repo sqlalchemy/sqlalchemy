@@ -1374,6 +1374,9 @@ class MemoizedSlots:
     This allows the functionality of memoized_property and
     memoized_instancemethod to be available to a class using __slots__.
 
+    The memoized get is not threadsafe under freethreading and the
+    creator method may in extremely rare cases be called more than once.
+
     """
 
     __slots__ = ()
@@ -1394,20 +1397,20 @@ class MemoizedSlots:
             setattr(self, key, value)
             return value
         elif hasattr(self.__class__, f"_memoized_method_{key}"):
-            fn = getattr(self, f"_memoized_method_{key}")
+            meth = getattr(self, f"_memoized_method_{key}")
 
             def oneshot(*args, **kw):
-                result = fn(*args, **kw)
+                result = meth(*args, **kw)
 
                 def memo(*a, **kw):
                     return result
 
-                memo.__name__ = fn.__name__
-                memo.__doc__ = fn.__doc__
+                memo.__name__ = meth.__name__
+                memo.__doc__ = meth.__doc__
                 setattr(self, key, memo)
                 return result
 
-            oneshot.__doc__ = fn.__doc__
+            oneshot.__doc__ = meth.__doc__
             return oneshot
         else:
             return self._fallback_getattr(key)

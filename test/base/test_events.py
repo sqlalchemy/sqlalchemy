@@ -854,6 +854,7 @@ class SubclassGrowthTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
         self.Target = Target
 
+    @testing.requires.predictable_gc
     def test_subclass(self):
         class SubTarget(self.Target):
             pass
