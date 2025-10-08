@@ -59,6 +59,7 @@ markers = [
     "timing_intensive: time-oriented tests that are sensitive to race conditions",
     "backend: tests that should run on all backends; typically dialect-sensitive",
     "sparse_backend: tests that should run on multiple backends, not necessarily all",
+    "gc_intensive: needs extremely predictable GC behavior",
 ]
 
 [tool.pyright]
