@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12905
+
+    Fixed a caching issue where :func:`_orm.with_loader_criteria` would
+    incorrectly reuse cached bound parameter values when used with
+    :class:`_sql.CompoundSelect` constructs such as :func:`_sql.union`. The
+    issue was caused by the cache key for compound selects not including the
+    execution options that are part of the :class:`_sql.Executable` base class,
+    which :func:`_orm.with_loader_criteria` uses to apply its criteria
+    dynamically. The fix ensures that compound selects and other executable
+    constructs properly include execution options in their cache key traversal.
