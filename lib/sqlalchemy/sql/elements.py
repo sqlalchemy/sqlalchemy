@@ -2271,7 +2271,7 @@ class TextClause(
     _traverse_internals: _TraverseInternalsType = [
         ("_bindparams", InternalTraversal.dp_string_clauseelement_dict),
         ("text", InternalTraversal.dp_string),
-    ]
+    ] + Executable._executable_traverse_internals
 
     _is_text_clause = True
 

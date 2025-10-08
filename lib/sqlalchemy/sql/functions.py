@@ -137,7 +137,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         ("clause_expr", InternalTraversal.dp_clauseelement),
         ("_with_ordinality", InternalTraversal.dp_boolean),
         ("_table_value_type", InternalTraversal.dp_has_cache_key),
-    ]
+    ] + Executable._executable_traverse_internals
 
     packagenames: Tuple[str, ...] = ()
 

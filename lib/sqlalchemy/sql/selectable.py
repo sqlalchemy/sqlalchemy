@@ -4534,6 +4534,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect, TypedReturnsRows[_TP]):
         + SupportsCloneAnnotations._clone_annotations_traverse_internals
         + HasCTE._has_ctes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
+        + Executable._executable_traverse_internals
     )
 
     selects: List[SelectBase]
@@ -7081,6 +7082,7 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
         ]
         + SupportsCloneAnnotations._clone_annotations_traverse_internals
         + HasCTE._has_ctes_traverse_internals
+        + Executable._executable_traverse_internals
     )
 
     _is_textual = True
