@@ -1778,6 +1778,9 @@ class MiscMemoryIntensiveTests(fixtures.TestBase):
         s.commit()
 
 
+# these tests simply cannot run reliably on github actions machines.
+# even trying ten times, they sometimes can't proceed.
+@testing.add_to_marker.gc_intensive
 class WeakIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
 
