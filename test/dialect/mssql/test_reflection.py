@@ -533,6 +533,41 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             ],
         )
 
+    def test_fk_with_same_column_name_as_pk_idx(self, metadata, connection):
+        """test #12907"""
+        # Create table A with primary key AId and a unique index IX_A_AId
+        Table(
+            "a",
+            metadata,
+            Column("aid", Integer, nullable=False),
+            Column("name", types.String(50)),
+            PrimaryKeyConstraint("aid", name="PK_A"),
+        ).create(connection)
+
+        # IMPORTANT - create unique index on a *first* before creating
+        # FK on B, this affects how the FK is generated in SQL server
+        connection.exec_driver_sql("CREATE UNIQUE INDEX IX_A_AId ON a (aid)")
+
+        # Create table B with foreign key column AId referencing A(AId)
+        # and an index with the same name IX_A_AId
+        Table(
+            "b",
+            metadata,
+            Column("id", Integer, Identity(), primary_key=True),
+            Column("aid", Integer),
+            ForeignKeyConstraint(["aid"], ["a.aid"], name="FK_B_A"),
+        ).create(connection)
+        connection.exec_driver_sql("CREATE INDEX IX_A_AId ON B(aid)")
+
+        m2 = MetaData()
+        table_b = Table("b", m2, autoload_with=connection)
+
+        fks = list(table_b.foreign_keys)
+        eq_(len(fks), 1)
+        eq_(fks[0].parent.name, "aid")
+        eq_(fks[0].column.table.name, "a")
+        eq_(fks[0].column.name, "aid")
+
     def test_indexes_cols(self, metadata, connection):
         t1 = Table("t", metadata, Column("x", Integer), Column("y", Integer))
         Index("foo", t1.c.x, t1.c.y)
