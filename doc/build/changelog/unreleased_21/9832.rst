@@ -1,0 +1,18 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 9832
+
+    Added :class:`_orm.RegistryEvents` event class that allows event listeners
+    to be established on a :class:`_orm.registry` object. The new class
+    provides three events: :meth:`_orm.RegistryEvents.resolve_type_annotation`
+    which allows customization of type annotation resolution that can
+    supplement or replace the use of the
+    :paramref:`.registry.type_annotation_map` dictionary, including that it can
+    be helpful with custom resolution for complex types such as those of
+    :pep:`695`, as well as :meth:`_orm.RegistryEvents.before_configured` and
+    :meth:`_orm.RegistryEvents.after_configured`, which are registry-local
+    forms of the mapper-wide version of these hooks.
+
+    .. seealso::
+
+        :ref:`change_9832`

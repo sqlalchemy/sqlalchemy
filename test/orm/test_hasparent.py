@@ -107,6 +107,7 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         self._assert_not_hasparent(a1)
 
+    @testing.add_to_marker.gc_intensive
     @testing.requires.predictable_gc
     def test_stale_state_positive_gc(self):
         User = self.classes.User
@@ -121,6 +122,7 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         self._assert_not_hasparent(a1)
 
+    @testing.add_to_marker.gc_intensive
     @testing.requires.updateable_autoincrement_pks
     @testing.requires.predictable_gc
     def test_stale_state_positive_pk_change(self):
@@ -167,6 +169,8 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         self._assert_not_hasparent(a1)
 
+    @testing.add_to_marker.gc_intensive
+    @testing.requires.predictable_gc
     def test_stale_state_negative_child_expired(self):
         """illustrate the current behavior of
         expiration on the child.
@@ -204,6 +208,7 @@ class ParentRemovalTest(fixtures.MappedTest):
         self._assert_not_hasparent(a1)
         # self._assert_hasparent(a1)
 
+    @testing.add_to_marker.gc_intensive
     @testing.requires.predictable_gc
     def test_stale_state_negative(self):
         User = self.classes.User

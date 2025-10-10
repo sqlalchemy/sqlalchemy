@@ -486,7 +486,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             "CREATE DOMAIN arraydomain_2d AS INTEGER[][]"
         )
         connection.exec_driver_sql(
-            "CREATE DOMAIN arraydomain_3d AS  INTEGER[][][]"
+            "CREATE DOMAIN arraydomain_3d AS INTEGER[][][]"
         )
         yield
         connection.exec_driver_sql("DROP DOMAIN arraydomain")

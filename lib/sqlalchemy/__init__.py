@@ -57,6 +57,7 @@ from .pool import StaticPool as StaticPool
 from .schema import BaseDDLElement as BaseDDLElement
 from .schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .schema import CheckConstraint as CheckConstraint
+from .schema import CheckFirst as CheckFirst
 from .schema import Column as Column
 from .schema import ColumnDefault as ColumnDefault
 from .schema import Computed as Computed
@@ -80,6 +81,8 @@ from .sql import ColumnExpressionArgument as ColumnExpressionArgument
 from .sql import NotNullable as NotNullable
 from .sql import Nullable as Nullable
 from .sql import SelectLabelStyle as SelectLabelStyle
+from .sql.expression import aggregate_order_by as aggregate_order_by
+from .sql.expression import AggregateOrderBy as AggregateOrderBy
 from .sql.expression import Alias as Alias
 from .sql.expression import alias as alias
 from .sql.expression import AliasedReturnsRows as AliasedReturnsRows

@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from ..exc import StatementError
     from ..sql import Executable
     from ..sql.compiler import _InsertManyValuesBatch
+    from ..sql.compiler import AggregateOrderByStyle
     from ..sql.compiler import DDLCompiler
     from ..sql.compiler import IdentifierPreparer
     from ..sql.compiler import InsertmanyvaluesSentinelOpts
@@ -861,6 +862,13 @@ class Dialect(EventTarget):
     supports_multivalues_insert: bool
     """Target database supports INSERT...VALUES with multiple value
     sets, i.e. INSERT INTO table (cols) VALUES (...), (...), (...), ...
+
+    """
+
+    aggregate_order_by_style: AggregateOrderByStyle
+    """Style of ORDER BY supported for arbitrary aggregate functions
+
+    .. versionadded:: 2.1
 
     """
 

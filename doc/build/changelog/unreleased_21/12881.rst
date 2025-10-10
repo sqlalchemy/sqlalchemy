@@ -1,0 +1,10 @@
+.. change::
+    :tags: feature, platform
+    :tickets: 12881
+
+    Free-threaded Python versions are now supported in wheels released on Pypi.
+    This integrates with overall free-threaded support added as part of
+    :ticket:`12881` for the 2.0 and 2.1 series, which includes new test suites
+    as well as a few improvements to race conditions observed under
+    freethreading.
+

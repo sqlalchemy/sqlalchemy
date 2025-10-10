@@ -909,6 +909,39 @@ class AsyncEngineTest(EngineFixture):
                 # because the cursor should be closed
                 await driver_cursor.execute(select_one_sql)
 
+    @async_test
+    async def test_async_creator_handle_error(self, async_testing_engine):
+        """test for #11956"""
+
+        existing_creator = testing.db.pool._creator
+
+        def create_and_break():
+            sync_conn = existing_creator()
+            cursor = sync_conn.cursor()
+
+            # figure out a way to get a native driver exception.  This really
+            # only applies to asyncpg where we rewrite the exception
+            # hierarchy with our own emulated exception; other backends raise
+            # standard DBAPI exceptions (with some buggy cases here and there
+            # which they miss) even though they are async
+            try:
+                cursor.execute("this will raise an error")
+            except Exception as possibly_emulated_error:
+                if isinstance(
+                    possibly_emulated_error, exc.EmulatedDBAPIException
+                ):
+                    raise possibly_emulated_error.driver_exception
+                else:
+                    raise possibly_emulated_error
+
+        async def async_creator():
+            return await greenlet_spawn(create_and_break)
+
+        engine = async_testing_engine(options={"async_creator": async_creator})
+
+        with expect_raises(exc.DBAPIError):
+            await engine.connect()
+
 
 class AsyncCreatePoolTest(fixtures.TestBase):
     @config.fixture

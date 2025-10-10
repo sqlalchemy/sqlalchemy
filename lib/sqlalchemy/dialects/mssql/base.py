@@ -994,6 +994,7 @@ from ...sql import sqltypes
 from ...sql import try_cast as try_cast  # noqa: F401
 from ...sql import util as sql_util
 from ...sql._typing import is_sql_compiler
+from ...sql.compiler import AggregateOrderByStyle
 from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...sql.elements import TryCast as TryCast  # noqa: F401
 from ...types import BIGINT
@@ -2035,10 +2036,16 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return "LEN%s" % self.function_argspec(fn, **kw)
 
     def visit_aggregate_strings_func(self, fn, **kw):
-        expr = fn.clauses.clauses[0]._compiler_dispatch(self, **kw)
-        kw["literal_execute"] = True
-        delimeter = fn.clauses.clauses[1]._compiler_dispatch(self, **kw)
-        return f"string_agg({expr}, {delimeter})"
+        cl = list(fn.clauses)
+        expr, delimeter = cl[0:2]
+
+        literal_exec = dict(kw)
+        literal_exec["literal_execute"] = True
+
+        return (
+            f"string_agg({expr._compiler_dispatch(self, **kw)}, "
+            f"{delimeter._compiler_dispatch(self, **literal_exec)})"
+        )
 
     def visit_pow_func(self, fn, **kw):
         return f"POWER{self.function_argspec(fn)}"
@@ -2985,6 +2992,8 @@ class MSDialect(default.DefaultDialect):
 
     """
 
+    aggregate_order_by_style = AggregateOrderByStyle.WITHIN_GROUP
+
     # supports_native_uuid is partial here, so we implement our
     # own impl type
 
@@ -3470,6 +3479,9 @@ join sys.schemas as sch on
 where
     tab.name = :tabname
     and sch.name = :schname
+order by
+    ind_col.index_id,
+    ind_col.key_ordinal
             """
             )
             .bindparams(
@@ -3965,6 +3977,8 @@ index_info AS (
             index_info.index_schema = fk_info.unique_constraint_schema
             AND index_info.index_name = fk_info.unique_constraint_name
             AND index_info.ordinal_position = fk_info.ordinal_position
+            AND NOT (index_info.table_schema = fk_info.table_schema
+                     AND index_info.table_name = fk_info.table_name)
 
     ORDER BY fk_info.constraint_schema, fk_info.constraint_name,
         fk_info.ordinal_position

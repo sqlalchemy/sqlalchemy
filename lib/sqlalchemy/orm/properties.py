@@ -65,12 +65,14 @@ from ..util.typing import is_pep695
 from ..util.typing import Self
 
 if TYPE_CHECKING:
+    from typing import ForwardRef
+
     from ._typing import _IdentityKeyType
     from ._typing import _InstanceDict
     from ._typing import _ORMColumnExprArgument
     from ._typing import _RegistryType
     from .base import Mapped
-    from .decl_base import _ClassScanMapperConfig
+    from .decl_base import _DeclarativeMapperConfig
     from .mapper import Mapper
     from .session import Session
     from .state import _InstallLoaderCallableProto
@@ -80,6 +82,7 @@ if TYPE_CHECKING:
     from ..sql.elements import NamedColumn
     from ..sql.operators import OperatorType
     from ..util.typing import _AnnotationScanType
+    from ..util.typing import _MatchedOnType
     from ..util.typing import RODescriptorReference
 
 _T = TypeVar("_T", bound=Any)
@@ -205,7 +208,7 @@ class ColumnProperty(
 
     def declarative_scan(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -684,7 +687,7 @@ class MappedColumn(
 
     def _adjust_for_existing_column(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         key: str,
         given_column: Column[_T],
     ) -> Column[_T]:
@@ -709,7 +712,7 @@ class MappedColumn(
 
     def declarative_scan(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -750,7 +753,7 @@ class MappedColumn(
     @util.preload_module("sqlalchemy.orm.decl_base")
     def declarative_scan_for_composite(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: _RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -767,7 +770,7 @@ class MappedColumn(
     def _init_column_for_annotation(
         self,
         cls: Type[Any],
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         key: str,
         registry: _RegistryType,
         argument: _AnnotationScanType,
@@ -775,25 +778,30 @@ class MappedColumn(
     ) -> None:
         sqltype = self.column.type
 
+        de_stringified_argument: _MatchedOnType
+
         if is_fwd_ref(
             argument, check_generic=True, check_for_plain_string=True
         ):
             assert originating_module is not None
-            argument = de_stringify_annotation(
+            de_stringified_argument = de_stringify_annotation(
                 cls, argument, originating_module, include_generic=True
             )
+        else:
+            if TYPE_CHECKING:
+                assert not isinstance(argument, (str, ForwardRef))
+            de_stringified_argument = argument
 
-        nullable = includes_none(argument)
+        nullable = includes_none(de_stringified_argument)
 
         if not self._has_nullable:
             self.column.nullable = nullable
 
         find_mapped_in: Tuple[Any, ...] = ()
-        our_type_is_pep593 = False
-        raw_pep_593_type = None
-        raw_pep_695_type = None
+        raw_pep_593_type = resolved_pep_593_type = None
+        raw_pep_695_type = resolved_pep_695_type = None
 
-        our_type: Any = de_optionalize_union_types(argument)
+        our_type: Any = de_optionalize_union_types(de_stringified_argument)
 
         if is_pep695(our_type):
             raw_pep_695_type = our_type
@@ -802,13 +810,16 @@ class MappedColumn(
             if our_args:
                 our_type = our_type[our_args]
 
-        if is_pep593(our_type):
-            our_type_is_pep593 = True
+            resolved_pep_695_type = our_type
 
+        if is_pep593(our_type):
             pep_593_components = get_args(our_type)
-            raw_pep_593_type = pep_593_components[0]
+            raw_pep_593_type = our_type
+            resolved_pep_593_type = pep_593_components[0]
             if nullable:
-                raw_pep_593_type = de_optionalize_union_types(raw_pep_593_type)
+                resolved_pep_593_type = de_optionalize_union_types(
+                    resolved_pep_593_type
+                )
             find_mapped_in = pep_593_components[1:]
 
         use_args_from: Optional[MappedColumn[Any]]
@@ -899,20 +910,25 @@ class MappedColumn(
                         )
 
         if sqltype._isnull and not self.column.foreign_keys:
-            checks: List[Any]
-            if our_type_is_pep593:
-                checks = [our_type, raw_pep_593_type]
-            else:
-                checks = [our_type]
 
-            if raw_pep_695_type is not None:
-                checks.insert(0, raw_pep_695_type)
+            new_sqltype = registry._resolve_type_with_events(
+                cls,
+                key,
+                de_stringified_argument,
+                our_type,
+                raw_pep_593_type=raw_pep_593_type,
+                pep_593_resolved_argument=resolved_pep_593_type,
+                raw_pep_695_type=raw_pep_695_type,
+                pep_695_resolved_value=resolved_pep_695_type,
+            )
 
-            for check_type in checks:
-                new_sqltype = registry._resolve_type(check_type)
-                if new_sqltype is not None:
-                    break
-            else:
+            if new_sqltype is None:
+                checks = []
+                if raw_pep_695_type:
+                    checks.append(raw_pep_695_type)
+                checks.append(our_type)
+                if resolved_pep_593_type:
+                    checks.append(resolved_pep_593_type)
                 if isinstance(our_type, TypeEngine) or (
                     isinstance(our_type, type)
                     and issubclass(our_type, TypeEngine)
@@ -950,8 +966,8 @@ class MappedColumn(
                     raise orm_exc.MappedAnnotationError(
                         f"The object provided inside the {self.column.key!r} "
                         "attribute Mapped annotation is not a Python type, "
-                        f"it's the object {argument!r}. Expected a Python "
-                        "type."
+                        f"it's the object {de_stringified_argument!r}. "
+                        "Expected a Python type."
                     )
 
             self.column._set_type(new_sqltype)

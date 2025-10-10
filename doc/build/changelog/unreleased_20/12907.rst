@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 12907
+
+    Fixed issue in the MSSQL dialect's foreign key reflection query where
+    duplicate rows could be returned when a foreign key column and its
+    referenced primary key column have the same name, and both the referencing
+    and referenced tables have indexes with the same name. This resulted in an
+    "ForeignKeyConstraint with duplicate source column references are not
+    supported" error when attempting to reflect such tables. The query has been
+    corrected to exclude indexes on the child table when looking for unique
+    indexes referenced by foreign keys.

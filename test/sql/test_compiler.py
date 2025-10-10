@@ -6142,8 +6142,9 @@ class StringifySpecialTest(fixtures.TestBase):
         )
         eq_ignore_whitespace(
             str(stmt),
-            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
-            "WITHIN GROUP (ORDER BY mytable.name DESC) AS anon_1 FROM mytable",
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_2) "
+            "WITHIN GROUP (ORDER BY mytable.name DESC) AS percentile_cont_1 "
+            "FROM mytable",
         )
 
     @testing.combinations(

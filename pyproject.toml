@@ -2,7 +2,7 @@
 build-backend = "setuptools.build_meta"
 requires = [
     "setuptools>=77.0.3",
-    "cython>=3; platform_python_implementation == 'CPython'", # Skip cython when using pypy
+    "cython>=3.1; platform_python_implementation == 'CPython'", # Skip cython when using pypy
 ]
 
 
@@ -168,6 +168,7 @@ markers = [
     "timing_intensive: time-oriented tests that are sensitive to race conditions",
     "backend: tests that should run on all backends; typically dialect-sensitive",
     "sparse_backend: tests that should run on multiple backends, not necessarily all",
+    "gc_intensive: needs extremely predictable GC behavior",
 ]
 
 

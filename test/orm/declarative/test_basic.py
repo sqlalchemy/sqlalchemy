@@ -47,7 +47,7 @@ from sqlalchemy.orm import synonym_for
 from sqlalchemy.orm.decl_api import add_mapped_attribute
 from sqlalchemy.orm.decl_api import DeclarativeBaseNoMeta
 from sqlalchemy.orm.decl_api import DeclarativeMeta
-from sqlalchemy.orm.decl_base import _DeferredMapperConfig
+from sqlalchemy.orm.decl_base import _DeferredDeclarativeConfig
 from sqlalchemy.orm.events import InstrumentationEvents
 from sqlalchemy.orm.events import MapperEvents
 from sqlalchemy.schema import PrimaryKeyConstraint
@@ -1272,7 +1272,7 @@ class DeclarativeMultiBaseTest(
             @classmethod
             def prepare(cls):
                 "sample prepare method"
-                to_map = _DeferredMapperConfig.classes_for_base(cls)
+                to_map = _DeferredDeclarativeConfig.classes_for_base(cls)
                 for thingy in to_map:
                     thingy.map({})
 

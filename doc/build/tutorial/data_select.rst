@@ -1652,17 +1652,48 @@ Further options for window functions include usage of ranges; see
 
 .. _tutorial_functions_within_group:
 
-Special Modifiers WITHIN GROUP, FILTER
-######################################
+Special Modifiers ORDER BY, WITHIN GROUP, FILTER
+################################################
 
-The "WITHIN GROUP" SQL syntax is used in conjunction with an "ordered set"
-or a "hypothetical set" aggregate
-function.  Common "ordered set" functions include ``percentile_cont()``
-and ``rank()``.  SQLAlchemy includes built in implementations
+Some forms of SQL aggregate functions support ordering of the aggregated elements
+within the scope of the function.  This typically applies to aggregate
+functions that produce a value which continues to enumerate the contents of the
+collection, such as the ``array_agg()`` function that generates an array of
+elements, or the ``string_agg()`` PostgreSQL function which generates a
+delimited string (other backends like MySQL and SQLite use the
+``group_concat()`` function in a similar way), or the MySQL ``json_arrayagg()``
+function which produces a JSON array.  Ordering of the elements passed
+to these functions is supported using the :meth:`_functions.FunctionElement.aggregate_order_by`
+method, which will render ORDER BY in the appropriate part of the function::
+
+    >>> stmt = select(
+    ...     func.group_concat(user_table.c.name).aggregate_order_by(user_table.c.name.desc())
+    ... )
+    >>> print(stmt)
+    {printsql}SELECT group_concat(user_account.name ORDER BY user_account.name DESC) AS group_concat_1
+    FROM user_account
+
+.. tip:: The above demonstration shows use of the ``group_concat()`` function
+   available on SQLite which concatenates strings; the ORDER BY feature
+   for SQLite requires SQLite 3.44.0 or greater.  As the availability, name
+   and specific syntax of the string aggregation functions varies
+   widely by backend, SQLAlchemy also provides a backend-agnostic
+   version specifically for concatenating strings called
+   :func:`_functions.aggregate_strings`.
+
+A more specific form of ORDER BY for aggregate functions is the "WITHIN GROUP"
+SQL syntax.  In some cases, the :meth:`_functions.FunctionElement.aggregate_order_by`
+will render this syntax directly, when compiling on a backend such as Oracle
+Database or Microsoft SQL Server which requires it for all aggregate ordering.
+Beyond that, the "WITHIN GROUP" SQL syntax must sometimes be called upon explicitly,
+when used in conjunction with an "ordered set" or a "hypothetical set"
+aggregate function, supported by PostgreSQL, Oracle Database, and Microsoft SQL
+Server. Common "ordered set" functions include ``percentile_cont()`` and
+``rank()``.  SQLAlchemy includes built in implementations
 :class:`_functions.rank`, :class:`_functions.dense_rank`,
 :class:`_functions.mode`, :class:`_functions.percentile_cont` and
-:class:`_functions.percentile_disc` which include a :meth:`_functions.FunctionElement.within_group`
-method::
+:class:`_functions.percentile_disc` which include a
+:meth:`_functions.FunctionElement.within_group` method::
 
     >>> print(
     ...     func.unnest(

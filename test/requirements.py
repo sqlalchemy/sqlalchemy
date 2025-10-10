@@ -408,7 +408,13 @@ class DefaultRequirements(SuiteRequirements):
         gc.collect() is called, as well as clean out unreferenced subclasses.
 
         """
-        return self.cpython + skip_if("+aiosqlite")
+        return self.cpython + self.gil_enabled + skip_if("+aiosqlite")
+
+    @property
+    def multithreading_support(self):
+        """target platform allows use of threads without any problem"""
+
+        return skip_if("+aiosqlite") + skip_if(self.sqlite_memory)
 
     @property
     def memory_process_intensive(self):
@@ -666,6 +672,10 @@ class DefaultRequirements(SuiteRequirements):
                 self._mysql_and_check_constraints_exist,
             ]
         )
+
+    @property
+    def indexes_check_column_order(self):
+        return exclusions.open()
 
     @property
     def indexes_with_expressions(self):
@@ -1142,6 +1152,24 @@ class DefaultRequirements(SuiteRequirements):
         also using an aggregate"""
 
         return skip_if(["mssql", "sqlite"])
+
+    @property
+    def aggregate_order_by(self):
+        """target database can use ORDER BY or equivalent in an aggregate
+        function, and dialect supports aggregate_order_by().
+
+        """
+
+        return only_on(
+            [
+                "postgresql",
+                "sqlite >= 3.44.0",
+                "mysql",
+                "mariadb",
+                "oracle",
+                "mssql",
+            ]
+        )
 
     @property
     def tuple_valued_builtin_functions(self):

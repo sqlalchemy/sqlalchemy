@@ -17,8 +17,10 @@ as well as array literals:
 
 * :func:`_postgresql.array_agg` - ARRAY_AGG SQL function
 
-* :class:`_postgresql.aggregate_order_by` - helper for PG's ORDER BY aggregate
-  function syntax.
+* :meth:`_functions.FunctionElement.aggregate_order_by` - dialect-agnostic ORDER BY
+  for aggregate functions
+
+* :class:`_postgresql.aggregate_order_by` - legacy helper specific to PostgreSQL
 
 BIT type
 --------

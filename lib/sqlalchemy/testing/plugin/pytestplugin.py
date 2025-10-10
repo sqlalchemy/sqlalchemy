@@ -288,9 +288,15 @@ def pytest_collection_modifyitems(session, config, items):
             for marker in add_markers:
                 test_class.add_marker(marker)
 
-            for sub_cls in plugin_base.generate_sub_tests(
-                test_class.cls, test_class.module, all_markers
-            ):
+            sub_tests = list(
+                plugin_base.generate_sub_tests(
+                    test_class.cls, test_class.module, all_markers
+                )
+            )
+            if not sub_tests:
+                rebuilt_items[test_class.cls]
+
+            for sub_cls in sub_tests:
                 if sub_cls is not test_class.cls:
                     per_cls_dict = rebuilt_items[test_class.cls]
 

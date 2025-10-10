@@ -419,12 +419,24 @@ def details(cls):
     return inst
 
 
+class EqException(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __eq__(self, other):
+        return isinstance(other, EqException) and other.msg == self.msg
+
+
 ALL_EXC = [
     (
         [sa_exceptions.SQLAlchemyError],
         [lambda cls: cls(1, 2, code="42")],
     ),
     ([sa_exceptions.ObjectNotExecutableError], [lambda cls: cls("xx")]),
+    (
+        [sa_exceptions.EmulatedDBAPIException],
+        [lambda cls: cls("xx", EqException("original"))],
+    ),
     (
         [
             sa_exceptions.ArgumentError,

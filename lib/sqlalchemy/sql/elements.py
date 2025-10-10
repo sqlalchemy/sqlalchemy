@@ -819,6 +819,17 @@ class CompilerColumnElement(
 
     _propagate_attrs = util.EMPTY_DICT
     _is_collection_aggregate = False
+    _is_implicitly_boolean = False
+
+    def _with_binary_element_type(self, type_):
+        raise NotImplementedError()
+
+    def _gen_cache_key(self, anon_map, bindparams):
+        raise NotImplementedError()
+
+    @property
+    def _from_objects(self) -> List[FromClause]:
+        raise NotImplementedError()
 
 
 # SQLCoreOperations should be suiting the ExpressionElementRole
@@ -2329,7 +2340,7 @@ class TextClause(
     _traverse_internals: _TraverseInternalsType = [
         ("_bindparams", InternalTraversal.dp_string_clauseelement_dict),
         ("text", InternalTraversal.dp_string),
-    ]
+    ] + Executable._executable_traverse_internals
 
     _is_text_clause = True
 
@@ -3914,6 +3925,8 @@ class CollectionAggregate(UnaryExpression[_T]):
     def _create_any(
         cls, expr: _ColumnExpressionArgument[_T]
     ) -> CollectionAggregate[bool]:
+        """create CollectionAggregate for the legacy
+        ARRAY.Comparator.any() method"""
         col_expr: ColumnElement[_T] = coercions.expect(
             roles.ExpressionElementRole,
             expr,
@@ -3929,6 +3942,8 @@ class CollectionAggregate(UnaryExpression[_T]):
     def _create_all(
         cls, expr: _ColumnExpressionArgument[_T]
     ) -> CollectionAggregate[bool]:
+        """create CollectionAggregate for the legacy
+        ARRAY.Comparator.all() method"""
         col_expr: ColumnElement[_T] = coercions.expect(
             roles.ExpressionElementRole,
             expr,
@@ -3938,6 +3953,37 @@ class CollectionAggregate(UnaryExpression[_T]):
             col_expr,
             operator=operators.all_op,
             type_=type_api.BOOLEANTYPE,
+        )
+
+    @util.preload_module("sqlalchemy.sql.sqltypes")
+    def _bind_param(
+        self,
+        operator: operators.OperatorType,
+        obj: Any,
+        type_: Optional[TypeEngine[_T]] = None,
+        expanding: bool = False,
+    ) -> BindParameter[_T]:
+        """For new style any_(), all_(), ensure compared literal value
+        receives appropriate bound parameter type."""
+
+        # a CollectionAggregate is specific to ARRAY or int
+        # only.  So for ARRAY case, make sure we use correct element type
+        sqltypes = util.preloaded.sql_sqltypes
+        if self.element.type._type_affinity is sqltypes.ARRAY:
+            compared_to_type = cast(
+                sqltypes.ARRAY[Any], self.element.type
+            ).item_type
+        else:
+            compared_to_type = self.element.type
+
+        return BindParameter(
+            None,
+            obj,
+            _compared_to_operator=operator,
+            type_=type_,
+            _compared_to_type=compared_to_type,
+            unique=True,
+            expanding=expanding,
         )
 
     # operate and reverse_operate are hardwired to
@@ -4213,10 +4259,15 @@ class Grouping(GroupedElement, ColumnElement[_T]):
         ("element", InternalTraversal.dp_clauseelement),
     ]
 
-    element: Union[TextClause, ClauseList, ColumnElement[_T]]
+    element: Union[
+        TextClause, ClauseList, ColumnElement[_T], CompilerColumnElement
+    ]
 
     def __init__(
-        self, element: Union[TextClause, ClauseList, ColumnElement[_T]]
+        self,
+        element: Union[
+            TextClause, ClauseList, ColumnElement[_T], CompilerColumnElement
+        ],
     ):
         self.element = element
 
@@ -4484,31 +4535,34 @@ class _FrameClause(ClauseElement):
                     )
 
 
-class WithinGroup(ColumnElement[_T]):
-    """Represent a WITHIN GROUP (ORDER BY) clause.
+class AggregateOrderBy(WrapsColumnExpression[_T]):
+    """Represent an aggregate ORDER BY expression.
 
-    This is a special operator against so-called
-    "ordered set aggregate" and "hypothetical
-    set aggregate" functions, including ``percentile_cont()``,
-    ``rank()``, ``dense_rank()``, etc.
+    This is a special operator against aggregate functions such as
+    ``array_agg()``, ``json_arrayagg()`` ``string_agg()``, etc. that provides
+    for an ORDER BY expression, using a syntax that's compatible with
+    the backend.
 
-    It's supported only by certain database backends, such as PostgreSQL,
-    Oracle Database and MS SQL Server.
+    :class:`.AggregateOrderBy` is a generalized version of the
+    :class:`.WithinGroup` construct, the latter of which always provides a
+    "WITHIN GROUP (ORDER BY ...)" expression. :class:`.AggregateOrderBy` will
+    also compile to "WITHIN GROUP (ORDER BY ...)" on backends such as Oracle
+    and SQL Server that don't have another style of aggregate function
+    ordering.
 
-    The :class:`.WithinGroup` construct extracts its type from the
-    method :meth:`.FunctionElement.within_group_type`.  If this returns
-    ``None``, the function's ``.type`` is used.
+    .. versionadded:: 2.1
+
 
     """
 
-    __visit_name__ = "withingroup"
+    __visit_name__ = "aggregateorderby"
 
     _traverse_internals: _TraverseInternalsType = [
         ("element", InternalTraversal.dp_clauseelement),
         ("order_by", InternalTraversal.dp_clauseelement),
     ]
 
-    order_by: Optional[ClauseList] = None
+    order_by: ClauseList
 
     def __init__(
         self,
@@ -4516,10 +4570,21 @@ class WithinGroup(ColumnElement[_T]):
         *order_by: _ColumnExpressionArgument[Any],
     ):
         self.element = element
-        if order_by is not None:
-            self.order_by = ClauseList(
-                *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
-            )
+        if not order_by:
+            raise TypeError("at least one ORDER BY element is required")
+        self.order_by = ClauseList(
+            *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
+        )
+
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            return self.element.type
+
+    @property
+    def wrapped_column_expression(self) -> ColumnElement[_T]:
+        return self.element
 
     def __reduce__(self):
         return self.__class__, (self.element,) + (
@@ -4569,16 +4634,6 @@ class WithinGroup(ColumnElement[_T]):
             return self
         return FunctionFilter(self, *criterion)
 
-    if not TYPE_CHECKING:
-
-        @util.memoized_property
-        def type(self) -> TypeEngine[_T]:  # noqa: A001
-            wgt = self.element.within_group_type(self)
-            if wgt is not None:
-                return wgt
-            else:
-                return self.element.type
-
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
         return list(
@@ -4590,6 +4645,37 @@ class WithinGroup(ColumnElement[_T]):
                 ]
             )
         )
+
+
+class WithinGroup(AggregateOrderBy[_T]):
+    """Represent a WITHIN GROUP (ORDER BY) clause.
+
+    This is a special operator against so-called
+    "ordered set aggregate" and "hypothetical
+    set aggregate" functions, including ``percentile_cont()``,
+    ``rank()``, ``dense_rank()``, etc.
+
+    It's supported only by certain database backends, such as PostgreSQL,
+    Oracle Database and MS SQL Server.
+
+    The :class:`.WithinGroup` construct extracts its type from the
+    method :meth:`.FunctionElement.within_group_type`.  If this returns
+    ``None``, the function's ``.type`` is used.
+
+    """
+
+    __visit_name__ = "withingroup"
+    inherit_cache = True
+
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            wgt = self.element.within_group_type(self)
+            if wgt is not None:
+                return wgt
+            else:
+                return self.element.type
 
 
 class FunctionFilter(Generative, ColumnElement[_T]):
@@ -4621,7 +4707,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
 
     def __init__(
         self,
-        func: Union[FunctionElement[_T], WithinGroup[_T]],
+        func: Union[FunctionElement[_T], AggregateOrderBy[_T]],
         *criterion: _ColumnExpressionArgument[bool],
     ):
         self.func = func

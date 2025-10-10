@@ -965,6 +965,7 @@ class PoolFirstConnectSyncTest(PoolTestBase):
             evt.connect()
 
         def checkout():
+            barrier.wait()
             for j in range(2):
                 c1 = pool.connect()
                 time.sleep(0.02)
@@ -979,6 +980,7 @@ class PoolFirstConnectSyncTest(PoolTestBase):
         # any of the connections get returned.   so first_connect()
         # sleeps for one second, then pings the mock.  the threads should
         # not have made it to the "checkout() event for that one second.
+        barrier = threading.Barrier(5)
         for i in range(5):
             th = threading.Thread(target=checkout)
             th.start()
@@ -1110,6 +1112,7 @@ class QueuePoolTest(PoolTestBase):
         timeouts = []
 
         def checkout():
+            barrier.wait()
             for x in range(1):
                 now = time.time()
                 try:
@@ -1120,6 +1123,7 @@ class QueuePoolTest(PoolTestBase):
                 time.sleep(4)
                 c1.close()
 
+        barrier = threading.Barrier(10)
         threads = []
         for i in range(10):
             th = threading.Thread(target=checkout)

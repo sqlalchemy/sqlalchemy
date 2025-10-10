@@ -533,6 +533,41 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             ],
         )
 
+    def test_fk_with_same_column_name_as_pk_idx(self, metadata, connection):
+        """test #12907"""
+        # Create table A with primary key AId and a unique index IX_A_AId
+        Table(
+            "a",
+            metadata,
+            Column("aid", Integer, nullable=False),
+            Column("name", types.String(50)),
+            PrimaryKeyConstraint("aid", name="PK_A"),
+        ).create(connection)
+
+        # IMPORTANT - create unique index on a *first* before creating
+        # FK on B, this affects how the FK is generated in SQL server
+        connection.exec_driver_sql("CREATE UNIQUE INDEX IX_A_AId ON a (aid)")
+
+        # Create table B with foreign key column AId referencing A(AId)
+        # and an index with the same name IX_A_AId
+        Table(
+            "b",
+            metadata,
+            Column("id", Integer, Identity(), primary_key=True),
+            Column("aid", Integer),
+            ForeignKeyConstraint(["aid"], ["a.aid"], name="FK_B_A"),
+        ).create(connection)
+        connection.exec_driver_sql("CREATE INDEX IX_A_AId ON B(aid)")
+
+        m2 = MetaData()
+        table_b = Table("b", m2, autoload_with=connection)
+
+        fks = list(table_b.foreign_keys)
+        eq_(len(fks), 1)
+        eq_(fks[0].parent.name, "aid")
+        eq_(fks[0].column.table.name, "a")
+        eq_(fks[0].column.name, "aid")
+
     def test_indexes_cols(self, metadata, connection):
         t1 = Table("t", metadata, Column("x", Integer), Column("y", Integer))
         Index("foo", t1.c.x, t1.c.y)
@@ -714,6 +749,27 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         self.assert_compile(
             CreateIndex(idx), "CREATE NONCLUSTERED INDEX idx_x ON t (x)"
         )
+
+    def test_index_column_order_clustered(self, metadata, connection):
+        """test for #12894"""
+        test_table = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            Column("y", Integer),
+            PrimaryKeyConstraint("id", mssql_clustered=False),
+        )
+        Index(
+            "idx_x",
+            test_table.c.y,
+            test_table.c.id,
+            test_table.c.x,
+            mssql_clustered=True,
+        )
+        metadata.create_all(connection)
+        indexes = testing.db.dialect.get_indexes(connection, "t", None)
+        eq_(indexes[0]["column_names"], ["y", "id", "x"])
 
     @testing.only_if("mssql>=12")
     def test_index_reflection_colstore_clustered(self, metadata, connection):

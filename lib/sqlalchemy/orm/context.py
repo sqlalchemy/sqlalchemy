@@ -1405,11 +1405,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         if self.order_by is False:
             self.order_by = None
 
-        if (
-            self.multi_row_eager_loaders
-            and self.eager_adding_joins
-            and self._should_nest_selectable
-        ):
+        if self._should_nest_selectable:
             self.statement = self._compound_eager_statement()
         else:
             self.statement = self._simple_statement()
@@ -2431,9 +2427,19 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
     @property
     def _should_nest_selectable(self):
         kwargs = self._select_args
+
+        if not self.eager_adding_joins:
+            return False
+
         return (
-            kwargs.get("limit_clause") is not None
-            or kwargs.get("offset_clause") is not None
+            (
+                kwargs.get("limit_clause") is not None
+                and self.multi_row_eager_loaders
+            )
+            or (
+                kwargs.get("offset_clause") is not None
+                and self.multi_row_eager_loaders
+            )
             or kwargs.get("distinct", False)
             or kwargs.get("distinct_on", ())
             or kwargs.get("group_by", False)

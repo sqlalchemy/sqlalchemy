@@ -48,7 +48,7 @@ from sqlalchemy.testing.assertions import not_in
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
-from .test_engine_py3k import AsyncFixture as _AsyncFixture
+from .test_engine import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
 
 

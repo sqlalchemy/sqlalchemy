@@ -1,7 +1,6 @@
 .. change::
-    :tags: change, setup
+    :tags: change, platform
 
     Updated the setup manifest definition to use PEP 621-compliant
-    pyproject.toml.
-    Also updated the extra install dependency to comply with PEP-685.
-    Thanks for the help of Matt Oberle and KOLANICH on this change.
+    pyproject.toml. Also updated the extra install dependency to comply with
+    PEP-685. Thanks for the help of Matt Oberle and KOLANICH on this change.

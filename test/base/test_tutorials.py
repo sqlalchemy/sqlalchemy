@@ -177,6 +177,9 @@ class DocTest(fixtures.TestBase):
     def test_orm_quickstart(self):
         self._run_doctest("orm/quickstart.rst")
 
+    # this crashes on 3.13t but passes on 3.14t.
+    # just requiring non-freethreaded for now
+    @requires.gil_enabled
     @requires.greenlet
     def test_asyncio(self):
         try:

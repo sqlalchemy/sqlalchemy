@@ -17,7 +17,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.decl_base import _DeferredMapperConfig
+from sqlalchemy.orm.decl_base import _DeferredDeclarativeConfig
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
@@ -35,7 +35,7 @@ class DeclarativeReflectionBase(fixtures.TablesTest):
     def setup_test(self):
         global Base, registry
 
-        _DeferredMapperConfig._configs.clear()
+        _DeferredDeclarativeConfig._configs.clear()
 
         registry = decl.registry()
         Base = registry.generate_base()
@@ -51,7 +51,7 @@ class DeclarativeReflectionBase(fixtures.TablesTest):
 class DeferredReflectBase(DeclarativeReflectionBase):
     def teardown_test(self):
         super().teardown_test()
-        _DeferredMapperConfig._configs.clear()
+        _DeferredDeclarativeConfig._configs.clear()
 
 
 Base = None
@@ -284,14 +284,14 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
         class Address(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "addresses"
 
-        eq_(len(_DeferredMapperConfig._configs), 2)
+        eq_(len(_DeferredDeclarativeConfig._configs), 2)
         del Address
         gc_collect()
         gc_collect()
-        eq_(len(_DeferredMapperConfig._configs), 1)
+        eq_(len(_DeferredDeclarativeConfig._configs), 1)
         DeferredReflection.prepare(testing.db)
         gc_collect()
-        assert not _DeferredMapperConfig._configs
+        assert not _DeferredDeclarativeConfig._configs
 
 
 class DeferredSecondaryReflectionTest(DeferredReflectBase):

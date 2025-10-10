@@ -112,6 +112,7 @@ class AsyncAdapt_aiomysql_connection(
 
 class AsyncAdapt_aiomysql_dbapi(AsyncAdapt_dbapi_module):
     def __init__(self, aiomysql: ModuleType, pymysql: ModuleType):
+        super().__init__(aiomysql, dbapi_module=pymysql)
         self.aiomysql = aiomysql
         self.pymysql = pymysql
         self.paramstyle = "format"
@@ -147,9 +148,11 @@ class AsyncAdapt_aiomysql_dbapi(AsyncAdapt_dbapi_module):
     def connect(self, *arg: Any, **kw: Any) -> AsyncAdapt_aiomysql_connection:
         creator_fn = kw.pop("async_creator_fn", self.aiomysql.connect)
 
-        return AsyncAdapt_aiomysql_connection(
-            self,
-            await_(creator_fn(*arg, **kw)),
+        return await_(
+            AsyncAdapt_aiomysql_connection.create(
+                self,
+                creator_fn(*arg, **kw),
+            )
         )
 
     def _init_cursors_subclasses(

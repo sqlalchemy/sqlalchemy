@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
-from .test_session_py3k import AsyncFixture
+from .test_session import AsyncFixture
 
 
 class AsyncScopedSessionTest(AsyncFixture):

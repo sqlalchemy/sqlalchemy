@@ -17,6 +17,7 @@ from sqlalchemy.schema import DDL
 from sqlalchemy.schema import DropConstraint
 from sqlalchemy.schema import ForeignKeyConstraint
 from sqlalchemy.schema import Sequence
+from sqlalchemy.sql import CheckFirst
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
@@ -46,7 +47,7 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_create(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 )
@@ -66,7 +67,7 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.after_create(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 )
@@ -87,14 +88,14 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_create(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 ),
                 mock.call.after_create(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 ),
@@ -114,7 +115,7 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_drop(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 )
@@ -135,7 +136,7 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.after_drop(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 )
@@ -157,14 +158,14 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_drop(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 ),
                 mock.call.after_drop(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 ),
@@ -188,28 +189,28 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_create(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 ),
                 mock.call.after_create(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 ),
                 mock.call.before_drop(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 ),
                 mock.call.after_drop(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 ),
@@ -231,7 +232,7 @@ class DDLEventTest(fixtures.TestBase):
                     # used in the current testing strategy.
                     metadata,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     tables=list(metadata.tables.values()),
                     _ddl_runner=mock.ANY,
                 )
@@ -251,7 +252,7 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.after_create(
                     metadata,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     tables=list(metadata.tables.values()),
                     _ddl_runner=mock.ANY,
                 )
@@ -273,14 +274,14 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_create(
                     metadata,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     tables=list(metadata.tables.values()),
                     _ddl_runner=mock.ANY,
                 ),
                 mock.call.after_create(
                     metadata,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     tables=list(metadata.tables.values()),
                     _ddl_runner=mock.ANY,
                 ),
@@ -300,7 +301,7 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_drop(
                     metadata,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     tables=list(metadata.tables.values()),
                     _ddl_runner=mock.ANY,
                 )
@@ -320,7 +321,7 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.after_drop(
                     metadata,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     tables=list(metadata.tables.values()),
                     _ddl_runner=mock.ANY,
                 )
@@ -342,14 +343,14 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_drop(
                     metadata,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     tables=list(metadata.tables.values()),
                     _ddl_runner=mock.ANY,
                 ),
                 mock.call.after_drop(
                     metadata,
                     self.bind,
-                    checkfirst=False,
+                    checkfirst=CheckFirst.NONE,
                     tables=list(metadata.tables.values()),
                     _ddl_runner=mock.ANY,
                 ),
@@ -371,7 +372,8 @@ class DDLEventTest(fixtures.TestBase):
                 mock.call.before_create(
                     table,
                     self.bind,
-                    checkfirst=False,
+                    # checkfirst is forced to false by the mock connection
+                    checkfirst=CheckFirst.NONE,
                     _ddl_runner=mock.ANY,
                     _is_metadata_operation=mock.ANY,
                 )

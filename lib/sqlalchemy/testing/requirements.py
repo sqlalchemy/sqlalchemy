@@ -797,6 +797,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def indexes_check_column_order(self):
+        """target database supports CREATE INDEX with column order check."""
+        return exclusions.closed()
+
+    @property
     def indexes_with_expressions(self):
         """target database supports CREATE INDEX against SQL expressions."""
         return exclusions.closed()
@@ -1250,6 +1255,14 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def aggregate_order_by(self):
+        """target database can use ORDER BY or equivalent in an aggregate
+        function, and dialect supports aggregate_order_by().
+
+        """
+        return exclusions.closed()
+
+    @property
     def recursive_fk_cascade(self):
         """target database must support ON DELETE CASCADE on a self-referential
         foreign key
@@ -1519,6 +1532,16 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def only_linux(self):
+        return exclusions.only_if(self._running_on_linux())
+
+    def _running_on_linux(self):
+        return exclusions.LambdaPredicate(
+            lambda: platform.system() == "Linux",
+            description="running on Linux",
+        )
+
+    @property
     def timing_intensive(self):
         from . import config
 
@@ -1629,6 +1652,12 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def gil_enabled(self):
+        return exclusions.only_if(
+            lambda: not util.freethreading, "GIL-enabled build needed"
+        )
+
+    @property
     def is64bit(self):
         return exclusions.only_if(lambda: util.is64bit, "64bit required")
 
@@ -1650,7 +1679,7 @@ class SuiteRequirements(Requirements):
         gc.collect() is called, as well as clean out unreferenced subclasses.
 
         """
-        return self.cpython
+        return self.cpython + self.gil_enabled
 
     @property
     def no_coverage(self):

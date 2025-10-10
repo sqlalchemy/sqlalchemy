@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import os
 import platform
+import sys
+from typing import Any
 from typing import cast
+from typing import Dict
 from typing import TYPE_CHECKING
 
 from setuptools import setup
@@ -44,7 +47,12 @@ if HAS_CYTHON and IS_CPYTHON and not DISABLE_EXTENSION:
     assert _cy_Extension is not None
     assert _cy_build_ext is not None
 
-    cython_directives = {"language_level": "3"}
+    cython_directives: Dict[str, Any] = {
+        "language_level": "3",
+    }
+
+    if sys.version_info >= (3, 13):
+        cython_directives["freethreading_compatible"] = True
 
     module_prefix = "sqlalchemy."
     source_prefix = "lib/sqlalchemy/"

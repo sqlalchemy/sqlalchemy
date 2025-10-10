@@ -1,5 +1,6 @@
 import collections.abc as collections_abc
 import datetime
+import enum
 import operator
 import pickle
 import re
@@ -13,6 +14,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import bitwise_not
 from sqlalchemy import desc
 from sqlalchemy import distinct
+from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import Integer
@@ -4834,6 +4836,12 @@ class InSelectableTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
+class MyEnum(enum.Enum):
+    ONE = enum.auto()
+    TWO = enum.auto()
+    THREE = enum.auto()
+
+
 class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
@@ -4845,6 +4853,8 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "tab1",
             m,
             Column("arrval", ARRAY(Integer)),
+            Column("arrenum", ARRAY(Enum(MyEnum))),
+            Column("arrstring", ARRAY(String)),
             Column("data", Integer),
         )
         return t
@@ -4877,6 +4887,48 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             ~expr(col), "NOT (NULL = ANY (tab1.%s))" % col.name
         )
 
+    @testing.variation("operator", ["any", "all"])
+    @testing.variation(
+        "datatype", ["int", "array", "arraystring", "arrayenum"]
+    )
+    def test_what_type_is_any_all(
+        self,
+        datatype: testing.Variation,
+        t_fixture,
+        operator: testing.Variation,
+    ):
+        """test for #12874"""
+
+        if datatype.int:
+            col = t_fixture.c.data
+            value = 5
+            expected_type_affinity = Integer
+        elif datatype.array:
+            col = t_fixture.c.arrval
+            value = 25
+            expected_type_affinity = Integer
+        elif datatype.arraystring:
+            col = t_fixture.c.arrstring
+            value = "a string"
+            expected_type_affinity = String
+        elif datatype.arrayenum:
+            col = t_fixture.c.arrenum
+            value = MyEnum.TWO
+            expected_type_affinity = Enum
+        else:
+            datatype.fail()
+
+        if operator.any:
+            boolean_expr = value == any_(col)
+        elif operator.all:
+            boolean_expr = value == all_(col)
+        else:
+            operator.fail()
+
+        # using isinstance so things work out for Enum which has type affinity
+        # of String
+        assert isinstance(boolean_expr.left.type, expected_type_affinity)
+
     @testing.fixture(
         params=[
             ("ANY", any_),
@@ -4886,17 +4938,6 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ]
     )
     def any_all_operators(self, request):
-        return request.param
-
-    # test legacy array any() / all().  these are superseded by the
-    # any_() / all_() versions
-    @testing.fixture(
-        params=[
-            ("ANY", lambda x, *o: x.any(*o)),
-            ("ALL", lambda x, *o: x.all(*o)),
-        ]
-    )
-    def legacy_any_all_operators(self, request):
         return request.param
 
     def test_array(self, t_fixture, any_all_operators):
@@ -4972,41 +5013,6 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             t.c.data + fn(t.c.arrval), f"tab1.data + {op} (tab1.arrval)"
         )
 
-    def test_bindparam_coercion(self, t_fixture, legacy_any_all_operators):
-        """test #7979"""
-        t = t_fixture
-        op, fn = legacy_any_all_operators
-
-        expr = fn(t.c.arrval, bindparam("param"))
-        expected = f"%(param)s = {op} (tab1.arrval)"
-        is_(expr.left.type._type_affinity, Integer)
-
-        self.assert_compile(expr, expected, dialect="postgresql")
-
-    def test_array_comparator_accessor(
-        self, t_fixture, legacy_any_all_operators
-    ):
-        t = t_fixture
-        op, fn = legacy_any_all_operators
-
-        self.assert_compile(
-            fn(t.c.arrval, 5, operator.gt),
-            f":arrval_1 > {op} (tab1.arrval)",
-            checkparams={"arrval_1": 5},
-        )
-
-    def test_array_comparator_negate_accessor(
-        self, t_fixture, legacy_any_all_operators
-    ):
-        t = t_fixture
-        op, fn = legacy_any_all_operators
-
-        self.assert_compile(
-            ~fn(t.c.arrval, 5, operator.gt),
-            f"NOT (:arrval_1 > {op} (tab1.arrval))",
-            checkparams={"arrval_1": 5},
-        )
-
     def test_array_expression(self, t_fixture, any_all_operators):
         t = t_fixture
         op, fn = any_all_operators
@@ -5057,6 +5063,118 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             r"use the .scalar_values\(\) method.",
         ):
             fn(values(t.c.data).data([(1,), (42,)]))
+
+
+class DeprecatedAnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.fixture
+    def t_fixture(self):
+        m = MetaData()
+
+        t = Table(
+            "tab1",
+            m,
+            Column("arrval", ARRAY(Integer)),
+            Column("arrenum", ARRAY(Enum(MyEnum))),
+            Column("arrstring", ARRAY(String)),
+            Column("data", Integer),
+        )
+        return t
+
+    # test legacy array any() / all().  these are superseded by the
+    # any_() / all_() versions
+    @testing.fixture(
+        params=[
+            ("ANY", lambda x, *o: x.any(*o)),
+            ("ALL", lambda x, *o: x.all(*o)),
+        ]
+    )
+    def legacy_any_all_operators(self, request):
+        return request.param
+
+    def _array_any_deprecation(self):
+        return testing.expect_deprecated(
+            r"The ARRAY.Comparator.any\(\) and "
+            r"ARRAY.Comparator.all\(\) methods "
+            r"for arrays are deprecated for removal, along with the "
+            r"PG-specific Any\(\) "
+            r"and All\(\) functions. See any_\(\) and all_\(\) functions for "
+            "modern use. "
+        )
+
+    @testing.variation("operator", ["any", "all"])
+    @testing.variation("datatype", ["array", "arraystring", "arrayenum"])
+    def test_what_type_is_legacy_any_all(
+        self,
+        datatype: testing.Variation,
+        t_fixture,
+        operator: testing.Variation,
+    ):
+        if datatype.array:
+            col = t_fixture.c.arrval
+            value = 25
+            expected_type_affinity = Integer
+        elif datatype.arraystring:
+            col = t_fixture.c.arrstring
+            value = "a string"
+            expected_type_affinity = String
+        elif datatype.arrayenum:
+            col = t_fixture.c.arrenum
+            value = MyEnum.TWO
+            expected_type_affinity = Enum
+        else:
+            datatype.fail()
+
+        with self._array_any_deprecation():
+            if operator.any:
+                boolean_expr = col.any(value)
+            elif operator.all:
+                boolean_expr = col.all(value)
+            else:
+                operator.fail()
+
+        # using isinstance so things work out for Enum which has type affinity
+        # of String
+        assert isinstance(boolean_expr.left.type, expected_type_affinity)
+
+    def test_bindparam_coercion(self, t_fixture, legacy_any_all_operators):
+        """test #7979"""
+        t = t_fixture
+        op, fn = legacy_any_all_operators
+
+        with self._array_any_deprecation():
+            expr = fn(t.c.arrval, bindparam("param"))
+        expected = f"%(param)s = {op} (tab1.arrval)"
+        is_(expr.left.type._type_affinity, Integer)
+
+        self.assert_compile(expr, expected, dialect="postgresql")
+
+    def test_array_comparator_accessor(
+        self, t_fixture, legacy_any_all_operators
+    ):
+        t = t_fixture
+        op, fn = legacy_any_all_operators
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                fn(t.c.arrval, 5, operator.gt),
+                f":arrval_1 > {op} (tab1.arrval)",
+                checkparams={"arrval_1": 5},
+            )
+
+    def test_array_comparator_negate_accessor(
+        self, t_fixture, legacy_any_all_operators
+    ):
+        t = t_fixture
+        op, fn = legacy_any_all_operators
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                ~fn(t.c.arrval, 5, operator.gt),
+                f"NOT (:arrval_1 > {op} (tab1.arrval))",
+                checkparams={"arrval_1": 5},
+            )
 
 
 class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):

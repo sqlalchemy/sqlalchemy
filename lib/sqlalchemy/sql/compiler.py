@@ -673,6 +673,26 @@ class InsertmanyvaluesSentinelOpts(FastIntFlag):
     RENDER_SELECT_COL_CASTS = 64
 
 
+class AggregateOrderByStyle(IntEnum):
+    """Describes backend database's capabilities with ORDER BY for aggregate
+    functions
+
+    .. versionadded:: 2.1
+
+    """
+
+    NONE = 0
+    """database has no ORDER BY for aggregate functions"""
+
+    INLINE = 1
+    """ORDER BY is rendered inside the function's argument list, typically as
+    the last element"""
+
+    WITHIN_GROUP = 2
+    """the WITHIN GROUP (ORDER BY ...) phrase is used for all aggregate
+    functions (not just the ordered set ones)"""
+
+
 class CompilerState(IntEnum):
     COMPILING = 0
     """statement is present, compilation phase in progress"""
@@ -1041,6 +1061,39 @@ class _CompileLabel(
 
     def self_group(self, **kw: Any) -> Self:
         return self
+
+
+class aggregate_orderby_inline(
+    roles.BinaryElementRole[Any], elements.CompilerColumnElement
+):
+    """produce ORDER BY inside of function argument lists"""
+
+    __visit_name__ = "aggregate_orderby_inline"
+    __slots__ = "element", "aggregate_order_by"
+
+    def __init__(self, element, orderby):
+        self.element = element
+        self.aggregate_order_by = orderby
+
+    def __iter__(self):
+        return iter(self.element)
+
+    @property
+    def proxy_set(self):
+        return self.element.proxy_set
+
+    @property
+    def type(self):
+        return self.element.type
+
+    def self_group(self, **kw):
+        return self
+
+    def _with_binary_element_type(self, type_):
+        return aggregate_orderby_inline(
+            self.element._with_binary_element_type(type_),
+            self.aggregate_order_by,
+        )
 
 
 class ilike_case_insensitive(
@@ -3008,7 +3061,63 @@ class SQLCompiler(Compiled):
             funcfilter.criterion._compiler_dispatch(self, **kwargs),
         )
 
-    def visit_extract(self, extract: ColumnClause[Any], **kwargs: Any) -> str:
+    def visit_aggregateorderby(self, aggregateorderby, **kwargs):
+        if self.dialect.aggregate_order_by_style is AggregateOrderByStyle.NONE:
+            raise exc.CompileError(
+                "this dialect does not support "
+                "ORDER BY within an aggregate function"
+            )
+        elif (
+            self.dialect.aggregate_order_by_style
+            is AggregateOrderByStyle.INLINE
+        ):
+            new_fn = aggregateorderby.element._clone()
+            new_fn.clause_expr = elements.Grouping(
+                aggregate_orderby_inline(
+                    new_fn.clause_expr.element, aggregateorderby.order_by
+                )
+            )
+
+            return new_fn._compiler_dispatch(self, **kwargs)
+        else:
+            return self.visit_withingroup(aggregateorderby, **kwargs)
+
+    def visit_aggregate_orderby_inline(self, element, **kw):
+        return "%s ORDER BY %s" % (
+            self.process(element.element, **kw),
+            self.process(element.aggregate_order_by, **kw),
+        )
+
+    def visit_aggregate_strings_func(self, fn, *, use_function_name, **kw):
+        # aggreagate_order_by attribute is present if visit_function
+        # gave us a Function with aggregate_orderby_inline() as the inner
+        # contents
+        order_by = getattr(fn.clauses, "aggregate_order_by", None)
+
+        literal_exec = dict(kw)
+        literal_exec["literal_execute"] = True
+
+        # break up the function into its components so we can apply
+        # literal_execute to the second argument (the delimeter)
+        cl = list(fn.clauses)
+        expr, delimeter = cl[0:2]
+        if (
+            order_by is not None
+            and self.dialect.aggregate_order_by_style
+            is AggregateOrderByStyle.INLINE
+        ):
+            return (
+                f"{use_function_name}({expr._compiler_dispatch(self, **kw)}, "
+                f"{delimeter._compiler_dispatch(self, **literal_exec)} "
+                f"ORDER BY {order_by._compiler_dispatch(self, **kw)})"
+            )
+        else:
+            return (
+                f"{use_function_name}({expr._compiler_dispatch(self, **kw)}, "
+                f"{delimeter._compiler_dispatch(self, **literal_exec)})"
+            )
+
+    def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)
         return "EXTRACT(%s FROM %s)" % (
             field,

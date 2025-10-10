@@ -443,6 +443,57 @@ Annotated Declarative setting from taking place.
 
 :ticket:`12570`
 
+.. _change_9832:
+
+New RegistryEvents System for ORM Mapping Customization
+--------------------------------------------------------
+
+SQLAlchemy 2.1 introduces :class:`.RegistryEvents`, providing for event
+hooks that are specific to a :class:`_orm.registry`.  These events include
+:meth:`_orm.RegistryEvents.before_configured` and :meth:`_orm.RegistryEvents.after_configured`
+to complement the same-named events that can be established on a
+:class:`_orm.Mapper`, as well as :meth:`_orm.RegistryEvents.resolve_type_annotation`
+that allows programmatic access to the ORM Annotated Declarative type resolution
+process.  Examples are provided illustrating how to define resolution schemes
+for any kind of type hierarchy in an automated fashion, including :pep:`695`
+type aliases.
+
+E.g.::
+
+    from typing import Any
+
+    from sqlalchemy import event
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import registry as RegistryType
+    from sqlalchemy.orm import TypeResolve
+    from sqlalchemy.types import TypeEngine
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    @event.listens_for(Base, "resolve_type_annotation")
+    def resolve_custom_type(resolve_type: TypeResolve) -> TypeEngine[Any] | None:
+        if resolve_type.resolved_type is MyCustomType:
+            return MyCustomSQLType()
+        else:
+            return None
+
+
+    @event.listens_for(Base, "after_configured")
+    def after_base_configured(registry: RegistryType) -> None:
+        print(f"Registry {registry} fully configured")
+
+.. seealso::
+
+    :ref:`orm_declarative_resolve_type_event` - Complete documentation on using
+    the :meth:`.RegistryEvents.resolve_type_annotation` event
+
+    :class:`.RegistryEvents` - Complete API reference for all registry events
+
+:ticket:`9832`
+
 New Features and Improvements - Core
 =====================================
 
@@ -797,6 +848,114 @@ will make use of the operator classes declared by the "impl" type.
     :class:`.OperatorClass`
 
 :ticket:`12736`
+
+
+PostgreSQL
+==========
+
+.. _change_10594_postgresql:
+
+Changes to Named Type Handling in PostgreSQL
+---------------------------------------------
+
+Named types such as :class:`_postgresql.ENUM`, :class:`_postgresql.DOMAIN` and
+the dialect-agnostic :class:`._types.Enum` have undergone behavioral changes in
+SQLAlchemy 2.1 to better align with how a distinct type object that may
+be shared among tables works in practice.
+
+Named Types are Now Associated with MetaData
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Named types are now more strongly associated with the :class:`_schema.MetaData`
+at the top of the table hierarchy and are de-associated with any particular
+:class:`_schema.Table` they may be a part of. This better represents how
+PostgreSQL named types exist independently of any particular table, and that
+they may be used across many tables simultaneously.
+
+:class:`_types.Enum` and :class:`_postgresql.DOMAIN` now have their
+:attr:`~_types.SchemaType.metadata` attribute set as soon as they are
+associated with a table, and no longer refer to the :class:`_schema.Table`
+or tables they are within (a table of course still refers to the named types
+that it uses).
+
+Schema Inheritance from MetaData
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Named types will now "inherit" the schema of the :class:`_schema.MetaData`
+by default. For example, ``MetaData(schema="myschema")`` will cause all
+:class:`_types.Enum` and :class:`_postgresql.DOMAIN` to use the schema
+"myschema"::
+
+    metadata = MetaData(schema="myschema")
+
+    table = Table(
+        "mytable",
+        metadata,
+        Column("status", Enum("active", "inactive", name="status_enum")),
+    )
+
+    # The enum will be created as "myschema.status_enum"
+
+To have named types use the schema name of an immediate :class:`_schema.Table`
+that they are associated with, set the :paramref:`~_types.SchemaType.schema`
+parameter of the type to be that same schema name::
+
+    table = Table(
+        "mytable",
+        metadata,
+        Column(
+            "status", Enum("active", "inactive", name="status_enum", schema="tableschema")
+        ),
+        schema="tableschema",
+    )
+
+The :paramref:`_types.SchemaType.inherit_schema` parameter remains available
+for this release but is deprecated for eventual removal, and will emit a
+deprecation warning when used.
+
+Modified Create and Drop Behavior
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The rules by which named types are created and dropped are also modified to
+flow more in terms of a :class:`_schema.MetaData`:
+
+1. :meth:`_schema.MetaData.create_all` and :meth:`_schema.Table.create` will
+   create any named types needed
+2. :meth:`_schema.Table.drop` will not drop any named types
+3. :meth:`_schema.MetaData.drop_all` will drop named types after all tables
+   are dropped
+
+Refined CheckFirst Behavior
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There is also newly refined "checkfirst" behavior. A new enumeration
+:class:`_schema.CheckFirst` is introduced which allows fine-grained control
+within :meth:`_schema.MetaData.create_all`, :meth:`_schema.MetaData.drop_all`,
+:meth:`_schema.Table.create`, and :meth:`_schema.Table.drop` as to what "check"
+queries are emitted, allowing tests for types, sequences etc. to be included
+or not::
+
+    from sqlalchemy import CheckFirst
+
+    # Only check for table existence, skip type checks
+    metadata.create_all(engine, checkfirst=CheckFirst.TABLES)
+
+    # Check for both tables and types
+    metadata.create_all(engine, checkfirst=CheckFirst.TABLES | CheckFirst.TYPES)
+
+inherit_schema is Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Because named types now inherit the schema of :class:`.MetaData` automatically
+and remain agnostic of what :class:`.Table` objects refer to them, the
+:paramref:`_types.Enum.inherit_schema` parameter is deprecated.  For 2.1
+it still works the old way by associating the type with the parent
+:class:`.Table`, however as this binds the type to a single :class:`.Table`
+even though the type can be used against any number of tables, it's preferred
+to set :paramref:`_types.Enum.schema` directly as desired when the schema
+used by the :class:`.MetaData` is not what's desired.
+
+:ticket:`10594`
 
 
 `

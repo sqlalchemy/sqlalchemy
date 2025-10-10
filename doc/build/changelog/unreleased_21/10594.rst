@@ -1,9 +1,0 @@
-.. change::
-    :tags: change, schema
-    :tickets: 10594
-
-    Changed the default value of :paramref:`_types.Enum.inherit_schema` to
-    ``True`` when :paramref:`_types.Enum.schema` and
-    :paramref:`_types.Enum.metadata` parameters are not provided.
-    The same behavior has been applied also to PostgreSQL
-    :class:`_postgresql.DOMAIN` type.

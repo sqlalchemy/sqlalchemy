@@ -1,3 +1,8 @@
+import re
+from typing import Annotated
+from typing import Any
+from typing import Optional
+from typing import TypeVar
 from unittest.mock import ANY
 from unittest.mock import call
 from unittest.mock import Mock
@@ -22,24 +27,28 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import EXT_SKIP
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import mapperlib
 from sqlalchemy.orm import query
+from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import TypeResolve
 from sqlalchemy.orm import UserDefinedOption
 from sqlalchemy.sql.cache_key import NO_CACHE
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
@@ -53,6 +62,8 @@ from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.types import TypeEngine
+from sqlalchemy.util.typing import TypeAliasType
 from test.orm import _fixtures
 
 
@@ -1314,33 +1325,73 @@ class MapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
         eq_(canary1, ["before_update", "after_update"])
         eq_(canary2, [])
 
-    def test_before_after_configured_warn_on_non_mapper(self):
+    @testing.combinations(
+        ("before_configured",), ("after_configured",), argnames="event_name"
+    )
+    @testing.variation(
+        "target_type",
+        [
+            "mappercls",
+            "mapperinstance",
+            "registry",
+            "explicit_base",
+            "imperative_class",
+            "declarative_class",
+        ],
+    )
+    def test_before_after_configured_only_on_mappercls_or_registry(
+        self, event_name, target_type: testing.Variation
+    ):
         User, users = self.classes.User, self.tables.users
 
+        reg = registry()
+
+        expect_success = (
+            target_type.mappercls
+            or target_type.registry
+            or target_type.explicit_base
+        )
+
+        if target_type.mappercls:
+            target = Mapper
+        elif target_type.mapperinstance:
+            reg.map_imperatively(User, users)
+            target = inspect(User)
+        elif target_type.registry:
+            target = reg
+        elif target_type.imperative_class:
+            reg.map_imperatively(User, users)
+            target = User
+        elif target_type.explicit_base:
+
+            class Base(DeclarativeBase):
+                registry = reg
+
+            target = Base
+        elif target_type.declarative_class:
+
+            class Base(DeclarativeBase):
+                registry = reg
+
+            class User(Base):
+                __table__ = users
+
+            target = User
+        else:
+            target_type.fail()
+
         m1 = Mock()
+        if expect_success:
+            event.listen(target, event_name, m1)
+        else:
 
-        self.mapper_registry.map_imperatively(User, users)
-        assert_warns_message(
-            sa.exc.SAWarning,
-            r"before_configured' and 'after_configured' ORM events only "
-            r"invoke with the Mapper class as "
-            r"the target.",
-            event.listen,
-            User,
-            "before_configured",
-            m1,
-        )
-
-        assert_warns_message(
-            sa.exc.SAWarning,
-            r"before_configured' and 'after_configured' ORM events only "
-            r"invoke with the Mapper class as "
-            r"the target.",
-            event.listen,
-            User,
-            "after_configured",
-            m1,
-        )
+            with expect_raises_message(
+                sa_exc.InvalidRequestError,
+                re.escape(
+                    f"No such event {event_name!r} for target '{target}'"
+                ),
+            ):
+                event.listen(target, event_name, m1)
 
     def test_before_after_configured(self):
         User, users = self.classes.User, self.tables.users
@@ -3698,3 +3749,215 @@ class RefreshFlushInReturningTest(fixtures.MappedTest):
         eq_(t1.id, 1)
         eq_(t1.prefetch_val, 5)
         eq_(t1.returning_val, 5)
+
+
+class RegistryEventsTest(fixtures.MappedTest):
+    """Test RegistryEvents functionality."""
+
+    @testing.variation("scenario", ["direct", "reentrant", "plain"])
+    @testing.variation("include_optional", [True, False])
+    @testing.variation(
+        "type_features",
+        [
+            "none",
+            "plain_pep593",
+            "plain_pep695",
+            "generic_pep593",
+            "plain_pep593_pep695",
+            "generic_pep593_pep695",
+            "generic_pep593_pep695_w_compound",
+        ],
+    )
+    def test_resolve_type_annotation_event(
+        self,
+        scenario: testing.Variation,
+        include_optional: testing.Variation,
+        type_features: testing.Variation,
+    ):
+        reg = registry(type_annotation_map={str: String(70)})
+        Base = reg.generate_base()
+
+        MyCustomType: Any
+        if type_features.none:
+            MyCustomType = type("MyCustomType", (object,), {})
+        elif type_features.plain_pep593:
+            MyCustomType = Annotated[float, mapped_column()]
+        elif type_features.plain_pep695:
+            MyCustomType = TypeAliasType("MyCustomType", float)
+        elif type_features.generic_pep593:
+            T = TypeVar("T")
+            MyCustomType = Annotated[T, mapped_column()]
+        elif type_features.plain_pep593_pep695:
+            MyCustomType = TypeAliasType(  # type: ignore
+                "MyCustomType", Annotated[float, mapped_column()]
+            )
+        elif type_features.generic_pep593_pep695:
+            T = TypeVar("T")
+            MyCustomType = TypeAliasType(  # type: ignore
+                "MyCustomType", Annotated[T, mapped_column()], type_params=(T,)
+            )
+        elif type_features.generic_pep593_pep695_w_compound:
+            T = TypeVar("T")
+            MyCustomType = TypeAliasType(  # type: ignore
+                "MyCustomType",
+                Annotated[T | float, mapped_column()],
+                type_params=(T,),
+            )
+        else:
+            type_features.fail()
+
+        @event.listens_for(reg, "resolve_type_annotation")
+        def resolve_custom_type(
+            type_resolve: TypeResolve,
+        ) -> TypeEngine[Any] | None:
+            assert type_resolve.cls.__name__ == "MyClass"
+
+            if (
+                type_resolve.resolved_type is int
+                and type_resolve.raw_pep_695_type is None
+                and type_resolve.raw_pep_593_type is None
+            ):
+                return None
+
+            if type_features.none:
+                assert type_resolve.resolved_type is MyCustomType
+            elif type_features.plain_pep593:
+                assert type_resolve.resolved_type is float
+                assert type_resolve.raw_pep_593_type is not None
+                assert type_resolve.raw_pep_593_type.__args__[0] is float
+                assert type_resolve.pep_593_resolved_argument is float
+            elif type_features.plain_pep695:
+                assert type_resolve.raw_pep_695_type is MyCustomType
+                assert type_resolve.pep_695_resolved_value is float
+                assert type_resolve.resolved_type is float
+            elif type_features.generic_pep593:
+                assert type_resolve.raw_pep_695_type is None
+                assert type_resolve.pep_593_resolved_argument is str
+                assert type_resolve.resolved_type is str
+            elif type_features.plain_pep593_pep695:
+                assert type_resolve.raw_pep_695_type is not None
+                assert type_resolve.pep_593_resolved_argument is float
+                assert type_resolve.resolved_type is float
+                assert type_resolve.raw_pep_695_type is MyCustomType
+            elif type_features.generic_pep593_pep695:
+                assert type_resolve.raw_pep_695_type is not None
+                assert type_resolve.pep_593_resolved_argument is str
+            elif type_features.generic_pep593_pep695_w_compound:
+                assert type_resolve.raw_pep_695_type is not None
+                assert type_resolve.raw_pep_695_type.__origin__ is MyCustomType
+                assert type_resolve.pep_593_resolved_argument == str | float
+                assert type_resolve.resolved_type == str | float
+            else:
+                type_features.fail()
+
+            if scenario.direct:
+                return String(50)
+            elif scenario.reentrant:
+                return type_resolve.resolve(str)
+            else:
+                scenario.fail()
+
+        use_type_args = (
+            type_features.generic_pep593
+            or type_features.generic_pep593_pep695
+            or type_features.generic_pep593_pep695_w_compound
+        )
+
+        class MyClass(Base):
+            __tablename__ = "mytable"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if include_optional:
+                if scenario.direct or scenario.reentrant:
+                    if use_type_args:
+                        data: Mapped[Optional[MyCustomType[str]]]
+                    else:
+                        data: Mapped[Optional[MyCustomType]]
+                else:
+                    data: Mapped[Optional[int]]
+            else:
+                if scenario.direct or scenario.reentrant:
+                    if use_type_args:
+                        data: Mapped[MyCustomType[str]]
+                    else:
+                        data: Mapped[MyCustomType]
+                else:
+                    data: Mapped[int]
+
+        result = MyClass.data.expression.type
+
+        if scenario.direct:
+            assert isinstance(result, String)
+            eq_(result.length, 50)
+        elif scenario.reentrant:
+            assert isinstance(result, String)
+            eq_(result.length, 70)
+        elif scenario.plain:
+            assert isinstance(result, Integer)
+
+    def test_type_resolve_instantiates_type(self, decl_base):
+        MyType = int
+
+        @event.listens_for(decl_base, "resolve_type_annotation")
+        def resolve_custom_type(
+            type_resolve: TypeResolve,
+        ) -> TypeEngine[Any] | None:
+            if type_resolve.resolved_type is MyType:
+                return Integer  # <--- note not instantiated
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[MyType] = mapped_column(primary_key=True)
+
+        assert isinstance(User.__table__.c.id.type, Integer)
+
+    @testing.variation(
+        "listen_type", ["registry", "generated_base", "explicit_base"]
+    )
+    def test_before_after_configured_events(self, listen_type):
+        """Test the before_configured and after_configured events."""
+        reg = registry()
+
+        if listen_type.generated_base:
+            Base = reg.generate_base()
+        else:
+
+            class Base(DeclarativeBase):
+                registry = reg
+
+        mock = Mock()
+
+        if listen_type.registry:
+
+            @event.listens_for(reg, "before_configured")
+            def before_configured(registry_inst):
+                mock.before_configured(registry_inst)
+
+            @event.listens_for(reg, "after_configured")
+            def after_configured(registry_inst):
+                mock.after_configured(registry_inst)
+
+        else:
+
+            @event.listens_for(Base, "before_configured")
+            def before_configured(registry_inst):
+                mock.before_configured(registry_inst)
+
+            @event.listens_for(Base, "after_configured")
+            def after_configured(registry_inst):
+                mock.after_configured(registry_inst)
+
+        # Create a simple mapped class to trigger configuration
+        class TestClass(Base):
+            __tablename__ = "test_table"
+            id = Column(Integer, primary_key=True)
+
+        # Configure the registry
+        reg.configure()
+
+        # Check that events were fired in the correct order
+        eq_(
+            mock.mock_calls,
+            [call.before_configured(reg), call.after_configured(reg)],
+        )
