@@ -1,6 +1,6 @@
 git+https://github.com/sqlalchemyorg/changelog.git#egg=changelog
 git+https://github.com/sqlalchemyorg/sphinx-paramlinks.git#egg=sphinx-paramlinks
-git+https://github.com/sqlalchemyorg/zzzeeksphinx.git@css_tweaks#egg=zzzeeksphinx
+git+https://github.com/sqlalchemyorg/zzzeeksphinx.git#egg=zzzeeksphinx
 sphinx-copybutton==0.5.1
 sphinx-autobuild
 typing-extensions  # for autodoc to be able to import source files
