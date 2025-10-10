@@ -2742,12 +2742,14 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "format_type": sch,
                 "default": None,
                 "not_null": False,
+                "type": 123,
+                "collation": 456,
                 "comment": None,
                 "generated": "",
                 "identity_options": None,
             }
             column_info = dialect._get_columns_info(
-                [row_dict], {}, {}, "public"
+                [row_dict], {}, {}, {456: ("mycoll", [123])}, "public"
             )
             assert ("public", "tblname") in column_info
             column_info = column_info[("public", "tblname")]
@@ -2784,12 +2786,14 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "format_type": None,
                 "default": None,
                 "not_null": False,
+                "type": 987,
+                "collation": 0,
                 "comment": None,
                 "generated": "",
                 "identity_options": None,
             }
             column_info = dialect._get_columns_info(
-                [row_dict], {}, {}, "public"
+                [row_dict], {}, {}, {654: ("somecollation", [])}, "public"
             )
             assert ("public", "tblname") in column_info
             column_info = column_info[("public", "tblname")]
