@@ -2713,6 +2713,11 @@ class ReflectionTest(
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
+    class NTL:
+        def __init__(self, enums, domains):
+            self.enums = enums
+            self.domains = domains
+
     class CustomType:
         def __init__(self, arg1=None, arg2=None, collation=None):
             self.arg1 = arg1
@@ -2749,7 +2754,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "identity_options": None,
             }
             column_info = dialect._get_columns_info(
-                [row_dict], {}, {}, "public"
+                [row_dict], self.NTL({}, {}), "public"
             )
             assert ("public", "tblname") in column_info
             column_info = column_info[("public", "tblname")]
@@ -2796,7 +2801,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "identity_options": None,
             }
             column_info = dialect._get_columns_info(
-                [row_dict], {}, {}, "public"
+                [row_dict], self.NTL({}, {}), "public"
             )
             assert ("public", "tblname") in column_info
             column_info = column_info[("public", "tblname")]
