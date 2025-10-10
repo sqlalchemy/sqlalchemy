@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, mssql
-    :tickets: 12894
-
-    Fixed issue where the index reflection for SQL Server would
-    not correctly return the order of the column inside an index
-    when the order of the columns in the index did not match the
-    order of the columns in the table.
-    Pull request courtesy of Allen Chen.
