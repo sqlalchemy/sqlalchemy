@@ -10,7 +10,201 @@
 
 .. changelog::
     :version: 2.0.44
-    :include_notes_from: unreleased_20
+    :released: October 10, 2025
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12271
+
+        Improved the implementation of :meth:`.UpdateBase.returning` to use more
+        robust logic in setting up the ``.c`` collection of a derived statement
+        such as a CTE.  This fixes issues related to RETURNING clauses that feature
+        expressions based on returned columns with or without qualifying labels.
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 12273
+
+        Generalize the terminate logic employed by the asyncpg dialect to reuse
+        it in the aiomysql and asyncmy dialect implementation.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 12798
+
+        Improved the base implementation of the asyncio cursor such that it
+        includes the option for the underlying driver's cursor to be actively
+        closed in those cases where it requires ``await`` in order to complete the
+        close sequence, rather than relying on garbage collection to "close" it,
+        when a plain :class:`.Result` is returned that does not use ``await`` for
+        any of its methods.  The previous approach of relying on gc was fine for
+        MySQL and SQLite dialects but has caused problems with the aioodbc
+        implementation on top of SQL Server.   The new option is enabled
+        for those dialects which have an "awaitable" ``cursor.close()``, which
+        includes the aioodbc, aiomysql, and asyncmy dialects (aiosqlite is also
+        modified for 2.1 only).
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 12802
+
+        Fixed issue caused by an unwanted functional change while typing
+        the :class:`.MutableList` class.
+        This change also reverts all other functional changes done in
+        the same change.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 12813
+
+        Fixed typing bug where the :meth:`.Session.execute` method advertised that
+        it would return a :class:`.CursorResult` if given an insert/update/delete
+        statement.  This is not the general case as several flavors of ORM
+        insert/update do not actually yield a :class:`.CursorResult` which cannot
+        be differentiated at the typing overload level, so the method now yields
+        :class:`.Result` in all cases.  For those cases where
+        :class:`.CursorResult` is known to be returned and the ``.rowcount``
+        attribute is required, please use ``typing.cast()``.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 12829
+
+        The way ORM Annotated Declarative interprets Python :pep:`695` type aliases
+        in ``Mapped[]`` annotations has been refined to expand the lookup scheme. A
+        :pep:`695` type can now be resolved based on either its direct presence in
+        :paramref:`_orm.registry.type_annotation_map` or its immediate resolved
+        value, as long as a recursive lookup across multiple :pep:`695` types is
+        not required for it to resolve. This change reverses part of the
+        restrictions introduced in 2.0.37 as part of :ticket:`11955`, which
+        deprecated (and disallowed in 2.1) the ability to resolve any :pep:`695`
+        type that was not explicitly present in
+        :paramref:`_orm.registry.type_annotation_map`. Recursive lookups of
+        :pep:`695` types remains deprecated in 2.0 and disallowed in version 2.1,
+        as do implicit lookups of ``NewType`` types without an entry in
+        :paramref:`_orm.registry.type_annotation_map`.
+
+        Additionally, new support has been added for generic :pep:`695` aliases that
+        refer to :pep:`593` ``Annotated`` constructs containing
+        :func:`_orm.mapped_column` configurations. See the sections below for
+        examples.
+
+        .. seealso::
+
+            :ref:`orm_declarative_type_map_pep695_types`
+
+            :ref:`orm_declarative_mapped_column_generic_pep593`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12847
+
+        Fixed issue where selecting an enum array column containing NULL values
+        would fail to parse properly in the PostgreSQL dialect. The
+        :func:`._split_enum_values` function now correctly handles NULL entries by
+        converting them to Python ``None`` values.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 12855
+
+        Added new decorator :func:`_orm.mapped_as_dataclass`, which is a function
+        based form of :meth:`_orm.registry.mapped_as_dataclass`; the method form
+        :meth:`_orm.registry.mapped_as_dataclass` does not seem to be correctly
+        recognized within the scope of :pep:`681` in recent mypy versions.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 12864
+
+        Fixed issue where SQLite table reflection would fail for tables using
+        ``WITHOUT ROWID`` and/or ``STRICT`` table options when the table contained
+        generated columns. The regular expression used to parse ``CREATE TABLE``
+        statements for generated column detection has been updated to properly
+        handle these SQLite table options that appear after the column definitions.
+        Pull request courtesy Tip ten Brink.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12874
+
+        Fixed issue where the :func:`_sql.any_` and :func:`_sql.all_` aggregation
+        operators would not correctly coerce the datatype of the compared value, in
+        those cases where the compared value were not a simple int/str etc., such
+        as a Python ``Enum`` or other custom value.   This would lead to execution
+        time errors for these values.  This issue is essentially the same as
+        :ticket:`6515` which was for the now-legacy :meth:`.ARRAY.any` and
+        :meth:`.ARRAY.all` methods.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 12881
+
+        Implemented initial support for free-threaded Python by adding new tests
+        and reworking the test harness to include Python 3.13t and Python 3.14t in
+        test runs. Two concurrency issues have been identified and fixed: the first
+        involves initialization of the ``.c`` collection on a ``FromClause``, a
+        continuation of :ticket:`12302`, where an optional mutex under
+        free-threading is added; the second involves synchronization of the pool
+        "first_connect" event, which first received thread synchronization in
+        :ticket:`2964`, however under free-threading the creation of the mutex
+        itself runs under the same free-threading mutex. Support for free-threaded
+        wheels on Pypi is implemented as well within the 2.1 series only.  Initial
+        pull request and test suite courtesy Lysandros Nikolaou.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 12884
+
+        Fixed issue where :meth:`_schema.MetaData.reflect` did not forward
+        dialect-specific keyword arguments to the :class:`_engine.Inspector`
+        methods, causing options like ``oracle_resolve_synonyms`` to be ignored
+        during reflection. The method now ensures that all extra kwargs passed to
+        :meth:`_schema.MetaData.reflect` are forwarded to
+        :meth:`_engine.Inspector.get_table_names` and related reflection methods.
+        Pull request courtesy Lukáš Kožušník.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 12894
+
+        Fixed issue where the index reflection for SQL Server would
+        not correctly return the order of the column inside an index
+        when the order of the columns in the index did not match the
+        order of the columns in the table.
+        Pull request courtesy of Allen Chen.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12905
+
+        Fixed a caching issue where :func:`_orm.with_loader_criteria` would
+        incorrectly reuse cached bound parameter values when used with
+        :class:`_sql.CompoundSelect` constructs such as :func:`_sql.union`. The
+        issue was caused by the cache key for compound selects not including the
+        execution options that are part of the :class:`_sql.Executable` base class,
+        which :func:`_orm.with_loader_criteria` uses to apply its criteria
+        dynamically. The fix ensures that compound selects and other executable
+        constructs properly include execution options in their cache key traversal.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 12907
+
+        Fixed issue in the MSSQL dialect's foreign key reflection query where
+        duplicate rows could be returned when a foreign key column and its
+        referenced primary key column have the same name, and both the referencing
+        and referenced tables have indexes with the same name. This resulted in an
+        "ForeignKeyConstraint with duplicate source column references are not
+        supported" error when attempting to reflect such tables. The query has been
+        corrected to exclude indexes on the child table when looking for unique
+        indexes referenced by foreign keys.
+
+    .. change::
+        :tags: bug, platform
+
+        Unblocked automatic greenlet installation for Python 3.14 now that
+        there are greenlet wheels on pypi for python 3.14.
 
 .. changelog::
     :version: 2.0.43

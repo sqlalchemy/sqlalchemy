@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, ext
-    :tickets: 12802
-
-    Fixed issue caused by an unwanted functional change while typing
-    the :class:`.MutableList` class.
-    This change also reverts all other functional changes done in
-    the same change.
