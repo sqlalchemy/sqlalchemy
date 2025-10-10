@@ -534,6 +534,8 @@ class SessionTest(NoCache, fixtures.MappedTest):
         )
         cls.mapper_registry.map_imperatively(Child, child)
 
+    # the profiling count depends on weakref callbacks being GC'ed
+    @testing.add_to_marker.gc_intensive
     def test_expire_lots(self):
         Parent, Child = self.classes.Parent, self.classes.Child
         obj = [
