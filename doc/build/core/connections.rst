@@ -1987,7 +1987,7 @@ degrade to "non-batched" mode which runs individual INSERT statements for each
 parameter set.
 
 For example, on SQL Server when an auto incrementing ``IDENTITY`` column is
-used as the primary key, the following SQL form is used:
+used as the primary key, the following SQL form is used [#]_:
 
 .. sourcecode:: sql
 
@@ -2039,27 +2039,31 @@ of **non-batched** mode when guaranteed RETURNING ordering is requested.
 
 .. seealso::
 
-    .. [#]
-
-    * Microsoft SQL Server rationale
-
-      "INSERT queries that use SELECT with ORDER BY to populate rows guarantees
-      how identity values are computed but not the order in which the rows are inserted."
-      https://learn.microsoft.com/en-us/sql/t-sql/statements/insert-transact-sql?view=sql-server-ver16#limitations-and-restrictions
-
-    * PostgreSQL batched INSERT Discussion
-
-      Original description in 2018 https://www.postgresql.org/message-id/29386.1528813619@sss.pgh.pa.us
-
-      Follow up in 2023 - https://www.postgresql.org/message-id/be108555-da2a-4abc-a46b-acbe8b55bd25%40app.fastmail.com
 
     .. [#]
 
-   * MariaDB AUTO_INCREMENT behavior (using the same InnoDB engine as MySQL):
+      * Microsoft SQL Server rationale
 
-     https://dev.mysql.com/doc/refman/8.0/en/innodb-auto-increment-handling.html
+        "INSERT queries that use SELECT with ORDER BY to populate rows guarantees
+        how identity values are computed but not the order in which the rows are inserted."
+        https://learn.microsoft.com/en-us/sql/t-sql/statements/insert-transact-sql?view=sql-server-ver16#limitations-and-restrictions
 
-     https://dba.stackexchange.com/a/72099
+    .. [#]
+
+      * PostgreSQL batched INSERT Discussion
+
+        Original description in 2018 https://www.postgresql.org/message-id/29386.1528813619@sss.pgh.pa.us
+
+        Follow up in 2023 - https://www.postgresql.org/message-id/be108555-da2a-4abc-a46b-acbe8b55bd25%40app.fastmail.com
+
+    .. [#]
+
+      * MariaDB AUTO_INCREMENT behavior (using the same InnoDB engine as MySQL)
+
+        https://dev.mysql.com/doc/refman/8.0/en/innodb-auto-increment-handling.html
+
+        https://dba.stackexchange.com/a/72099
+
 
 .. _engine_insertmanyvalues_non_batch:
 

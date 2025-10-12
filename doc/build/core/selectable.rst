@@ -123,7 +123,7 @@ The classes here are generated using the constructors listed at
 .. autoclass:: Select
    :members:
    :inherited-members:  ClauseElement
-   :exclude-members: memoized_attribute, memoized_instancemethod, append_correlation, append_column, append_prefix, append_whereclause, append_having, append_from, append_order_by, append_group_by
+   :exclude-members: __new__, memoized_attribute, memoized_instancemethod, append_correlation, append_column, append_prefix, append_whereclause, append_having, append_from, append_order_by, append_group_by
 
 
 .. autoclass:: Selectable
@@ -133,7 +133,7 @@ The classes here are generated using the constructors listed at
 .. autoclass:: SelectBase
    :members:
    :inherited-members:  ClauseElement
-   :exclude-members: memoized_attribute, memoized_instancemethod
+   :exclude-members: __new__, memoized_attribute, memoized_instancemethod
 
 .. autoclass:: Subquery
    :members:

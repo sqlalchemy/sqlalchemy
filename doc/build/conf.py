@@ -477,3 +477,14 @@ epub_copyright = "2007-2015, SQLAlchemy authors"
 
 # Allow duplicate toc entries.
 # epub_tocdup = True
+
+
+def setup(app):  # noqa: U100
+    """Sphinx setup hook to configure documentation build."""
+
+    # delete class attributes with a value, where the value has ``__doc__``
+    # defined, but we want to see only the docstring under the attribute
+    # itself.
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    del AsyncSession.sync_session_class
