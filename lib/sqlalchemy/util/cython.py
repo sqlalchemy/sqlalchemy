@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Callable
+from typing import overload
 from typing import Protocol
 from typing import Type
 from typing import TYPE_CHECKING
@@ -64,19 +65,21 @@ def cast(type_: Type[_T], value: Any, *, typecheck: bool = False) -> _T:
 
 if TYPE_CHECKING:
     class _DecoratorProtocol(Protocol):
-        def __call__(self, __fn: _T) -> _T: ... # type: ignore
+        @overload
+        def __call__(self, __fn: _T) -> _T: ... 
+        @overload
         def __call__(self, *args: Any, **kwargs: Any) -> Callable[[_T], _T]: ...
 
 
     def __getattr__(name: str) -> _DecoratorProtocol:
         class _DecoratorShim:
             def __call__(self, *args: Any, **kwargs: Any) -> Any:
-                # Direct decorator: @shim
+                # Direct decorator
                 if len(args) == 1 and not kwargs and callable(args[0]):
                     return args[0]
-                # Decorator factory: @shim(...)
+                # Decorator factory
                 def _decorator(obj: _T) -> _T:
                     return obj
                 return _decorator
             
-        return _DecoratorShim()  # type: ignore[return-value]
+        return _DecoratorShim() 
