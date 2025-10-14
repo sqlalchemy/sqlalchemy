@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
+import inspect
 from typing import Any
 from typing import Callable
 from typing import overload
@@ -70,15 +71,16 @@ class _DecoratorProtocol(Protocol):
     def __call__(self, *args: Any, **kwargs: Any) -> Callable[[_T], _T]: ...
 
 
-def __getattr__(name: str) -> _DecoratorProtocol:
-    class _DecoratorShim:
-        def __call__(self, *args: Any, **kwargs: Any) -> Any:
-            # Direct decorator
-            if len(args) == 1 and not kwargs and callable(args[0]):
-                return args[0]
-            # Decorator factory
-            def _decorator(obj: _T) -> _T:
-                return obj
-            return _decorator
+class _DecoratorShim:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        # Direct decorator
+        if len(args) == 1 and not kwargs and inspect.isfunction(args[0]):
+            return args[0]
+        # Decorator factory
+        def _decorator(obj: _T) -> _T:
+            return obj
+        return _decorator
 
-    return _DecoratorShim() 
+
+def __getattr__(name: str) -> _DecoratorProtocol:
+    return _DecoratorShim()
