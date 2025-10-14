@@ -161,7 +161,7 @@ def _apply_processors(
         else:
             value = data[i]
         PyTuple_SET_ITEM(res, i, value)
-    return tuple(res) if not isinstance(res, tuple) else res
+    return tuple(res) if not cython.compiled else res
 
 
 # This reconstructor is necessary so that pickles with the Cy extension or
