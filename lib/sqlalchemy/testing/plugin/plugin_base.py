@@ -660,6 +660,12 @@ def _possible_configs_for_cls(cls, reasons=None, sparse=False):
                         reasons.extend(skip_reasons)
                     break
 
+                warnings = check.matching_warnings(config_obj)
+                if warnings:
+                    cls.__warnings__ = getattr(
+                        cls, "__warnings__", ()
+                    ) + tuple(warnings)
+
     if hasattr(cls, "__prefer_requires__"):
         non_preferred = set()
         requirements = config.requirements
