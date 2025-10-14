@@ -136,7 +136,9 @@ class BaseRow:
 
 
 try:
-    from cython.cimports.cpython import PyTuple_New, PyTuple_SET_ITEM, PySequence_Length
+    from cython.cimports.cpython import PyTuple_New
+    from cython.cimports.cpython import PyTuple_SET_ITEM
+    from cython.cimports.cpython import PySequence_Length
 except ImportError:
     if not cython.compiled:
         PyTuple_New = lambda n: [None] * n # actually list
@@ -150,10 +152,10 @@ except ImportError:
 def _apply_processors(
     proc: _ProcessorsType, data: Sequence[Any]
 ) -> Tuple[Any, ...]:
-    proc_size = PySequence_Length(data)
+    proc_size = PySequence_Length(proc)
     res = PyTuple_New(proc_size)
     # TODO: would be nice to do this only on the fist row
-    assert len(res) == proc_size
+    assert PySequence_Length(data) == proc_size
     for i in range(proc_size):
         p = proc[i]
         if p is not None:
