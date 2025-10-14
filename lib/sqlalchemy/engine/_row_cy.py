@@ -139,14 +139,12 @@ try:
     from cython.cimports.cpython import PyTuple_New, PyTuple_SET_ITEM, PySequence_Length
 except ImportError:
     if not cython.compiled:
-        PyTuple_New = lambda n: [] # actually list
+        PyTuple_New = lambda _: [] # actually list
         def PyTuple_SET_ITEM(tup, idx, item): tup[idx] = item # type: ignore
         PySequence_Length = len
 
 @cython.inline
 @cython.cfunc
-@cython.boundscheck(False)
-@cython.wraparound(False)
 @cython.returns(tuple)
 @cython.locals(res=tuple, proc_size=cython.Py_ssize_t, p=object, value=object)
 def _apply_processors(
