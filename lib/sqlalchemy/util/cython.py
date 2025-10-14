@@ -6,11 +6,8 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
-import inspect
 from typing import Any
 from typing import Callable
-from typing import overload
-from typing import Protocol
 from typing import Type
 from typing import TypeVar
 
@@ -63,8 +60,10 @@ def exceptval(value: Any = None, *, check: bool = False) -> _NO_OP[_T]:
 def cast(type_: Type[_T], value: Any, *, typecheck: bool = False) -> _T:
     return value  # type: ignore[no-any-return]
 
+
 def returns(_: type) -> _NO_OP[_T]:
     return _no_op
 
-def locals(**kwargs: Any) -> _NO_OP[_T]:
+
+def locals(**kwargs: Any) -> _NO_OP[_T]:  # noqa: A001
     return _no_op

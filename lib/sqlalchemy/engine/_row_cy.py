@@ -142,10 +142,17 @@ try:
     from cython.cimports.cpython import PySequence_Length
 except ImportError:
     if not cython.compiled:
-        PyTuple_New = lambda n: [None] * n # actually list
-        def PyTuple_SET_ITEM(tup, idx, item): tup[idx] = item # type: ignore
+
+        def PyTuple_New(n: int) -> list:
+            """Actually produces list if not compiled"""
+            return [None] * n
+
+        def PyTuple_SET_ITEM(tup, idx, item):
+            tup[idx] = item  # type: ignore
+
         PySequence_Length = len
         Py_INCREF = cython._no_op
+
 
 @cython.inline
 @cython.cfunc
