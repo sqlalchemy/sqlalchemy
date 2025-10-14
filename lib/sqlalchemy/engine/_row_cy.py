@@ -139,7 +139,7 @@ try:
     from cython.cimports.cpython import PyTuple_New, PyTuple_SET_ITEM, PySequence_Length
 except ImportError:
     if not cython.compiled:
-        PyTuple_New = lambda _: [] # actually list
+        PyTuple_New = lambda n: [None] * n # actually list
         def PyTuple_SET_ITEM(tup, idx, item): tup[idx] = item # type: ignore
         PySequence_Length = len
 
