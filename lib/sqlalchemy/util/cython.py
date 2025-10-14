@@ -63,24 +63,8 @@ def exceptval(value: Any = None, *, check: bool = False) -> _NO_OP[_T]:
 def cast(type_: Type[_T], value: Any, *, typecheck: bool = False) -> _T:
     return value  # type: ignore[no-any-return]
 
+def returns(_: type) -> _NO_OP[_T]:
+    return _no_op
 
-class _DecoratorProtocol(Protocol):
-    @overload
-    def __call__(self, __fn: _T) -> _T: ... 
-    @overload
-    def __call__(self, *args: Any, **kwargs: Any) -> Callable[[_T], _T]: ...
-
-
-class _DecoratorShim:
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        # Direct decorator
-        if len(args) == 1 and not kwargs and inspect.isfunction(args[0]):
-            return args[0]
-        # Decorator factory
-        def _decorator(obj: _T) -> _T:
-            return obj
-        return _decorator
-
-
-def __getattr__(name: str) -> _DecoratorProtocol:
-    return _DecoratorShim()
+def locals(**kwargs: Any) -> _NO_OP[_T]:
+    return _no_op

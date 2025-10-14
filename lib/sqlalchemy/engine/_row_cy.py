@@ -137,6 +137,7 @@ class BaseRow:
 
 try:
     from cython.cimports.cpython import PyTuple_New
+    from cython.cimports.cpython import Py_INCREF
     from cython.cimports.cpython import PyTuple_SET_ITEM
     from cython.cimports.cpython import PySequence_Length
 except ImportError:
@@ -144,6 +145,7 @@ except ImportError:
         PyTuple_New = lambda n: [None] * n # actually list
         def PyTuple_SET_ITEM(tup, idx, item): tup[idx] = item # type: ignore
         PySequence_Length = len
+        Py_INCREF = cython._no_op
 
 @cython.inline
 @cython.cfunc
@@ -153,17 +155,19 @@ def _apply_processors(
     proc: _ProcessorsType, data: Sequence[Any]
 ) -> Tuple[Any, ...]:
     proc_size = PySequence_Length(proc)
-    res = PyTuple_New(proc_size)
     # TODO: would be nice to do this only on the fist row
     assert PySequence_Length(data) == proc_size
+    res = PyTuple_New(proc_size)
     for i in range(proc_size):
         p = proc[i]
         if p is not None:
             value = p(data[i])
         else:
             value = data[i]
+        if cython.compiled:
+            Py_INCREF(value)
         PyTuple_SET_ITEM(res, i, value)
-    return tuple(res) if not cython.compiled else res
+    return res if cython.compiled else tuple(res)
 
 
 # This reconstructor is necessary so that pickles with the Cy extension or
