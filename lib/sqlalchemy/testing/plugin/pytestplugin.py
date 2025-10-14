@@ -435,6 +435,8 @@ def _parametrize_cls(module, cls):
 
 _current_class = None
 
+_current_warning_context = None
+
 
 def pytest_runtest_setup(item):
     from sqlalchemy.testing import asyncio
@@ -445,7 +447,7 @@ def pytest_runtest_setup(item):
     # databases, so we run this outside of the pytest fixture system altogether
     # and ensure asyncio greenlet if any engines are async
 
-    global _current_class
+    global _current_class, _current_warning_context
 
     if isinstance(item, pytest.Function) and _current_class is None:
         asyncio._maybe_async_provisioning(
@@ -453,6 +455,14 @@ def pytest_runtest_setup(item):
             item.cls,
         )
         _current_class = item.getparent(pytest.Class)
+
+        if hasattr(_current_class.cls, "__warnings__"):
+            import warnings
+
+            _current_warning_context = warnings.catch_warnings()
+            _current_warning_context.__enter__()
+            for warning_message in _current_class.cls.__warnings__:
+                warnings.filterwarnings("ignore", warning_message)
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -470,13 +480,19 @@ def pytest_runtest_teardown(item, nextitem):
     # pytest_runtest_setup since the class has not yet been setup at that
     # time.
     # See https://github.com/pytest-dev/pytest/issues/9343
-    global _current_class, _current_report
+
+    global _current_class, _current_report, _current_warning_context
 
     if _current_class is not None and (
         # last test or a new class
         nextitem is None
         or nextitem.getparent(pytest.Class) is not _current_class
     ):
+
+        if _current_warning_context is not None:
+            _current_warning_context.__exit__(None, None, None)
+            _current_warning_context = None
+
         _current_class = None
 
         try:
@@ -673,7 +689,8 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
 
     def mark_base_test_class(self):
         return pytest.mark.usefixtures(
-            "setup_class_methods", "setup_test_methods"
+            "setup_class_methods",
+            "setup_test_methods",
         )
 
     _combination_id_fns = {
