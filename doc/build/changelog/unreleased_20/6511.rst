@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 6511
+
+    Added support for reflection of collation in types for PostgreSQL.
+    The ``collation`` will be set only if different from the default
+    one for the type.
+    Pull request courtesy Denis Laxalde.

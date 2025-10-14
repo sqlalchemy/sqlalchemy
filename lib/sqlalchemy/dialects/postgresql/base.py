@@ -3799,6 +3799,32 @@ class PGDialect(default.DefaultDialect):
             .scalar_subquery()
             .label("default")
         )
+
+        # get the name of the collate when it's different from the default one
+        collate = sql.case(
+            (
+                sql.and_(
+                    pg_catalog.pg_attribute.c.attcollation != 0,
+                    select(pg_catalog.pg_type.c.typcollation)
+                    .where(
+                        pg_catalog.pg_type.c.oid
+                        == pg_catalog.pg_attribute.c.atttypid,
+                    )
+                    .correlate(pg_catalog.pg_attribute)
+                    .scalar_subquery()
+                    != pg_catalog.pg_attribute.c.attcollation,
+                ),
+                select(pg_catalog.pg_collation.c.collname)
+                .where(
+                    pg_catalog.pg_collation.c.oid
+                    == pg_catalog.pg_attribute.c.attcollation
+                )
+                .correlate(pg_catalog.pg_attribute)
+                .scalar_subquery(),
+            ),
+            else_=sql.null(),
+        ).label("collation")
+
         relkinds = self._kind_to_relkinds(kind)
         query = (
             select(
@@ -3813,6 +3839,7 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_description.c.description.label("comment"),
                 generated,
                 identity,
+                collate,
             )
             .select_from(pg_catalog.pg_class)
             # NOTE: postgresql support table with no user column, meaning
@@ -3891,6 +3918,7 @@ class PGDialect(default.DefaultDialect):
         domains: Dict[str, ReflectedDomain],
         enums: Dict[str, ReflectedEnum],
         type_description: str,
+        collation: Optional[str],
     ) -> sqltypes.TypeEngine[Any]:
         """
         Attempts to reconstruct a column type defined in ischema_names based
@@ -3991,6 +4019,7 @@ class PGDialect(default.DefaultDialect):
                     domains,
                     enums,
                     type_description="DOMAIN '%s'" % domain["name"],
+                    collation=domain["collation"],
                 )
                 args = (domain["name"], data_type)
 
@@ -4023,6 +4052,9 @@ class PGDialect(default.DefaultDialect):
             )
             return sqltypes.NULLTYPE
 
+        if collation is not None:
+            kwargs["collation"] = collation
+
         data_type = schema_type(*args, **kwargs)
         if array_dim >= 1:
             # postgres does not preserve dimensionality or size of array types.
@@ -4041,11 +4073,14 @@ class PGDialect(default.DefaultDialect):
                 continue
             table_cols = columns[(schema, row_dict["table_name"])]
 
+            collation = row_dict["collation"]
+
             coltype = self._reflect_type(
                 row_dict["format_type"],
                 domains,
                 enums,
                 type_description="column '%s'" % row_dict["name"],
+                collation=collation,
             )
 
             default = row_dict["default"]

@@ -48,6 +48,7 @@ from ...sql.schema import BLANK_SCHEMA
 from ...testing import ComparesIndexes
 from ...testing import ComparesTables
 from ...testing import is_false
+from ...testing import is_none
 from ...testing import is_true
 from ...testing import mock
 
@@ -2488,6 +2489,29 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         eq_(tc, {"text": "🎩🁰🝑🤷‍♀️🤷‍♂️"})
         c = insp.get_columns("unicode_comments")[0]
         eq_({c["name"]: c["comment"]}, {"emoji": "🐍🧙🝝🧙‍♂️🧙‍♀️"})
+
+    @testing.requires.column_collation_reflection
+    @testing.requires.order_by_collation
+    def test_column_collation_reflection(self, connection, metadata):
+        collation = testing.requires.get_order_by_collation(config)
+        Table(
+            "t",
+            metadata,
+            Column("collated", sa.String(collation=collation)),
+            Column("not_collated", sa.String()),
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+        t2 = Table("t", m2, autoload_with=connection)
+
+        eq_(t2.c.collated.type.collation, collation)
+        is_none(t2.c.not_collated.type.collation)
+
+        insp = inspect(connection)
+        collated, not_collated = insp.get_columns("t")
+        eq_(collated["type"].collation, collation)
+        is_none(not_collated["type"].collation)
 
 
 class TableNoColumnsTest(fixtures.TestBase):
