@@ -2514,9 +2514,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     @testing.combinations(
-        ("no_persisted", " STORED", "ignore"),
-        ("persisted_none", " STORED", None),
+        ("no_persisted", "", "ignore"),
+        ("persisted_none", "", None),
         ("persisted_true", " STORED", True),
+        ("persisted_false", " VIRTUAL", False),
         id_="iaa",
     )
     def test_column_computed(self, text, persisted):
@@ -2534,7 +2535,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALWAYS AS (x + 2)%s)" % text,
         )
 
-    def test_column_computed_persisted_false(self):
+    def test_column_computed_persisted_false_old_version(self):
         m = MetaData()
         t = Table(
             "t",
@@ -2542,12 +2543,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("x", Integer),
             Column("y", Integer, Computed("x + 2", persisted=False)),
         )
-        assert_raises_message(
+        old_dialect = postgresql.dialect()
+        old_dialect.supports_virtual_generated_columns = False
+        with expect_raises_message(
             exc.CompileError,
             "PostrgreSQL computed columns do not support 'virtual'",
-            schema.CreateTable(t).compile,
-            dialect=postgresql.dialect(),
+        ):
+            schema.CreateTable(t).compile(dialect=old_dialect)
+
+    def test_column_computed_persisted_none_warning_old_version(self):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2")),
         )
+        old_dialect = postgresql.dialect()
+        old_dialect.supports_virtual_generated_columns = False
+
+        with expect_warnings(
+            "Computed column t.y is being created as 'STORED' since"
+        ):
+            self.assert_compile(
+                schema.CreateTable(t),
+                "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+                "ALWAYS AS (x + 2) STORED)",
+                dialect=old_dialect,
+            )
 
     @testing.combinations(True, False)
     def test_column_identity(self, pk):

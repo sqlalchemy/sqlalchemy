@@ -699,11 +699,7 @@ class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             ("computed", testing.requires.computed_columns),
         ],
     )
-    def test_bulk_update_onupdates(
-        self,
-        decl_base,
-        use_onupdate,
-    ):
+    def test_bulk_update_onupdates(self, decl_base, use_onupdate):
         """assert that for now, bulk ORM update by primary key does not
         expire or refresh onupdates."""
 

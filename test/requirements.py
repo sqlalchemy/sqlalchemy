@@ -15,6 +15,7 @@ from sqlalchemy.testing.exclusions import only_on
 from sqlalchemy.testing.exclusions import skip_if
 from sqlalchemy.testing.exclusions import SpecPredicate
 from sqlalchemy.testing.exclusions import succeeds_if
+from sqlalchemy.testing.exclusions import warns_if
 from sqlalchemy.testing.requirements import SuiteRequirements
 
 
@@ -1993,7 +1994,15 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def computed_columns(self):
-        return skip_if(["postgresql < 12", "sqlite < 3.31", "mysql < 5.7"])
+        return (
+            skip_if("postgresql < 12")
+            + warns_if(
+                "postgresql < 18",
+                r".*PostgreSQL version does not support VIRTUAL",
+                assert_=False,
+            )
+            + skip_if(["sqlite < 3.31", "mysql < 5.7"])
+        )
 
     @property
     def python_profiling_backend(self):
@@ -2005,11 +2014,11 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def computed_columns_virtual(self):
-        return self.computed_columns + skip_if(["postgresql"])
+        return self.computed_columns + skip_if(["postgresql<18"])
 
     @property
     def computed_columns_default_persisted(self):
-        return self.computed_columns + only_if("postgresql")
+        return self.computed_columns + only_if("postgresql<18")
 
     @property
     def computed_columns_reflect_persisted(self):
