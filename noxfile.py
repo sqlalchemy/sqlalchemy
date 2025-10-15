@@ -287,8 +287,10 @@ def _tests(
     posargs, opts = extract_opts(session.posargs, "generate-junit", "dry-run")
 
     if opts.generate_junit:
+        has_greenlet = "greenlet" if greenlet else "nogreenlet"
+
         # produce individual junit files that are per-database
-        junitfile = f"junit-{database}.xml"
+        junitfile = f"junit-{database}-{cext}-{has_greenlet}.xml"
         cmd.extend(["--junitxml", junitfile])
 
     cmd.extend(posargs)
