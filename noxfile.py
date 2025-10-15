@@ -251,8 +251,10 @@ def _tests(
         assert not platform_intensive
         has_greenlet = "greenlet" if greenlet else "nogreenlet"
 
+        session.env["COVERAGE_FILE"] = f".coverage.{file_suffix}"
         cmd.extend(
             [
+                "--cov-reset",
                 "--cov=sqlalchemy",
                 "--cov-append",
                 "--cov-report",
