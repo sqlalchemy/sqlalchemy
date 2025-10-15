@@ -293,6 +293,9 @@ def _tests(
         junitfile = f"junit-{database}-{cext}-{has_greenlet}.xml"
         cmd.extend(["--junitxml", junitfile])
 
+    if database in ["oracle", "mssql", "sqlite_file"]:
+        cmd.extend(["--write-idents", "db_idents.txt"])
+
     cmd.extend(posargs)
 
     if opts.dry_run:
@@ -303,8 +306,10 @@ def _tests(
         session.run(*cmd)
     finally:
         # Run cleanup for oracle/mssql
-        if database in ["oracle", "mssql"]:
-            session.run("python", "reap_dbs.py", "db_idents.txt")
+        if database in ["oracle", "mssql", "sqlite_file"]:
+            if os.path.exists("db_idents.txt"):
+                session.run("python", "reap_dbs.py", "db_idents.txt")
+                os.unlink("db_idents.txt")
 
 
 @nox.session(name="pep484")
