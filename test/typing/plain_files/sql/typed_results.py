@@ -193,12 +193,12 @@ def t_entity_varieties() -> None:
 def t_ambiguous_result_type_one() -> None:
     stmt = select(column("q", Integer), table("x", column("y")))
 
-    # EXPECTED_TYPE: Select[Unpack[.*tuple[Any, ...]]]
+    # EXPECTED_TYPE: Select[Unpack[tuple[Any, ...]]]
     reveal_type(stmt)
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Unpack[.*tuple[Any, ...]]]
+    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
     reveal_type(result)
 
 
@@ -209,7 +209,7 @@ def t_ambiguous_result_type_two() -> None:
     reveal_type(stmt)
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Unpack[.*tuple[Any, ...]]]
+    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
     reveal_type(result)
 
 

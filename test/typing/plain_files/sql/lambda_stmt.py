@@ -61,7 +61,7 @@ with e.connect() as conn:
     result = conn.execute(s6)
 
     if TYPE_CHECKING:
-        # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
+        # EXPECTED_TYPE: CursorResult[Unpack[tuple[Any, ...]]]
         reveal_type(result)
 
     # we can type these like this
