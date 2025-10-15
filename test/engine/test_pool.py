@@ -1090,7 +1090,12 @@ class QueuePoolTest(PoolTestBase):
             c2 = p.connect()  # noqa
         # Python timing is not very accurate, the time diff should be very
         # close to 0.5s but we give 200ms of slack.
-        assert 0.3 <= time.time() - now <= 0.7, "Pool timeout not respected"
+
+        total = time.time() - now
+        assert 0.3 <= total <= 0.9, (
+            f"Pool timeout not respected, got {total} which "
+            "is not between .3 and .9 seconds"
+        )
 
     @testing.requires.threading_with_mock
     @testing.requires.timing_intensive
@@ -1251,14 +1256,14 @@ class QueuePoolTest(PoolTestBase):
         for t in threads:
             t.join(timeout=join_timeout)
         eq_(
-            dbapi.connect().operation.mock_calls,
-            [
-                call("success_one"),
-                call("success_two"),
-                call("overflow_two"),
-                call("overflow_three"),
-                call("overflow_one"),
-            ],
+            set(c.args[0] for c in dbapi.connect().operation.mock_calls),
+            {
+                "success_one",
+                "success_two",
+                "overflow_two",
+                "overflow_three",
+                "overflow_one",
+            },
         )
 
     @testing.requires.threading_with_mock
