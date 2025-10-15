@@ -216,6 +216,9 @@ def _tests(
 
     includes_excludes: dict[str, list[str]] = {"k": [], "m": []}
 
+    has_greenlet = "greenlet" if greenlet else "nogreenlet"
+    file_suffix = f"{database}-{cext}-{has_greenlet}"
+
     if coverage:
         timing_intensive = False
 
@@ -246,6 +249,8 @@ def _tests(
 
     if coverage:
         assert not platform_intensive
+        has_greenlet = "greenlet" if greenlet else "nogreenlet"
+
         cmd.extend(
             [
                 "--cov=sqlalchemy",
@@ -253,7 +258,7 @@ def _tests(
                 "--cov-report",
                 "term",
                 "--cov-report",
-                "xml",
+                f"xml:coverage-{file_suffix}.xml",
             ],
         )
         includes_excludes["k"].append("not aaa_profiling")
@@ -290,7 +295,7 @@ def _tests(
         has_greenlet = "greenlet" if greenlet else "nogreenlet"
 
         # produce individual junit files that are per-database
-        junitfile = f"junit-{database}-{cext}-{has_greenlet}.xml"
+        junitfile = f"junit-{file_suffix}.xml"
         cmd.extend(["--junitxml", junitfile])
 
     if database in ["oracle", "mssql", "sqlite_file"]:
