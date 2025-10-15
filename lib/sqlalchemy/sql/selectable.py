@@ -7293,11 +7293,28 @@ TextAsFrom = TextualSelect
 
 
 class AnnotatedFromClause(Annotated):
-    def _copy_internals(self, **kw: Any) -> None:
+    def _copy_internals(
+        self,
+        _annotations_traversal: bool = False,
+        ind_cols_on_fromclause: bool = False,
+        **kw: Any,
+    ) -> None:
         super()._copy_internals(**kw)
-        if kw.get("ind_cols_on_fromclause", False):
-            ee = self._Annotated__element  # type: ignore
 
+        # passed from annotations._shallow_annotate(), _deep_annotate(), etc.
+        # the traversals used by annotations for these cases are not currently
+        # designed around expecting that inner elements inside of
+        # AnnotatedFromClause's element are also deep copied, so skip for these
+        # cases. in other cases such as plain visitors.cloned_traverse(), we
+        # expect this to happen. see issue #12915
+        if not _annotations_traversal:
+            ee = self._Annotated__element  # type: ignore
+            ee._copy_internals(**kw)
+
+        if ind_cols_on_fromclause:
+            # passed from annotations._deep_annotate().  See that function
+            # for notes
+            ee = self._Annotated__element  # type: ignore
             self.c = ee.__class__.c.fget(self)  # type: ignore
 
     @util.ro_memoized_property
