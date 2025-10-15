@@ -57,8 +57,8 @@ def _setup_for_driver(
 ) -> None:
 
     # install driver deps listed out in pyproject.toml
-    nogreenlet_deps = f"tests-{basename.replace("_", "-")}"
-    greenlet_deps = f"tests-{basename.replace("_", "-")}-asyncio"
+    nogreenlet_deps = f"tests-{basename.replace('_', '-')}"
+    greenlet_deps = f"tests-{basename.replace('_', '-')}-asyncio"
 
     deps = nox.project.dependency_groups(
         pyproject,
