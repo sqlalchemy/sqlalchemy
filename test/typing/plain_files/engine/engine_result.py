@@ -29,27 +29,27 @@ def row_one(row: Row[int, str, bool]) -> None:
 
 
 def result_one(res: Result[int, str]) -> None:
-    # EXPECTED_ROW_TYPE: Row[int, str]
+    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]]
     reveal_type(res.one())
-    # EXPECTED_ROW_TYPE: Row[int, str] | None
+    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]] | None
     reveal_type(res.one_or_none())
-    # EXPECTED_ROW_TYPE: Row[int, str] | None
+    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]] | None
     reveal_type(res.fetchone())
-    # EXPECTED_ROW_TYPE: Row[int, str] | None
+    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]] | None
     reveal_type(res.first())
-    # EXPECTED_ROW_TYPE: Sequence[Row[int, str]]
+    # EXPECTED_TYPE: Sequence[tuple[int, str, fallback=Row[int, str]]]
     reveal_type(res.all())
-    # EXPECTED_ROW_TYPE: Sequence[Row[int, str]]
+    # EXPECTED_TYPE: Sequence[tuple[int, str, fallback=Row[int, str]]]
     reveal_type(res.fetchmany())
-    # EXPECTED_ROW_TYPE: Sequence[Row[int, str]]
+    # EXPECTED_TYPE: Sequence[tuple[int, str, fallback=Row[int, str]]]
     reveal_type(res.fetchall())
-    # EXPECTED_ROW_TYPE: Row[int, str]
+    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]]
     reveal_type(next(res))
     for rf in res:
-        # EXPECTED_ROW_TYPE: Row[int, str]
+        # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]]
         reveal_type(rf)
     for rp in res.partitions():
-        # EXPECTED_ROW_TYPE: Sequence[Row[int, str]]
+        # EXPECTED_TYPE: Sequence[tuple[int, str, fallback=Row[int, str]]]
         reveal_type(rp)
 
     # EXPECTED_TYPE: ScalarResult[int]
