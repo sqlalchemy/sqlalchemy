@@ -47,7 +47,7 @@ slide = Slide()
 
 
 if TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: def \(\) -> sqlalchemy.*.orderinglist.OrderingList\[orderinglist_one.Bullet\]
+    # EXPECTED_TYPE: def \(\) -> OrderingList[Bullet]
     reveal_type(pos_from_text)
 
     # EXPECTED_TYPE: builtins.list[orderinglist_one.Bullet]

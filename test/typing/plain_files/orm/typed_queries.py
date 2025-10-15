@@ -95,7 +95,7 @@ def t_select_3() -> None:
     # awkwardnesses that aren't really worth it
     ua(id=1, name="foo")
 
-    # EXPECTED_RE_TYPE: [tT]ype\[.*\.User\]
+    # EXPECTED_TYPE: type[User]
     reveal_type(ua)
 
     stmt = select(ua.id, ua.name).filter(User.id == 5)
@@ -135,7 +135,7 @@ def t_legacy_query_single_entity() -> None:
     reveal_type(q1.all())
 
     # mypy switches to builtins.list for some reason here
-    # EXPECTED_RE_TYPE: .*\.list\[.*Row\*?\[.*User\].*\]
+    # EXPECTED_TYPE: builtins.list[tuple[User, fallback=Row[User]]]
     reveal_type(q1.only_return_tuples(True).all())
 
     # EXPECTED_TYPE: list[tuple[User]]
@@ -322,7 +322,7 @@ def t_legacy_query_scalar_subquery() -> None:
 
     # this should be int but mypy can't see it due to the
     # overload that tries to match an entity.
-    # EXPECTED_RE_TYPE: .*ScalarSelect\[(?:int|Any)\]
+    # EXPECTED_TYPE: ScalarSelect[Any]
     reveal_type(q2)
 
     q3 = session.query(User)
@@ -519,13 +519,13 @@ def t_aliased_fromclause() -> None:
 
     a4 = aliased(user_table)
 
-    # EXPECTED_RE_TYPE: [tT]ype\[.*\.User\]
+    # EXPECTED_TYPE: type[User]
     reveal_type(a1)
 
-    # EXPECTED_RE_TYPE: [tT]ype\[.*\.User\]
+    # EXPECTED_TYPE: type[User]
     reveal_type(a2)
 
-    # EXPECTED_RE_TYPE: [tT]ype\[.*\.User\]
+    # EXPECTED_TYPE: type[User]
     reveal_type(a3)
 
     # EXPECTED_TYPE: FromClause

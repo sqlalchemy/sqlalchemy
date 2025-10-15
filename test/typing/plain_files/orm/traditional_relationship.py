@@ -80,29 +80,29 @@ class Address(Base):
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[traditional_relationship.Address\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[list[Address]]
     reveal_type(User.addresses_style_one)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*?\[traditional_relationship.Address\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[set[Address]]
     reveal_type(User.addresses_style_two)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
+    # EXPECTED_TYPE: InstrumentedAttribute[Any]
     reveal_type(Address.user_style_one)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[traditional_relationship.User\*?\]
+    # EXPECTED_TYPE: InstrumentedAttribute[User]
     reveal_type(Address.user_style_one_typed)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
+    # EXPECTED_TYPE: InstrumentedAttribute[Any]
     reveal_type(Address.user_style_two)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[traditional_relationship.User\*?\]
+    # EXPECTED_TYPE: InstrumentedAttribute[User]
     reveal_type(Address.user_style_two_typed)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[traditional_relationship.User\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[list[User]]
     reveal_type(Address.user_style_three)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[traditional_relationship.User\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[list[User]]
     reveal_type(Address.user_style_four)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
+    # EXPECTED_TYPE: InstrumentedAttribute[Any]
     reveal_type(Address.user_style_five)

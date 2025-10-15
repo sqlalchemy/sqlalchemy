@@ -41,7 +41,7 @@ a = Article(
 # EXPECTED_TYPE: str
 reveal_type(a.topic)
 
-# EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.str\*?\]
+# EXPECTED_TYPE: _HybridClassLevelAccessor[str]
 reveal_type(Article.topic)
 
 # EXPECTED_TYPE: date
@@ -52,15 +52,15 @@ reveal_type(a.updated_at)
 
 a.created_at = date(2025, 7, 30)
 
-# EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[datetime.date\*?\]
+# EXPECTED_TYPE: _HybridClassLevelAccessor[datetime.date]
 reveal_type(Article.created_at)
 
-# EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[datetime.date\*?\]
+# EXPECTED_TYPE: _HybridClassLevelAccessor[datetime.date]
 reveal_type(Article.updated_at)
 
 stmt = select(Article.id, Article.topic, Article.created_at).where(
     Article.id == 1
 )
 
-# EXPECTED_RE_TYPE: .*Select\[.*int, .*str, datetime\.date\]
+# EXPECTED_TYPE: Select[int, str, datetime.date]
 reveal_type(stmt)

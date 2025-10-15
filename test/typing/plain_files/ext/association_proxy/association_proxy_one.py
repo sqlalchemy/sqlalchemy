@@ -40,8 +40,8 @@ class Address(Base):
 u1 = User()
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.*.associationproxy.AssociationProxyInstance\[builtins.set\*?\[builtins.str\]\]
+    # EXPECTED_TYPE: AssociationProxyInstance[set[str]]
     reveal_type(User.email_addresses)
 
-    # EXPECTED_RE_TYPE: builtins.set\*?\[builtins.str\]
+    # EXPECTED_TYPE: set[str]
     reveal_type(u1.email_addresses)

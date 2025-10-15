@@ -28,7 +28,7 @@ tis = TestInitialSupport(data="some data", y=5)
 # EXPECTED_TYPE: str
 reveal_type(tis.data)
 
-# EXPECTED_RE_TYPE: .*builtins.int \| None
+# EXPECTED_TYPE: int | None
 reveal_type(tis.y)
 
 tis.data = "some other data"

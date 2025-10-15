@@ -55,7 +55,7 @@ with Session(e) as sess:
 
     rows1 = q.all()
 
-    # EXPECTED_RE_TYPE: builtins.list\[.*User\*?\]
+    # EXPECTED_TYPE: list[User]
     reveal_type(rows1)
 
     q2 = sess.query(User.id).filter_by(id=7)

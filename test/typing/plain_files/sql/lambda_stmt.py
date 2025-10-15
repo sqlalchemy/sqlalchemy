@@ -71,5 +71,5 @@ with e.connect() as conn:
         # pyright and mypy disagree on the specific type here,
         # mypy sees Result as we said, pyright seems to upgrade it to
         # CursorResult
-        # EXPECTED_RE_TYPE: .*(?:Cursor)?Result\[.*User\]
+        # EXPECTED_TYPE: Result[User]
         reveal_type(my_result)

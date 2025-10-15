@@ -44,10 +44,10 @@ class Interval(Base):
 
         # while we are here, check some Float[] / div type stuff
         if typing.TYPE_CHECKING:
-            # EXPECTED_RE_TYPE: sqlalchemy.*Function\[builtins.float\*?\]
+            # EXPECTED_TYPE: Function[float]
             reveal_type(f1)
 
-            # EXPECTED_RE_TYPE: sqlalchemy.*ColumnElement\[builtins.float\*?\]
+            # EXPECTED_TYPE: ColumnElement[float]
             reveal_type(expr)
         return expr
 
@@ -66,10 +66,10 @@ class Interval(Base):
 
         # while we are here, check some Float[] / div type stuff
         if typing.TYPE_CHECKING:
-            # EXPECTED_RE_TYPE: sqlalchemy.*Function\[builtins.float\*?\]
+            # EXPECTED_TYPE: Function[float]
             reveal_type(f1)
 
-            # EXPECTED_RE_TYPE: sqlalchemy.*ColumnElement\[builtins.float\*?\]
+            # EXPECTED_TYPE: ColumnElement[float]
             reveal_type(expr)
         return expr
 
@@ -92,37 +92,37 @@ expr3n = Interval.new_radius.in_([0.5, 5.2])
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_TYPE: int
     reveal_type(i1.length)
 
-    # EXPECTED_RE_TYPE: builtins.float\*?
+    # EXPECTED_TYPE: float
     reveal_type(i2.old_radius)
 
-    # EXPECTED_RE_TYPE: builtins.float\*?
+    # EXPECTED_TYPE: float
     reveal_type(i2.new_radius)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.int\*?\]
+    # EXPECTED_TYPE: _HybridClassLevelAccessor[int]
     reveal_type(Interval.length)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.float\*?\]
+    # EXPECTED_TYPE: _HybridClassLevelAccessor[float]
     reveal_type(Interval.old_radius)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.float\*?\]
+    # EXPECTED_TYPE: _HybridClassLevelAccessor[float]
     reveal_type(Interval.new_radius)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
+    # EXPECTED_TYPE: BinaryExpression[bool]
     reveal_type(expr1)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.float\*?\]
+    # EXPECTED_TYPE: _HybridClassLevelAccessor[float]
     reveal_type(expr2o)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.float\*?\]
+    # EXPECTED_TYPE: _HybridClassLevelAccessor[float]
     reveal_type(expr2n)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
+    # EXPECTED_TYPE: BinaryExpression[bool]
     reveal_type(expr3o)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
+    # EXPECTED_TYPE: BinaryExpression[bool]
     reveal_type(expr3n)
 
 # test #9268

@@ -131,46 +131,46 @@ class Engineer(Employee):
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str \| None\]
+    # EXPECTED_TYPE: InstrumentedAttribute[str | None]
     reveal_type(User.extra)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str \| None\]
+    # EXPECTED_TYPE: InstrumentedAttribute[str | None]
     reveal_type(User.extra_name)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*?\]
+    # EXPECTED_TYPE: InstrumentedAttribute[str]
     reveal_type(Address.email)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*?\]
+    # EXPECTED_TYPE: InstrumentedAttribute[str]
     reveal_type(Address.email_name)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[relationship.Address\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[list[Address]]
     reveal_type(User.addresses_style_one)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*?\[relationship.Address\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[set[Address]]
     reveal_type(User.addresses_style_two)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[relationship.User\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[list[User]]
     reveal_type(Group.addresses_style_one_anno_only)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*?\[relationship.User\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[set[User]]
     reveal_type(Group.addresses_style_two_anno_only)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[relationship.MoreMail\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[list[MoreMail]]
     reveal_type(Address.rel_style_one)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*?\[relationship.MoreMail\]\]
+    # EXPECTED_TYPE: InstrumentedAttribute[set[MoreMail]]
     reveal_type(Address.rel_style_one_anno_only)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Engineer\]
+    # EXPECTED_TYPE: QueryableAttribute[Engineer]
     reveal_type(Team.employees.of_type(Engineer))
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Employee\]
+    # EXPECTED_TYPE: QueryableAttribute[Employee]
     reveal_type(Team.employees.of_type(aliased(Employee)))
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Engineer\]
+    # EXPECTED_TYPE: QueryableAttribute[Engineer]
     reveal_type(Team.employees.of_type(aliased(Engineer)))
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Employee\]
+    # EXPECTED_TYPE: QueryableAttribute[Employee]
     reveal_type(Team.employees.of_type(with_polymorphic(Employee, [Engineer])))
 
 

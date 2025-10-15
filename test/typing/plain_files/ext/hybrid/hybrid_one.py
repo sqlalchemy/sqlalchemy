@@ -66,19 +66,19 @@ stmt1 = select(Interval).where(expr1).where(expr4)
 stmt2 = select(expr4)
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_TYPE: int
     reveal_type(i1.length)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.int\*?\]
+    # EXPECTED_TYPE: _HybridClassLevelAccessor[int]
     reveal_type(Interval.length)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
+    # EXPECTED_TYPE: BinaryExpression[bool]
     reveal_type(expr1)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
+    # EXPECTED_TYPE: SQLCoreOperations[int]
     reveal_type(expr2)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.SQLCoreOperations\[builtins.int\*?\]
+    # EXPECTED_TYPE: SQLCoreOperations[int]
     reveal_type(expr3)
 
     # EXPECTED_TYPE: bool

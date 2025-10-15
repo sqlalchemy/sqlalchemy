@@ -176,16 +176,16 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                         # The origin type, if rtype is a generic
                         orig_type = typing.get_origin(rtype)
                         if orig_type is not None:
-                            coltype = rf".*{orig_type.__name__}\[.*int\]"
+                            coltype = rf"{orig_type.__name__}[int]"
                         else:
-                            coltype = ".*int"
+                            coltype = "int"
 
                         buf.write(
                             textwrap.indent(
                                 rf"""
 stmt{count} = select(func.{key}(column('x', Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[{coltype}\]
+# EXPECTED_TYPE: Select[{coltype}]
 reveal_type(stmt{count})
 
 """,
@@ -199,7 +199,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}(column('x', String), ','))
 
-# EXPECTED_RE_TYPE: .*Select\[.*str\]
+# EXPECTED_TYPE: Select[str]
 reveal_type(stmt{count})
 
 """,
@@ -211,7 +211,7 @@ reveal_type(stmt{count})
                         fn_class.type, TypeEngine
                     ):
                         python_type = fn_class.type.python_type
-                        python_expr = rf".*{python_type.__name__}"
+                        python_expr = python_type.__name__
                         argspec = inspect.getfullargspec(fn_class)
                         if fn_class.__name__ == "next_value":
                             args = "Sequence('x_seq')"
@@ -226,7 +226,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}({args}))
 
-# EXPECTED_RE_TYPE: .*Select\[{python_expr}\]
+# EXPECTED_TYPE: Select[{python_expr}]
 reveal_type(stmt{count})
 
 """,

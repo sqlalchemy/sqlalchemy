@@ -13,11 +13,11 @@ cols = insp.get_columns("some_table")
 c1 = cols[0]
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.engine.base.Engine
+    # EXPECTED_TYPE: Engine
     reveal_type(e)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.engine.reflection.Inspector.*
+    # EXPECTED_TYPE: Inspector
     reveal_type(insp)
 
-    # EXPECTED_RE_TYPE: .*list.*TypedDict.*ReflectedColumn.*
+    # EXPECTED_TYPE: list[TypedDict(.*ReflectedColumn.*)]
     reveal_type(cols)
