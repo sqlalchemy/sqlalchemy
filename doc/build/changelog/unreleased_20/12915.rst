@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12915
+
+    Fixed issue where using :meth:`_sql.Select.params` to replace bound
+    parameters in a query could fail for some cases where the parameters
+    were embedded in subqueries or CTEs when ORM classes were involved,
+    due to issues with internal query traversal for these cases.
