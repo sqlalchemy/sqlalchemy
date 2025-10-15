@@ -41,9 +41,28 @@ def _is_compiled() -> bool:
 # END GENERATED CYTHON IMPORT
 
 
+if not cython.compiled:
+
+    def PyTuple_New(n):  # type: ignore
+        # Actually produces list if not compiled
+        return [None] * n
+
+    def PyTuple_SET_ITEM(tup, idx, item):  # type: ignore
+        tup[idx] = item
+
+    PySequence_Fast_GET_SIZE = len
+    Py_INCREF = cython._no_op
+else:
+    from cython.cimports.cpython import PyTuple_New
+    from cython.cimports.cpython import Py_INCREF
+    from cython.cimports.cpython import PyTuple_SET_ITEM
+    from cython.cimports.cpython import PySequence_Fast_GET_SIZE
+
+
 @cython.cclass
 class BaseRow:
-    __slots__ = ("_parent", "_data", "_key_to_index")
+    if not cython.compiled:
+        __slots__ = ("_parent", "_data", "_key_to_index")
 
     if cython.compiled:
         _parent: ResultMetaData = cython.declare(object, visibility="readonly")
@@ -61,12 +80,15 @@ class BaseRow:
     ) -> None:
         """Row objects are constructed by CursorResult objects."""
 
-        data_tuple: Tuple[Any, ...] = (
-            _apply_processors(processors, data)
-            if processors is not None
-            else tuple(data)
+        self._set_attrs(
+            parent,
+            key_to_index,
+            (
+                _apply_processors(processors, data)
+                if processors is not None
+                else tuple(data)
+            ),
         )
-        self._set_attrs(parent, key_to_index, data_tuple)
 
     @cython.cfunc
     @cython.inline
@@ -112,7 +134,7 @@ class BaseRow:
     def __hash__(self) -> int:
         return hash(self._data)
 
-    if not TYPE_CHECKING:
+    if not TYPE_CHECKING or cython.compiled:
 
         def __getitem__(self, key: Any) -> Any:
             return self._data[key]
@@ -121,13 +143,13 @@ class BaseRow:
         return self._get_by_key_impl(key, False)
 
     @cython.cfunc
+    @cython.inline
     def _get_by_key_impl(self, key: _KeyType, attr_err: cython.bint) -> object:
         index: Optional[int] = self._key_to_index.get(key)
         if index is not None:
             return self._data[index]
         self._parent._key_not_found(key, attr_err)
 
-    @cython.annotation_typing(False)
     def __getattr__(self, name: str) -> Any:
         return self._get_by_key_impl(name, True)
 
@@ -135,27 +157,50 @@ class BaseRow:
         return self._data
 
 
-@cython.inline
-@cython.cfunc
-def _apply_processors(
-    proc: _ProcessorsType, data: Sequence[Any]
-) -> Tuple[Any, ...]:
-    res: List[Any] = list(data)
-    proc_size: cython.Py_ssize_t = len(proc)
-    # TODO: would be nice to do this only on the fist row
-    assert len(res) == proc_size
-    for i in range(proc_size):
-        p = proc[i]
-        if p is not None:
-            res[i] = p(res[i])
-    return tuple(res)
+if cython.compiled:
+
+    @cython.inline
+    @cython.cfunc
+    @cython.wraparound(False)
+    @cython.boundscheck(False)
+    @cython.returns(tuple)
+    @cython.locals(res=tuple, proc_size=cython.Py_ssize_t, p=object)
+    def _apply_processors(proc: object, data: object) -> Tuple[Any, ...]:
+        proc_size = PySequence_Fast_GET_SIZE(proc)
+        # TODO: would be nice to do this only on the fist row
+        assert PySequence_Fast_GET_SIZE(data) == proc_size
+        res = PyTuple_New(proc_size)
+        for i in range(proc_size):
+            p = proc[i]
+            if p is not None:
+                PyTuple_SET_ITEM(res, i, Py_INCREF(p(data[i])))
+            else:
+                PyTuple_SET_ITEM(res, i, Py_INCREF(data[i]))
+        return res
+
+else:
+
+    def _apply_processors(
+        proc: _ProcessorsType, data: Sequence[Any]
+    ) -> Tuple[Any, ...]:
+        res: List[Any] = list(data)
+        proc_size = len(proc)
+        # TODO: would be nice to do this only on the fist row
+        assert len(res) == proc_size
+        for i in range(proc_size):
+            p = proc[i]
+            if p is not None:
+                res[i] = p(res[i])
+        return tuple(res)
 
 
 # This reconstructor is necessary so that pickles with the Cy extension or
 # without use the same Binary format.
 # Turn off annotation typing so the compiled version accepts the python
 # class too.
-@cython.annotation_typing(False)
+# @cython.annotation_typing(False)
+@cython.inline
+@cython.cfunc
 def rowproxy_reconstructor(
     cls: Type[BaseRow], state: Dict[str, Any]
 ) -> BaseRow:
