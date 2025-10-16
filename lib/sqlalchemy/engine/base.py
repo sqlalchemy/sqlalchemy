@@ -1641,13 +1641,15 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             "compiled_cache", self.engine._compiled_cache
         )
 
-        compiled_sql, extracted_params, cache_hit = elem._compile_w_cache(
-            dialect=dialect,
-            compiled_cache=compiled_cache,
-            column_keys=keys,
-            for_executemany=for_executemany,
-            schema_translate_map=schema_translate_map,
-            linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
+        compiled_sql, extracted_params, param_dict, cache_hit = (
+            elem._compile_w_cache(
+                dialect=dialect,
+                compiled_cache=compiled_cache,
+                column_keys=keys,
+                for_executemany=for_executemany,
+                schema_translate_map=schema_translate_map,
+                linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
+            )
         )
         ret = self._execute_context(
             dialect,
@@ -1660,6 +1662,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             elem,
             extracted_params,
             cache_hit=cache_hit,
+            param_dict=param_dict,
         )
         if has_events:
             self.dispatch.after_execute(

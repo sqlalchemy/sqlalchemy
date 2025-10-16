@@ -89,6 +89,9 @@ The classes here are generated using the constructors listed at
 .. autoclass:: Executable
    :members:
 
+.. autoclass:: ExecutableStatement
+   :members:
+
 .. autoclass:: Exists
    :members:
 

@@ -497,7 +497,6 @@ E.g.::
 New Features and Improvements - Core
 =====================================
 
-
 .. _change_10635:
 
 ``Row`` now represents individual column types directly without ``Tuple``
@@ -617,6 +616,51 @@ not the database portion::
     'driver:///a?b=c'
 
 :ticket:`11234`
+
+.. _change_7066:
+
+Improved ``params()`` implementation for executable statements
+--------------------------------------------------------------
+
+The :meth:`_sql.ClauseElement.params` and :meth:`_sql.ClauseElement.unique_params`
+methods have been deprecated in favor of a new implementation on executable
+statements that provides improved performance and better integration with
+ORM-enabled statements.
+
+Executable statement objects like :class:`_sql.Select`, :class:`_sql.CompoundSelect`,
+and :class:`_sql.TextClause` now provide an improved :meth:`_sql.ExecutableStatement.params`
+method that avoids a full cloned traversal of the statement tree. Instead, parameters
+are stored directly on the statement object and efficiently merged during compilation
+and/or cache key traversal.
+
+The new implementation provides several benefits:
+
+* **Better performance** - Parameters are stored in a simple dictionary rather than
+  requiring a full statement tree traversal with cloning
+* **Proper caching integration** - Parameters are correctly integrated into SQLAlchemy's
+  cache key system via ``_generate_cache_key()``
+* **ORM statement compatibility** - Works correctly with ORM-enabled statements, including
+  ORM entities used with :func:`_orm.aliased`, subqueries, CTEs, etc.
+
+Use of :meth:`_sql.ExecutableStatement.params` is unchanged, provided the given
+object is a statement object such as :func:`_sql.select`::
+
+    stmt = select(table).where(table.c.data == bindparam("x"))
+
+    # Execute with parameter value
+    result = connection.execute(stmt.params(x=5))
+
+    # Can be chained and used in subqueries
+    stmt2 = stmt.params(x=6).subquery().select()
+    result = connection.execute(stmt2.params(x=7))  # Uses x=7
+
+The deprecated :meth:`_sql.ClauseElement.params` and :meth:`_sql.ClauseElement.unique_params`
+methods on non-executable elements like :class:`_sql.ColumnElement` and general
+:class:`_sql.ClauseElement` instances will continue to work during the deprecation
+period but will emit deprecation warnings.
+
+:ticket:`7066`
+
 
 .. _change_4950:
 

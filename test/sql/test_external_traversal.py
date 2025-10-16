@@ -46,6 +46,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.schema import eq_clause_element
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
@@ -898,13 +899,17 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         params = {"xb": 42, "yb": 33}
         sel = select(Y).select_from(jj).params(params)
 
+        cc = sel._generate_cache_key()
+
         eq_(
             [
-                eq_clause_element(bindparam("yb", value=33)),
-                eq_clause_element(bindparam("xb", value=42)),
+                eq_clause_element(bindparam("yb", None, Integer)),
+                eq_clause_element(bindparam("xb", None, Integer)),
             ],
-            sel._generate_cache_key()[1],
+            cc[1],
         )
+        eq_(cc[2], {"xb": 42, "yb": 33})
+        eq_(sel.compile().params, params)
 
     def test_dont_traverse_immutables(self):
         meta = MetaData()
@@ -960,7 +965,12 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt._generate_cache_key()[1],
         )
 
-        stmt = select(b).where(criteria.params({param_key: "some other data"}))
+        with expect_deprecated(
+            r"The params\(\) and unique_params\(\) methods on non-statement"
+        ):
+            stmt = select(b).where(
+                criteria.params({param_key: "some other data"})
+            )
         self.assert_compile(
             stmt,
             "SELECT b.id, b.data FROM b, (SELECT b.id AS id "
@@ -1004,7 +1014,11 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             Ps,
             join(pe_s, s_s, and_(pe_s.c.c == s_s.c.c, pe_s.c.p == s_s.c.p)),
             and_(Ps.c.c == pe_s.c.c, Ps.c.p == Ps.c.p),
-        ).params(params)
+        )
+        with expect_deprecated(
+            r"The params\(\) and unique_params\(\) methods on non-statement"
+        ):
+            jj = jj.params(params)
 
         eq_(
             [
@@ -1039,11 +1053,13 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         pe_s = select(Pe).where(Pe.c.pid == bindparam("pid")).alias("pe_s")
         s_s = select(S).where(S.c.sid == bindparam("sid")).alias("s_s")
-        jj = (
-            join(Ps, pe_s, and_(Ps.c.c == pe_s.c.c, Ps.c.p == Ps.c.p))
-            .join(s_s, and_(Ps.c.c == s_s.c.c, Ps.c.p == s_s.c.p))
-            .params(params)
+        jj = join(Ps, pe_s, and_(Ps.c.c == pe_s.c.c, Ps.c.p == Ps.c.p)).join(
+            s_s, and_(Ps.c.c == s_s.c.c, Ps.c.p == s_s.c.p)
         )
+        with expect_deprecated(
+            r"The params\(\) and unique_params\(\) methods on non-statement"
+        ):
+            jj = jj.params(params)
 
         eq_(
             [

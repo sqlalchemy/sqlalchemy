@@ -13,6 +13,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Final
 from typing import Iterable
 from typing import Iterator
 from typing import List
@@ -50,9 +51,10 @@ class _CacheKeyTraversalDispatchType(Protocol):
 
 class CacheConst(enum.Enum):
     NO_CACHE = 0
+    PARAMS = 1
 
 
-NO_CACHE = CacheConst.NO_CACHE
+NO_CACHE: Final = CacheConst.NO_CACHE
 
 
 _CacheKeyTraversalType = Union[
@@ -384,21 +386,11 @@ class HasCacheKey:
             return None
         else:
             assert key is not None
-            return CacheKey(key, bindparams)
-
-    @classmethod
-    def _generate_cache_key_for_object(
-        cls, obj: HasCacheKey
-    ) -> Optional[CacheKey]:
-        bindparams: List[BindParameter[Any]] = []
-
-        _anon_map = anon_map()
-        key = obj._gen_cache_key(_anon_map, bindparams)
-        if NO_CACHE in _anon_map:
-            return None
-        else:
-            assert key is not None
-            return CacheKey(key, bindparams)
+            return CacheKey(
+                key,
+                bindparams,
+                _anon_map.get(CacheConst.PARAMS),  # type: ignore[arg-type]
+            )
 
 
 class HasCacheKeyTraverse(HasTraverseInternals, HasCacheKey):
@@ -432,6 +424,7 @@ class CacheKey(NamedTuple):
 
     key: Tuple[Any, ...]
     bindparams: Sequence[BindParameter[Any]]
+    params: _CoreSingleExecuteParams | None
 
     # can't set __hash__ attribute because it interferes
     # with namedtuple
@@ -485,8 +478,8 @@ class CacheKey(NamedTuple):
 
     @classmethod
     def _diff_tuples(cls, left: CacheKey, right: CacheKey) -> str:
-        ck1 = CacheKey(left, [])
-        ck2 = CacheKey(right, [])
+        ck1 = CacheKey(left, [], None)
+        ck2 = CacheKey(right, [], None)
         return ck1._diff(ck2)
 
     def _whats_different(self, other: CacheKey) -> Iterator[str]:
@@ -1051,6 +1044,22 @@ class _CacheKeyTraversal(HasTraversalDispatch):
     ) -> Tuple[Any, ...]:
         # multivalues are simply not cacheable right now
         anon_map[NO_CACHE] = True
+        return ()
+
+    def visit_params(
+        self,
+        attrname: str,
+        obj: Any,
+        parent: Any,
+        anon_map: anon_map,
+        bindparams: List[BindParameter[Any]],
+    ) -> Tuple[Any, ...]:
+        if obj:
+            if CacheConst.PARAMS in anon_map:
+                to_set = anon_map[CacheConst.PARAMS] | obj
+            else:
+                to_set = obj
+            anon_map[CacheConst.PARAMS] = to_set
         return ()
 
 

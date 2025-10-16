@@ -1,0 +1,21 @@
+.. change::
+    :tags: change, sql
+    :tickets: 7066, 12915
+
+    Added new implementation for the :meth:`.Select.params` method and that of
+    similar statements, via a new statement-only
+    :meth:`.ExecutableStatement.params` method which works more efficiently and
+    correctly than the previous implementations available from
+    :class:`.ClauseElement`, by assocating the given parameter dictionary with
+    the statement overall rather than cloning the statement and rewriting its
+    bound parameters.  The :meth:`_sql.ClauseElement.params` and
+    :meth:`_sql.ClauseElement.unique_params` methods, when called on an object
+    that does not implement :class:`.ExecutableStatement`, will continue to
+    work the old way of cloning the object, and will emit a deprecation
+    warning.    This issue both resolves the architectural / performance
+    concerns of :ticket:`7066` and also provides correct ORM compatibility for
+    functions like :func:`_orm.aliased`, reported by :ticket:`12915`.
+
+    .. seealso::
+
+        :ref:`change_7066`

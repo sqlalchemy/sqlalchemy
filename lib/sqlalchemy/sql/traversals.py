@@ -953,6 +953,11 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
                 ):
                     return COMPARE_FAILED
 
+    def visit_params(
+        self, attrname, left_parent, left, right_parent, right, **kw
+    ):
+        return left == right
+
     def compare_expression_clauselist(self, left, right, **kw):
         if left.operator is right.operator:
             if operators.is_associative(left.operator):

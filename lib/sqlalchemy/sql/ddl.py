@@ -55,6 +55,7 @@ if typing.TYPE_CHECKING:
     from .schema import Sequence as Sequence  # noqa: F401
     from .schema import Table
     from ..engine.base import Connection
+    from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import CacheStats
     from ..engine.interfaces import CompiledCacheType
     from ..engine.interfaces import Dialect
@@ -89,8 +90,11 @@ class BaseDDLElement(ClauseElement):
         for_executemany: bool = False,
         schema_translate_map: Optional[SchemaTranslateMapType] = None,
         **kw: Any,
-    ) -> Tuple[
-        Compiled, Optional[typing_Sequence[BindParameter[Any]]], CacheStats
+    ) -> tuple[
+        Compiled,
+        typing_Sequence[BindParameter[Any]] | None,
+        _CoreSingleExecuteParams | None,
+        CacheStats,
     ]:
         raise NotImplementedError()
 

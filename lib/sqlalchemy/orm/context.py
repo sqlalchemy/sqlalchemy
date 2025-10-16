@@ -54,6 +54,7 @@ from ..sql.base import _select_iterables
 from ..sql.base import CacheableOptions
 from ..sql.base import CompileState
 from ..sql.base import Executable
+from ..sql.base import ExecutableStatement
 from ..sql.base import Generative
 from ..sql.base import Options
 from ..sql.dml import UpdateBase
@@ -981,7 +982,7 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
     _traverse_internals = [
         ("_raw_columns", InternalTraversal.dp_clauseelement_list),
         ("element", InternalTraversal.dp_clauseelement),
-    ] + Executable._executable_traverse_internals
+    ] + ExecutableStatement._executable_traverse_internals
 
     _cache_key_traversal = _traverse_internals + [
         ("_compile_options", InternalTraversal.dp_has_cache_key)
