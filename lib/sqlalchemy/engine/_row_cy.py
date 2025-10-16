@@ -11,6 +11,7 @@ from typing import Any
 from typing import Dict
 from typing import Iterator
 from typing import List
+from typing import NoReturn
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -50,6 +51,29 @@ if not cython.compiled:
     def PyTuple_SET_ITEM(tup, idx, item):  # type: ignore
         tup[idx] = item
 
+    def _getstate_impl(cls: object) -> dict:
+        return {"_parent": cls._parent, "_data": cls._data}
+
+    def _apply_processors(
+        proc: _ProcessorsType, data: Sequence[Any]
+    ) -> Tuple[Any, ...]:
+        res: List[Any] = list(data)
+        proc_size = len(proc)
+        # TODO: would be nice to do this only on the fist row
+        assert len(res) == proc_size
+        for i in range(proc_size):
+            p = proc[i]
+            if p is not None:
+                res[i] = p(res[i])
+        return tuple(res)
+
+    def rowproxy_reconstructor(
+        cls: Type[BaseRow], state: Dict[str, Any]
+    ) -> BaseRow:
+        obj = cls.__new__(cls)
+        obj.__setstate__(state)
+        return obj
+
     PySequence_Fast_GET_SIZE = len
     Py_INCREF = cython._no_op
 else:
@@ -58,11 +82,40 @@ else:
     from cython.cimports.cpython import PyTuple_SET_ITEM
     from cython.cimports.cpython import PySequence_Fast_GET_SIZE
 
+    obj_getattr = object.__getattribute__
+
+    @cython.inline
+    @cython.cfunc
+    @cython.wraparound(False)
+    @cython.boundscheck(False)
+    @cython.returns(tuple)
+    @cython.locals(res=tuple, proc_size=cython.Py_ssize_t, p=object)
+    def _apply_processors(proc: object, data: object) -> Tuple[Any, ...]:
+        proc_size = PySequence_Fast_GET_SIZE(proc)
+        # TODO: would be nice to do this only on the fist row
+        assert PySequence_Fast_GET_SIZE(data) == proc_size
+        res = PyTuple_New(proc_size)
+        for i in range(proc_size):
+            p = proc[i]
+            if p is not None:
+                PyTuple_SET_ITEM(res, i, Py_INCREF(p(data[i])))
+            else:
+                PyTuple_SET_ITEM(res, i, Py_INCREF(data[i]))
+        return res
+
+    @cython.inline
+    @cython.cfunc
+    def rowproxy_reconstructor(
+        cls: Type[BaseRow], state: Dict[str, Any]
+    ) -> BaseRow:
+        obj = cls.__new__(cls)
+        obj.__setstate__(state)
+        return obj
+
 
 @cython.cclass
 class BaseRow:
-    if not cython.compiled:
-        __slots__ = ("_parent", "_data", "_key_to_index")
+    __slots__ = ("_parent", "_data", "_key_to_index")
 
     if cython.compiled:
         _parent: ResultMetaData = cython.declare(object, visibility="readonly")
@@ -70,6 +123,11 @@ class BaseRow:
             dict, visibility="readonly"
         )
         _data: Tuple[Any, ...] = cython.declare(tuple, visibility="readonly")
+
+        @cython.inline
+        @cython.cfunc
+        def _getstate_impl(self) -> dict:
+            return {"_parent": self._parent, "_data": self._data}
 
     def __init__(
         self,
@@ -86,7 +144,7 @@ class BaseRow:
             (
                 _apply_processors(processors, data)
                 if processors is not None
-                else tuple(data)
+                else (data if isinstance(data, tuple) else tuple(data))
             ),
         )
 
@@ -112,16 +170,25 @@ class BaseRow:
     def __reduce__(self) -> Tuple[Any, Any]:
         return (
             rowproxy_reconstructor,
-            (self.__class__, self.__getstate__()),
+            (self.__class__, self._getstate_impl()),
         )
 
-    def __getstate__(self) -> Dict[str, Any]:
-        return {"_parent": self._parent, "_data": self._data}
+    if cython.compiled:
+
+        def __getstate__(self) -> Dict[str, Any]:
+            return self._getstate_impl()
+
+    else:
+
+        def __getstate__(self) -> Dict[str, Any]:
+            return {"_parent": self._parent, "_data": self._data}
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         parent = state["_parent"]
         self._set_attrs(parent, parent._key_to_index, state["_data"])
 
+    @cython.wraparound(False)
+    @cython.boundscheck(False)
     def _values_impl(self) -> List[Any]:
         return list(self._data)
 
@@ -134,76 +201,47 @@ class BaseRow:
     def __hash__(self) -> int:
         return hash(self._data)
 
-    if not TYPE_CHECKING or cython.compiled:
+    if not TYPE_CHECKING:
 
         def __getitem__(self, key: Any) -> Any:
             return self._data[key]
 
-    def _get_by_key_impl_mapping(self, key: _KeyType) -> Any:
+    def _get_by_key_impl_mapping(self, key: _KeyType) -> object:
         return self._get_by_key_impl(key, False)
 
     @cython.cfunc
     @cython.inline
+    @cython.locals(index=cython.Py_ssize_t)
     def _get_by_key_impl(self, key: _KeyType, attr_err: cython.bint) -> object:
-        index: Optional[int] = self._key_to_index.get(key)
-        if index is not None:
+        index = self._key_to_index.get(key, -1)
+        if index != -1:
             return self._data[index]
         self._parent._key_not_found(key, attr_err)
 
     def __getattr__(self, name: str) -> Any:
         return self._get_by_key_impl(name, True)
 
+    def __setattr__(self, name: str, value: Any) -> NoReturn:
+        raise AttributeError("can't set attribute")
+
+    def __delattr__(self, name: str) -> NoReturn:
+        raise AttributeError("can't delete attribute")
+
+    if cython.compiled:
+
+        def __getattribute__(self, name: str) -> object:
+            if name == "_data":
+                return self._data
+            if name == "_key_to_index":
+                return self._key_to_index
+            if name == "_parent":
+                return self._parent
+            if name[0] != "_" and name[-1] != "_":
+                return self._get_by_key_impl(name, True)
+            return obj_getattr(self, name)
+
     def _to_tuple_instance(self) -> Tuple[Any, ...]:
         return self._data
 
-
-if cython.compiled:
-
-    @cython.inline
-    @cython.cfunc
-    @cython.wraparound(False)
-    @cython.boundscheck(False)
-    @cython.returns(tuple)
-    @cython.locals(res=tuple, proc_size=cython.Py_ssize_t, p=object)
-    def _apply_processors(proc: object, data: object) -> Tuple[Any, ...]:
-        proc_size = PySequence_Fast_GET_SIZE(proc)
-        # TODO: would be nice to do this only on the fist row
-        assert PySequence_Fast_GET_SIZE(data) == proc_size
-        res = PyTuple_New(proc_size)
-        for i in range(proc_size):
-            p = proc[i]
-            if p is not None:
-                PyTuple_SET_ITEM(res, i, Py_INCREF(p(data[i])))
-            else:
-                PyTuple_SET_ITEM(res, i, Py_INCREF(data[i]))
-        return res
-
-else:
-
-    def _apply_processors(
-        proc: _ProcessorsType, data: Sequence[Any]
-    ) -> Tuple[Any, ...]:
-        res: List[Any] = list(data)
-        proc_size = len(proc)
-        # TODO: would be nice to do this only on the fist row
-        assert len(res) == proc_size
-        for i in range(proc_size):
-            p = proc[i]
-            if p is not None:
-                res[i] = p(res[i])
-        return tuple(res)
-
-
-# This reconstructor is necessary so that pickles with the Cy extension or
-# without use the same Binary format.
-# Turn off annotation typing so the compiled version accepts the python
-# class too.
-# @cython.annotation_typing(False)
-@cython.inline
-@cython.cfunc
-def rowproxy_reconstructor(
-    cls: Type[BaseRow], state: Dict[str, Any]
-) -> BaseRow:
-    obj = cls.__new__(cls)
-    obj.__setstate__(state)
-    return obj
+    def __contains__(self, key: Any) -> cython.bint:
+        return key in self._data
