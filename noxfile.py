@@ -251,10 +251,13 @@ def _tests(
         assert not platform_intensive
         has_greenlet = "greenlet" if greenlet else "nogreenlet"
 
-        session.env["COVERAGE_FILE"] = f".coverage.{file_suffix}"
+        session.env["COVERAGE_FILE"] = coverage_file = (
+            f".coverage.{file_suffix}"
+        )
+        if os.path.exists(coverage_file):
+            os.unlink(coverage_file)
         cmd.extend(
             [
-                "--cov-reset",
                 "--cov=sqlalchemy",
                 "--cov-append",
                 "--cov-report",
@@ -263,6 +266,7 @@ def _tests(
                 f"xml:coverage-{file_suffix}.xml",
             ],
         )
+        session.log(f"Will store coverage data in {coverage_file}")
         includes_excludes["k"].append("not aaa_profiling")
 
     cmd.extend(os.environ.get("TOX_WORKERS", "-n4").split())
