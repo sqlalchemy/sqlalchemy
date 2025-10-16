@@ -51,9 +51,6 @@ if not cython.compiled:
     def PyTuple_SET_ITEM(tup, idx, item):  # type: ignore
         tup[idx] = item
 
-    def _getstate_impl(cls: object) -> dict:
-        return {"_parent": cls._parent, "_data": cls._data}
-
     def _apply_processors(
         proc: _ProcessorsType, data: Sequence[Any]
     ) -> Tuple[Any, ...]:
@@ -167,21 +164,30 @@ class BaseRow:
             object.__setattr__(self, "_key_to_index", key_to_index)
             object.__setattr__(self, "_data", data)
 
-    def __reduce__(self) -> Tuple[Any, Any]:
-        return (
-            rowproxy_reconstructor,
-            (self.__class__, self._getstate_impl()),
-        )
-
     if cython.compiled:
 
         def __getstate__(self) -> Dict[str, Any]:
             return self._getstate_impl()
 
+        def __reduce__(self) -> Tuple[Any, Any]:
+            return (
+                rowproxy_reconstructor,
+                (self.__class__, self._getstate_impl()),
+            )
+
     else:
 
         def __getstate__(self) -> Dict[str, Any]:
             return {"_parent": self._parent, "_data": self._data}
+
+        def __reduce__(self) -> Tuple[Any, Any]:
+            return (
+                rowproxy_reconstructor,
+                (
+                    self.__class__,
+                    {"_parent": self._parent, "_data": self._data},
+                ),
+            )
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         parent = state["_parent"]
