@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
+from typing import assert_type
 from typing import cast
 from typing import Optional
+from typing import Sequence
 from typing import Type
+from typing import Unpack
 
 from sqlalchemy import Column
 from sqlalchemy import column
@@ -19,9 +23,17 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
+from sqlalchemy.engine import Result
+from sqlalchemy.engine.cursor import CursorResult
+from sqlalchemy.engine.result import MappingResult
+from sqlalchemy.engine.result import ScalarResult
+from sqlalchemy.engine.result import TupleResult
+from sqlalchemy.engine.row import Row
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio.result import AsyncScalarResult
+from sqlalchemy.ext.asyncio.result import AsyncTupleResult
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
@@ -66,8 +78,7 @@ async def async_connect() -> AsyncConnection:
 
 async_connection = asyncio.run(async_connect())
 
-# EXPECTED_TYPE: AsyncConnection
-reveal_type(async_connection)
+assert_type(async_connection, AsyncConnection)
 
 async_session = AsyncSession(async_connection)
 
@@ -81,41 +92,33 @@ user = session.query(User).one()
 
 user_iter = iter(session.scalars(select(User)))
 
-# EXPECTED_TYPE: AsyncSession
-reveal_type(async_session)
+assert_type(async_session, AsyncSession)
 
 
 single_stmt = select(User.name).where(User.name == "foo")
 
-# EXPECTED_TYPE: Select[str]
-reveal_type(single_stmt)
+assert_type(single_stmt, Select[str])
 
 multi_stmt = select(User.id, User.name).where(User.name == "foo")
 
-# EXPECTED_TYPE: Select[int, str]
-reveal_type(multi_stmt)
+assert_type(multi_stmt, Select[int, str])
 
 
 def t_result_ctxmanager() -> None:
     with connection.execute(select(column("q", Integer))) as r1:
-        # EXPECTED_TYPE: CursorResult[int]
-        reveal_type(r1)
+        assert_type(r1, CursorResult[int])
 
         with r1.mappings() as r1m:
-            # EXPECTED_TYPE: MappingResult
-            reveal_type(r1m)
+            assert_type(r1m, MappingResult)
 
     with connection.scalars(select(column("q", Integer))) as r2:
-        # EXPECTED_TYPE: ScalarResult[int]
-        reveal_type(r2)
+        assert_type(r2, ScalarResult[int])
 
     with session.execute(select(User.id)) as r3:
-        # EXPECTED_TYPE: Result[int]
-        reveal_type(r3)
+        assert_type(r3, Result[int])
 
     with session.scalars(select(User.id)) as r4:
-        # EXPECTED_TYPE: ScalarResult[int]
-        reveal_type(r4)
+        assert_type(r4, ScalarResult[int])
 
 
 def t_mappings() -> None:
@@ -143,22 +146,18 @@ def t_entity_varieties() -> None:
 
     r1 = session.execute(s1)
 
-    # EXPECTED_TYPE: Result[int, typed_results.User, str]
-    reveal_type(r1)
+    assert_type(r1, Result[int, User, str])
 
     s2 = select(User, a1).where(User.name == "foo")
 
     r2 = session.execute(s2)
 
-    # EXPECTED_TYPE: Result[typed_results.User, typed_results.User]
-    reveal_type(r2)
+    assert_type(r2, Result[User, User])
 
     row = r2.t.one()
 
-    # EXPECTED_TYPE: typed_results.User
-    reveal_type(row[0])
-    # EXPECTED_TYPE: typed_results.User
-    reveal_type(row[1])
+    assert_type(row[0], User)
+    assert_type(row[1], User)
 
     # testing that plain Mapped[x] gets picked up as well as
     # aliased class
@@ -166,19 +165,17 @@ def t_entity_varieties() -> None:
     # automatically typed since they are dynamically generated
     a1_id = cast(Mapped[int], a1.id)
     s3 = select(User.id, a1_id, a1, User).where(User.name == "foo")
-    # EXPECTED_TYPE: Select[int, int, typed_results.User, typed_results.User]
-    reveal_type(s3)
+    assert_type(s3, Select[int, int, User, User])
 
     # testing Mapped[entity]
     some_mp = cast(Mapped[User], object())
     s4 = select(some_mp, a1, User).where(User.name == "foo")
 
-    # NOTEXPECTED_RE_TYPE: sqlalchemy..*Select\*?\[typed_results.User\*?, typed_results.User\*?, typed_results.User\*?\]
+    # NOTEXPECTED_RE_TYPE: sqlalchemy..*Select\*?\[User\*?, User\*?, User\*?\]
 
-    # sqlalchemy.sql._gen_overloads.Select[typed_results.User, typed_results.User, typed_results.User]
+    # sqlalchemy.sql._gen_overloads.Select[User, User, User]
 
-    # EXPECTED_TYPE: Select[User, User, User]
-    reveal_type(s4)
+    assert_type(s4, Select[User, User, User])
 
     # test plain core expressions
     x = Column("x", Integer)
@@ -186,43 +183,36 @@ def t_entity_varieties() -> None:
 
     s5 = select(x, y, User.name + "hi")
 
-    # EXPECTED_TYPE: Select[int, int, str]
-    reveal_type(s5)
+    assert_type(s5, Select[int, int, str])
 
 
 def t_ambiguous_result_type_one() -> None:
     stmt = select(column("q", Integer), table("x", column("y")))
 
-    # EXPECTED_TYPE: Select[Unpack[tuple[Any, ...]]]
-    reveal_type(stmt)
+    assert_type(stmt, Select[Unpack[tuple[Any, ...]]])
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
-    reveal_type(result)
+    assert_type(result, Result[Unpack[tuple[Any, ...]]])
 
 
 def t_ambiguous_result_type_two() -> None:
     stmt = select(column("q"))
 
-    # EXPECTED_TYPE: Select[Any]
-    reveal_type(stmt)
+    assert_type(stmt, Select[Any])
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
-    reveal_type(result)
+    assert_type(result, Result[Unpack[tuple[Any, ...]]])
 
 
 def t_aliased() -> None:
     a1 = aliased(User)
 
     s1 = select(a1)
-    # EXPECTED_TYPE: Select[User]
-    reveal_type(s1)
+    assert_type(s1, Select[User])
 
     s4 = select(a1.name, a1, a1, User).where(User.name == "foo")
-    # EXPECTED_TYPE: Select[str, User, User, User]
-    reveal_type(s4)
+    assert_type(s4, Select[str, User, User, User])
 
 
 def t_result_scalar_accessors() -> None:
@@ -230,28 +220,23 @@ def t_result_scalar_accessors() -> None:
 
     r1 = result.scalar()
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(r1)
+    assert_type(r1, str | None)
 
     r2 = result.scalar_one()
 
-    # EXPECTED_TYPE: str
-    reveal_type(r2)
+    assert_type(r2, str)
 
     r3 = result.scalar_one_or_none()
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(r3)
+    assert_type(r3, str | None)
 
     r4 = result.scalars()
 
-    # EXPECTED_TYPE: ScalarResult[str]
-    reveal_type(r4)
+    assert_type(r4, ScalarResult[str])
 
     r5 = result.scalars(0)
 
-    # EXPECTED_TYPE: ScalarResult[str]
-    reveal_type(r5)
+    assert_type(r5, ScalarResult[str])
 
 
 async def t_async_result_scalar_accessors() -> None:
@@ -259,28 +244,23 @@ async def t_async_result_scalar_accessors() -> None:
 
     r1 = await result.scalar()
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(r1)
+    assert_type(r1, str | None)
 
     r2 = await result.scalar_one()
 
-    # EXPECTED_TYPE: str
-    reveal_type(r2)
+    assert_type(r2, str)
 
     r3 = await result.scalar_one_or_none()
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(r3)
+    assert_type(r3, str | None)
 
     r4 = result.scalars()
 
-    # EXPECTED_TYPE: AsyncScalarResult[str]
-    reveal_type(r4)
+    assert_type(r4, AsyncScalarResult[str])
 
     r5 = result.scalars(0)
 
-    # EXPECTED_TYPE: AsyncScalarResult[str]
-    reveal_type(r5)
+    assert_type(r5, AsyncScalarResult[str])
 
 
 def t_result_insertmanyvalues_scalars() -> None:
@@ -295,8 +275,7 @@ def t_result_insertmanyvalues_scalars() -> None:
         ],
     ).all()
 
-    # EXPECTED_TYPE: Sequence[int]
-    reveal_type(uids1)
+    assert_type(uids1, Sequence[int])
 
     uids2 = (
         connection.execute(
@@ -311,8 +290,7 @@ def t_result_insertmanyvalues_scalars() -> None:
         .all()
     )
 
-    # EXPECTED_TYPE: Sequence[int]
-    reveal_type(uids2)
+    assert_type(uids2, Sequence[int])
 
 
 async def t_async_result_insertmanyvalues_scalars() -> None:
@@ -329,8 +307,7 @@ async def t_async_result_insertmanyvalues_scalars() -> None:
         )
     ).all()
 
-    # EXPECTED_TYPE: Sequence[int]
-    reveal_type(uids1)
+    assert_type(uids1, Sequence[int])
 
     uids2 = (
         (
@@ -347,344 +324,279 @@ async def t_async_result_insertmanyvalues_scalars() -> None:
         .all()
     )
 
-    # EXPECTED_TYPE: Sequence[int]
-    reveal_type(uids2)
+    assert_type(uids2, Sequence[int])
 
 
 def t_connection_execute_multi_row_t() -> None:
     result = connection.execute(multi_stmt)
 
-    # EXPECTED_TYPE: CursorResult[int, str]
-    reveal_type(result)
+    assert_type(result, CursorResult[int, str])
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]]
-    reveal_type(row)
+    assert_type(row, Row[int, str])
 
     x, y = row.t
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 def t_connection_execute_multi() -> None:
     result = connection.execute(multi_stmt).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[int, str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[int, str]])
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[int, str]
-    reveal_type(row)
+    assert_type(row, tuple[int, str])
 
     x, y = row
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 def t_connection_execute_single() -> None:
     result = connection.execute(single_stmt).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[str]])
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[str]
-    reveal_type(row)
+    assert_type(row, tuple[str])
 
     (x,) = row
 
-    # EXPECTED_TYPE: str
-    reveal_type(x)
+    assert_type(x, str)
 
 
 def t_connection_execute_single_row_scalar() -> None:
     result = connection.execute(single_stmt).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[str]])
 
     x = result.scalar()
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(x)
+    assert_type(x, str | None)
 
 
 def t_connection_scalar() -> None:
     obj = connection.scalar(single_stmt)
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(obj)
+    assert_type(obj, str | None)
 
 
 def t_connection_scalars() -> None:
     result = connection.scalars(single_stmt)
 
-    # EXPECTED_TYPE: ScalarResult[str]
-    reveal_type(result)
+    assert_type(result, ScalarResult[str])
     data = result.all()
 
-    # EXPECTED_TYPE: typing.Sequence[str]
-    reveal_type(data)
+    assert_type(data, Sequence[str])
 
 
 def t_session_execute_multi() -> None:
     result = session.execute(multi_stmt).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[int, str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[int, str]])
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[int, str]
-    reveal_type(row)
+    assert_type(row, tuple[int, str])
 
     x, y = row
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 def t_session_execute_single() -> None:
     result = session.execute(single_stmt).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[str]])
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[str]
-    reveal_type(row)
+    assert_type(row, tuple[str])
 
     (x,) = row
 
-    # EXPECTED_TYPE: str
-    reveal_type(x)
+    assert_type(x, str)
 
 
 def t_session_scalar() -> None:
     obj = session.scalar(single_stmt)
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(obj)
+    assert_type(obj, str | None)
 
 
 def t_session_scalars() -> None:
     result = session.scalars(single_stmt)
 
-    # EXPECTED_TYPE: ScalarResult[str]
-    reveal_type(result)
+    assert_type(result, ScalarResult[str])
     data = result.all()
 
-    # EXPECTED_TYPE: typing.Sequence[str]
-    reveal_type(data)
+    assert_type(data, Sequence[str])
 
 
 async def t_async_connection_execute_multi() -> None:
     result = (await async_connection.execute(multi_stmt)).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[int, str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[int, str]])
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[int, str]
-    reveal_type(row)
+    assert_type(row, tuple[int, str])
 
     x, y = row
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 async def t_async_connection_execute_single() -> None:
     result = (await async_connection.execute(single_stmt)).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[str]])
 
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[str]
-    reveal_type(row)
+    assert_type(row, tuple[str])
 
     (x,) = row
 
-    # EXPECTED_TYPE: str
-    reveal_type(x)
+    assert_type(x, str)
 
 
 async def t_async_connection_scalar() -> None:
     obj = await async_connection.scalar(single_stmt)
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(obj)
+    assert_type(obj, str | None)
 
 
 async def t_async_connection_scalars() -> None:
     result = await async_connection.scalars(single_stmt)
 
-    # EXPECTED_TYPE: ScalarResult[str]
-    reveal_type(result)
+    assert_type(result, ScalarResult[str])
     data = result.all()
 
-    # EXPECTED_TYPE: typing.Sequence[str]
-    reveal_type(data)
+    assert_type(data, Sequence[str])
 
 
 async def t_async_session_execute_multi() -> None:
     result = (await async_session.execute(multi_stmt)).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[int, str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[int, str]])
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[int, str]
-    reveal_type(row)
+    assert_type(row, tuple[int, str])
 
     x, y = row
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 async def t_async_session_execute_single() -> None:
     result = (await async_session.execute(single_stmt)).t
 
-    # EXPECTED_TYPE: TupleResult[tuple[str]]
-    reveal_type(result)
+    assert_type(result, TupleResult[tuple[str]])
     row = result.one()
 
-    # EXPECTED_TYPE: tuple[str]
-    reveal_type(row)
+    assert_type(row, tuple[str])
 
     (x,) = row
 
-    # EXPECTED_TYPE: str
-    reveal_type(x)
+    assert_type(x, str)
 
 
 async def t_async_session_scalar() -> None:
     obj = await async_session.scalar(single_stmt)
 
-    # EXPECTED_TYPE: str | None
-    reveal_type(obj)
+    assert_type(obj, str | None)
 
 
 async def t_async_session_scalars() -> None:
     result = await async_session.scalars(single_stmt)
 
-    # EXPECTED_TYPE: ScalarResult[str]
-    reveal_type(result)
+    assert_type(result, ScalarResult[str])
     data = result.all()
 
-    # EXPECTED_TYPE: typing.Sequence[str]
-    reveal_type(data)
+    assert_type(data, Sequence[str])
 
 
 async def t_async_connection_stream_multi() -> None:
     result = (await async_connection.stream(multi_stmt)).t
 
-    # EXPECTED_TYPE: AsyncTupleResult[tuple[int, str]]
-    reveal_type(result)
+    assert_type(result, AsyncTupleResult[tuple[int, str]])
     row = await result.one()
 
-    # EXPECTED_TYPE: tuple[int, str]
-    reveal_type(row)
+    assert_type(row, tuple[int, str])
 
     x, y = row
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 async def t_async_connection_stream_single() -> None:
     result = (await async_connection.stream(single_stmt)).t
 
-    # EXPECTED_TYPE: AsyncTupleResult[tuple[str]]
-    reveal_type(result)
+    assert_type(result, AsyncTupleResult[tuple[str]])
     row = await result.one()
 
-    # EXPECTED_TYPE: tuple[str]
-    reveal_type(row)
+    assert_type(row, tuple[str])
 
     (x,) = row
 
-    # EXPECTED_TYPE: str
-    reveal_type(x)
+    assert_type(x, str)
 
 
 async def t_async_connection_stream_scalars() -> None:
     result = await async_connection.stream_scalars(single_stmt)
 
-    # EXPECTED_TYPE: AsyncScalarResult[str]
-    reveal_type(result)
+    assert_type(result, AsyncScalarResult[str])
     data = await result.all()
 
-    # EXPECTED_TYPE: typing.Sequence[str]
-    reveal_type(data)
+    assert_type(data, Sequence[str])
 
 
 async def t_async_session_stream_multi() -> None:
     result = (await async_session.stream(multi_stmt)).t
 
-    # EXPECTED_TYPE: AsyncTupleResult[tuple[int, str]]
-    reveal_type(result)
+    assert_type(result, AsyncTupleResult[tuple[int, str]])
     row = await result.one()
 
-    # EXPECTED_TYPE: tuple[int, str]
-    reveal_type(row)
+    assert_type(row, tuple[int, str])
 
     x, y = row
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 async def t_async_session_stream_single() -> None:
     result = (await async_session.stream(single_stmt)).t
 
-    # EXPECTED_TYPE: AsyncTupleResult[tuple[str]]
-    reveal_type(result)
+    assert_type(result, AsyncTupleResult[tuple[str]])
     row = await result.one()
 
-    # EXPECTED_TYPE: tuple[str]
-    reveal_type(row)
+    assert_type(row, tuple[str])
 
     (x,) = row
 
-    # EXPECTED_TYPE: str
-    reveal_type(x)
+    assert_type(x, str)
 
 
 async def t_async_session_stream_scalars() -> None:
     result = await async_session.stream_scalars(single_stmt)
 
-    # EXPECTED_TYPE: AsyncScalarResult[str]
-    reveal_type(result)
+    assert_type(result, AsyncScalarResult[str])
     data = await result.all()
 
-    # EXPECTED_TYPE: typing.Sequence[str]
-    reveal_type(data)
+    assert_type(data, Sequence[str])
 
 
 def test_outerjoin_10173() -> None:

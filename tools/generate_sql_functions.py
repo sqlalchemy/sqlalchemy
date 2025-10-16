@@ -185,8 +185,7 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                                 rf"""
 stmt{count} = select(func.{key}(column('x', Integer)))
 
-# EXPECTED_TYPE: Select[{coltype}]
-reveal_type(stmt{count})
+assert_type(stmt{count}, Select[{coltype}])
 
 """,
                                 indent,
@@ -199,8 +198,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}(column('x', String), ','))
 
-# EXPECTED_TYPE: Select[str]
-reveal_type(stmt{count})
+assert_type(stmt{count}, Select[str])
 
 """,
                                 indent,
@@ -214,7 +212,7 @@ reveal_type(stmt{count})
                         python_expr = python_type.__name__
                         argspec = inspect.getfullargspec(fn_class)
                         if fn_class.__name__ == "next_value":
-                            args = "Sequence('x_seq')"
+                            args = "SqlAlchemySequence('x_seq')"
                         else:
                             args = ", ".join(
                                 'column("x")' for elem in argspec.args[1:]
@@ -226,8 +224,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}({args}))
 
-# EXPECTED_TYPE: Select[{python_expr}]
-reveal_type(stmt{count})
+assert_type(stmt{count}, Select[{python_expr}])
 
 """,
                                 indent,

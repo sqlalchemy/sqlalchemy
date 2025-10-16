@@ -188,7 +188,7 @@ class MypyTest(TestBase):
                             )
 
                             expected_msg = re.sub(
-                                r"^List|\WList", "builtins.list", expected_msg
+                                "List", "builtins.list", expected_msg
                             )
 
                             expected_msg = re.sub(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import typing
+from typing import assert_type
 from typing import ClassVar
 from typing import List
 from typing import Optional
@@ -16,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -24,6 +26,7 @@ from sqlalchemy.orm import Relationship
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.orm.attributes import QueryableAttribute
 
 
 class Base(DeclarativeBase):
@@ -131,47 +134,46 @@ class Engineer(Employee):
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: InstrumentedAttribute[str | None]
-    reveal_type(User.extra)
+    assert_type(User.extra, InstrumentedAttribute[str | None])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[str | None]
-    reveal_type(User.extra_name)
+    assert_type(User.extra_name, InstrumentedAttribute[str | None])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[str]
-    reveal_type(Address.email)
+    assert_type(Address.email, InstrumentedAttribute[str])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[str]
-    reveal_type(Address.email_name)
+    assert_type(Address.email_name, InstrumentedAttribute[str])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[list[Address]]
-    reveal_type(User.addresses_style_one)
+    assert_type(User.addresses_style_one, InstrumentedAttribute[list[Address]])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[set[Address]]
-    reveal_type(User.addresses_style_two)
+    assert_type(User.addresses_style_two, InstrumentedAttribute[set[Address]])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[list[User]]
-    reveal_type(Group.addresses_style_one_anno_only)
+    assert_type(
+        Group.addresses_style_one_anno_only, InstrumentedAttribute[list[User]]
+    )
 
-    # EXPECTED_TYPE: InstrumentedAttribute[set[User]]
-    reveal_type(Group.addresses_style_two_anno_only)
+    assert_type(
+        Group.addresses_style_two_anno_only, InstrumentedAttribute[set[User]]
+    )
 
-    # EXPECTED_TYPE: InstrumentedAttribute[list[MoreMail]]
-    reveal_type(Address.rel_style_one)
+    assert_type(Address.rel_style_one, InstrumentedAttribute[list[MoreMail]])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[set[MoreMail]]
-    reveal_type(Address.rel_style_one_anno_only)
+    assert_type(
+        Address.rel_style_one_anno_only, InstrumentedAttribute[set[MoreMail]]
+    )
 
-    # EXPECTED_TYPE: QueryableAttribute[Engineer]
-    reveal_type(Team.employees.of_type(Engineer))
+    assert_type(Team.employees.of_type(Engineer), QueryableAttribute[Engineer])
 
-    # EXPECTED_TYPE: QueryableAttribute[Employee]
-    reveal_type(Team.employees.of_type(aliased(Employee)))
+    assert_type(
+        Team.employees.of_type(aliased(Employee)), QueryableAttribute[Employee]
+    )
 
-    # EXPECTED_TYPE: QueryableAttribute[Engineer]
-    reveal_type(Team.employees.of_type(aliased(Engineer)))
+    assert_type(
+        Team.employees.of_type(aliased(Engineer)), QueryableAttribute[Engineer]
+    )
 
-    # EXPECTED_TYPE: QueryableAttribute[Employee]
-    reveal_type(Team.employees.of_type(with_polymorphic(Employee, [Engineer])))
+    assert_type(
+        Team.employees.of_type(with_polymorphic(Employee, [Engineer])),
+        QueryableAttribute[Employee],
+    )
 
 
 mapper_registry: registry = registry()

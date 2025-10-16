@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import typing
+from typing import assert_type
 
+from sqlalchemy import Select
 from sqlalchemy import select
+from sqlalchemy.ext.hybrid import _HybridClassLevelAccessor
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.sql.elements import SQLCoreOperations
+from sqlalchemy.sql.expression import BinaryExpression
 
 
 class Base(DeclarativeBase):
@@ -66,26 +71,18 @@ stmt1 = select(Interval).where(expr1).where(expr4)
 stmt2 = select(expr4)
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: int
-    reveal_type(i1.length)
+    assert_type(i1.length, int)
 
-    # EXPECTED_TYPE: _HybridClassLevelAccessor[int]
-    reveal_type(Interval.length)
+    assert_type(Interval.length, _HybridClassLevelAccessor[int])
 
-    # EXPECTED_TYPE: BinaryExpression[bool]
-    reveal_type(expr1)
+    assert_type(expr1, BinaryExpression[bool])
 
-    # EXPECTED_TYPE: SQLCoreOperations[int]
-    reveal_type(expr2)
+    assert_type(expr2, SQLCoreOperations[int])
 
-    # EXPECTED_TYPE: SQLCoreOperations[int]
-    reveal_type(expr3)
+    assert_type(expr3, SQLCoreOperations[int])
 
-    # EXPECTED_TYPE: bool
-    reveal_type(i1.fancy_thing(1, 2, 3))
+    assert_type(i1.fancy_thing(1, 2, 3), bool)
 
-    # EXPECTED_TYPE: SQLCoreOperations[bool]
-    reveal_type(expr4)
+    assert_type(expr4, SQLCoreOperations[bool])
 
-    # EXPECTED_TYPE: Select[bool]
-    reveal_type(stmt2)
+    assert_type(stmt2, Select[bool])

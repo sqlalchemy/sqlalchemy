@@ -7,6 +7,8 @@ if no uselists are present.
 """
 
 import typing
+from typing import Any
+from typing import assert_type
 from typing import List
 from typing import Set
 
@@ -14,6 +16,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -80,29 +83,20 @@ class Address(Base):
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: InstrumentedAttribute[list[Address]]
-    reveal_type(User.addresses_style_one)
+    assert_type(User.addresses_style_one, InstrumentedAttribute[list[Address]])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[set[Address]]
-    reveal_type(User.addresses_style_two)
+    assert_type(User.addresses_style_two, InstrumentedAttribute[set[Address]])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[Any]
-    reveal_type(Address.user_style_one)
+    assert_type(Address.user_style_one, InstrumentedAttribute[Any])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[User]
-    reveal_type(Address.user_style_one_typed)
+    assert_type(Address.user_style_one_typed, InstrumentedAttribute[User])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[Any]
-    reveal_type(Address.user_style_two)
+    assert_type(Address.user_style_two, InstrumentedAttribute[Any])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[User]
-    reveal_type(Address.user_style_two_typed)
+    assert_type(Address.user_style_two_typed, InstrumentedAttribute[User])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[list[User]]
-    reveal_type(Address.user_style_three)
+    assert_type(Address.user_style_three, InstrumentedAttribute[list[User]])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[list[User]]
-    reveal_type(Address.user_style_four)
+    assert_type(Address.user_style_four, InstrumentedAttribute[list[User]])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[Any]
-    reveal_type(Address.user_style_five)
+    assert_type(Address.user_style_five, InstrumentedAttribute[Any])

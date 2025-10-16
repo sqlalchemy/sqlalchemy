@@ -8,6 +8,10 @@ unions.
 
 from __future__ import annotations
 
+from typing import assert_type
+from typing import Never
+from typing import Unpack
+
 from sqlalchemy import asc
 from sqlalchemy import Column
 from sqlalchemy import column
@@ -20,16 +24,21 @@ from sqlalchemy import intersect
 from sqlalchemy import intersect_all
 from sqlalchemy import literal
 from sqlalchemy import MetaData
+from sqlalchemy import Select
 from sqlalchemy import select
 from sqlalchemy import SQLColumnExpression
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import union
 from sqlalchemy import union_all
+from sqlalchemy.engine import Result
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.query import RowReturningQuery
+from sqlalchemy.sql.expression import BindParameter
+from sqlalchemy.sql.expression import CompoundSelect
 
 
 class Base(DeclarativeBase):
@@ -67,26 +76,22 @@ def core_expr(email: str) -> SQLColumnExpression[bool]:
 
 e1 = orm_expr("hi")
 
-# EXPECTED_TYPE: SQLColumnExpression[bool]
-reveal_type(e1)
+assert_type(e1, SQLColumnExpression[bool])
 
 stmt = select(e1)
 
-# EXPECTED_TYPE: Select[bool]
-reveal_type(stmt)
+assert_type(stmt, Select[bool])
 
 stmt = stmt.where(e1)
 
 
 e2 = core_expr("hi")
 
-# EXPECTED_TYPE: SQLColumnExpression[bool]
-reveal_type(e2)
+assert_type(e2, SQLColumnExpression[bool])
 
 stmt = select(e2)
 
-# EXPECTED_TYPE: Select[bool]
-reveal_type(stmt)
+assert_type(stmt, Select[bool])
 
 stmt = stmt.where(e2)
 
@@ -95,20 +100,17 @@ stmt2 = select(User.id).order_by("id", "email").group_by("email", "id")
 stmt2 = (
     select(User.id).order_by(asc("id"), desc("email")).group_by("email", "id")
 )
-# EXPECTED_TYPE: Select[int]
-reveal_type(stmt2)
+assert_type(stmt2, Select[int])
 
 stmt2 = select(User.id).order_by(User.id).group_by(User.email)
 stmt2 = (
     select(User.id).order_by(User.id, User.email).group_by(User.email, User.id)
 )
-# EXPECTED_TYPE: Select[int]
-reveal_type(stmt2)
+assert_type(stmt2, Select[int])
 
 stmt3 = select(User.id).exists().select()
 
-# EXPECTED_TYPE: Select[bool]
-reveal_type(stmt3)
+assert_type(stmt3, Select[bool])
 
 
 receives_str_col_expr(User.email)
@@ -129,8 +131,7 @@ receives_bool_col_expr(user_table.c.email == "x")
 
 q1 = Session().query(User.id).order_by("email").group_by("email")
 q1 = Session().query(User.id).order_by("id", "email").group_by("email", "id")
-# EXPECTED_TYPE: RowReturningQuery[int]
-reveal_type(q1)
+assert_type(q1, RowReturningQuery[int])
 
 q1 = Session().query(User.id).order_by(User.id).group_by(User.email)
 q1 = (
@@ -139,8 +140,7 @@ q1 = (
     .order_by(User.id, User.email)
     .group_by(User.email, User.id)
 )
-# EXPECTED_TYPE: RowReturningQuery[int]
-reveal_type(q1)
+assert_type(q1, RowReturningQuery[int])
 
 # test 9174
 s9174_1 = select(User).with_for_update(of=User)
@@ -164,14 +164,10 @@ user = session.query(user_table).with_for_update(
 )
 
 # literal
-# EXPECTED_TYPE: BindParameter[str]
-reveal_type(literal("5"))
-# EXPECTED_TYPE: BindParameter[str]
-reveal_type(literal("5", None))
-# EXPECTED_TYPE: BindParameter[int]
-reveal_type(literal("123", Integer))
-# EXPECTED_TYPE: BindParameter[int]
-reveal_type(literal("123", Integer))
+assert_type(literal("5"), BindParameter[str])
+assert_type(literal("5", None), BindParameter[str])
+assert_type(literal("123", Integer), BindParameter[int])
+assert_type(literal("123", Integer), BindParameter[int])
 
 
 # hashable (issue #10353):
@@ -193,36 +189,26 @@ first_stmt = select(str_col, int_col)
 second_stmt = select(str_col, int_col)
 third_stmt = select(int_col, str_col)
 
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(union(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(union_all(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(except_(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(except_all(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(intersect(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(intersect_all(first_stmt, second_stmt))
+assert_type(union(first_stmt, second_stmt), CompoundSelect[str, int])
+assert_type(union_all(first_stmt, second_stmt), CompoundSelect[str, int])
+assert_type(except_(first_stmt, second_stmt), CompoundSelect[str, int])
+assert_type(except_all(first_stmt, second_stmt), CompoundSelect[str, int])
+assert_type(intersect(first_stmt, second_stmt), CompoundSelect[str, int])
+assert_type(intersect_all(first_stmt, second_stmt), CompoundSelect[str, int])
 
-# EXPECTED_TYPE: Result[str, int]
-reveal_type(Session().execute(union(first_stmt, second_stmt)))
-# EXPECTED_TYPE: Result[str, int]
-reveal_type(Session().execute(union_all(first_stmt, second_stmt)))
+assert_type(
+    Session().execute(union(first_stmt, second_stmt)), Result[str, int]
+)
+assert_type(
+    Session().execute(union_all(first_stmt, second_stmt)), Result[str, int]
+)
 
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.union(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.union_all(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.except_(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.except_all(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.intersect(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.intersect_all(second_stmt))
+assert_type(first_stmt.union(second_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.union_all(second_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.except_(second_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.except_all(second_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.intersect(second_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.intersect_all(second_stmt), CompoundSelect[str, int])
 
 # TODO: the following do not error because _SelectStatementForCompoundArgument
 # includes untyped elements so the type checker falls back on them when
@@ -230,28 +216,32 @@ reveal_type(first_stmt.intersect_all(second_stmt))
 # looses the plot and returns a random type back. See TODO in the
 # overloads
 
-# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
-reveal_type(union(first_stmt, third_stmt))
-# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
-reveal_type(union_all(first_stmt, third_stmt))
-# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
-reveal_type(except_(first_stmt, third_stmt))
-# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
-reveal_type(except_all(first_stmt, third_stmt))
-# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
-reveal_type(intersect(first_stmt, third_stmt))
-# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
-reveal_type(intersect_all(first_stmt, third_stmt))
+assert_type(
+    union(first_stmt, third_stmt), CompoundSelect[Unpack[tuple[Never, ...]]]
+)
+assert_type(
+    union_all(first_stmt, third_stmt),
+    CompoundSelect[Unpack[tuple[Never, ...]]],
+)
+assert_type(
+    except_(first_stmt, third_stmt), CompoundSelect[Unpack[tuple[Never, ...]]]
+)
+assert_type(
+    except_all(first_stmt, third_stmt),
+    CompoundSelect[Unpack[tuple[Never, ...]]],
+)
+assert_type(
+    intersect(first_stmt, third_stmt),
+    CompoundSelect[Unpack[tuple[Never, ...]]],
+)
+assert_type(
+    intersect_all(first_stmt, third_stmt),
+    CompoundSelect[Unpack[tuple[Never, ...]]],
+)
 
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.union(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.union_all(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.except_(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.except_all(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.intersect(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[str, int]
-reveal_type(first_stmt.intersect_all(third_stmt))
+assert_type(first_stmt.union(third_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.union_all(third_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.except_(third_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.except_all(third_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.intersect(third_stmt), CompoundSelect[str, int])
+assert_type(first_stmt.intersect_all(third_stmt), CompoundSelect[str, int])

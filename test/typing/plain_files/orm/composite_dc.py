@@ -1,5 +1,7 @@
 import dataclasses
+from typing import assert_type
 
+from sqlalchemy import Select
 from sqlalchemy import select
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import DeclarativeBase
@@ -38,14 +40,10 @@ v1 = Vertex(start=Point(3, 4), end=Point(5, 6))
 
 stmt = select(Vertex).where(Vertex.start.in_([Point(3, 4)]))
 
-# EXPECTED_TYPE: Select[Vertex]
-reveal_type(stmt)
+assert_type(stmt, Select[Vertex])
 
-# EXPECTED_TYPE: composite.Point
-reveal_type(v1.start)
+assert_type(v1.start, Point)
 
-# EXPECTED_TYPE: composite.Point
-reveal_type(v1.end)
+assert_type(v1.end, Point)
 
-# EXPECTED_TYPE: int
-reveal_type(v1.end.y)
+assert_type(v1.end.y, int)

@@ -1,16 +1,22 @@
 from datetime import datetime
 import typing
+from typing import Any
+from typing import assert_type
+from typing import Unpack
 
 from sqlalchemy import DateTime
 from sqlalchemy import Index
 from sqlalchemy import Integer
+from sqlalchemy import Select
 from sqlalchemy import String
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedClassProtocol
+from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.sql.schema import PrimaryKeyConstraint
 
 
@@ -74,14 +80,11 @@ class Manager(Employee):
 def do_something_with_mapped_class(
     cls_: MappedClassProtocol[Employee],
 ) -> None:
-    # EXPECTED_TYPE: Select[Unpack[tuple[Any, ...]]]
-    reveal_type(cls_.__table__.select())
+    assert_type(cls_.__table__.select(), Select[Unpack[tuple[Any, ...]]])
 
-    # EXPECTED_TYPE: Mapper[Employee]
-    reveal_type(cls_.__mapper__)
+    assert_type(cls_.__mapper__, Mapper[Employee])
 
-    # EXPECTED_TYPE: Employee
-    reveal_type(cls_())
+    assert_type(cls_(), Employee)
 
 
 do_something_with_mapped_class(Manager)
@@ -89,8 +92,6 @@ do_something_with_mapped_class(Engineer)
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: InstrumentedAttribute[datetime]
-    reveal_type(Engineer.start_date)
+    assert_type(Engineer.start_date, InstrumentedAttribute[datetime])
 
-    # EXPECTED_TYPE: InstrumentedAttribute[datetime]
-    reveal_type(Manager.start_date)
+    assert_type(Manager.start_date, InstrumentedAttribute[datetime])

@@ -1,3 +1,5 @@
+from typing import Any
+from typing import assert_type
 from typing import List
 
 from sqlalchemy import create_engine
@@ -8,6 +10,7 @@ from sqlalchemy.orm import DeclarativeBaseNoMeta
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Mapper
+from sqlalchemy.orm.state import InstanceState
 
 
 class Base(DeclarativeBase):
@@ -32,10 +35,8 @@ class B(BaseNoMeta):
     data: Mapped[str]
 
 
-# EXPECTED_TYPE: Mapper[Any]
-reveal_type(A.__mapper__)
-# EXPECTED_TYPE: Mapper[Any]
-reveal_type(B.__mapper__)
+assert_type(A.__mapper__, Mapper[Any])
+assert_type(B.__mapper__, Mapper[Any])
 
 a1 = A(data="d")
 b1 = B(data="d")
@@ -45,22 +46,17 @@ e = create_engine("sqlite://")
 insp_a1 = inspect(a1)
 
 t: bool = insp_a1.transient
-# EXPECTED_TYPE: InstanceState[A]
-reveal_type(insp_a1)
-# EXPECTED_TYPE: InstanceState[B]
-reveal_type(inspect(b1))
+assert_type(insp_a1, InstanceState[A])
+assert_type(inspect(b1), InstanceState[B])
 
 m: Mapper[A] = inspect(A)
-# EXPECTED_TYPE: Mapper[A]
-reveal_type(inspect(A))
-# EXPECTED_TYPE: Mapper[B]
-reveal_type(inspect(B))
+assert_type(inspect(A), Mapper[A])
+assert_type(inspect(B), Mapper[B])
 
 tables: List[str] = inspect(e).get_table_names()
 
 i: Inspector = inspect(e)
-# EXPECTED_TYPE: Inspector
-reveal_type(inspect(e))
+assert_type(inspect(e), Inspector)
 
 
 with e.connect() as conn:

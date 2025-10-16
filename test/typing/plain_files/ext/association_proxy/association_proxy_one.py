@@ -1,4 +1,5 @@
 import typing
+from typing import assert_type
 from typing import Set
 
 from sqlalchemy import ForeignKey
@@ -6,6 +7,7 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.ext.associationproxy import AssociationProxyInstance
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -40,8 +42,6 @@ class Address(Base):
 u1 = User()
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: AssociationProxyInstance[set[str]]
-    reveal_type(User.email_addresses)
+    assert_type(User.email_addresses, AssociationProxyInstance[set[str]])
 
-    # EXPECTED_TYPE: set[str]
-    reveal_type(u1.email_addresses)
+    assert_type(u1.email_addresses, set[str])

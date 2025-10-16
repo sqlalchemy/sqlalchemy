@@ -1,6 +1,7 @@
 import datetime as dt
 from decimal import Decimal
 from typing import Any
+from typing import assert_type
 from typing import List
 
 from sqlalchemy import ARRAY
@@ -15,6 +16,8 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.sql import operators
+from sqlalchemy.sql.elements import Grouping
+from sqlalchemy.sql.expression import BinaryExpression
 
 
 class Base(DeclarativeBase):
@@ -147,15 +150,14 @@ op_e: "ColumnElement[bool]" = col.bool_op("&")("1")
 
 
 op_a1 = col.op("&")(1)
-# EXPECTED_TYPE: BinaryExpression[Any]
-reveal_type(op_a1)
+assert_type(op_a1, BinaryExpression[Any])
 
 
 # op functions
 t1 = operators.eq(A.id, 1)
 select().where(t1)
 
-# EXPECTED_TYPE: BinaryExpression[Any]
-reveal_type(col.op("->>")("field"))
-# EXPECTED_TYPE: BinaryExpression[Any] | Grouping[Any]
-reveal_type(col.op("->>")("field").self_group())
+assert_type(col.op("->>")("field"), BinaryExpression[Any])
+assert_type(
+    col.op("->>")("field").self_group(), BinaryExpression[Any] | Grouping[Any]
+)

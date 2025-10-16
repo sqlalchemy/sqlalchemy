@@ -1,5 +1,9 @@
+from datetime import date
+from datetime import datetime
 from typing import Any
+from typing import assert_type
 from typing import Dict
+from typing import Sequence
 from uuid import UUID as _py_uuid
 
 from sqlalchemy import cast
@@ -7,6 +11,7 @@ from sqlalchemy import Column
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import or_
+from sqlalchemy import Select
 from sqlalchemy import select
 from sqlalchemy import Text
 from sqlalchemy import UniqueConstraint
@@ -18,6 +23,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.dialects.postgresql import INT4RANGE
 from sqlalchemy.dialects.postgresql import INT8MULTIRANGE
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql import TSTZMULTIRANGE
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase
@@ -28,13 +34,11 @@ from sqlalchemy.orm import mapped_column
 
 c1 = Column(UUID())
 
-# EXPECTED_TYPE: Column[UUID]
-reveal_type(c1)
+assert_type(c1, Column[_py_uuid])
 
 c2 = Column(UUID(as_uuid=False))
 
-# EXPECTED_TYPE: Column[str]
-reveal_type(c2)
+assert_type(c2, Column[str])
 
 
 class Base(DeclarativeBase):
@@ -69,11 +73,9 @@ print(stmt)
 
 t1 = Test()
 
-# EXPECTED_TYPE: dict[str, Any]
-reveal_type(t1.data)
+assert_type(t1.data, dict[str, Any])
 
-# EXPECTED_TYPE: UUID
-reveal_type(t1.ident)
+assert_type(t1.ident, _py_uuid)
 
 unique = UniqueConstraint(name="my_constraint")
 insert(Test).on_conflict_do_nothing(
@@ -86,52 +88,40 @@ s1 = insert(Test)
 s1.on_conflict_do_update(set_=s1.excluded)
 
 
-# EXPECTED_TYPE: Column[Range[int]]
-reveal_type(Column(INT4RANGE()))
-# EXPECTED_TYPE: Column[Range[datetime.date]]
-reveal_type(Column("foo", DATERANGE()))
-# EXPECTED_TYPE: Column[Sequence[Range[int]]]
-reveal_type(Column(INT8MULTIRANGE()))
-# EXPECTED_TYPE: Column[Sequence[Range[datetime.datetime]]]
-reveal_type(Column("foo", TSTZMULTIRANGE()))
+assert_type(Column(INT4RANGE()), Column[Range[int]])
+assert_type(Column("foo", DATERANGE()), Column[Range[date]])
+assert_type(Column(INT8MULTIRANGE()), Column[Sequence[Range[int]]])
+assert_type(Column("foo", TSTZMULTIRANGE()), Column[Sequence[Range[datetime]]])
 
 
 range_col_stmt = select(Column(INT4RANGE()), Column(INT8MULTIRANGE()))
 
-# EXPECTED_TYPE: Select[Range[int], Sequence[Range[int]]]
-reveal_type(range_col_stmt)
+assert_type(range_col_stmt, Select[Range[int], Sequence[Range[int]]])
 
 array_from_ints = array(range(2))
 
-# EXPECTED_TYPE: array[int]
-reveal_type(array_from_ints)
+assert_type(array_from_ints, array[int])
 
 array_of_strings = array([], type_=Text)
 
-# EXPECTED_TYPE: array[str]
-reveal_type(array_of_strings)
+assert_type(array_of_strings, array[str])
 
 array_of_ints = array([0], type_=Integer)
 
-# EXPECTED_TYPE: array[int]
-reveal_type(array_of_ints)
+assert_type(array_of_ints, array[int])
 
 # EXPECTED_MYPY_RE: Cannot infer .* of "array"
 array([0], type_=Text)
 
-# EXPECTED_TYPE: ARRAY[str]
-reveal_type(ARRAY(Text))
+assert_type(ARRAY(Text), ARRAY[str])
 
-# EXPECTED_TYPE: Column[Sequence[int]]
-reveal_type(Column(type_=ARRAY(Integer)))
+assert_type(Column(type_=ARRAY(Integer)), Column[Sequence[int]])
 
 stmt_array_agg = select(func.array_agg(Column("num", type_=Integer)))
 
-# EXPECTED_TYPE: Select[Sequence[int]]
-reveal_type(stmt_array_agg)
+assert_type(stmt_array_agg, Select[Sequence[int]])
 
-# EXPECTED_TYPE: Select[Sequence[str]]
-reveal_type(select(func.array_agg(Test.ident_str)))
+assert_type(select(func.array_agg(Test.ident_str)), Select[Sequence[str]])
 
 stmt_array_agg_order_by_1 = select(
     func.array_agg(
@@ -143,8 +133,7 @@ stmt_array_agg_order_by_1 = select(
     )
 )
 
-# EXPECTED_TYPE: Select[Sequence[str]]
-reveal_type(stmt_array_agg_order_by_1)
+assert_type(stmt_array_agg_order_by_1, Select[Sequence[str]])
 
 stmt_array_agg_order_by_2 = select(
     func.array_agg(
@@ -152,5 +141,4 @@ stmt_array_agg_order_by_2 = select(
     )
 )
 
-# EXPECTED_TYPE: Select[Sequence[str]]
-reveal_type(stmt_array_agg_order_by_2)
+assert_type(stmt_array_agg_order_by_2, Select[Sequence[str]])

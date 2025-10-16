@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+from typing import assert_type
+from typing import Unpack
+
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
@@ -16,11 +20,21 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import text
 from sqlalchemy import update
+from sqlalchemy.engine import Result
+from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.query import RowReturningQuery
+from sqlalchemy.sql.dml import ReturningInsert
+from sqlalchemy.sql.elements import KeyedColumnElement
+from sqlalchemy.sql.expression import FromClause
+from sqlalchemy.sql.expression import TextClause
+from sqlalchemy.sql.selectable import ScalarSelect
+from sqlalchemy.sql.selectable import TextualSelect
 
 
 class Base(DeclarativeBase):
@@ -51,13 +65,11 @@ connection = e.connect()
 def t_select_1() -> None:
     stmt = select(User.id, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: Select[int, str]
-    reveal_type(stmt)
+    assert_type(stmt, Select[int, str])
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[int, str]
-    reveal_type(result)
+    assert_type(result, Result[int, str])
 
 
 def t_select_2() -> None:
@@ -75,13 +87,11 @@ def t_select_2() -> None:
         .fetch(User.id)
     )
 
-    # EXPECTED_TYPE: Select[User]
-    reveal_type(stmt)
+    assert_type(stmt, Select[User])
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[User]
-    reveal_type(result)
+    assert_type(result, Result[User])
 
 
 def t_select_3() -> None:
@@ -95,196 +105,157 @@ def t_select_3() -> None:
     # awkwardnesses that aren't really worth it
     ua(id=1, name="foo")
 
-    # EXPECTED_TYPE: type[User]
-    reveal_type(ua)
+    assert_type(ua, type[User])
 
     stmt = select(ua.id, ua.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: Select[int, str]
-    reveal_type(stmt)
+    assert_type(stmt, Select[int, str])
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[int, str]
-    reveal_type(result)
+    assert_type(result, Result[int, str])
 
 
 def t_select_4() -> None:
     ua = aliased(User)
     stmt = select(ua, User).filter(User.id == 5)
 
-    # EXPECTED_TYPE: Select[User, User]
-    reveal_type(stmt)
+    assert_type(stmt, Select[User, User])
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[User, User]
-    reveal_type(result)
+    assert_type(result, Result[User, User])
 
 
 def t_legacy_query_single_entity() -> None:
     q1 = session.query(User).filter(User.id == 5)
 
-    # EXPECTED_TYPE: Query[User]
-    reveal_type(q1)
+    assert_type(q1, Query[User])
 
-    # EXPECTED_TYPE: User
-    reveal_type(q1.one())
+    assert_type(q1.one(), User)
 
-    # EXPECTED_TYPE: list[User]
-    reveal_type(q1.all())
+    assert_type(q1.all(), list[User])
 
     # mypy switches to builtins.list for some reason here
-    # EXPECTED_TYPE: builtins.list[tuple[User, fallback=Row[User]]]
-    reveal_type(q1.only_return_tuples(True).all())
+    assert_type(q1.only_return_tuples(True).all(), list[Row[User]])
 
-    # EXPECTED_TYPE: list[tuple[User]]
-    reveal_type(q1.tuples().all())
+    assert_type(q1.tuples().all(), list[tuple[User]])
 
 
 def t_legacy_query_cols_1() -> None:
     q1 = session.query(User.id, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[int, str]
-    reveal_type(q1)
+    assert_type(q1, RowReturningQuery[int, str])
 
-    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]]
-    reveal_type(q1.one())
+    assert_type(q1.one(), Row[int, str])
 
     r1 = q1.one()
 
     x, y = r1
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 def t_legacy_query_cols_tupleq_1() -> None:
     q1 = session.query(User.id, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[int, str]
-    reveal_type(q1)
+    assert_type(q1, RowReturningQuery[int, str])
 
     q2 = q1.tuples()
 
-    # EXPECTED_TYPE: tuple[int, str]
-    reveal_type(q2.one())
+    assert_type(q2.one(), tuple[int, str])
 
     r1 = q2.one()
 
     x, y = r1
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 def t_legacy_query_cols_1_with_entities() -> None:
     q1 = session.query(User).filter(User.id == 5)
 
-    # EXPECTED_TYPE: Query[User]
-    reveal_type(q1)
+    assert_type(q1, Query[User])
 
     q2 = q1.with_entities(User.id, User.name)
 
-    # EXPECTED_TYPE: RowReturningQuery[int, str]
-    reveal_type(q2)
+    assert_type(q2, RowReturningQuery[int, str])
 
-    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]]
-    reveal_type(q2.one())
+    assert_type(q2.one(), Row[int, str])
 
     r1 = q2.one()
 
     x, y = r1
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 def t_select_with_only_cols() -> None:
     q1 = select(User).where(User.id == 5)
 
-    # EXPECTED_TYPE: Select[User]
-    reveal_type(q1)
+    assert_type(q1, Select[User])
 
     q2 = q1.with_only_columns(User.id, User.name)
 
-    # EXPECTED_TYPE: Select[int, str]
-    reveal_type(q2)
+    assert_type(q2, Select[int, str])
 
     row = connection.execute(q2).one()
 
-    # EXPECTED_TYPE: tuple[int, str, fallback=Row[int, str]]
-    reveal_type(row)
+    assert_type(row, Row[int, str])
 
     x, y = row
 
-    # EXPECTED_TYPE: int
-    reveal_type(x)
+    assert_type(x, int)
 
-    # EXPECTED_TYPE: str
-    reveal_type(y)
+    assert_type(y, str)
 
 
 def t_legacy_query_cols_2() -> None:
     a1 = aliased(User)
     q1 = session.query(User, a1, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[User, User, str]
-    reveal_type(q1)
+    assert_type(q1, RowReturningQuery[User, User, str])
 
-    # EXPECTED_TYPE: tuple[User, User, str, fallback=Row[User, User, str]]
-    reveal_type(q1.one())
+    assert_type(q1.one(), Row[User, User, str])
 
     r1 = q1.one()
 
     x, y, z = r1
 
-    # EXPECTED_TYPE: User
-    reveal_type(x)
+    assert_type(x, User)
 
-    # EXPECTED_TYPE: User
-    reveal_type(y)
+    assert_type(y, User)
 
-    # EXPECTED_TYPE: str
-    reveal_type(z)
+    assert_type(z, str)
 
 
 def t_legacy_query_cols_2_with_entities() -> None:
     q1 = session.query(User)
 
-    # EXPECTED_TYPE: Query[User]
-    reveal_type(q1)
+    assert_type(q1, Query[User])
 
     a1 = aliased(User)
     q2 = q1.with_entities(User, a1, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[User, User, str]
-    reveal_type(q2)
+    assert_type(q2, RowReturningQuery[User, User, str])
 
-    # EXPECTED_TYPE: tuple[User, User, str, fallback=Row[User, User, str]]
-    reveal_type(q2.one())
+    assert_type(q2.one(), Row[User, User, str])
 
     r1 = q2.one()
 
     x, y, z = r1
 
-    # EXPECTED_TYPE: User
-    reveal_type(x)
+    assert_type(x, User)
 
-    # EXPECTED_TYPE: User
-    reveal_type(y)
+    assert_type(y, User)
 
-    # EXPECTED_TYPE: str
-    reveal_type(z)
+    assert_type(z, str)
 
 
 def t_select_add_col_loses_type() -> None:
@@ -293,8 +264,7 @@ def t_select_add_col_loses_type() -> None:
     q2 = q1.add_columns(User.data)
 
     # note this should not match Select
-    # EXPECTED_TYPE: Select[Unpack[tuple[Any, ...]]]
-    reveal_type(q2)
+    assert_type(q2, Select[Unpack[tuple[Any, ...]]])
 
 
 def t_legacy_query_add_col_loses_type() -> None:
@@ -303,14 +273,12 @@ def t_legacy_query_add_col_loses_type() -> None:
     q2 = q1.add_columns(User.data)
 
     # this should match only Any
-    # EXPECTED_TYPE: Query[Any]
-    reveal_type(q2)
+    assert_type(q2, Query[Any])
 
     ua = aliased(User)
     q3 = q1.add_entity(ua)
 
-    # EXPECTED_TYPE: Query[Any]
-    reveal_type(q3)
+    assert_type(q3, Query[Any])
 
 
 def t_legacy_query_scalar_subquery() -> None:
@@ -322,29 +290,25 @@ def t_legacy_query_scalar_subquery() -> None:
 
     # this should be int but mypy can't see it due to the
     # overload that tries to match an entity.
-    # EXPECTED_TYPE: ScalarSelect[Any]
-    reveal_type(q2)
+    assert_type(q2, ScalarSelect[Any])
 
     q3 = session.query(User)
 
     q4 = q3.scalar_subquery()
 
-    # EXPECTED_TYPE: ScalarSelect[Any]
-    reveal_type(q4)
+    assert_type(q4, ScalarSelect[Any])
 
     q5 = session.query(User, User.name)
 
     q6 = q5.scalar_subquery()
 
-    # EXPECTED_TYPE: ScalarSelect[Any]
-    reveal_type(q6)
+    assert_type(q6, ScalarSelect[Any])
 
     # try to simulate the problem with select()
     q7 = session.query(User).only_return_tuples(True)
     q8 = q7.scalar_subquery()
 
-    # EXPECTED_TYPE: ScalarSelect[Any]
-    reveal_type(q8)
+    assert_type(q8, ScalarSelect[Any])
 
 
 def t_select_scalar_subquery() -> None:
@@ -355,16 +319,14 @@ def t_select_scalar_subquery() -> None:
 
     # this should be int but mypy can't see it due to the
     # overload that tries to match an entity.
-    # EXPECTED_TYPE: ScalarSelect[Any]
-    reveal_type(s2)
+    assert_type(s2, ScalarSelect[Any])
 
     s3 = select(User)
     s4 = s3.scalar_subquery()
 
     # it's more important that mypy doesn't get a false positive of
     # 'User' here
-    # EXPECTED_TYPE: ScalarSelect[Any]
-    reveal_type(s4)
+    assert_type(s4, ScalarSelect[Any])
 
 
 def t_select_w_core_selectables() -> None:
@@ -374,8 +336,7 @@ def t_select_w_core_selectables() -> None:
     """
     s1 = select(User.id, User.name).subquery()
 
-    # EXPECTED_TYPE: KeyedColumnElement[Any]
-    reveal_type(s1.c.name)
+    assert_type(s1.c.name, KeyedColumnElement[Any])
 
     s2 = select(User.id, s1.c.name)
 
@@ -386,31 +347,26 @@ def t_select_w_core_selectables() -> None:
     # mypy would downgrade to Any rather than picking the basemost type.
     # with typing integrated into Select etc. we can at least get a Select
     # object back.
-    # EXPECTED_TYPE: Select[Unpack[tuple[Any, ...]]]
-    reveal_type(s2)
+    assert_type(s2, Select[Unpack[tuple[Any, ...]]])
 
     # so a fully explicit type may be given
     s2_typed: Select[tuple[int, str]] = select(User.id, s1.c.name)
 
-    # EXPECTED_TYPE: Select[tuple[int, str]]
-    reveal_type(s2_typed)
+    assert_type(s2_typed, Select[tuple[int, str]])
 
     # plain FromClause etc we at least get Select
     s3 = select(s1)
 
-    # EXPECTED_TYPE: Select[Unpack[tuple[Any, ...]]]
-    reveal_type(s3)
+    assert_type(s3, Select[Unpack[tuple[Any, ...]]])
 
     t1 = User.__table__
     assert t1 is not None
 
-    # EXPECTED_TYPE: FromClause
-    reveal_type(t1)
+    assert_type(t1, FromClause)
 
     s4 = select(t1)
 
-    # EXPECTED_TYPE: Select[Unpack[tuple[Any, ...]]]
-    reveal_type(s4)
+    assert_type(s4, Select[Unpack[tuple[Any, ...]]])
 
 
 def t_dml_insert() -> None:
@@ -418,53 +374,45 @@ def t_dml_insert() -> None:
 
     r1 = session.execute(s1)
 
-    # EXPECTED_TYPE: Result[int, str]
-    reveal_type(r1)
+    assert_type(r1, Result[int, str])
 
     s2 = insert(User).returning(User)
 
     r2 = session.execute(s2)
 
-    # EXPECTED_TYPE: Result[User]
-    reveal_type(r2)
+    assert_type(r2, Result[User])
 
     s3 = insert(User).returning(func.foo(), column("q"))
 
-    # EXPECTED_TYPE: ReturningInsert[Unpack[tuple[Any, ...]]]
-    reveal_type(s3)
+    assert_type(s3, ReturningInsert[Unpack[tuple[Any, ...]]])
 
     r3 = session.execute(s3)
 
-    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
-    reveal_type(r3)
+    assert_type(r3, Result[Unpack[tuple[Any, ...]]])
 
 
 def t_dml_bare_insert() -> None:
     s1 = insert(User)
     r1 = session.execute(s1)
-    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
-    reveal_type(r1)
+    assert_type(r1, Result[Unpack[tuple[Any, ...]]])
 
 
 def t_dml_bare_update() -> None:
     s1 = update(User)
     r1 = session.execute(s1)
-    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
-    reveal_type(r1)
+    assert_type(r1, Result[Unpack[tuple[Any, ...]]])
 
 
 def t_dml_update_with_values() -> None:
     s1 = update(User).values({User.id: 123, User.data: "value"})
     r1 = session.execute(s1)
-    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
-    reveal_type(r1)
+    assert_type(r1, Result[Unpack[tuple[Any, ...]]])
 
 
 def t_dml_bare_delete() -> None:
     s1 = delete(User)
     r1 = session.execute(s1)
-    # EXPECTED_TYPE: Result[Unpack[tuple[Any, ...]]]
-    reveal_type(r1)
+    assert_type(r1, Result[Unpack[tuple[Any, ...]]])
 
 
 def t_dml_update() -> None:
@@ -472,8 +420,7 @@ def t_dml_update() -> None:
 
     r1 = session.execute(s1)
 
-    # EXPECTED_TYPE: Result[int, str]
-    reveal_type(r1)
+    assert_type(r1, Result[int, str])
 
 
 def t_dml_delete() -> None:
@@ -481,22 +428,19 @@ def t_dml_delete() -> None:
 
     r1 = session.execute(s1)
 
-    # EXPECTED_TYPE: Result[int, str]
-    reveal_type(r1)
+    assert_type(r1, Result[int, str])
 
 
 def t_from_statement() -> None:
     t = text("select * from user")
 
-    # EXPECTED_TYPE: TextClause
-    reveal_type(t)
+    assert_type(t, TextClause)
 
     select(User).from_statement(t)
 
     ts = text("select * from user").columns(User.id, User.name)
 
-    # EXPECTED_TYPE: TextualSelect
-    reveal_type(ts)
+    assert_type(ts, TextualSelect)
 
     select(User).from_statement(ts)
 
@@ -504,8 +448,7 @@ def t_from_statement() -> None:
         user_table.c.id, user_table.c.name
     )
 
-    # EXPECTED_TYPE: TextualSelect
-    reveal_type(ts2)
+    assert_type(ts2, TextualSelect)
 
     select(User).from_statement(ts2)
 
@@ -519,17 +462,13 @@ def t_aliased_fromclause() -> None:
 
     a4 = aliased(user_table)
 
-    # EXPECTED_TYPE: type[User]
-    reveal_type(a1)
+    assert_type(a1, type[User])
 
-    # EXPECTED_TYPE: type[User]
-    reveal_type(a2)
+    assert_type(a2, type[User])
 
-    # EXPECTED_TYPE: type[User]
-    reveal_type(a3)
+    assert_type(a3, type[User])
 
-    # EXPECTED_TYPE: FromClause
-    reveal_type(a4)
+    assert_type(a4, FromClause)
 
 
 def test_select_from() -> None:

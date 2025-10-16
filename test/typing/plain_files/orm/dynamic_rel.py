@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from typing import assert_type
 
 from sqlalchemy import ForeignKey
 from sqlalchemy import select
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.dynamic import AppenderQuery
 
 
 class Base(DeclarativeBase):
@@ -37,19 +39,16 @@ with Session() as session:
     session.commit()
 
     if typing.TYPE_CHECKING:
-        # EXPECTED_TYPE: AppenderQuery[Address]
-        reveal_type(u.addresses)
+        assert_type(u.addresses, AppenderQuery[Address])
 
     count = u.addresses.count()
     if typing.TYPE_CHECKING:
-        # EXPECTED_TYPE: int
-        reveal_type(count)
+        assert_type(count, int)
 
     address = u.addresses.filter(Address.email_address.like("xyz")).one()
 
     if typing.TYPE_CHECKING:
-        # EXPECTED_TYPE: Address
-        reveal_type(address)
+        assert_type(address, Address)
 
     u.addresses.append(Address())
     u.addresses.extend([Address(), Address()])
@@ -57,8 +56,7 @@ with Session() as session:
     current_addresses = list(u.addresses)
 
     if typing.TYPE_CHECKING:
-        # EXPECTED_TYPE: list[Address]
-        reveal_type(current_addresses)
+        assert_type(current_addresses, list[Address])
 
     # can assign plain list
     u.addresses = []
@@ -68,15 +66,13 @@ with Session() as session:
 
     if typing.TYPE_CHECKING:
         # still an AppenderQuery
-        # EXPECTED_TYPE: AppenderQuery[Address]
-        reveal_type(u.addresses)
+        assert_type(u.addresses, AppenderQuery[Address])
 
     u.addresses = {Address(), Address()}
 
     if typing.TYPE_CHECKING:
         # still an AppenderQuery
-        # EXPECTED_TYPE: AppenderQuery[Address]
-        reveal_type(u.addresses)
+        assert_type(u.addresses, AppenderQuery[Address])
 
     u.addresses.append(Address())
 
