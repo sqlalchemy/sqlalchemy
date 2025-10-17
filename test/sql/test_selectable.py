@@ -3156,7 +3156,13 @@ class AnnotationsTest(fixtures.TestBase):
 
     @testing.variation("use_get_params", [True, False])
     def test_annotated_cte_params_traverse(self, use_get_params):
-        """test #12915"""
+        """test #12915
+
+        this issue attempted to repair some traversal issues found using
+        params() but does not fix the full issue reported in #12915, which
+        is a "wontfix" in favor of #7066.
+
+        """
         user = Table("user", MetaData(), Column("id", Integer))
 
         ids_param = bindparam("ids")
@@ -3170,8 +3176,8 @@ class AnnotationsTest(fixtures.TestBase):
         if use_get_params:
             stmt = stmt.params(ids=17)
         else:
-            # test without using params(), in case the implementation
-            # for params() changes we still want to test cloned_traverse
+            # test without using params(), as the implementation
+            # for params() will be changing
             def visit_bindparam(bind):
                 if bind.key == "ids":
                     bind.value = 17
