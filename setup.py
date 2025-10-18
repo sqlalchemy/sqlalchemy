@@ -49,7 +49,6 @@ if HAS_CYTHON and IS_CPYTHON and not DISABLE_EXTENSION:
     from Cython.Compiler import Options
 
     Options.docstrings = False
-    Options.lookup_module_cpdef = True
     Options.clear_to_none = False
 
     cython_directives: Dict[str, Any] = {

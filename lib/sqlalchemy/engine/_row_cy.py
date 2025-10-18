@@ -79,13 +79,14 @@ else:
     from cython.cimports.cpython import PyTuple_SET_ITEM
     from cython.cimports.cpython import PySequence_Fast_GET_SIZE
 
-
     @cython.inline
     @cython.cfunc
     @cython.wraparound(False)
     @cython.boundscheck(False)
     @cython.returns(tuple)
-    @cython.locals(res=tuple, proc_size=cython.Py_ssize_t, p=object, value=object)
+    @cython.locals(
+        res=tuple, proc_size=cython.Py_ssize_t, p=object, value=object
+    )
     def _apply_processors(proc: object, data: object) -> Tuple[Any, ...]:
         proc_size = PySequence_Fast_GET_SIZE(proc)
         # TODO: would be nice to do this only on the fist row
@@ -102,13 +103,14 @@ else:
         return res
 
     @cython.inline
-    @cython.cfunc
+    @cython.ccall
     def rowproxy_reconstructor(
         cls: Type[BaseRow], state: Dict[str, Any]
     ) -> BaseRow:
         obj = cython.cast(BaseRow, cls.__new__(cls))
         obj.__setstate__(state)
         return obj
+
 
 @cython.cclass
 class BaseRow:
@@ -120,7 +122,6 @@ class BaseRow:
             dict, visibility="readonly"
         )
         _data: Tuple[Any, ...] = cython.declare(tuple, visibility="readonly")
-
 
     def __init__(
         self,
@@ -153,22 +154,22 @@ class BaseRow:
         self._data = data
 
     if cython.compiled:
-        @cython.inline
-        @cython.cfunc
-        def _getstate_impl(self) -> dict:
+
+        @cython.returns(dict)
+        def __getstate__(self) -> Dict[str, Any]:
             self = cython.cast(BaseRow, self)
             return {"_parent": self._parent, "_data": self._data}
-        
-        def __getstate__(self) -> Dict[str, Any]:
-            return cython.cast(BaseRow, self)._getstate_impl()
 
+        @cython.returns(tuple)
         def __reduce__(self) -> Tuple[Any, Any]:
             self = cython.cast(BaseRow, self)
             return (
                 rowproxy_reconstructor,
-                (self.__class__, self._getstate_impl()),
+                (
+                    self.__class__,
+                    {"_parent": self._parent, "_data": self._data},
+                ),
             )
-        
 
         def __getattribute__(self, name: _KeyType) -> object:
             self = cython.cast(BaseRow, self)
@@ -180,7 +181,10 @@ class BaseRow:
                 if name == "_parent":
                     return self._parent
             if name[0] != "_" and name[-1] != "_":
-                return self._get_by_key_impl(name, True)
+                try:
+                    return self._get_by_key_impl(name, False)
+                except KeyError:
+                    pass
             return object.__getattribute__(self, name)
 
     else:
@@ -226,6 +230,8 @@ class BaseRow:
 
     @cython.cfunc
     @cython.inline
+    @cython.wraparound(False)
+    @cython.boundscheck(False)
     @cython.locals(index=cython.Py_ssize_t)
     def _get_by_key_impl(self, key: _KeyType, attr_err: cython.bint) -> object:
         self = cython.cast(BaseRow, self)
