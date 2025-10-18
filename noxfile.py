@@ -10,6 +10,9 @@ from typing import Set
 
 import nox
 
+nox.needs_version = ">=2025.10.16"
+
+
 if True:
     sys.path.insert(0, ".")
     from tools.toxnox import extract_opts
@@ -68,8 +71,8 @@ def _setup_for_driver(
 ) -> None:
 
     # install driver deps listed out in pyproject.toml
-    nogreenlet_deps = f"tests-{basename.replace("_", "-")}"
-    greenlet_deps = f"tests-{basename.replace("_", "-")}-asyncio"
+    nogreenlet_deps = f"tests-{basename.replace('_', '-')}"
+    greenlet_deps = f"tests-{basename.replace('_', '-')}-asyncio"
 
     deps = nox.project.dependency_groups(
         pyproject,
