@@ -10,6 +10,9 @@ from typing import Set
 
 import nox
 
+nox.needs_version = ">=2025.10.16"
+
+
 if True:
     sys.path.insert(0, ".")
     from tools.toxnox import extract_opts

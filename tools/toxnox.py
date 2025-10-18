@@ -74,27 +74,6 @@ def tox_parameters(
     def _is_py_version(token: str) -> bool:
         return bool(PY_RE.match(token))
 
-    def _expand_python_version(token: str) -> str:
-        """expand pyx.y(t) tags into executable names.
-
-        Works around nox issue fixed at
-        https://github.com/wntrblm/nox/pull/999 by providing full executable
-        name
-
-        """
-        if sys.platform == "win32":
-            return token
-
-        m = PY_RE.match(token)
-
-        # do this matching minimally so that it only happens for the
-        # free-threaded versions.  on windows, the "pythonx.y" syntax doesn't
-        # work due to the use of the "py" tool
-        if m and m.group(2) == "t":
-            return f"python{m.group(1)}"
-        else:
-            return token
-
     def _python_to_tag(token: str) -> str:
         m = PY_RE.match(token)
         if m:
@@ -186,9 +165,7 @@ def tox_parameters(
                 )
 
     params = [
-        nox.param(
-            *[_expand_python_version(a) for a in args], tags=tags, id=ids
-        )
+        nox.param(*args, tags=tags, id=ids)
         for args, tags, ids in _recur_param([], [], token_lists)
         if filter_ is None or filter_(**dict(zip(names, args)))
     ]
