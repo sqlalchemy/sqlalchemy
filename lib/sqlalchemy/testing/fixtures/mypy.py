@@ -29,8 +29,6 @@ try:
 except ImportError:
     _mypy_vers_tuple = (0, 0, 0)
 
-mypy_14 = _mypy_vers_tuple >= (1, 4)
-
 
 @config.add_to_marker.mypy
 class MypyTest(TestBase):
@@ -128,9 +126,7 @@ class MypyTest(TestBase):
 
     def _collect_messages(self, path):
         expected_messages = []
-        expected_re = re.compile(
-            r"\s*# EXPECTED(_MYPY)?(_RE)?(_ROW)?(_TYPE)?: (.+)"
-        )
+        expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?(_RE)?(_TYPE)?: (.+)")
         py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")
         with open(path) as file_:
             current_assert_messages = []
@@ -148,71 +144,21 @@ class MypyTest(TestBase):
                 if m:
                     is_mypy = bool(m.group(1))
                     is_re = bool(m.group(2))
-                    is_row = bool(m.group(3))
-                    is_type = bool(m.group(4))
-
-                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(5))
-                    if is_row:
-                        expected_msg = re.sub(
-                            r"Row\[([^\]]+)\]",
-                            lambda m: f"tuple[{m.group(1)}, fallback=s"
-                            f"qlalchemy.engine.row.{m.group(0)}]",
-                            expected_msg,
-                        )
-                        # For some reason it does not use or syntax (|)
-                        expected_msg = re.sub(
-                            r"Optional\[(.*)\]",
-                            lambda m: f"Union[{m.group(1)}, None]",
-                            expected_msg,
-                        )
+                    is_type = bool(m.group(3))
+                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(4))
 
                     if is_type:
-                        if not is_re:
-                            # the goal here is that we can cut-and-paste
-                            # from vscode -> pylance into the
-                            # EXPECTED_TYPE: line, then the test suite will
-                            # validate that line against what mypy produces
-                            expected_msg = re.sub(
-                                r"([\[\]])",
-                                lambda m: rf"\{m.group(0)}",
-                                expected_msg,
-                            )
-
-                            # note making sure preceding text matches
-                            # with a dot, so that an expect for "Select"
-                            # does not match "TypedSelect"
-                            expected_msg = re.sub(
-                                r"([\w_]+)",
-                                lambda m: rf"(?:.*\.)?{m.group(1)}\*?",
-                                expected_msg,
-                            )
-
-                            expected_msg = re.sub(
-                                "List", "builtins.list", expected_msg
-                            )
-
-                            expected_msg = re.sub(
-                                r"\b(int|str|float|bool)\b",
-                                lambda m: rf"builtins.{m.group(0)}\*?",
-                                expected_msg,
-                            )
-                            # expected_msg = re.sub(
-                            #     r"(Sequence|Tuple|List|Union)",
-                            #     lambda m: fr"typing.{m.group(0)}\*?",
-                            #     expected_msg,
-                            # )
 
                         is_mypy = is_re = True
                         expected_msg = f'Revealed type is "{expected_msg}"'
 
-                    if mypy_14:
-                        # use_or_syntax
-                        # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L368  # noqa: E501
-                        expected_msg = re.sub(
-                            r"Optional\[(.*?)\]",
-                            lambda m: f"{m.group(1)} | None",
-                            expected_msg,
-                        )
+                    # use_or_syntax
+                    # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L368  # noqa: E501
+                    expected_msg = re.sub(
+                        r"Optional\[(.*?)\]",
+                        lambda m: f"{m.group(1)} | None",
+                        expected_msg,
+                    )
                     current_assert_messages.append(
                         (is_mypy, is_re, expected_msg.strip())
                     )

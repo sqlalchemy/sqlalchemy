@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+from typing import assert_type
 from typing import List
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
+from sqlalchemy.engine.row import Row
 from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +17,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import SessionTransaction
+from sqlalchemy.orm.query import Query
 
 
 class Base(DeclarativeBase):
@@ -50,19 +54,16 @@ with Session(e) as sess:
 
     q = sess.query(User).filter_by(id=7)
 
-    # EXPECTED_TYPE: Query[User]
-    reveal_type(q)
+    assert_type(q, Query[User])
 
     rows1 = q.all()
 
-    # EXPECTED_RE_TYPE: builtins.list\[.*User\*?\]
-    reveal_type(rows1)
+    assert_type(rows1, list[User])
 
     q2 = sess.query(User.id).filter_by(id=7)
     rows2 = q2.all()
 
-    # EXPECTED_TYPE: list[.*Row[.*int].*]
-    reveal_type(rows2)
+    assert_type(rows2, list[Row[int]])
 
     # test #8280
 
@@ -86,12 +87,10 @@ with Session(e) as sess:
     # test #9125
 
     for row in sess.query(User.id, User.name):
-        # EXPECTED_TYPE: .*Row[int, str].*
-        reveal_type(row)
+        assert_type(row, Row[int, str])
 
     for uobj1 in sess.query(User):
-        # EXPECTED_TYPE: User
-        reveal_type(uobj1)
+        assert_type(uobj1, User)
 
     sess.query(User).limit(None).offset(None).limit(10).offset(10).limit(
         User.id
@@ -100,8 +99,7 @@ with Session(e) as sess:
     # test #11083
 
     with sess.begin() as tx:
-        # EXPECTED_TYPE: SessionTransaction
-        reveal_type(tx)
+        assert_type(tx, SessionTransaction)
 
 # more result tests in typed_results.py
 

@@ -1,3 +1,5 @@
+from typing import assert_type
+
 from sqlalchemy import Integer
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_as_dataclass
@@ -19,5 +21,4 @@ class Relationships:
 rs = Relationships(entity_id1=1, entity_id2=2, level=1)
 
 
-# EXPECTED_TYPE: int
-reveal_type(rs.entity_id1)
+assert_type(rs.entity_id1, int)

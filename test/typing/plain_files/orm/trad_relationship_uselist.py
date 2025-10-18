@@ -1,6 +1,8 @@
 """traditional relationship patterns with explicit uselist."""
 
 import typing
+from typing import Any
+from typing import assert_type
 from typing import cast
 from typing import Dict
 from typing import List
@@ -11,6 +13,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -99,45 +102,34 @@ class Address(Base):
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[trad_relationship_uselist.Address\]\]
-    reveal_type(User.addresses_style_one)
+    assert_type(User.addresses_style_one, InstrumentedAttribute[list[Address]])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*?\[trad_relationship_uselist.Address\]\]
-    reveal_type(User.addresses_style_two)
+    assert_type(User.addresses_style_two, InstrumentedAttribute[set[Address]])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
-    reveal_type(User.addresses_style_three)
+    assert_type(User.addresses_style_three, InstrumentedAttribute[Any])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
-    reveal_type(User.addresses_style_three_cast)
+    assert_type(User.addresses_style_three_cast, InstrumentedAttribute[Any])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
-    reveal_type(User.addresses_style_four)
+    assert_type(User.addresses_style_four, InstrumentedAttribute[Any])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
-    reveal_type(Address.user_style_one)
+    assert_type(Address.user_style_one, InstrumentedAttribute[Any])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[trad_relationship_uselist.User\*?\]
-    reveal_type(Address.user_style_one_typed)
+    assert_type(Address.user_style_one_typed, InstrumentedAttribute[User])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
-    reveal_type(Address.user_style_two)
+    assert_type(Address.user_style_two, InstrumentedAttribute[Any])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[trad_relationship_uselist.User\*?\]
-    reveal_type(Address.user_style_two_typed)
+    assert_type(Address.user_style_two_typed, InstrumentedAttribute[User])
 
     # reveal_type(Address.user_style_six)
 
     # reveal_type(Address.user_style_seven)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
-    reveal_type(Address.user_style_eight)
+    assert_type(Address.user_style_eight, InstrumentedAttribute[Any])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
-    reveal_type(Address.user_style_nine)
+    assert_type(Address.user_style_nine, InstrumentedAttribute[Any])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
-    reveal_type(Address.user_style_ten)
+    assert_type(Address.user_style_ten, InstrumentedAttribute[Any])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.dict\*?\[builtins.str, trad_relationship_uselist.User\]\]
-    reveal_type(Address.user_style_ten_typed)
+    assert_type(
+        Address.user_style_ten_typed, InstrumentedAttribute[dict[str, User]]
+    )

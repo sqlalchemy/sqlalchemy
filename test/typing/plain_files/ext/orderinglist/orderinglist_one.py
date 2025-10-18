@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import re
+from typing import assert_type
+from typing import Callable
 from typing import Sequence
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.orderinglist import ordering_list
+from sqlalchemy.ext.orderinglist import OrderingList
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -47,8 +50,6 @@ slide = Slide()
 
 
 if TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: def \(\) -> sqlalchemy.*.orderinglist.OrderingList\[orderinglist_one.Bullet\]
-    reveal_type(pos_from_text)
+    assert_type(pos_from_text, Callable[[], OrderingList[Bullet]])
 
-    # EXPECTED_TYPE: builtins.list[orderinglist_one.Bullet]
-    reveal_type(slide.bullets)
+    assert_type(slide.bullets, list[Bullet])

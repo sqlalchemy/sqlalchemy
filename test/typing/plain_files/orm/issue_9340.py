@@ -1,13 +1,16 @@
+from typing import assert_type
 from typing import Sequence
 from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine
+from sqlalchemy import Select
 from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.orm.util import AliasedClass
 
 
 class Base(DeclarativeBase): ...
@@ -39,8 +42,7 @@ def get_messages() -> Sequence[Message]:
         message_query = select(Message)
 
         if TYPE_CHECKING:
-            # EXPECTED_TYPE: Select[Message]
-            reveal_type(message_query)
+            assert_type(message_query, Select[Message])
 
         return session.scalars(message_query).all()
 
@@ -50,13 +52,11 @@ def get_poly_messages() -> Sequence[Message]:
         PolymorphicMessage = with_polymorphic(Message, (UserComment,))
 
         if TYPE_CHECKING:
-            # EXPECTED_TYPE: AliasedClass[Message]
-            reveal_type(PolymorphicMessage)
+            assert_type(PolymorphicMessage, AliasedClass[Message])
 
         poly_query = select(PolymorphicMessage)
 
         if TYPE_CHECKING:
-            # EXPECTED_TYPE: Select[Message]
-            reveal_type(poly_query)
+            assert_type(poly_query, Select[Message])
 
         return session.scalars(poly_query).all()

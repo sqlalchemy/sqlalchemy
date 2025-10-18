@@ -1,7 +1,11 @@
 import typing
+from typing import assert_type
 
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
+from sqlalchemy.engine import Inspector
+from sqlalchemy.engine.base import Engine
+from sqlalchemy.engine.interfaces import ReflectedColumn
 
 
 e = create_engine("sqlite://")
@@ -13,11 +17,8 @@ cols = insp.get_columns("some_table")
 c1 = cols[0]
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.engine.base.Engine
-    reveal_type(e)
+    assert_type(e, Engine)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.engine.reflection.Inspector.*
-    reveal_type(insp)
+    assert_type(insp, Inspector)
 
-    # EXPECTED_RE_TYPE: .*list.*TypedDict.*ReflectedColumn.*
-    reveal_type(cols)
+    assert_type(cols, list[ReflectedColumn])

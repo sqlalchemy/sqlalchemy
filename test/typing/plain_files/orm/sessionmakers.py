@@ -1,5 +1,7 @@
 """test sessionmaker, originally for #7656"""
 
+from typing import assert_type
+
 from sqlalchemy import create_engine
 from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio import async_scoped_session
@@ -11,6 +13,7 @@ from sqlalchemy.orm import QueryPropertyDescriptor
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.query import Query
 
 
 async_engine = create_async_engine("...")
@@ -39,19 +42,16 @@ async def async_main() -> None:
     fac = async_session_factory(async_engine)
 
     async with fac() as sess:
-        # EXPECTED_TYPE: MyAsyncSession
-        reveal_type(sess)
+        assert_type(sess, MyAsyncSession)
 
     async with fac.begin() as sess:
-        # EXPECTED_TYPE: MyAsyncSession
-        reveal_type(sess)
+        assert_type(sess, MyAsyncSession)
 
     scoped_fac = async_scoped_session_factory(async_engine)
 
     sess = scoped_fac()
 
-    # EXPECTED_TYPE: MyAsyncSession
-    reveal_type(sess)
+    assert_type(sess, MyAsyncSession)
 
 
 engine = create_engine("...")
@@ -75,49 +75,41 @@ def main() -> None:
     fac = session_factory(engine)
 
     with fac() as sess:
-        # EXPECTED_TYPE: MySession
-        reveal_type(sess)
+        assert_type(sess, MySession)
 
     with fac.begin() as sess:
-        # EXPECTED_TYPE: MySession
-        reveal_type(sess)
+        assert_type(sess, MySession)
 
     scoped_fac = scoped_session_factory(engine)
 
     sess = scoped_fac()
-    # EXPECTED_TYPE: MySession
-    reveal_type(sess)
+    assert_type(sess, MySession)
 
 
 def test_8837_sync() -> None:
     sm = sessionmaker()
 
-    # EXPECTED_TYPE: sessionmaker[Session]
-    reveal_type(sm)
+    assert_type(sm, sessionmaker[Session])
 
     session = sm()
 
-    # EXPECTED_TYPE: Session
-    reveal_type(session)
+    assert_type(session, Session)
 
 
 def test_8837_async() -> None:
     as_ = async_sessionmaker()
 
-    # EXPECTED_TYPE: async_sessionmaker[AsyncSession]
-    reveal_type(as_)
+    assert_type(as_, async_sessionmaker[AsyncSession])
 
     async_session = as_()
 
-    # EXPECTED_TYPE: AsyncSession
-    reveal_type(async_session)
+    assert_type(async_session, AsyncSession)
 
 
 # test #9338
 ss_9338 = scoped_session_factory(engine)
 
-# EXPECTED_TYPE: QueryPropertyDescriptor
-reveal_type(ss_9338.query_property())
+assert_type(ss_9338.query_property(), QueryPropertyDescriptor)
 qp: QueryPropertyDescriptor = ss_9338.query_property()
 
 
@@ -125,16 +117,13 @@ class Foo:
     query = qp
 
 
-# EXPECTED_TYPE: Query[Foo]
-reveal_type(Foo.query)
+assert_type(Foo.query, Query[Foo])
 
-# EXPECTED_TYPE: list[Foo]
-reveal_type(Foo.query.all())
+assert_type(Foo.query.all(), list[Foo])
 
 
 class Bar:
     query: QueryPropertyDescriptor = ss_9338.query_property()
 
 
-# EXPECTED_TYPE: Query[Bar]
-reveal_type(Bar.query)
+assert_type(Bar.query, Query[Bar])

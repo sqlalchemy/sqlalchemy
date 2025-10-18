@@ -1,4 +1,7 @@
+from decimal import Decimal
 import typing
+from typing import Any
+from typing import assert_type
 
 from sqlalchemy import and_
 from sqlalchemy import Boolean
@@ -13,6 +16,10 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import true
+from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.elements import UnaryExpression
+from sqlalchemy.sql.expression import BinaryExpression
+from sqlalchemy.sql.expression import ColumnClause
 
 
 # builtin.pyi stubs define object.__eq__() as returning bool,  which
@@ -99,57 +106,38 @@ def test_issue_9650_char() -> None:
 
 
 def test_issue_9650_bitwise() -> None:
-    # EXPECTED_TYPE: BinaryExpression[Any]
-    reveal_type(c2.bitwise_and(5))
-    # EXPECTED_TYPE: BinaryExpression[Any]
-    reveal_type(c2.bitwise_or(5))
-    # EXPECTED_TYPE: BinaryExpression[Any]
-    reveal_type(c2.bitwise_xor(5))
-    # EXPECTED_TYPE: UnaryExpression[int]
-    reveal_type(c2.bitwise_not())
-    # EXPECTED_TYPE: BinaryExpression[Any]
-    reveal_type(c2.bitwise_lshift(5))
-    # EXPECTED_TYPE: BinaryExpression[Any]
-    reveal_type(c2.bitwise_rshift(5))
-    # EXPECTED_TYPE: ColumnElement[int]
-    reveal_type(c2 << 5)
-    # EXPECTED_TYPE: ColumnElement[int]
-    reveal_type(c2 >> 5)
+    assert_type(c2.bitwise_and(5), BinaryExpression[Any])
+    assert_type(c2.bitwise_or(5), BinaryExpression[Any])
+    assert_type(c2.bitwise_xor(5), BinaryExpression[Any])
+    assert_type(c2.bitwise_not(), UnaryExpression[int])
+    assert_type(c2.bitwise_lshift(5), BinaryExpression[Any])
+    assert_type(c2.bitwise_rshift(5), BinaryExpression[Any])
+    assert_type(c2 << 5, ColumnElement[int])
+    assert_type(c2 >> 5, ColumnElement[int])
 
 
 if typing.TYPE_CHECKING:
     # as far as if this is ColumnElement, BinaryElement, SQLCoreOperations,
     # that might change.  main thing is it's SomeSQLColThing[bool] and
     # not 'bool' or 'Any'.
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.bool\]
-    reveal_type(expr1)
+    assert_type(expr1, ColumnElement[bool])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnClause\[builtins.str.?\]
-    reveal_type(c1)
+    assert_type(c1, ColumnClause[str])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnClause\[builtins.int.?\]
-    reveal_type(c2)
+    assert_type(c2, ColumnClause[int])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*BinaryExpression\[builtins.bool\]
-    reveal_type(expr2)
+    assert_type(expr2, BinaryExpression[bool])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.float | .*\.Decimal\]
-    reveal_type(expr3)
+    assert_type(expr3, ColumnElement[float | Decimal])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*UnaryExpression\[builtins.int.?\]
-    reveal_type(expr4)
+    assert_type(expr4, UnaryExpression[int])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.bool.?\]
-    reveal_type(expr5)
+    assert_type(expr5, ColumnElement[bool])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.bool.?\]
-    reveal_type(expr6)
+    assert_type(expr6, ColumnElement[bool])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.str\]
-    reveal_type(expr7)
+    assert_type(expr7, ColumnElement[str])
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ColumnElement\[builtins.int.?\]
-    reveal_type(expr8)
+    assert_type(expr8, ColumnElement[int])
 
-    # EXPECTED_TYPE: BinaryExpression[bool]
-    reveal_type(expr9)
+    assert_type(expr9, BinaryExpression[bool])
