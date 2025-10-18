@@ -279,6 +279,66 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "REFERENCES fake_table)"
             )
 
+            # tables for issue #12924 - table names with CHECK/CONSTRAINT
+            conn.exec_driver_sql(
+                "CREATE TABLE oneline ( field INTEGER CHECK(field>0))"
+            )
+            conn.exec_driver_sql(
+                "CREATE TABLE oneline_nested ( field INTEGER "
+                "CHECK((field>0 and field<22) or (field>99 and field<1010)))"
+            )
+            conn.exec_driver_sql(
+                "CREATE TABLE oneline_2constraints ( pk INTEGER "
+                "CONSTRAINT pkname PRIMARY KEY, field INTEGER "
+                "CONSTRAINT chname CHECK((field>0 and field<22) or "
+                "(field>99 and field<1010)))"
+            )
+            conn.exec_driver_sql(
+                "CREATE TABLE oneline_nameCHECK ( pk INTEGER "
+                "CONSTRAINT pkname PRIMARY KEY )"
+            )
+            conn.exec_driver_sql(
+                "CREATE TABLE oneline_nameCONSTRAINT "
+                "( field INTEGER CHECK (field IN (1, 0, -1)) )"
+            )
+            conn.exec_driver_sql(
+                "CREATE TABLE twochecks_oneline (\n"
+                "field INTEGER,\n"
+                "CHECK (field>1), CHECK(  field<9)\n"
+                ")"
+            )
+
+            # Test all SQLite quote styles for constraint names
+            conn.exec_driver_sql(
+                "CREATE TABLE quote_styles ( "
+                "field INTEGER, "
+                'CONSTRAINT "double_quoted" CHECK (field > 0), '
+                "CONSTRAINT 'single_quoted' CHECK (field < 100), "
+                "CONSTRAINT [bracket_quoted] CHECK (field != 50), "
+                "CONSTRAINT `backtick_quoted` CHECK (field >= 10)"
+                ")"
+            )
+
+            # Test CHECK constraints with parentheses in string literals
+            # These cases have unbalanced parens if we naively count all parens
+            conn.exec_driver_sql(
+                "CREATE TABLE parens_in_strings ("
+                " field TEXT,"
+                " CHECK (field != '('),"
+                " CHECK (field != ')'),"
+                " CHECK (field NOT LIKE '%('),"
+                " CHECK (field IN (')', '(', 'test')),"
+                # Escaped quotes (SQLite uses '' to escape quotes)
+                " CHECK (field != 'it''s (not) valid'),"
+                ' CHECK (field != "say ""(hello)"" "),'
+                " CHECK (field NOT IN ('()', 'a''b''c', ')')),"
+                # Complex nested cases with lots of unbalanced parens in
+                # strings
+                " CHECK (field != '((' OR field = ')))'),"
+                ' CHECK (field LIKE "%))(%" OR field LIKE "%)(%")'
+                ")"
+            )
+
     @classmethod
     def teardown_test_class(cls):
         with testing.db.begin() as conn:
@@ -305,6 +365,14 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "a1",
                 "a2",
                 "r",
+                "oneline",
+                "oneline_nested",
+                "oneline_2constraints",
+                "oneline_nameCHECK",
+                "oneline_nameCONSTRAINT",
+                "twochecks_oneline",
+                "quote_styles",
+                "parens_in_strings",
             ]:
                 conn.exec_driver_sql("drop table %s" % name)
 
@@ -881,7 +949,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
             ],
         )
 
-    @testing.fails("need to come up with new regex and/or DDL parsing")
     def test_check_constraint_multiline(self):
         """test for #11677"""
 
@@ -965,6 +1032,116 @@ class ConstraintReflectionTest(fixtures.TestBase):
             eq_(const["column_names"], [expected])
         else:
             assert False
+
+    def test_check_constraint_oneline(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("oneline"),
+            [
+                {"sqltext": "field>0", "name": None},
+            ],
+        )
+
+    def test_check_constraint_oneline_nested(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("oneline_nested"),
+            [
+                {
+                    "sqltext": "(field>0 and field<22) "
+                    "or (field>99 and field<1010)",
+                    "name": None,
+                },
+            ],
+        )
+
+    def test_check_constraint_oneline_2constraints(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("oneline_2constraints"),
+            [
+                {
+                    "sqltext": "(field>0 and field<22) "
+                    "or (field>99 and field<1010)",
+                    "name": "chname",
+                },
+            ],
+        )
+
+    def test_check_constraint_oneline_nameCHECK(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("oneline_nameCHECK"),
+            [],
+        )
+
+    def test_check_constraint_oneline_nameCONSTRAINT(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("oneline_nameCONSTRAINT"),
+            [
+                {"sqltext": "field IN (1, 0, -1)", "name": None},
+            ],
+        )
+
+    def test_check_constraint_twochecks_oneline(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("twochecks_oneline"),
+            [
+                {"sqltext": "field>1", "name": None},
+                {"sqltext": "field<9", "name": None},
+            ],
+        )
+
+    def test_check_constraint_quote_styles(self):
+        """Test all SQLite identifier quote styles for constraint names.
+
+        SQLite supports 4 quote styles: double quotes, single quotes,
+        brackets, and backticks (for compatibility with other databases).
+        """
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("quote_styles"),
+            [
+                {"sqltext": "field >= 10", "name": "backtick_quoted"},
+                {"sqltext": "field != 50", "name": "bracket_quoted"},
+                {"sqltext": "field > 0", "name": "double_quoted"},
+                {"sqltext": "field < 100", "name": "single_quoted"},
+            ],
+        )
+
+    def test_check_constraint_parens_in_strings(self):
+        """Test CHECK constraints with parentheses inside string literals.
+
+        Parentheses inside quoted strings should not be counted when
+        matching balanced parentheses in the constraint expression.
+        These test cases have unbalanced parens if strings are not handled,
+        and include escaped quotes (SQLite uses '' to escape, not backslash).
+        """
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("parens_in_strings"),
+            [
+                {"sqltext": "field != '('", "name": None},
+                {"sqltext": "field != ')'", "name": None},
+                {"sqltext": "field NOT LIKE '%('", "name": None},
+                {"sqltext": "field IN (')', '(', 'test')", "name": None},
+                # Escaped quotes with parens
+                {"sqltext": "field != 'it''s (not) valid'", "name": None},
+                {"sqltext": 'field != "say ""(hello)"" "', "name": None},
+                {
+                    "sqltext": "field NOT IN ('()', 'a''b''c', ')')",
+                    "name": None,
+                },
+                # Complex nested cases
+                {"sqltext": "field != '((' OR field = ')))'", "name": None},
+                {
+                    "sqltext": 'field LIKE "%))(%" OR field LIKE "%)(%"',
+                    "name": None,
+                },
+            ],
+        )
 
 
 class TypeReflectionTest(fixtures.TestBase):
