@@ -18,9 +18,7 @@ from typing import Callable
 from typing import Dict
 from typing import Generic
 from typing import Iterator
-from typing import List
 from typing import Mapping
-from typing import NoReturn
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -74,12 +72,6 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
     """
 
     __slots__ = ()
-
-    def __setattr__(self, name: str, value: Any) -> NoReturn:
-        raise AttributeError("can't set attribute")
-
-    def __delattr__(self, name: str) -> NoReturn:
-        raise AttributeError("can't delete attribute")
 
     @deprecated(
         "2.1.0",
@@ -222,9 +214,6 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         count = _special_name_accessor("count")
         index = _special_name_accessor("index")
 
-    def __contains__(self, key: Any) -> bool:
-        return key in self._data
-
     def _op(self, other: Any, op: Callable[[Any, Any], bool]) -> bool:
         return (
             op(self._to_tuple_instance(), other._to_tuple_instance())
@@ -274,7 +263,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
             :attr:`.Row._mapping`
 
         """
-        return tuple([k for k in self._parent.keys if k is not None])
+        return tuple(k for k in self._parent.keys if k is not None)
 
     def _asdict(self) -> Dict[str, Any]:
         """Return a new dict which maps field names to their corresponding
@@ -374,14 +363,8 @@ class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
     else:
         __getitem__ = BaseRow._get_by_key_impl_mapping
 
-    def _values_impl(self) -> List[Any]:
-        return list(self._data)
-
     def __iter__(self) -> Iterator[str]:
         return (k for k in self._parent.keys if k is not None)
-
-    def __len__(self) -> int:
-        return len(self._data)
 
     def __contains__(self, key: object) -> bool:
         return self._parent._has_key(key)
