@@ -11,6 +11,7 @@ would fall back to defaults.
 from __future__ import annotations
 
 import collections
+import os
 import re
 import sys
 from typing import Any
@@ -204,3 +205,44 @@ def extract_opts(posargs: list[str], *args: str) -> tuple[list[str], Any]:
     return [arg for arg in posargs if not extract(arg)], return_tuple(
         *return_args
     )
+
+
+def apply_pytest_opts(
+    session: nox.Session,
+    cov: str,
+    tokens: list[str],
+    *,
+    coverage: bool = False,
+) -> list[str]:
+    posargs, opts = extract_opts(session.posargs, "generate-junit")
+
+    file_suffix = "-".join(t for t in tokens if not t.startswith("_"))
+
+    if coverage:
+
+        session.env["COVERAGE_FILE"] = coverage_file = (
+            f".coverage.{file_suffix}"
+        )
+        coverage_xml_file = f"coverage-{file_suffix}.xml"
+
+        if os.path.exists(coverage_file):
+            os.unlink(coverage_file)
+        posargs.extend(
+            [
+                f"--cov={cov}",
+                "--cov-append",
+                "--cov-report",
+                "term",
+                "--cov-report",
+                f"xml:{coverage_xml_file}",
+            ],
+        )
+        session.log(f"Will store coverage data in {coverage_file}")
+        session.log(f"Will write xml coverage data to {coverage_xml_file}")
+
+    if opts.generate_junit:
+        junitfile = f"junit-{file_suffix}.xml"
+        session.log(f"Will store junit xml in {junitfile}")
+        posargs.extend(["--junitxml", junitfile])
+
+    return posargs
