@@ -43,13 +43,17 @@ def _is_compiled() -> bool:
 
 
 if not cython.compiled:
+    if TYPE_CHECKING:
 
-    def PyTuple_New(n):  # type: ignore
-        # Actually produces list if not compiled
-        return [None] * n
+        def PyTuple_New(n):  # type: ignore
+            # Actually produces list if not compiled
+            return [None] * n
 
-    def PyTuple_SET_ITEM(tup, idx, item):  # type: ignore
-        tup[idx] = item
+        def PyTuple_SET_ITEM(tup, idx, item):  # type: ignore
+            tup[idx] = item
+
+        PySequence_Fast_GET_SIZE = len
+        Py_INCREF = cython._no_op
 
     def _apply_processors(
         proc: _ProcessorsType, data: Sequence[Any]
@@ -64,15 +68,6 @@ if not cython.compiled:
                 res[i] = p(res[i])
         return tuple(res)
 
-    def rowproxy_reconstructor(
-        cls: Type[BaseRow], state: Dict[str, Any]
-    ) -> BaseRow:
-        obj = cls.__new__(cls)
-        obj.__setstate__(state)
-        return obj
-
-    PySequence_Fast_GET_SIZE = len
-    Py_INCREF = cython._no_op
 else:
     from cython.cimports.cpython import PyTuple_New
     from cython.cimports.cpython import Py_INCREF
@@ -101,15 +96,6 @@ else:
             Py_INCREF(value)
             PyTuple_SET_ITEM(res, i, value)
         return res
-
-    @cython.inline
-    @cython.ccall
-    def rowproxy_reconstructor(
-        cls: Type[BaseRow], state: Dict[str, Any]
-    ) -> BaseRow:
-        obj = cython.cast(BaseRow, cls.__new__(cls))
-        obj.__setstate__(state)
-        return obj
 
 
 @cython.cclass
@@ -155,11 +141,13 @@ class BaseRow:
 
     if cython.compiled:
 
+        @cython.ccall
         @cython.returns(dict)
         def __getstate__(self) -> Dict[str, Any]:
             self = cython.cast(BaseRow, self)
             return {"_parent": self._parent, "_data": self._data}
 
+        @cython.ccall
         @cython.returns(tuple)
         def __reduce__(self) -> Tuple[Any, Any]:
             self = cython.cast(BaseRow, self)
@@ -256,3 +244,16 @@ class BaseRow:
 
     def __contains__(self, key: _KeyType) -> cython.bint:
         return key in self._data
+
+
+# This reconstructor is necessary so that pickles with the Cy extension or
+# without use the same Binary format.
+# Turn off annotation typing so the compiled version accepts the python
+# class too.
+@cython.annotation_typing(False)
+def rowproxy_reconstructor(
+    cls: Type[BaseRow], state: Dict[str, Any]
+) -> BaseRow:
+    obj = cls.__new__(cls)
+    obj.__setstate__(state)
+    return obj
