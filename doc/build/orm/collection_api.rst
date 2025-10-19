@@ -220,7 +220,7 @@ of the ``Note.text`` field::
         keyword: Mapped[str]
         text: Mapped[str]
 
-        item: Mapped["Item"] = relationship()
+        item: Mapped["Item"] = relationship(back_populates="notes")
 
         @property
         def note_key(self):
