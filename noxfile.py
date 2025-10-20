@@ -15,7 +15,7 @@ nox.needs_version = ">=2025.10.16"
 
 if True:
     sys.path.insert(0, ".")
-    from tools.toxnox import extract_opts
+    from tools.toxnox import apply_pytest_opts
     from tools.toxnox import tox_parameters
 
 
@@ -191,7 +191,6 @@ def _tests(
     platform_intensive: bool = False,
     timing_intensive: bool = True,
     coverage: bool = False,
-    mypy: bool = False,
 ) -> None:
     # PYTHONNOUSERSITE - this *MUST* be set so that the ./lib/ import
     # set up explicitly in test/conftest.py is *disabled*, so that
@@ -218,9 +217,6 @@ def _tests(
         session.env["DISABLE_SQLALCHEMY_CEXT"] = "1"
 
     includes_excludes: dict[str, list[str]] = {"k": [], "m": []}
-
-    has_greenlet = "greenlet" if greenlet else "nogreenlet"
-    file_suffix = f"{database}-{cext}-{has_greenlet}"
 
     if coverage:
         timing_intensive = False
@@ -250,31 +246,11 @@ def _tests(
 
     cmd = ["python", "-m", "pytest"]
 
-    if coverage:
-        assert not platform_intensive
-        has_greenlet = "greenlet" if greenlet else "nogreenlet"
-
-        session.env["COVERAGE_FILE"] = coverage_file = (
-            f".coverage.{file_suffix}"
-        )
-        if os.path.exists(coverage_file):
-            os.unlink(coverage_file)
-        cmd.extend(
-            [
-                "--cov=sqlalchemy",
-                "--cov-append",
-                "--cov-report",
-                "term",
-                "--cov-report",
-                f"xml:coverage-{file_suffix}.xml",
-            ],
-        )
-        session.log(f"Will store coverage data in {coverage_file}")
-        includes_excludes["k"].append("not aaa_profiling")
-
     cmd.extend(os.environ.get("TOX_WORKERS", "-n4").split())
 
     if coverage:
+        assert not platform_intensive
+        includes_excludes["k"].append("not aaa_profiling")
         session.install("-e", ".")
         session.install(*nox.project.dependency_groups(pyproject, "coverage"))
     else:
@@ -298,32 +274,33 @@ def _tests(
         if collection:
             cmd.extend([f"-{letter}", " and ".join(collection)])
 
-    posargs, opts = extract_opts(session.posargs, "generate-junit", "dry-run")
-
-    if opts.generate_junit:
-        has_greenlet = "greenlet" if greenlet else "nogreenlet"
-
-        # produce individual junit files that are per-database
-        junitfile = f"junit-{file_suffix}.xml"
-        cmd.extend(["--junitxml", junitfile])
+    posargs = apply_pytest_opts(
+        session,
+        "sqlalchemy",
+        [
+            database,
+            cext,
+            "_greenlet" if greenlet else "nogreenlet",
+            "memusage" if platform_intensive else "_nomemusage",
+            "backendonly" if backendonly else "_notbackendonly",
+        ],
+        coverage=coverage,
+    )
 
     if database in ["oracle", "mssql", "sqlite_file"]:
         cmd.extend(["--write-idents", "db_idents.txt"])
 
     cmd.extend(posargs)
 
-    if opts.dry_run:
-        print(f"DRY RUN: command is: \n{' '.join(cmd)}")
-        return
-
     try:
         session.run(*cmd)
     finally:
         # Run cleanup for oracle/mssql
-        if database in ["oracle", "mssql", "sqlite_file"]:
-            if os.path.exists("db_idents.txt"):
-                session.run("python", "reap_dbs.py", "db_idents.txt")
-                os.unlink("db_idents.txt")
+        if database in ["oracle", "mssql", "sqlite_file"] and os.path.exists(
+            "db_idents.txt"
+        ):
+            session.run("python", "reap_dbs.py", "db_idents.txt")
+            os.unlink("db_idents.txt")
 
 
 @nox.session(name="pep484")
@@ -349,13 +326,13 @@ def test_mypy(session: nox.Session) -> None:
 
     session.install("-e", ".")
 
-    posargs, opts = extract_opts(session.posargs, "generate-junit")
+    posargs = apply_pytest_opts(
+        session,
+        "sqlalchemy",
+        ["mypy"],
+    )
 
     cmd = ["pytest", "-m", "mypy"]
-    if opts.generate_junit:
-        # produce individual junit files that are per-database
-        junitfile = "junit-mypy.xml"
-        cmd.extend(["--junitxml", junitfile])
 
     session.run(*cmd, *posargs)
 
