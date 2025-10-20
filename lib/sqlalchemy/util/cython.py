@@ -68,6 +68,3 @@ def returns(_: type) -> _NO_OP[_T]:
 
 def locals(**kwargs: Any) -> _NO_OP[_T]:  # noqa: A001
     return _no_op
-
-
-boundscheck = wraparound = annotation_typing

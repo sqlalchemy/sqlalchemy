@@ -3408,7 +3408,7 @@ class Mapper(
 
         mapping: RowMapping
         if hasattr(row, "_mapping"):
-            mapping = row._mapping
+            mapping = row._mapping  # type: ignore[assignment]
         else:
             mapping = row  # type: ignore[assignment]
 
