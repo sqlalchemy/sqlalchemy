@@ -464,8 +464,7 @@ a new transaction and refresh ``sandy`` with the current database row:
 
     >>> sandy.fullname
     {execsql}BEGIN (implicit)
-    SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
-    user_account.fullname AS user_account_fullname
+    SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.id = ?
     [...] (2,){stop}
@@ -547,7 +546,7 @@ a context manager as well, accomplishes the following things:
       >>> session.add(squidward)
       >>> squidward.name
       {execsql}BEGIN (implicit)
-      SELECT user_account.id AS user_account_id, user_account.name AS user_account_name, user_account.fullname AS user_account_fullname
+      SELECT user_account.id, user_account.name, user_account.fullname
       FROM user_account
       WHERE user_account.id = ?
       [...] (4,){stop}

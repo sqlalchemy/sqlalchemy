@@ -380,7 +380,7 @@ object by primary key using :meth:`_orm.Session.get`, then work with the object:
 
     >>> sandy = session.get(User, 2)
     {execsql}BEGIN (implicit)
-    SELECT user_account.id AS user_account_id, user_account.name AS user_account_name, user_account.fullname AS user_account_fullname
+    SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.id = ?
     [...] (2,){stop}
@@ -416,7 +416,7 @@ options that we configured, in this case, onto the related ``Address`` objects:
 .. sourcecode:: pycon+sql
 
     >>> session.delete(patrick)
-    {execsql}SELECT user_account.id AS user_account_id, user_account.name AS user_account_name, user_account.fullname AS user_account_fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.id = ?
     [...] (3,)

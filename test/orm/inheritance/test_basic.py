@@ -2875,11 +2875,9 @@ class OptimizedLoadTest(fixtures.MappedTest):
             testing.db,
             go,
             CompiledSQL(
-                "SELECT base.id AS base_id, sub.id AS sub_id, "
-                "base.data AS base_data, base.type AS base_type, "
-                "base.counter AS base_counter, "
-                "sub.subcounter AS sub_subcounter, "
-                "sub.sub AS sub_sub, sub.subcounter2 AS sub_subcounter2 "
+                "SELECT base.id, sub.id AS id_1, "
+                "base.data, base.type, base.counter, "
+                "sub.subcounter, sub.sub, sub.subcounter2 "
                 "FROM base LEFT OUTER JOIN sub ON base.id = sub.id "
                 "WHERE base.id = :pk_1",
                 {"pk_1": sjb_id},
@@ -3246,9 +3244,8 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 not eager_defaults and not expect_returning,
                 [
                     CompiledSQL(
-                        "SELECT base.counter AS base_counter, "
-                        "sub.subcounter AS sub_subcounter, sub.subcounter2 "
-                        "AS sub_subcounter2 FROM base "
+                        "SELECT base.counter, sub.subcounter, sub.subcounter2 "
+                        "FROM base "
                         "JOIN sub ON base.id = sub.id WHERE base.id = :pk_1",
                         lambda ctx: {"pk_1": s1.id},
                     )

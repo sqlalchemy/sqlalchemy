@@ -954,7 +954,7 @@ when it's accessed::
     WHERE employee.name = ?
     [...] ('Mr. Krabs',)
     {stop}>>> mr_krabs.manager_name
-    {execsql}SELECT employee.manager_name AS employee_manager_name
+    {execsql}SELECT employee.manager_name
     FROM employee
     WHERE employee.id = ? AND employee.type IN (?)
     [...] (1, 'manager')

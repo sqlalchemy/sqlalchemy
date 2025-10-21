@@ -381,25 +381,21 @@ class RudimentaryFlushTest(UOWTest):
                 # the User row might be handled before or the addresses
                 # are loaded so need to use AllOf
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c2id},
                 ),
                 CompiledSQL(
-                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "SELECT users.id, users.name "
                     "FROM users WHERE users.id = :pk_1",
                     lambda ctx: {"pk_1": pid},
                 ),
@@ -457,19 +453,15 @@ class RudimentaryFlushTest(UOWTest):
                 # relationship is simple m2o, no SELECT should be emitted for
                 # it.
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c2id},
@@ -523,19 +515,15 @@ class RudimentaryFlushTest(UOWTest):
             AllOf(
                 # the parent User is expired, so it gets loaded here.
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c2id},
@@ -1313,23 +1301,20 @@ class SingleCycleTest(UOWTest):
                 # the selects here are in fact unexpiring
                 # each row - the m2o comes from the identity map.
                 CompiledSQL(
-                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
-                    "nodes_parent_id, "
-                    "nodes.data AS nodes_data FROM nodes "
+                    "SELECT nodes.id, nodes.parent_id, nodes.data "
+                    "FROM nodes "
                     "WHERE nodes.id = :pk_1",
                     lambda ctx: {"pk_1": pid},
                 ),
                 CompiledSQL(
-                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
-                    "nodes_parent_id, "
-                    "nodes.data AS nodes_data FROM nodes "
+                    "SELECT nodes.id, nodes.parent_id, nodes.data "
+                    "FROM nodes "
                     "WHERE nodes.id = :pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
-                    "nodes_parent_id, "
-                    "nodes.data AS nodes_data FROM nodes "
+                    "SELECT nodes.id, nodes.parent_id, nodes.data "
+                    "FROM nodes "
                     "WHERE nodes.id = :pk_1",
                     lambda ctx: {"pk_1": c2id},
                 ),
