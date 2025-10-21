@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12931
+
+    Fixed an issue in :meth:`_sql.Select.join_from` where the join condition
+    between the left and right tables specified in the method call could be
+    incorrectly determined based on an intermediate table already present in
+    the FROM clause, rather than matching the foreign keys between the
+    immediate left and right arguments. The join condition is now determined by
+    matching primary keys between the two tables explicitly passed to
+    :meth:`_sql.Select.join_from`, ensuring consistent and predictable join
+    behavior regardless of the order of join operations or other tables present
+    in the query.  The fix is applied to both the Core and ORM implementations
+    of :meth:`_sql.Select.join_from`.

@@ -1959,6 +1959,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
 
         """
 
+        explicit_left = left
         if left is None:
             # left not given (e.g. no relationship object/name specified)
             # figure out the best "left" side based on our existing froms /
@@ -2003,6 +2004,9 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             # splice into an existing element in the
             # self._from_obj list
             left_clause = self.from_clauses[replace_from_obj_index]
+
+            if explicit_left is not None and onclause is None:
+                onclause = _ORMJoin._join_condition(explicit_left, right)
 
             self.from_clauses = (
                 self.from_clauses[:replace_from_obj_index]

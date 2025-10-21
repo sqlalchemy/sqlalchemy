@@ -5024,6 +5024,7 @@ class SelectState(util.MemoizedSlots, CompileState):
                 if onclause is not None:
                     assert isinstance(onclause, ColumnElement)
 
+            explicit_left = left
             isouter = flags["isouter"]
             full = flags["full"]
 
@@ -5053,6 +5054,9 @@ class SelectState(util.MemoizedSlots, CompileState):
                 # splice into an existing element in the
                 # self._from_obj list
                 left_clause = self.from_clauses[replace_from_obj_index]
+
+                if explicit_left is not None and onclause is None:
+                    onclause = Join._join_condition(explicit_left, right)
 
                 self.from_clauses = (
                     self.from_clauses[:replace_from_obj_index]

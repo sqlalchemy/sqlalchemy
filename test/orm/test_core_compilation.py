@@ -27,6 +27,8 @@ from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -892,6 +894,81 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         stmt = stmt.params(**bindparams)
 
         self.assert_compile(stmt, expected, checkparams=expected_params)
+
+    @testing.fixture
+    def grandchild_fixture(self, decl_base):
+        class Parent(decl_base):
+            __tablename__ = "parent"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+
+        class Child(decl_base):
+            __tablename__ = "child"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+
+        class GrandchildWParent(decl_base):
+            __tablename__ = "grandchildwparent"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+            child_id: Mapped[int] = mapped_column(ForeignKey("child.id"))
+
+        return Parent, Child, GrandchildWParent
+
+    @testing.variation(
+        "jointype",
+        ["child_grandchild", "parent_grandchild", "grandchild_alone"],
+    )
+    def test_join_from_favors_explicit_left(
+        self, grandchild_fixture, jointype
+    ):
+        """test #12931 in terms of ORM joins"""
+
+        Parent, Child, GrandchildWParent = grandchild_fixture
+
+        if jointype.child_grandchild:
+            stmt = (
+                select(Parent)
+                .join_from(Parent, Child)
+                .join_from(Child, GrandchildWParent)
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent JOIN "
+                "child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON child.id = grandchildwparent.child_id",
+            )
+
+        elif jointype.parent_grandchild:
+            stmt = (
+                select(Parent)
+                .join_from(Parent, Child)
+                .join_from(Parent, GrandchildWParent)
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent "
+                "JOIN child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON parent.id = grandchildwparent.parent_id",
+            )
+        elif jointype.grandchild_alone:
+            stmt = (
+                select(Parent).join_from(Parent, Child).join(GrandchildWParent)
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent "
+                "JOIN child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON child.id = grandchildwparent.child_id",
+            )
+        else:
+            jointype.fail()
 
 
 class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
