@@ -3118,7 +3118,6 @@ class Query(
         inner = (
             self.enable_eagerloads(False)
             .add_columns(sql.literal_column("1"))
-            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             ._get_select_statement_only()
             .with_only_columns(1)
         )
