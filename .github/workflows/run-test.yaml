@@ -37,8 +37,8 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
-          - "3.14.0-alpha - 3.14"
-          - "3.14t-dev"
+          - "3.14"
+          - "3.14t"
           - "pypy-3.10"
         build-type:
           # builds greenlet, runs asyncio tests.  includes aiosqlite driver
@@ -142,18 +142,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
+          pip install --upgrade nox setuptools
           pip list
 
       - name: Run tests
-        run: tox -e github-${{ matrix.build-type }} -- ${{ matrix.pytest-args }}
-        env:
-          # under free threading, make sure to disable GIL
-          PYTHON_GIL: ${{ contains(matrix.python-version, 't') && '0' || '' }}
+        run: nox -v -s github-${{ matrix.build-type }} -- ${{ matrix.pytest-args }}
         continue-on-error: ${{ matrix.python-version == 'pypy-3.10' }}
 
-  run-tox:
-    name: ${{ matrix.tox-env }}-${{ matrix.python-version }}
+  run-nox:
+    name: ${{ matrix.nox-env }}-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       # run this job using this matrix, excluding some combinations below.
@@ -161,17 +158,11 @@ jobs:
         os:
           - "ubuntu-22.04"
         python-version:
-          - "3.12"
           - "3.13"
-        tox-env:
+        nox-env:
           - mypy
           - pep484
-
-        include:
-          # run lint only on 3.13
-          - tox-env: lint
-            python-version: "3.13"
-            os: "ubuntu-22.04"
+          - pep8
 
       fail-fast: false
 
@@ -189,8 +180,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
+          pip install --upgrade nox setuptools
           pip list
 
-      - name: Run tox
-        run: tox -e ${{ matrix.tox-env }} ${{ matrix.pytest-args }}
+      - name: Run nox
+        run: nox -v -e ${{ matrix.nox-env }} ${{ matrix.pytest-args }}

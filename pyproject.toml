@@ -59,7 +59,7 @@ oracle-oracledb = ["oracledb>=1.0.1"]
 postgresql = ["psycopg2>=2.7"]
 postgresql-pg8000 = ["pg8000>=1.29.3"]
 postgresql-asyncpg = [
-    "greenlet>=1",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "asyncpg",
 ]
 postgresql-psycopg2binary = ["psycopg2-binary"]
@@ -69,19 +69,19 @@ postgresql-psycopgbinary = ["psycopg[binary]>=3.0.7,!=3.1.15"]
 pymysql = ["pymysql"]
 cymysql = ["cymysql"]
 aiomysql = [
-    "greenlet>=1",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "aiomysql",
 ]
 aioodbc = [
-    "greenlet>=1",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "aioodbc",
 ]
 asyncmy = [
-    "greenlet>=1",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "asyncmy>=0.2.3,!=0.2.4,!=0.2.6",
 ]
 aiosqlite = [
-    "greenlet>=1",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "aiosqlite",
 ]
 sqlcipher = ["sqlcipher3_binary"]
@@ -98,6 +98,103 @@ postgresql_psycopg2binary = ["sqlalchemy[postgresql-psycopg2binary]"]
 postgresql_psycopg2cffi = ["sqlalchemy[postgresql-psycopg2cffi]"]
 postgresql_psycopg = ["sqlalchemy[postgresql-psycopg]"]
 postgresql_psycopgbinary = ["sqlalchemy[postgresql-psycopgbinary]"]
+
+[dependency-groups]
+tests = [
+    "pytest>=7.0.0,<8.4",
+    "pytest-xdist",
+]
+
+coverage = ["pytest-cov"]
+
+tests-greenlet = ["sqlalchemy[asyncio]"]
+
+tests-sqlite = []
+
+tests-sqlite-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-sqlite"},
+    "sqlalchemy[aiosqlite]"
+]
+
+tests-sqlite-file = [{include-group = "tests-sqlite"}]
+tests-sqlite-file-asyncio = [{include-group = "tests-sqlite-asyncio"}]
+
+tests-postgresql = [
+    "sqlalchemy[postgresql]",
+    "sqlalchemy[postgresql-psycopg]",
+    "sqlalchemy[postgresql-pg8000]",
+]
+
+tests-postgresql-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-postgresql"},
+    "sqlalchemy[postgresql-asyncpg]"
+]
+
+tests-mysql = [
+    "sqlalchemy[mysql]",
+    "sqlalchemy[pymysql]",
+    "sqlalchemy[mysql-connector]",
+
+    # originally to fix https://jira.mariadb.org/browse/CONPY-318,
+    # more recent versions still have attribute errors and other random
+    # problems
+    "mariadb>=1.0.1,!=1.1.2,!=1.1.5,!=1.1.10,<1.1.13",
+
+]
+tests-mysql-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-mysql"},
+    "sqlalchemy[aiomysql]",
+    "sqlalchemy[asyncmy]",
+]
+
+tests-oracle-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-oracle"},
+]
+tests-oracle = [
+    "sqlalchemy[oracle]",
+    "sqlalchemy[oracle-oracledb]",
+]
+
+tests-mssql = [
+    "sqlalchemy[mssql]",
+    "sqlalchemy[mssql-pymssql]",
+]
+
+tests-mssql-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-mssql"},
+    "aioodbc"
+]
+
+lint = [
+    {include-group = "tests-greenlet"},
+    "flake8>=7.2.0",
+    "flake8-import-order>=0.19.2",
+    "flake8-import-single==0.1.5",
+    "flake8-builtins",
+    "flake8-future-annotations>=0.0.5",
+    "flake8-docstrings",
+    "flake8-unused-arguments",
+    "flake8-rst-docstrings",
+    "pydocstyle<4.0.0",
+    "pygments",
+    "black==25.1.0",
+    "slotscheck>=0.17.0",
+    "zimports",  # required by generate_tuple_map_overloads
+]
+
+mypy = [
+    {include-group = "tests-greenlet"},
+    "mypy>=1.16.0",
+    "nox",  # because we check noxfile.py
+    "pytest>8,<8.4",  # alembic/testing imports pytest
+    "types-greenlet",
+]
+
 
 [tool.setuptools]
 include-package-data = true

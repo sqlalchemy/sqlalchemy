@@ -1,4 +1,5 @@
 import typing
+from typing import assert_type
 from typing import Dict
 from typing import Optional
 
@@ -42,5 +43,4 @@ item = Item()
 item.notes["a"] = Note("a", "atext")
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: dict_items[str, Note]
-    reveal_type(item.notes.items())
+    assert_type(list(item.notes.items()), list[tuple[str, Note]])

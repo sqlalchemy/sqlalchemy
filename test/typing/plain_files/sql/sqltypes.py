@@ -1,12 +1,11 @@
+from decimal import Decimal
+from typing import assert_type
+
 from sqlalchemy import Float
 from sqlalchemy import Numeric
 
-# EXPECTED_TYPE: Float[float]
-reveal_type(Float())
-# EXPECTED_TYPE: Float[Decimal]
-reveal_type(Float(asdecimal=True))
+assert_type(Float(), Float[float])
+assert_type(Float(asdecimal=True), Float[Decimal])
 
-# EXPECTED_TYPE: Numeric[Decimal]
-reveal_type(Numeric())
-# EXPECTED_TYPE: Numeric[float]
-reveal_type(Numeric(asdecimal=False))
+assert_type(Numeric(), Numeric[Decimal])
+assert_type(Numeric(asdecimal=False), Numeric[float])

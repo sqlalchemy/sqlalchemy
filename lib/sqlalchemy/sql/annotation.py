@@ -468,7 +468,9 @@ def _deep_annotate(
             newelem = elem
 
         newelem._copy_internals(
-            clone=clone, ind_cols_on_fromclause=ind_cols_on_fromclause
+            clone=clone,
+            ind_cols_on_fromclause=ind_cols_on_fromclause,
+            _annotations_traversal=True,
         )
 
         cloned_ids[id_] = newelem
@@ -508,7 +510,7 @@ def _deep_deannotate(
 
         if key not in cloned:
             newelem = elem._deannotate(values=values, clone=True)
-            newelem._copy_internals(clone=clone)
+            newelem._copy_internals(clone=clone, _annotations_traversal=True)
             cloned[key] = newelem
             return newelem
         else:
@@ -529,7 +531,7 @@ def _shallow_annotate(element: _SA, annotations: _AnnotationDict) -> _SA:
     structure wasting time.
     """
     element = element._annotate(annotations)
-    element._copy_internals()
+    element._copy_internals(_annotations_traversal=True)
     return element
 
 
