@@ -337,8 +337,7 @@ Let's load up ``patrick`` from the database:
 .. sourcecode:: pycon+sql
 
     >>> patrick = session.get(User, 3)
-    {execsql}SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
-    user_account.fullname AS user_account_fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.id = ?
     [...] (3,)
