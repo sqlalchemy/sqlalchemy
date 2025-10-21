@@ -3253,12 +3253,12 @@ class EagerDefaultsSettingTest(
                         expected_eager_defaults and not expect_returning,
                         [
                             CompiledSQL(
-                                "SELECT test.foo AS test_foo "
+                                "SELECT test.foo "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 1}],
                             ),
                             CompiledSQL(
-                                "SELECT test.foo AS test_foo "
+                                "SELECT test.foo "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 2}],
                             ),
@@ -3373,12 +3373,12 @@ class EagerDefaultsSettingTest(
                         expected_eager_defaults and not expect_returning,
                         [
                             CompiledSQL(
-                                "SELECT test.foo AS test_foo "
+                                "SELECT test.foo "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 1}],
                             ),
                             CompiledSQL(
-                                "SELECT test.foo AS test_foo "
+                                "SELECT test.foo "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 2}],
                             ),
@@ -3449,12 +3449,12 @@ class EagerDefaultsSettingTest(
                                 ],
                             ),
                             CompiledSQL(
-                                "SELECT test.bar AS test_bar "
+                                "SELECT test.bar "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 1}],
                             ),
                             CompiledSQL(
-                                "SELECT test.bar AS test_bar "
+                                "SELECT test.bar "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 2}],
                             ),
