@@ -353,8 +353,7 @@ until the flush proceeds, which as mentioned before occurs if we emit a query:
 .. sourcecode:: pycon+sql
 
     >>> session.execute(select(User).where(User.name == "patrick")).first()
-    {execsql}SELECT address.id AS address_id, address.email_address AS address_email_address,
-    address.user_id AS address_user_id
+    {execsql}SELECT address.id, address.email_address, address.user_id
     FROM address
     WHERE ? = address.user_id
     [...] (3,)

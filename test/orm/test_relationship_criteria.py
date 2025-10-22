@@ -1046,36 +1046,36 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 [],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :email_address_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 7, "email_address_1": "name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :email_address_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 8, "email_address_1": "name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :email_address_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 9, "email_address_1": "name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :email_address_1 "
                 "ORDER BY addresses.id",
@@ -1114,36 +1114,36 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 [],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 7, "closure_1": "name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 8, "closure_1": "name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 9, "closure_1": "name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
@@ -1164,36 +1164,36 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 [],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 7, "closure_1": "new name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 8, "closure_1": "new name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
                 [{"param_1": 9, "closure_1": "new name"}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.user_id AS addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
@@ -2309,36 +2309,36 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     "SELECT users.id, users.name FROM users ORDER BY users.id"
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS addresses_user_id, "
-                    "addresses.email_address AS addresses_email_address "
+                    "SELECT addresses.id, "
+                    "addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses WHERE :param_1 = addresses.user_id "
                     "AND addresses.email_address != :email_address_1 "
                     "ORDER BY addresses.id",
                     [{"param_1": 7, "email_address_1": value}],
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS addresses_user_id, "
-                    "addresses.email_address AS addresses_email_address "
+                    "SELECT addresses.id, "
+                    "addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses WHERE :param_1 = addresses.user_id "
                     "AND addresses.email_address != :email_address_1 "
                     "ORDER BY addresses.id",
                     [{"param_1": 8, "email_address_1": value}],
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS addresses_user_id, "
-                    "addresses.email_address AS addresses_email_address "
+                    "SELECT addresses.id, "
+                    "addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses WHERE :param_1 = addresses.user_id "
                     "AND addresses.email_address != :email_address_1 "
                     "ORDER BY addresses.id",
                     [{"param_1": 9, "email_address_1": value}],
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS addresses_user_id, "
-                    "addresses.email_address AS addresses_email_address "
+                    "SELECT addresses.id, "
+                    "addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses WHERE :param_1 = addresses.user_id "
                     "AND addresses.email_address != :email_address_1 "
                     "ORDER BY addresses.id",

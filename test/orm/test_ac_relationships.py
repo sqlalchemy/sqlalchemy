@@ -272,7 +272,7 @@ class AltSelectableTest(
 
         asserter.assert_(
             CompiledSQL(
-                "SELECT b.id AS b_id FROM b JOIN d ON d.b_id = b.id "
+                "SELECT b.id FROM b JOIN d ON d.b_id = b.id "
                 "JOIN c ON c.id = d.c_id WHERE :param_1 = b.id",
                 [{"param_1": 1}],
             )

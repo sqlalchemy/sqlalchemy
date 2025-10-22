@@ -4858,7 +4858,7 @@ class SecondaryNestedJoinTest(
             testing.db,
             go,
             CompiledSQL(
-                "SELECT d.id AS d_id, d.name AS d_name FROM b "
+                "SELECT d.id, d.name FROM b "
                 "JOIN d ON b.d_id = d.id JOIN c ON c.d_id = d.id "
                 "WHERE :param_1 = b.id AND :param_2 = c.a_id "
                 "AND d.id = b.d_id",

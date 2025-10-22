@@ -1028,7 +1028,6 @@ class _LazyLoader(
         stmt = Select._create_raw_select(
             _raw_columns=[clauseelement],
             _propagate_attrs=clauseelement._propagate_attrs,
-            _label_style=LABEL_STYLE_TABLENAME_PLUS_COL,
             _compile_options=_ORMCompileState.default_compile_options,
         )
         load_options = QueryContext.default_load_options

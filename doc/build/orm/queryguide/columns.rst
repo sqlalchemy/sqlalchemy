@@ -184,12 +184,12 @@ the SELECT statement emitted for each ``User.books`` collection::
     {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
-    SELECT book.id AS book_id, book.title AS book_title
+    SELECT book.id, book.title
     FROM book
     WHERE ? = book.owner_id
     [...] (1,)
     {stop}Spongebob Squarepants   ['100 Years of Krabby Patties', 'Sea Catch 22', 'The Sea Grapes of Wrath']
-    {execsql}SELECT book.id AS book_id, book.title AS book_title
+    {execsql}SELECT book.id, book.title
     FROM book
     WHERE ? = book.owner_id
     [...] (2,)

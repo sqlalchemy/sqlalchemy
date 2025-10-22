@@ -848,8 +848,7 @@ class RaiseLoadIgnoredTest(
             sess.flush,
             # for the flush process, lazy="raise" is ignored
             CompiledSQL(
-                "SELECT b.id AS b_id, b.a_id AS b_a_id FROM b "
-                "WHERE :param_1 = b.a_id",
+                "SELECT b.id, b.a_id FROM b " "WHERE :param_1 = b.a_id",
                 [{"param_1": 1}],
             ),
             CompiledSQL(
@@ -1501,8 +1500,8 @@ class SingleCycleM2MTest(
                 # this is n1.parents firing off, as it should, since
                 # passive_deletes is False for n1.parents
                 CompiledSQL(
-                    "SELECT nodes.id AS nodes_id, nodes.data AS nodes_data, "
-                    "nodes.favorite_node_id AS nodes_favorite_node_id FROM "
+                    "SELECT nodes.id, nodes.data, "
+                    "nodes.favorite_node_id FROM "
                     "nodes, node_to_nodes WHERE :param_1 = "
                     "node_to_nodes.right_node_id AND nodes.id = "
                     "node_to_nodes.left_node_id",

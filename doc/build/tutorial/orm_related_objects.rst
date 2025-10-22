@@ -241,8 +241,7 @@ we again see a :term:`lazy load` emitted in order to retrieve the objects:
 .. sourcecode:: pycon+sql
 
   >>> u1.addresses
-  {execsql}SELECT address.id AS address_id, address.email_address AS address_email_address,
-  address.user_id AS address_user_id
+  {execsql}SELECT address.id, address.email_address, address.user_id
   FROM address
   WHERE ? = address.user_id
   [...] (6,){stop}

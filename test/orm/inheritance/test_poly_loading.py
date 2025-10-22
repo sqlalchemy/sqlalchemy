@@ -1322,8 +1322,8 @@ class IgnoreOptionsOnSubclassAttrLoad(fixtures.DeclarativeMappedTest):
         if will_lazyload:
             expected.append(
                 CompiledSQL(
-                    "SELECT entity.id AS entity_id, "
-                    "entity.type AS entity_type FROM entity "
+                    "SELECT entity.id, "
+                    "entity.type FROM entity "
                     "WHERE entity.id = :pk_1",
                     [{"pk_1": entity_id}],
                 )

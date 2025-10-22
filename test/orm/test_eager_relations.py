@@ -1665,10 +1665,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 testing.db,
                 go,
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses WHERE :param_1 = "
+                    "SELECT addresses.id, "
+                    "addresses.user_id, "
+                    "addresses.email_address "
+                    "FROM addresses WHERE :param_1 = "
                     "addresses.user_id",
                     {"param_1": 8},
                 ),
@@ -1716,10 +1716,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 testing.db,
                 go,
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses WHERE :param_1 = "
+                    "SELECT addresses.id, "
+                    "addresses.user_id, "
+                    "addresses.email_address "
+                    "FROM addresses WHERE :param_1 = "
                     "addresses.user_id",
                     {"param_1": 8},
                 ),
@@ -3122,11 +3122,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     {"id_1": 7},
                 ),
                 (
-                    "SELECT orders.id AS orders_id, "
-                    "orders.user_id AS orders_user_id, "
-                    "orders.address_id AS orders_address_id, "
-                    "orders.description AS orders_description, "
-                    "orders.isopen AS orders_isopen FROM orders "
+                    "SELECT orders.id, "
+                    "orders.user_id, "
+                    "orders.address_id, "
+                    "orders.description, "
+                    "orders.isopen FROM orders "
                     "WHERE :param_1 = orders.user_id",
                     {"param_1": 7},
                 ),
@@ -7032,8 +7032,8 @@ class SecondaryOptionsTest(fixtures.MappedTest):
             testing.db,
             lambda: c1.child2,
             CompiledSQL(
-                "SELECT child2.id AS child2_id, base.id AS base_id, "
-                "base.type AS base_type "
+                "SELECT child2.id, base.id, "
+                "base.type "
                 "FROM base JOIN child2 ON base.id = child2.id "
                 "WHERE base.id = :pk_1",
                 {"pk_1": 4},
@@ -7070,8 +7070,8 @@ class SecondaryOptionsTest(fixtures.MappedTest):
             testing.db,
             lambda: c1.child2,
             CompiledSQL(
-                "SELECT child2.id AS child2_id, base.id AS base_id, "
-                "base.type AS base_type "
+                "SELECT child2.id, base.id, "
+                "base.type "
                 "FROM base JOIN child2 ON base.id = child2.id "
                 "WHERE base.id = :pk_1",
                 {"pk_1": 4},
@@ -7113,9 +7113,9 @@ class SecondaryOptionsTest(fixtures.MappedTest):
             testing.db,
             lambda: c1.child2,
             CompiledSQL(
-                "SELECT child2.id AS child2_id, base.id AS base_id, "
-                "base.type AS base_type, "
-                "related_1.id AS related_1_id FROM base JOIN child2 "
+                "SELECT child2.id, base.id, "
+                "base.type, "
+                "related_1.id FROM base JOIN child2 "
                 "ON base.id = child2.id "
                 "LEFT OUTER JOIN related AS related_1 "
                 "ON base.id = related_1.id WHERE base.id = :pk_1",

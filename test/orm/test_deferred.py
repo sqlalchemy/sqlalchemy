@@ -814,11 +814,11 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     {"id_1": 7},
                 ),
                 (
-                    "SELECT orders.id AS orders_id, "
-                    "orders.user_id AS orders_user_id, "
-                    "orders.address_id AS orders_address_id, "
-                    "orders.description AS orders_description, "
-                    "orders.isopen AS orders_isopen "
+                    "SELECT orders.id, "
+                    "orders.user_id, "
+                    "orders.address_id, "
+                    "orders.description, "
+                    "orders.isopen "
                     "FROM orders WHERE :param_1 = orders.user_id "
                     "ORDER BY orders.id",
                     {"param_1": 7},
@@ -1456,14 +1456,14 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                 {"id_1": [7, 8]},
             ),
             (
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id",
                 {"param_1": 7},
             ),
             (
-                "SELECT addresses.id AS addresses_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id",
                 {"param_1": 8},
             ),
