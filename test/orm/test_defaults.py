@@ -319,13 +319,11 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                         [{"foo": 5, "id": 1}, {"foo": 10, "id": 2}],
                     ),
                     CompiledSQL(
-                        "SELECT test.bar FROM test "
-                        "WHERE test.id = :pk_1",
+                        "SELECT test.bar FROM test WHERE test.id = :pk_1",
                         [{"pk_1": 1}],
                     ),
                     CompiledSQL(
-                        "SELECT test.bar FROM test "
-                        "WHERE test.id = :pk_1",
+                        "SELECT test.bar FROM test WHERE test.id = :pk_1",
                         [{"pk_1": 2}],
                     ),
                 ],
@@ -409,13 +407,11 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                     [{"foo": 5, "test_id": 1}, {"foo": 6, "test_id": 2}],
                 ),
                 CompiledSQL(
-                    "SELECT test.bar FROM test "
-                    "WHERE test.id = :pk_1",
+                    "SELECT test.bar FROM test WHERE test.id = :pk_1",
                     [{"pk_1": 1}],
                 ),
                 CompiledSQL(
-                    "SELECT test.bar FROM test "
-                    "WHERE test.id = :pk_1",
+                    "SELECT test.bar FROM test WHERE test.id = :pk_1",
                     [{"pk_1": 2}],
                 ),
             )

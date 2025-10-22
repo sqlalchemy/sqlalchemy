@@ -381,14 +381,16 @@ class RudimentaryFlushTest(UOWTest):
                 # the User row might be handled before or the addresses
                 # are loaded so need to use AllOf
                 CompiledSQL(
-                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
@@ -453,14 +455,16 @@ class RudimentaryFlushTest(UOWTest):
                 # relationship is simple m2o, no SELECT should be emitted for
                 # it.
                 CompiledSQL(
-                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
@@ -515,14 +519,16 @@ class RudimentaryFlushTest(UOWTest):
             AllOf(
                 # the parent User is expired, so it gets loaded here.
                 CompiledSQL(
-                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id, addresses.user_id, addresses.email_address "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
                     "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
