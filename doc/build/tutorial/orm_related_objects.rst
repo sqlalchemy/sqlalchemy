@@ -454,8 +454,7 @@ related ``Address`` objects:
     {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account ORDER BY user_account.id
     [...] ()
-    SELECT address.user_id AS address_user_id, address.id AS address_id,
-    address.email_address AS address_email_address
+    SELECT address.user_id, address.id, address.email_address
     FROM address
     WHERE address.user_id IN (?, ?, ?, ?, ?, ?)
     [...] (1, 2, 3, 4, 5, 6){stop}
@@ -667,7 +666,7 @@ instead::
     {execsql}SELECT user_account.id
     FROM user_account
     [...] ()
-    SELECT address.user_id AS address_user_id, address.id AS address_id
+    SELECT address.user_id, address.id
     FROM address
     WHERE address.user_id IN (?, ?, ?, ?, ?, ?)
     [...] (1, 2, 3, 4, 5, 6)

@@ -137,15 +137,14 @@ class BaseAndSubFixture:
                         # cols a.id / asub.id are listed in the mapper's
                         # equivalent_columns so they are guaranteed to store
                         # the same value.
-                        "SELECT c.a_sub_id AS c_a_sub_id, "
-                        "c.id AS c_id "
+                        "SELECT c.a_sub_id, c.id "
                         "FROM c WHERE c.a_sub_id "
                         "IN (__[POSTCOMPILE_primary_keys])",
                         {"primary_keys": [2]},
                     ),
                 ),
                 CompiledSQL(
-                    "SELECT b.a_id AS b_a_id, b.id AS b_id FROM b "
+                    "SELECT b.a_id, b.id FROM b "
                     "WHERE b.a_id IN (__[POSTCOMPILE_primary_keys])",
                     {"primary_keys": [1, 2]},
                 ),
@@ -340,9 +339,9 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                 {},
             ),
             CompiledSQL(
-                "SELECT people.company_id AS people_company_id, "
-                "people.person_id AS people_person_id, "
-                "people.name AS people_name, people.type AS people_type "
+                "SELECT people.company_id, "
+                "people.person_id, "
+                "people.name, people.type "
                 "FROM people WHERE people.company_id "
                 "IN (__[POSTCOMPILE_primary_keys]) "
                 "ORDER BY people.person_id",
@@ -404,9 +403,9 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                 {},
             ),
             CompiledSQL(
-                "SELECT people.company_id AS people_company_id, "
-                "people.person_id AS people_person_id, "
-                "people.name AS people_name, people.type AS people_type "
+                "SELECT people.company_id, "
+                "people.person_id, "
+                "people.name, people.type "
                 "FROM people WHERE people.company_id "
                 "IN (__[POSTCOMPILE_primary_keys]) "
                 "ORDER BY people.person_id",
@@ -439,9 +438,9 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                     {"primary_keys": [1, 2, 5]},
                 ),
                 CompiledSQL(
-                    "SELECT machines.engineer_id AS machines_engineer_id, "
-                    "machines.machine_id AS machines_machine_id, "
-                    "machines.name AS machines_name "
+                    "SELECT machines.engineer_id, "
+                    "machines.machine_id, "
+                    "machines.name "
                     "FROM machines "
                     "WHERE machines.engineer_id "
                     "IN (__[POSTCOMPILE_primary_keys]) "

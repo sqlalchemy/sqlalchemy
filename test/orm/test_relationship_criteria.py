@@ -955,9 +955,9 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 [],
             ),
             CompiledSQL(
-                "SELECT addresses.user_id AS addresses_user_id, addresses.id "
-                "AS addresses_id, addresses.email_address "
-                "AS addresses_email_address FROM addresses "
+                "SELECT addresses.user_id, addresses.id, "
+                "addresses.email_address "
+                "FROM addresses "
                 "WHERE addresses.user_id IN (__[POSTCOMPILE_primary_keys]) "
                 "AND addresses.email_address != :email_address_1 "
                 "ORDER BY addresses.id",
@@ -991,9 +991,9 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 [],
             ),
             CompiledSQL(
-                "SELECT addresses.user_id AS addresses_user_id, addresses.id "
-                "AS addresses_id, addresses.email_address "
-                "AS addresses_email_address FROM addresses "
+                "SELECT addresses.user_id, addresses.id, "
+                "addresses.email_address "
+                "FROM addresses "
                 "WHERE addresses.user_id IN (__[POSTCOMPILE_primary_keys]) "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
@@ -1011,9 +1011,9 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 [],
             ),
             CompiledSQL(
-                "SELECT addresses.user_id AS addresses_user_id, addresses.id "
-                "AS addresses_id, addresses.email_address "
-                "AS addresses_email_address FROM addresses "
+                "SELECT addresses.user_id, addresses.id, "
+                "addresses.email_address "
+                "FROM addresses "
                 "WHERE addresses.user_id IN (__[POSTCOMPILE_primary_keys]) "
                 "AND addresses.email_address != :closure_1 "
                 "ORDER BY addresses.id",
@@ -1993,9 +1993,9 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     "SELECT users.id, users.name FROM users ORDER BY users.id"
                 ),
                 CompiledSQL(
-                    "SELECT addresses.user_id AS addresses_user_id, "
-                    "addresses.id AS addresses_id, addresses.email_address "
-                    "AS addresses_email_address FROM addresses "
+                    "SELECT addresses.user_id, addresses.id, "
+                    "addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.user_id IN "
                     "(__[POSTCOMPILE_primary_keys]) "
                     "AND addresses.email_address != :email_address_1 "
@@ -2052,9 +2052,8 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     "SELECT users.id, users.name FROM users ORDER BY users.id"
                 ),
                 CompiledSQL(
-                    "SELECT addresses.user_id AS addresses_user_id, "
-                    "addresses.id AS addresses_id, "
-                    "addresses.email_address AS addresses_email_address "
+                    "SELECT addresses.user_id, addresses.id, "
+                    "addresses.email_address "
                     # note the comma-separated FROM clause
                     "FROM addresses, (SELECT addresses_1.id AS id FROM "
                     "addresses AS addresses_1 "
@@ -2246,13 +2245,13 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     [{"id_1": 7}],
                 ),
                 CompiledSQL(
-                    "SELECT orders.user_id AS orders_user_id, "
-                    "orders.id AS orders_id, "
-                    "orders.address_id AS orders_address_id, "
-                    "orders.description AS orders_description, "
-                    "orders.isopen AS orders_isopen, "
-                    "items_1.id AS items_1_id, "
-                    "items_1.description AS items_1_description "
+                    "SELECT orders.user_id, "
+                    "orders.id, "
+                    "orders.address_id, "
+                    "orders.description, "
+                    "orders.isopen, "
+                    "items_1.id, "
+                    "items_1.description "
                     "FROM orders LEFT OUTER JOIN "
                     "(order_items AS order_items_1 "
                     "JOIN items AS items_1 "

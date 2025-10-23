@@ -157,7 +157,7 @@ in addition to primary key column::
     {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
-    SELECT book.owner_id AS book_owner_id, book.id AS book_id, book.title AS book_title
+    SELECT book.owner_id, book.id, book.title
     FROM book
     WHERE book.owner_id IN (?, ?)
     [...] (1, 2)

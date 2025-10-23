@@ -211,8 +211,7 @@ we only indicate the additional target subclasses we wish to load::
     SELECT company.id, company.name
     FROM company
     [...] ()
-    SELECT employee.company_id AS employee_company_id, employee.id AS employee_id,
-    employee.name AS employee_name, employee.type AS employee_type
+    SELECT employee.company_id, employee.id, employee.name, employee.type
     FROM employee
     WHERE employee.company_id IN (?)
     [...] (1,)
@@ -273,7 +272,7 @@ this collection on all ``Manager`` objects, where the sub-attributes of
     FROM employee JOIN manager ON employee.id = manager.id
     WHERE employee.id IN (?) ORDER BY employee.id
     [...] (1,)
-    SELECT paperwork.manager_id AS paperwork_manager_id, paperwork.id AS paperwork_id, paperwork.document_name AS paperwork_document_name
+    SELECT paperwork.manager_id, paperwork.id, paperwork.document_name
     FROM paperwork
     WHERE paperwork.manager_id IN (?)
     [...] (1,)
@@ -327,7 +326,7 @@ examples to load ``Company.employees``, also loading the attributes for the
     SELECT company.id, company.name
     FROM company
     [...] ()
-    SELECT employee.company_id AS employee_company_id, employee.id AS employee_id, employee.name AS employee_name, employee.type AS employee_type
+    SELECT employee.company_id, employee.id, employee.name, employee.type
     FROM employee
     WHERE employee.company_id IN (?)
     [...] (1,)
@@ -335,7 +334,7 @@ examples to load ``Company.employees``, also loading the attributes for the
     FROM employee JOIN manager ON employee.id = manager.id
     WHERE employee.id IN (?) ORDER BY employee.id
     [...] (1,)
-    SELECT paperwork.manager_id AS paperwork_manager_id, paperwork.id AS paperwork_id, paperwork.document_name AS paperwork_document_name
+    SELECT paperwork.manager_id, paperwork.id, paperwork.document_name
     FROM paperwork
     WHERE paperwork.manager_id IN (?)
     [...] (1,)
@@ -847,10 +846,8 @@ eagerly load all elements of ``Company.employees`` using the
     {execsql}SELECT company.id, company.name
     FROM company
     [...] ()
-    SELECT employee.company_id AS employee_company_id, employee.id AS employee_id,
-    employee.name AS employee_name, employee.type AS employee_type, manager.id AS manager_id,
-    manager.manager_name AS manager_manager_name, engineer.id AS engineer_id,
-    engineer.engineer_info AS engineer_engineer_info
+    SELECT employee.company_id, employee.id, employee.name, employee.type,
+    manager.id, manager.manager_name, engineer.id, engineer.engineer_info
     FROM employee
     LEFT OUTER JOIN manager ON employee.id = manager.id
     LEFT OUTER JOIN engineer ON employee.id = engineer.id

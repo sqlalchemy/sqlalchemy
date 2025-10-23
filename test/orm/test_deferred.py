@@ -755,7 +755,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     {"id_1": 3},
                 ),
                 (
-                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "SELECT users.id, users.name "
                     "FROM users WHERE users.id IN "
                     "(__[POSTCOMPILE_primary_keys])",
                     [{"primary_keys": [7]}],

@@ -6674,7 +6674,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
                 params=[{"id_1": 2}],
             ),
             CompiledSQL(
-                "SELECT a_1.id AS a_1_id, b.id AS b_id FROM a AS a_1 JOIN "
+                "SELECT a_1.id, b.id FROM a AS a_1 JOIN "
                 "(SELECT a.id AS aid, b.id AS id FROM a JOIN b ON a.b_ids "
                 "LIKE (:id_1 || b.id || :param_1)) AS anon_1 "
                 "ON a_1.id = anon_1.aid JOIN b ON b.id = anon_1.id "
