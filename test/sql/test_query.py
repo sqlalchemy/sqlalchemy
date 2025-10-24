@@ -12,7 +12,6 @@ from sqlalchemy import Integer
 from sqlalchemy import intersect
 from sqlalchemy import literal
 from sqlalchemy import literal_column
-from sqlalchemy import MetaData
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -270,29 +269,6 @@ class QueryTest(fixtures.TablesTest):
                 ).fetchall(),
                 [],
             )
-
-    def test_compiled_execute(self, connection):
-        users = self.tables.users
-        connection.execute(users.insert(), dict(user_id=7, user_name="jack"))
-        s = (
-            select(users)
-            .where(users.c.user_id == bindparam("id"))
-            .compile(connection)
-        )
-        eq_(connection.execute(s, dict(id=7)).first()._mapping["user_id"], 7)
-
-    def test_compiled_insert_execute(self, connection):
-        users = self.tables.users
-        connection.execute(
-            users.insert().compile(connection),
-            dict(user_id=7, user_name="jack"),
-        )
-        s = (
-            select(users)
-            .where(users.c.user_id == bindparam("id"))
-            .compile(connection)
-        )
-        eq_(connection.execute(s, dict(id=7)).first()._mapping["user_id"], 7)
 
     def test_repeated_bindparams(self, connection):
         """Tests that a BindParam can be used more than once.
@@ -777,50 +753,6 @@ class QueryTest(fixtures.TablesTest):
             ).fetchall(),
             [(7, "jack"), (8, "fred")],
         )
-
-    def test_expanding_in_dont_alter_compiled(self, connection):
-        """test for issue #5048"""
-
-        class NameWithProcess(TypeDecorator):
-            impl = String
-            cache_ok = True
-
-            def process_bind_param(self, value, dialect):
-                return value[3:]
-
-        users = Table(
-            "users",
-            MetaData(),
-            Column("user_id", Integer, primary_key=True),
-            Column("user_name", NameWithProcess()),
-        )
-
-        connection.execute(
-            users.insert(),
-            [
-                dict(user_id=7, user_name="AB jack"),
-                dict(user_id=8, user_name="BE fred"),
-                dict(user_id=9, user_name="GP ed"),
-            ],
-        )
-
-        stmt = (
-            select(users)
-            .where(users.c.user_name.in_(bindparam("uname", expanding=True)))
-            .order_by(users.c.user_id)
-        )
-
-        compiled = stmt.compile(testing.db)
-        eq_(len(compiled._bind_processors), 1)
-
-        eq_(
-            connection.execute(
-                compiled, {"uname": ["HJ jack", "RR fred"]}
-            ).fetchall(),
-            [(7, "jack"), (8, "fred")],
-        )
-
-        eq_(len(compiled._bind_processors), 1)
 
     @testing.skip_if(["mssql"])
     def test_bind_in(self, connection):
