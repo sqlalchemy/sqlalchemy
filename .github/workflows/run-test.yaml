@@ -77,14 +77,8 @@ jobs:
             python-version: "3.13t"
 
           - build-type: "cext-greenlet"
-            python-version: "3.14t-dev"
+            python-version: "3.14t"
 
-          # skip py 3.14 on x64, because greenlet builds are not on
-          # pypi and these dont compile yet
-          - architecture: x64
-            python-version:
-                - "3.14.0-alpha - 3.14"
-                - "3.14t-dev"
           # linux do not have x86 / arm64 python
           - os: "ubuntu-22.04"
             architecture: x86
