@@ -236,12 +236,8 @@ Typically ``config_dir`` and ``wallet_location`` are the same directory, which
 is where the Oracle Autonomous Database wallet zip file was extracted.  Note
 this directory should be protected.
 
-Connection Pooling
-------------------
-
-Applications with multiple concurrent users should use connection pooling. A
-minimal sized connection pool is also beneficial for long-running, single-user
-applications that do not frequently use a connection.
+Using python-oracledb Connection Pooling
+----------------------------------------
 
 The python-oracledb driver provides its own connection pool implementation that
 may be used in place of SQLAlchemy's pooling functionality.  The driver pool
