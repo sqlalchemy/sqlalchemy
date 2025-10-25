@@ -3999,6 +3999,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             String(50, collation="FOO"), 'VARCHAR(50) COLLATE "FOO"'
         )
 
+    def test_string_collation_schema_no_collation(self):
+        with expect_raises_message(
+            TypeError,
+            "The collation argument is required for using collation_schema",
+        ):
+            String(collation_schema="test")
+
+    def test_string_collation_schema(self):
+        self.assert_compile(
+            String(collation="my-collation", collation_schema="test-schema"),
+            'VARCHAR COLLATE "test-schema"."my-collation"',
+        )
+
     def test_char_plain(self):
         self.assert_compile(CHAR(), "CHAR")
 
@@ -4010,6 +4023,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             CHAR(50, collation="FOO"), 'CHAR(50) COLLATE "FOO"'
         )
 
+    def test_char_collation_schema(self):
+        self.assert_compile(
+            CHAR(50, collation="FOO", collation_schema="S"),
+            'CHAR(50) COLLATE "S"."FOO"',
+        )
+
     def test_text_plain(self):
         self.assert_compile(Text(), "TEXT")
 
@@ -4018,6 +4037,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_text_collation(self):
         self.assert_compile(Text(collation="FOO"), 'TEXT COLLATE "FOO"')
+
+    def test_text_collation_schema(self):
+        self.assert_compile(
+            Text(collation="FOO", collation_schema="S"),
+            'TEXT COLLATE "S"."FOO"',
+        )
 
     def test_default_compile_pg_inet(self):
         self.assert_compile(
