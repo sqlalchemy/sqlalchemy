@@ -140,9 +140,8 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
                 [{"id_1": 7}],
             ),
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
-                "addresses_user_id, "
-                "addresses.email_address AS addresses_email_address "
+                "SELECT addresses.id, addresses.user_id, "
+                "addresses.email_address "
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "ORDER BY addresses.id",
                 [{"param_1": 7}],

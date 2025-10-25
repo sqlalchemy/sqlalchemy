@@ -381,25 +381,23 @@ class RudimentaryFlushTest(UOWTest):
                 # the User row might be handled before or the addresses
                 # are loaded so need to use AllOf
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c2id},
                 ),
                 CompiledSQL(
-                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "SELECT users.id, users.name "
                     "FROM users WHERE users.id = :pk_1",
                     lambda ctx: {"pk_1": pid},
                 ),
@@ -457,19 +455,17 @@ class RudimentaryFlushTest(UOWTest):
                 # relationship is simple m2o, no SELECT should be emitted for
                 # it.
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c2id},
@@ -523,19 +519,17 @@ class RudimentaryFlushTest(UOWTest):
             AllOf(
                 # the parent User is expired, so it gets loaded here.
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT addresses.id AS addresses_id, "
-                    "addresses.user_id AS "
-                    "addresses_user_id, addresses.email_address AS "
-                    "addresses_email_address FROM addresses "
+                    "SELECT addresses.id, addresses.user_id, "
+                    "addresses.email_address "
+                    "FROM addresses "
                     "WHERE addresses.id = "
                     ":pk_1",
                     lambda ctx: {"pk_1": c2id},
@@ -854,8 +848,7 @@ class RaiseLoadIgnoredTest(
             sess.flush,
             # for the flush process, lazy="raise" is ignored
             CompiledSQL(
-                "SELECT b.id AS b_id, b.a_id AS b_a_id FROM b "
-                "WHERE :param_1 = b.a_id",
+                "SELECT b.id, b.a_id FROM b " "WHERE :param_1 = b.a_id",
                 [{"param_1": 1}],
             ),
             CompiledSQL(
@@ -1313,23 +1306,20 @@ class SingleCycleTest(UOWTest):
                 # the selects here are in fact unexpiring
                 # each row - the m2o comes from the identity map.
                 CompiledSQL(
-                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
-                    "nodes_parent_id, "
-                    "nodes.data AS nodes_data FROM nodes "
+                    "SELECT nodes.id, nodes.parent_id, nodes.data "
+                    "FROM nodes "
                     "WHERE nodes.id = :pk_1",
                     lambda ctx: {"pk_1": pid},
                 ),
                 CompiledSQL(
-                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
-                    "nodes_parent_id, "
-                    "nodes.data AS nodes_data FROM nodes "
+                    "SELECT nodes.id, nodes.parent_id, nodes.data "
+                    "FROM nodes "
                     "WHERE nodes.id = :pk_1",
                     lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
-                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
-                    "nodes_parent_id, "
-                    "nodes.data AS nodes_data FROM nodes "
+                    "SELECT nodes.id, nodes.parent_id, nodes.data "
+                    "FROM nodes "
                     "WHERE nodes.id = :pk_1",
                     lambda ctx: {"pk_1": c2id},
                 ),
@@ -1510,8 +1500,8 @@ class SingleCycleM2MTest(
                 # this is n1.parents firing off, as it should, since
                 # passive_deletes is False for n1.parents
                 CompiledSQL(
-                    "SELECT nodes.id AS nodes_id, nodes.data AS nodes_data, "
-                    "nodes.favorite_node_id AS nodes_favorite_node_id FROM "
+                    "SELECT nodes.id, nodes.data, "
+                    "nodes.favorite_node_id FROM "
                     "nodes, node_to_nodes WHERE :param_1 = "
                     "node_to_nodes.right_node_id AND nodes.id = "
                     "node_to_nodes.left_node_id",
@@ -3268,12 +3258,12 @@ class EagerDefaultsSettingTest(
                         expected_eager_defaults and not expect_returning,
                         [
                             CompiledSQL(
-                                "SELECT test.foo AS test_foo "
+                                "SELECT test.foo "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 1}],
                             ),
                             CompiledSQL(
-                                "SELECT test.foo AS test_foo "
+                                "SELECT test.foo "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 2}],
                             ),
@@ -3388,12 +3378,12 @@ class EagerDefaultsSettingTest(
                         expected_eager_defaults and not expect_returning,
                         [
                             CompiledSQL(
-                                "SELECT test.foo AS test_foo "
+                                "SELECT test.foo "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 1}],
                             ),
                             CompiledSQL(
-                                "SELECT test.foo AS test_foo "
+                                "SELECT test.foo "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 2}],
                             ),
@@ -3464,12 +3454,12 @@ class EagerDefaultsSettingTest(
                                 ],
                             ),
                             CompiledSQL(
-                                "SELECT test.bar AS test_bar "
+                                "SELECT test.bar "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 1}],
                             ),
                             CompiledSQL(
-                                "SELECT test.bar AS test_bar "
+                                "SELECT test.bar "
                                 "FROM test WHERE test.id = :pk_1",
                                 [{"pk_1": 2}],
                             ),

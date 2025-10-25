@@ -298,7 +298,7 @@ configuration:
     SELECT a.id, a.data, a.create_date
     FROM a ORDER BY a.id
     [...] ()
-    SELECT b.a_id AS b_a_id, b.id AS b_id, b.data AS b_data
+    SELECT b.a_id, b.id, b.data
     FROM b
     WHERE b.a_id IN (?, ?, ?)
     [...] (1, 2, 3)

@@ -87,7 +87,7 @@ order to load the value.  Below, accessing ``.cover_photo`` emits a SELECT
 statement to load its value::
 
     >>> img_data = books[0].cover_photo
-    {execsql}SELECT book.cover_photo AS book_cover_photo
+    {execsql}SELECT book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (1,)
@@ -157,7 +157,7 @@ in addition to primary key column::
     {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
-    SELECT book.owner_id AS book_owner_id, book.id AS book_id, book.title AS book_title
+    SELECT book.owner_id, book.id, book.title
     FROM book
     WHERE book.owner_id IN (?, ?)
     [...] (1, 2)
@@ -184,12 +184,12 @@ the SELECT statement emitted for each ``User.books`` collection::
     {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     [...] ()
-    SELECT book.id AS book_id, book.title AS book_title
+    SELECT book.id, book.title
     FROM book
     WHERE ? = book.owner_id
     [...] (1,)
     {stop}Spongebob Squarepants   ['100 Years of Krabby Patties', 'Sea Catch 22', 'The Sea Grapes of Wrath']
-    {execsql}SELECT book.id AS book_id, book.title AS book_title
+    {execsql}SELECT book.id, book.title
     FROM book
     WHERE ? = book.owner_id
     [...] (2,)
@@ -223,7 +223,7 @@ As is the case with :func:`_orm.load_only`, unloaded columns by default
 will load themselves when accessed using :term:`lazy loading`::
 
     >>> img_data = books[0].cover_photo
-    {execsql}SELECT book.cover_photo AS book_cover_photo
+    {execsql}SELECT book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (4,)
@@ -354,7 +354,7 @@ on the loaded object are first accessed is that they will :term:`lazy load`
 their value::
 
     >>> img_data = book.cover_photo
-    {execsql}SELECT book.cover_photo AS book_cover_photo
+    {execsql}SELECT book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (2,)
@@ -510,7 +510,7 @@ will load both columns at once using just one SELECT statement::
     WHERE book.id = ?
     [...] (2,)
     {stop}>>> img_data, summary = book.cover_photo, book.summary
-    {execsql}SELECT book.summary AS book_summary, book.cover_photo AS book_cover_photo
+    {execsql}SELECT book.summary, book.cover_photo
     FROM book
     WHERE book.id = ?
     [...] (2,)
