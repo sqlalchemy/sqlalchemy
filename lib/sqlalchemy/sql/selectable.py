@@ -138,6 +138,7 @@ if TYPE_CHECKING:
     from .base import ReadOnlyColumnCollection
     from .cache_key import _CacheKeyTraversalType
     from .compiler import SQLCompiler
+    from .ddl import CreateTableAs
     from .dml import Delete
     from .dml import Update
     from .elements import BinaryExpression
@@ -148,6 +149,7 @@ if TYPE_CHECKING:
     from .functions import Function
     from .schema import ForeignKey
     from .schema import ForeignKeyConstraint
+    from .schema import MetaData
     from .sqltypes import TableValueType
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
@@ -3794,6 +3796,84 @@ class SelectBase(
 
         return Subquery._construct(
             self._ensure_disambiguated_names(), name=name
+        )
+
+    @util.preload_module("sqlalchemy.sql.ddl")
+    def into(
+        self,
+        target: str,
+        *,
+        metadata: Optional["MetaData"] = None,
+        schema: Optional[str] = None,
+        temporary: bool = False,
+        if_not_exists: bool = False,
+    ) -> CreateTableAs:
+        """Create a :class:`_schema.CreateTableAs` construct from this SELECT.
+
+        This method provides a convenient way to create a ``CREATE TABLE ...
+        AS`` statement from a SELECT, as well as compound SELECTs like UNION.
+        The new table will be created with columns matching the SELECT list.
+
+        Supported on all included backends, the construct emits
+        ``CREATE TABLE...AS`` for all backends except SQL Server, which instead
+        emits a ``SELECT..INTO`` statement.
+
+        e.g.::
+
+            from sqlalchemy import select
+
+            # Create a new table from a SELECT
+            stmt = (
+                select(users.c.id, users.c.name)
+                .where(users.c.status == "active")
+                .into("active_users")
+            )
+
+            with engine.begin() as conn:
+                conn.execute(stmt)
+
+            # With optional flags
+            stmt = (
+                select(users.c.id)
+                .where(users.c.status == "inactive")
+                .into("inactive_users", schema="analytics", if_not_exists=True)
+            )
+
+        .. versionadded:: 2.1
+
+        :param target: Name of the table to create as a string. Must be
+            unqualified; use the ``schema`` parameter for qualification.
+
+        :param metadata: :class:`_schema.MetaData`, optional
+            If provided, the :class:`_schema.Table` object available via the
+            :attr:`.table` attribute will be associated with this
+            :class:`.MetaData`.  Otherwise, a new, empty :class:`.MetaData`
+            is created.
+
+        :param schema: Optional schema name for the new table.
+
+        :param temporary: If True, create a temporary table where supported
+
+        :param if_not_exists: If True, add IF NOT EXISTS clause where supported
+
+        :return: A :class:`_schema.CreateTableAs` construct.
+
+        .. seealso::
+
+            :ref:`tutorial_create_table_as` - in the :ref:`unified_tutorial`
+
+            :class:`_schema.CreateTableAs`
+
+        """
+        sql_ddl = util.preloaded.sql_ddl
+
+        return sql_ddl.CreateTableAs(
+            self,
+            target,
+            metadata=metadata,
+            schema=schema,
+            temporary=temporary,
+            if_not_exists=if_not_exists,
         )
 
     def _ensure_disambiguated_names(self) -> Self:

@@ -20,6 +20,7 @@ from .sql.ddl import CreateIndex as CreateIndex
 from .sql.ddl import CreateSchema as CreateSchema
 from .sql.ddl import CreateSequence as CreateSequence
 from .sql.ddl import CreateTable as CreateTable
+from .sql.ddl import CreateTableAs as CreateTableAs
 from .sql.ddl import DDL as DDL
 from .sql.ddl import DDLElement as DDLElement
 from .sql.ddl import DropColumnComment as DropColumnComment

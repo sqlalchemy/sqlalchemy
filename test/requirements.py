@@ -100,6 +100,20 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql", "mysql", "mariadb", "sqlite"])
 
     @property
+    def create_table_as(self):
+        """target platform supports CREATE TABLE AS SELECT."""
+
+        return only_on(
+            ["postgresql", "mysql", "mariadb", "sqlite", "mssql", "oracle"]
+        )
+
+    @property
+    def create_temp_table_as(self):
+        """target platform supports CREATE TEMPORARY TABLE AS SELECT."""
+
+        return only_on(["postgresql", "mysql", "mariadb", "sqlite", "mssql"])
+
+    @property
     def index_ddl_if_exists(self):
         """target platform supports IF NOT EXISTS / IF EXISTS for indexes."""
 

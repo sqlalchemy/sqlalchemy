@@ -618,6 +618,53 @@ not the database portion::
 
 :ticket:`11234`
 
+.. _change_4950:
+
+CREATE TABLE AS SELECT Support
+-------------------------------
+
+SQLAlchemy 2.1 adds support for the SQL ``CREATE TABLE ... AS SELECT``
+construct as well as the ``SELECT ... INTO`` variant for selected backends,
+which creates a new table directly from the results of a SELECT
+statement. This is available via the new :class:`_schema.CreateTableAs` DDL
+construct and the :meth:`_sql.SelectBase.into` convenience method.
+
+The :class:`_schema.CreateTableAs` construct can be used to create a new table
+from any SELECT statement::
+
+    >>> from sqlalchemy import select, CreateTableAs
+    >>> select_stmt = select(users.c.id, users.c.name).where(users.c.status == "active")
+    >>> create_table_as = CreateTableAs(select_stmt, "active_users")
+
+The above construct renders as a ``CREATE TABLE AS`` statement::
+
+    >>> print(create_table_as)
+    CREATE TABLE active_users AS SELECT users.id, users.name
+    FROM users
+    WHERE users.status = 'active'
+
+The construct can be executed to emit the above DDL, and the table may then
+be accessed using the :attr:`.CreateTableAs.table` attribute which
+supplies a :class:`.Table`::
+
+    >>> print(select(create_table_as.table))
+    SELECT users.id, users.name
+    FROM active_users
+
+See :ref:`tutorial_create_table_as` for a tutorial.
+
+.. seealso::
+
+    :ref:`tutorial_create_table_as` - in the :ref:`unified_tutorial`
+
+    :class:`_schema.CreateTableAs` - DDL construct for CREATE TABLE AS
+
+    :meth:`_sql.SelectBase.into` - convenience method on SELECT and UNION
+    statements
+
+:ticket:`4950`
+
+
 .. _change_11250:
 
 Potential breaking change to odbc_connect= handling for mssql+pyodbc
