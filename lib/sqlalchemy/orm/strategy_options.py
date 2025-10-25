@@ -60,9 +60,7 @@ _COLUMN_TOKEN: Final[Literal["column"]] = "column"
 
 _FN = TypeVar("_FN", bound="Callable[..., Any]")
 
-
 if typing.TYPE_CHECKING:
-
     from ._typing import _EntityType
     from ._typing import _InternalEntityType
     from .context import _MapperEntity
