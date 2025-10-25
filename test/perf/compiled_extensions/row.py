@@ -111,8 +111,12 @@ class BaseRow(Case):
         class Row(self.impl):
             pass
 
+        class RowMap(self.impl):
+            __getitem__ = self.impl._get_by_key_impl_mapping
+
         self.Row = Row
-        self.row_sub = Row(*self.row_args)
+        self.row_map = RowMap(*self.row_args)
+        self.row_long_map = RowMap(*self.row_long_args)
 
         self.row_state = self.row.__getstate__()
         self.row_long_state = self.row_long.__getstate__()
@@ -223,6 +227,14 @@ class BaseRow(Case):
 
     @test_case
     def get_by_key(self):
+        self.row_map["a"]
+        self.row_map["b"]
+        self.row_long_map["s"]
+        self.row_long_map["a"]
+
+    @test_case
+    def get_by_key2(self):
+        # NOTE: this is not representative of real usage
         self.row._get_by_key_impl_mapping("a")
         self.row._get_by_key_impl_mapping("b")
         self.row_long._get_by_key_impl_mapping("s")
@@ -235,8 +247,26 @@ class BaseRow(Case):
         self.row_long.x
         self.row_long.y
 
-    @test_case(number=25_000)
+    @test_case(number=15_000)
     def get_by_key_recreate(self):
+        self.init_objects()
+        row = self.row_map
+        for _ in range(25):
+            row["a"]
+        l_row = self.row_long_map
+        for _ in range(25):
+            l_row["f"]
+            l_row["o"]
+            l_row["r"]
+            l_row["t"]
+            l_row["y"]
+            l_row["t"]
+            l_row["w"]
+            l_row["o"]
+
+    @test_case(number=15_000)
+    def get_by_key_recreate2(self):
+        # NOTE: this is not representative of real usage
         self.init_objects()
         row = self.row
         for _ in range(25):
@@ -268,3 +298,10 @@ class BaseRow(Case):
             l_row.t
             l_row.w
             l_row.o
+
+    @test_case
+    def contains(self):
+        1 in self.row
+        -1 in self.row
+        1 in self.row_long
+        -1 in self.row_long

@@ -30,6 +30,7 @@ uint = int
 float = float  # noqa: A001
 double = float
 void = Any
+NULL = None
 
 
 # functions
@@ -59,3 +60,19 @@ def exceptval(value: Any = None, *, check: bool = False) -> _NO_OP[_T]:
 
 def cast(type_: Type[_T], value: Any, *, typecheck: bool = False) -> _T:
     return value  # type: ignore[no-any-return]
+
+
+def returns(_: type) -> _NO_OP[_T]:
+    return _no_op
+
+
+def locals(**kwargs: Any) -> _NO_OP[_T]:  # noqa: A001
+    return _no_op
+
+
+def wraparound(value: bool) -> _NO_OP[_T]:
+    return _no_op
+
+
+def boundscheck(value: bool) -> _NO_OP[_T]:
+    return _no_op

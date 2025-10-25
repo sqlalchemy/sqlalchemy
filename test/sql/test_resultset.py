@@ -1905,6 +1905,7 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row.key, "kv")
         eq_(row.count, "cv")
         eq_(row.index, "iv")
+        eq_(row.foo, "f")
 
         eq_(row._mapping["foo"], "f")
         eq_(row._mapping["count"], "cv")
@@ -1926,6 +1927,27 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row.index("cv"), 1)
         eq_(row.count("cv"), 1)
         eq_(row.count("x"), 0)
+
+    def test_row_precedence_normal_names(self):
+        f = ("_fields", "_asdict", "_mapping", "as_tuple")
+        v = ["ff", "ad", "mm", "at"]
+        metadata = SimpleResultMetaData(f)
+
+        class SubRow(Row):
+            # use subclass to ensure there is always a public method
+            @property
+            def as_tuple(self):
+                return tuple(self)
+
+        row = SubRow(metadata, None, metadata._key_to_index, v)
+
+        eq_(row._fields, f)
+        eq_(row._asdict(), dict(zip(f, v)))
+        eq_(row._mapping, dict(zip(f, v)))
+        eq_(row.as_tuple, tuple(v))
+
+        with expect_raises(AttributeError):
+            getattr(row, "")  # test cython getattr edge case
 
     def test_new_row_no_dict_behaviors(self):
         """This mode is not used currently but will be once we are in 2.0."""

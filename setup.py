@@ -46,9 +46,14 @@ CYTHON_MODULES = (
 if HAS_CYTHON and IS_CPYTHON and not DISABLE_EXTENSION:
     assert _cy_Extension is not None
     assert _cy_build_ext is not None
+    from Cython.Compiler import Options
+
+    Options.docstrings = False
+    Options.clear_to_none = False
 
     cython_directives: Dict[str, Any] = {
         "language_level": "3",
+        # "initializedcheck": False,
     }
 
     if sys.version_info >= (3, 13):

@@ -4,13 +4,15 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: disable-error-code="misc"
+# mypy: disable-error-code="misc,no-redef,valid-type,no-untyped-call"
+# mypy: disable-error-code="index,no-any-return,arg-type,assignment"
 from __future__ import annotations
 
 from typing import Any
 from typing import Dict
 from typing import Iterator
 from typing import List
+from typing import NoReturn
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -60,13 +62,15 @@ class BaseRow:
         data: Sequence[Any],
     ) -> None:
         """Row objects are constructed by CursorResult objects."""
-
-        data_tuple: Tuple[Any, ...] = (
-            _apply_processors(processors, data)
-            if processors is not None
-            else tuple(data)
+        self._set_attrs(
+            parent,
+            key_to_index,
+            (
+                _apply_processors(processors, data)
+                if processors is not None
+                else data if isinstance(data, tuple) else tuple(data)
+            ),
         )
-        self._set_attrs(parent, key_to_index, data_tuple)
 
     @cython.cfunc
     @cython.inline
@@ -121,34 +125,97 @@ class BaseRow:
         return self._get_by_key_impl(key, False)
 
     @cython.cfunc
+    @cython.inline
     def _get_by_key_impl(self, key: _KeyType, attr_err: cython.bint) -> object:
-        index: Optional[int] = self._key_to_index.get(key)
+        # NOTE: don't type index since there is no advantage in making cython
+        # do a type check
+        index = self._key_to_index.get(key)
         if index is not None:
             return self._data[index]
         self._parent._key_not_found(key, attr_err)
+
+    if cython.compiled:
+
+        @cython.annotation_typing(False)
+        def __getattribute__(self, name: str) -> Any:
+            # this optimizes getattr access on cython, that's otherwise
+            # quite slow compared with python. The assumption is that
+            # most columns will not start with _. If they do they will
+            # fallback on __getattr__ in any case.
+            if name != "" and name[0] != "_":
+                # inline of _get_by_key_impl. Attribute on the class
+                # take precedence over column names.
+                index = self._key_to_index.get(name)
+                if index is not None and not hasattr(type(self), name):
+                    return self._data[index]
+
+            return object.__getattribute__(self, name)
 
     @cython.annotation_typing(False)
     def __getattr__(self, name: str) -> Any:
         return self._get_by_key_impl(name, True)
 
+    def __setattr__(self, name: str, value: Any) -> NoReturn:
+        raise AttributeError("can't set attribute")
+
+    def __delattr__(self, name: str) -> NoReturn:
+        raise AttributeError("can't delete attribute")
+
     def _to_tuple_instance(self) -> Tuple[Any, ...]:
         return self._data
 
+    def __contains__(self, key: Any) -> cython.bint:
+        return key in self._data
 
-@cython.inline
-@cython.cfunc
-def _apply_processors(
-    proc: _ProcessorsType, data: Sequence[Any]
-) -> Tuple[Any, ...]:
-    res: List[Any] = list(data)
-    proc_size: cython.Py_ssize_t = len(proc)
-    # TODO: would be nice to do this only on the fist row
-    assert len(res) == proc_size
-    for i in range(proc_size):
-        p = proc[i]
-        if p is not None:
-            res[i] = p(res[i])
-    return tuple(res)
+
+if cython.compiled:
+
+    from cython.cimports.cpython import PyTuple_New
+    from cython.cimports.cpython import Py_INCREF
+    from cython.cimports.cpython import PyTuple_SET_ITEM
+
+    @cython.inline
+    @cython.cfunc
+    @cython.wraparound(False)
+    @cython.boundscheck(False)
+    @cython.locals(
+        res=tuple,
+        proc_size=cython.Py_ssize_t,
+        i=cython.Py_ssize_t,
+        p=object,
+        value=object,
+    )
+    def _apply_processors(
+        proc: Sequence[Any], data: Sequence[Any]
+    ) -> Tuple[Any, ...]:
+        proc_size = len(proc)
+        # TODO: would be nice to do this only on the fist row
+        assert len(data) == proc_size
+        res = PyTuple_New(proc_size)
+        for i in range(proc_size):
+            p = proc[i]
+            if p is not None:
+                value = p(data[i])
+            else:
+                value = data[i]
+            Py_INCREF(value)
+            PyTuple_SET_ITEM(res, i, value)
+        return res
+
+else:
+
+    def _apply_processors(
+        proc: _ProcessorsType, data: Sequence[Any]
+    ) -> Tuple[Any, ...]:
+        res: List[Any] = list(data)
+        proc_size = len(proc)
+        # TODO: would be nice to do this only on the fist row
+        assert len(res) == proc_size
+        for i in range(proc_size):
+            p = proc[i]
+            if p is not None:
+                res[i] = p(res[i])
+        return tuple(res)
 
 
 # This reconstructor is necessary so that pickles with the Cy extension or
