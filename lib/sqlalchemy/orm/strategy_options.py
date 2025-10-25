@@ -62,7 +62,9 @@ _COLUMN_TOKEN: Final[Literal["column"]] = "column"
 
 _FN = TypeVar("_FN", bound="Callable[..., Any]")
 
+
 if typing.TYPE_CHECKING:
+
     from ._typing import _EntityType
     from ._typing import _InternalEntityType
     from .context import _MapperEntity
@@ -1871,9 +1873,24 @@ class _LoadElement(
             return replacement
 
         raise sa_exc.InvalidRequestError(
-            f"Loader strategy replacement {replacement.path} "
-            f"is in conflict with existing strategy {existing.path}"
+            f"Loader strategy replacement {replacement} "
+            f"is in conflict with existing strategy {existing}"
         )
+
+    def __str__(self) -> str:
+        args: dict[str, Any] = {
+            "path": self.path,
+        }
+
+        if self.strategy:
+            for setting, value in self.strategy:
+                args[setting] = value
+
+        if self.local_opts:
+            args["local_opts"] = dict(self.local_opts)
+
+        args_str = ", ".join(f"{k}={v}" for k, v in args.items())
+        return f"{self.__class__.__name__}({args_str})"
 
 
 class _AttributeStrategyLoad(_LoadElement):
