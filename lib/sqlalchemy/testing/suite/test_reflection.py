@@ -99,24 +99,23 @@ class HasTableTest(OneConnectionTablesTest):
 
     @classmethod
     def define_views(cls, metadata):
-        query = "CREATE VIEW vv AS SELECT id, data FROM test_table"
 
-        event.listen(metadata, "after_create", DDL(query))
-        event.listen(metadata, "before_drop", DDL("DROP VIEW vv"))
+        test_table = metadata.tables["test_table"]
+        sa.CreateView(
+            sa.select(test_table.c.id, test_table.c.data),
+            "vv",
+            metadata=metadata,
+        )
 
         if testing.requires.schemas.enabled:
-            query = (
-                "CREATE VIEW %s.vv AS SELECT id, data FROM %s.test_table_s"
-                % (
-                    config.test_schema,
-                    config.test_schema,
-                )
-            )
-            event.listen(metadata, "after_create", DDL(query))
-            event.listen(
-                metadata,
-                "before_drop",
-                DDL("DROP VIEW %s.vv" % (config.test_schema)),
+            test_table_s = metadata.tables[
+                f"{config.test_schema}.test_table_s"
+            ]
+            sa.CreateView(
+                sa.select(test_table_s.c.id, test_table_s.c.data),
+                "vv",
+                metadata=metadata,
+                schema=config.test_schema,
             )
 
     @classmethod

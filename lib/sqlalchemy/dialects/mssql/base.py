@@ -2728,6 +2728,13 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
         return result
 
+    def visit_create_view(self, create, **kw):
+        # SQL Server uses CREATE OR ALTER instead of CREATE OR REPLACE
+        result = super().visit_create_view(create, **kw)
+        if create.or_replace:
+            result = result.replace("CREATE OR REPLACE", "CREATE OR ALTER")
+        return result
+
     def visit_primary_key_constraint(self, constraint, **kw):
         if len(constraint) == 0:
             return ""

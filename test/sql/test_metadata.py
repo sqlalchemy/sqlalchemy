@@ -13,7 +13,10 @@ from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import ColumnDefault
 from sqlalchemy import Computed
+from sqlalchemy import CreateTable
+from sqlalchemy import CreateView
 from sqlalchemy import desc
+from sqlalchemy import DropTable
 from sqlalchemy import Enum
 from sqlalchemy import event
 from sqlalchemy import exc
@@ -1735,6 +1738,49 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
         t2 = table.to_metadata(m2)
 
         eq_(len(t2.indexes), 1)
+
+    @testing.variation("type_", ["create_table_as", "create_view"])
+    def test_table_via_select(self, type_: testing.Variation):
+        meta = MetaData()
+
+        table = Table("mytable", meta, Column("x", Integer))
+
+        m2 = MetaData()
+
+        if type_.create_table_as:
+            target = select(table).into("ctas", metadata=meta)
+        elif type_.create_view:
+            target = CreateView(select(table), "tview", metadata=meta)
+        else:
+            type_.fail()
+
+        is_(target.table.metadata, meta)
+
+        tt2 = target.table.to_metadata(m2)
+        if type_.create_view:
+            is_true(tt2.is_view)
+
+        ttarget = tt2._creator_ddl
+        is_(ttarget.metadata, m2)
+        is_(ttarget.table, tt2)
+
+        if tt2.is_view:
+            is_(tt2._dropper_ddl.element, tt2)
+
+    def test_alternate_create_drop(self):
+        meta = MetaData()
+
+        table = Table("mytable", meta, Column("x", Integer))
+
+        table.set_creator_ddl(CreateTable(table, if_not_exists=True))
+        table.set_dropper_ddl(DropTable(table, if_exists=True))
+
+        m2 = MetaData()
+
+        ttarget = table.to_metadata(m2)
+
+        is_(ttarget._creator_ddl.element, ttarget)
+        is_(ttarget._dropper_ddl.element, ttarget)
 
 
 class InfoTest(fixtures.TestBase):

@@ -793,6 +793,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def create_or_replace_view(self):
+        """target database supports CREATE OR REPLACE VIEW"""
+        return exclusions.closed()
+
+    @property
     def index_reflection(self):
         return exclusions.open()
 

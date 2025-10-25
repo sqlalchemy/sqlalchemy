@@ -3657,3 +3657,22 @@ class CyExtensionTest(fixtures.TestBase):
             print(expected)
             print(setup_modules)
             eq_(setup_modules, expected)
+
+
+class TestTest(fixtures.TestBase):
+    """Test of test things"""
+
+    @testing.variation("foo", ["foo", "bar", "baz"])
+    def test_variations(self, foo):
+        match foo:
+            case "foo":
+                is_true(foo.foo)
+                is_false(foo.bar)
+            case "bar":
+                is_true(foo.bar)
+                is_false(foo.foo)
+            case "baz":
+                is_true(foo.baz)
+                is_false(foo.foo)
+            case _:
+                foo.fail()

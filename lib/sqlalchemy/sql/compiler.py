@@ -94,7 +94,9 @@ if typing.TYPE_CHECKING:
     from .base import CompileState
     from .base import Executable
     from .cache_key import CacheKey
+    from .ddl import _TableViaSelect
     from .ddl import CreateTableAs
+    from .ddl import CreateView
     from .ddl import ExecutableDDLElement
     from .dml import Delete
     from .dml import Insert
@@ -6928,18 +6930,42 @@ class DDLCompiler(Compiled):
         text += "\n)%s\n\n" % self.post_create_table(table)
         return text
 
+    def visit_create_view(self, element: CreateView, **kw: Any) -> str:
+        return self._generate_table_select(element, "view", **kw)
+
     def visit_create_table_as(self, element: CreateTableAs, **kw: Any) -> str:
+        return self._generate_table_select(element, "create_table_as", **kw)
+
+    def _generate_table_select(
+        self,
+        element: _TableViaSelect,
+        type_: str,
+        if_not_exists: Optional[bool] = None,
+        **kw: Any,
+    ) -> str:
         prep = self.preparer
 
         inner_kw = dict(kw)
         inner_kw["literal_binds"] = True
         select_sql = self.sql_compiler.process(element.selectable, **inner_kw)
 
+        # Use if_not_exists parameter if provided, otherwise use element's
+        use_if_not_exists = (
+            if_not_exists
+            if if_not_exists is not None
+            else element.if_not_exists
+        )
+
         parts = [
             "CREATE",
+            "OR REPLACE" if getattr(element, "or_replace", False) else None,
             "TEMPORARY" if element.temporary else None,
-            "TABLE",
-            "IF NOT EXISTS" if element.if_not_exists else None,
+            (
+                "MATERIALIZED VIEW"
+                if type_ == "view" and getattr(element, "materialized", False)
+                else "TABLE" if type_ == "create_table_as" else "VIEW"
+            ),
+            "IF NOT EXISTS" if use_if_not_exists else None,
             prep.format_table(element.table),
             "AS",
             select_sql,
@@ -7005,7 +7031,14 @@ class DDLCompiler(Compiled):
         return text + self.preparer.format_table(drop.element)
 
     def visit_drop_view(self, drop, **kw):
-        return "\nDROP VIEW " + self.preparer.format_table(drop.element)
+        text = "\nDROP "
+        if drop.materialized:
+            text += "MATERIALIZED VIEW "
+        else:
+            text += "VIEW "
+        if drop.if_exists:
+            text += "IF EXISTS "
+        return text + self.preparer.format_table(drop.element)
 
     def _verify_index_table(self, index: Index) -> None:
         if index.table is None:

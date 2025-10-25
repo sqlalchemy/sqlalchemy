@@ -2,11 +2,13 @@ from unittest import mock
 from unittest.mock import Mock
 
 from sqlalchemy import Column
+from sqlalchemy import CreateView
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import schema
+from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -68,6 +70,20 @@ class EmitDDLTest(fixtures.TestBase):
         return (m,) + tuple(
             Table("t%d" % i, m, Column("x", Integer)) for i in range(1, 6)
         )
+
+    def _table_and_view_fixture(self):
+        m = MetaData()
+
+        tables = [
+            Table("t%d" % i, m, Column("x", Integer)) for i in range(1, 4)
+        ]
+
+        t1, t2, t3 = tables
+        views = [
+            CreateView(select(t1), "v1", metadata=m).table,
+            CreateView(select(t3), "v2", metadata=m).table,
+        ]
+        return (m,) + tuple(tables) + tuple(views)
 
     def _use_alter_fixture_one(self):
         m = MetaData()
@@ -368,6 +384,78 @@ class EmitDDLTest(fixtures.TestBase):
 
         self._assert_drop_tables([t1, t2, t3, t4, t5], generator, m, False)
 
+    def test_create_metadata_wviews_checkfirst(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture()
+        generator = self._mock_create_fixture(
+            True, None, item_exists=lambda t: t not in ("t2", "v2")
+        )
+
+        self._assert_create_tables([t2, v2], generator, m, True)
+
+    def test_drop_metadata_wviews_checkfirst(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture()
+        generator = self._mock_drop_fixture(
+            True, None, item_exists=lambda t: t in ("t2", "v2")
+        )
+
+        self._assert_drop_tables([t2, v2], generator, m, True)
+
+    def test_create_metadata_wviews_check_tables_only(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture()
+        generator = self._mock_create_fixture(
+            CheckFirst.TABLES,
+            None,
+            item_exists=lambda t: t not in ("t2", "v2"),
+        )
+
+        self._assert_create_tables(
+            [t2, v1, v2], generator, m, CheckFirst.TABLES
+        )
+
+    def test_drop_metadata_wviews_check_tables_only(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture()
+        generator = self._mock_drop_fixture(
+            CheckFirst.TABLES, None, item_exists=lambda t: t in ("t2", "v2")
+        )
+
+        self._assert_drop_tables([t2, v1, v2], generator, m, CheckFirst.TABLES)
+
+    def test_create_metadata_wviews_check_views_only(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture()
+        generator = self._mock_create_fixture(
+            CheckFirst.VIEWS, None, item_exists=lambda t: t not in ("t2", "v2")
+        )
+
+        self._assert_create_tables(
+            [t1, t2, t3, v2], generator, m, CheckFirst.VIEWS
+        )
+
+    def test_drop_metadata_wviews_check_views_only(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture()
+        generator = self._mock_drop_fixture(
+            CheckFirst.VIEWS, None, item_exists=lambda t: t in ("t2", "v2")
+        )
+
+        self._assert_drop_tables(
+            [t1, t2, t3, v2], generator, m, CheckFirst.VIEWS
+        )
+
+    def test_create_metadata_wviews_nocheck(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture()
+        generator = self._mock_create_fixture(
+            False, None, item_exists=lambda t: t not in ("t2", "v2")
+        )
+
+        self._assert_create_tables([t1, t2, t3, v1, v2], generator, m, False)
+
+    def test_drop_metadata_wviews_nocheck(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture()
+        generator = self._mock_drop_fixture(
+            False, None, item_exists=lambda t: t in ("t2", "v2")
+        )
+
+        self._assert_drop_tables([t1, t2, t3, v1, v2], generator, m, False)
+
     def test_create_metadata_auto_alter_fk(self):
         m, t1, t2 = self._use_alter_fixture_one()
         generator = self._mock_create_fixture(False, [t1, t2])
@@ -391,15 +479,35 @@ class EmitDDLTest(fixtures.TestBase):
         )
 
     def _assert_create_tables(self, elements, generator, argument, checkfirst):
-        self._assert_ddl(schema.CreateTable, elements, generator, argument)
+        self._assert_ddl(
+            (schema.CreateTable, schema.CreateView),
+            elements,
+            generator,
+            argument,
+        )
 
+        tables = []
         if CheckFirst(checkfirst) & CheckFirst.TABLES:
             if generator.tables is not None:
-                tables = generator.tables
+                tables.extend([t for t in generator.tables if not t.is_view])
             elif isinstance(argument, MetaData):
-                tables = argument.tables.values()
+                tables.extend(
+                    [t for t in argument.tables.values() if not t.is_view]
+                )
             else:
                 assert False, "don't know what tables we are checking"
+
+        if CheckFirst(checkfirst) & CheckFirst.VIEWS:
+            if generator.tables is not None:
+                tables.extend([t for t in generator.tables if t.is_view])
+            elif isinstance(argument, MetaData):
+                tables.extend(
+                    [t for t in argument.tables.values() if t.is_view]
+                )
+            else:
+                assert False, "don't know what views we are checking"
+
+        if tables:
             eq_(
                 generator.dialect.has_table.mock_calls,
                 [
@@ -414,15 +522,32 @@ class EmitDDLTest(fixtures.TestBase):
             )
 
     def _assert_drop_tables(self, elements, generator, argument, checkfirst):
-        self._assert_ddl(schema.DropTable, elements, generator, argument)
+        self._assert_ddl(
+            (schema.DropTable, schema.DropView), elements, generator, argument
+        )
 
+        tables = []
         if CheckFirst(checkfirst) & CheckFirst.TABLES:
             if generator.tables is not None:
-                tables = generator.tables
+                tables.extend([t for t in generator.tables if not t.is_view])
             elif isinstance(argument, MetaData):
-                tables = argument.tables.values()
+                tables.extend(
+                    [t for t in argument.tables.values() if not t.is_view]
+                )
             else:
                 assert False, "don't know what tables we are checking"
+
+        if CheckFirst(checkfirst) & CheckFirst.VIEWS:
+            if generator.tables is not None:
+                tables.extend([t for t in generator.tables if t.is_view])
+            elif isinstance(argument, MetaData):
+                tables.extend(
+                    [t for t in argument.tables.values() if t.is_view]
+                )
+            else:
+                assert False, "don't know what views we are checking"
+
+        if tables:
             eq_(
                 generator.dialect.has_table.mock_calls,
                 [

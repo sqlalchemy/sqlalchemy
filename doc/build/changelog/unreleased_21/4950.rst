@@ -1,5 +1,5 @@
 .. change::
-    :tags: feature, sql
+    :tags: feature, schema
     :tickets: 4950
 
     Added support for the SQL ``CREATE TABLE ... AS SELECT`` construct via the
@@ -7,7 +7,9 @@
     :meth:`_sql.Select.into` method. The new construct allows creating a
     table directly from the results of a SELECT statement, with support for
     options such as ``TEMPORARY`` and ``IF NOT EXISTS`` where supported by the
-    target database.  Pull request courtesy Greg Jarzab.
+    target database. Tables defined with :class:`_schema.CreateTableAs`
+    integrate with :class:`.MetaData` for automated DDL generation and provide
+    a :class:`.Table` object for querying. Pull request courtesy Greg Jarzab.
 
     .. seealso::
 

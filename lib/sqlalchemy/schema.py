@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from .sql.base import SchemaVisitor as SchemaVisitor
 from .sql.ddl import _CreateDropBase as _CreateDropBase
-from .sql.ddl import _DropView as _DropView
 from .sql.ddl import AddConstraint as AddConstraint
 from .sql.ddl import BaseDDLElement as BaseDDLElement
 from .sql.ddl import CheckFirst as CheckFirst
@@ -21,6 +20,7 @@ from .sql.ddl import CreateSchema as CreateSchema
 from .sql.ddl import CreateSequence as CreateSequence
 from .sql.ddl import CreateTable as CreateTable
 from .sql.ddl import CreateTableAs as CreateTableAs
+from .sql.ddl import CreateView as CreateView
 from .sql.ddl import DDL as DDL
 from .sql.ddl import DDLElement as DDLElement
 from .sql.ddl import DropColumnComment as DropColumnComment
@@ -31,6 +31,7 @@ from .sql.ddl import DropSchema as DropSchema
 from .sql.ddl import DropSequence as DropSequence
 from .sql.ddl import DropTable as DropTable
 from .sql.ddl import DropTableComment as DropTableComment
+from .sql.ddl import DropView as DropView
 from .sql.ddl import ExecutableDDLElement as ExecutableDDLElement
 from .sql.ddl import InvokeDDLBase as InvokeDDLBase
 from .sql.ddl import SetColumnComment as SetColumnComment

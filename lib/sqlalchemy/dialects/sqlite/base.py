@@ -1009,6 +1009,7 @@ from ...engine import reflection
 from ...engine.reflection import ReflectionDefaults
 from ...sql import coercions
 from ...sql import compiler
+from ...sql import ddl as sa_ddl
 from ...sql import elements
 from ...sql import roles
 from ...sql import schema
@@ -1888,6 +1889,17 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         else:
             return ""
 
+    def visit_create_view(self, create, **kw):
+        """Handle SQLite if_not_exists dialect option for CREATE VIEW."""
+        # Get the if_not_exists dialect option from the CreateView object
+        if_not_exists = create.dialect_options["sqlite"].get(
+            "if_not_exists", False
+        )
+
+        # Pass if_not_exists through kw to the parent's _generate_table_select
+        kw["if_not_exists"] = if_not_exists
+        return super().visit_create_view(create, **kw)
+
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
     def visit_large_binary(self, type_, **kw):
@@ -2134,6 +2146,7 @@ class SQLiteDialect(default.DefaultDialect):
             },
         ),
         (sa_schema.Constraint, {"on_conflict": None}),
+        (sa_ddl.CreateView, {"if_not_exists": False}),
     ]
 
     _broken_fk_pragma_quotes = False

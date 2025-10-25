@@ -14,7 +14,9 @@ from sqlalchemy.testing import skip_test
 
 
 class DocTest(fixtures.TestBase):
-    __requires__ = ("insert_returning", "insertmanyvalues")
+    # getting engine cleanup issues with free-threaded python.   can't
+    # isolate what the cause would be except for GC not being very good
+    __requires__ = ("insert_returning", "insertmanyvalues", "gil_enabled")
     __only_on__ = "sqlite+pysqlite"
 
     def _setup_logger(self):

@@ -103,6 +103,8 @@ if typing.TYPE_CHECKING:
     from .base import ColumnSet
     from .base import ReadOnlyColumnCollection
     from .compiler import DDLCompiler
+    from .ddl import TableCreateDDL
+    from .ddl import TableDropDDL
     from .elements import BindParameter
     from .elements import KeyedColumnElement
     from .functions import Function
@@ -508,6 +510,8 @@ class Table(
             _typing_Sequence[Tuple[str, Callable[..., Any]]]
         ] = None,
         prefixes: Optional[_typing_Sequence[str]] = None,
+        _creator_ddl: TableCreateDDL | None = None,
+        _dropper_ddl: TableDropDDL | None = None,
         # used internally in the metadata.reflect() process
         _extend_on: Optional[Set[Table]] = None,
         # used by __new__ to bypass __init__
@@ -823,6 +827,8 @@ class Table(
             self.schema = quoted_name(schema, quote_schema)
 
         self._sentinel_column = None
+        self._creator_ddl = _creator_ddl
+        self._dropper_ddl = _dropper_ddl
 
         self.indexes = set()
         self.constraints = set()
@@ -875,6 +881,60 @@ class Table(
             or autoload_with,
             all_names={},
         )
+
+    def set_creator_ddl(self, ddl: TableCreateDDL) -> None:
+        """Set the table create DDL for this :class:`.Table`.
+
+        This allows the CREATE TABLE statement to be controlled or replaced
+        entirely when :meth:`.Table.create` or :meth:`.MetaData.create_all` is
+        used.
+
+        E.g.::
+
+            from sqlalchemy.schema import CreateTable
+
+            table.set_creator_ddl(CreateTable(table, if_not_exists=True))
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :meth:`.Table.set_dropper_ddl`
+
+        """
+        self._creator_ddl = ddl
+
+    def set_dropper_ddl(self, ddl: TableDropDDL) -> None:
+        """Set the table drop DDL for this :class:`.Table`.
+
+        This allows the DROP TABLE statement to be controlled or replaced
+        entirely when :meth:`.Table.drop` or :meth:`.MetaData.drop_all` is
+        used.
+
+        E.g.::
+
+            from sqlalchemy.schema import DropTable
+
+            table.set_dropper_ddl(DropTable(table, if_exists=True))
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :meth:`.Table.set_creator_ddl`
+
+        """
+        self._dropper_ddl = ddl
+
+    @property
+    def is_view(self) -> bool:
+        """True if this table, when DDL for CREATE is emitted, will emit
+        CREATE VIEW rather than CREATE TABLE.
+
+        .. versionadded:: 2.1
+
+        """
+        return isinstance(self._creator_ddl, ddl.CreateView)
 
     def _autoload(
         self,
@@ -1487,6 +1547,7 @@ class Table(
         args = []
         for col in self.columns:
             args.append(col._copy(schema=actual_schema, _to_metadata=metadata))
+
         table = Table(
             name,
             metadata,
@@ -1495,6 +1556,12 @@ class Table(
             *args,
             **self.kwargs,
         )
+
+        if self._creator_ddl is not None:
+            table._creator_ddl = self._creator_ddl.to_metadata(metadata, table)
+        if self._dropper_ddl is not None:
+            table._dropper_ddl = self._dropper_ddl.to_metadata(metadata, table)
+
         for const in self.constraints:
             if isinstance(const, ForeignKeyConstraint):
                 referred_schema = const._referred_schema

@@ -7,6 +7,7 @@ from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
+from sqlalchemy import CreateView
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import extract
@@ -857,4 +858,37 @@ class OnConflictCompileTest(
             Column("name", String(50)),
             Column("login_email", String(50)),
             Column("lets_index_this", String(50)),
+        )
+
+    def test_create_view_if_not_exists(self):
+        """Test SQLite if_not_exists dialect option for CREATE VIEW."""
+        src = table("src", column("id"), column("name"))
+        stmt = CreateView(
+            select(src.c.id, src.c.name),
+            "my_view",
+            sqlite_if_not_exists=True,
+        )
+
+        self.assert_compile(
+            stmt,
+            "CREATE VIEW IF NOT EXISTS my_view AS "
+            "SELECT src.id, src.name FROM src",
+            dialect=sqlite.dialect(),
+        )
+
+    def test_create_view_temporary_if_not_exists(self):
+        """Test SQLite TEMPORARY VIEW with if_not_exists."""
+        src = table("src", column("id"), column("name"))
+        stmt = CreateView(
+            select(src.c.id, src.c.name),
+            "temp_view",
+            temporary=True,
+            sqlite_if_not_exists=True,
+        )
+
+        self.assert_compile(
+            stmt,
+            "CREATE TEMPORARY VIEW IF NOT EXISTS temp_view AS "
+            "SELECT src.id, src.name FROM src",
+            dialect=sqlite.dialect(),
         )
