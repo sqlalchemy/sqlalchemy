@@ -8,21 +8,26 @@ from __future__ import annotations
 
 import datetime as dt
 from typing import Any
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Type
 from typing import TYPE_CHECKING
 from uuid import UUID as _python_UUID
 
+from .bitstring import BitString
 from ...sql import sqltypes
 from ...sql import type_api
-from ...util.typing import Literal
+from ...sql.type_api import TypeEngine
+from ...types import OperatorClass
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
+    from ...sql.operators import ColumnOperators
     from ...sql.operators import OperatorType
+    from ...sql.type_api import _BindProcessorType
     from ...sql.type_api import _LiteralProcessorType
-    from ...sql.type_api import TypeEngine
+    from ...sql.type_api import _ResultProcessorType
 
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
@@ -52,28 +57,39 @@ class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = "BYTEA"
 
 
-class INET(sqltypes.TypeEngine[str]):
+class _NetworkAddressTypeMixin:
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
+
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        if TYPE_CHECKING:
+            assert isinstance(self, TypeEngine)
+        return self
+
+
+class INET(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "INET"
 
 
 PGInet = INET
 
 
-class CIDR(sqltypes.TypeEngine[str]):
+class CIDR(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "CIDR"
 
 
 PGCidr = CIDR
 
 
-class MACADDR(sqltypes.TypeEngine[str]):
+class MACADDR(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR"
 
 
 PGMacAddr = MACADDR
 
 
-class MACADDR8(sqltypes.TypeEngine[str]):
+class MACADDR8(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR8"
 
 
@@ -120,8 +136,6 @@ class MONEY(sqltypes.TypeEngine[str]):
             def column_expression(self, column: Any):
                 return cast(column, Numeric())
 
-    .. versionadded:: 1.2
-
     """  # noqa: E501
 
     __visit_name__ = "MONEY"
@@ -131,6 +145,8 @@ class OID(sqltypes.TypeEngine[int]):
     """Provide the PostgreSQL OID type."""
 
     __visit_name__ = "OID"
+
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
 
 
 class REGCONFIG(sqltypes.TypeEngine[str]):
@@ -142,6 +158,8 @@ class REGCONFIG(sqltypes.TypeEngine[str]):
 
     __visit_name__ = "REGCONFIG"
 
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
+
 
 class TSQUERY(sqltypes.TypeEngine[str]):
     """Provide the PostgreSQL TSQUERY type.
@@ -152,15 +170,15 @@ class TSQUERY(sqltypes.TypeEngine[str]):
 
     __visit_name__ = "TSQUERY"
 
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
+
 
 class REGCLASS(sqltypes.TypeEngine[str]):
-    """Provide the PostgreSQL REGCLASS type.
-
-    .. versionadded:: 1.2.7
-
-    """
+    """Provide the PostgreSQL REGCLASS type."""
 
     __visit_name__ = "REGCLASS"
+
+    operator_classes = OperatorClass.BASE | OperatorClass.COMPARISON
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
@@ -219,8 +237,6 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
          to be limited, such as ``"YEAR"``, ``"MONTH"``, ``"DAY TO HOUR"``,
          etc.
 
-         .. versionadded:: 1.2
-
         """
         self.precision = precision
         self.fields = fields
@@ -254,8 +270,23 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
 PGInterval = INTERVAL
 
 
-class BIT(sqltypes.TypeEngine[int]):
+class BIT(sqltypes.TypeEngine[BitString]):
+    """Represent the PostgreSQL BIT type.
+
+    The :class:`_postgresql.BIT` type yields values in the form of the
+    :class:`_postgresql.BitString` Python value type.
+
+    .. versionchanged:: 2.1  The :class:`_postgresql.BIT` type now works
+       with :class:`_postgresql.BitString` values rather than plain strings.
+
+    """
+
+    render_bind_cast = True
     __visit_name__ = "BIT"
+
+    operator_classes = (
+        OperatorClass.BASE | OperatorClass.COMPARISON | OperatorClass.BITWISE
+    )
 
     def __init__(
         self, length: Optional[int] = None, varying: bool = False
@@ -267,6 +298,58 @@ class BIT(sqltypes.TypeEngine[int]):
             # BIT without VARYING defaults to length 1
             self.length = length or 1
         self.varying = varying
+
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> _BindProcessorType[BitString]:
+        def bound_value(value: Any) -> Any:
+            if isinstance(value, BitString):
+                return str(value)
+            return value
+
+        return bound_value
+
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> _ResultProcessorType[BitString]:
+        def from_result_value(value: Any) -> Any:
+            if value is not None:
+                value = BitString(value)
+            return value
+
+        return from_result_value
+
+    def coerce_compared_value(
+        self, op: OperatorType | None, value: Any
+    ) -> TypeEngine[Any]:
+        if isinstance(value, str):
+            return self
+        return super().coerce_compared_value(op, value)
+
+    @property
+    def python_type(self) -> type[Any]:
+        return BitString
+
+    class comparator_factory(TypeEngine.Comparator[BitString]):
+        def __lshift__(self, other: Any) -> ColumnOperators:
+            return self.bitwise_lshift(other)
+
+        def __rshift__(self, other: Any) -> ColumnOperators:
+            return self.bitwise_rshift(other)
+
+        def __and__(self, other: Any) -> ColumnOperators:
+            return self.bitwise_and(other)
+
+        def __or__(self, other: Any) -> ColumnOperators:
+            return self.bitwise_or(other)
+
+        # NOTE: __xor__ is not defined on sql.operators.ColumnOperators.
+        # Use `bitwise_xor` directly instead.
+        # def __xor__(self, other: Any) -> ColumnOperators:
+        #     return self.bitwise_xor(other)
+
+        def __invert__(self) -> ColumnOperators:
+            return self.bitwise_not()
 
 
 PGBit = BIT
@@ -286,6 +369,8 @@ class TSVECTOR(sqltypes.TypeEngine[str]):
     """
 
     __visit_name__ = "TSVECTOR"
+
+    operator_classes = OperatorClass.STRING
 
 
 class CITEXT(sqltypes.TEXT):

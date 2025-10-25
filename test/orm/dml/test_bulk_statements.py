@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import datetime
 from typing import Any
 from typing import List
 from typing import Optional
@@ -39,18 +40,22 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.sql import coercions
+from sqlalchemy.sql import roles
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import provision
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.types import NullType
 
 
 class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
@@ -694,11 +699,7 @@ class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             ("computed", testing.requires.computed_columns),
         ],
     )
-    def test_bulk_update_onupdates(
-        self,
-        decl_base,
-        use_onupdate,
-    ):
+    def test_bulk_update_onupdates(self, decl_base, use_onupdate):
         """assert that for now, bulk ORM update by primary key does not
         expire or refresh onupdates."""
 
@@ -2736,3 +2737,76 @@ class EagerLoadTest(
                 b3 = sess.scalar(stmt, [{"a_id": 3}])
 
                 eq_({c.id for c in b3.a.cs}, {3, 4})
+
+
+class DMLCompileScenariosTest(testing.AssertsCompiledSQL, fixtures.TestBase):
+    __dialect__ = "default_enhanced"  # for UPDATE..FROM
+
+    @testing.variation("style", ["insert", "upsert"])
+    def test_insert_values_from_primary_table_only(self, decl_base, style):
+        """test for #12692"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            data: Mapped[int]
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            data: Mapped[str]
+
+        stmt = insert(A.__table__)
+
+        # we're trying to exercise codepaths in orm/bulk_persistence.py that
+        # would only apply to an insert() statement against the ORM entity,
+        # e.g. insert(A).  In the update() case, the WHERE clause can also
+        # pull in the ORM entity, which is how we found the issue here, but
+        # for INSERT there's no current method that does this; returning()
+        # could do this in theory but currently doesnt.  So for now, cheat,
+        # and pretend there's some conversion that's going to propagate
+        # from an ORM expression
+        coercions.expect(
+            roles.WhereHavingRole, B.id == 5, apply_propagate_attrs=stmt
+        )
+
+        if style.insert:
+            stmt = stmt.values(data=123)
+
+            # assert that the ORM did not get involved, putting B.data as the
+            # key in the dictionary
+            is_(stmt._values["data"].type._type_affinity, NullType)
+        elif style.upsert:
+            stmt = stmt.values([{"data": 123}, {"data": 456}])
+
+            # assert that the ORM did not get involved, putting B.data as the
+            # keys in the dictionaries
+            eq_(stmt._multi_values, ([{"data": 123}, {"data": 456}],))
+        else:
+            style.fail()
+
+    def test_update_values_from_primary_table_only(self, decl_base):
+        """test for #12692"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            data: Mapped[str]
+            updated_at: Mapped[datetime.datetime] = mapped_column(
+                onupdate=func.now()
+            )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            data: Mapped[str]
+            updated_at: Mapped[datetime.datetime] = mapped_column(
+                onupdate=func.now()
+            )
+
+        stmt = update(A.__table__).where(B.id == 1).values(data="some data")
+        self.assert_compile(
+            stmt,
+            "UPDATE a SET data=:data, updated_at=now() "
+            "FROM b WHERE b.id = :id_1",
+        )

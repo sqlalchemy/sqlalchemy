@@ -97,6 +97,7 @@ from __future__ import annotations
 import collections
 import logging
 import re
+from types import NoneType
 from typing import cast
 from typing import TYPE_CHECKING
 
@@ -114,6 +115,7 @@ from .types import CITEXT
 from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...sql import sqltypes
 from ...util.concurrency import await_
@@ -235,8 +237,6 @@ class _PsycopgMultiRange(ranges.AbstractMultiRangeImpl):
         psycopg_Multirange = cast(
             PGDialect_psycopg, dialect
         )._psycopg_Multirange
-
-        NoneType = type(None)
 
         def to_range(value):
             if isinstance(value, (str, NoneType, psycopg_Multirange)):
@@ -568,6 +568,8 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
 class AsyncAdapt_psycopg_cursor(AsyncAdapt_dbapi_cursor):
     __slots__ = ()
 
+    _awaitable_cursor_close: bool = False
+
     def close(self):
         self._rows.clear()
         # Normal cursor just call _close() in a non-sync way.
@@ -680,8 +682,9 @@ class AsyncAdapt_psycopg_connection(AsyncAdapt_dbapi_connection):
             return AsyncAdapt_psycopg_cursor(self)
 
 
-class PsycopgAdaptDBAPI:
+class PsycopgAdaptDBAPI(AsyncAdapt_dbapi_module):
     def __init__(self, psycopg, ExecStatus) -> None:
+        super().__init__(psycopg)
         self.psycopg = psycopg
         self.ExecStatus = ExecStatus
 
@@ -693,8 +696,8 @@ class PsycopgAdaptDBAPI:
         creator_fn = kw.pop(
             "async_creator_fn", self.psycopg.AsyncConnection.connect
         )
-        return AsyncAdapt_psycopg_connection(
-            self, await_(creator_fn(*arg, **kw))
+        return await_(
+            AsyncAdapt_psycopg_connection.create(self, creator_fn(*arg, **kw))
         )
 
 

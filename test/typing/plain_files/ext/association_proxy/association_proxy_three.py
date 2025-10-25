@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import assert_type
 from typing import List
 
 from sqlalchemy import ForeignKey
@@ -42,5 +43,4 @@ bm = BranchMilestone()
 
 x1 = bm.user_ids
 
-# EXPECTED_TYPE: list[int]
-reveal_type(x1)
+assert_type(x1, list[int])

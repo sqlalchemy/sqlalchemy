@@ -12,24 +12,75 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import Union
 
 from ... import exc
 from ... import util
+from ...sql import coercions
+from ...sql import roles
 from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
-from ...sql.base import _generative
 from ...sql.base import ColumnCollection
 from ...sql.base import ReadOnlyColumnCollection
+from ...sql.base import SyntaxExtension
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.elements import KeyedColumnElement
 from ...sql.expression import alias
 from ...sql.selectable import NamedFromClause
+from ...sql.sqltypes import NULLTYPE
+from ...sql.visitors import InternalTraversal
 from ...util.typing import Self
 
+if TYPE_CHECKING:
+    from ...sql._typing import _LimitOffsetType
+    from ...sql.dml import Delete
+    from ...sql.dml import Update
+    from ...sql.elements import ColumnElement
+    from ...sql.visitors import _TraverseInternalsType
 
 __all__ = ("Insert", "insert")
+
+
+def limit(limit: _LimitOffsetType) -> DMLLimitClause:
+    """apply a LIMIT to an UPDATE or DELETE statement
+
+    e.g.::
+
+        stmt = t.update().values(q="hi").ext(limit(5))
+
+    this supersedes the previous approach of using ``mysql_limit`` for
+    update/delete statements.
+
+    .. versionadded:: 2.1
+
+    """
+    return DMLLimitClause(limit)
+
+
+class DMLLimitClause(SyntaxExtension, ClauseElement):
+    stringify_dialect = "mysql"
+    __visit_name__ = "mysql_dml_limit_clause"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("_limit_clause", InternalTraversal.dp_clauseelement),
+    ]
+
+    def __init__(self, limit: _LimitOffsetType):
+        self._limit_clause = coercions.expect(
+            roles.LimitOffsetRole, limit, name=None, type_=None
+        )
+
+    def apply_to_update(self, update_stmt: Update) -> None:
+        update_stmt.apply_syntax_extension_point(
+            self.append_replacing_same_type, "post_criteria"
+        )
+
+    def apply_to_delete(self, delete_stmt: Delete) -> None:
+        delete_stmt.apply_syntax_extension_point(
+            self.append_replacing_same_type, "post_criteria"
+        )
 
 
 def insert(table: _DMLTableArgument) -> Insert:
@@ -59,12 +110,10 @@ class Insert(StandardInsert):
     The :class:`~.mysql.Insert` object is created using the
     :func:`sqlalchemy.dialects.mysql.insert` function.
 
-    .. versionadded:: 1.2
-
     """
 
     stringify_dialect = "mysql"
-    inherit_cache = False
+    inherit_cache = True
 
     @property
     def inserted(
@@ -104,7 +153,6 @@ class Insert(StandardInsert):
     def inserted_alias(self) -> NamedFromClause:
         return alias(self.table, name="inserted")
 
-    @_generative
     @_exclusive_against(
         "_post_values_clause",
         msgs={
@@ -148,13 +196,6 @@ class Insert(StandardInsert):
                 ]
             )
 
-         .. versionchanged:: 1.3 parameters can be specified as a dictionary
-            or list of 2-tuples; the latter form provides for parameter
-            ordering.
-
-
-        .. versionadded:: 1.2
-
         .. seealso::
 
             :ref:`mysql_insert_on_duplicate_key_update`
@@ -175,19 +216,21 @@ class Insert(StandardInsert):
         else:
             values = kw
 
-        self._post_values_clause = OnDuplicateClause(
-            self.inserted_alias, values
-        )
-        return self
+        return self.ext(OnDuplicateClause(self.inserted_alias, values))
 
 
-class OnDuplicateClause(ClauseElement):
+class OnDuplicateClause(SyntaxExtension, ClauseElement):
     __visit_name__ = "on_duplicate_key_update"
 
     _parameter_ordering: Optional[List[str]] = None
 
-    update: Dict[str, Any]
+    update: Dict[str, ColumnElement[Any]]
     stringify_dialect = "mysql"
+
+    _traverse_internals = [
+        ("_parameter_ordering", InternalTraversal.dp_string_list),
+        ("update", InternalTraversal.dp_dml_values),
+    ]
 
     def __init__(
         self, inserted_alias: NamedFromClause, update: _UpdateArg
@@ -217,7 +260,18 @@ class OnDuplicateClause(ClauseElement):
                 "or a ColumnCollection such as the `.c.` collection "
                 "of a Table object"
             )
-        self.update = update
+
+        self.update = {
+            k: coercions.expect(
+                roles.ExpressionElementRole, v, type_=NULLTYPE, is_crud=True
+            )
+            for k, v in update.items()
+        }
+
+    def apply_to_insert(self, insert_stmt: StandardInsert) -> None:
+        insert_stmt.apply_syntax_extension_point(
+            self.append_replacing_same_type, "post_values"
+        )
 
 
 _UpdateArg = Union[

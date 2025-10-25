@@ -9,7 +9,6 @@
 from collections import defaultdict as defaultdict
 from functools import partial as partial
 from functools import update_wrapper as update_wrapper
-from typing import TYPE_CHECKING
 
 from . import preloaded as preloaded
 from ._collections import coerce_generator_arg as coerce_generator_arg
@@ -47,7 +46,6 @@ from ._collections import UniqueAppender as UniqueAppender
 from ._collections import update_copy as update_copy
 from ._collections import WeakPopulateDict as WeakPopulateDict
 from ._collections import WeakSequence as WeakSequence
-from .compat import anext_ as anext_
 from .compat import arm as arm
 from .compat import b as b
 from .compat import b64decode as b64decode
@@ -57,15 +55,17 @@ from .compat import cpython as cpython
 from .compat import dataclass_fields as dataclass_fields
 from .compat import decode_backslashreplace as decode_backslashreplace
 from .compat import dottedgetter as dottedgetter
+from .compat import freethreading as freethreading
 from .compat import has_refcount_gc as has_refcount_gc
 from .compat import inspect_getfullargspec as inspect_getfullargspec
 from .compat import is64bit as is64bit
 from .compat import local_dataclass_fields as local_dataclass_fields
+from .compat import mini_gil as mini_gil
 from .compat import osx as osx
-from .compat import py310 as py310
 from .compat import py311 as py311
 from .compat import py312 as py312
 from .compat import py313 as py313
+from .compat import py314 as py314
 from .compat import pypy as pypy
 from .compat import win32 as win32
 from .concurrency import await_ as await_
@@ -130,13 +130,11 @@ from .langhelpers import (
     monkeypatch_proxied_specials as monkeypatch_proxied_specials,
 )
 from .langhelpers import non_memoized_property as non_memoized_property
-from .langhelpers import NoneType as NoneType
 from .langhelpers import only_once as only_once
 from .langhelpers import (
     parse_user_argument_for_enum as parse_user_argument_for_enum,
 )
 from .langhelpers import PluginLoader as PluginLoader
-from .langhelpers import portable_instancemethod as portable_instancemethod
 from .langhelpers import quoted_token_parser as quoted_token_parser
 from .langhelpers import ro_memoized_property as ro_memoized_property
 from .langhelpers import ro_non_memoized_property as ro_non_memoized_property

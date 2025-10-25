@@ -30,8 +30,8 @@ from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
+from sqlalchemy.connectors.asyncio import AsyncAdapt_dbapi_module
 from sqlalchemy.engine import BindTyping
-from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.pool import AsyncAdaptedQueuePool
@@ -51,6 +51,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import ne_
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.provision import normalize_sequence
@@ -385,13 +386,40 @@ class ExecuteTest(fixtures.TablesTest):
 
     def test_exception_wrapping_dbapi(self):
         with testing.db.connect() as conn:
-            # engine does not have exec_driver_sql
             assert_raises_message(
                 tsa.exc.DBAPIError,
                 r"not_a_valid_statement",
                 conn.exec_driver_sql,
                 "not_a_valid_statement",
             )
+
+    def test_exception_wrapping_orig_accessors(self):
+        de = None
+
+        with testing.db.connect() as conn:
+            try:
+                conn.exec_driver_sql("not_a_valid_statement")
+            except tsa.exc.DBAPIError as de_caught:
+                de = de_caught
+
+        assert isinstance(de.orig, conn.dialect.dbapi.Error)
+
+        # get the driver module name, the one which we know will provide
+        # for exceptions
+        top_level_dbapi_module = conn.dialect.dbapi
+        if isinstance(top_level_dbapi_module, AsyncAdapt_dbapi_module):
+            driver_module = top_level_dbapi_module.exceptions_module
+        else:
+            driver_module = top_level_dbapi_module
+        top_level_dbapi_module = driver_module.__name__.split(".")[0]
+
+        # check that it's not us
+        ne_(top_level_dbapi_module, "sqlalchemy")
+
+        # then make sure driver_exception is from that module
+        assert type(de.driver_exception).__module__.startswith(
+            top_level_dbapi_module
+        )
 
     @testing.requires.sqlite
     def test_exception_wrapping_non_dbapi_error(self):
@@ -560,7 +588,7 @@ class ExecuteTest(fixtures.TablesTest):
         "Older versions don't support cursor pickling, newer ones do",
     )
     @testing.fails_on(
-        "mysql+mysqlconnector",
+        "+mysqlconnector",
         "Exception doesn't come back exactly the same from pickle",
     )
     @testing.fails_on(
@@ -672,39 +700,6 @@ class ExecuteTest(fixtures.TablesTest):
         ):
             conn.exec_driver_sql(
                 "insert into users (user_id, user_name) values (?, ?)", []
-            )
-
-    @testing.only_on("sqlite")
-    def test_execute_compiled_favors_compiled_paramstyle(self):
-        users = self.tables.users
-
-        with patch.object(testing.db.dialect, "do_execute") as do_exec:
-            stmt = users.update().values(user_id=1, user_name="foo")
-
-            d1 = default.DefaultDialect(paramstyle="format")
-            d2 = default.DefaultDialect(paramstyle="pyformat")
-
-            with testing.db.begin() as conn:
-                conn.execute(stmt.compile(dialect=d1))
-                conn.execute(stmt.compile(dialect=d2))
-
-            eq_(
-                do_exec.mock_calls,
-                [
-                    call(
-                        mock.ANY,
-                        "UPDATE users SET user_id=%s, user_name=%s",
-                        (1, "foo"),
-                        mock.ANY,
-                    ),
-                    call(
-                        mock.ANY,
-                        "UPDATE users SET user_id=%(user_id)s, "
-                        "user_name=%(user_name)s",
-                        {"user_name": "foo", "user_id": 1},
-                        mock.ANY,
-                    ),
-                ],
             )
 
     @testing.requires.ad_hoc_engines
@@ -2237,11 +2232,6 @@ class EngineEventsTest(fixtures.TestBase):
         with e1.connect() as conn:
             conn.execute(select(1))
             conn.execute(select(1).compile(dialect=e1.dialect).statement)
-            conn.execute(select(1).compile(dialect=e1.dialect))
-
-            conn._execute_compiled(
-                select(1).compile(dialect=e1.dialect), (), {}
-            )
 
     @testing.emits_warning("The garbage collector is trying to clean up")
     def test_execute_events(self):

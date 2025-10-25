@@ -273,7 +273,7 @@ configuration:
     CREATE TABLE a (
         id INTEGER NOT NULL,
         data VARCHAR NOT NULL,
-        create_date DATETIME DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+        create_date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY (id)
     )
     ...
@@ -1172,9 +1172,6 @@ ORM Session API Documentation
 
 .. autoclass:: AsyncSession
    :members:
-   :exclude-members: sync_session_class
-
-   .. autoattribute:: sync_session_class
 
 .. autoclass:: AsyncSessionTransaction
    :members:

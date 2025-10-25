@@ -5,10 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Defines the public namespace for SQL expression constructs.
-
-
-"""
+"""Defines the public namespace for SQL expression constructs."""
 
 
 from __future__ import annotations
@@ -16,6 +13,7 @@ from __future__ import annotations
 from ._dml_constructors import delete as delete
 from ._dml_constructors import insert as insert
 from ._dml_constructors import update as update
+from ._elements_constructors import aggregate_order_by as aggregate_order_by
 from ._elements_constructors import all_ as all_
 from ._elements_constructors import and_ as and_
 from ._elements_constructors import any_ as any_
@@ -31,6 +29,7 @@ from ._elements_constructors import desc as desc
 from ._elements_constructors import distinct as distinct
 from ._elements_constructors import extract as extract
 from ._elements_constructors import false as false
+from ._elements_constructors import from_dml_column as from_dml_column
 from ._elements_constructors import funcfilter as funcfilter
 from ._elements_constructors import label as label
 from ._elements_constructors import not_ as not_
@@ -74,6 +73,7 @@ from .dml import Update as Update
 from .dml import UpdateBase as UpdateBase
 from .dml import ValuesBase as ValuesBase
 from .elements import _truncated_label as _truncated_label
+from .elements import AggregateOrderBy as AggregateOrderBy
 from .elements import BinaryExpression as BinaryExpression
 from .elements import BindParameter as BindParameter
 from .elements import BooleanClauseList as BooleanClauseList
@@ -84,6 +84,7 @@ from .elements import ClauseList as ClauseList
 from .elements import CollectionAggregate as CollectionAggregate
 from .elements import ColumnClause as ColumnClause
 from .elements import ColumnElement as ColumnElement
+from .elements import DMLTargetCopy as DMLTargetCopy
 from .elements import ExpressionClauseList as ExpressionClauseList
 from .elements import Extract as Extract
 from .elements import False_ as False_
@@ -93,6 +94,7 @@ from .elements import Label as Label
 from .elements import literal as literal
 from .elements import literal_column as literal_column
 from .elements import Null as Null
+from .elements import OrderByList as OrderByList
 from .elements import Over as Over
 from .elements import quoted_name as quoted_name
 from .elements import ReleaseSavepointClause as ReleaseSavepointClause
@@ -116,6 +118,7 @@ from .lambdas import LambdaElement as LambdaElement
 from .lambdas import StatementLambdaElement as StatementLambdaElement
 from .operators import ColumnOperators as ColumnOperators
 from .operators import custom_op as custom_op
+from .operators import OperatorClass as OperatorClass
 from .operators import Operators as Operators
 from .selectable import Alias as Alias
 from .selectable import AliasedReturnsRows as AliasedReturnsRows

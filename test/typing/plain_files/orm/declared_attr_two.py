@@ -1,9 +1,11 @@
 import typing
+from typing import assert_type
 
 from sqlalchemy import Integer
 from sqlalchemy import Text
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
@@ -39,14 +41,10 @@ class Foo(Base):
 u1 = User()
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_TYPE: str
-    reveal_type(User.__tablename__)
+    assert_type(User.__tablename__, str)
 
-    # EXPECTED_TYPE: str
-    reveal_type(Foo.__tablename__)
+    assert_type(Foo.__tablename__, str)
 
-    # EXPECTED_TYPE: str
-    reveal_type(u1.related_data)
+    assert_type(u1.related_data, str)
 
-    # EXPECTED_TYPE: InstrumentedAttribute[str]
-    reveal_type(User.related_data)
+    assert_type(User.related_data, InstrumentedAttribute[str])

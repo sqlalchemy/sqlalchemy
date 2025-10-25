@@ -18,6 +18,7 @@ from typing import Any
 from typing import cast
 from typing import Dict
 from typing import Iterable
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import TYPE_CHECKING
@@ -35,6 +36,7 @@ from .context import _AbstractORMCompileState
 from .context import _ORMFromStatementCompileState
 from .context import FromStatement
 from .context import QueryContext
+from .interfaces import PropComparator
 from .. import exc as sa_exc
 from .. import util
 from ..engine import Dialect
@@ -52,7 +54,6 @@ from ..sql.dml import DeleteDMLState
 from ..sql.dml import InsertDMLState
 from ..sql.dml import UpdateDMLState
 from ..util import EMPTY_DICT
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
@@ -150,7 +151,7 @@ def _bulk_insert(
             # for all other cases we need to establish a local dictionary
             # so that the incoming dictionaries aren't mutated
             mappings = [dict(m) for m in mappings]
-        _expand_composites(mapper, mappings)
+        _expand_other_attrs(mapper, mappings)
 
     connection = session_transaction.connection(base_mapper)
 
@@ -309,7 +310,7 @@ def _bulk_update(
             mappings = [state.dict for state in mappings]
     else:
         mappings = [dict(m) for m in mappings]
-        _expand_composites(mapper, mappings)
+        _expand_other_attrs(mapper, mappings)
 
     if session_transaction.session.connection_callable:
         raise NotImplementedError(
@@ -371,19 +372,32 @@ def _bulk_update(
         return _result.null_result()
 
 
-def _expand_composites(mapper, mappings):
-    composite_attrs = mapper.composites
-    if not composite_attrs:
+def _expand_other_attrs(
+    mapper: Mapper[Any], mappings: Iterable[Dict[str, Any]]
+) -> None:
+    all_attrs = mapper.all_orm_descriptors
+
+    attr_keys = set(all_attrs.keys())
+
+    bulk_dml_setters = {
+        key: setter
+        for key, setter in (
+            (key, attr._bulk_dml_setter(key))
+            for key, attr in (
+                (key, _entity_namespace_key(mapper, key, default=NO_VALUE))
+                for key in attr_keys
+            )
+            if attr is not NO_VALUE and isinstance(attr, PropComparator)
+        )
+        if setter is not None
+    }
+    setters_todo = set(bulk_dml_setters)
+    if not setters_todo:
         return
 
-    composite_keys = set(composite_attrs.keys())
-    populators = {
-        key: composite_attrs[key]._populate_composite_bulk_save_mappings_fn()
-        for key in composite_keys
-    }
     for mapping in mappings:
-        for key in composite_keys.intersection(mapping):
-            populators[key](mapping)
+        for key in setters_todo.intersection(mapping):
+            bulk_dml_setters[key](mapping)
 
 
 class _ORMDMLState(_AbstractORMCompileState):
@@ -401,7 +415,7 @@ class _ORMDMLState(_AbstractORMCompileState):
 
             if isinstance(k, str):
                 desc = _entity_namespace_key(mapper, k, default=NO_VALUE)
-                if desc is NO_VALUE:
+                if not isinstance(desc, PropComparator):
                     yield (
                         coercions.expect(roles.DMLColumnRole, k),
                         (
@@ -426,6 +440,7 @@ class _ORMDMLState(_AbstractORMCompileState):
                 attr = _entity_namespace_key(
                     k_anno["entity_namespace"], k_anno["proxy_key"]
                 )
+                assert isinstance(attr, PropComparator)
                 yield from core_get_crud_kv_pairs(
                     statement,
                     attr._bulk_update_tuples(v),
@@ -447,10 +462,23 @@ class _ORMDMLState(_AbstractORMCompileState):
                 )
 
     @classmethod
-    def _get_multi_crud_kv_pairs(cls, statement, kv_iterator):
-        plugin_subject = statement._propagate_attrs["plugin_subject"]
+    def _get_dml_plugin_subject(cls, statement):
+        plugin_subject = statement.table._propagate_attrs.get("plugin_subject")
 
-        if not plugin_subject or not plugin_subject.mapper:
+        if (
+            not plugin_subject
+            or not plugin_subject.mapper
+            or plugin_subject
+            is not statement._propagate_attrs["plugin_subject"]
+        ):
+            return None
+        return plugin_subject
+
+    @classmethod
+    def _get_multi_crud_kv_pairs(cls, statement, kv_iterator):
+        plugin_subject = cls._get_dml_plugin_subject(statement)
+
+        if not plugin_subject:
             return UpdateDMLState._get_multi_crud_kv_pairs(
                 statement, kv_iterator
             )
@@ -470,13 +498,12 @@ class _ORMDMLState(_AbstractORMCompileState):
             needs_to_be_cacheable
         ), "no test coverage for needs_to_be_cacheable=False"
 
-        plugin_subject = statement._propagate_attrs["plugin_subject"]
+        plugin_subject = cls._get_dml_plugin_subject(statement)
 
-        if not plugin_subject or not plugin_subject.mapper:
+        if not plugin_subject:
             return UpdateDMLState._get_crud_kv_pairs(
                 statement, kv_iterator, needs_to_be_cacheable
             )
-
         return list(
             cls._get_orm_crud_kv_pairs(
                 plugin_subject.mapper,
@@ -1046,8 +1073,6 @@ class _BulkUDCompileState(_ORMDMLState):
     def _get_resolved_values(cls, mapper, statement):
         if statement._multi_values:
             return []
-        elif statement._ordered_values:
-            return list(statement._ordered_values)
         elif statement._values:
             return list(statement._values.items())
         else:
@@ -1468,9 +1493,7 @@ class _BulkORMUpdate(_BulkUDCompileState, UpdateDMLState):
         # are passed through to the new statement, which will then raise
         # InvalidRequestError because UPDATE doesn't support multi_values
         # right now.
-        if statement._ordered_values:
-            new_stmt._ordered_values = self._resolved_values
-        elif statement._values:
+        if statement._values:
             new_stmt._values = self._resolved_values
 
         new_crit = self._adjust_for_extra_criteria(
@@ -1557,7 +1580,7 @@ class _BulkORMUpdate(_BulkUDCompileState, UpdateDMLState):
 
         UpdateDMLState.__init__(self, statement, compiler, **kw)
 
-        if self._ordered_values:
+        if self._maintain_values_ordering:
             raise sa_exc.InvalidRequestError(
                 "bulk ORM UPDATE does not support ordered_values() for "
                 "custom UPDATE statements with bulk parameter sets.  Use a "

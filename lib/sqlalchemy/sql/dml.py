@@ -18,6 +18,7 @@ from typing import cast
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import NoReturn
 from typing import Optional
@@ -27,6 +28,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -48,6 +50,8 @@ from .base import DialectKWArgs
 from .base import Executable
 from .base import Generative
 from .base import HasCompileState
+from .base import HasSyntaxExtensions
+from .base import SyntaxExtension
 from .elements import BooleanClauseList
 from .elements import ClauseElement
 from .elements import ColumnClause
@@ -68,7 +72,6 @@ from .. import exc
 from .. import util
 from ..util.typing import Self
 from ..util.typing import TupleAny
-from ..util.typing import TypeGuard
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -121,8 +124,7 @@ class DMLState(CompileState):
     _multi_parameters: Optional[
         List[MutableMapping[_DMLColumnElement, Any]]
     ] = None
-    _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
-    _parameter_ordering: Optional[List[_DMLColumnElement]] = None
+    _maintain_values_ordering: bool = False
     _primary_table: FromClause
     _supports_implicit_returning = True
 
@@ -345,7 +347,7 @@ class UpdateDMLState(DMLState):
         self.statement = statement
 
         self.isupdate = True
-        if statement._ordered_values is not None:
+        if statement._maintain_values_ordering:
             self._process_ordered_values(statement)
         elif statement._values is not None:
             self._process_values(statement)
@@ -361,14 +363,12 @@ class UpdateDMLState(DMLState):
         )
 
     def _process_ordered_values(self, statement: ValuesBase) -> None:
-        parameters = statement._ordered_values
-
+        parameters = statement._values
         if self._no_parameters:
             self._no_parameters = False
             assert parameters is not None
             self._dict_parameters = dict(parameters)
-            self._ordered_values = parameters
-            self._parameter_ordering = [key for key, value in parameters]
+            self._maintain_values_ordering = True
         else:
             raise exc.InvalidRequestError(
                 "Can only invoke ordered_values() once, and not mixed "
@@ -430,13 +430,26 @@ class UpdateBase(
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
-        columns._populate_separate_keys(
-            col._make_proxy(
-                fromclause, primary_key=primary_key, foreign_keys=foreign_keys
+        prox = [
+            c._make_proxy(
+                fromclause,
+                key=proxy_key,
+                name=required_label_name,
+                name_is_truncatable=True,
+                primary_key=primary_key,
+                foreign_keys=foreign_keys,
             )
-            for col in self._all_selected_columns
-            if is_column_element(col)
-        )
+            for (
+                required_label_name,
+                proxy_key,
+                fallback_label_name,
+                c,
+                repeated,
+            ) in (self._generate_columns_plus_names(False))
+            if is_column_element(c)
+        ]
+
+        columns._populate_separate_keys(prox)
 
     def params(self, *arg: Any, **kw: Any) -> NoReturn:
         """Set the parameters for the statement.
@@ -460,7 +473,7 @@ class UpdateBase(
 
             upd = table.update().dialect_options(mysql_limit=10)
 
-        .. versionadded: 1.4 - this method supersedes the dialect options
+        .. versionadded:: 1.4 - this method supersedes the dialect options
            associated with the constructor.
 
 
@@ -988,7 +1001,7 @@ class ValuesBase(UpdateBase):
     """SELECT statement for INSERT .. FROM SELECT"""
 
     _post_values_clause: Optional[ClauseElement] = None
-    """used by extensions to Insert etc. to add additional syntacitcal
+    """used by extensions to Insert etc. to add additional syntactical
     constructs, e.g. ON CONFLICT etc."""
 
     _values: Optional[util.immutabledict[_DMLColumnElement, Any]] = None
@@ -1000,7 +1013,7 @@ class ValuesBase(UpdateBase):
         ...,
     ] = ()
 
-    _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
+    _maintain_values_ordering: bool = False
 
     _select_names: Optional[List[str]] = None
     _inline: bool = False
@@ -1013,12 +1026,13 @@ class ValuesBase(UpdateBase):
     @_generative
     @_exclusive_against(
         "_select_names",
-        "_ordered_values",
+        "_maintain_values_ordering",
         msgs={
             "_select_names": "This construct already inserts from a SELECT",
-            "_ordered_values": "This statement already has ordered "
+            "_maintain_values_ordering": "This statement already has ordered "
             "values present",
         },
+        defaults={"_maintain_values_ordering": False},
     )
     def values(
         self,
@@ -1190,11 +1204,15 @@ class ValuesBase(UpdateBase):
         return self
 
 
-class Insert(ValuesBase):
+class Insert(ValuesBase, HasSyntaxExtensions[Literal["post_values"]]):
     """Represent an INSERT construct.
 
     The :class:`_expression.Insert` object is created using the
     :func:`_expression.insert()` function.
+
+    Available extension points:
+
+    * ``post_values``: applies additional logic after the ``VALUES`` clause.
 
     """
 
@@ -1235,8 +1253,25 @@ class Insert(ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
+    _position_map = util.immutabledict(
+        {
+            "post_values": "_post_values_clause",
+        }
+    )
+
+    _post_values_clause: Optional[ClauseElement] = None
+    """extension point for a ClauseElement that will be compiled directly
+    after the VALUES portion of the :class:`.Insert` statement
+
+    """
+
     def __init__(self, table: _DMLTableArgument):
         super().__init__(table)
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_insert(self)
 
     @_generative
     def inline(self) -> Self:
@@ -1452,9 +1487,24 @@ class ReturningInsert(Insert, TypedReturnsRows[Unpack[_Ts]]):
     """
 
 
+# note: if not for MRO issues, this class should extend
+# from HasSyntaxExtensions[Literal["post_criteria"]]
 class DMLWhereBase:
     table: _DMLTableElement
     _where_criteria: Tuple[ColumnElement[Any], ...] = ()
+
+    _post_criteria_clause: Optional[ClauseElement] = None
+    """used by extensions to Update/Delete etc. to add additional syntacitcal
+    constructs, e.g. LIMIT etc.
+
+    .. versionadded:: 2.1
+
+    """
+
+    # can't put position_map here either without HasSyntaxExtensions
+    # _position_map = util.immutabledict(
+    #     {"post_criteria": "_post_criteria_clause"}
+    # )
 
     @_generative
     def where(self, *whereclause: _ColumnExpressionArgument[bool]) -> Self:
@@ -1528,11 +1578,17 @@ class DMLWhereBase:
         )
 
 
-class Update(DMLWhereBase, ValuesBase):
+class Update(
+    DMLWhereBase, ValuesBase, HasSyntaxExtensions[Literal["post_criteria"]]
+):
     """Represent an Update construct.
 
     The :class:`_expression.Update` object is created using the
     :func:`_expression.update()` function.
+
+    Available extension points:
+
+    * ``post_criteria``: applies additional logic after the ``WHERE`` clause.
 
     """
 
@@ -1545,11 +1601,12 @@ class Update(DMLWhereBase, ValuesBase):
             ("table", InternalTraversal.dp_clauseelement),
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_inline", InternalTraversal.dp_boolean),
-            ("_ordered_values", InternalTraversal.dp_dml_ordered_values),
+            ("_maintain_values_ordering", InternalTraversal.dp_boolean),
             ("_values", InternalTraversal.dp_dml_values),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
             ("_return_defaults", InternalTraversal.dp_boolean),
+            ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
             (
                 "_return_defaults_columns",
                 InternalTraversal.dp_clauseelement_tuple,
@@ -1561,10 +1618,13 @@ class Update(DMLWhereBase, ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
+    _position_map = util.immutabledict(
+        {"post_criteria": "_post_criteria_clause"}
+    )
+
     def __init__(self, table: _DMLTableArgument):
         super().__init__(table)
 
-    @_generative
     def ordered_values(self, *args: Tuple[_DMLColumnArgument, Any]) -> Self:
         """Specify the VALUES clause of this UPDATE statement with an explicit
         parameter ordering that will be maintained in the SET clause of the
@@ -1588,15 +1648,13 @@ class Update(DMLWhereBase, ValuesBase):
         """  # noqa: E501
         if self._values:
             raise exc.ArgumentError(
-                "This statement already has values present"
-            )
-        elif self._ordered_values:
-            raise exc.ArgumentError(
-                "This statement already has ordered values present"
+                "This statement already has "
+                f"{'ordered ' if self._maintain_values_ordering else ''}"
+                "values present"
             )
 
-        kv_generator = DMLState.get_plugin_class(self)._get_crud_kv_pairs
-        self._ordered_values = kv_generator(self, args, True)
+        self = self.values(dict(args))
+        self._maintain_values_ordering = True
         return self
 
     @_generative
@@ -1617,6 +1675,11 @@ class Update(DMLWhereBase, ValuesBase):
         """
         self._inline = True
         return self
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_update(self)
 
     if TYPE_CHECKING:
         # START OVERLOADED FUNCTIONS self.returning ReturningUpdate 1-8
@@ -1724,11 +1787,17 @@ class ReturningUpdate(Update, TypedReturnsRows[Unpack[_Ts]]):
     """
 
 
-class Delete(DMLWhereBase, UpdateBase):
+class Delete(
+    DMLWhereBase, UpdateBase, HasSyntaxExtensions[Literal["post_criteria"]]
+):
     """Represent a DELETE construct.
 
     The :class:`_expression.Delete` object is created using the
     :func:`_expression.delete()` function.
+
+    Available extension points:
+
+    * ``post_criteria``: applies additional logic after the ``WHERE`` clause.
 
     """
 
@@ -1742,6 +1811,7 @@ class Delete(DMLWhereBase, UpdateBase):
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
+            ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
@@ -1749,10 +1819,19 @@ class Delete(DMLWhereBase, UpdateBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
+    _position_map = util.immutabledict(
+        {"post_criteria": "_post_criteria_clause"}
+    )
+
     def __init__(self, table: _DMLTableArgument):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_delete(self)
 
     if TYPE_CHECKING:
         # START OVERLOADED FUNCTIONS self.returning ReturningDelete 1-8

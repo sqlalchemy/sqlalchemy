@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
-"""Pool implementation classes.
-
-"""
+"""Pool implementation classes."""
 from __future__ import annotations
 
 import threading
@@ -17,6 +15,7 @@ import typing
 from typing import Any
 from typing import cast
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Set
 from typing import Type
@@ -36,7 +35,6 @@ from .. import exc
 from .. import util
 from ..util import chop_traceback
 from ..util import queue as sqla_queue
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ..engine.interfaces import DBAPIConnection
@@ -62,7 +60,7 @@ class QueuePool(Pool):
 
     """
 
-    _is_asyncio = False  # type: ignore[assignment]
+    _is_asyncio = False
 
     _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
         sqla_queue.Queue
@@ -118,8 +116,6 @@ class QueuePool(Pool):
           during non-peak periods of use.   When planning for server-side
           timeouts, ensure that a recycle or pre-ping strategy is in use to
           gracefully handle stale connections.
-
-          .. versionadded:: 1.3
 
           .. seealso::
 
@@ -271,7 +267,7 @@ class AsyncAdaptedQueuePool(QueuePool):
 
     """
 
-    _is_asyncio = True  # type: ignore[assignment]
+    _is_asyncio = True
     _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
         sqla_queue.AsyncAdaptedQueue
     )
@@ -354,7 +350,7 @@ class SingletonThreadPool(Pool):
 
     """
 
-    _is_asyncio = False  # type: ignore[assignment]
+    _is_asyncio = False
 
     def __init__(
         self,

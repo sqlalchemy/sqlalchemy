@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 12328
-
-    Fixed bug in ORM enabled UPDATE (and theoretically DELETE) where using a
-    multi-table DML statement would not allow ORM mapped columns from mappers
-    other than the primary UPDATE mapper to be named in the RETURNING clause;
-    they would be omitted instead and cause a column not found exception.

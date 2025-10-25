@@ -10,11 +10,13 @@ from .. import fixtures
 from ..assertions import eq_
 from ..schema import Column
 from ..schema import Table
+from ... import column
 from ... import ForeignKey
 from ... import Integer
 from ... import select
 from ... import String
 from ... import testing
+from ... import values
 
 
 class CTETest(fixtures.TablesTest):
@@ -209,3 +211,27 @@ class CTETest(fixtures.TablesTest):
             ).fetchall(),
             [(1, "d1", None), (5, "d5", 3)],
         )
+
+    @testing.variation("values_named", [True, False])
+    @testing.variation("cte_named", [True, False])
+    @testing.variation("literal_binds", [True, False])
+    @testing.requires.ctes_with_values
+    def test_values_named_via_cte(
+        self, connection, values_named, cte_named, literal_binds
+    ):
+
+        cte1 = (
+            values(
+                column("col1", String),
+                column("col2", Integer),
+                literal_binds=bool(literal_binds),
+                name="some name" if values_named else None,
+            )
+            .data([("a", 2), ("b", 3)])
+            .cte("cte1" if cte_named else None)
+        )
+
+        stmt = select(cte1)
+
+        rows = connection.execute(stmt).all()
+        eq_(rows, [("a", 2), ("b", 3)])

@@ -5,10 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Visitor/traversal interface and library functions.
-
-
-"""
+"""Visitor/traversal interface and library functions."""
 
 from __future__ import annotations
 
@@ -25,6 +22,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -40,7 +38,6 @@ from ._util_cy import prefix_anon_map as prefix_anon_map  # noqa: F401
 from .. import exc
 from .. import util
 from ..util import langhelpers
-from ..util.typing import Literal
 from ..util.typing import Self
 
 if TYPE_CHECKING:
@@ -218,7 +215,7 @@ class InternalTraversal(Enum):
 
     dp_executable_options = "EO"
 
-    dp_with_context_options = "WC"
+    dp_compile_state_funcs = "WC"
 
     dp_fromclause_ordered_set = "CO"
     """Visit an ordered set of :class:`_expression.FromClause` objects. """

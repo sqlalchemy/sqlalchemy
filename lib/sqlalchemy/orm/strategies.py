@@ -8,7 +8,7 @@
 
 
 """sqlalchemy.orm.interfaces.LoaderStrategy
-   implementations, and related MapperOptions."""
+implementations, and related MapperOptions."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ import collections
 import itertools
 from typing import Any
 from typing import Dict
+from typing import Literal
 from typing import Optional
 from typing import Tuple
 from typing import TYPE_CHECKING
@@ -59,7 +60,6 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import Select
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .mapper import Mapper
@@ -77,6 +77,7 @@ def _register_attribute(
     proxy_property=None,
     active_history=False,
     impl_class=None,
+    default_scalar_value=None,
     **kw,
 ):
     listen_hooks = []
@@ -138,6 +139,7 @@ def _register_attribute(
                 typecallable=typecallable,
                 callable_=callable_,
                 active_history=active_history,
+                default_scalar_value=default_scalar_value,
                 impl_class=impl_class,
                 send_modified_events=not useobject or not prop.viewonly,
                 doc=prop.doc,
@@ -257,6 +259,7 @@ class _ColumnLoader(LoaderStrategy):
             useobject=False,
             compare_function=coltype.compare_values,
             active_history=active_history,
+            default_scalar_value=self.parent_property._default_scalar_value,
         )
 
     def create_row_processor(
@@ -370,6 +373,7 @@ class _ExpressionColumnLoader(_ColumnLoader):
             useobject=False,
             compare_function=self.columns[0].type.compare_values,
             accepts_scalar_loader=False,
+            default_scalar_value=self.parent_property._default_scalar_value,
         )
 
 
@@ -455,6 +459,7 @@ class _DeferredColumnLoader(LoaderStrategy):
             compare_function=self.columns[0].type.compare_values,
             callable_=self._load_for_state,
             load_on_unexpire=False,
+            default_scalar_value=self.parent_property._default_scalar_value,
         )
 
     def setup_query(
@@ -735,10 +740,7 @@ class _LazyLoader(
         ) = join_condition.create_lazy_clause(reverse_direction=True)
 
         if self.parent_property.order_by:
-            self._order_by = [
-                sql_util._deep_annotate(elem, {"_orm_adapt": True})
-                for elem in util.to_list(self.parent_property.order_by)
-            ]
+            self._order_by = util.to_list(self.parent_property.order_by)
         else:
             self._order_by = None
 
@@ -807,9 +809,7 @@ class _LazyLoader(
         )
 
     def _memoized_attr__simple_lazy_clause(self):
-        lazywhere = sql_util._deep_annotate(
-            self._lazywhere, {"_orm_adapt": True}
-        )
+        lazywhere = self._lazywhere
 
         criterion, bind_to_col = (lazywhere, self._bind_to_col)
 
@@ -1109,8 +1109,8 @@ class _LazyLoader(
                         ]
                     ).lazyload(rev).process_compile_state(compile_context)
 
-        stmt._with_context_options += (
-            (_lazyload_reverse, self.parent_property),
+        stmt = stmt._add_compile_state_func(
+            _lazyload_reverse, self.parent_property
         )
 
         lazy_clause, params = self._generate_lazy_clause(state, passive)
@@ -1442,7 +1442,6 @@ class _ImmediateLoader(_PostLoader):
             alternate_effective_path = path._truncate_recursive()
             extra_options = (new_opt,)
         else:
-            new_opt = None
             alternate_effective_path = path
             extra_options = ()
 
@@ -1774,7 +1773,7 @@ class _SubqueryLoader(_PostLoader):
                     util.to_list(self.parent_property.order_by)
                 )
 
-            q = q._add_context_option(
+            q = q._add_compile_state_func(
                 _setup_outermost_orderby, self.parent_property
             )
 
@@ -2172,8 +2171,6 @@ class _JoinedLoader(_AbstractRelationshipLoader):
 
         path = path[self.parent_property]
 
-        with_polymorphic = None
-
         user_defined_adapter = (
             self._init_user_defined_eager_proc(
                 loadopt, compile_state, compile_state.attributes
@@ -2451,10 +2448,7 @@ class _JoinedLoader(_AbstractRelationshipLoader):
         # whether or not the Query will wrap the selectable in a subquery,
         # and then attach eager load joins to that (i.e., in the case of
         # LIMIT/OFFSET etc.)
-        should_nest_selectable = (
-            compile_state.multi_row_eager_loaders
-            and compile_state._should_nest_selectable
-        )
+        should_nest_selectable = compile_state._should_nest_selectable
 
         query_entity_key = None
 
@@ -3331,7 +3325,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                         util.to_list(self.parent_property.order_by)
                     )
 
-                q = q._add_context_option(
+                q = q._add_compile_state_func(
                     _setup_outermost_orderby, self.parent_property
                 )
 

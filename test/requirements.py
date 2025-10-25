@@ -1,7 +1,4 @@
-"""Requirements specific to SQLAlchemy's own unit tests.
-
-
-"""
+"""Requirements specific to SQLAlchemy's own unit tests."""
 
 from sqlalchemy import exc
 from sqlalchemy.sql import sqltypes
@@ -18,6 +15,7 @@ from sqlalchemy.testing.exclusions import only_on
 from sqlalchemy.testing.exclusions import skip_if
 from sqlalchemy.testing.exclusions import SpecPredicate
 from sqlalchemy.testing.exclusions import succeeds_if
+from sqlalchemy.testing.exclusions import warns_if
 from sqlalchemy.testing.requirements import SuiteRequirements
 
 
@@ -163,6 +161,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql", "sqlite", self._mysql_80])
 
     @property
+    def temp_table_comment_reflection(self):
+        return only_on(["postgresql", "mysql", "mariadb", "oracle"])
+
+    @property
     def comment_reflection(self):
         return only_on(["postgresql", "mysql", "mariadb", "oracle", "mssql"])
 
@@ -172,6 +174,10 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def constraint_comment_reflection(self):
+        return only_on(["postgresql"])
+
+    @property
+    def column_collation_reflection(self):
         return only_on(["postgresql"])
 
     @property
@@ -210,6 +216,19 @@ class DefaultRequirements(SuiteRequirements):
                     "native boolean dialect",
                 ),
             ]
+        )
+
+    @property
+    def server_defaults(self):
+        """Target backend supports server side defaults for columns"""
+
+        return exclusions.open()
+
+    @property
+    def expression_server_defaults(self):
+        return skip_if(
+            lambda config: against(config, "mysql", "mariadb")
+            and not self._mysql_expression_defaults(config)
         )
 
     @property
@@ -394,7 +413,13 @@ class DefaultRequirements(SuiteRequirements):
         gc.collect() is called, as well as clean out unreferenced subclasses.
 
         """
-        return self.cpython + skip_if("+aiosqlite")
+        return self.cpython + self.gil_enabled + skip_if("+aiosqlite")
+
+    @property
+    def multithreading_support(self):
+        """target platform allows use of threads without any problem"""
+
+        return skip_if("+aiosqlite") + skip_if(self.sqlite_memory)
 
     @property
     def memory_process_intensive(self):
@@ -431,6 +456,14 @@ class DefaultRequirements(SuiteRequirements):
         return self.isolation_level + only_if(
             lambda config: "AUTOCOMMIT"
             in self.get_isolation_levels(config)["supported"]
+        )
+
+    @property
+    def skip_autocommit_rollback(self):
+        return exclusions.skip_if(
+            ["mssql+pymssql"],
+            "DBAPI has no means of testing the autocommit status of a "
+            "connection",
         )
 
     @property
@@ -646,6 +679,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def indexes_check_column_order(self):
+        return exclusions.open()
+
+    @property
     def indexes_with_expressions(self):
         return only_on(["postgresql", "sqlite>=3.9.0", "oracle"])
 
@@ -722,6 +759,24 @@ class DefaultRequirements(SuiteRequirements):
                 "postgresql",
                 "mssql",
                 "oracle",
+                "sqlite>=3.8.3",
+            ]
+        )
+
+    @property
+    def ctes_with_values(self):
+        return only_on(
+            [
+                lambda config: against(config, "mysql")
+                and (
+                    (
+                        config.db.dialect._is_mariadb
+                        and config.db.dialect._mariadb_normalized_version_info
+                        >= (10, 2)
+                    )
+                ),
+                "mariadb>10.2",
+                "postgresql",
                 "sqlite>=3.8.3",
             ]
         )
@@ -984,6 +1039,10 @@ class DefaultRequirements(SuiteRequirements):
         return exclusions.open()
 
     @property
+    def nvarchar_types(self):
+        return only_on(["mssql", "oracle", "sqlite", "mysql", "mariadb"])
+
+    @property
     def unicode_data_no_special_types(self):
         """Target database/dialect can receive / deliver / compare data with
         non-ASCII characters in plain VARCHAR, TEXT columns, without the need
@@ -1012,7 +1071,12 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def arraysize(self):
-        return skip_if("+pymssql", "DBAPI is missing this attribute")
+        return skip_if(
+            [
+                no_support("+pymssql", "DBAPI is missing this attribute"),
+                no_support("+mysqlconnector", "DBAPI ignores this attribute"),
+            ]
+        )
 
     @property
     def emulated_lastrowid(self):
@@ -1093,6 +1157,24 @@ class DefaultRequirements(SuiteRequirements):
         also using an aggregate"""
 
         return skip_if(["mssql", "sqlite"])
+
+    @property
+    def aggregate_order_by(self):
+        """target database can use ORDER BY or equivalent in an aggregate
+        function, and dialect supports aggregate_order_by().
+
+        """
+
+        return only_on(
+            [
+                "postgresql",
+                "sqlite >= 3.44.0",
+                "mysql",
+                "mariadb",
+                "oracle",
+                "mssql",
+            ]
+        )
 
     @property
     def tuple_valued_builtin_functions(self):
@@ -1180,6 +1262,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def sqlite_memory(self):
         return only_on(self._sqlite_memory_db)
+
+    @property
+    def sqlite_file(self):
+        return only_on(self._sqlite_file_db)
 
     def _sqlite_partial_idx(self, config):
         if not against(config, "sqlite"):
@@ -1547,6 +1633,12 @@ class DefaultRequirements(SuiteRequirements):
             )
         )
 
+    @property
+    def async_dialect_with_await_close(self):
+        """dialect's cursor has a close() method called with await"""
+
+        return only_on(["+aioodbc", "+aiosqlite", "+aiomysql", "+asyncmy"])
+
     def _has_oracle_test_dblink(self, key):
         def check(config):
             assert config.db.dialect.name == "oracle"
@@ -1809,6 +1901,15 @@ class DefaultRequirements(SuiteRequirements):
         # 2. they dont enforce check constraints
         return not self._mysql_check_constraints_exist(config)
 
+    def _mysql_expression_defaults(self, config):
+        return (against(config, ["mysql", "mariadb"])) and (
+            config.db.dialect._support_default_function
+        )
+
+    @property
+    def mysql_expression_defaults(self):
+        return only_if(self._mysql_expression_defaults)
+
     def _mysql_not_mariadb_102(self, config):
         return (against(config, ["mysql", "mariadb"])) and (
             not config.db.dialect._is_mariadb
@@ -1893,7 +1994,15 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def computed_columns(self):
-        return skip_if(["postgresql < 12", "sqlite < 3.31", "mysql < 5.7"])
+        return (
+            skip_if("postgresql < 12")
+            + warns_if(
+                "postgresql < 18",
+                r".*PostgreSQL version does not support VIRTUAL",
+                assert_=False,
+            )
+            + skip_if(["sqlite < 3.31", "mysql < 5.7"])
+        )
 
     @property
     def python_profiling_backend(self):
@@ -1905,11 +2014,11 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def computed_columns_virtual(self):
-        return self.computed_columns + skip_if(["postgresql"])
+        return self.computed_columns + skip_if(["postgresql<18"])
 
     @property
     def computed_columns_default_persisted(self):
-        return self.computed_columns + only_if("postgresql")
+        return self.computed_columns + only_if("postgresql<18")
 
     @property
     def computed_columns_reflect_persisted(self):
@@ -2036,7 +2145,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def reflect_table_options(self):
-        return only_on(["mysql", "mariadb", "oracle"])
+        return only_on(["mysql", "mariadb", "oracle", "postgresql"])
 
     @property
     def materialized_views(self):

@@ -110,11 +110,11 @@ such as:
 * :attr:`_orm.Mapper.columns` - A namespace of :class:`_schema.Column` objects and other named
   SQL expressions associated with the mapping.
 
-* :attr:`_orm.Mapper.mapped_table` - The :class:`_schema.Table` or other selectable to which
+* :attr:`_orm.Mapper.persist_selectable` - The :class:`_schema.Table` or other selectable to which
   this mapper is mapped.
 
 * :attr:`_orm.Mapper.local_table` - The :class:`_schema.Table` that is "local" to this mapper;
-  this differs from :attr:`_orm.Mapper.mapped_table` in the case of a mapper mapped
+  this differs from :attr:`_orm.Mapper.persist_selectable` in the case of a mapper mapped
   using inheritance to a composed selectable.
 
 .. _faq_combining_columns:
@@ -389,29 +389,48 @@ parameters are **synonymous**.
 Part Two - Using Dataclasses support with MappedAsDataclass
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. versionchanged:: 2.1 The behavior of column level defaults when using
+   dataclasses has changed to use an approach that uses class-level descriptors
+   to provide class behavior, in conjunction with Core-level column defaults
+   to provide the correct INSERT behavior. See :ref:`change_12168` for
+   background.
+
 When you **are** using :class:`_orm.MappedAsDataclass`, that is, the specific form
 of mapping used at :ref:`orm_declarative_native_dataclasses`, the meaning of the
 :paramref:`_orm.mapped_column.default` keyword changes. We recognize that it's not
 ideal that this name changes its behavior, however there was no alternative as
 PEP-681 requires :paramref:`_orm.mapped_column.default` to take on this meaning.
 
-When dataclasses are used, the :paramref:`_orm.mapped_column.default` parameter must
-be used the way it's described at
-`Python Dataclasses <https://docs.python.org/3/library/dataclasses.html>`_ - it refers
-to a constant value like a string or a number, and **is applied to your object
-immediately when constructed**. It is also at the moment also applied to the
-:paramref:`_orm.mapped_column.default` parameter of :class:`_schema.Column` where
-it would be used in an ``INSERT`` statement automatically even if not present
-on the object. If you instead want to use a callable for your dataclass,
-which will be applied to the object when constructed, you would use
-:paramref:`_orm.mapped_column.default_factory`.
+When dataclasses are used, the :paramref:`_orm.mapped_column.default` parameter
+must be used the way it's described at `Python Dataclasses
+<https://docs.python.org/3/library/dataclasses.html>`_ - it refers to a
+constant value like a string or a number, and **is available on your object
+immediately when constructed**.  As of SQLAlchemy 2.1, the value is delivered
+using a descriptor if not otherwise set, without the value actually being
+placed in ``__dict__`` unless it were passed to the constructor explicitly.
 
-To get access to the ``INSERT``-only behavior of :paramref:`_orm.mapped_column.default`
-that is described in part one above, you would use the
-:paramref:`_orm.mapped_column.insert_default` parameter instead.
-:paramref:`_orm.mapped_column.insert_default` when dataclasses are used continues
-to be a direct route to the Core-level "default" process where the parameter can
-be a static value or callable.
+The value used for :paramref:`_orm.mapped_column.default` is also applied to the
+:paramref:`_schema.Column.default` parameter of :class:`_schema.Column`.
+This is so that the value used as the dataclass default is also applied in
+an ORM INSERT statement for a mapped object where the value was not
+explicitly passed.  Using this parameter is **mutually exclusive** against the
+:paramref:`_schema.Column.insert_default` parameter, meaning that both cannot
+be used at the same time.
+
+The :paramref:`_orm.mapped_column.default` and
+:paramref:`_orm.mapped_column.insert_default` parameters may also be used
+(one or the other, not both)
+for a SQLAlchemy-mapped dataclass field, or for a dataclass overall,
+that indicates ``init=False``.
+In this usage, if :paramref:`_orm.mapped_column.default` is used, the default
+value will be available on the constructed object immediately as well as
+used within the INSERT statement.  If :paramref:`_orm.mapped_column.insert_default`
+is used, the constructed object will return ``None`` for the attribute value,
+but the default value will still be used for the INSERT statement.
+
+To use a callable to generate defaults for the dataclass, which would be
+applied to the object when constructed by populating it into ``__dict__``,
+:paramref:`_orm.mapped_column.default_factory` may be used instead.
 
 .. list-table:: Summary Chart
    :header-rows: 1
@@ -421,7 +440,7 @@ be a static value or callable.
      - Works without dataclasses?
      - Accepts scalar?
      - Accepts callable?
-     - Populates object immediately?
+     - Available on object immediately?
    * - :paramref:`_orm.mapped_column.default`
      - ✔
      - ✔
@@ -429,7 +448,7 @@ be a static value or callable.
      - Only if no dataclasses
      - Only if dataclasses
    * - :paramref:`_orm.mapped_column.insert_default`
-     - ✔
+     - ✔ (only if no ``default``)
      - ✔
      - ✔
      - ✔

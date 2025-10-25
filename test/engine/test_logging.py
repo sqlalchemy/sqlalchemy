@@ -753,14 +753,14 @@ class TransactionContextLoggingTest(fixtures.TestBase):
 
     @testing.fixture()
     def logging_engine(self, testing_engine):
-        kw = {"echo": True, "future": True}
+        kw = {"echo": True}
         e = testing_engine(options=kw)
         e.connect().close()
         return e
 
     @testing.fixture()
     def autocommit_iso_logging_engine(self, testing_engine):
-        kw = {"echo": True, "future": True, "isolation_level": "AUTOCOMMIT"}
+        kw = {"echo": True, "isolation_level": "AUTOCOMMIT"}
         e = testing_engine(options=kw)
         e.connect().close()
         return e
@@ -811,8 +811,8 @@ class TransactionContextLoggingTest(fixtures.TestBase):
             [
                 "BEGIN (implicit; DBAPI should not "
                 "BEGIN due to autocommit mode)",
-                "COMMIT using DBAPI connection.commit(), DBAPI "
-                "should ignore due to autocommit mode",
+                "COMMIT using DBAPI connection.commit(), "
+                "has no effect due to autocommit mode",
             ]
         )
 
@@ -845,28 +845,45 @@ class TransactionContextLoggingTest(fixtures.TestBase):
             [
                 "BEGIN (implicit; DBAPI should not "
                 "BEGIN due to autocommit mode)",
-                "COMMIT using DBAPI connection.commit(), DBAPI "
-                "should ignore due to autocommit mode",
+                "COMMIT using DBAPI connection.commit(), "
+                "has no effect due to autocommit mode",
             ]
         )
 
+    @testing.variation("block_rollback", [True, False])
     def test_commit_as_you_go_block_rollback_autocommit(
-        self, logging_engine, assert_buf
+        self, testing_engine, assert_buf, block_rollback
     ):
-        with logging_engine.connect().execution_options(
-            isolation_level="AUTOCOMMIT"
-        ) as conn:
+
+        kw = {
+            "echo": True,
+            "isolation_level": "AUTOCOMMIT",
+            "skip_autocommit_rollback": bool(block_rollback),
+        }
+        logging_engine = testing_engine(options=kw)
+        logging_engine.connect().close()
+
+        with logging_engine.connect() as conn:
             conn.begin()
             conn.rollback()
 
-        assert_buf(
-            [
-                "BEGIN (implicit; DBAPI should not "
-                "BEGIN due to autocommit mode)",
-                "ROLLBACK using DBAPI connection.rollback(), DBAPI "
-                "should ignore due to autocommit mode",
-            ]
-        )
+        if block_rollback:
+            assert_buf(
+                [
+                    "BEGIN (implicit; DBAPI should not "
+                    "BEGIN due to autocommit mode)",
+                    "ROLLBACK will be skipped by skip_autocommit_rollback",
+                ]
+            )
+        else:
+            assert_buf(
+                [
+                    "BEGIN (implicit; DBAPI should not "
+                    "BEGIN due to autocommit mode)",
+                    "ROLLBACK using DBAPI connection.rollback(); "
+                    "set skip_autocommit_rollback to prevent fully",
+                ]
+            )
 
     def test_logging_compatibility(
         self, plain_assert_buf, plain_logging_engine

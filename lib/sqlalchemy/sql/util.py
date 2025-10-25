@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""High level utilities which build upon other modules here.
-
-"""
+"""High level utilities which build upon other modules here."""
 from __future__ import annotations
 
 from collections import deque
@@ -24,6 +22,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Protocol
@@ -69,7 +68,6 @@ from .selectable import TableClause
 from .visitors import _ET
 from .. import exc
 from .. import util
-from ..util.typing import Literal
 from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
@@ -481,7 +479,7 @@ def surface_selectables(clause):
             stack.append(elem.element)
 
 
-def surface_selectables_only(clause):
+def surface_selectables_only(clause: ClauseElement) -> Iterator[ClauseElement]:
     stack = [clause]
     while stack:
         elem = stack.pop()
@@ -1176,7 +1174,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                 # we are an alias of a table and we are not derived from an
                 # alias of a table (which nonetheless may be the same table
                 # as ours) so, same thing
-                return col  # type: ignore
+                return col
             else:
                 # other cases where we are a selectable and the element
                 # is another join or selectable that contains a table which our
@@ -1350,9 +1348,7 @@ class ColumnAdapter(ClauseAdapter):
     adapt_clause = traverse
     adapt_list = ClauseAdapter.copy_and_process
 
-    def adapt_check_present(
-        self, col: ColumnElement[Any]
-    ) -> Optional[ColumnElement[Any]]:
+    def adapt_check_present(self, col: _ET) -> Optional[_ET]:
         newcol = self.columns[col]
 
         if newcol is col and self._corresponding_column(col, True) is None:

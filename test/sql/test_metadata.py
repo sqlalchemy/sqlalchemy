@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from contextlib import nullcontext
 import pickle
 
 import sqlalchemy as tsa
@@ -55,18 +56,20 @@ from sqlalchemy.sql.schema import RETAIN_SCHEMA
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import Variation
-from sqlalchemy.testing.assertions import expect_warnings
 
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
@@ -519,7 +522,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         t.c.x._init_items(s1)
         assert s1.metadata is m1
 
-    def test_pickle_metadata_sequence_implicit(self):
+    def test_pickle_metadata_sequence_implicit(self, picklers):
         m1 = MetaData()
         Table(
             "a",
@@ -528,13 +531,13 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column("x", Integer, Sequence("x_seq")),
         )
 
-        m2 = pickle.loads(pickle.dumps(m1))
+        m2 = picklers.loads(picklers.dumps(m1))
 
         t2 = Table("a", m2, extend_existing=True)
 
         eq_(m2._sequences, {"x_seq": t2.c.x.default})
 
-    def test_pickle_metadata_schema(self):
+    def test_pickle_metadata_schema(self, picklers):
         m1 = MetaData()
         Table(
             "a",
@@ -544,7 +547,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             schema="y",
         )
 
-        m2 = pickle.loads(pickle.dumps(m1))
+        m2 = picklers.loads(picklers.dumps(m1))
 
         Table("a", m2, schema="y", extend_existing=True)
 
@@ -810,21 +813,94 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             else:
                 MetaData(42)  # type: ignore
 
+    def test_metadata_schemas(self):
+        eq_(MetaData().schemas, ())
+        eq_(MetaData(schema="foo").schemas, ("foo",))
+
+        m1 = MetaData()
+        Table("t", m1, schema="x")
+        Table("t2", m1, schema="y")
+        eq_(sorted(m1.schemas), ["x", "y"])
+
+        m2 = MetaData(schema="w")
+        Table("t", m2, schema="x")
+        Table("t2", m2, schema="y")
+        eq_(sorted(m2.schemas), ["w", "x", "y"])
+
+    def test_get_schema_objects_empty(self):
+        eq_(MetaData().get_schema_objects(Enum), ())
+
+    def test_get_schema_objects(self):
+        class MyEnum(Enum):
+            pass
+
+        m1 = MetaData()
+        e = Enum("a", "b", name="foo")
+        e2 = MyEnum("a", "b", name="foo", schema="t", metadata=m1)
+        s = Sequence("s")
+        Table("t", m1, Column("c", e), Column("s", Integer, s))
+        eq_(m1.get_schema_objects(Enum), (e,))
+        eq_(m1.get_schema_objects(MyEnum), ())
+        eq_(m1.get_schema_objects(Enum, schema="t"), (e2,))
+        eq_(m1.get_schema_objects(MyEnum, schema="t"), (e2,))
+        eq_(m1.get_schema_objects(Sequence), (s,))
+
+    def test_get_schema_object_by_name(self):
+        class MyEnum(Enum):
+            pass
+
+        m1 = MetaData()
+        e = Enum("a", "b", name="foo")
+        e2 = Enum("x", "y", name="bar", metadata=m1)
+        e3 = MyEnum("x", "b", name="foo", schema="t", metadata=m1)
+        e4 = Enum("a", "y", name="baz", schema="t")
+        Table("t", m1, Column("c", e), Column("c2", e4))
+        eq_(m1.get_schema_object_by_name(Enum, "foo"), e)
+        eq_(m1.get_schema_object_by_name(Enum, "bar"), e2)
+        eq_(m1.get_schema_object_by_name(MyEnum, "bar"), None)
+        eq_(m1.get_schema_object_by_name(Enum, "baz"), None)
+        eq_(m1.get_schema_object_by_name(Enum, "foo", schema="t"), e3)
+        eq_(m1.get_schema_object_by_name(Enum, "foo", schema="t"), e3)
+        eq_(m1.get_schema_object_by_name(MyEnum, "foo", schema="t"), e3)
+        eq_(m1.get_schema_object_by_name(Enum, "baz", schema="t"), e4)
+        eq_(m1.get_schema_object_by_name(Enum, "bar", schema="t"), None)
+
+    def test_custom_schematype(self):
+        class FooType(sqltypes.SchemaType, sqltypes.TypeEngine):
+            pass
+
+        m1 = MetaData()
+        t1 = FooType(name="foo")
+        t2 = FooType(name="bar", metadata=m1)
+        Table("t", m1, Column("c", t1))
+        eq_(set(m1.get_schema_objects(FooType)), {t1, t2})
+        eq_(m1.get_schema_object_by_name(FooType, "foo"), t1)
+        eq_(m1.get_schema_object_by_name(FooType, "bar"), t2)
+        eq_(m1.get_schema_object_by_name(Enum, "bar"), None)
+
 
 class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
-    @testing.requires.check_constraints
-    def test_copy(self):
-        # TODO: modernize this test for 2.0
 
+    @testing.fixture
+    def copy_fixture(self, metadata):
         from sqlalchemy.testing.schema import Table
-
-        meta = MetaData()
 
         table = Table(
             "mytable",
-            meta,
+            metadata,
             Column("myid", Integer, Sequence("foo_id_seq"), primary_key=True),
             Column("name", String(40), nullable=True),
+            Column("status", Boolean(create_constraint=True)),
+            Column(
+                "entry",
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    name="entry_enum",
+                    create_constraint=True,
+                ),
+            ),
             Column(
                 "foo",
                 String(40),
@@ -844,7 +920,7 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
 
         table2 = Table(
             "othertable",
-            meta,
+            metadata,
             Column("id", Integer, Sequence("foo_seq"), primary_key=True),
             Column("myid", Integer, ForeignKey("mytable.myid")),
             test_needs_fk=True,
@@ -852,103 +928,119 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
 
         table3 = Table(
             "has_comments",
-            meta,
+            metadata,
             Column("foo", Integer, comment="some column"),
             comment="table comment",
         )
 
-        def test_to_metadata():
+        metadata.create_all(testing.db)
+
+        return table, table2, table3
+
+    @testing.fixture(
+        params=[
+            "to_metadata",
+            "pickle",
+            "pickle_via_reflect",
+        ]
+    )
+    def copy_tables_fixture(self, request, metadata, copy_fixture, picklers):
+        table, table2, table3 = copy_fixture
+
+        test = request.param
+
+        if test == "to_metadata":
             meta2 = MetaData()
             table_c = table.to_metadata(meta2)
             table2_c = table2.to_metadata(meta2)
             table3_c = table3.to_metadata(meta2)
-            return (table_c, table2_c, table3_c)
+            return (table_c, table2_c, table3_c, (True, False))
 
-        def test_pickle():
-            meta.bind = testing.db
-            meta2 = pickle.loads(pickle.dumps(meta))
-            pickle.loads(pickle.dumps(meta2))
+        elif test == "pickle":
+            meta2 = picklers.loads(picklers.dumps(metadata))
+            picklers.loads(picklers.dumps(meta2))
             return (
                 meta2.tables["mytable"],
                 meta2.tables["othertable"],
                 meta2.tables["has_comments"],
+                (True, False),
             )
 
-        def test_pickle_via_reflect():
+        elif test == "pickle_via_reflect":
             # this is the most common use case, pickling the results of a
             # database reflection
             meta2 = MetaData()
             t1 = Table("mytable", meta2, autoload_with=testing.db)
             Table("othertable", meta2, autoload_with=testing.db)
             Table("has_comments", meta2, autoload_with=testing.db)
-            meta3 = pickle.loads(pickle.dumps(meta2))
+            meta3 = picklers.loads(picklers.dumps(meta2))
             assert meta3.tables["mytable"] is not t1
 
             return (
                 meta3.tables["mytable"],
                 meta3.tables["othertable"],
                 meta3.tables["has_comments"],
+                (False, True),
             )
 
-        meta.create_all(testing.db)
-        try:
-            for test, has_constraints, reflect in (
-                (test_to_metadata, True, False),
-                (test_pickle, True, False),
-                (test_pickle_via_reflect, False, True),
-            ):
-                table_c, table2_c, table3_c = test()
-                self.assert_tables_equal(table, table_c)
-                self.assert_tables_equal(table2, table2_c)
-                assert table is not table_c
-                assert table.primary_key is not table_c.primary_key
-                assert (
-                    list(table2_c.c.myid.foreign_keys)[0].column
-                    is table_c.c.myid
+        assert False
+
+    @testing.requires.check_constraints
+    def test_copy(self, metadata, copy_fixture, copy_tables_fixture):
+
+        table, table2, table3 = copy_fixture
+        table_c, table2_c, table3_c, (has_constraints, reflect) = (
+            copy_tables_fixture
+        )
+
+        self.assert_tables_equal(table, table_c)
+        self.assert_tables_equal(table2, table2_c)
+        assert table is not table_c
+        assert table.primary_key is not table_c.primary_key
+        assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
+        assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
+        assert "x" in str(table_c.c.foo.server_default.arg)
+        if not reflect:
+            assert isinstance(table_c.c.myid.default, Sequence)
+            assert str(table_c.c.foo.server_onupdate.arg) == "q"
+            assert str(table_c.c.bar.default.arg) == "y"
+            assert (
+                getattr(
+                    table_c.c.bar.onupdate.arg,
+                    "arg",
+                    table_c.c.bar.onupdate.arg,
                 )
-                assert (
-                    list(table2_c.c.myid.foreign_keys)[0].column
-                    is not table.c.myid
-                )
-                assert "x" in str(table_c.c.foo.server_default.arg)
-                if not reflect:
-                    assert isinstance(table_c.c.myid.default, Sequence)
-                    assert str(table_c.c.foo.server_onupdate.arg) == "q"
-                    assert str(table_c.c.bar.default.arg) == "y"
-                    assert (
-                        getattr(
-                            table_c.c.bar.onupdate.arg,
-                            "arg",
-                            table_c.c.bar.onupdate.arg,
-                        )
-                        == "z"
-                    )
-                    assert isinstance(table2_c.c.id.default, Sequence)
+                == "z"
+            )
+            assert isinstance(table2_c.c.id.default, Sequence)
 
-                # constraints don't get reflected for any dialect right
-                # now
+        if testing.requires.unique_constraint_reflection.enabled:
+            for c in table_c.constraints:
+                if isinstance(c, UniqueConstraint):
+                    break
+            else:
+                for c in table_c.indexes:
+                    break
+                else:
+                    assert False
 
-                if has_constraints:
-                    for c in table_c.c.description.constraints:
-                        if isinstance(c, CheckConstraint):
-                            break
-                    else:
-                        assert False
-                    assert str(c.sqltext) == "description='hi'"
-                    for c in table_c.constraints:
-                        if isinstance(c, UniqueConstraint):
-                            break
-                    else:
-                        assert False
-                    assert c.columns.contains_column(table_c.c.name)
-                    assert not c.columns.contains_column(table.c.name)
+            assert c.columns.contains_column(table_c.c.name)
+            assert not c.columns.contains_column(table.c.name)
 
-                if testing.requires.comment_reflection.enabled:
-                    eq_(table3_c.comment, "table comment")
-                    eq_(table3_c.c.foo.comment, "some column")
+        # CHECK constraints don't get reflected for any dialect right
+        # now
 
-        finally:
-            meta.drop_all(testing.db)
+        if has_constraints:
+            for c in table_c.c.description.constraints:
+                if isinstance(c, CheckConstraint):
+                    break
+            else:
+                assert False
+            assert str(c.sqltext) == "description='hi'"
+
+        if testing.requires.comment_reflection.enabled:
+            eq_(table3_c.comment, "table comment")
+            eq_(table3_c.c.foo.comment, "some column")
 
     def test_col_key_fk_parent(self):
         # test #2643
@@ -1882,13 +1974,94 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
                 Column("col", String),
             )
 
+    @testing.combinations(
+        ((0,),), ((0, 1),), ((1, 2),), ((3,),), ((-2,),), argnames="positions"
+    )
+    @testing.variation("add_to_pk", [True, False])
+    @testing.variation("existing_pk", [True, False])
+    def test_insert_column_table(self, positions, add_to_pk, existing_pk):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("a", Integer, primary_key=bool(existing_pk)),
+            Column("b", Integer),
+            Column("c", Integer),
+        )
+        expected_cols = ["a", "b", "c"]
+
+        if existing_pk:
+            expected_pk_cols = ["a"]
+        else:
+            expected_pk_cols = []
+
+        for pos in positions:
+            t.insert_column(
+                Column(f"i{pos}", Integer, primary_key=bool(add_to_pk)), pos
+            )
+            expected_cols.insert(pos, f"i{pos}")
+            if add_to_pk:
+                expected_pk_cols.append(f"i{pos}")
+        eq_([c.key for c in t.c], expected_cols)
+
+        eq_([c.key for c in t.primary_key], expected_pk_cols)
+
+    @testing.combinations(-4, -3, -2, -1, 0, 1, 2, 3)
+    def test_replace_col_with_index(self, new_index):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("a", Integer),
+            Column("b", Integer),
+            Column("c", Integer),
+            Column("d", Integer),
+        )
+        newcol = Column("b", String)
+
+        expected = ["a", "q", "c", "d"]
+        expected.insert(new_index, "b")
+        expected.remove("q")
+
+        t.insert_column(newcol, index=new_index, replace_existing=True)
+        is_(t.c.b, newcol)
+        is_(t.c.b.type._type_affinity, String)
+
+        eq_([c.key for c in t.c], expected)
+
+        effective_positive_index = (
+            new_index if new_index >= 0 else max(0, 4 + new_index)
+        )
+        if effective_positive_index > 1:
+            # because we replaced
+            effective_positive_index -= 1
+
+        is_(t.c[effective_positive_index], newcol)
+
+    @testing.combinations(
+        ((0,),), ((0, 1),), ((1, 2),), ((3,),), argnames="positions"
+    )
+    def test_insert_column_tableclause(self, positions):
+        t = table(
+            "t",
+            column("a", Integer),
+            column("b", Integer),
+            column("c", Integer),
+        )
+
+        expected_cols = ["a", "b", "c"]
+        for pos in positions:
+            t.insert_column(column(f"i{pos}", Integer), pos)
+            expected_cols.insert(pos, f"i{pos}")
+
+        eq_([c.key for c in t.c], expected_cols)
+
     def test_append_column_existing_name(self):
         t = Table("t", MetaData(), Column("col", Integer))
 
         with testing.expect_raises_message(
             exc.DuplicateColumnError,
             r"A column with name 'col' is already present in table 't'. "
-            r"Specify replace_existing=True to Table.append_column\(\) to "
+            r"Specify replace_existing=True to Table.append_column\(\) or "
+            r"Table.insert_column\(\) to "
             r"replace an existing column.",
         ):
             t.append_column(Column("col", String))
@@ -1899,8 +2072,9 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_raises_message(
             exc.DuplicateColumnError,
             r"A column with key 'c2' is already present in table 't'. "
-            r"Specify replace_existing=True to Table.append_column\(\) "
-            r"to replace an existing column.",
+            r"Specify replace_existing=True to Table.append_column\(\) or "
+            r"Table.insert_column\(\) to "
+            r"replace an existing column.",
         ):
             t.append_column(Column("col", String, key="c2"))
 
@@ -2409,11 +2583,45 @@ class SchemaTypeTest(fixtures.TestBase):
             ],
         )
 
+    def test_adapt_to_schema(self):
+        m = MetaData()
+        type_ = self.MyType()
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, None)
+
+        adapted = t1.c.y.type.adapt(self.MyType)
+
+        eq_(adapted.schema, None)
+
+        adapted2 = t1.c.y.type.adapt(self.MyType, schema="q")
+        eq_(adapted2.schema, "q")
+
     def test_independent_schema(self):
         m = MetaData()
         type_ = self.MyType(schema="q")
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "q")
+
+    @property
+    def inherit_schema_deprecaeted(self):
+        return expect_deprecated(
+            "the ``inherit_schema`` parameter is deprecated"
+        )
+
+    @testing.combinations(
+        {}, {"inherit_schema": True}, {"inherit_schema": False}
+    )
+    def test_inherit_schema_deprecated(self, args):
+        if args.get("inherit_schema", False):
+            dep = self.inherit_schema_deprecaeted
+        else:
+            dep = nullcontext()
+        with dep:
+            typ = self.MyType(**args)
+        with expect_deprecated(
+            "The ``inherit_schema`` property is deprecated"
+        ):
+            eq_(typ.inherit_schema, args.get("inherit_schema", False))
 
     def test_inherit_schema_from_metadata(self):
         """test #6373"""
@@ -2425,7 +2633,8 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_inherit_schema_from_table_override_metadata(self):
         """test #6373"""
         m = MetaData(schema="q")
-        type_ = self.MyType(metadata=m, inherit_schema=True)
+        with self.inherit_schema_deprecaeted:
+            type_ = self.MyType(metadata=m, inherit_schema=True)
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "z")
 
@@ -2436,23 +2645,66 @@ class SchemaTypeTest(fixtures.TestBase):
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "e")
 
+    @combinations({}, {"schema": "m"})
+    def test_inherit_schema_mata(self, arg):
+        m = MetaData(**arg)
+        type_ = self.MyType()
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, arg.get("schema"))
+
     def test_inherit_schema(self):
         m = MetaData()
-        type_ = self.MyType(schema="q", inherit_schema=True)
+        with self.inherit_schema_deprecaeted:
+            type_ = self.MyType(inherit_schema=True)
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "z")
 
-    def test_independent_schema_enum(self):
-        m = MetaData()
-        type_ = sqltypes.Enum("a", schema="q")
+    @combinations({}, {"schema": "m"}, argnames="meta_kw")
+    @combinations({}, {"schema": "t"}, argnames="table_kw")
+    def test_independent_schema_enum_explicit_schema(self, meta_kw, table_kw):
+        m = MetaData(**meta_kw)
+        type_ = sqltypes.Enum("a", schema="e")
+        t1 = Table("x", m, Column("y", type_), **table_kw)
+        eq_(t1.c.y.type.schema, "e")
+
+    def test_explicit_schema_w_inherit_raises(self):
+        with (
+            expect_raises_message(
+                exc.ArgumentError,
+                "Ambiguously setting inherit_schema=True while also passing "
+                "a schema argument",
+            ),
+            self.inherit_schema_deprecaeted,
+        ):
+            sqltypes.Enum("a", schema="e", inherit_schema=True)
+
+    def test_schema_none_does_not_inherits(self):
+        m = MetaData(schema="m")
+        type_ = sqltypes.Enum("a", schema=None)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, None)
+
+    @combinations("set_meta", "no_set_meta")
+    def test_schema_black_schema_set_none(self, case):
+        m = MetaData(schema="m")
+        kw = {"set_meta": {"metadata": m}, "no_set_meta": {}}
+        type_ = sqltypes.Enum("a", schema=None, **kw[case])
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, None)
+
+    def test_inherit_schema_enum_set_meta(self):
+        m = MetaData(schema="q")
+        type_ = sqltypes.Enum("a", "b", "c", metadata=m)
+        eq_(type_.schema, "q")
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "q")
 
-    def test_inherit_schema_enum(self):
-        m = MetaData()
-        type_ = sqltypes.Enum("a", "b", "c", schema="q", inherit_schema=True)
+    def test_inherit_schema_enum_set_meta_explicit(self):
+        m = MetaData(schema="q")
+        type_ = sqltypes.Enum("a", "b", "c", metadata=m, schema="e")
+        eq_(type_.schema, "e")
         t1 = Table("x", m, Column("y", type_), schema="z")
-        eq_(t1.c.y.type.schema, "z")
+        eq_(t1.c.y.type.schema, "e")
 
     @testing.variation("assign_metadata", [True, False])
     def test_to_metadata_copy_type(self, assign_metadata):
@@ -2468,13 +2720,9 @@ class SchemaTypeTest(fixtures.TestBase):
         m2 = MetaData()
         t2 = t1.to_metadata(m2)
 
-        if assign_metadata:
-            # metadata was transferred
-            # issue #11802
-            is_(t2.c.y.type.metadata, m2)
-        else:
-            # metadata isn't set
-            is_(t2.c.y.type.metadata, None)
+        # metadata was transferred
+        # issue #11802
+        is_(t2.c.y.type.metadata, m2)
 
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
@@ -2493,21 +2741,9 @@ class SchemaTypeTest(fixtures.TestBase):
         t2 = t1.to_metadata(m2)
         eq_(t2.c.y.type.schema, "z")
 
-    def test_to_metadata_independent_schema(self):
-        m1 = MetaData()
-
-        type_ = self.MyType()
-        t1 = Table("x", m1, Column("y", type_))
-
-        m2 = MetaData()
-        t2 = t1.to_metadata(m2, schema="bar")
-
-        eq_(t2.c.y.type.schema, None)
-
     @testing.combinations(
         ("name", "foobar", "name"),
         ("schema", "someschema", "schema"),
-        ("inherit_schema", True, "inherit_schema"),
         ("metadata", MetaData(), "metadata"),
     )
     def test_copy_args(self, argname, value, attrname):
@@ -2518,25 +2754,29 @@ class SchemaTypeTest(fixtures.TestBase):
 
         eq_(getattr(e1_copy, attrname), value)
 
-    @testing.variation("already_has_a_schema", [True, False])
-    def test_to_metadata_inherit_schema(self, already_has_a_schema):
-        m1 = MetaData()
+    @testing.combinations({}, {"schema": "m"}, argnames="meta_schema")
+    @testing.combinations(True, False, argnames="inherit_schema")
+    @testing.combinations({}, {"schema": "t"}, argnames="table_schema")
+    def test_to_metadata_inherit_schema(
+        self, meta_schema, inherit_schema, table_schema
+    ):
+        m1 = MetaData(**meta_schema)
 
-        if already_has_a_schema:
-            type_ = self.MyType(schema="foo", inherit_schema=True)
-            eq_(type_.schema, "foo")
+        if inherit_schema:
+            with self.inherit_schema_deprecaeted:
+                type_ = self.MyType(inherit_schema=True)
+            schema_from = meta_schema | table_schema
         else:
-            type_ = self.MyType(inherit_schema=True)
+            type_ = self.MyType()
+            schema_from = meta_schema
 
-        t1 = Table("x", m1, Column("y", type_))
-        # note that inherit_schema means the schema mutates to be that
-        # of the table
-        is_(type_.schema, None)
+        t1 = Table("x", m1, Column("y", type_), **table_schema)
+        eq_(type_.schema, schema_from.get("schema"))
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2, schema="bar")
 
-        eq_(t1.c.y.type.schema, None)
+        eq_(t1.c.y.type.schema, schema_from.get("schema"))
         eq_(t2.c.y.type.schema, "bar")
 
     def test_to_metadata_independent_events(self):
@@ -2548,12 +2788,12 @@ class SchemaTypeTest(fixtures.TestBase):
         m2 = MetaData()
         t2 = t1.to_metadata(m2)
 
-        t1.dispatch.before_create(t1, testing.db)
+        t1.dispatch.before_create(t1, testing.db, checkfirst=False)
         eq_(t1.c.y.type.evt_targets, (t1,))
         eq_(t2.c.y.type.evt_targets, ())
 
-        t2.dispatch.before_create(t2, testing.db)
-        t2.dispatch.before_create(t2, testing.db)
+        t2.dispatch.before_create(t2, testing.db, checkfirst=False)
+        t2.dispatch.before_create(t2, testing.db, checkfirst=False)
         eq_(t1.c.y.type.evt_targets, (t1,))
         eq_(t2.c.y.type.evt_targets, (t2, t2))
 
@@ -2568,7 +2808,7 @@ class SchemaTypeTest(fixtures.TestBase):
         is_true(y_copy.type._create_events)
 
         # for PostgreSQL, this will emit CREATE TYPE
-        m.dispatch.before_create(t1, testing.db)
+        m.dispatch.before_create(t1, testing.db, checkfirst=False)
         try:
             eq_(t1.c.y.type.evt_targets, (t1,))
         finally:
@@ -2947,8 +3187,7 @@ class UseExistingTest(testing.AssertsCompiledSQL, fixtures.TablesTest):
             with expect_raises_message(
                 exc.DuplicateColumnError,
                 r"A column with name 'b' is already present in table 'users'. "
-                r"Specify replace_existing=True to Table.append_column\(\) "
-                r"to replace an existing column.",
+                r"Specify replace_existing=True to Table.append_column\(\) ",
             ):
                 t1.append_column(Column("b", String, key="b2"))
             return
@@ -4525,11 +4764,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         ("info", {"foo": "bar"}),
         argnames="paramname, value",
     )
-    def test_merge_column(
-        self,
-        paramname,
-        value,
-    ):
+    def test_merge_column(self, paramname, value):
         args = []
         params = {}
         if paramname == "type" or isinstance(
@@ -4799,11 +5034,13 @@ class ColumnDefaultsTest(fixtures.TestBase):
         c = self._fixture(insert_default="y")
         assert c.default.arg == "y"
 
-    def test_column_insert_default_predecende_on_default(self):
-        c = self._fixture(insert_default="x", default="y")
-        assert c.default.arg == "x"
-        c = self._fixture(default="y", insert_default="x")
-        assert c.default.arg == "x"
+    def test_column_insert_default_mututally_exclusive(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "The 'default' and 'insert_default' parameters of "
+            "Column are mutually exclusive",
+        ):
+            self._fixture(insert_default="x", default="y")
 
 
 class ColumnOptionsTest(fixtures.TestBase):

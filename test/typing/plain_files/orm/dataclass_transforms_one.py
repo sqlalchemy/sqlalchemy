@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import assert_type
 from typing import Optional
 
 from sqlalchemy.orm import column_property
@@ -25,11 +26,9 @@ class TestInitialSupport(Base):
 
 tis = TestInitialSupport(data="some data", y=5)
 
-# EXPECTED_TYPE: str
-reveal_type(tis.data)
+assert_type(tis.data, str)
 
-# EXPECTED_RE_TYPE: .*Union\[builtins.int, None\]
-reveal_type(tis.y)
+assert_type(tis.y, int | None)
 
 tis.data = "some other data"
 

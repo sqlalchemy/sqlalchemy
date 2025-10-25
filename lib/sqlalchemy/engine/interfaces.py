@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from types import ModuleType
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -20,6 +19,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
@@ -36,14 +36,13 @@ from typing import Union
 from .. import util
 from ..event import EventTarget
 from ..pool import Pool
-from ..pool import PoolProxiedConnection
+from ..pool import PoolProxiedConnection as PoolProxiedConnection
 from ..sql.compiler import Compiled as Compiled
 from ..sql.compiler import Compiled  # noqa
 from ..sql.compiler import TypeCompiler as TypeCompiler
 from ..sql.compiler import TypeCompiler  # noqa
 from ..util import immutabledict
 from ..util.concurrency import await_
-from ..util.typing import Literal
 from ..util.typing import NotRequired
 
 if TYPE_CHECKING:
@@ -51,11 +50,13 @@ if TYPE_CHECKING:
     from .base import Engine
     from .cursor import CursorResult
     from .url import URL
+    from ..connectors.asyncio import AsyncIODBAPIConnection
     from ..event import _ListenerFnType
     from ..event import dispatcher
     from ..exc import StatementError
     from ..sql import Executable
     from ..sql.compiler import _InsertManyValuesBatch
+    from ..sql.compiler import AggregateOrderByStyle
     from ..sql.compiler import DDLCompiler
     from ..sql.compiler import IdentifierPreparer
     from ..sql.compiler import InsertmanyvaluesSentinelOpts
@@ -70,6 +71,7 @@ if TYPE_CHECKING:
     from ..sql.sqltypes import Integer
     from ..sql.type_api import _TypeMemoDict
     from ..sql.type_api import TypeEngine
+    from ..util.langhelpers import generic_fn_descriptor
 
 ConnectArgsType = Tuple[Sequence[str], MutableMapping[str, Any]]
 
@@ -106,6 +108,22 @@ class ExecuteStyle(Enum):
     """
 
 
+class DBAPIModule(Protocol):
+    class Error(Exception):
+        def __getattr__(self, key: str) -> Any: ...
+
+    class OperationalError(Error):
+        pass
+
+    class InterfaceError(Error):
+        pass
+
+    class IntegrityError(Error):
+        pass
+
+    def __getattr__(self, key: str) -> Any: ...
+
+
 class DBAPIConnection(Protocol):
     """protocol representing a :pep:`249` database connection.
 
@@ -122,11 +140,13 @@ class DBAPIConnection(Protocol):
 
     def commit(self) -> None: ...
 
-    def cursor(self) -> DBAPICursor: ...
+    def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor: ...
 
     def rollback(self) -> None: ...
 
-    autocommit: bool
+    def __getattr__(self, key: str) -> Any: ...
+
+    def __setattr__(self, key: str, value: Any) -> None: ...
 
 
 class DBAPIType(Protocol):
@@ -386,8 +406,6 @@ class ReflectedColumn(TypedDict):
     computed: NotRequired[ReflectedComputed]
     """indicates that this column is computed by the database.
     Only some dialects return this key.
-
-    .. versionadded:: 1.3.16 - added support for computed reflection.
     """
 
     identity: NotRequired[ReflectedIdentity]
@@ -430,8 +448,6 @@ class ReflectedCheckConstraint(ReflectedConstraint):
 
     dialect_options: NotRequired[Dict[str, Any]]
     """Additional dialect-specific options detected for this check constraint
-
-    .. versionadded:: 1.3.8
     """
 
 
@@ -540,8 +556,6 @@ class ReflectedIndex(TypedDict):
     """optional dict mapping column names or expressions to tuple of sort
     keywords, which may include ``asc``, ``desc``, ``nulls_first``,
     ``nulls_last``.
-
-    .. versionadded:: 1.3.5
     """
 
     dialect_options: NotRequired[Dict[str, Any]]
@@ -659,7 +673,7 @@ class Dialect(EventTarget):
 
     dialect_description: str
 
-    dbapi: Optional[ModuleType]
+    dbapi: Optional[DBAPIModule]
     """A reference to the DBAPI module object itself.
 
     SQLAlchemy dialects import DBAPI modules using the classmethod
@@ -683,7 +697,7 @@ class Dialect(EventTarget):
     """
 
     @util.non_memoized_property
-    def loaded_dbapi(self) -> ModuleType:
+    def loaded_dbapi(self) -> DBAPIModule:
         """same as .dbapi, but is never None; will raise an error if no
         DBAPI was set up.
 
@@ -761,6 +775,14 @@ class Dialect(EventTarget):
     default_isolation_level: Optional[IsolationLevel]
     """the isolation that is implicitly present on new connections"""
 
+    skip_autocommit_rollback: bool
+    """Whether or not the :paramref:`.create_engine.skip_autocommit_rollback`
+    parameter was set.
+
+    .. versionadded:: 2.0.43
+
+    """
+
     # create_engine()  -> isolation_level  currently goes here
     _on_connect_isolation_level: Optional[IsolationLevel]
 
@@ -780,8 +802,14 @@ class Dialect(EventTarget):
 
     max_identifier_length: int
     """The maximum length of identifier names."""
+    max_index_name_length: Optional[int]
+    """The maximum length of index names if different from
+    ``max_identifier_length``."""
+    max_constraint_name_length: Optional[int]
+    """The maximum length of constraint names if different from
+    ``max_identifier_length``."""
 
-    supports_server_side_cursors: bool
+    supports_server_side_cursors: Union[generic_fn_descriptor[bool], bool]
     """indicates if the dialect supports server side cursors"""
 
     server_side_cursors: bool
@@ -834,6 +862,13 @@ class Dialect(EventTarget):
     supports_multivalues_insert: bool
     """Target database supports INSERT...VALUES with multiple value
     sets, i.e. INSERT INTO table (cols) VALUES (...), (...), (...), ...
+
+    """
+
+    aggregate_order_by_style: AggregateOrderByStyle
+    """Style of ORDER BY supported for arbitrary aggregate functions
+
+    .. versionadded:: 2.1
 
     """
 
@@ -1193,6 +1228,13 @@ class Dialect(EventTarget):
     tuple_in_values: bool
     """target database supports tuple IN, i.e. (x, y) IN ((q, p), (r, z))"""
 
+    requires_name_normalize: bool
+    """Indicates symbol names are returned by the database in
+    UPPERCASED if they are case insensitive within the database.
+    If this is True, the methods normalize_name()
+    and denormalize_name() must be provided.
+    """
+
     _bind_typing_render_casts: bool
 
     _type_memos: MutableMapping[TypeEngine[Any], _TypeMemoDict]
@@ -1234,7 +1276,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     @classmethod
-    def import_dbapi(cls) -> ModuleType:
+    def import_dbapi(cls) -> DBAPIModule:
         """Import the DBAPI module that is used by this dialect.
 
         The Python module object returned here will be assigned as an
@@ -1282,8 +1324,6 @@ class Dialect(EventTarget):
            any :meth:`_engine.Dialect.on_connect` hooks are called.
 
         """
-
-        pass
 
     if TYPE_CHECKING:
 
@@ -1750,8 +1790,6 @@ class Dialect(EventTarget):
         :raise: ``NotImplementedError`` for dialects that don't support
          comments.
 
-        .. versionadded:: 1.2
-
         """
 
         raise NotImplementedError()
@@ -2206,7 +2244,7 @@ class Dialect(EventTarget):
 
     def is_disconnect(
         self,
-        e: Exception,
+        e: DBAPIModule.Error,
         connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
         cursor: Optional[DBAPICursor],
     ) -> bool:
@@ -2310,7 +2348,7 @@ class Dialect(EventTarget):
         """
         return self.on_connect()
 
-    def on_connect(self) -> Optional[Callable[[Any], Any]]:
+    def on_connect(self) -> Optional[Callable[[Any], None]]:
         """return a callable which sets up a newly created DBAPI connection.
 
         The callable should accept a single argument "conn" which is the
@@ -2459,6 +2497,30 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
+    def detect_autocommit_setting(self, dbapi_conn: DBAPIConnection) -> bool:
+        """Detect the current autocommit setting for a DBAPI connection.
+
+        :param dbapi_connection: a DBAPI connection object
+        :return: True if autocommit is enabled, False if disabled
+        :rtype: bool
+
+        This method inspects the given DBAPI connection to determine
+        whether autocommit mode is currently enabled. The specific
+        mechanism for detecting autocommit varies by database dialect
+        and DBAPI driver, however it should be done **without** network
+        round trips.
+
+        .. note::
+
+            Not all dialects support autocommit detection. Dialects
+            that do not support this feature will raise
+            :exc:`NotImplementedError`.
+
+        """
+        raise NotImplementedError(
+            "This dialect cannot detect autocommit on a DBAPI connection"
+        )
+
     def get_default_isolation_level(
         self, dbapi_conn: DBAPIConnection
     ) -> IsolationLevel:
@@ -2476,14 +2538,12 @@ class Dialect(EventTarget):
         The method defaults to using the :meth:`.Dialect.get_isolation_level`
         method unless overridden by a dialect.
 
-        .. versionadded:: 1.3.22
-
         """
         raise NotImplementedError()
 
     def get_isolation_level_values(
         self, dbapi_conn: DBAPIConnection
-    ) -> List[IsolationLevel]:
+    ) -> Sequence[IsolationLevel]:
         """return a sequence of string isolation level names that are accepted
         by this dialect.
 
@@ -2588,8 +2648,6 @@ class Dialect(EventTarget):
                 except ImportError:
                     pass
 
-        .. versionadded:: 1.3.14
-
         """
 
     @classmethod
@@ -2656,6 +2714,9 @@ class Dialect(EventTarget):
     def get_dialect_pool_class(self, url: URL) -> Type[Pool]:
         """return a Pool class to use for a given URL"""
         raise NotImplementedError()
+
+    def validate_identifier(self, ident: str) -> None:
+        """Validates an identifier name, raising an exception if invalid"""
 
 
 class CreateEnginePlugin:
@@ -2747,9 +2808,6 @@ class CreateEnginePlugin:
         engine = create_engine(
             "mysql+pymysql://scott:tiger@localhost/test", plugins=["myplugin"]
         )
-
-    .. versionadded:: 1.2.3  plugin names can also be specified
-       to :func:`_sa.create_engine` as a list
 
     A plugin may consume plugin-specific arguments from the
     :class:`_engine.URL` object as well as the ``kwargs`` dictionary, which is
@@ -3364,7 +3422,7 @@ class AdaptedConnection:
 
     __slots__ = ("_connection",)
 
-    _connection: Any
+    _connection: AsyncIODBAPIConnection
 
     @property
     def driver_connection(self) -> Any:

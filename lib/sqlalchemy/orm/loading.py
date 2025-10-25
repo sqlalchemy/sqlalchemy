@@ -39,6 +39,7 @@ from .base import PassiveFlag
 from .context import _ORMCompileState
 from .context import FromStatement
 from .context import QueryContext
+from .strategies import _SelectInLoader
 from .util import _none_set
 from .util import state_str
 from .. import exc as sa_exc
@@ -340,7 +341,7 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
         )
 
         result = []
-        for newrow in frozen_result.rewrite_rows():
+        for newrow in frozen_result._rewrite_rows():
             for i in mapped_entities:
                 if newrow[i] is not None:
                     newrow[i] = session._merge(
@@ -580,9 +581,7 @@ def _load_on_pk_identity(
                     "release."
                 )
 
-        q._where_criteria = (
-            sql_util._deep_annotate(_get_clause, {"_orm_adapt": True}),
-        )
+        q._where_criteria = (_get_clause,)
 
         params = {
             _get_params[primary_key].key: id_val
@@ -1309,15 +1308,18 @@ def _load_subclass_via_in(
         if context.populate_existing:
             q2 = q2.execution_options(populate_existing=True)
 
-        context.session.execute(
-            q2,
-            dict(
-                primary_keys=[
-                    state.key[1][0] if zero_idx else state.key[1]
-                    for state, load_attrs in states
-                ]
-            ),
-        ).unique().scalars().all()
+        while states:
+            chunk = states[0 : _SelectInLoader._chunksize]
+            states = states[_SelectInLoader._chunksize :]
+            context.session.execute(
+                q2,
+                dict(
+                    primary_keys=[
+                        state.key[1][0] if zero_idx else state.key[1]
+                        for state, load_attrs in chunk
+                    ]
+                ),
+            ).unique().scalars().all()
 
     return do_load
 

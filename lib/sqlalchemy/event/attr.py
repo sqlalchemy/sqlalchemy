@@ -343,11 +343,20 @@ class _EmptyListener(_InstanceLevelDispatch[_ET]):
         obj = cast("_Dispatch[_ET]", obj)
 
         assert obj._instance_cls is not None
-        result = _ListenerCollection(self.parent, obj._instance_cls)
-        if getattr(obj, self.name) is self:
-            setattr(obj, self.name, result)
-        else:
-            assert isinstance(getattr(obj, self.name), _JoinedListener)
+        existing = getattr(obj, self.name)
+
+        with util.mini_gil:
+            if existing is self or isinstance(existing, _JoinedListener):
+                result = _ListenerCollection(self.parent, obj._instance_cls)
+            else:
+                # this codepath is an extremely rare race condition
+                # that has been observed in test_pool.py->test_timeout_race
+                # with freethreaded.
+                assert isinstance(existing, _ListenerCollection)
+                return existing
+
+            if existing is self:
+                setattr(obj, self.name, result)
         return result
 
     def _needs_modify(self, *args: Any, **kw: Any) -> NoReturn:
@@ -409,7 +418,7 @@ class _CompoundListener(_InstanceLevelDispatch[_ET]):
         "_is_asyncio",
     )
 
-    _exec_once_mutex: _MutexProtocol
+    _exec_once_mutex: Optional[_MutexProtocol]
     parent_listeners: Collection[_ListenerFnType]
     listeners: Collection[_ListenerFnType]
     _exec_once: bool
@@ -422,16 +431,23 @@ class _CompoundListener(_InstanceLevelDispatch[_ET]):
     def _set_asyncio(self) -> None:
         self._is_asyncio = True
 
-    def _memoized_attr__exec_once_mutex(self) -> _MutexProtocol:
-        if self._is_asyncio:
-            return AsyncAdaptedLock()
-        else:
-            return threading.Lock()
+    def _get_exec_once_mutex(self) -> _MutexProtocol:
+        with util.mini_gil:
+            if self._exec_once_mutex is not None:
+                return self._exec_once_mutex
+
+            if self._is_asyncio:
+                mutex = AsyncAdaptedLock()
+            else:
+                mutex = threading.Lock()  # type: ignore[assignment]
+            self._exec_once_mutex = mutex
+
+            return mutex
 
     def _exec_once_impl(
         self, retry_on_exception: bool, *args: Any, **kw: Any
     ) -> None:
-        with self._exec_once_mutex:
+        with self._get_exec_once_mutex():
             if not self._exec_once:
                 try:
                     self(*args, **kw)
@@ -459,8 +475,6 @@ class _CompoundListener(_InstanceLevelDispatch[_ET]):
         If exec_once was already called, then this method will never run
         the callable regardless of whether it raised or not.
 
-        .. versionadded:: 1.3.8
-
         """
         if not self._exec_once:
             self._exec_once_impl(True, *args, **kw)
@@ -472,13 +486,15 @@ class _CompoundListener(_InstanceLevelDispatch[_ET]):
         raised an exception.
 
         If _exec_w_sync_on_first_run was already called and didn't raise an
-        exception, then a mutex is not used.
+        exception, then a mutex is not used.  It's not guaranteed
+        the mutex won't be used more than once in the case of very rare
+        race conditions.
 
         .. versionadded:: 1.4.11
 
         """
         if not self._exec_w_sync_once:
-            with self._exec_once_mutex:
+            with self._get_exec_once_mutex():
                 try:
                     self(*args, **kw)
                 except:
@@ -540,6 +556,7 @@ class _ListenerCollection(_CompoundListener[_ET]):
             parent.update_subclass(target_cls)
         self._exec_once = False
         self._exec_w_sync_once = False
+        self._exec_once_mutex = None
         self.parent_listeners = parent._clslevel[target_cls]
         self.parent = parent
         self.name = parent.name
@@ -617,6 +634,8 @@ class _JoinedListener(_CompoundListener[_ET]):
         local: _EmptyListener[_ET],
     ):
         self._exec_once = False
+        self._exec_w_sync_once = False
+        self._exec_once_mutex = None
         self.parent_dispatch = parent_dispatch
         self.name = name
         self.local = local

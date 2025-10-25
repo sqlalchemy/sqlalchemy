@@ -465,11 +465,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         assert u1 in s1
         assert u2 in s2
 
-        with assertions.expect_deprecated(
-            r"The Session.close_all\(\) method is deprecated and will "
-            "be removed in a future release. "
-        ):
-            Session.close_all()
+        close_all_sessions()
 
         assert u1 not in s1
         assert u2 not in s2
@@ -724,6 +720,106 @@ class SessionStateTest(_fixtures.FixtureTest):
         maker2 = sessionmaker()
         s4 = maker2(info={"s4": 8})
         eq_(s4.info, {"s4": 8})
+
+    @testing.variation("session_type", ["plain", "sessionmaker"])
+    @testing.variation("merge", [True, False])
+    @testing.variation(
+        "method", ["scalar", "execute", "scalars", "get", "query"]
+    )
+    @testing.variation("add_statement_options", [True, False])
+    def test_execution_options(
+        self,
+        session_type: testing.Variation,
+        merge: testing.Variation,
+        method: testing.Variation,
+        add_statement_options: testing.Variation,
+    ):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        session_execution_options = {
+            "populate_existing": True,
+            "autoflush": False,
+            "opt1": "z",
+            "opt5": "q",
+        }
+
+        expected_opts = session_execution_options
+
+        if add_statement_options:
+            statement_options = {"opt2": "w", "opt4": "y", "opt5": "w"}
+            expected_opts = {**expected_opts, **statement_options}
+        else:
+            statement_options = {}
+
+        if merge:
+            query_opts = {
+                "compiled_cache": {},
+                "opt1": "q",
+                "opt2": "p",
+                "opt3": "r",
+                "populate_existing": False,
+            }
+            expected_opts = {**expected_opts, **query_opts}
+        else:
+            query_opts = {}
+
+        if session_type.plain:
+            sess = Session(
+                testing.db, execution_options=session_execution_options
+            )
+        elif session_type.sessionmaker:
+            maker = sessionmaker(
+                testing.db, execution_options=session_execution_options
+            )
+            sess = maker()
+        else:
+            session_type.fail()
+
+        gather_options = {}
+
+        @event.listens_for(sess, "do_orm_execute")
+        def check(ctx: ORMExecuteState) -> None:
+            assert not gather_options
+            gather_options.update(ctx.execution_options)
+
+        if method.scalar:
+            statement = select(User).limit(1)
+            if add_statement_options:
+                statement = statement.execution_options(**statement_options)
+            sess.scalar(statement, execution_options=query_opts)
+        elif method.execute:
+            statement = select(User).limit(1)
+            if add_statement_options:
+                statement = statement.execution_options(**statement_options)
+            sess.execute(statement, execution_options=query_opts)
+        elif method.scalars:
+            statement = select(User).limit(1)
+            if add_statement_options:
+                statement = statement.execution_options(**statement_options)
+            sess.scalars(statement, execution_options=query_opts)
+        elif method.get:
+            if add_statement_options:
+                sess.get(
+                    User,
+                    1,
+                    execution_options={**statement_options, **query_opts},
+                )
+            else:
+                sess.get(User, 1, execution_options=query_opts)
+        elif method.query:
+            q = sess.query(User).limit(1)
+            if add_statement_options:
+                q = q.execution_options(**statement_options)
+            q = q.execution_options(**query_opts)
+            q.all()
+        else:
+            method.fail()
+
+        sess.close()
+
+        for key, value in expected_opts.items():
+            eq_(gather_options[key], value)
 
     def test_autocommit_kw_accepted_but_must_be_false(self):
         Session(autocommit=False)

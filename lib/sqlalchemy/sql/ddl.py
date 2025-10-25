@@ -14,15 +14,20 @@ to invoke them for a create/drop call.
 from __future__ import annotations
 
 import contextlib
+from enum import auto
+from enum import Flag
 import typing
 from typing import Any
 from typing import Callable
+from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Protocol
 from typing import Sequence as typing_Sequence
 from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 from . import roles
 from .base import _generative
@@ -38,10 +43,12 @@ if typing.TYPE_CHECKING:
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .elements import BindParameter
+    from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
+    from .schema import Index
     from .schema import SchemaItem
-    from .schema import Sequence
+    from .schema import Sequence as Sequence  # noqa: F401
     from .schema import Table
     from .selectable import TableClause
     from ..engine.base import Connection
@@ -49,6 +56,8 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CompiledCacheType
     from ..engine.interfaces import Dialect
     from ..engine.interfaces import SchemaTranslateMapType
+
+_SI = TypeVar("_SI", bound=Union["SchemaItem", str])
 
 
 class BaseDDLElement(ClauseElement):
@@ -87,7 +96,7 @@ class DDLIfCallable(Protocol):
     def __call__(
         self,
         ddl: BaseDDLElement,
-        target: SchemaItem,
+        target: Union[SchemaItem, str],
         bind: Optional[Connection],
         tables: Optional[List[Table]] = None,
         state: Optional[Any] = None,
@@ -106,7 +115,7 @@ class DDLIf(typing.NamedTuple):
     def _should_execute(
         self,
         ddl: BaseDDLElement,
-        target: SchemaItem,
+        target: Union[SchemaItem, str],
         bind: Optional[Connection],
         compiler: Optional[DDLCompiler] = None,
         **kw: Any,
@@ -172,7 +181,7 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
     """
 
     _ddl_if: Optional[DDLIf] = None
-    target: Optional[SchemaItem] = None
+    target: Union[SchemaItem, str, None] = None
 
     def _execute_on_connection(
         self, connection, distilled_params, execution_options
@@ -415,7 +424,7 @@ class DDL(ExecutableDDLElement):
         )
 
 
-class _CreateDropBase(ExecutableDDLElement):
+class _CreateDropBase(ExecutableDDLElement, Generic[_SI]):
     """Base class for DDL constructs that represent CREATE and DROP or
     equivalents.
 
@@ -425,15 +434,15 @@ class _CreateDropBase(ExecutableDDLElement):
 
     """
 
-    def __init__(
-        self,
-        element,
-    ):
+    element: _SI
+
+    def __init__(self, element: _SI) -> None:
         self.element = self.target = element
         self._ddl_if = getattr(element, "_ddl_if", None)
 
     @property
-    def stringify_dialect(self):
+    def stringify_dialect(self):  # type: ignore[override]
+        assert not isinstance(self.element, str)
         return self.element.create_drop_stringify_dialect
 
     def _create_rule_disable(self, compiler):
@@ -447,19 +456,19 @@ class _CreateDropBase(ExecutableDDLElement):
         return False
 
 
-class _CreateBase(_CreateDropBase):
-    def __init__(self, element, if_not_exists=False):
+class _CreateBase(_CreateDropBase[_SI]):
+    def __init__(self, element: _SI, if_not_exists: bool = False) -> None:
         super().__init__(element)
         self.if_not_exists = if_not_exists
 
 
-class _DropBase(_CreateDropBase):
-    def __init__(self, element, if_exists=False):
+class _DropBase(_CreateDropBase[_SI]):
+    def __init__(self, element: _SI, if_exists: bool = False) -> None:
         super().__init__(element)
         self.if_exists = if_exists
 
 
-class CreateSchema(_CreateBase):
+class CreateSchema(_CreateBase[str]):
     """Represent a CREATE SCHEMA statement.
 
     The argument here is the string name of the schema.
@@ -474,13 +483,13 @@ class CreateSchema(_CreateBase):
         self,
         name: str,
         if_not_exists: bool = False,
-    ):
+    ) -> None:
         """Create a new :class:`.CreateSchema` construct."""
 
         super().__init__(element=name, if_not_exists=if_not_exists)
 
 
-class DropSchema(_DropBase):
+class DropSchema(_DropBase[str]):
     """Represent a DROP SCHEMA statement.
 
     The argument here is the string name of the schema.
@@ -496,14 +505,14 @@ class DropSchema(_DropBase):
         name: str,
         cascade: bool = False,
         if_exists: bool = False,
-    ):
+    ) -> None:
         """Create a new :class:`.DropSchema` construct."""
 
         super().__init__(element=name, if_exists=if_exists)
         self.cascade = cascade
 
 
-class CreateTable(_CreateBase):
+class CreateTable(_CreateBase["Table"]):
     """Represent a CREATE TABLE statement."""
 
     __visit_name__ = "create_table"
@@ -515,7 +524,7 @@ class CreateTable(_CreateBase):
             typing_Sequence[ForeignKeyConstraint]
         ] = None,
         if_not_exists: bool = False,
-    ):
+    ) -> None:
         """Create a :class:`.CreateTable` construct.
 
         :param element: a :class:`_schema.Table` that's the subject
@@ -537,7 +546,7 @@ class CreateTable(_CreateBase):
         self.include_foreign_key_constraints = include_foreign_key_constraints
 
 
-class _DropView(_DropBase):
+class _DropView(_DropBase["Table"]):
     """Semi-public 'DROP VIEW' construct.
 
     Used by the test suite for dialect-agnostic drops of views.
@@ -549,7 +558,9 @@ class _DropView(_DropBase):
 
 
 class CreateConstraint(BaseDDLElement):
-    def __init__(self, element: Constraint):
+    element: Constraint
+
+    def __init__(self, element: Constraint) -> None:
         self.element = element
 
 
@@ -666,16 +677,18 @@ class CreateColumn(BaseDDLElement):
 
     __visit_name__ = "create_column"
 
-    def __init__(self, element):
+    element: Column[Any]
+
+    def __init__(self, element: Column[Any]) -> None:
         self.element = element
 
 
-class DropTable(_DropBase):
+class DropTable(_DropBase["Table"]):
     """Represent a DROP TABLE statement."""
 
     __visit_name__ = "drop_table"
 
-    def __init__(self, element: Table, if_exists: bool = False):
+    def __init__(self, element: Table, if_exists: bool = False) -> None:
         """Create a :class:`.DropTable` construct.
 
         :param element: a :class:`_schema.Table` that's the subject
@@ -690,30 +703,24 @@ class DropTable(_DropBase):
         super().__init__(element, if_exists=if_exists)
 
 
-class CreateSequence(_CreateBase):
+class CreateSequence(_CreateBase["Sequence"]):
     """Represent a CREATE SEQUENCE statement."""
 
     __visit_name__ = "create_sequence"
 
-    def __init__(self, element: Sequence, if_not_exists: bool = False):
-        super().__init__(element, if_not_exists=if_not_exists)
 
-
-class DropSequence(_DropBase):
+class DropSequence(_DropBase["Sequence"]):
     """Represent a DROP SEQUENCE statement."""
 
     __visit_name__ = "drop_sequence"
 
-    def __init__(self, element: Sequence, if_exists: bool = False):
-        super().__init__(element, if_exists=if_exists)
 
-
-class CreateIndex(_CreateBase):
+class CreateIndex(_CreateBase["Index"]):
     """Represent a CREATE INDEX statement."""
 
     __visit_name__ = "create_index"
 
-    def __init__(self, element, if_not_exists=False):
+    def __init__(self, element: Index, if_not_exists: bool = False) -> None:
         """Create a :class:`.Createindex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -727,12 +734,12 @@ class CreateIndex(_CreateBase):
         super().__init__(element, if_not_exists=if_not_exists)
 
 
-class DropIndex(_DropBase):
+class DropIndex(_DropBase["Index"]):
     """Represent a DROP INDEX statement."""
 
     __visit_name__ = "drop_index"
 
-    def __init__(self, element, if_exists=False):
+    def __init__(self, element: Index, if_exists: bool = False) -> None:
         """Create a :class:`.DropIndex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -746,7 +753,7 @@ class DropIndex(_DropBase):
         super().__init__(element, if_exists=if_exists)
 
 
-class AddConstraint(_CreateBase):
+class AddConstraint(_CreateBase["Constraint"]):
     """Represent an ALTER TABLE ADD CONSTRAINT statement."""
 
     __visit_name__ = "add_constraint"
@@ -756,7 +763,7 @@ class AddConstraint(_CreateBase):
         element: Constraint,
         *,
         isolate_from_table: bool = True,
-    ):
+    ) -> None:
         """Construct a new :class:`.AddConstraint` construct.
 
         :param element: a :class:`.Constraint` object
@@ -775,12 +782,10 @@ class AddConstraint(_CreateBase):
         super().__init__(element)
 
         if isolate_from_table:
-            element._create_rule = util.portable_instancemethod(
-                self._create_rule_disable
-            )
+            element._create_rule = self._create_rule_disable
 
 
-class DropConstraint(_DropBase):
+class DropConstraint(_DropBase["Constraint"]):
     """Represent an ALTER TABLE DROP CONSTRAINT statement."""
 
     __visit_name__ = "drop_constraint"
@@ -793,7 +798,7 @@ class DropConstraint(_DropBase):
         if_exists: bool = False,
         isolate_from_table: bool = True,
         **kw: Any,
-    ):
+    ) -> None:
         """Construct a new :class:`.DropConstraint` construct.
 
         :param element: a :class:`.Constraint` object
@@ -816,18 +821,16 @@ class DropConstraint(_DropBase):
         super().__init__(element, if_exists=if_exists, **kw)
 
         if isolate_from_table:
-            element._create_rule = util.portable_instancemethod(
-                self._create_rule_disable
-            )
+            element._create_rule = self._create_rule_disable
 
 
-class SetTableComment(_CreateDropBase):
+class SetTableComment(_CreateDropBase["Table"]):
     """Represent a COMMENT ON TABLE IS statement."""
 
     __visit_name__ = "set_table_comment"
 
 
-class DropTableComment(_CreateDropBase):
+class DropTableComment(_CreateDropBase["Table"]):
     """Represent a COMMENT ON TABLE '' statement.
 
     Note this varies a lot across database backends.
@@ -837,33 +840,34 @@ class DropTableComment(_CreateDropBase):
     __visit_name__ = "drop_table_comment"
 
 
-class SetColumnComment(_CreateDropBase):
+class SetColumnComment(_CreateDropBase["Column[Any]"]):
     """Represent a COMMENT ON COLUMN IS statement."""
 
     __visit_name__ = "set_column_comment"
 
 
-class DropColumnComment(_CreateDropBase):
+class DropColumnComment(_CreateDropBase["Column[Any]"]):
     """Represent a COMMENT ON COLUMN IS NULL statement."""
 
     __visit_name__ = "drop_column_comment"
 
 
-class SetConstraintComment(_CreateDropBase):
+class SetConstraintComment(_CreateDropBase["Constraint"]):
     """Represent a COMMENT ON CONSTRAINT IS statement."""
 
     __visit_name__ = "set_constraint_comment"
 
 
-class DropConstraintComment(_CreateDropBase):
+class DropConstraintComment(_CreateDropBase["Constraint"]):
     """Represent a COMMENT ON CONSTRAINT IS NULL statement."""
 
     __visit_name__ = "drop_constraint_comment"
 
 
 class InvokeDDLBase(SchemaVisitor):
-    def __init__(self, connection):
+    def __init__(self, connection, **kw):
         self.connection = connection
+        assert not kw, f"Unexpected keywords: {kw.keys()}"
 
     @contextlib.contextmanager
     def with_ddl_events(self, target, **kw):
@@ -903,12 +907,61 @@ class InvokeDropDDLBase(InvokeDDLBase):
         )
 
 
+class CheckFirst(Flag):
+    """Enumeration for the :paramref:`.MetaData.create_all.checkfirst`
+    parameter passed to methods like :meth:`.MetaData.create_all`,
+    :meth:`.MetaData.drop_all`, :meth:`.Table.create`, :meth:`.Table.drop` and
+    others.
+
+    This enumeration indicates what kinds of objects should be "checked"
+    with a separate query before emitting CREATE or DROP for that object.
+
+    Can use ``CheckFirst(bool_value)`` to convert from a boolean value.
+
+    .. versionadded:: 2.1
+
+    """
+
+    NONE = 0  # equivalent to False
+    """No items should be checked"""
+
+    # avoid 1 so that bool True doesn't match by value
+    TABLES = 2
+    """Check for tables"""
+
+    INDEXES = auto()
+    """Check for indexes"""
+
+    SEQUENCES = auto()
+    """Check for sequences"""
+
+    TYPES = auto()
+    """Check for custom datatypes that are created server-side
+
+    This is currently used by PostgreSQL.
+
+    """
+
+    ALL = TABLES | INDEXES | SEQUENCES | TYPES  # equivalent to True
+
+    @classmethod
+    def _missing_(cls, value: object) -> Any:
+        if isinstance(value, bool):
+            return cls.ALL if value else cls.NONE
+        return super()._missing_(value)
+
+
 class SchemaGenerator(InvokeCreateDDLBase):
     def __init__(
-        self, dialect, connection, checkfirst=False, tables=None, **kwargs
+        self,
+        dialect,
+        connection,
+        checkfirst=CheckFirst.NONE,
+        tables=None,
+        **kwargs,
     ):
         super().__init__(connection, **kwargs)
-        self.checkfirst = checkfirst
+        self.checkfirst = CheckFirst(checkfirst)
         self.tables = tables
         self.preparer = dialect.identifier_preparer
         self.dialect = dialect
@@ -919,19 +972,25 @@ class SchemaGenerator(InvokeCreateDDLBase):
         effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or not self.dialect.has_table(
-            self.connection, table.name, schema=effective_schema
+        return (
+            not self.checkfirst & CheckFirst.TABLES
+            or not self.dialect.has_table(
+                self.connection, table.name, schema=effective_schema
+            )
         )
 
     def _can_create_index(self, index):
         effective_schema = self.connection.schema_for_object(index.table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or not self.dialect.has_index(
-            self.connection,
-            index.table.name,
-            index.name,
-            schema=effective_schema,
+        return (
+            not self.checkfirst & CheckFirst.INDEXES
+            or not self.dialect.has_index(
+                self.connection,
+                index.table.name,
+                index.name,
+                schema=effective_schema,
+            )
         )
 
     def _can_create_sequence(self, sequence):
@@ -940,7 +999,7 @@ class SchemaGenerator(InvokeCreateDDLBase):
         return self.dialect.supports_sequences and (
             (not self.dialect.sequences_optional or not sequence.optional)
             and (
-                not self.checkfirst
+                not self.checkfirst & CheckFirst.SEQUENCES
                 or not self.dialect.has_sequence(
                     self.connection, sequence.name, schema=effective_schema
                 )
@@ -1059,10 +1118,15 @@ class SchemaGenerator(InvokeCreateDDLBase):
 
 class SchemaDropper(InvokeDropDDLBase):
     def __init__(
-        self, dialect, connection, checkfirst=False, tables=None, **kwargs
+        self,
+        dialect,
+        connection,
+        checkfirst=CheckFirst.NONE,
+        tables=None,
+        **kwargs,
     ):
         super().__init__(connection, **kwargs)
-        self.checkfirst = checkfirst
+        self.checkfirst = CheckFirst(checkfirst)
         self.tables = tables
         self.preparer = dialect.identifier_preparer
         self.dialect = dialect
@@ -1151,19 +1215,25 @@ class SchemaDropper(InvokeDropDDLBase):
         effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or self.dialect.has_table(
-            self.connection, table.name, schema=effective_schema
+        return (
+            not self.checkfirst & CheckFirst.TABLES
+            or self.dialect.has_table(
+                self.connection, table.name, schema=effective_schema
+            )
         )
 
     def _can_drop_index(self, index):
         effective_schema = self.connection.schema_for_object(index.table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or self.dialect.has_index(
-            self.connection,
-            index.table.name,
-            index.name,
-            schema=effective_schema,
+        return (
+            not self.checkfirst & CheckFirst.INDEXES
+            or self.dialect.has_index(
+                self.connection,
+                index.table.name,
+                index.name,
+                schema=effective_schema,
+            )
         )
 
     def _can_drop_sequence(self, sequence):
@@ -1171,7 +1241,7 @@ class SchemaDropper(InvokeDropDDLBase):
         return self.dialect.supports_sequences and (
             (not self.dialect.sequences_optional or not sequence.optional)
             and (
-                not self.checkfirst
+                not self.checkfirst & CheckFirst.SEQUENCES
                 or self.dialect.has_sequence(
                     self.connection, sequence.name, schema=effective_schema
                 )
@@ -1265,13 +1335,6 @@ def sort_tables(
         automatically return foreign key constraints in a separate
         collection when cycles are detected so that they may be applied
         to a schema separately.
-
-        .. versionchanged:: 1.3.17 - a warning is emitted when
-           :func:`_schema.sort_tables` cannot perform a proper sort due to
-           cyclical dependencies.  This will be an exception in a future
-           release.  Additionally, the sort will continue to return
-           other tables not involved in the cycle in dependency order
-           which was not the case previously.
 
     :param tables: a sequence of :class:`_schema.Table` objects.
 

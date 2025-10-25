@@ -1,0 +1,26 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 12496
+
+    Added new Core feature :func:`_sql.from_dml_column` that may be used in
+    expressions inside of :meth:`.UpdateBase.values` for INSERT or UPDATE; this
+    construct will copy whatever SQL expression is used for the given target
+    column in the statement to be used with additional columns. The construct
+    is mostly intended to be a helper with ORM :class:`.hybrid_property` within
+    DML hooks.
+
+.. change::
+    :tags: feature, orm
+    :tickets: 12496
+
+    Added new hybrid method :meth:`.hybrid_property.bulk_dml` which
+    works in a similar way as :meth:`.hybrid_property.update_expression` for
+    bulk ORM operations.  A user-defined class method can now populate a bulk
+    insert mapping dictionary using the desired hybrid mechanics.   New
+    documentation is added showing how both of these methods can be used
+    including in combination with the new :func:`_sql.from_dml_column`
+    construct.
+
+    .. seealso::
+
+        :ref:`change_12496`

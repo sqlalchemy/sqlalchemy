@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
 r"""
@@ -50,33 +49,10 @@ in Python and use them directly in SQLite queries as described here: :ref:`pysql
 Serializable isolation / Savepoints / Transactional DDL (asyncio version)
 -------------------------------------------------------------------------
 
-Similarly to pysqlite, aiosqlite does not support SAVEPOINT feature.
+A newly revised version of this important section is now available
+at the top level of the SQLAlchemy SQLite documentation, in the section
+:ref:`sqlite_transactions`.
 
-The solution is similar to :ref:`pysqlite_serializable`. This is achieved by the event listeners in async::
-
-    from sqlalchemy import create_engine, event
-    from sqlalchemy.ext.asyncio import create_async_engine
-
-    engine = create_async_engine("sqlite+aiosqlite:///myfile.db")
-
-
-    @event.listens_for(engine.sync_engine, "connect")
-    def do_connect(dbapi_connection, connection_record):
-        # disable aiosqlite's emitting of the BEGIN statement entirely.
-        # also stops it from emitting COMMIT before any DDL.
-        dbapi_connection.isolation_level = None
-
-
-    @event.listens_for(engine.sync_engine, "begin")
-    def do_begin(conn):
-        # emit our own BEGIN
-        conn.exec_driver_sql("BEGIN")
-
-.. warning:: When using the above recipe, it is advised to not use the
-   :paramref:`.Connection.execution_options.isolation_level` setting on
-   :class:`_engine.Connection` and :func:`_sa.create_engine`
-   with the SQLite driver,
-   as this function necessarily will also alter the ".isolation_level" setting.
 
 .. _aiosqlite_pooling:
 
@@ -101,17 +77,34 @@ based on the kind of SQLite database that's requested:
     :paramref:`_sa.create_engine.poolclass` parameter.
 
 """  # noqa
+from __future__ import annotations
 
 import asyncio
 from functools import partial
+from types import ModuleType
+from typing import Any
+from typing import cast
+from typing import NoReturn
+from typing import Optional
+from typing import TYPE_CHECKING
+from typing import Union
 
 from .base import SQLiteExecutionContext
 from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...util.concurrency import await_
+
+if TYPE_CHECKING:
+    from ...connectors.asyncio import AsyncIODBAPIConnection
+    from ...engine.interfaces import DBAPIConnection
+    from ...engine.interfaces import DBAPICursor
+    from ...engine.interfaces import DBAPIModule
+    from ...engine.url import URL
+    from ...pool.base import PoolProxiedConnection
 
 
 class AsyncAdapt_aiosqlite_cursor(AsyncAdapt_dbapi_cursor):
@@ -129,17 +122,19 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
     _ss_cursor_cls = AsyncAdapt_aiosqlite_ss_cursor
 
     @property
-    def isolation_level(self):
-        return self._connection.isolation_level
+    def isolation_level(self) -> Optional[str]:
+        return cast(str, self._connection.isolation_level)
 
     @isolation_level.setter
-    def isolation_level(self, value):
+    def isolation_level(self, value: Optional[str]) -> None:
         # aiosqlite's isolation_level setter works outside the Thread
         # that it's supposed to, necessitating setting check_same_thread=False.
         # for improved stability, we instead invent our own awaitable version
         # using aiosqlite's async queue directly.
 
-        def set_iso(connection, value):
+        def set_iso(
+            connection: AsyncAdapt_aiosqlite_connection, value: Optional[str]
+        ) -> None:
             connection.isolation_level = value
 
         function = partial(set_iso, self._connection._conn, value)
@@ -148,25 +143,25 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
         self._connection._tx.put_nowait((future, function))
 
         try:
-            return await_(future)
+            await_(future)
         except Exception as error:
             self._handle_exception(error)
 
-    def create_function(self, *args, **kw):
+    def create_function(self, *args: Any, **kw: Any) -> None:
         try:
             await_(self._connection.create_function(*args, **kw))
         except Exception as error:
             self._handle_exception(error)
 
-    def rollback(self):
+    def rollback(self) -> None:
         if self._connection._connection:
             super().rollback()
 
-    def commit(self):
+    def commit(self) -> None:
         if self._connection._connection:
             super().commit()
 
-    def close(self):
+    def close(self) -> None:
         try:
             await_(self._connection.close())
         except ValueError:
@@ -182,24 +177,28 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
         except Exception as error:
             self._handle_exception(error)
 
-    def _handle_exception(self, error):
+    @classmethod
+    def _handle_exception_no_connection(
+        cls, dbapi: Any, error: Exception
+    ) -> NoReturn:
         if isinstance(error, ValueError) and error.args[0].lower() in (
             "no active connection",
             "connection closed",
         ):
-            raise self.dbapi.sqlite.OperationalError(error.args[0]) from error
+            raise dbapi.sqlite.OperationalError(error.args[0]) from error
         else:
-            super()._handle_exception(error)
+            super()._handle_exception_no_connection(dbapi, error)
 
 
-class AsyncAdapt_aiosqlite_dbapi:
-    def __init__(self, aiosqlite, sqlite):
+class AsyncAdapt_aiosqlite_dbapi(AsyncAdapt_dbapi_module):
+    def __init__(self, aiosqlite: ModuleType, sqlite: ModuleType):
+        super().__init__(aiosqlite, dbapi_module=sqlite)
         self.aiosqlite = aiosqlite
         self.sqlite = sqlite
         self.paramstyle = "qmark"
         self._init_dbapi_attributes()
 
-    def _init_dbapi_attributes(self):
+    def _init_dbapi_attributes(self) -> None:
         for name in (
             "DatabaseError",
             "Error",
@@ -218,7 +217,7 @@ class AsyncAdapt_aiosqlite_dbapi:
         for name in ("Binary",):
             setattr(self, name, getattr(self.sqlite, name))
 
-    def connect(self, *arg, **kw):
+    def connect(self, *arg: Any, **kw: Any) -> AsyncAdapt_aiosqlite_connection:
         creator_fn = kw.pop("async_creator_fn", None)
         if creator_fn:
             connection = creator_fn(*arg, **kw)
@@ -234,7 +233,7 @@ class AsyncAdapt_aiosqlite_dbapi:
 
 
 class SQLiteExecutionContext_aiosqlite(SQLiteExecutionContext):
-    def create_server_side_cursor(self):
+    def create_server_side_cursor(self) -> DBAPICursor:
         return self._dbapi_connection.cursor(server_side=True)
 
 
@@ -249,19 +248,25 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
     execution_ctx_cls = SQLiteExecutionContext_aiosqlite
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> AsyncAdapt_aiosqlite_dbapi:
         return AsyncAdapt_aiosqlite_dbapi(
             __import__("aiosqlite"), __import__("sqlite3")
         )
 
     @classmethod
-    def get_pool_class(cls, url):
+    def get_pool_class(cls, url: URL) -> type[pool.Pool]:
         if cls._is_url_file_db(url):
             return pool.AsyncAdaptedQueuePool
         else:
             return pool.StaticPool
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self,
+        e: DBAPIModule.Error,
+        connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
+        cursor: Optional[DBAPICursor],
+    ) -> bool:
+        self.dbapi = cast("DBAPIModule", self.dbapi)
         if isinstance(e, self.dbapi.OperationalError):
             err_lower = str(e).lower()
             if (
@@ -272,8 +277,10 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
 
         return super().is_disconnect(e, connection, cursor)
 
-    def get_driver_connection(self, connection):
-        return connection._connection
+    def get_driver_connection(
+        self, connection: DBAPIConnection
+    ) -> AsyncIODBAPIConnection:
+        return connection._connection  # type: ignore[no-any-return]
 
 
 dialect = SQLiteDialect_aiosqlite

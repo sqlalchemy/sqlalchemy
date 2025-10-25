@@ -16,6 +16,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
@@ -32,7 +33,6 @@ from .visitors import prefix_anon_map
 from .. import util
 from ..inspection import inspect
 from ..util import HasMemoized
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from .elements import BindParameter
@@ -478,10 +478,10 @@ class CacheKey(NamedTuple):
         return repr((sql_str, param_tuple))
 
     def __eq__(self, other: Any) -> bool:
-        return bool(self.key == other.key)
+        return other is not None and bool(self.key == other.key)
 
     def __ne__(self, other: Any) -> bool:
-        return not (self.key == other.key)
+        return other is None or not (self.key == other.key)
 
     @classmethod
     def _diff_tuples(cls, left: CacheKey, right: CacheKey) -> str:
@@ -516,7 +516,7 @@ class CacheKey(NamedTuple):
                             e2,
                         )
             else:
-                pickup_index = stack.pop(-1)
+                stack.pop(-1)
                 break
 
     def _diff(self, other: CacheKey) -> str:
@@ -629,7 +629,7 @@ class _CacheKeyTraversal(HasTraversalDispatch):
 
     visit_propagate_attrs = PROPAGATE_ATTRS
 
-    def visit_with_context_options(
+    def visit_compile_state_funcs(
         self,
         attrname: str,
         obj: Any,

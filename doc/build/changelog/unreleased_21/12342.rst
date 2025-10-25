@@ -1,0 +1,7 @@
+.. change::
+    :tags: feature, postgresql
+    :tickets: 12342
+
+    Added syntax extension :func:`_postgresql.distinct_on` to build ``DISTINCT
+    ON`` clauses. The old api, that passed columns to
+    :meth:`_sql.Select.distinct`, is now deprecated.

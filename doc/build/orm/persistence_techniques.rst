@@ -67,12 +67,6 @@ On PostgreSQL, the above :class:`.Session` will emit the following INSERT:
     ((SELECT coalesce(max(foo.foopk) + %(max_1)s, %(coalesce_2)s) AS coalesce_1
     FROM foo), %(bar)s) RETURNING foo.foopk
 
-.. versionadded:: 1.3
-    SQL expressions can now be passed to a primary key column during an ORM
-    flush; if the database supports RETURNING, or if pysqlite is in use, the
-    ORM will be able to retrieve the server-generated value as the value
-    of the primary key attribute.
-
 .. _session_sql_expressions:
 
 Using SQL Expressions with Sessions

@@ -52,13 +52,13 @@ if TYPE_CHECKING:
     from .session import sessionmaker
     from .session import SessionTransaction
     from ..engine import Connection
-    from ..engine import CursorResult
     from ..engine import Engine
     from ..engine import Result
     from ..engine import Row
     from ..engine import RowMapping
     from ..engine.interfaces import _CoreAnyExecuteParams
     from ..engine.interfaces import _CoreSingleExecuteParams
+    from ..engine.interfaces import _ExecuteOptions
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.result import ScalarResult
     from ..sql._typing import _ColumnsClauseArgument
@@ -72,7 +72,6 @@ if TYPE_CHECKING:
     from ..sql._typing import _T7
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import Executable
-    from ..sql.dml import UpdateBase
     from ..sql.elements import ClauseElement
     from ..sql.roles import TypedColumnsClauseRole
     from ..sql.selectable import ForUpdateParameter
@@ -103,7 +102,7 @@ __all__ = ["scoped_session"]
     Session,
     ":class:`_orm.Session`",
     ":class:`_orm.scoping.scoped_session`",
-    classmethods=["close_all", "object_session", "identity_key"],
+    classmethods=["object_session", "identity_key"],
     methods=[
         "__contains__",
         "__iter__",
@@ -148,6 +147,7 @@ __all__ = ["scoped_session"]
         "autoflush",
         "no_autoflush",
         "info",
+        "execution_options",
     ],
 )
 class scoped_session(Generic[_S]):
@@ -694,7 +694,7 @@ class scoped_session(Generic[_S]):
 
             :meth:`.Session.delete` - main documentation on delete
 
-        .. versionadded: 2.1
+        .. versionadded:: 2.1
 
 
         """  # noqa: E501
@@ -712,18 +712,6 @@ class scoped_session(Generic[_S]):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> Result[Unpack[_Ts]]: ...
-
-    @overload
-    def execute(
-        self,
-        statement: UpdateBase,
-        params: Optional[_CoreAnyExecuteParams] = None,
-        *,
-        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
-    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     def execute(
@@ -787,6 +775,13 @@ class scoped_session(Generic[_S]):
          dictionary can provide a subset of the options that are accepted
          by :meth:`_engine.Connection.execution_options`, and may also
          provide additional options understood only in an ORM context.
+
+         The execution_options are passed along to methods like
+         :meth:`.Connection.execute` on :class:`.Connection` giving the
+         highest priority to execution_options that are passed to this
+         method explicitly, then the options that are present on the
+         statement object if any, and finally those options present
+         session-wide.
 
          .. seealso::
 
@@ -1078,7 +1073,7 @@ class scoped_session(Generic[_S]):
          Contents of this dictionary are passed to the
          :meth:`.Session.get_bind` method.
 
-         .. versionadded: 2.0.0rc1
+         .. versionadded:: 2.0.0rc1
 
         :return: The object instance, or ``None``.
 
@@ -1116,8 +1111,7 @@ class scoped_session(Generic[_S]):
             Proxied for the :class:`_orm.Session` class on
             behalf of the :class:`_orm.scoping.scoped_session` class.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query
-        selects no rows.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
         For a detailed documentation of the arguments see the
         method :meth:`.Session.get`.
@@ -1617,7 +1611,7 @@ class scoped_session(Generic[_S]):
 
             :meth:`.Session.merge` - main documentation on merge
 
-        .. versionadded: 2.1
+        .. versionadded:: 2.1
 
 
         """  # noqa: E501
@@ -2160,20 +2154,18 @@ class scoped_session(Generic[_S]):
 
         return self._proxied.info
 
-    @classmethod
-    def close_all(cls) -> None:
-        r"""Close *all* sessions in memory.
-
-        .. container:: class_bases
-
-            Proxied for the :class:`_orm.Session` class on
-            behalf of the :class:`_orm.scoping.scoped_session` class.
-
-        .. deprecated:: 1.3 The :meth:`.Session.close_all` method is deprecated and will be removed in a future release.  Please refer to :func:`.session.close_all_sessions`.
+    @property
+    def execution_options(self) -> _ExecuteOptions:
+        r"""Proxy for the :attr:`_orm.Session.execution_options` attribute
+        on behalf of the :class:`_orm.scoping.scoped_session` class.
 
         """  # noqa: E501
 
-        return Session.close_all()
+        return self._proxied.execution_options
+
+    @execution_options.setter
+    def execution_options(self, attr: _ExecuteOptions) -> None:
+        self._proxied.execution_options = attr
 
     @classmethod
     def object_session(cls, instance: object) -> Optional[Session]:

@@ -965,6 +965,7 @@ class PoolFirstConnectSyncTest(PoolTestBase):
             evt.connect()
 
         def checkout():
+            barrier.wait()
             for j in range(2):
                 c1 = pool.connect()
                 time.sleep(0.02)
@@ -979,6 +980,7 @@ class PoolFirstConnectSyncTest(PoolTestBase):
         # any of the connections get returned.   so first_connect()
         # sleeps for one second, then pings the mock.  the threads should
         # not have made it to the "checkout() event for that one second.
+        barrier = threading.Barrier(5)
         for i in range(5):
             th = threading.Thread(target=checkout)
             th.start()
@@ -1088,7 +1090,12 @@ class QueuePoolTest(PoolTestBase):
             c2 = p.connect()  # noqa
         # Python timing is not very accurate, the time diff should be very
         # close to 0.5s but we give 200ms of slack.
-        assert 0.3 <= time.time() - now <= 0.7, "Pool timeout not respected"
+
+        total = time.time() - now
+        assert 0.3 <= total <= 0.9, (
+            f"Pool timeout not respected, got {total} which "
+            "is not between .3 and .9 seconds"
+        )
 
     @testing.requires.threading_with_mock
     @testing.requires.timing_intensive
@@ -1110,6 +1117,7 @@ class QueuePoolTest(PoolTestBase):
         timeouts = []
 
         def checkout():
+            barrier.wait()
             for x in range(1):
                 now = time.time()
                 try:
@@ -1120,6 +1128,7 @@ class QueuePoolTest(PoolTestBase):
                 time.sleep(4)
                 c1.close()
 
+        barrier = threading.Barrier(10)
         threads = []
         for i in range(10):
             th = threading.Thread(target=checkout)
@@ -1247,14 +1256,14 @@ class QueuePoolTest(PoolTestBase):
         for t in threads:
             t.join(timeout=join_timeout)
         eq_(
-            dbapi.connect().operation.mock_calls,
-            [
-                call("success_one"),
-                call("success_two"),
-                call("overflow_two"),
-                call("overflow_three"),
-                call("overflow_one"),
-            ],
+            set(c.args[0] for c in dbapi.connect().operation.mock_calls),
+            {
+                "success_one",
+                "success_two",
+                "overflow_two",
+                "overflow_three",
+                "overflow_one",
+            },
         )
 
     @testing.requires.threading_with_mock

@@ -15,7 +15,9 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1584,6 +1586,46 @@ class SelfReferentialPostUpdateTest3(fixtures.MappedTest):
 
         p2.child = None
         session.flush()
+
+
+class PostUpdatePrefetchTest(fixtures.DeclarativeMappedTest):
+    """test #12748"""
+
+    run_setup_classes = "each"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        count = 0
+
+        def _counter():
+            nonlocal count
+            count += 1
+            return count
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = mapped_column(Integer, primary_key=True)
+
+            related = relationship("Related", post_update=True)
+
+        class Related(Base):
+            __tablename__ = "related"
+
+            id = mapped_column(Integer, primary_key=True)
+            parent_id = mapped_column(ForeignKey("parent.id"))
+            counter = mapped_column(Integer, onupdate=_counter)
+
+    def test_update_counter(self, connection):
+        Parent, Related = self.classes("Parent", "Related")
+
+        p1 = Parent(related=[Related(), Related(), Related()])
+        with Session(connection, expire_on_commit=False) as sess:
+            sess.add(p1)
+            sess.commit()
+
+        eq_([rel.counter for rel in p1.related], [1, 2, 3])
 
 
 class PostUpdateBatchingTest(fixtures.MappedTest):

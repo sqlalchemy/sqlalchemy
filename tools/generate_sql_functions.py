@@ -1,6 +1,4 @@
-"""Generate inline stubs for generic functions on func
-
-"""
+"""Generate inline stubs for generic functions on func"""
 
 # mypy: ignore-errors
 
@@ -10,6 +8,9 @@ import inspect
 import re
 from tempfile import NamedTemporaryFile
 import textwrap
+import typing
+
+import typing_extensions
 
 from sqlalchemy.sql.functions import _registry
 from sqlalchemy.sql.functions import ReturnTypeFromArgs
@@ -66,10 +67,10 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                             textwrap.indent(
                                 f"""
 
-# set ColumnElement[_T] as a separate overload, to appease mypy
-# which seems to not want to accept _T from _ColumnExpressionArgument.
-# this is even if all non-generic types are removed from it, so
-# reasons remain unclear for why this does not work
+# set ColumnElement[_T] as a separate overload, to appease
+# mypy which seems to not want to accept _T from
+# _ColumnExpressionArgument. Seems somewhat related to the covariant
+# _HasClauseElement as of mypy 1.15
 
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
@@ -89,16 +90,14 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 ) -> {fn_class.__name__}[_T]:
         ...
 
-
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _ColumnExpressionOrLiteralArgument[_T],
+    col: _T,
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
         ...
-
 
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
@@ -168,13 +167,25 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                     if issubclass(fn_class, ReturnTypeFromArgs):
                         count += 1
 
+                        # Would be ReturnTypeFromArgs
+                        (orig_base,) = typing_extensions.get_original_bases(
+                            fn_class
+                        )
+                        # Type parameter of ReturnTypeFromArgs
+                        (rtype,) = typing.get_args(orig_base)
+                        # The origin type, if rtype is a generic
+                        orig_type = typing.get_origin(rtype)
+                        if orig_type is not None:
+                            coltype = rf"{orig_type.__name__}[int]"
+                        else:
+                            coltype = "int"
+
                         buf.write(
                             textwrap.indent(
                                 rf"""
 stmt{count} = select(func.{key}(column('x', Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[.*int\]
-reveal_type(stmt{count})
+assert_type(stmt{count}, Select[{coltype}])
 
 """,
                                 indent,
@@ -187,8 +198,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}(column('x', String), ','))
 
-# EXPECTED_RE_TYPE: .*Select\[.*str\]
-reveal_type(stmt{count})
+assert_type(stmt{count}, Select[str])
 
 """,
                                 indent,
@@ -199,10 +209,10 @@ reveal_type(stmt{count})
                         fn_class.type, TypeEngine
                     ):
                         python_type = fn_class.type.python_type
-                        python_expr = rf".*{python_type.__name__}"
+                        python_expr = python_type.__name__
                         argspec = inspect.getfullargspec(fn_class)
                         if fn_class.__name__ == "next_value":
-                            args = "Sequence('x_seq')"
+                            args = "SqlAlchemySequence('x_seq')"
                         else:
                             args = ", ".join(
                                 'column("x")' for elem in argspec.args[1:]
@@ -214,8 +224,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}({args}))
 
-# EXPECTED_RE_TYPE: .*Select\[{python_expr}\]
-reveal_type(stmt{count})
+assert_type(stmt{count}, Select[{python_expr}])
 
 """,
                                 indent,

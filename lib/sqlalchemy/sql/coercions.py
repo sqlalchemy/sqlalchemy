@@ -19,6 +19,7 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -39,7 +40,6 @@ from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     # elements lambdas schema selectable are set by __init__
@@ -52,6 +52,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _DDLColumnArgument
     from ._typing import _DMLTableArgument
     from ._typing import _FromClauseArgument
+    from .base import SyntaxExtension
     from .dml import _DMLTableElement
     from .elements import BindParameter
     from .elements import ClauseElement
@@ -75,7 +76,7 @@ _StringOnlyR = TypeVar("_StringOnlyR", bound=roles.StringRole)
 _T = TypeVar("_T", bound=Any)
 
 
-def _is_literal(element):
+def _is_literal(element: Any) -> bool:
     """Return whether or not the element is a "literal" in the context
     of a SQL expression construct.
 
@@ -207,6 +208,14 @@ def expect(
     element: Any,
     **kw: Any,
 ) -> Union[ColumnElement[Any], TextClause]: ...
+
+
+@overload
+def expect(
+    role: Type[roles.SyntaxExtensionRole],
+    element: Any,
+    **kw: Any,
+) -> SyntaxExtension: ...
 
 
 @overload
@@ -843,7 +852,7 @@ class InElementImpl(RoleImpl):
         )
 
     @util.preload_module("sqlalchemy.sql.elements")
-    def _literal_coercion(self, element, *, expr, operator, **kw):
+    def _literal_coercion(self, element, *, expr, operator, **kw):  # type: ignore[override] # noqa: E501
         if util.is_non_string_iterable(element):
             non_literal_expressions: Dict[
                 Optional[_ColumnExpressionArgument[Any]],
@@ -924,6 +933,10 @@ class WhereHavingImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
 
     def _text_coercion(self, element, argname=None):
         return _no_text_coercion(element, argname)
+
+
+class SyntaxExtensionImpl(RoleImpl):
+    __slots__ = ()
 
 
 class StatementOptionImpl(_CoerceLiterals, RoleImpl):
@@ -1165,21 +1178,11 @@ class StatementImpl(_CoerceLiterals, RoleImpl):
         if resolved is not original_element and not isinstance(
             original_element, str
         ):
-            # use same method as Connection uses; this will later raise
-            # ObjectNotExecutableError
+            # use same method as Connection uses
             try:
                 original_element._execute_on_connection
-            except AttributeError:
-                util.warn_deprecated(
-                    "Object %r should not be used directly in a SQL statement "
-                    "context, such as passing to methods such as "
-                    "session.execute().  This usage will be disallowed in a "
-                    "future release.  "
-                    "Please use Core select() / update() / delete() etc. "
-                    "with Session.execute() and other statement execution "
-                    "methods." % original_element,
-                    "1.4",
-                )
+            except AttributeError as err:
+                raise exc.ObjectNotExecutableError(original_element) from err
 
         return resolved
 

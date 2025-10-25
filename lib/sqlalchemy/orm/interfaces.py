@@ -29,6 +29,7 @@ from typing import Dict
 from typing import Generic
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
@@ -44,6 +45,7 @@ from typing import Union
 from . import exc as orm_exc
 from . import path_registry
 from .base import _MappedAttribute as _MappedAttribute
+from .base import DONT_SET as DONT_SET  # noqa: F401
 from .base import EXT_CONTINUE as EXT_CONTINUE  # noqa: F401
 from .base import EXT_SKIP as EXT_SKIP  # noqa: F401
 from .base import EXT_STOP as EXT_STOP  # noqa: F401
@@ -88,7 +90,8 @@ if typing.TYPE_CHECKING:
     from .context import _ORMCompileState
     from .context import QueryContext
     from .decl_api import RegistryType
-    from .decl_base import _ClassScanMapperConfig
+    from .decl_base import _ClassScanAbstractConfig
+    from .decl_base import _DeclarativeMapperConfig
     from .loading import _PopulatorDict
     from .mapper import Mapper
     from .path_registry import _AbstractEntityRegistry
@@ -167,7 +170,7 @@ class _IntrospectsAnnotations:
 
     def declarative_scan(
         self,
-        decl_scan: _ClassScanMapperConfig,
+        decl_scan: _DeclarativeMapperConfig,
         registry: RegistryType,
         cls: Type[Any],
         originating_module: Optional[str],
@@ -193,6 +196,22 @@ class _IntrospectsAnnotations:
         )
 
 
+class _DataclassArguments(TypedDict):
+    """define arguments that can be passed to ORM Annotated Dataclass
+    class definitions.
+
+    """
+
+    init: Union[_NoArg, bool]
+    repr: Union[_NoArg, bool]
+    eq: Union[_NoArg, bool]
+    order: Union[_NoArg, bool]
+    unsafe_hash: Union[_NoArg, bool]
+    match_args: Union[_NoArg, bool]
+    kw_only: Union[_NoArg, bool]
+    dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]]
+
+
 class _AttributeOptions(NamedTuple):
     """define Python-local attribute behavior options common to all
     :class:`.MapperProperty` objects.
@@ -210,8 +229,11 @@ class _AttributeOptions(NamedTuple):
     dataclasses_compare: Union[_NoArg, bool]
     dataclasses_kw_only: Union[_NoArg, bool]
     dataclasses_hash: Union[_NoArg, bool, None]
+    dataclasses_dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None]
 
-    def _as_dataclass_field(self, key: str) -> Any:
+    def _as_dataclass_field(
+        self, key: str, dataclass_setup_arguments: _DataclassArguments
+    ) -> Any:
         """Return a ``dataclasses.Field`` object given these arguments."""
 
         kw: Dict[str, Any] = {}
@@ -229,6 +251,8 @@ class _AttributeOptions(NamedTuple):
             kw["kw_only"] = self.dataclasses_kw_only
         if self.dataclasses_hash is not _NoArg.NO_ARG:
             kw["hash"] = self.dataclasses_hash
+        if self.dataclasses_dataclass_metadata is not _NoArg.NO_ARG:
+            kw["metadata"] = self.dataclasses_dataclass_metadata
 
         if "default" in kw and callable(kw["default"]):
             # callable defaults are ambiguous. deprecate them in favour of
@@ -263,13 +287,16 @@ class _AttributeOptions(NamedTuple):
     @classmethod
     def _get_arguments_for_make_dataclass(
         cls,
+        decl_scan: _ClassScanAbstractConfig,
         key: str,
         annotation: _AnnotationScanType,
         mapped_container: Optional[Any],
-        elem: _T,
+        elem: Any,
+        dataclass_setup_arguments: _DataclassArguments,
+        enable_descriptor_defaults: bool,
     ) -> Union[
         Tuple[str, _AnnotationScanType],
-        Tuple[str, _AnnotationScanType, dataclasses.Field[Any]],
+        Tuple[str, _AnnotationScanType, dataclasses.Field[Any] | None],
     ]:
         """given attribute key, annotation, and value from a class, return
         the argument tuple we would pass to dataclasses.make_dataclass()
@@ -277,7 +304,15 @@ class _AttributeOptions(NamedTuple):
 
         """
         if isinstance(elem, _DCAttributeOptions):
-            dc_field = elem._attribute_options._as_dataclass_field(key)
+            attribute_options = elem._get_dataclass_setup_options(
+                decl_scan,
+                key,
+                dataclass_setup_arguments,
+                enable_descriptor_defaults,
+            )
+            dc_field = attribute_options._as_dataclass_field(
+                key, dataclass_setup_arguments
+            )
 
             return (key, annotation, dc_field)
         elif elem is not _NoArg.NO_ARG:
@@ -285,14 +320,14 @@ class _AttributeOptions(NamedTuple):
             return (key, annotation, elem)
         elif mapped_container is not None:
             # it's Mapped[], but there's no "element", which means declarative
-            # did not actually do anything for this field.  this shouldn't
-            # happen.
-            # previously, this would occur because _scan_attributes would
-            # skip a field that's on an already mapped superclass, but it
-            # would still include it in the annotations, leading
-            # to issue #8718
-
-            assert False, "Mapped[] received without a mapping declaration"
+            # did not actually do anything for this field.
+            # prior to 2.1, this would never happen and we had a false
+            # assertion here, because the mapper _scan_attributes always
+            # generates a MappedColumn when one is not present
+            # (see issue #8718).  However, in 2.1 we handle this case for the
+            # non-mapped dataclass use case without the need to generate
+            # MappedColumn that gets thrown away anyway.
+            return (key, annotation)
 
         else:
             # plain dataclass field, not mapped.  Is only possible
@@ -309,10 +344,12 @@ _DEFAULT_ATTRIBUTE_OPTIONS = _AttributeOptions(
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
+    _NoArg.NO_ARG,
 )
 
 _DEFAULT_READONLY_ATTRIBUTE_OPTIONS = _AttributeOptions(
     False,
+    _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
@@ -343,6 +380,63 @@ class _DCAttributeOptions:
     """
 
     _has_dataclass_arguments: bool
+
+    def _get_dataclass_setup_options(
+        self,
+        decl_scan: _ClassScanAbstractConfig,
+        key: str,
+        dataclass_setup_arguments: _DataclassArguments,
+        enable_descriptor_defaults: bool,
+    ) -> _AttributeOptions:
+        return self._attribute_options
+
+
+class _DataclassDefaultsDontSet(_DCAttributeOptions):
+    __slots__ = ()
+
+    _default_scalar_value: Any
+
+    _disable_dataclass_default_factory: bool = False
+
+    def _get_dataclass_setup_options(
+        self,
+        decl_scan: _ClassScanAbstractConfig,
+        key: str,
+        dataclass_setup_arguments: _DataclassArguments,
+        enable_descriptor_defaults: bool,
+    ) -> _AttributeOptions:
+
+        disable_descriptor_defaults = (
+            not enable_descriptor_defaults
+            or getattr(decl_scan.cls, "_sa_disable_descriptor_defaults", False)
+        )
+
+        if disable_descriptor_defaults:
+            return self._attribute_options
+
+        dataclasses_default = self._attribute_options.dataclasses_default
+        dataclasses_default_factory = (
+            self._attribute_options.dataclasses_default_factory
+        )
+
+        if dataclasses_default is not _NoArg.NO_ARG and not callable(
+            dataclasses_default
+        ):
+            self._default_scalar_value = (
+                self._attribute_options.dataclasses_default
+            )
+            return self._attribute_options._replace(
+                dataclasses_default=DONT_SET,
+            )
+        elif (
+            self._disable_dataclass_default_factory
+            and dataclasses_default_factory is not _NoArg.NO_ARG
+        ):
+            return self._attribute_options._replace(
+                dataclasses_default=DONT_SET,
+                dataclasses_default_factory=_NoArg.NO_ARG,
+            )
+        return self._attribute_options
 
 
 class _MapsColumns(_DCAttributeOptions, _MappedAttribute[_T]):
@@ -811,6 +905,11 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         return [(cast("_DMLColumnArgument", self.__clause_element__()), value)]
 
+    def _bulk_dml_setter(self, key: str) -> Optional[Callable[..., Any]]:
+        """return a callable that will process a bulk INSERT value"""
+
+        return None
+
     def adapt_to_entity(
         self, adapt_to_entity: AliasedInsp[Any]
     ) -> PropComparator[_T_co]:
@@ -1109,10 +1208,7 @@ class StrategizedProperty(MapperProperty[_T]):
         self.strategy = self._get_strategy(self.strategy_key)
 
     def post_instrument_class(self, mapper: Mapper[Any]) -> None:
-        if (
-            not self.parent.non_primary
-            and not mapper.class_manager._attr_has_impl(self.key)
-        ):
+        if not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
 
     _all_strategies: collections.defaultdict[

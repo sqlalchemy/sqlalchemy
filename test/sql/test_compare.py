@@ -9,6 +9,7 @@ from sqlalchemy import case
 from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import DateTime
 from sqlalchemy import dialects
 from sqlalchemy import exists
 from sqlalchemy import extract
@@ -30,12 +31,12 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import values
-from sqlalchemy.dialects import mysql
-from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import Sequence
+from sqlalchemy.sql import aggregate_order_by
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import dml
+from sqlalchemy.sql import Executable
 from sqlalchemy.sql import False_
 from sqlalchemy.sql import func
 from sqlalchemy.sql import operators
@@ -44,17 +45,24 @@ from sqlalchemy.sql import True_
 from sqlalchemy.sql import type_coerce
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.annotation import Annotated
+from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.base import HasCacheKey
 from sqlalchemy.sql.base import SingletonConstant
+from sqlalchemy.sql.base import SyntaxExtension
 from sqlalchemy.sql.elements import _label_reference
 from sqlalchemy.sql.elements import _textual_label_reference
 from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.sql.elements import ClauseList
 from sqlalchemy.sql.elements import CollationClause
+from sqlalchemy.sql.elements import DMLTargetCopy
+from sqlalchemy.sql.elements import DQLDMLClauseElement
+from sqlalchemy.sql.elements import ElementList
 from sqlalchemy.sql.elements import Immutable
 from sqlalchemy.sql.elements import Null
+from sqlalchemy.sql.elements import OrderByList
 from sqlalchemy.sql.elements import Slice
+from sqlalchemy.sql.elements import TypeClause
 from sqlalchemy.sql.elements import UnaryExpression
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.functions import GenericFunction
@@ -189,6 +197,22 @@ class CoreFixtures:
         lambda: (
             _label_reference(table_a.c.a.desc()),
             _label_reference(table_a.c.a.asc()),
+        ),
+        lambda: (
+            TypeClause(String(50)),
+            TypeClause(DateTime()),
+        ),
+        lambda: (
+            table_a.c.a,
+            ElementList([table_a.c.a]),
+            ElementList([table_a.c.a, table_a.c.b]),
+        ),
+        lambda: (
+            table_a.c.a,
+            OrderByList([table_a.c.a]),
+            OrderByList(
+                [table_a.c.a, OrderByList([table_a.c.b, table_b.c.a])]
+            ),
         ),
         lambda: (_textual_label_reference("a"), _textual_label_reference("b")),
         lambda: (
@@ -354,6 +378,10 @@ class CoreFixtures:
             bindparam("x", type_=String),
             bindparam(None),
         ),
+        lambda: (
+            DMLTargetCopy(table_a.c.a),
+            DMLTargetCopy(table_a.c.b),
+        ),
         lambda: (_OffsetLimitParam("x"), _OffsetLimitParam("y")),
         lambda: (func.foo(), func.foo(5), func.bar()),
         lambda: (
@@ -399,6 +427,24 @@ class CoreFixtures:
             func.json_to_recordset("{foo}").column_valued(),
             func.json_to_recordset("{foo}").scalar_table_valued("foo"),
         ),
+        lambda: (
+            aggregate_order_by(column("a"), column("a")),
+            aggregate_order_by(column("a"), column("b")),
+            aggregate_order_by(column("a"), column("a").desc()),
+            aggregate_order_by(column("a"), column("a").nulls_first()),
+            aggregate_order_by(column("a"), column("a").desc().nulls_first()),
+            aggregate_order_by(column("a", Integer), column("b")),
+            aggregate_order_by(column("a"), column("b"), column("c")),
+            aggregate_order_by(column("a"), column("c"), column("b")),
+            aggregate_order_by(column("a"), column("b").desc(), column("c")),
+            aggregate_order_by(
+                column("a"), column("b").nulls_first(), column("c")
+            ),
+            aggregate_order_by(
+                column("a"), column("b").desc().nulls_first(), column("c")
+            ),
+            aggregate_order_by(column("a", Integer), column("a"), column("b")),
+        ),
         lambda: (table_a.table_valued(), table_b.table_valued()),
         lambda: (True_(), False_()),
         lambda: (Null(),),
@@ -440,6 +486,7 @@ class CoreFixtures:
             func.row_number().over(order_by=table_a.c.a, range_=(0, 10)),
             func.row_number().over(order_by=table_a.c.a, range_=(None, 10)),
             func.row_number().over(order_by=table_a.c.a, rows=(None, 20)),
+            func.row_number().over(order_by=table_a.c.a, groups=(None, 20)),
             func.row_number().over(order_by=table_a.c.b),
             func.row_number().over(
                 order_by=table_a.c.a, partition_by=table_a.c.b
@@ -536,6 +583,7 @@ class CoreFixtures:
             select(table_a.c.a).fetch(2, percent=True),
             select(table_a.c.a).fetch(2, with_ties=True),
             select(table_a.c.a).fetch(2, with_ties=True, percent=True),
+            select(table_a.c.a).fetch(2, oracle_fetch_approximate=True),
             select(table_a.c.a).fetch(2).offset(3),
             select(table_a.c.a).fetch(2).offset(5),
             select(table_a.c.a).limit(2).offset(5),
@@ -987,15 +1035,15 @@ class CoreFixtures:
 
     def _statements_w_context_options_fixtures():
         return [
-            select(table_a)._add_context_option(opt1, True),
-            select(table_a)._add_context_option(opt1, 5),
+            select(table_a)._add_compile_state_func(opt1, True),
+            select(table_a)._add_compile_state_func(opt1, 5),
             select(table_a)
-            ._add_context_option(opt1, True)
-            ._add_context_option(opt2, True),
+            ._add_compile_state_func(opt1, True)
+            ._add_compile_state_func(opt2, True),
             select(table_a)
-            ._add_context_option(opt1, True)
-            ._add_context_option(opt2, 5),
-            select(table_a)._add_context_option(opt3, True),
+            ._add_compile_state_func(opt1, True)
+            ._add_compile_state_func(opt2, 5),
+            select(table_a)._add_compile_state_func(opt3, True),
         ]
 
     fixtures.append(_statements_w_context_options_fixtures)
@@ -1190,6 +1238,14 @@ class CoreFixtures:
                 order_by=table_a.c.a,
                 range_=(random.randint(50, 60), None),
             ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                groups=(random.randint(50, 60), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                groups=(random.randint(-40, -20), random.randint(60, 70)),
+            ),
         )
 
     dont_compare_values_fixtures.append(_numeric_agnostic_window_functions)
@@ -1212,17 +1268,7 @@ class CoreFixtures:
 
 
 class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
-    # we are slightly breaking the policy of not having external dialect
-    # stuff in here, but use pg/mysql as test cases to ensure that these
-    # objects don't report an inaccurate cache key, which is dependent
-    # on the base insert sending out _post_values_clause and the caching
-    # system properly recognizing these constructs as not cacheable
-
     @testing.combinations(
-        postgresql.insert(table_a).on_conflict_do_update(
-            index_elements=[table_a.c.a], set_={"name": "foo"}
-        ),
-        mysql.insert(table_a).on_duplicate_key_update(updated_once=None),
         table_a.insert().values(  # multivalues doesn't cache
             [
                 {"name": "some name"},
@@ -1289,7 +1335,7 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
             # a typed column expression, so this is fine
             return (column("x", Integer).in_(elements),)
 
-        self._run_cache_key_fixture(fixture, False)
+        self._run_cache_key_fixture(fixture, compare_values=False)
 
     def test_cache_key(self):
         for fixtures_, compare_values in [
@@ -1298,7 +1344,9 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
             (self.type_cache_key_fixtures, False),
         ]:
             for fixture in fixtures_:
-                self._run_cache_key_fixture(fixture, compare_values)
+                self._run_cache_key_fixture(
+                    fixture, compare_values=compare_values
+                )
 
     def test_cache_key_equal(self):
         for fixture in self.equal_fixtures:
@@ -1313,7 +1361,7 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
 
         self._run_cache_key_fixture(
             fixture,
-            True,
+            compare_values=True,
         )
 
     def test_bindparam_subclass_nocache(self):
@@ -1336,7 +1384,7 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
                 _literal_bindparam(None),
             )
 
-        self._run_cache_key_fixture(fixture, True)
+        self._run_cache_key_fixture(fixture, compare_values=True)
 
     def test_cache_key_unknown_traverse(self):
         class Foobar1(ClauseElement):
@@ -1475,6 +1523,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
             "modifiers",
         },
         "next_value": {"sequence"},
+        "array": ({"type", "clauses"}),
     }
 
     ignore_keys = {
@@ -1490,10 +1539,6 @@ class HasCacheKeySubclass(fixtures.TestBase):
         super_traverse = {}
         # ignore_super = self.ignore_super.get(cls.__name__, set())
         for s in cls.mro()[1:]:
-            # if s.__name__ in ignore_super:
-            #     continue
-            if s.__name__ == "Executable":
-                continue
             for attr in s.__dict__:
                 if not attr.endswith("_traverse_internals"):
                     continue
@@ -1548,7 +1593,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
         ),
         "FromStatement": (
             {"_raw_columns", "_with_options", "element"}
-            | {"_propagate_attrs", "_with_context_options"},
+            | {"_propagate_attrs", "_compile_state_funcs"},
             {"element", "entities"},
         ),
         "FunctionAsBinary": (
@@ -1604,7 +1649,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
                 "_hints",
                 "_independent_ctes",
                 "_distinct_on",
-                "_with_context_options",
+                "_compile_state_funcs",
                 "_setup_joins",
                 "_suffixes",
                 "_memoized_select_entities",
@@ -1619,6 +1664,10 @@ class HasCacheKeySubclass(fixtures.TestBase):
                 "_annotations",
                 "_fetch_clause_options",
                 "_from_obj",
+                "_post_select_clause",
+                "_post_body_clause",
+                "_post_criteria_clause",
+                "_pre_columns_clause",
             },
             {"entities"},
         ),
@@ -1641,7 +1690,14 @@ class HasCacheKeySubclass(fixtures.TestBase):
             | {"type_", "modifier", "element"},
         ),
         "Values": (
-            {"_column_args", "literal_binds", "name", "_data"},
+            {
+                "_column_args",
+                "literal_binds",
+                "name",
+                "_data",
+                "_independent_ctes",
+                "_independent_ctes_opts",
+            },
             {"columns", "name", "literal_binds"},
         ),
         "_FrameClause": (
@@ -1653,12 +1709,20 @@ class HasCacheKeySubclass(fixtures.TestBase):
             {"_with_options", "_raw_columns", "_setup_joins"},
             {"args"},
         ),
+        "array": ({"type", "clauses"}, {"clauses", "type_"}),
         "next_value": ({"sequence"}, {"seq"}),
     }
 
     @testing.combinations(
         *all_hascachekey_subclasses(
-            ignore_subclasses=[Annotated, NoInit, SingletonConstant]
+            ignore_subclasses=[
+                Annotated,
+                NoInit,
+                SingletonConstant,
+                SyntaxExtension,
+                DialectKWArgs,
+                Executable,
+            ]
         )
     )
     def test_init_args_in_traversal(self, cls: type):
@@ -1705,7 +1769,15 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
             if "orm" not in cls.__module__
             and "compiler" not in cls.__module__
             and "dialects" not in cls.__module__
-            and issubclass(cls, (ColumnElement, Selectable, LambdaElement))
+            and issubclass(
+                cls,
+                (
+                    ColumnElement,
+                    Selectable,
+                    LambdaElement,
+                    DQLDMLClauseElement,
+                ),
+            )
         )
 
         for fixture in self.fixtures + self.dont_compare_values_fixtures:

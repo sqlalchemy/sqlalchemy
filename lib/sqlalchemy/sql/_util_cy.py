@@ -8,11 +8,10 @@
 from __future__ import annotations
 
 from typing import Dict
+from typing import Literal
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
-
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .cache_key import CacheConst
@@ -30,7 +29,7 @@ except ModuleNotFoundError:
 
 def _is_compiled() -> bool:
     """Utility function to indicate if this module is compiled or not."""
-    return cython.compiled  # type: ignore[no-any-return]
+    return cython.compiled  # type: ignore[no-any-return,unused-ignore]
 
 
 # END GENERATED CYTHON IMPORT

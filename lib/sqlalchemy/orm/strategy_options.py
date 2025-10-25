@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""
-
-"""
+""" """
 
 from __future__ import annotations
 
@@ -19,6 +17,7 @@ from typing import cast
 from typing import Dict
 from typing import Final
 from typing import Iterable
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -54,7 +53,6 @@ from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
 from ..sql.base import _generative
-from ..util.typing import Literal
 from ..util.typing import Self
 
 _RELATIONSHIP_TOKEN: Final[Literal["relationship"]] = "relationship"
@@ -226,7 +224,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         """
         cloned = self._set_column_strategy(
-            attrs,
+            _expand_column_strategy_attrs(attrs),
             {"deferred": False, "instrument": True},
         )
 
@@ -639,7 +637,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         strategy = {"deferred": True, "instrument": True}
         if raiseload:
             strategy["raiseload"] = True
-        return self._set_column_strategy((key,), strategy)
+        return self._set_column_strategy(
+            _expand_column_strategy_attrs((key,)), strategy
+        )
 
     def undefer(self, key: _AttrType) -> Self:
         r"""Indicate that the given column-oriented attribute should be
@@ -678,7 +678,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         """  # noqa: E501
         return self._set_column_strategy(
-            (key,), {"deferred": False, "instrument": True}
+            _expand_column_strategy_attrs((key,)),
+            {"deferred": False, "instrument": True},
         )
 
     def undefer_group(self, name: str) -> Self:
@@ -732,8 +733,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
                 with_expression(SomeClass.x_y_expr, SomeClass.x + SomeClass.y)
             )
 
-        .. versionadded:: 1.2
-
         :param key: Attribute to be populated
 
         :param expr: SQL expression to be applied to the attribute.
@@ -760,8 +759,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         This uses an additional SELECT with IN against all matched primary
         key values, and is the per-query analogue to the ``"selectin"``
         setting on the :paramref:`.mapper.polymorphic_load` parameter.
-
-        .. versionadded:: 1.2
 
         .. seealso::
 
@@ -1104,7 +1101,6 @@ class Load(_AbstractLoad):
         """
         path = self.path
 
-        ezero = None
         for ent in mapper_entities:
             ezero = ent.entity_zero
             if ezero and orm_util._entity_corresponds_to(
@@ -1207,8 +1203,6 @@ class Load(_AbstractLoad):
         :param \*opts: A series of loader option objects (ultimately
          :class:`_orm.Load` objects) which should be applied to the path
          specified by this :class:`_orm.Load` object.
-
-        .. versionadded:: 1.3.6
 
         .. seealso::
 
@@ -2412,6 +2406,23 @@ See :func:`_orm.{fn.__name__}` for usage examples.
     return fn
 
 
+def _expand_column_strategy_attrs(
+    attrs: Tuple[_AttrType, ...],
+) -> Tuple[_AttrType, ...]:
+    return cast(
+        "Tuple[_AttrType, ...]",
+        tuple(
+            a
+            for attr in attrs
+            for a in (
+                cast("QueryableAttribute[Any]", attr)._column_strategy_attrs()
+                if hasattr(attr, "_column_strategy_attrs")
+                else (attr,)
+            )
+        ),
+    )
+
+
 # standalone functions follow.  docstrings are filled in
 # by the ``@loader_unbound_fn`` decorator.
 
@@ -2425,6 +2436,7 @@ def contains_eager(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
 def load_only(*attrs: _AttrType, raiseload: bool = False) -> _AbstractLoad:
     # TODO: attrs against different classes.  we likely have to
     # add some extra state to Load of some kind
+    attrs = _expand_column_strategy_attrs(attrs)
     _, lead_element, _ = _parse_attr_argument(attrs[0])
     return Load(lead_element).load_only(*attrs, raiseload=raiseload)
 
@@ -2478,35 +2490,18 @@ def defaultload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def defer(
-    key: _AttrType, *addl_attrs: _AttrType, raiseload: bool = False
-) -> _AbstractLoad:
-    if addl_attrs:
-        util.warn_deprecated(
-            "The *addl_attrs on orm.defer is deprecated.  Please use "
-            "method chaining in conjunction with defaultload() to "
-            "indicate a path.",
-            version="1.3",
-        )
-
+def defer(key: _AttrType, *, raiseload: bool = False) -> _AbstractLoad:
     if raiseload:
         kw = {"raiseload": raiseload}
     else:
         kw = {}
 
-    return _generate_from_keys(Load.defer, (key,) + addl_attrs, False, kw)
+    return _generate_from_keys(Load.defer, (key,), False, kw)
 
 
 @loader_unbound_fn
-def undefer(key: _AttrType, *addl_attrs: _AttrType) -> _AbstractLoad:
-    if addl_attrs:
-        util.warn_deprecated(
-            "The *addl_attrs on orm.undefer is deprecated.  Please use "
-            "method chaining in conjunction with defaultload() to "
-            "indicate a path.",
-            version="1.3",
-        )
-    return _generate_from_keys(Load.undefer, (key,) + addl_attrs, False, {})
+def undefer(key: _AttrType) -> _AbstractLoad:
+    return _generate_from_keys(Load.undefer, (key,), False, {})
 
 
 @loader_unbound_fn

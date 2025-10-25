@@ -55,7 +55,7 @@ SQLAlchemy Documentation
 
   .. container::
 
-    Users upgrading to SQLAlchemy version 2.0 will want to read:
+    Users upgrading to SQLAlchemy version 2.1 will want to read:
 
     * :doc:`What's New in SQLAlchemy 2.1? <changelog/migration_21>` - New
       features and behaviors in version 2.1

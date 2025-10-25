@@ -66,6 +66,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Amazon Athena                                  | pyathena_                             |
 +------------------------------------------------+---------------------------------------+
+| Amazon Aurora DSQL                             | aurora-dsql-sqlalchemy_               |
++------------------------------------------------+---------------------------------------+
 | Amazon Redshift (via psycopg2)                 | sqlalchemy-redshift_                  |
 +------------------------------------------------+---------------------------------------+
 | Apache Drill                                   | sqlalchemy-drill_                     |
@@ -85,6 +87,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 | Databend                                       | databend-sqlalchemy_                  |
 +------------------------------------------------+---------------------------------------+
 | Databricks                                     | databricks_                           |
++------------------------------------------------+---------------------------------------+
+| Denodo                                         | denodo-sqlalchemy_                    |
 +------------------------------------------------+---------------------------------------+
 | EXASolution                                    | sqlalchemy_exasol_                    |
 +------------------------------------------------+---------------------------------------+
@@ -118,13 +122,15 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | MonetDB                                        | sqlalchemy-monetdb_                   |
 +------------------------------------------------+---------------------------------------+
+| OceanBase                                      | oceanbase-sqlalchemy_                 |
++------------------------------------------------+---------------------------------------+
 | OpenGauss                                      | openGauss-sqlalchemy_                 |
 +------------------------------------------------+---------------------------------------+
 | Rockset                                        | rockset-sqlalchemy_                   |
 +------------------------------------------------+---------------------------------------+
 | SAP ASE (fork of former Sybase dialect)        | sqlalchemy-sybase_                    |
 +------------------------------------------------+---------------------------------------+
-| SAP Hana [1]_                                  | sqlalchemy-hana_                      |
+| SAP HANA                                       | sqlalchemy-hana_                      |
 +------------------------------------------------+---------------------------------------+
 | SAP Sybase SQL Anywhere                        | sqlalchemy-sqlany_                    |
 +------------------------------------------------+---------------------------------------+
@@ -141,7 +147,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 
 .. [1] Supports version 1.3.x only at the moment.
 
-.. _openGauss-sqlalchemy: https://gitee.com/opengauss/openGauss-sqlalchemy
+.. _openGauss-sqlalchemy: https://pypi.org/project/opengauss-sqlalchemy
 .. _rockset-sqlalchemy: https://pypi.org/project/rockset-sqlalchemy
 .. _sqlalchemy-ingres: https://github.com/ActianCorp/sqlalchemy-ingres
 .. _nzalchemy: https://pypi.org/project/nzalchemy/
@@ -176,6 +182,9 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-hsqldb: https://pypi.org/project/sqlalchemy-hsqldb/
 .. _databricks: https://docs.databricks.com/en/dev-tools/sqlalchemy.html
 .. _clickhouse-sqlalchemy: https://pypi.org/project/clickhouse-sqlalchemy/
+.. _oceanbase-sqlalchemy: https://github.com/oceanbase/ecology-plugins/tree/main/oceanbase-sqlalchemy-plugin
 .. _sqlalchemy-kinetica: https://github.com/kineticadb/sqlalchemy-kinetica/
 .. _sqlalchemy-tidb: https://github.com/pingcap/sqlalchemy-tidb
 .. _ydb-sqlalchemy: https://github.com/ydb-platform/ydb-sqlalchemy/
+.. _denodo-sqlalchemy: https://pypi.org/project/denodo-sqlalchemy/
+.. _aurora-dsql-sqlalchemy: https://pypi.org/project/aurora-dsql-sqlalchemy/

@@ -14,6 +14,7 @@ PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
+AUTOBUILDSPHINXOPTS = -T .
 
 .PHONY: help clean html autobuild dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest dist-html site-mako gettext
 
@@ -48,7 +49,7 @@ html:
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
 autobuild:
-	$(AUTOBUILD) $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	$(AUTOBUILD) $(AUTOBUILDSPHINXOPTS) $(BUILDDIR)/html
 
 gettext:
 	$(SPHINXBUILD) -b gettext $(I18NSPHINXOPTS) $(BUILDDIR)/locale

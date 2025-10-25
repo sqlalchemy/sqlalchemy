@@ -5,13 +5,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Compatibility namespace for sqlalchemy.sql.types.
-
-"""
+"""Compatibility namespace for sqlalchemy.sql.types."""
 
 
 from __future__ import annotations
 
+from .sql.operators import OperatorClass as OperatorClass
 from .sql.sqltypes import _Binary as _Binary
 from .sql.sqltypes import ARRAY as ARRAY
 from .sql.sqltypes import BIGINT as BIGINT

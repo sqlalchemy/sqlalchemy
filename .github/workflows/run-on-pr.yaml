@@ -25,8 +25,10 @@ jobs:
         os:
           - "ubuntu-22.04"
         python-version:
-          - "3.12"
+          - "3.13"
+          - "3.14"
         build-type:
+          - "cext-greenlet"
           - "cext"
           - "nocext"
         architecture:
@@ -48,25 +50,25 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
+          pip install --upgrade nox setuptools
           pip list
 
       - name: Run tests
-        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
+        run: nox -v -s github-${{ matrix.build-type }} -- ${{ matrix.pytest-args }}
 
-  run-tox:
-    name: ${{ matrix.tox-env }}-${{ matrix.python-version }}
+  run-nox:
+    name: ${{ matrix.nox-env }}-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os:
           - "ubuntu-22.04"
         python-version:
-          - "3.12"
-        tox-env:
+          - "3.14"
+        nox-env:
           - mypy
-          - lint
           - pep484
+          - pep8
 
       fail-fast: false
 
@@ -83,8 +85,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
+          pip install --upgrade nox setuptools
           pip list
 
-      - name: Run tox
-        run: tox -e ${{ matrix.tox-env }} ${{ matrix.pytest-args }}
+      - name: Run nox
+        run: nox -v -s ${{ matrix.nox-env }} -- ${{ matrix.pytest-args }}

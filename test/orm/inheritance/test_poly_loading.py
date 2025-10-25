@@ -199,6 +199,77 @@ class LoadBaseAndSubWEagerRelMapped(
         self._assert_all_selectin(q)
 
 
+class ChunkingTest(
+    fixtures.DeclarativeMappedTest, testing.AssertsExecutionResults
+):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            adata = Column(String(50))
+            type = Column(String(50))
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "a",
+            }
+
+        class ASub(A):
+            __tablename__ = "asub"
+            id = Column(ForeignKey("a.id"), primary_key=True)
+            asubdata = Column(String(50))
+
+            __mapper_args__ = {
+                "polymorphic_load": "selectin",
+                "polymorphic_identity": "asub",
+            }
+
+    @classmethod
+    def insert_data(cls, connection):
+        ASub = cls.classes.ASub
+        s = Session(connection)
+        s.add_all(
+            [
+                ASub(id=i, adata=f"adata {i}", asubdata=f"asubdata {i}")
+                for i in range(1, 1255)
+            ]
+        )
+
+        s.commit()
+
+    def test_chunking(self):
+        A = self.classes.A
+        s = fixture_session()
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            asubs = s.scalars(select(A).order_by(A.id))
+            eq_(len(asubs.all()), 1254)
+
+        poly_load_sql = (
+            "SELECT asub.id AS asub_id, a.id AS a_id, a.type AS a_type, "
+            "asub.asubdata AS asub_asubdata FROM a JOIN asub "
+            "ON a.id = asub.id WHERE a.id "
+            "IN (__[POSTCOMPILE_primary_keys]) ORDER BY a.id"
+        )
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT a.id, a.adata, a.type FROM a ORDER BY a.id", []
+            ),
+            CompiledSQL(
+                poly_load_sql, [{"primary_keys": list(range(1, 501))}]
+            ),
+            CompiledSQL(
+                poly_load_sql, [{"primary_keys": list(range(501, 1001))}]
+            ),
+            CompiledSQL(
+                poly_load_sql, [{"primary_keys": list(range(1001, 1255))}]
+            ),
+        )
+
+
 class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
     def test_person_selectin_subclasses(self):
         s = fixture_session()

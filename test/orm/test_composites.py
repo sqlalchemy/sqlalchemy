@@ -1,13 +1,19 @@
 import dataclasses
 import operator
 import random
+from typing import Optional
 
 import sqlalchemy as sa
+from sqlalchemy import asc
+from sqlalchemy import desc
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import nulls_first
+from sqlalchemy import nulls_last
+from sqlalchemy import OrderByList
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -16,9 +22,14 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Composite
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import defer
+from sqlalchemy.orm import load_only
+from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import undefer
+from sqlalchemy.orm import undefer_group
 from sqlalchemy.orm.attributes import LoaderCallableStatus
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -159,27 +170,20 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
     def test_not_none(self):
         Edge = self.classes.Edge
+        Point = self.classes.Point
 
-        # current contract.   the composite is None
-        # when hasn't been populated etc. on a
-        # pending/transient object.
+        # new in 2.1; None return can be controlled, so by default you
+        # get an empty populated object
         e1 = Edge()
-        assert e1.end is None
+        eq_(e1.end, Point(None, None))
         sess = fixture_session()
         sess.add(e1)
 
-        # however, once it's persistent, the code as of 0.7.3
-        # would unconditionally populate it, even though it's
-        # all None.  I think this usage contract is inconsistent,
-        # and it would be better that the composite is just
-        # created unconditionally in all cases.
-        # but as we are just trying to fix [ticket:2308] and
-        # [ticket:2309] without changing behavior we maintain
-        # that only "persistent" gets the composite with the
-        # Nones
+        # old notes here referred to 0.7.3 as well as issue #2308, #2309.
+        # however as of 2.1 this is consistent
 
         sess.flush()
-        assert e1.end is not None
+        eq_(e1.end, Point(None, None))
 
     def test_eager_load(self):
         Graph, Point = self.classes.Graph, self.classes.Point
@@ -636,9 +640,10 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
     def test_default_value(self):
         Edge = self.classes.Edge
+        Point = self.classes.Point
 
         e = Edge()
-        eq_(e.start, None)
+        eq_(e.start, Point(None, None))
 
     def test_no_name_declarative(self, decl_base, connection):
         """test #7751"""
@@ -919,7 +924,7 @@ class EventsEtcTest(fixtures.MappedTest):
                     (
                         LoaderCallableStatus.NO_VALUE
                         if not active_history
-                        else None
+                        else Point(None, None)
                     ),
                     Edge.start.impl,
                 )
@@ -1470,7 +1475,7 @@ class ManyToOneTest(fixtures.MappedTest):
         eq_(sess.query(ae).filter(ae.c == C("a2b1", b2)).one(), a2)
 
 
-class ConfigurationTest(fixtures.MappedTest):
+class ConfigAndDeferralTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -1508,7 +1513,7 @@ class ConfigurationTest(fixtures.MappedTest):
         class Edge(cls.Comparable):
             pass
 
-    def _test_roundtrip(self):
+    def _test_roundtrip(self, *, assert_deferred=False, options=()):
         Edge, Point = self.classes.Edge, self.classes.Point
 
         e1 = Edge(start=Point(3, 4), end=Point(5, 6))
@@ -1516,7 +1521,19 @@ class ConfigurationTest(fixtures.MappedTest):
         sess.add(e1)
         sess.commit()
 
-        eq_(sess.query(Edge).one(), Edge(start=Point(3, 4), end=Point(5, 6)))
+        stmt = select(Edge)
+        if options:
+            stmt = stmt.options(*options)
+        e1 = sess.execute(stmt).scalar_one()
+
+        names = ["start", "end", "x1", "x2", "y1", "y2"]
+        for name in names:
+            if assert_deferred:
+                assert name not in e1.__dict__
+            else:
+                assert name in e1.__dict__
+
+        eq_(e1, Edge(start=Point(3, 4), end=Point(5, 6)))
 
     def test_columns(self):
         edge, Edge, Point = (
@@ -1562,7 +1579,7 @@ class ConfigurationTest(fixtures.MappedTest):
 
         self._test_roundtrip()
 
-    def test_deferred(self):
+    def test_deferred_config(self):
         edge, Edge, Point = (
             self.tables.edge,
             self.classes.Edge,
@@ -1580,7 +1597,121 @@ class ConfigurationTest(fixtures.MappedTest):
                 ),
             },
         )
-        self._test_roundtrip()
+        self._test_roundtrip(assert_deferred=True)
+
+    def test_defer_option_on_cols(self):
+        edge, Edge, Point = (
+            self.tables.edge,
+            self.classes.Edge,
+            self.classes.Point,
+        )
+        self.mapper_registry.map_imperatively(
+            Edge,
+            edge,
+            properties={
+                "start": sa.orm.composite(
+                    Point,
+                    edge.c.x1,
+                    edge.c.y1,
+                ),
+                "end": sa.orm.composite(
+                    Point,
+                    edge.c.x2,
+                    edge.c.y2,
+                ),
+            },
+        )
+        self._test_roundtrip(
+            assert_deferred=True,
+            options=(
+                defer(Edge.x1),
+                defer(Edge.x2),
+                defer(Edge.y1),
+                defer(Edge.y2),
+            ),
+        )
+
+    def test_defer_option_on_composite(self):
+        edge, Edge, Point = (
+            self.tables.edge,
+            self.classes.Edge,
+            self.classes.Point,
+        )
+        self.mapper_registry.map_imperatively(
+            Edge,
+            edge,
+            properties={
+                "start": sa.orm.composite(
+                    Point,
+                    edge.c.x1,
+                    edge.c.y1,
+                ),
+                "end": sa.orm.composite(
+                    Point,
+                    edge.c.x2,
+                    edge.c.y2,
+                ),
+            },
+        )
+        self._test_roundtrip(
+            assert_deferred=True, options=(defer(Edge.start), defer(Edge.end))
+        )
+
+    @testing.variation("composite_only", [True, False])
+    def test_load_only_option_on_composite(self, composite_only):
+        edge, Edge, Point = (
+            self.tables.edge,
+            self.classes.Edge,
+            self.classes.Point,
+        )
+        self.mapper_registry.map_imperatively(
+            Edge,
+            edge,
+            properties={
+                "start": sa.orm.composite(
+                    Point, edge.c.x1, edge.c.y1, deferred=True
+                ),
+                "end": sa.orm.composite(
+                    Point,
+                    edge.c.x2,
+                    edge.c.y2,
+                ),
+            },
+        )
+
+        if composite_only:
+            self._test_roundtrip(
+                assert_deferred=False,
+                options=(load_only(Edge.start, Edge.end),),
+            )
+        else:
+            self._test_roundtrip(
+                assert_deferred=False,
+                options=(load_only(Edge.start, Edge.x2, Edge.y2),),
+            )
+
+    def test_defer_option_on_composite_via_group(self):
+        edge, Edge, Point = (
+            self.tables.edge,
+            self.classes.Edge,
+            self.classes.Point,
+        )
+        self.mapper_registry.map_imperatively(
+            Edge,
+            edge,
+            properties={
+                "start": sa.orm.composite(
+                    Point, edge.c.x1, edge.c.y1, deferred=True, group="s"
+                ),
+                "end": sa.orm.composite(
+                    Point, edge.c.x2, edge.c.y2, deferred=True
+                ),
+            },
+        )
+        self._test_roundtrip(
+            assert_deferred=False,
+            options=(undefer_group("s"), undefer(Edge.end)),
+        )
 
     def test_check_prop_type(self):
         edge, Edge, Point = (
@@ -1667,6 +1798,10 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                     diff_x = clauses[0] - other.x
                     diff_y = clauses[1] - other.y
                     return diff_x * diff_x + diff_y * diff_y <= d * d
+
+                def desc(self):
+                    clauses = self.__clause_element__().clauses
+                    return OrderByList([clauses[0].desc(), clauses[1].asc()])
 
             self.mapper_registry.map_imperatively(
                 Edge,
@@ -1793,10 +1928,62 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         Edge = self.classes.Edge
         s = fixture_session()
         self.assert_compile(
-            s.query(Edge).order_by(Edge.start, Edge.end),
+            s.query(Edge).order_by(Edge.start, Edge.end.desc()),
             "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
             "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
-            "FROM edge ORDER BY edge.x1, edge.y1, edge.x2, edge.y2",
+            "FROM edge ORDER BY edge.x1, edge.y1, edge.x2 DESC, edge.y2 DESC",
+        )
+
+        self.assert_compile(
+            s.query(Edge).order_by(
+                Edge.start.asc().nulls_first(), Edge.end.nulls_last()
+            ),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge ORDER BY edge.x1 ASC NULLS FIRST, "
+            "edge.y1 ASC NULLS FIRST, edge.x2 NULLS LAST, edge.y2 NULLS LAST",
+        )
+
+        # Test using standalone ops syntax
+
+        self.assert_compile(
+            s.query(Edge).order_by(
+                nulls_first(asc(Edge.start)), nulls_last(Edge.end)
+            ),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge ORDER BY edge.x1 ASC NULLS FIRST, "
+            "edge.y1 ASC NULLS FIRST, edge.x2 NULLS LAST, edge.y2 NULLS LAST",
+        )
+
+    def test_order_by_custom(self):
+        """test #12769"""
+        self._fixture(True)
+        Edge = self.classes.Edge
+        s = fixture_session()
+
+        self.assert_compile(
+            s.query(Edge).order_by(Edge.start.desc()),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge "
+            "ORDER BY edge.x1 DESC, edge.y1 ASC",
+        )
+
+        self.assert_compile(
+            s.query(Edge).order_by(Edge.start.desc().nulls_first()),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge "
+            "ORDER BY edge.x1 DESC NULLS FIRST, edge.y1 ASC NULLS FIRST",
+        )
+
+        self.assert_compile(
+            s.query(Edge).order_by(desc(Edge.start)),
+            "SELECT edge.id AS edge_id, edge.x1 AS edge_x1, "
+            "edge.y1 AS edge_y1, edge.x2 AS edge_x2, edge.y2 AS edge_y2 "
+            "FROM edge "
+            "ORDER BY edge.x1 DESC, edge.y1 ASC",
         )
 
     def test_order_by_aliased(self):
@@ -1825,3 +2012,124 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             "SELECT edge.id, edge.x1, edge.y1, edge.x2, edge.y2 FROM edge "
             "ORDER BY edge.x1, edge.y1",
         )
+
+
+class NoneReturnTest(fixtures.TestBase):
+
+    @testing.fixture
+    def edge_point_fixture(self, decl_base):
+        @dataclasses.dataclass
+        class Point:
+            x: Optional[int]
+            y: Optional[int]
+
+        def go(return_none_on):
+            class Edge(decl_base):
+                __tablename__ = "edge"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                start = composite(Point, return_none_on=return_none_on)
+
+            return Point, Edge
+
+        return go
+
+    @testing.fixture
+    def edge_point_persist_fixture(self, edge_point_fixture, decl_base):
+        def go(return_none_on):
+            Point, Edge = edge_point_fixture(return_none_on)
+
+            decl_base.metadata.create_all(testing.db)
+
+            with Session(testing.db) as sess:
+                sess.add(Edge(x=None, y=None))
+                sess.commit()
+            return Point, Edge
+
+        return go
+
+    def test_special_rule(self, edge_point_fixture):
+        Point, Edge = edge_point_fixture(lambda x, y: y is None)
+
+        obj = Edge()
+        eq_(obj.start, None)
+
+        obj = Edge(y=5)
+        eq_(obj.start, Point(x=None, y=5))
+
+        obj = Edge(y=5, x=7)
+        eq_(obj.start, Point(x=7, y=5))
+
+        obj = Edge(y=None, x=7)
+        eq_(obj.start, None)
+
+    @testing.variation("return_none_on", [True, False])
+    def test_pending_object_no_return_none(
+        self, edge_point_fixture, return_none_on
+    ):
+        Point, Edge = edge_point_fixture(
+            (lambda *args: all(arg is None for arg in args))
+            if return_none_on
+            else None
+        )
+
+        obj = Edge()
+
+        if return_none_on:
+            eq_(obj.start, None)
+        else:
+            eq_(obj.start, Point(x=None, y=None))
+
+        # object stays in place since it was assigned.  this is to support
+        # in-place mutation of the object
+        obj.x = 5
+        if return_none_on:
+            eq_(obj.start, None)
+        else:
+            eq_(obj.start, Point(x=None, y=None))
+
+        # only if we pop from the dict can we change that
+        obj.__dict__.pop("start")
+        eq_(obj.start, Point(x=5, y=None))
+
+        obj.x = None
+        obj.__dict__.pop("start")
+        if return_none_on:
+            eq_(obj.start, None)
+        else:
+            eq_(obj.start, Point(x=None, y=None))
+
+    @testing.variation("return_none_on", [True, False])
+    def test_query_from_composite_directly(
+        self, edge_point_persist_fixture, return_none_on
+    ):
+        Point, Edge = edge_point_persist_fixture(
+            (lambda *args: all(arg is None for arg in args))
+            if return_none_on
+            else None
+        )
+
+        with Session(testing.db) as sess:
+            value = sess.scalar(select(Edge.start))
+
+            if return_none_on:
+                eq_(value, None)
+            else:
+                eq_(value, Point(x=None, y=None))
+
+    @testing.variation("return_none_on", [True, False])
+    def test_access_on_persistent(
+        self, edge_point_persist_fixture, return_none_on
+    ):
+        Point, Edge = edge_point_persist_fixture(
+            (lambda *args: all(arg is None for arg in args))
+            if return_none_on
+            else None
+        )
+
+        with Session(testing.db) as sess:
+            edge = sess.scalars(select(Edge)).one()
+
+            if return_none_on:
+                eq_(edge.start, None)
+            else:
+                eq_(edge.start, Point(x=None, y=None))

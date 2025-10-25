@@ -29,9 +29,11 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
+from typing import ParamSpec
 from typing import Sequence
 from typing import Set
 from typing import Tuple as typing_Tuple
@@ -65,6 +67,7 @@ from .cache_key import MemoizedHasCacheKey
 from .cache_key import NO_CACHE
 from .coercions import _document_text_coercion  # noqa
 from .operators import ColumnOperators
+from .operators import OperatorClass
 from .traversals import HasCopyInternals
 from .visitors import cloned_traverse
 from .visitors import ExternallyTraversible
@@ -76,20 +79,21 @@ from .. import inspection
 from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
-from ..util.typing import Literal
-from ..util.typing import ParamSpec
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _DMLOnlyColumnArgument
     from ._typing import _HasDialect
     from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
+    from .base import _EntityNamespace
     from .base import ColumnSet
     from .cache_key import _CacheKeyTraversalType
     from .cache_key import CacheKey
@@ -118,6 +122,7 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import SchemaTranslateMapType
     from ..engine.result import Result
+
 
 _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
@@ -461,7 +466,7 @@ class ClauseElement(
         return self
 
     @property
-    def _constructor(self):
+    def _constructor(self):  # type: ignore[override]
         """return the 'constructor' for this ClauseElement.
 
         This is for the purposes for creating a new object of
@@ -500,8 +505,8 @@ class ClauseElement(
             self = self._is_clone_of
         return self
 
-    @property
-    def entity_namespace(self):
+    @util.ro_non_memoized_property
+    def entity_namespace(self) -> _EntityNamespace:
         raise AttributeError(
             "This SQL expression has no entity namespace "
             "with which to filter from."
@@ -696,6 +701,7 @@ class ClauseElement(
         else:
             elem_cache_key = None
 
+        extracted_params: Optional[Sequence[BindParameter[Any]]]
         if elem_cache_key is not None:
             if TYPE_CHECKING:
                 assert compiled_cache is not None
@@ -752,6 +758,8 @@ class ClauseElement(
             return self._negate()
 
     def _negate(self) -> ClauseElement:
+        # TODO: this code is uncovered and in all likelihood is not included
+        # in any codepath.  So this should raise NotImplementedError in 2.1
         grouped = self.self_group(against=operators.inv)
         assert isinstance(grouped, ColumnElement)
         return UnaryExpression(grouped, operator=operators.inv)
@@ -811,6 +819,17 @@ class CompilerColumnElement(
 
     _propagate_attrs = util.EMPTY_DICT
     _is_collection_aggregate = False
+    _is_implicitly_boolean = False
+
+    def _with_binary_element_type(self, type_):
+        raise NotImplementedError()
+
+    def _gen_cache_key(self, anon_map, bindparams):
+        raise NotImplementedError()
+
+    @property
+    def _from_objects(self) -> List[FromClause]:
+        raise NotImplementedError()
 
 
 # SQLCoreOperations should be suiting the ExpressionElementRole
@@ -844,6 +863,7 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
             *,
             return_type: _TypeEngineArgument[_OPT],
             python_impl: Optional[Callable[..., Any]] = None,
+            operator_class: OperatorClass = ...,
         ) -> Callable[[Any], BinaryExpression[_OPT]]: ...
 
         @overload
@@ -854,6 +874,7 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
             is_comparison: bool = ...,
             return_type: Optional[_TypeEngineArgument[Any]] = ...,
             python_impl: Optional[Callable[..., Any]] = ...,
+            operator_class: OperatorClass = ...,
         ) -> Callable[[Any], BinaryExpression[Any]]: ...
 
         def op(
@@ -863,6 +884,7 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
             is_comparison: bool = False,
             return_type: Optional[_TypeEngineArgument[Any]] = None,
             python_impl: Optional[Callable[..., Any]] = None,
+            operator_class: OperatorClass = OperatorClass.BASE,
         ) -> Callable[[Any], BinaryExpression[Any]]: ...
 
         def bool_op(
@@ -917,12 +939,32 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
         def __lshift__(self, other: Any) -> ColumnElement[Any]: ...
 
         @overload
+        def __rlshift__(self: _SQO[int], other: Any) -> ColumnElement[int]: ...
+
+        @overload
+        def __rlshift__(self, other: Any) -> ColumnElement[Any]: ...
+
+        def __rlshift__(self, other: Any) -> ColumnElement[Any]: ...
+
+        @overload
         def __rshift__(self: _SQO[int], other: Any) -> ColumnElement[int]: ...
 
         @overload
         def __rshift__(self, other: Any) -> ColumnElement[Any]: ...
 
         def __rshift__(self, other: Any) -> ColumnElement[Any]: ...
+
+        @overload
+        def __rrshift__(self: _SQO[int], other: Any) -> ColumnElement[int]: ...
+
+        @overload
+        def __rrshift__(self, other: Any) -> ColumnElement[Any]: ...
+
+        def __rrshift__(self, other: Any) -> ColumnElement[Any]: ...
+
+        def __matmul__(self, other: Any) -> ColumnElement[Any]: ...
+
+        def __rmatmul__(self, other: Any) -> ColumnElement[Any]: ...
 
         @overload
         def concat(self: _SQO[str], other: Any) -> ColumnElement[str]: ...
@@ -1443,6 +1485,10 @@ class ColumnElement(
 
     _alt_names: Sequence[str] = ()
 
+    if TYPE_CHECKING:
+
+        def _ungroup(self) -> ColumnElement[_T]: ...
+
     @overload
     def self_group(self, against: None = None) -> ColumnElement[_T]: ...
 
@@ -1477,7 +1523,8 @@ class ColumnElement(
             grouped = self.self_group(against=operators.inv)
             assert isinstance(grouped, ColumnElement)
             return UnaryExpression(
-                grouped, operator=operators.inv, wraps_column_expression=True
+                grouped,
+                operator=operators.inv,
             )
 
     type: TypeEngine[_T]
@@ -1920,6 +1967,29 @@ class WrapsColumnExpression(ColumnElement[_T]):
         return super()._proxy_key
 
 
+class DMLTargetCopy(roles.InElementRole, KeyedColumnElement[_T]):
+    """Refer to another column's VALUES or SET expression in an INSERT or
+    UPDATE statement.
+
+    See the public-facing :func:`_sql.from_dml_column` constructor for
+    background.
+
+    .. versionadded:: 2.1
+
+
+    """
+
+    def __init__(self, column: _DMLOnlyColumnArgument[_T]):
+        self.column = coercions.expect(roles.ColumnArgumentRole, column)
+        self.type = self.column.type
+
+    __visit_name__ = "dmltargetcopy"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("column", InternalTraversal.dp_clauseelement),
+    ]
+
+
 class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
     r"""Represent a "bound expression".
 
@@ -2127,8 +2197,8 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         else:
             return self
 
-    def _with_binary_element_type(self, type_):
-        c: Self = ClauseElement._clone(self)  # type: ignore[assignment]
+    def _with_binary_element_type(self, type_: TypeEngine[Any]) -> Self:
+        c: Self = ClauseElement._clone(self)
         c.type = type_
         return c
 
@@ -2225,8 +2295,9 @@ class TypeClause(DQLDMLClauseElement):
     _traverse_internals: _TraverseInternalsType = [
         ("type", InternalTraversal.dp_type)
     ]
+    type: TypeEngine[Any]
 
-    def __init__(self, type_):
+    def __init__(self, type_: TypeEngine[Any]):
         self.type = type_
 
 
@@ -2269,7 +2340,7 @@ class TextClause(
     _traverse_internals: _TraverseInternalsType = [
         ("_bindparams", InternalTraversal.dp_string_clauseelement_dict),
         ("text", InternalTraversal.dp_string),
-    ]
+    ] + Executable._executable_traverse_internals
 
     _is_text_clause = True
 
@@ -2304,7 +2375,7 @@ class TextClause(
     _allow_label_resolve = False
 
     @property
-    def _is_star(self):
+    def _is_star(self):  # type: ignore[override]
         return self.text == "*"
 
     def __init__(self, text: str):
@@ -2419,11 +2490,6 @@ class TextClause(
 
             select id from table where name=:name_1
             UNION ALL select id from table where name=:name_2
-
-        .. versionadded:: 1.3.11  Added support for the
-           :paramref:`.BindParameter.unique` flag to work with
-           :func:`_expression.text`
-           constructs.
 
         """  # noqa: E501
         self._bindparams = new_params = self._bindparams.copy()
@@ -2717,6 +2783,97 @@ class True_(SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]):
 True_._create_singleton()
 
 
+class ElementList(DQLDMLClauseElement):
+    """Describe a list of clauses that will be space separated.
+
+    This is a minimal version of :class:`.ClauseList` which is used by
+    the :class:`.HasSyntaxExtension` class.  It does not do any coercions
+    so should be used internally only.
+
+    .. versionadded:: 2.1
+
+    """
+
+    __visit_name__ = "element_list"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("clauses", InternalTraversal.dp_clauseelement_tuple),
+    ]
+
+    clauses: typing_Tuple[ClauseElement, ...]
+
+    def __init__(self, clauses: Sequence[ClauseElement]):
+        self.clauses = tuple(clauses)
+
+
+class OrderByList(
+    roles.OrderByRole,
+    operators.OrderingOperators,
+    DQLDMLClauseElement,
+):
+    """Describe a list of clauses that will be comma separated to nest
+    within an ORDER BY.
+
+    .. versionadded:: 2.1
+
+    """
+
+    __visit_name__ = "order_by_list"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("clauses", InternalTraversal.dp_clauseelement_tuple),
+    ]
+
+    clauses: List[ColumnElement[Any]]
+
+    def __init__(
+        self,
+        clauses: Iterable[Union[OrderByList, _ColumnExpressionArgument[Any]]],
+    ):
+        text_converter_role: Type[roles.SQLRole] = roles.ByOfRole
+        self._text_converter_role = text_converter_role
+
+        self.clauses = [
+            coercions.expect(
+                text_converter_role, clause, apply_propagate_attrs=self
+            )
+            for clause in clauses
+        ]
+
+    def __iter__(self) -> Iterator[ColumnElement[Any]]:
+        return iter(self.clauses)
+
+    def __len__(self) -> int:
+        return len(self.clauses)
+
+    @property
+    def _select_iterable(self) -> _SelectIterable:
+        return itertools.chain.from_iterable(
+            [elem._select_iterable for elem in self.clauses]
+        )
+
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
+        return list(itertools.chain(*[c._from_objects for c in self.clauses]))
+
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[Any]]:
+        return self
+
+    def desc(self) -> OrderByList:
+        return OrderByList([e.desc() for e in self.clauses])
+
+    def asc(self) -> OrderByList:
+        return OrderByList([e.asc() for e in self.clauses])
+
+    def nulls_first(self) -> OrderByList:
+        return OrderByList([e.nulls_first() for e in self.clauses])
+
+    def nulls_last(self) -> OrderByList:
+        return OrderByList([e.nulls_last() for e in self.clauses])
+
+
 class ClauseList(
     roles.InElementRole,
     roles.OrderByRole,
@@ -2732,8 +2889,8 @@ class ClauseList(
 
     __visit_name__ = "clauselist"
 
-    # this is used only by the ORM in a legacy use case for
-    # composite attributes
+    # Used by ORM context.py to identify ClauseList objects in legacy
+    # composite attribute queries (see test_query_cols_legacy test)
     _is_clause_list = True
 
     _traverse_internals: _TraverseInternalsType = [
@@ -3003,9 +3160,7 @@ class ExpressionClauseList(OperatorExpression[_T]):
     def _negate(self) -> Any:
         grouped = self.self_group(against=operators.inv)
         assert isinstance(grouped, ColumnElement)
-        return UnaryExpression(
-            grouped, operator=operators.inv, wraps_column_expression=True
-        )
+        return UnaryExpression(grouped, operator=operators.inv)
 
 
 class BooleanClauseList(ExpressionClauseList[bool]):
@@ -3580,6 +3735,7 @@ class _label_reference(ColumnElement[_T]):
 
     def __init__(self, element: ColumnElement[_T]):
         self.element = element
+        self._propagate_attrs = element._propagate_attrs
 
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
@@ -3623,15 +3779,18 @@ class UnaryExpression(ColumnElement[_T]):
         ("modifier", InternalTraversal.dp_operator),
     ]
 
-    element: ClauseElement
+    element: ColumnElement[Any]
+    operator: Optional[OperatorType]
+    modifier: Optional[OperatorType]
 
     def __init__(
         self,
         element: ColumnElement[Any],
+        *,
         operator: Optional[OperatorType] = None,
         modifier: Optional[OperatorType] = None,
         type_: Optional[_TypeEngineArgument[_T]] = None,
-        wraps_column_expression: bool = False,
+        wraps_column_expression: bool = False,  # legacy, not used as of 2.0.42
     ):
         self.operator = operator
         self.modifier = modifier
@@ -3644,7 +3803,12 @@ class UnaryExpression(ColumnElement[_T]):
         # know how to get the overloads to express that correctly
         self.type = type_api.to_instance(type_)  # type: ignore
 
-        self.wraps_column_expression = wraps_column_expression
+    def _wraps_unnamed_column(self):
+        ungrouped = self.element._ungroup()
+        return (
+            not isinstance(ungrouped, NamedColumn)
+            or ungrouped._non_anon_label is None
+        )
 
     @classmethod
     def _create_nulls_first(
@@ -3654,7 +3818,6 @@ class UnaryExpression(ColumnElement[_T]):
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.nulls_first_op,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3665,17 +3828,16 @@ class UnaryExpression(ColumnElement[_T]):
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.nulls_last_op,
-            wraps_column_expression=False,
         )
 
     @classmethod
     def _create_desc(
         cls, column: _ColumnExpressionOrStrLabelArgument[_T]
     ) -> UnaryExpression[_T]:
+
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.desc_op,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3686,7 +3848,6 @@ class UnaryExpression(ColumnElement[_T]):
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.asc_op,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3701,7 +3862,6 @@ class UnaryExpression(ColumnElement[_T]):
             col_expr,
             operator=operators.distinct_op,
             type_=col_expr.type,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3716,7 +3876,6 @@ class UnaryExpression(ColumnElement[_T]):
             col_expr,
             operator=operators.bitwise_not_op,
             type_=col_expr.type,
-            wraps_column_expression=False,
         )
 
     @property
@@ -3730,16 +3889,15 @@ class UnaryExpression(ColumnElement[_T]):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
-    def _negate(self):
+    def _negate(self) -> ColumnElement[Any]:
         if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
             return UnaryExpression(
                 self.self_group(against=operators.inv),
                 operator=operators.inv,
                 type_=type_api.BOOLEANTYPE,
-                wraps_column_expression=self.wraps_column_expression,
             )
         else:
-            return ClauseElement._negate(self)
+            return ColumnElement._negate(self)
 
     def self_group(
         self, against: Optional[OperatorType] = None
@@ -3767,6 +3925,8 @@ class CollectionAggregate(UnaryExpression[_T]):
     def _create_any(
         cls, expr: _ColumnExpressionArgument[_T]
     ) -> CollectionAggregate[bool]:
+        """create CollectionAggregate for the legacy
+        ARRAY.Comparator.any() method"""
         col_expr: ColumnElement[_T] = coercions.expect(
             roles.ExpressionElementRole,
             expr,
@@ -3776,13 +3936,14 @@ class CollectionAggregate(UnaryExpression[_T]):
             col_expr,
             operator=operators.any_op,
             type_=type_api.BOOLEANTYPE,
-            wraps_column_expression=False,
         )
 
     @classmethod
     def _create_all(
         cls, expr: _ColumnExpressionArgument[_T]
     ) -> CollectionAggregate[bool]:
+        """create CollectionAggregate for the legacy
+        ARRAY.Comparator.all() method"""
         col_expr: ColumnElement[_T] = coercions.expect(
             roles.ExpressionElementRole,
             expr,
@@ -3792,13 +3953,45 @@ class CollectionAggregate(UnaryExpression[_T]):
             col_expr,
             operator=operators.all_op,
             type_=type_api.BOOLEANTYPE,
-            wraps_column_expression=False,
+        )
+
+    @util.preload_module("sqlalchemy.sql.sqltypes")
+    def _bind_param(
+        self,
+        operator: operators.OperatorType,
+        obj: Any,
+        type_: Optional[TypeEngine[_T]] = None,
+        expanding: bool = False,
+    ) -> BindParameter[_T]:
+        """For new style any_(), all_(), ensure compared literal value
+        receives appropriate bound parameter type."""
+
+        # a CollectionAggregate is specific to ARRAY or int
+        # only.  So for ARRAY case, make sure we use correct element type
+        sqltypes = util.preloaded.sql_sqltypes
+        if self.element.type._type_affinity is sqltypes.ARRAY:
+            compared_to_type = cast(
+                sqltypes.ARRAY[Any], self.element.type
+            ).item_type
+        else:
+            compared_to_type = self.element.type
+
+        return BindParameter(
+            None,
+            obj,
+            _compared_to_operator=operator,
+            type_=type_,
+            _compared_to_type=compared_to_type,
+            unique=True,
+            expanding=expanding,
         )
 
     # operate and reverse_operate are hardwired to
     # dispatch onto the type comparator directly, so that we can
     # ensure "reversed" behavior.
-    def operate(self, op, *other, **kwargs):
+    def operate(
+        self, op: OperatorType, *other: Any, **kwargs: Any
+    ) -> ColumnElement[_T]:
         if not operators.is_comparison(op):
             raise exc.ArgumentError(
                 "Only comparison operators may be used with ANY/ALL"
@@ -3806,7 +3999,9 @@ class CollectionAggregate(UnaryExpression[_T]):
         kwargs["reverse"] = True
         return self.comparator.operate(operators.mirror(op), *other, **kwargs)
 
-    def reverse_operate(self, op, other, **kwargs):
+    def reverse_operate(
+        self, op: OperatorType, other: Any, **kwargs: Any
+    ) -> ColumnElement[_T]:
         # comparison operators should never call reverse_operate
         assert not operators.is_comparison(op)
         raise exc.ArgumentError(
@@ -3823,7 +4018,6 @@ class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
         self.operator = operator
         self.negate = negate
         self.modifier = None
-        self.wraps_column_expression = True
         self._is_implicitly_boolean = element._is_implicitly_boolean
 
     @property
@@ -3889,10 +4083,9 @@ class BinaryExpression(OperatorExpression[_T]):
 
     """
 
-    modifiers: Optional[Mapping[str, Any]]
-
     left: ColumnElement[Any]
     right: ColumnElement[Any]
+    modifiers: Mapping[str, Any]
 
     def __init__(
         self,
@@ -4047,13 +4240,11 @@ class GroupedElement(DQLDMLClauseElement):
 
     __visit_name__ = "grouping"
 
-    element: ClauseElement
-
     def self_group(self, against: Optional[OperatorType] = None) -> Self:
         return self
 
-    def _ungroup(self):
-        return self.element._ungroup()
+    def _ungroup(self) -> ClauseElement:
+        raise NotImplementedError()
 
 
 class Grouping(GroupedElement, ColumnElement[_T]):
@@ -4068,10 +4259,15 @@ class Grouping(GroupedElement, ColumnElement[_T]):
         ("element", InternalTraversal.dp_clauseelement),
     ]
 
-    element: Union[TextClause, ClauseList, ColumnElement[_T]]
+    element: Union[
+        TextClause, ClauseList, ColumnElement[_T], CompilerColumnElement
+    ]
 
     def __init__(
-        self, element: Union[TextClause, ClauseList, ColumnElement[_T]]
+        self,
+        element: Union[
+            TextClause, ClauseList, ColumnElement[_T], CompilerColumnElement
+        ],
     ):
         self.element = element
 
@@ -4081,6 +4277,10 @@ class Grouping(GroupedElement, ColumnElement[_T]):
 
     def _with_binary_element_type(self, type_):
         return self.__class__(self.element._with_binary_element_type(type_))
+
+    def _ungroup(self) -> ColumnElement[_T]:
+        assert isinstance(self.element, ColumnElement)
+        return self.element._ungroup()
 
     @util.memoized_property
     def _is_implicitly_boolean(self):
@@ -4189,6 +4389,7 @@ class Over(ColumnElement[_T]):
         ("partition_by", InternalTraversal.dp_clauseelement),
         ("range_", InternalTraversal.dp_clauseelement),
         ("rows", InternalTraversal.dp_clauseelement),
+        ("groups", InternalTraversal.dp_clauseelement),
     ]
 
     order_by: Optional[ClauseList] = None
@@ -4200,6 +4401,7 @@ class Over(ColumnElement[_T]):
 
     range_: Optional[_FrameClause]
     rows: Optional[_FrameClause]
+    groups: Optional[_FrameClause]
 
     def __init__(
         self,
@@ -4208,6 +4410,7 @@ class Over(ColumnElement[_T]):
         order_by: Optional[_ByArgument] = None,
         range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ):
         self.element = element
         if order_by is not None:
@@ -4220,19 +4423,14 @@ class Over(ColumnElement[_T]):
                 _literal_as_text_role=roles.ByOfRole,
             )
 
-        if range_:
-            self.range_ = _FrameClause(range_)
-            if rows:
-                raise exc.ArgumentError(
-                    "'range_' and 'rows' are mutually exclusive"
-                )
-            else:
-                self.rows = None
-        elif rows:
-            self.rows = _FrameClause(rows)
-            self.range_ = None
+        if sum(bool(item) for item in (range_, rows, groups)) > 1:
+            raise exc.ArgumentError(
+                "only one of 'rows', 'range_', or 'groups' may be provided"
+            )
         else:
-            self.rows = self.range_ = None
+            self.range_ = _FrameClause(range_) if range_ else None
+            self.rows = _FrameClause(rows) if rows else None
+            self.groups = _FrameClause(groups) if groups else None
 
     if not TYPE_CHECKING:
 
@@ -4337,31 +4535,34 @@ class _FrameClause(ClauseElement):
                     )
 
 
-class WithinGroup(ColumnElement[_T]):
-    """Represent a WITHIN GROUP (ORDER BY) clause.
+class AggregateOrderBy(WrapsColumnExpression[_T]):
+    """Represent an aggregate ORDER BY expression.
 
-    This is a special operator against so-called
-    "ordered set aggregate" and "hypothetical
-    set aggregate" functions, including ``percentile_cont()``,
-    ``rank()``, ``dense_rank()``, etc.
+    This is a special operator against aggregate functions such as
+    ``array_agg()``, ``json_arrayagg()`` ``string_agg()``, etc. that provides
+    for an ORDER BY expression, using a syntax that's compatible with
+    the backend.
 
-    It's supported only by certain database backends, such as PostgreSQL,
-    Oracle Database and MS SQL Server.
+    :class:`.AggregateOrderBy` is a generalized version of the
+    :class:`.WithinGroup` construct, the latter of which always provides a
+    "WITHIN GROUP (ORDER BY ...)" expression. :class:`.AggregateOrderBy` will
+    also compile to "WITHIN GROUP (ORDER BY ...)" on backends such as Oracle
+    and SQL Server that don't have another style of aggregate function
+    ordering.
 
-    The :class:`.WithinGroup` construct extracts its type from the
-    method :meth:`.FunctionElement.within_group_type`.  If this returns
-    ``None``, the function's ``.type`` is used.
+    .. versionadded:: 2.1
+
 
     """
 
-    __visit_name__ = "withingroup"
+    __visit_name__ = "aggregateorderby"
 
     _traverse_internals: _TraverseInternalsType = [
         ("element", InternalTraversal.dp_clauseelement),
         ("order_by", InternalTraversal.dp_clauseelement),
     ]
 
-    order_by: Optional[ClauseList] = None
+    order_by: ClauseList
 
     def __init__(
         self,
@@ -4369,10 +4570,21 @@ class WithinGroup(ColumnElement[_T]):
         *order_by: _ColumnExpressionArgument[Any],
     ):
         self.element = element
-        if order_by is not None:
-            self.order_by = ClauseList(
-                *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
-            )
+        if not order_by:
+            raise TypeError("at least one ORDER BY element is required")
+        self.order_by = ClauseList(
+            *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
+        )
+
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            return self.element.type
+
+    @property
+    def wrapped_column_expression(self) -> ColumnElement[_T]:
+        return self.element
 
     def __reduce__(self):
         return self.__class__, (self.element,) + (
@@ -4386,6 +4598,7 @@ class WithinGroup(ColumnElement[_T]):
         order_by: Optional[_ByArgument] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
@@ -4400,6 +4613,7 @@ class WithinGroup(ColumnElement[_T]):
             order_by=order_by,
             range_=range_,
             rows=rows,
+            groups=groups,
         )
 
     @overload
@@ -4420,16 +4634,6 @@ class WithinGroup(ColumnElement[_T]):
             return self
         return FunctionFilter(self, *criterion)
 
-    if not TYPE_CHECKING:
-
-        @util.memoized_property
-        def type(self) -> TypeEngine[_T]:  # noqa: A001
-            wgt = self.element.within_group_type(self)
-            if wgt is not None:
-                return wgt
-            else:
-                return self.element.type
-
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
         return list(
@@ -4441,6 +4645,37 @@ class WithinGroup(ColumnElement[_T]):
                 ]
             )
         )
+
+
+class WithinGroup(AggregateOrderBy[_T]):
+    """Represent a WITHIN GROUP (ORDER BY) clause.
+
+    This is a special operator against so-called
+    "ordered set aggregate" and "hypothetical
+    set aggregate" functions, including ``percentile_cont()``,
+    ``rank()``, ``dense_rank()``, etc.
+
+    It's supported only by certain database backends, such as PostgreSQL,
+    Oracle Database and MS SQL Server.
+
+    The :class:`.WithinGroup` construct extracts its type from the
+    method :meth:`.FunctionElement.within_group_type`.  If this returns
+    ``None``, the function's ``.type`` is used.
+
+    """
+
+    __visit_name__ = "withingroup"
+    inherit_cache = True
+
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            wgt = self.element.within_group_type(self)
+            if wgt is not None:
+                return wgt
+            else:
+                return self.element.type
 
 
 class FunctionFilter(Generative, ColumnElement[_T]):
@@ -4472,7 +4707,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
 
     def __init__(
         self,
-        func: Union[FunctionElement[_T], WithinGroup[_T]],
+        func: Union[FunctionElement[_T], AggregateOrderBy[_T]],
         *criterion: _ColumnExpressionArgument[bool],
     ):
         self.func = func
@@ -4517,6 +4752,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
         ] = None,
         range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this filtered function.
 
@@ -4542,6 +4778,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
             order_by=order_by,
             range_=range_,
             rows=rows,
+            groups=groups,
         )
 
     def within_group(
@@ -4787,6 +5024,16 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     def _order_by_label_element(self):
         return self
 
+    def as_reference(self) -> _label_reference[_T]:
+        """refer to this labeled expression in a clause such as GROUP BY,
+        ORDER BY etc. as the label name itself, without expanding
+        into the full expression.
+
+        .. versionadded:: 2.1
+
+        """
+        return _label_reference(self)
+
     @HasMemoized.memoized_attribute
     def element(self) -> ColumnElement[_T]:
         return self._element.self_group(against=operators.as_)
@@ -4810,11 +5057,11 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
             return self
 
     @property
-    def primary_key(self):
+    def primary_key(self):  # type: ignore[override]
         return self.element.primary_key
 
     @property
-    def foreign_keys(self):
+    def foreign_keys(self):  # type: ignore[override]
         return self.element.foreign_keys
 
     def _copy_internals(
@@ -4947,7 +5194,7 @@ class ColumnClause(
     _is_multiparam_column = False
 
     @property
-    def _is_star(self):
+    def _is_star(self):  # type: ignore[override]
         return self.is_literal and self.name == "*"
 
     def __init__(
@@ -5262,10 +5509,6 @@ class quoted_name(util.MemoizedSlots, str):
     The above logic will run the "has table" logic against the Oracle Database
     backend, passing the name exactly as ``"some_table"`` without converting to
     upper case.
-
-    .. versionchanged:: 1.2 The :class:`.quoted_name` construct is now
-       importable from ``sqlalchemy.sql``, in addition to the previous
-       location of ``sqlalchemy.sql.elements``.
 
     """
 

@@ -20,9 +20,11 @@ from typing import cast
 from typing import Dict
 from typing import FrozenSet
 from typing import Generic
+from typing import get_origin
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Match
 from typing import Optional
 from typing import Protocol
@@ -36,6 +38,7 @@ import weakref
 
 from . import attributes  # noqa
 from . import exc
+from . import exc as orm_exc
 from ._typing import _O
 from ._typing import insp_is_aliased_class
 from ._typing import insp_is_mapper
@@ -89,9 +92,8 @@ from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation as _de_stringify_annotation
 from ..util.typing import eval_name_only as _eval_name_only
 from ..util.typing import fixup_container_fwd_refs
-from ..util.typing import get_origin
+from ..util.typing import GenericProtocol
 from ..util.typing import is_origin_of_cls
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
@@ -122,6 +124,7 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import Selectable
     from ..sql.visitors import anon_map
     from ..util.typing import _AnnotationScanType
+    from ..util.typing import _MatchedOnType
 
 _T = TypeVar("_T", bound=Any)
 
@@ -162,7 +165,7 @@ class _DeStringifyAnnotation(Protocol):
         *,
         str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
         include_generic: bool = False,
-    ) -> Type[Any]: ...
+    ) -> _MatchedOnType: ...
 
 
 de_stringify_annotation = cast(
@@ -423,9 +426,6 @@ def identity_key(
       :param ident: primary key, may be a scalar or tuple argument.
       :param identity_token: optional identity token
 
-        .. versionadded:: 1.2 added identity_token
-
-
     * ``identity_key(instance=instance)``
 
       This form will produce the identity key for a given instance.  The
@@ -461,8 +461,6 @@ def identity_key(
       :param row: :class:`.Row` row returned by a :class:`_engine.CursorResult`
        (must be given as a keyword arg)
       :param identity_token: optional identity token
-
-        .. versionadded:: 1.2 added identity_token
 
     """  # noqa: E501
     if class_ is not None:
@@ -1191,14 +1189,27 @@ class AliasedInsp(
         if key:
             d["proxy_key"] = key
 
-        # IMO mypy should see this one also as returning the same type
-        # we put into it, but it's not
-        return (
-            self._adapter.traverse(expr)
-            ._annotate(d)
-            ._set_propagate_attrs(
-                {"compile_state_plugin": "orm", "plugin_subject": self}
-            )
+        # userspace adapt of an attribute from AliasedClass; validate that
+        # it actually was present
+        adapted = self._adapter.adapt_check_present(expr)
+        if adapted is None:
+            adapted = expr
+            if self._adapter.adapt_on_names:
+                util.warn_limited(
+                    "Did not locate an expression in selectable for "
+                    "attribute %r; ensure name is correct in expression",
+                    (key,),
+                )
+            else:
+                util.warn_limited(
+                    "Did not locate an expression in selectable for "
+                    "attribute %r; to match by name, use the "
+                    "adapt_on_names parameter",
+                    (key,),
+                )
+
+        return adapted._annotate(d)._set_propagate_attrs(
+            {"compile_state_plugin": "orm", "plugin_subject": self}
         )
 
     if TYPE_CHECKING:
@@ -1565,7 +1576,7 @@ class Bundle(
 
     _propagate_attrs: _PropagateAttrsType = util.immutabledict()
 
-    proxy_set = util.EMPTY_SET  # type: ignore
+    proxy_set = util.EMPTY_SET
 
     exprs: List[_ColumnsClauseElement]
 
@@ -1744,30 +1755,6 @@ class Bundle(
             return keyed_tuple([proc(row) for proc in procs])
 
         return proc
-
-
-def _orm_annotate(element: _SA, exclude: Optional[Any] = None) -> _SA:
-    """Deep copy the given ClauseElement, annotating each element with the
-    "_orm_adapt" flag.
-
-    Elements within the exclude collection will be cloned but not annotated.
-
-    """
-    return sql_util._deep_annotate(element, {"_orm_adapt": True}, exclude)
-
-
-def _orm_deannotate(element: _SA) -> _SA:
-    """Remove annotations that link a column to a particular mapping.
-
-    Note this doesn't affect "remote" and "foreign" annotations
-    passed by the :func:`_orm.foreign` and :func:`_orm.remote`
-    annotators.
-
-    """
-
-    return sql_util._deep_deannotate(
-        element, values=("_orm_adapt", "parententity")
-    )
 
 
 def _orm_full_deannotate(element: _SA) -> _SA:
@@ -1997,8 +1984,6 @@ def with_parent(
     :param from_entity:
       Entity in which to consider as the left side.  This defaults to the
       "zero" entity of the :class:`_query.Query` itself.
-
-      .. versionadded:: 1.2
 
     """  # noqa: E501
     prop_t: RelationshipProperty[Any]
@@ -2306,7 +2291,7 @@ def _extract_mapped_subtype(
 
     if raw_annotation is None:
         if required:
-            raise sa_exc.ArgumentError(
+            raise orm_exc.MappedAnnotationError(
                 f"Python typing annotation is required for attribute "
                 f'"{cls.__name__}.{key}" when primary argument(s) for '
                 f'"{attr_cls.__name__}" construct are None or not present'
@@ -2326,14 +2311,14 @@ def _extract_mapped_subtype(
             str_cleanup_fn=_cleanup_mapped_str_annotation,
         )
     except _CleanupError as ce:
-        raise sa_exc.ArgumentError(
+        raise orm_exc.MappedAnnotationError(
             f"Could not interpret annotation {raw_annotation}.  "
             "Check that it uses names that are correctly imported at the "
             "module level. See chained stack trace for more hints."
         ) from ce
     except NameError as ne:
         if raiseerr and "Mapped[" in raw_annotation:  # type: ignore
-            raise sa_exc.ArgumentError(
+            raise orm_exc.MappedAnnotationError(
                 f"Could not interpret annotation {raw_annotation}.  "
                 "Check that it uses names that are correctly imported at the "
                 "module level. See chained stack trace for more hints."
@@ -2362,7 +2347,7 @@ def _extract_mapped_subtype(
                 ):
                     return None
 
-                raise sa_exc.ArgumentError(
+                raise orm_exc.MappedAnnotationError(
                     f'Type annotation for "{cls.__name__}.{key}" '
                     "can't be correctly interpreted for "
                     "Annotated Declarative Table form.  ORM annotations "
@@ -2382,15 +2367,16 @@ def _extract_mapped_subtype(
             else:
                 return annotated, None
 
-        if len(annotated.__args__) != 1:
-            raise sa_exc.ArgumentError(
+        generic_annotated = cast(GenericProtocol[Any], annotated)
+        if len(generic_annotated.__args__) != 1:
+            raise orm_exc.MappedAnnotationError(
                 "Expected sub-type for Mapped[] annotation"
             )
 
         return (
             # fix dict/list/set args to be ForwardRef, see #11814
-            fixup_container_fwd_refs(annotated.__args__[0]),
-            annotated.__origin__,
+            fixup_container_fwd_refs(generic_annotated.__args__[0]),
+            generic_annotated.__origin__,
         )
 
 

@@ -1007,7 +1007,7 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         (func.to_tsquery,),
         (func.plainto_tsquery,),
         (func.phraseto_tsquery,),
-        (func.websearch_to_tsquery,),
+        (func.websearch_to_tsquery, testing.skip_if("postgresql < 11")),
         argnames="to_ts_func",
     )
     @testing.variation("use_regconfig", [True, False, "literal"])
@@ -1640,6 +1640,10 @@ class TableValuedRoundTripTest(fixtures.TestBase):
 
         eq_(connection.execute(stmt).all(), [(4, 1), (3, 2), (2, 3), (1, 4)])
 
+    def test_array_empty_with_type(self, connection):
+        stmt = select(postgresql.array([], type_=Integer))
+        eq_(connection.execute(stmt).all(), [([],)])
+
     def test_plain_old_unnest(self, connection):
         fn = func.unnest(
             postgresql.array(["one", "two", "three", "four"])
@@ -1795,7 +1799,12 @@ class TableValuedRoundTripTest(fixtures.TestBase):
         eq_(connection.execute(stmt).all(), [(1, "foo"), (2, "bar")])
 
 
-class RequiresCastTest(fixtures.TablesTest):
+class JSONUpdateTest(fixtures.TablesTest):
+    """round trip tests related to using JSON and JSONB in UPDATE statements
+    with PG-specific features
+
+    """
+
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -1821,6 +1830,8 @@ class RequiresCastTest(fixtures.TablesTest):
         )
 
     def test_update_values(self, connection):
+        t = self.tables["t"]
+
         value = values(
             Column("id", Integer),
             Column("uuid", Uuid),
@@ -1844,8 +1855,149 @@ class RequiresCastTest(fixtures.TablesTest):
             ]
         )
         connection.execute(
-            self.tables["t"]
-            .update()
+            t.update()
             .values(uuid=value.c.uuid, j=value.c.j, jb=value.c.jb)
-            .where(self.tables["t"].c.id == value.c.id)
+            .where(t.c.id == value.c.id)
+        )
+
+        updated_data = connection.execute(t.select().order_by(t.c.id))
+        eq_(
+            [(str(row.uuid), row.j, row.jb) for row in updated_data],
+            [
+                (
+                    "8b6ec1ec-b979-4d0b-b2ce-9acc6e4c2943",
+                    {"foo": 1},
+                    {"foo_jb": 1},
+                ),
+                (
+                    "a2123bcb-7ea3-420a-8284-1db4b2759d79",
+                    {"bar": 2},
+                    {"bar_jb": 2},
+                ),
+            ],
+        )
+
+    @testing.only_on("postgresql>=14")
+    def test_jsonb_element_update_basic(self, connection):
+        """Test updating individual JSONB elements with subscript syntax
+
+        test #10927
+
+        """
+        t = self.tables["t"]
+
+        # Insert test data with complex JSONB
+        connection.execute(
+            t.insert(),
+            [
+                {
+                    "id": 10,
+                    "jb": {
+                        "user": {"name": "Alice", "age": 30},
+                        "active": True,
+                    },
+                },
+                {
+                    "id": 11,
+                    "jb": {
+                        "user": {"name": "Bob", "age": 25},
+                        "active": False,
+                    },
+                },
+            ],
+        )
+
+        # Update specific elements using JSONB subscript syntax
+        # This tests the new JSONB subscripting feature from issue #10927
+        connection.execute(
+            t.update()
+            .values({t.c.jb["user"]["name"]: "Alice Updated"})
+            .where(t.c.id == 10)
+        )
+
+        connection.execute(
+            t.update().values({t.c.jb["active"]: True}).where(t.c.id == 11)
+        )
+
+        results = connection.execute(
+            t.select().where(t.c.id.in_([10, 11])).order_by(t.c.id)
+        )
+
+        eq_(
+            [row.jb for row in results],
+            [
+                {"user": {"name": "Alice Updated", "age": 30}, "active": True},
+                {"user": {"name": "Bob", "age": 25}, "active": True},
+            ],
+        )
+
+    @testing.only_on("postgresql>=14")
+    def test_jsonb_element_update_multiple_keys(self, connection):
+        """Test updating multiple JSONB elements in a single statement
+
+        test #10927
+
+        """
+        t = self.tables["t"]
+
+        connection.execute(
+            t.insert(),
+            {
+                "id": 20,
+                "jb": {
+                    "config": {"theme": "dark", "lang": "en"},
+                    "version": 1,
+                },
+            },
+        )
+
+        # Update multiple elements at once
+        connection.execute(
+            t.update()
+            .values({t.c.jb["config"]["theme"]: "light", t.c.jb["version"]: 2})
+            .where(t.c.id == 20)
+        )
+
+        # Verify the updates
+        row = connection.execute(t.select().where(t.c.id == 20)).one()
+
+        eq_(
+            row.jb,
+            {"config": {"theme": "light", "lang": "en"}, "version": 2},
+        )
+
+    @testing.only_on("postgresql>=14")
+    def test_jsonb_element_update_array_element(self, connection):
+        """Test updating JSONB array elements
+
+        test #10927
+
+        """
+        t = self.tables["t"]
+
+        # Insert test data with arrays
+        connection.execute(
+            t.insert(),
+            {
+                "id": 30,
+                "jb": {
+                    "tags": ["python", "sql", "postgres"],
+                    "priority": "high",
+                },
+            },
+        )
+
+        # Update array element
+        connection.execute(
+            t.update()
+            .values({t.c.jb["tags"][1]: "postgresql"})
+            .where(t.c.id == 30)
+        )
+
+        # Verify the update
+        row = connection.execute(t.select().where(t.c.id == 30)).fetchone()
+
+        eq_(
+            row.jb,
+            {"tags": ["python", "postgresql", "postgres"], "priority": "high"},
         )

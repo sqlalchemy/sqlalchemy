@@ -564,8 +564,6 @@ def table(name: str, *columns: ColumnClause[Any], **kw: Any) -> TableClause:
 
     :param schema: The schema name for this table.
 
-        .. versionadded:: 1.3.18 :func:`_expression.table` can now
-           accept a ``schema`` argument.
     """
 
     return TableClause(name, *columns, **kw)
@@ -690,25 +688,74 @@ def values(
     name: Optional[str] = None,
     literal_binds: bool = False,
 ) -> Values:
-    r"""Construct a :class:`_expression.Values` construct.
+    r"""Construct a :class:`_expression.Values` construct representing the
+    SQL ``VALUES`` clause.
 
-    The column expressions and the actual data for
-    :class:`_expression.Values` are given in two separate steps.  The
-    constructor receives the column expressions typically as
-    :func:`_expression.column` constructs,
-    and the data is then passed via the
-    :meth:`_expression.Values.data` method as a list,
-    which can be called multiple
-    times to add more data, e.g.::
+
+    The column expressions and the actual data for :class:`_expression.Values`
+    are given in two separate steps.  The constructor receives the column
+    expressions typically as :func:`_expression.column` constructs, and the
+    data is then passed via the :meth:`_expression.Values.data` method as a
+    list, which can be called multiple times to add more data, e.g.::
 
         from sqlalchemy import column
         from sqlalchemy import values
+        from sqlalchemy import Integer
+        from sqlalchemy import String
+
+        value_expr = (
+            values(
+                column("id", Integer),
+                column("name", String),
+            )
+            .data([(1, "name1"), (2, "name2")])
+            .data([(3, "name3")])
+        )
+
+    Would represent a SQL fragment like::
+
+        VALUES(1, "name1"), (2, "name2"), (3, "name3")
+
+    The :class:`_sql.values` construct has an optional
+    :paramref:`_sql.values.name` field; when using this field, the
+    PostgreSQL-specific "named VALUES" clause may be generated::
 
         value_expr = values(
-            column("id", Integer),
-            column("name", String),
-            name="my_values",
+            column("id", Integer), column("name", String), name="somename"
         ).data([(1, "name1"), (2, "name2"), (3, "name3")])
+
+    When selecting from the above construct, the name and column names will
+    be listed out using a PostgreSQL-specific syntax::
+
+        >>> print(value_expr.select())
+        SELECT somename.id, somename.name
+        FROM (VALUES (:param_1, :param_2), (:param_3, :param_4),
+        (:param_5, :param_6)) AS somename (id, name)
+
+    For a more database-agnostic means of SELECTing named columns from a
+    VALUES expression, the :meth:`.Values.cte` method may be used, which
+    produces a named CTE with explicit column names against the VALUES
+    construct within; this syntax works on PostgreSQL, SQLite, and MariaDB::
+
+        value_expr = (
+            values(
+                column("id", Integer),
+                column("name", String),
+            )
+            .data([(1, "name1"), (2, "name2"), (3, "name3")])
+            .cte()
+        )
+
+    Rendering as::
+
+        >>> print(value_expr.select())
+        WITH anon_1(id, name) AS
+        (VALUES (:param_1, :param_2), (:param_3, :param_4), (:param_5, :param_6))
+        SELECT anon_1.id, anon_1.name
+        FROM anon_1
+
+    .. versionadded:: 2.0.42  Added the :meth:`.Values.cte` method to
+       :class:`.Values`
 
     :param \*columns: column expressions, typically composed using
      :func:`_expression.column` objects.
@@ -721,5 +768,6 @@ def values(
      the data values inline in the SQL output, rather than using bound
      parameters.
 
-    """
+    """  # noqa: E501
+
     return Values(*columns, literal_binds=literal_binds, name=name)

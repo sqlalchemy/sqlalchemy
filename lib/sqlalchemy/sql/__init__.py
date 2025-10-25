@@ -11,14 +11,17 @@ from ._typing import ColumnExpressionArgument as ColumnExpressionArgument
 from ._typing import NotNullable as NotNullable
 from ._typing import Nullable as Nullable
 from .base import Executable as Executable
+from .base import SyntaxExtension as SyntaxExtension
 from .compiler import COLLECT_CARTESIAN_PRODUCTS as COLLECT_CARTESIAN_PRODUCTS
 from .compiler import FROM_LINTING as FROM_LINTING
 from .compiler import NO_LINTING as NO_LINTING
 from .compiler import WARN_LINTING as WARN_LINTING
 from .ddl import BaseDDLElement as BaseDDLElement
+from .ddl import CheckFirst as CheckFirst
 from .ddl import DDL as DDL
 from .ddl import DDLElement as DDLElement
 from .ddl import ExecutableDDLElement as ExecutableDDLElement
+from .expression import aggregate_order_by as aggregate_order_by
 from .expression import Alias as Alias
 from .expression import alias as alias
 from .expression import all_ as all_
@@ -46,6 +49,7 @@ from .expression import exists as exists
 from .expression import extract as extract
 from .expression import false as false
 from .expression import False_ as False_
+from .expression import from_dml_column as from_dml_column
 from .expression import FromClause as FromClause
 from .expression import func as func
 from .expression import funcfilter as funcfilter

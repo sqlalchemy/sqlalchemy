@@ -7,6 +7,7 @@ import weakref
 
 import sqlalchemy as sa
 from sqlalchemy import and_
+from sqlalchemy import ClauseElement
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -20,8 +21,10 @@ from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import registry
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.engine import result
+from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.processors import to_decimal_processor_factory
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
@@ -39,6 +42,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.sql import column
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.util import visit_binary_product
 from sqlalchemy.sql.visitors import cloned_traverse
 from sqlalchemy.sql.visitors import replacement_traverse
@@ -219,10 +223,14 @@ def profile_memory(
         # return run_plain
 
         def run_in_process(*func_args):
-            queue = multiprocessing.Queue()
-            proc = multiprocessing.Process(
-                target=profile, args=(queue, func_args)
-            )
+            # see
+            # https://docs.python.org/3.14/whatsnew/3.14.html
+            # #incompatible-changes - the default run type is no longer
+            # "fork", but since we are running closures in the process
+            # we need forked mode
+            ctx = multiprocessing.get_context("fork")
+            queue = ctx.Queue()
+            proc = ctx.Process(target=profile, args=(queue, func_args))
             proc.start()
             while True:
                 row = queue.get()
@@ -390,7 +398,7 @@ class MemUsageTest(EnsureZeroed):
 
 @testing.add_to_marker.memory_intensive
 class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
-    __requires__ = "cpython", "memory_process_intensive", "no_asyncio"
+    __requires__ = "cpython", "posix", "memory_process_intensive", "no_asyncio"
     __sparse_backend__ = True
 
     # ensure a pure growing test trips the assertion
@@ -1136,6 +1144,22 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             metadata.drop_all(self.engine)
 
 
+class SomeFoo(DialectKWArgs, ClauseElement):
+    pass
+
+
+class FooDialect(DefaultDialect):
+    construct_arguments = [
+        (
+            SomeFoo,
+            {
+                "bar": False,
+                "bat": False,
+            },
+        )
+    ]
+
+
 @testing.add_to_marker.memory_intensive
 class CycleTest(_fixtures.FixtureTest):
     __requires__ = ("cpython", "no_windows")
@@ -1157,6 +1181,33 @@ class CycleTest(_fixtures.FixtureTest):
         @assert_cycles()
         def go():
             return s.query(User).all()
+
+        go()
+
+    @testing.fixture
+    def foo_dialect(self):
+        registry.register("foo", __name__, "FooDialect")
+
+        yield
+        registry.deregister("foo")
+
+    def test_dialect_kwargs(self, foo_dialect):
+
+        @assert_cycles()
+        def go():
+            ff = SomeFoo()
+
+            ff._validate_dialect_kwargs({"foo_bar": True})
+
+            eq_(ff.dialect_options["foo"]["bar"], True)
+
+            eq_(ff.dialect_options["foo"]["bat"], False)
+
+            eq_(ff.dialect_kwargs["foo_bar"], True)
+            eq_(ff.dialect_kwargs["foo_bat"], False)
+
+            ff.dialect_kwargs["foo_bat"] = True
+            eq_(ff.dialect_options["foo"]["bat"], True)
 
         go()
 
@@ -1727,8 +1778,28 @@ class MiscMemoryIntensiveTests(fixtures.TestBase):
         s.commit()
 
 
+# these tests simply cannot run reliably on github actions machines.
+# even trying ten times, they sometimes can't proceed.
+@testing.add_to_marker.gc_intensive
 class WeakIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
+
+    def run_up_to_n_times(self, fn, times):
+        error = None
+        for _ in range(times):
+            try:
+                fn()
+            except Exception as err:
+                error = err
+                with testing.db.begin() as conn:
+                    conn.execute(self.tables.addresses.delete())
+                    conn.execute(self.tables.users.delete())
+                continue
+            else:
+                break
+        else:
+            if error:
+                raise error
 
     @testing.requires.predictable_gc
     def test_weakref(self):
@@ -1736,77 +1807,83 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         references modified items."""
 
         users, User = self.tables.users, self.classes.User
-
-        s = fixture_session()
         self.mapper_registry.map_imperatively(User, users)
-        gc_collect()
 
-        s.add(User(name="ed"))
-        s.flush()
-        assert not s.dirty
+        def go():
+            with Session(testing.db) as s:
+                gc_collect()
 
-        user = s.query(User).one()
+                s.add(User(name="ed"))
+                s.flush()
+                assert not s.dirty
 
-        # heisenberg the GC a little bit, since #7823 caused a lot more
-        # GC when mappings are set up, larger test suite started failing
-        # on this being gc'ed
-        user_is = user._sa_instance_state
-        del user
-        gc_collect()
-        gc_collect()
-        gc_collect()
-        assert user_is.obj() is None
+                user = s.query(User).one()
 
-        assert len(s.identity_map) == 0
+                # heisenberg the GC a little bit, since #7823 caused a lot more
+                # GC when mappings are set up, larger test suite started
+                # failing on this being gc'ed
+                user_is = user._sa_instance_state
+                del user
+                gc_collect()
+                gc_collect()
+                gc_collect()
+                assert user_is.obj() is None
 
-        user = s.query(User).one()
-        user.name = "fred"
-        del user
-        gc_collect()
-        assert len(s.identity_map) == 1
-        assert len(s.dirty) == 1
-        assert None not in s.dirty
-        s.flush()
-        gc_collect()
-        assert not s.dirty
-        assert not s.identity_map
+                assert len(s.identity_map) == 0
 
-        user = s.query(User).one()
-        assert user.name == "fred"
-        assert s.identity_map
+                user = s.query(User).one()
+                user.name = "fred"
+                del user
+                gc_collect()
+                assert len(s.identity_map) == 1
+                assert len(s.dirty) == 1
+                assert None not in s.dirty
+                s.flush()
+                gc_collect()
+                assert not s.dirty
+                assert not s.identity_map
+
+                user = s.query(User).one()
+                assert user.name == "fred"
+                assert s.identity_map
+
+        self.run_up_to_n_times(go, 10)
 
     @testing.requires.predictable_gc
     def test_weakref_pickled(self):
         users, User = self.tables.users, pickleable.User
-
-        s = fixture_session()
         self.mapper_registry.map_imperatively(User, users)
-        gc_collect()
 
-        s.add(User(name="ed"))
-        s.flush()
-        assert not s.dirty
+        def go():
+            with Session(testing.db) as s:
+                gc_collect()
 
-        user = s.query(User).one()
-        user.name = "fred"
-        s.expunge(user)
+                s.add(User(name="ed"))
+                s.flush()
+                assert not s.dirty
 
-        u2 = pickle.loads(pickle.dumps(user))
+                user = s.query(User).one()
+                user.name = "fred"
+                s.expunge(user)
 
-        del user
-        s.add(u2)
+                u2 = pickle.loads(pickle.dumps(user))
 
-        del u2
-        gc_collect()
+                del user
+                s.add(u2)
 
-        assert len(s.identity_map) == 1
-        assert len(s.dirty) == 1
-        assert None not in s.dirty
-        s.flush()
-        gc_collect()
-        assert not s.dirty
+                del u2
+                gc_collect()
 
-        assert not s.identity_map
+                assert len(s.identity_map) == 1
+                assert len(s.dirty) == 1
+                assert None not in s.dirty
+                s.flush()
+                gc_collect()
+                assert not s.dirty
+
+                assert not s.identity_map
+
+        self.run_up_to_n_times(go, 10)
 
     @testing.requires.predictable_gc
     def test_weakref_with_cycles_o2m(self):
@@ -1817,7 +1894,6 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        s = fixture_session()
         self.mapper_registry.map_imperatively(
             User,
             users,
@@ -1826,27 +1902,39 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         self.mapper_registry.map_imperatively(Address, addresses)
         gc_collect()
 
-        s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
-        s.commit()
+        def go():
+            with Session(testing.db) as s:
+                s.add(
+                    User(name="ed", addresses=[Address(email_address="ed1")])
+                )
+                s.commit()
 
-        user = s.query(User).options(joinedload(User.addresses)).one()
-        user.addresses[0].user  # lazyload
-        eq_(user, User(name="ed", addresses=[Address(email_address="ed1")]))
+                user = s.query(User).options(joinedload(User.addresses)).one()
+                user.addresses[0].user  # lazyload
+                eq_(
+                    user,
+                    User(name="ed", addresses=[Address(email_address="ed1")]),
+                )
 
-        del user
-        gc_collect()
-        assert len(s.identity_map) == 0
+                del user
+                gc_collect()
+                assert len(s.identity_map) == 0
 
-        user = s.query(User).options(joinedload(User.addresses)).one()
-        user.addresses[0].email_address = "ed2"
-        user.addresses[0].user  # lazyload
-        del user
-        gc_collect()
-        assert len(s.identity_map) == 2
+                user = s.query(User).options(joinedload(User.addresses)).one()
+                user.addresses[0].email_address = "ed2"
+                user.addresses[0].user  # lazyload
+                del user
+                gc_collect()
+                assert len(s.identity_map) == 2
 
-        s.commit()
-        user = s.query(User).options(joinedload(User.addresses)).one()
-        eq_(user, User(name="ed", addresses=[Address(email_address="ed2")]))
+                s.commit()
+                user = s.query(User).options(joinedload(User.addresses)).one()
+                eq_(
+                    user,
+                    User(name="ed", addresses=[Address(email_address="ed2")]),
+                )
+
+        self.run_up_to_n_times(go, 10)
 
     @testing.requires.predictable_gc
     def test_weakref_with_cycles_o2o(self):

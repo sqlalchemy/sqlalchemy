@@ -20,6 +20,7 @@ from .base import _DispatchCommon as _DispatchCommon
 from .base import dispatcher as dispatcher
 from .base import Events as Events
 from .legacy import _legacy_signature as _legacy_signature
+from .legacy import _omit_standard_example as _omit_standard_example
 from .registry import _EventKey as _EventKey
 from .registry import _ListenerFnType as _ListenerFnType
 from .registry import EventTarget as EventTarget

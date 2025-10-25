@@ -5,9 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Compatibility namespace for sqlalchemy.sql.schema and related.
-
-"""
+"""Compatibility namespace for sqlalchemy.sql.schema and related."""
 
 from __future__ import annotations
 
@@ -16,6 +14,7 @@ from .sql.ddl import _CreateDropBase as _CreateDropBase
 from .sql.ddl import _DropView as _DropView
 from .sql.ddl import AddConstraint as AddConstraint
 from .sql.ddl import BaseDDLElement as BaseDDLElement
+from .sql.ddl import CheckFirst as CheckFirst
 from .sql.ddl import CreateColumn as CreateColumn
 from .sql.ddl import CreateIndex as CreateIndex
 from .sql.ddl import CreateSchema as CreateSchema
@@ -65,6 +64,7 @@ from .sql.schema import MetaData as MetaData
 from .sql.schema import PrimaryKeyConstraint as PrimaryKeyConstraint
 from .sql.schema import SchemaConst as SchemaConst
 from .sql.schema import SchemaItem as SchemaItem
+from .sql.schema import SchemaVisitable as SchemaVisitable
 from .sql.schema import Sequence as Sequence
 from .sql.schema import Table as Table
 from .sql.schema import UniqueConstraint as UniqueConstraint

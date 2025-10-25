@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 12364
-
-    Fixed issue where using :func:`_orm.aliased` around a :class:`.CTE`
-    construct could cause inappropriate "duplicate CTE" errors in cases where
-    that aliased construct appeared multiple times in a single statement.

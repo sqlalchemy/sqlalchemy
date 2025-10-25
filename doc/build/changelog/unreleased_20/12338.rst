@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, asyncio
-    :tickets: 12338
-
-    Fixed bug where :meth:`_asyncio.AsyncResult.scalar`,
-    :meth:`_asyncio.AsyncResult.scalar_one_or_none`, and
-    :meth:`_asyncio.AsyncResult.scalar_one` would raise an ``AttributeError``
-    due to a missing internal attribute.  Pull request courtesy Allen Ho.

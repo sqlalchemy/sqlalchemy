@@ -14,12 +14,14 @@ from __future__ import annotations
 
 import functools
 import operator
+import re
 from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
@@ -43,7 +45,6 @@ from .selectable import Select
 from .selectable import TableClause
 from .. import exc
 from .. import util
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .compiler import _BindNameForColProtocol
@@ -52,6 +53,7 @@ if TYPE_CHECKING:
     from .dml import DMLState
     from .dml import ValuesBase
     from .elements import ColumnElement
+    from .elements import DMLTargetCopy
     from .elements import KeyedColumnElement
     from .schema import _SQLExprDefault
     from .schema import Column
@@ -167,6 +169,9 @@ def _get_crud_params(
         "accumulate_bind_names" not in kw
     ), "Don't know how to handle insert within insert without a CTE"
 
+    bindmarkers: MutableMapping[ColumnElement[Any], DMLTargetCopy[Any]] = {}
+    kw["bindmarkers"] = bindmarkers
+
     # getters - these are normally just column.key,
     # but in the case of mysql multi-table update, the rules for
     # .key must conditionally take tablename into account
@@ -231,17 +236,12 @@ def _get_crud_params(
         spd = mp[0]
         stmt_parameter_tuples = list(spd.items())
         spd_str_key = {_column_as_key(key) for key in spd}
-    elif compile_state._ordered_values:
-        spd = compile_state._dict_parameters
-        stmt_parameter_tuples = compile_state._ordered_values
-        assert spd is not None
-        spd_str_key = {_column_as_key(key) for key in spd}
     elif compile_state._dict_parameters:
         spd = compile_state._dict_parameters
         stmt_parameter_tuples = list(spd.items())
         spd_str_key = {_column_as_key(key) for key in spd}
     else:
-        stmt_parameter_tuples = spd = spd_str_key = None
+        stmt_parameter_tuples = spd_str_key = None
 
     # if we have statement parameters - set defaults in the
     # compiled params
@@ -332,6 +332,52 @@ def _get_crud_params(
             .difference(check_columns)
         )
         if check:
+
+            if dml.isupdate(compile_state):
+                tables_mentioned = set(
+                    c.table
+                    for c, v in stmt_parameter_tuples
+                    if isinstance(c, ColumnClause) and c.table is not None
+                ).difference([compile_state.dml_table])
+
+                multi_not_in_from = tables_mentioned.difference(
+                    compile_state._extra_froms
+                )
+
+                if tables_mentioned and (
+                    not compile_state.is_multitable
+                    or not compiler.render_table_with_column_in_update_from
+                ):
+                    if not compiler.render_table_with_column_in_update_from:
+                        preamble = (
+                            "Backend does not support additional "
+                            "tables in the SET clause"
+                        )
+                    else:
+                        preamble = (
+                            "Statement is not a multi-table UPDATE statement"
+                        )
+
+                    raise exc.CompileError(
+                        f"{preamble}; cannot "
+                        f"""include columns from table(s) {
+                            ", ".join(f"'{t.description}'"
+                                      for t in tables_mentioned)
+                        } in SET clause"""
+                    )
+
+                elif multi_not_in_from:
+                    assert compiler.render_table_with_column_in_update_from
+                    raise exc.CompileError(
+                        f"Multi-table UPDATE statement does not include "
+                        "table(s) "
+                        f"""{
+                            ", ".join(
+                                f"'{t.description}'" for
+                                t in multi_not_in_from)
+                        }"""
+                    )
+
             raise exc.CompileError(
                 "Unconsumed column names: %s"
                 % (", ".join("%s" % (c,) for c in check))
@@ -356,6 +402,26 @@ def _get_crud_params(
             cast("Callable[..., str]", _column_as_key),
             kw,
         )
+
+        if bindmarkers:
+            _replace_bindmarkers(
+                compiler,
+                _column_as_key,
+                bindmarkers,
+                compile_state,
+                values,
+                kw,
+            )
+            for m_v in multi_extended_values:
+                _replace_bindmarkers(
+                    compiler,
+                    _column_as_key,
+                    bindmarkers,
+                    compile_state,
+                    m_v,
+                    kw,
+                )
+
         return _CrudParams(values, multi_extended_values)
     elif (
         not values
@@ -376,6 +442,10 @@ def _get_crud_params(
         ]
         is_default_metavalue_only = True
 
+    if bindmarkers:
+        _replace_bindmarkers(
+            compiler, _column_as_key, bindmarkers, compile_state, values, kw
+        )
     return _CrudParams(
         values,
         [],
@@ -383,6 +453,45 @@ def _get_crud_params(
         use_insertmanyvalues=use_insertmanyvalues,
         use_sentinel_columns=use_sentinel_columns,
     )
+
+
+def _replace_bindmarkers(
+    compiler, _column_as_key, bindmarkers, compile_state, values, kw
+):
+    _expr_by_col_key = {
+        _column_as_key(col): compiled_str for col, _, compiled_str, _ in values
+    }
+
+    def replace_marker(m):
+        try:
+            return _expr_by_col_key[m.group(1)]
+        except KeyError as ke:
+            if dml.isupdate(compile_state):
+                return compiler.process(bindmarkers[m.group(1)].column, **kw)
+            else:
+                raise exc.CompileError(
+                    f"Can't resolve referenced column name in "
+                    f"INSERT statement: {m.group(1)!r}"
+                ) from ke
+
+    values[:] = [
+        (
+            col,
+            col_value,
+            re.sub(
+                r"__BINDMARKER_~~(.+?)~~",
+                replace_marker,
+                compiled_str,
+            ),
+            accumulated_bind_names,
+        )
+        for (
+            col,
+            col_value,
+            compiled_str,
+            accumulated_bind_names,
+        ) in values
+    ]
 
 
 @overload
@@ -393,6 +502,7 @@ def _create_bind_param(
     process: Literal[True] = ...,
     required: bool = False,
     name: Optional[str] = None,
+    force_anonymous: bool = False,
     **kw: Any,
 ) -> str: ...
 
@@ -413,10 +523,14 @@ def _create_bind_param(
     process: bool = True,
     required: bool = False,
     name: Optional[str] = None,
+    force_anonymous: bool = False,
     **kw: Any,
 ) -> Union[str, elements.BindParameter[Any]]:
-    if name is None:
+    if force_anonymous:
+        name = None
+    elif name is None:
         name = col.key
+
     bindparam = elements.BindParameter(
         name, value, type_=col.type, required=required
     )
@@ -486,7 +600,7 @@ def _key_getters_for_crud_column(
         )
 
         def _column_as_key(
-            key: Union[ColumnClause[Any], str]
+            key: Union[ColumnClause[Any], str],
         ) -> Union[str, Tuple[str, str]]:
             str_key = c_key_role(key)
             if hasattr(key, "table") and key.table in _et:
@@ -612,9 +726,9 @@ def _scan_cols(
 
     assert compile_state.isupdate or compile_state.isinsert
 
-    if compile_state._parameter_ordering:
+    if compile_state._maintain_values_ordering:
         parameter_ordering = [
-            _column_as_key(key) for key in compile_state._parameter_ordering
+            _column_as_key(key) for key in compile_state._dict_parameters
         ]
         ordered_keys = set(parameter_ordering)
         cols = [
@@ -832,6 +946,7 @@ def _append_param_parameter(
 ):
     value = parameters.pop(col_key)
 
+    has_visiting_cte = kw.get("visiting_cte") is not None
     col_value = compiler.preparer.format_column(
         c, use_table=compile_state.include_table_with_column_exprs
     )
@@ -864,6 +979,7 @@ def _append_param_parameter(
                 else "%s_m0" % _col_bind_name(c)
             ),
             accumulate_bind_names=accumulated_bind_names,
+            force_anonymous=has_visiting_cte,
             **kw,
         )
     elif value._is_bind_parameter:
@@ -1362,9 +1478,28 @@ def _get_update_multitable_params(
 
     affected_tables = set()
     for t in compile_state._extra_froms:
+        # extra gymnastics to support the probably-shouldnt-have-supported
+        # case of "UPDATE table AS alias SET table.foo = bar", but it's
+        # supported
+        we_shouldnt_be_here_if_columns_found = (
+            not include_table
+            and not compile_state.dml_table.is_derived_from(t)
+        )
+
         for c in t.c:
             if c in normalized_params:
+
+                if we_shouldnt_be_here_if_columns_found:
+                    raise exc.CompileError(
+                        "Backend does not support additional tables "
+                        "in the SET "
+                        "clause; cannot include columns from table(s) "
+                        f"'{t.description}' in "
+                        "SET clause"
+                    )
+
                 affected_tables.add(t)
+
                 check_columns[_getattr_col_key(c)] = c
                 value = normalized_params[c]
 
@@ -1390,6 +1525,7 @@ def _get_update_multitable_params(
                     value = compiler.process(value.self_group(), **kw)
                     accumulated_bind_names = ()
                 values.append((c, col_value, value, accumulated_bind_names))
+
     # determine tables which are actually to be updated - process onupdate
     # and server_onupdate for these
     for t in affected_tables:
@@ -1435,6 +1571,7 @@ def _extend_values_for_multiparams(
     values_0 = initial_values
     values = [initial_values]
 
+    has_visiting_cte = kw.get("visiting_cte") is not None
     mp = compile_state._multi_parameters
     assert mp is not None
     for i, row in enumerate(mp[1:]):
@@ -1451,7 +1588,8 @@ def _extend_values_for_multiparams(
                         compiler,
                         col,
                         row[key],
-                        name="%s_m%d" % (col.key, i + 1),
+                        name=("%s_m%d" % (col.key, i + 1)),
+                        force_anonymous=has_visiting_cte,
                         **kw,
                     )
                 else:

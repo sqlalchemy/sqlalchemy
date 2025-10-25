@@ -79,7 +79,6 @@ class MyListLike(list):
     # add @appender, @remover decorators as needed
     _sa_iterator = list.__iter__
     _sa_linker = None
-    _sa_converter = None
 
     def _sa_appender(self, item, _sa_initiator=None):
         if _sa_initiator is not False:

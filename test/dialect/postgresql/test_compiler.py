@@ -1,4 +1,9 @@
+import random
+import re
+
+from sqlalchemy import all_
 from sqlalchemy import and_
+from sqlalchemy import any_
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
 from sqlalchemy import case
@@ -20,6 +25,7 @@ from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import null
+from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import Sequence
@@ -35,11 +41,13 @@ from sqlalchemy import tuple_
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
+from sqlalchemy import VARCHAR
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
@@ -70,8 +78,10 @@ from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
+from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.util import OrderedDict
 
@@ -574,6 +584,43 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE anothertable (id INTEGER) WITHOUT OIDS",
         )
 
+    def test_create_table_with_storage_parameters(self):
+        m = MetaData()
+
+        tbl = Table("atable1", m, postgresql_with={"fillfactor": 100})
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable1 () WITH (fillfactor = 100)",
+        )
+
+        tbl2 = Table(
+            "atable2",
+            m,
+            postgresql_with={"toast.autovacuum_insert_scale_factor": 1.25},
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl2),
+            "CREATE TABLE atable2 () "
+            "WITH (toast.autovacuum_insert_scale_factor = 1.25)",
+        )
+
+        tbl3 = Table(
+            "atable3",
+            m,
+            postgresql_with={
+                "user_catalog_table": False,
+                "parallel_workers": 15,
+            },
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl3),
+            "CREATE TABLE atable3 () "
+            "WITH (user_catalog_table = False, parallel_workers = 15)",
+        )
+
     def test_create_table_with_oncommit_option(self):
         m = MetaData()
         tbl = Table(
@@ -789,6 +836,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         expr = testing.resolve_lambda(expr_fn, tbl=tbl)
         self.assert_compile(expr, expected, dialect=dd)
+
+    @testing.combinations(
+        (
+            lambda tbl: schema.AddConstraint(
+                UniqueConstraint(tbl.c.id, postgresql_include=[tbl.c.value])
+            ),
+            "ALTER TABLE foo ADD UNIQUE (id) INCLUDE (value)",
+        ),
+        (
+            lambda tbl: schema.AddConstraint(
+                PrimaryKeyConstraint(
+                    tbl.c.id, postgresql_include=[tbl.c.value, "misc"]
+                )
+            ),
+            "ALTER TABLE foo ADD PRIMARY KEY (id) INCLUDE (value, misc)",
+        ),
+        (
+            lambda tbl: schema.CreateIndex(
+                Index("idx", tbl.c.id, postgresql_include=[tbl.c.value])
+            ),
+            "CREATE INDEX idx ON foo (id) INCLUDE (value)",
+        ),
+    )
+    def test_include(self, expr_fn, expected):
+        m = MetaData()
+        tbl = Table(
+            "foo",
+            m,
+            Column("id", Integer, nullable=False),
+            Column("value", Integer, nullable=False),
+            Column("misc", String),
+        )
+        expr = testing.resolve_lambda(expr_fn, tbl=tbl)
+        self.assert_compile(expr, expected)
 
     def test_create_index_with_labeled_ops(self):
         m = MetaData()
@@ -1137,6 +1218,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "a INTEGER, "
             "b INTEGER, "
             "FOREIGN KEY(b) REFERENCES testtbl (a) NOT VALID"
+            ")",
+        )
+
+    def test_create_foreign_key_constraint_ondelete_column_list(self):
+        m = MetaData()
+        pktable = Table(
+            "pktable",
+            m,
+            Column("tid", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True),
+        )
+        fktable = Table(
+            "fktable",
+            m,
+            Column("tid", Integer),
+            Column("id", Integer),
+            Column("fk_id_del_set_null", Integer),
+            Column("fk_id_del_set_default", Integer, server_default=text("0")),
+            ForeignKeyConstraint(
+                columns=["tid", "fk_id_del_set_null"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET NULL (fk_id_del_set_null)",
+            ),
+            ForeignKeyConstraint(
+                columns=["tid", "fk_id_del_set_default"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET DEFAULT(fk_id_del_set_default)",
+            ),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(fktable),
+            "CREATE TABLE fktable ("
+            "tid INTEGER, id INTEGER, "
+            "fk_id_del_set_null INTEGER, "
+            "fk_id_del_set_default INTEGER DEFAULT 0, "
+            "FOREIGN KEY(tid, fk_id_del_set_null)"
+            " REFERENCES pktable (tid, id)"
+            " ON DELETE SET NULL (fk_id_del_set_null), "
+            "FOREIGN KEY(tid, fk_id_del_set_default)"
+            " REFERENCES pktable (tid, id)"
+            " ON DELETE SET DEFAULT(fk_id_del_set_default)"
             ")",
         )
 
@@ -1731,6 +1854,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FOR UPDATE OF table1",
         )
 
+        # test issue #12417
+        subquery = select(table1.c.myid).with_for_update(of=table1).lateral()
+        statement = select(subquery.c.myid)
+        self.assert_compile(
+            statement,
+            "SELECT anon_1.myid FROM LATERAL (SELECT mytable.myid AS myid "
+            "FROM mytable FOR UPDATE OF mytable) AS anon_1",
+        )
+
     def test_for_update_with_schema(self):
         m = MetaData()
         table1 = Table(
@@ -1758,6 +1890,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             x, """SELECT pg_table.col1, pg_table."variadic" FROM pg_table"""
+        )
+
+    def _array_any_deprecation(self):
+        return testing.expect_deprecated(
+            r"The ARRAY.Comparator.any\(\) and "
+            r"ARRAY.Comparator.all\(\) methods "
+            r"for arrays are deprecated for removal, along with the "
+            r"PG-specific Any\(\) "
+            r"and All\(\) functions. See any_\(\) and all_\(\) functions for "
+            "modern use. "
         )
 
     def test_array(self):
@@ -1806,51 +1948,134 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"x_1": [3]},
             dialect=PGDialect_psycopg2(),
         )
+
+    def test_array_modern_any_all(self):
+        c = Column("x", postgresql.ARRAY(Integer))
+
         self.assert_compile(
-            postgresql.Any(4, c),
-            "%(x_1)s = ANY (x)",
-            checkparams={"x_1": 4},
+            4 == c.any_(),
+            "%(param_1)s = ANY (x)",
+            checkparams={"param_1": 4},
         )
 
         self.assert_compile(
-            c.any(5),
-            "%(x_1)s = ANY (x)",
-            checkparams={"x_1": 5},
+            5 == any_(c),
+            "%(param_1)s = ANY (x)",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
-            ~c.any(5),
-            "NOT (%(x_1)s = ANY (x))",
-            checkparams={"x_1": 5},
+            ~(c.any_() == 5),
+            "NOT (%(param_1)s = ANY (x))",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
-            c.all(5),
-            "%(x_1)s = ALL (x)",
-            checkparams={"x_1": 5},
+            ~(5 == c.any_()),
+            "NOT (%(param_1)s = ANY (x))",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
-            ~c.all(5),
-            "NOT (%(x_1)s = ALL (x))",
-            checkparams={"x_1": 5},
+            5 != any_(c),
+            "%(param_1)s != ANY (x)",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
-            c.any(5, operator=operators.ne),
-            "%(x_1)s != ANY (x)",
-            checkparams={"x_1": 5},
+            6 > all_(c),
+            "%(param_1)s > ALL (x)",
+            checkparams={"param_1": 6},
         )
+
         self.assert_compile(
-            postgresql.All(6, c, operator=operators.gt),
-            "%(x_1)s > ALL (x)",
-            checkparams={"x_1": 6},
+            7 < all_(c),
+            "%(param_1)s < ALL (x)",
+            checkparams={"param_1": 7},
         )
+
         self.assert_compile(
-            c.all(7, operator=operators.lt),
-            "%(x_1)s < ALL (x)",
-            checkparams={"x_1": 7},
+            c.all_() == 5,
+            "%(param_1)s = ALL (x)",
+            checkparams={"param_1": 5},
         )
+
+        self.assert_compile(
+            5 == c.all_(),
+            "%(param_1)s = ALL (x)",
+            checkparams={"param_1": 5},
+        )
+
+        self.assert_compile(
+            ~(5 == all_(c)),
+            "NOT (%(param_1)s = ALL (x))",
+            checkparams={"param_1": 5},
+        )
+
+        self.assert_compile(
+            ~(all_(c) == 5),
+            "NOT (%(param_1)s = ALL (x))",
+            checkparams={"param_1": 5},
+        )
+
+    def test_array_deprecated_any_all(self):
+        c = Column("x", postgresql.ARRAY(Integer))
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                postgresql.Any(4, c),
+                "%(x_1)s = ANY (x)",
+                checkparams={"x_1": 4},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                c.any(5),
+                "%(x_1)s = ANY (x)",
+                checkparams={"x_1": 5},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                ~c.any(5),
+                "NOT (%(x_1)s = ANY (x))",
+                checkparams={"x_1": 5},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                c.any(5, operator=operators.ne),
+                "%(x_1)s != ANY (x)",
+                checkparams={"x_1": 5},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                postgresql.All(6, c, operator=operators.gt),
+                "%(x_1)s > ALL (x)",
+                checkparams={"x_1": 6},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                c.all(7, operator=operators.lt),
+                "%(x_1)s < ALL (x)",
+                checkparams={"x_1": 7},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                c.all(5),
+                "%(x_1)s = ALL (x)",
+                checkparams={"x_1": 5},
+            )
+
+        with self._array_any_deprecation():
+            self.assert_compile(
+                ~c.all(5),
+                "NOT (%(x_1)s = ALL (x))",
+                checkparams={"x_1": 5},
+            )
 
     @testing.combinations(
         (lambda c: c.overlap, "&&"),
@@ -1934,6 +2159,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ).type.item_type._type_affinity,
             String,
         )
+
+    @testing.combinations(
+        ("with type_", Date, "ARRAY[]::DATE[]"),
+        ("no type_", None, "ARRAY[]"),
+        id_="iaa",
+    )
+    def test_array_literal_empty(self, type_, expected):
+        self.assert_compile(postgresql.array([], type_=type_), expected)
 
     def test_array_literal(self):
         self.assert_compile(
@@ -2281,9 +2514,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     @testing.combinations(
-        ("no_persisted", " STORED", "ignore"),
-        ("persisted_none", " STORED", None),
+        ("no_persisted", "", "ignore"),
+        ("persisted_none", "", None),
         ("persisted_true", " STORED", True),
+        ("persisted_false", " VIRTUAL", False),
         id_="iaa",
     )
     def test_column_computed(self, text, persisted):
@@ -2301,7 +2535,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALWAYS AS (x + 2)%s)" % text,
         )
 
-    def test_column_computed_persisted_false(self):
+    def test_column_computed_persisted_false_old_version(self):
         m = MetaData()
         t = Table(
             "t",
@@ -2309,12 +2543,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("x", Integer),
             Column("y", Integer, Computed("x + 2", persisted=False)),
         )
-        assert_raises_message(
+        old_dialect = postgresql.dialect()
+        old_dialect.supports_virtual_generated_columns = False
+        with expect_raises_message(
             exc.CompileError,
             "PostrgreSQL computed columns do not support 'virtual'",
-            schema.CreateTable(t).compile,
-            dialect=postgresql.dialect(),
+        ):
+            schema.CreateTable(t).compile(dialect=old_dialect)
+
+    def test_column_computed_persisted_none_warning_old_version(self):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2")),
         )
+        old_dialect = postgresql.dialect()
+        old_dialect.supports_virtual_generated_columns = False
+
+        with expect_warnings(
+            "Computed column t.y is being created as 'STORED' since"
+        ):
+            self.assert_compile(
+                schema.CreateTable(t),
+                "CREATE TABLE t (x INTEGER, y INTEGER GENERATED "
+                "ALWAYS AS (x + 2) STORED)",
+                dialect=old_dialect,
+            )
 
     @testing.combinations(True, False)
     def test_column_identity(self, pk):
@@ -2574,21 +2830,104 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     @testing.combinations(
-        (lambda col: col["foo"] + " ", "(x -> %(x_1)s) || %(param_1)s"),
+        (
+            lambda col: col["foo"] + " ",
+            "x[%(x_1)s] || %(param_1)s",
+        ),
         (
             lambda col: col["foo"] + " " + col["bar"],
-            "(x -> %(x_1)s) || %(param_1)s || (x -> %(x_2)s)",
+            "x[%(x_1)s] || %(param_1)s || x[%(x_2)s]",
         ),
         argnames="expr, expected",
     )
-    @testing.combinations((JSON(),), (JSONB(),), argnames="type_")
-    def test_eager_grouping_flag(self, expr, expected, type_):
+    def test_eager_grouping_flag(self, expr, expected):
         """test #10479"""
-        col = Column("x", type_)
+        col = Column("x", JSONB)
 
         expr = testing.resolve_lambda(expr, col=col)
 
+        # Choose expected result based on type
         self.assert_compile(expr, expected)
+
+    @testing.variation("pgversion", ["pg14", "pg13"])
+    def test_jsonb_subscripting(self, pgversion):
+        """test #10927 - PostgreSQL 14+ JSONB subscripting syntax"""
+        data = table("data", column("id", Integer), column("x", JSONB))
+
+        dialect = postgresql.dialect()
+
+        if pgversion.pg13:
+            dialect._supports_jsonb_subscripting = False
+
+        # Test SELECT with JSONB indexing
+        stmt = select(data.c.x["key"])
+        self.assert_compile(
+            stmt,
+            (
+                "SELECT data.x[%(x_1)s] AS anon_1 FROM data"
+                if pgversion.pg14
+                else "SELECT data.x -> %(x_1)s AS anon_1 FROM data"
+            ),
+            dialect=dialect,
+        )
+
+        # Test UPDATE with JSONB indexing (the original issue case)
+        stmt = update(data).values({data.c.x["new_key"]: data.c.x["old_key"]})
+        self.assert_compile(
+            stmt,
+            (
+                "UPDATE data SET x[%(x_1)s]=(data.x[%(x_2)s])"
+                if pgversion.pg14
+                else "UPDATE data SET x -> %(x_1)s=(data.x -> %(x_2)s)"
+            ),
+            dialect=dialect,
+        )
+
+    def test_json_still_uses_arrow_syntax(self):
+        """test #10927 - JSON type still uses arrow syntax even on PG 14+"""
+        data = table("data", column("id", Integer), column("x", JSON))
+
+        # Test PostgreSQL 14+ still uses arrow syntax for JSON (not JSONB)
+
+        # Test SELECT with JSON indexing
+        stmt = select(data.c.x["key"])
+        self.assert_compile(
+            stmt,
+            "SELECT data.x -> %(x_1)s AS anon_1 FROM data",
+        )
+
+        # Test UPDATE with JSON indexing
+        stmt = update(data).values({data.c.x["new_key"]: data.c.x["old_key"]})
+        self.assert_compile(
+            stmt,
+            "UPDATE data SET x -> %(x_1)s=(data.x -> %(x_2)s)",
+        )
+
+    def test_jsonb_functions_use_parentheses_with_subscripting(self):
+        """test #12778 - JSONB functions are parenthesized with [] syntax"""
+        data = table("data", column("id", Integer), column("x", JSONB))
+
+        # Test that JSONB functions are properly parenthesized with [] syntax
+        # This ensures correct PostgreSQL syntax: (function_call)[index]
+        # instead of the invalid: function_call[index]
+
+        stmt = select(func.jsonb_array_elements(data.c.x, type_=JSONB)["key"])
+        self.assert_compile(
+            stmt,
+            "SELECT "
+            "(jsonb_array_elements(data.x))[%(jsonb_array_elements_1)s] "
+            "AS anon_1 FROM data",
+        )
+
+        # Test with nested function calls
+        stmt = select(
+            func.jsonb_array_elements(data.c.x["items"], type_=JSONB)["key"]
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT (jsonb_array_elements(data.x[%(x_1)s]))"
+            "[%(jsonb_array_elements_1)s] AS anon_1 FROM data",
+        )
 
     def test_range_custom_object_hook(self):
         # See issue #8884
@@ -2666,8 +3005,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect,
         )
 
+    @testing.combinations(
+        (lambda t: t.c.a**t.c.b, "power(t.a, t.b)", {}),
+        (lambda t: t.c.a**3, "power(t.a, %(pow_1)s)", {"pow_1": 3}),
+        (lambda t: func.pow(t.c.a, 3), "power(t.a, %(pow_1)s)", {"pow_1": 3}),
+        (lambda t: func.power(t.c.a, t.c.b), "power(t.a, t.b)", {}),
+    )
+    def test_simple_compile(self, fn, string, params):
+        t = table("t", column("a", Integer), column("b", Integer))
+        expr = resolve_lambda(fn, t=t)
+        self.assert_compile(expr, string, params)
 
-class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
+
+class InsertOnConflictTest(
+    fixtures.TablesTest, AssertsCompiledSQL, fixtures.CacheKeySuite
+):
     __dialect__ = postgresql.dialect()
 
     run_create_tables = None
@@ -2786,6 +3138,111 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
                 f"{expected}",
             )
 
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_insert_on_conflict_cache_key(self):
+        table = Table(
+            "foos",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("bar", String(10)),
+            Column("baz", String(10)),
+        )
+        Index("foo_idx", table.c.id)
+
+        def stmt0():
+            # note a multivalues INSERT is not cacheable; use just one
+            # set of values
+            return insert(table).values(
+                {"id": 1, "bar": "ab"},
+            )
+
+        def stmt1():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing()
+
+        def stmt2():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=["id"])
+
+        def stmt21():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=[table.c.id])
+
+        def stmt22():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(
+                index_elements=["id", table.c.bar]
+            )
+
+        def stmt23():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=["id", "bar"])
+
+        def stmt24():
+            stmt = insert(table).values(
+                {"id": 1, "bar": "ab", "baz": "xy"},
+            )
+            return stmt.on_conflict_do_nothing(index_elements=["id", "bar"])
+
+        def stmt3():
+            stmt = stmt0()
+            return stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "bar": random.choice(["a", "b", "c"]),
+                    "baz": random.choice(["d", "e", "f"]),
+                },
+            )
+
+        def stmt31():
+            stmt = stmt0()
+            return stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "baz": random.choice(["d", "e", "f"]),
+                },
+            )
+
+        def stmt4():
+            stmt = stmt0()
+
+            return stmt.on_conflict_do_update(
+                constraint=table.primary_key, set_=stmt.excluded
+            )
+
+        def stmt41():
+            stmt = stmt0()
+
+            return stmt.on_conflict_do_update(
+                constraint=table.primary_key,
+                set_=stmt.excluded,
+                where=table.c.bar != random.choice(["q", "p", "r", "z"]),
+            )
+
+        def stmt42():
+            stmt = stmt0()
+
+            return stmt.on_conflict_do_update(
+                constraint=table.primary_key,
+                set_=stmt.excluded,
+                where=table.c.baz != random.choice(["q", "p", "r", "z"]),
+            )
+
+        return lambda: [
+            stmt0(),
+            stmt1(),
+            stmt2(),
+            stmt21(),
+            stmt22(),
+            stmt23(),
+            stmt24(),
+            stmt3(),
+            stmt31(),
+            stmt4(),
+            stmt41(),
+            stmt42(),
+        ]
+
     @testing.combinations("control", "excluded", "dict")
     def test_set_excluded(self, scenario):
         """test #8014, sending all of .excluded to set"""
@@ -2831,6 +3288,34 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
                     "CONFLICT (id) DO UPDATE "
                     "SET id = excluded.id, name = excluded.name",
                 )
+
+    def test_dont_consume_set_collection(self):
+        users = self.tables.users
+        stmt = insert(users).values(
+            [
+                {
+                    "name": "spongebob",
+                },
+                {
+                    "name": "sandy",
+                },
+            ]
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[users.c.name], set_=dict(name=stmt.excluded.name)
+        )
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (name) VALUES (%(name_m0)s), (%(name_m1)s) "
+            "ON CONFLICT (name) DO UPDATE SET name = excluded.name",
+        )
+        stmt = stmt.returning(users)
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (name) VALUES (%(name_m0)s), (%(name_m1)s) "
+            "ON CONFLICT (name) DO UPDATE SET name = excluded.name "
+            "RETURNING users.id, users.name",
+        )
 
     def test_on_conflict_do_no_call_twice(self):
         users = self.table1
@@ -3355,7 +3840,12 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
 
-class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
+class DistinctOnTest(
+    fixtures.MappedTest,
+    AssertsCompiledSQL,
+    fixtures.CacheKeySuite,
+    fixtures.DistinctOnFixture,
+):
     """Test 'DISTINCT' with SQL expression language and orm.Query with
     an emphasis on PG's 'DISTINCT ON' syntax.
 
@@ -3372,80 +3862,81 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
             Column("b", String),
         )
 
-    def test_plain_generative(self):
+    def test_distinct_on_no_cols(self, distinct_on_fixture):
         self.assert_compile(
-            select(self.table).distinct(),
+            distinct_on_fixture(select(self.table)),
             "SELECT DISTINCT t.id, t.a, t.b FROM t",
         )
 
-    def test_on_columns_generative(self):
+    def test_distinct_on_cols(self, distinct_on_fixture):
         self.assert_compile(
-            select(self.table).distinct(self.table.c.a),
+            distinct_on_fixture(select(self.table), self.table.c.a),
             "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t",
         )
 
-    def test_on_columns_generative_multi_call(self):
         self.assert_compile(
-            select(self.table)
-            .distinct(self.table.c.a)
-            .distinct(self.table.c.b),
+            distinct_on_fixture(
+                self.table.select(), self.table.c.a, self.table.c.b
+            ),
+            "SELECT DISTINCT ON (t.a, t.b) t.id, t.a, t.b FROM t",
+            checkparams={},
+        )
+
+    def test_distinct_on_columns_generative_multi_call(
+        self, distinct_on_fixture
+    ):
+        stmt = select(self.table)
+        stmt = distinct_on_fixture(stmt, self.table.c.a)
+        stmt = distinct_on_fixture(stmt, self.table.c.b)
+
+        self.assert_compile(
+            stmt,
             "SELECT DISTINCT ON (t.a, t.b) t.id, t.a, t.b FROM t",
         )
 
-    def test_plain_inline(self):
+    def test_distinct_on_dupe_columns_generative_multi_call(
+        self, distinct_on_fixture
+    ):
+        stmt = select(self.table)
+        stmt = distinct_on_fixture(stmt, self.table.c.a)
+        stmt = distinct_on_fixture(stmt, self.table.c.a)
+
         self.assert_compile(
-            select(self.table).distinct(),
-            "SELECT DISTINCT t.id, t.a, t.b FROM t",
+            stmt,
+            "SELECT DISTINCT ON (t.a, t.a) t.id, t.a, t.b FROM t",
         )
 
-    def test_on_columns_inline_list(self):
-        self.assert_compile(
-            select(self.table)
-            .distinct(self.table.c.a, self.table.c.b)
-            .order_by(self.table.c.a, self.table.c.b),
-            "SELECT DISTINCT ON (t.a, t.b) t.id, "
-            "t.a, t.b FROM t ORDER BY t.a, t.b",
-        )
-
-    def test_on_columns_inline_scalar(self):
-        self.assert_compile(
-            select(self.table).distinct(self.table.c.a),
-            "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t",
-        )
-
-    def test_literal_binds(self):
-        self.assert_compile(
-            select(self.table).distinct(self.table.c.a == 10),
-            "SELECT DISTINCT ON (t.a = 10) t.id, t.a, t.b FROM t",
-            literal_binds=True,
-        )
-
-    def test_query_plain(self):
+    def test_legacy_query_plain(self, distinct_on_fixture):
         sess = Session()
         self.assert_compile(
-            sess.query(self.table).distinct(),
+            distinct_on_fixture(sess.query(self.table)),
             "SELECT DISTINCT t.id AS t_id, t.a AS t_a, t.b AS t_b FROM t",
         )
 
-    def test_query_on_columns(self):
+    def test_legacy_query_on_columns(self, distinct_on_fixture):
         sess = Session()
         self.assert_compile(
-            sess.query(self.table).distinct(self.table.c.a),
+            distinct_on_fixture(sess.query(self.table), self.table.c.a),
             "SELECT DISTINCT ON (t.a) t.id AS t_id, t.a AS t_a, "
             "t.b AS t_b FROM t",
         )
 
-    def test_query_on_columns_multi_call(self):
+    def test_legacy_query_distinct_on_columns_multi_call(
+        self, distinct_on_fixture
+    ):
         sess = Session()
         self.assert_compile(
-            sess.query(self.table)
-            .distinct(self.table.c.a)
-            .distinct(self.table.c.b),
+            distinct_on_fixture(
+                distinct_on_fixture(sess.query(self.table), self.table.c.a),
+                self.table.c.b,
+            ),
             "SELECT DISTINCT ON (t.a, t.b) t.id AS t_id, t.a AS t_a, "
             "t.b AS t_b FROM t",
         )
 
-    def test_query_on_columns_subquery(self):
+    def test_legacy_query_distinct_on_columns_subquery(
+        self, distinct_on_fixture
+    ):
         sess = Session()
 
         class Foo:
@@ -3458,33 +3949,34 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         f1 = aliased(Foo, subq)
         self.assert_compile(
-            sess.query(f1).distinct(f1.a, f1.b),
+            distinct_on_fixture(sess.query(f1), f1.a, f1.b),
             "SELECT DISTINCT ON (anon_1.a, anon_1.b) anon_1.id "
             "AS anon_1_id, anon_1.a AS anon_1_a, anon_1.b "
             "AS anon_1_b FROM (SELECT t.id AS id, t.a AS a, "
             "t.b AS b FROM t) AS anon_1",
         )
 
-    def test_query_distinct_on_aliased(self):
+    def test_legacy_query_distinct_on_aliased(self, distinct_on_fixture):
         class Foo:
             pass
 
+        clear_mappers()
         self.mapper_registry.map_imperatively(Foo, self.table)
         a1 = aliased(Foo)
         sess = Session()
+
+        q = distinct_on_fixture(sess.query(a1), a1.a)
         self.assert_compile(
-            sess.query(a1).distinct(a1.a),
+            q,
             "SELECT DISTINCT ON (t_1.a) t_1.id AS t_1_id, "
             "t_1.a AS t_1_a, t_1.b AS t_1_b FROM t AS t_1",
         )
 
-    def test_distinct_on_subquery_anon(self):
+    def test_distinct_on_subquery_anon(self, distinct_on_fixture):
         sq = select(self.table).alias()
-        q = (
-            select(self.table.c.id, sq.c.id)
-            .distinct(sq.c.id)
-            .where(self.table.c.id == sq.c.id)
-        )
+        q = distinct_on_fixture(
+            select(self.table.c.id, sq.c.id), sq.c.id
+        ).where(self.table.c.id == sq.c.id)
 
         self.assert_compile(
             q,
@@ -3493,19 +3985,122 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
             "AS b FROM t) AS anon_1 WHERE t.id = anon_1.id",
         )
 
-    def test_distinct_on_subquery_named(self):
+    def test_distinct_on_subquery_named(self, distinct_on_fixture):
         sq = select(self.table).alias("sq")
-        q = (
-            select(self.table.c.id, sq.c.id)
-            .distinct(sq.c.id)
-            .where(self.table.c.id == sq.c.id)
-        )
+        q = distinct_on_fixture(
+            select(self.table.c.id, sq.c.id), sq.c.id
+        ).where(self.table.c.id == sq.c.id)
         self.assert_compile(
             q,
             "SELECT DISTINCT ON (sq.id) t.id, sq.id AS id_1 "
             "FROM t, (SELECT t.id AS id, t.a AS a, "
             "t.b AS b FROM t) AS sq WHERE t.id = sq.id",
         )
+
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_distinct_on_ext_cache_key(self):
+        def leg():
+            with expect_deprecated("Passing expression"):
+                return self.table.select().distinct(self.table.c.a)
+
+        return lambda: [
+            self.table.select().ext(distinct_on(self.table.c.a)),
+            self.table.select().ext(distinct_on(self.table.c.b)),
+            self.table.select().ext(
+                distinct_on(self.table.c.a, self.table.c.b)
+            ),
+            self.table.select().ext(
+                distinct_on(self.table.c.b, self.table.c.a)
+            ),
+            self.table.select(),
+            self.table.select().distinct(),
+            leg(),
+        ]
+
+    def test_distinct_on_cache_key_equal(self, distinct_on_fixture):
+        self._run_cache_key_equal_fixture(
+            lambda: [
+                distinct_on_fixture(self.table.select(), self.table.c.a),
+                distinct_on_fixture(select(self.table), self.table.c.a),
+            ],
+            compare_values=True,
+        )
+        self._run_cache_key_equal_fixture(
+            lambda: [
+                distinct_on_fixture(
+                    distinct_on_fixture(self.table.select(), self.table.c.a),
+                    self.table.c.b,
+                ),
+                distinct_on_fixture(
+                    select(self.table), self.table.c.a, self.table.c.b
+                ),
+            ],
+            compare_values=True,
+        )
+
+    def test_distinct_on_literal_binds(self, distinct_on_fixture):
+        self.assert_compile(
+            distinct_on_fixture(select(self.table), self.table.c.a == 10),
+            "SELECT DISTINCT ON (t.a = 10) t.id, t.a, t.b FROM t",
+            literal_binds=True,
+        )
+
+    def test_distinct_on_col_str(self, distinct_on_fixture):
+        stmt = distinct_on_fixture(select(self.table), "a")
+        self.assert_compile(
+            stmt,
+            "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t",
+            dialect="postgresql",
+        )
+
+    def test_distinct_on_label(self, distinct_on_fixture):
+        stmt = distinct_on_fixture(select(self.table.c.a.label("foo")), "foo")
+        self.assert_compile(stmt, "SELECT DISTINCT ON (foo) t.a AS foo FROM t")
+
+    def test_unresolvable_distinct_label(self, distinct_on_fixture):
+        stmt = distinct_on_fixture(
+            select(self.table.c.a.label("foo")), "not a label"
+        )
+        with expect_raises_message(
+            exc.CompileError,
+            "Can't resolve label reference for.* expression 'not a"
+            " label' should be explicitly",
+        ):
+            self.assert_compile(stmt, "ingored")
+
+    def test_distinct_on_ext_with_legacy_distinct(self):
+        with (
+            expect_raises_message(
+                exc.InvalidRequestError,
+                re.escape(
+                    "Cannot mix ``select.ext(distinct_on(...))`` and "
+                    "``select.distinct(...)``"
+                ),
+            ),
+            expect_deprecated("Passing expression"),
+        ):
+            s = (
+                self.table.select()
+                .distinct(self.table.c.b)
+                .ext(distinct_on(self.table.c.a))
+            )
+
+        # opposite order is not detected...
+        with expect_deprecated("Passing expression"):
+            s = (
+                self.table.select()
+                .ext(distinct_on(self.table.c.a))
+                .distinct(self.table.c.b)
+            )
+        # but it raises while compiling
+        with expect_raises_message(
+            exc.CompileError,
+            re.escape(
+                "Cannot mix ``select.ext(distinct_on(...))`` and "
+                "``select.distinct(...)``"
+            ),
+        ):
+            self.assert_compile(s, "ignored")
 
 
 class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -3810,7 +4405,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def setup_test(self):
         self.table = table(
-            "mytable", column("myid", Integer), column("name", String)
+            "mytable", column("myid", String), column("name", String)
         )
 
     def test_regexp_match(self):
@@ -4047,6 +4642,52 @@ class CacheKeyTest(fixtures.CacheKeyFixture, fixtures.TestBase):
                 aggregate_order_by(
                     column("a", Integer), column("a"), column("b")
                 ),
+            ),
+            compare_values=False,
+        )
+
+    def test_array_equivalent_keys_one_element(self):
+        self._run_cache_key_equal_fixture(
+            lambda: (
+                array([random.randint(0, 10)]),
+                array([random.randint(0, 10)], type_=Integer),
+                array([random.randint(0, 10)], type_=Integer),
+            ),
+            compare_values=False,
+        )
+
+    def test_array_equivalent_keys_two_elements(self):
+        self._run_cache_key_equal_fixture(
+            lambda: (
+                array([random.randint(0, 10), random.randint(0, 10)]),
+                array(
+                    [random.randint(0, 10), random.randint(0, 10)],
+                    type_=Integer,
+                ),
+                array(
+                    [random.randint(0, 10), random.randint(0, 10)],
+                    type_=Integer,
+                ),
+            ),
+            compare_values=False,
+        )
+
+    def test_array_heterogeneous(self):
+        self._run_cache_key_fixture(
+            lambda: (
+                array([], type_=Integer),
+                array([], type_=Text),
+                array([]),
+                array([random.choice(["t1", "t2", "t3"])]),
+                array(
+                    [
+                        random.choice(["t1", "t2", "t3"]),
+                        random.choice(["t1", "t2", "t3"]),
+                    ]
+                ),
+                array([random.choice(["t1", "t2", "t3"])], type_=Text),
+                array([random.choice(["t1", "t2", "t3"])], type_=VARCHAR(30)),
+                array([random.randint(0, 10), random.randint(0, 10)]),
             ),
             compare_values=False,
         )

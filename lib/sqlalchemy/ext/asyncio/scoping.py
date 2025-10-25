@@ -41,7 +41,6 @@ if TYPE_CHECKING:
     from .result import AsyncScalarResult
     from .session import AsyncSessionTransaction
     from ...engine import Connection
-    from ...engine import CursorResult
     from ...engine import Engine
     from ...engine import Result
     from ...engine import Row
@@ -58,7 +57,6 @@ if TYPE_CHECKING:
     from ...orm.session import _PKIdentityArgument
     from ...orm.session import _SessionBind
     from ...sql.base import Executable
-    from ...sql.dml import UpdateBase
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
@@ -116,6 +114,7 @@ _Ts = TypeVarTuple("_Ts")
         "autoflush",
         "no_autoflush",
         "info",
+        "execution_options",
     ],
     use_intermediate_variable=["get"],
 )
@@ -560,18 +559,6 @@ class async_scoped_session(Generic[_AS]):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> Result[Unpack[_Ts]]: ...
-
-    @overload
-    async def execute(
-        self,
-        statement: UpdateBase,
-        params: Optional[_CoreAnyExecuteParams] = None,
-        *,
-        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
-    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     async def execute(
@@ -1223,8 +1210,7 @@ class async_scoped_session(Generic[_AS]):
             Proxied for the :class:`_asyncio.AsyncSession` class on
             behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
-        no rows.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
         ..versionadded: 2.0.22
 
@@ -1585,6 +1571,25 @@ class async_scoped_session(Generic[_AS]):
         """  # noqa: E501
 
         return self._proxied.info
+
+    @property
+    def execution_options(self) -> Any:
+        r"""Proxy for the :attr:`_orm.Session.execution_options` attribute
+        on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class
+            on behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+
+        """  # noqa: E501
+
+        return self._proxied.execution_options
+
+    @execution_options.setter
+    def execution_options(self, attr: Any) -> None:
+        self._proxied.execution_options = attr
 
     @classmethod
     async def close_all(cls) -> None:

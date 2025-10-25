@@ -10,6 +10,7 @@ from __future__ import annotations
 import typing
 from typing import Any
 from typing import Callable
+from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -20,9 +21,11 @@ from typing import TypeVar
 from typing import Union
 
 from . import coercions
+from . import operators
 from . import roles
 from .base import _NoArg
 from .coercions import _document_text_coercion
+from .elements import AggregateOrderBy
 from .elements import BindParameter
 from .elements import BooleanClauseList
 from .elements import Case
@@ -31,11 +34,13 @@ from .elements import CollationClause
 from .elements import CollectionAggregate
 from .elements import ColumnClause
 from .elements import ColumnElement
+from .elements import DMLTargetCopy
 from .elements import Extract
 from .elements import False_
 from .elements import FunctionFilter
 from .elements import Label
 from .elements import Null
+from .elements import OrderByList
 from .elements import Over
 from .elements import TextClause
 from .elements import True_
@@ -45,13 +50,13 @@ from .elements import TypeCoerce
 from .elements import UnaryExpression
 from .elements import WithinGroup
 from .functions import FunctionElement
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _DMLOnlyColumnArgument
     from ._typing import _TypeEngineArgument
     from .elements import BinaryExpression
     from .selectable import FromClause
@@ -94,11 +99,8 @@ def all_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         # would render 'NULL = ALL(somearray)'
         all_(mytable.c.somearray) == None
 
-    .. versionchanged:: 1.4.26  repaired the use of any_() / all_()
-       comparing to NULL on the right side to be flipped to the left.
-
     The column-level :meth:`_sql.ColumnElement.all_` method (not to be
-    confused with :class:`_types.ARRAY` level
+    confused with the deprecated :class:`_types.ARRAY` level
     :meth:`_types.ARRAY.Comparator.all`) is shorthand for
     ``all_(col)``::
 
@@ -111,7 +113,10 @@ def all_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         :func:`_expression.any_`
 
     """
-    return CollectionAggregate._create_all(expr)
+    if isinstance(expr, operators.ColumnOperators):
+        return expr.all_()
+    else:
+        return CollectionAggregate._create_all(expr)
 
 
 def and_(  # type: ignore[empty-body]
@@ -277,11 +282,8 @@ def any_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         # would render 'NULL = ANY(somearray)'
         any_(mytable.c.somearray) == None
 
-    .. versionchanged:: 1.4.26  repaired the use of any_() / all_()
-       comparing to NULL on the right side to be flipped to the left.
-
     The column-level :meth:`_sql.ColumnElement.any_` method (not to be
-    confused with :class:`_types.ARRAY` level
+    confused with the deprecated :class:`_types.ARRAY` level
     :meth:`_types.ARRAY.Comparator.any`) is shorthand for
     ``any_(col)``::
 
@@ -294,12 +296,27 @@ def any_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         :func:`_expression.all_`
 
     """
-    return CollectionAggregate._create_any(expr)
+    if isinstance(expr, operators.ColumnOperators):
+        return expr.any_()
+    else:
+        return CollectionAggregate._create_any(expr)
+
+
+@overload
+def asc(
+    column: Union[str, "ColumnElement[_T]"],
+) -> UnaryExpression[_T]: ...
+
+
+@overload
+def asc(
+    column: _ColumnExpressionOrStrLabelArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]: ...
 
 
 def asc(
     column: _ColumnExpressionOrStrLabelArgument[_T],
-) -> UnaryExpression[_T]:
+) -> Union[OrderByList, UnaryExpression[_T]]:
     """Produce an ascending ``ORDER BY`` clause element.
 
     e.g.::
@@ -337,7 +354,11 @@ def asc(
         :meth:`_expression.Select.order_by`
 
     """
-    return UnaryExpression._create_asc(column)
+
+    if isinstance(column, operators.OrderingOperators):
+        return column.asc()  # type: ignore[unused-ignore]
+    else:
+        return UnaryExpression._create_asc(column)
 
 
 def collate(
@@ -358,11 +379,13 @@ def collate(
     The collation expression is also quoted if it is a case sensitive
     identifier, e.g. contains uppercase characters.
 
-    .. versionchanged:: 1.2 quoting is automatically applied to COLLATE
-       expressions if they are case sensitive.
-
     """
-    return CollationClause._create_collation_expression(expression, collation)
+    if isinstance(expression, operators.ColumnOperators):
+        return expression.collate(collation)  # type: ignore
+    else:
+        return CollationClause._create_collation_expression(
+            expression, collation
+        )
 
 
 def between(
@@ -460,6 +483,41 @@ def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
     """
 
     return coercions.expect(roles.ExpressionElementRole, clause).__invert__()
+
+
+def from_dml_column(column: _DMLOnlyColumnArgument[_T]) -> DMLTargetCopy[_T]:
+    r"""A placeholder that may be used in compiled INSERT or UPDATE expressions
+    to refer to the SQL expression or value being applied to another column.
+
+    Given a table such as::
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+
+    The :func:`_sql.from_dml_column` construct allows automatic copying
+    of an expression assigned to a different column to be re-used::
+
+        >>> stmt = t.insert().values(x=func.foobar(3), y=from_dml_column(t.c.x) + 5)
+        >>> print(stmt)
+        INSERT INTO t (x, y) VALUES (foobar(:foobar_1), (foobar(:foobar_1) + :param_1))
+
+    The :func:`_sql.from_dml_column` construct is intended to be useful primarily
+    with event-based hooks such as those used by ORM hybrids.
+
+    .. seealso::
+
+        :ref:`hybrid_bulk_update`
+
+    .. versionadded:: 2.1
+
+
+    """  # noqa: E501
+
+    return DMLTargetCopy(column)
 
 
 def bindparam(
@@ -686,11 +744,6 @@ def bindparam(
 
       .. note:: The "expanding" feature does not support "executemany"-
          style parameter sets.
-
-      .. versionadded:: 1.2
-
-      .. versionchanged:: 1.3 the "expanding" bound parameter feature now
-         supports empty lists.
 
     :param literal_execute:
       if True, the bound parameter will be rendered in the compile phase
@@ -1054,9 +1107,21 @@ def column(
     return ColumnClause(text, type_, is_literal, _selectable)
 
 
+@overload
+def desc(
+    column: Union[str, "ColumnElement[_T]"],
+) -> UnaryExpression[_T]: ...
+
+
+@overload
 def desc(
     column: _ColumnExpressionOrStrLabelArgument[_T],
-) -> UnaryExpression[_T]:
+) -> Union[OrderByList, UnaryExpression[_T]]: ...
+
+
+def desc(
+    column: _ColumnExpressionOrStrLabelArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]:
     """Produce a descending ``ORDER BY`` clause element.
 
     e.g.::
@@ -1094,7 +1159,10 @@ def desc(
         :meth:`_expression.Select.order_by`
 
     """
-    return UnaryExpression._create_desc(column)
+    if isinstance(column, operators.OrderingOperators):
+        return column.desc()  # type: ignore[unused-ignore]
+    else:
+        return UnaryExpression._create_desc(column)
 
 
 def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
@@ -1143,7 +1211,10 @@ def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
         :data:`.func`
 
     """  # noqa: E501
-    return UnaryExpression._create_distinct(expr)
+    if isinstance(expr, operators.ColumnOperators):
+        return expr.distinct()
+    else:
+        return UnaryExpression._create_distinct(expr)
 
 
 def bitwise_not(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
@@ -1159,8 +1230,10 @@ def bitwise_not(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
 
 
     """
-
-    return UnaryExpression._create_bitwise_not(expr)
+    if isinstance(expr, operators.ColumnOperators):
+        return expr.bitwise_not()
+    else:
+        return UnaryExpression._create_bitwise_not(expr)
 
 
 def extract(field: str, expr: _ColumnExpressionArgument[Any]) -> Extract:
@@ -1307,7 +1380,21 @@ def null() -> Null:
     return Null._instance()
 
 
-def nulls_first(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
+@overload
+def nulls_first(
+    column: "ColumnElement[_T]",
+) -> UnaryExpression[_T]: ...
+
+
+@overload
+def nulls_first(
+    column: _ColumnExpressionArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]: ...
+
+
+def nulls_first(
+    column: _ColumnExpressionArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]:
     """Produce the ``NULLS FIRST`` modifier for an ``ORDER BY`` expression.
 
     :func:`.nulls_first` is intended to modify the expression produced
@@ -1350,10 +1437,27 @@ def nulls_first(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
         :meth:`_expression.Select.order_by`
 
     """  # noqa: E501
-    return UnaryExpression._create_nulls_first(column)
+    if isinstance(column, operators.OrderingOperators):
+        return column.nulls_first()
+    else:
+        return UnaryExpression._create_nulls_first(column)
 
 
-def nulls_last(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
+@overload
+def nulls_last(
+    column: "ColumnElement[_T]",
+) -> UnaryExpression[_T]: ...
+
+
+@overload
+def nulls_last(
+    column: _ColumnExpressionArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]: ...
+
+
+def nulls_last(
+    column: _ColumnExpressionArgument[_T],
+) -> Union[OrderByList, UnaryExpression[_T]]:
     """Produce the ``NULLS LAST`` modifier for an ``ORDER BY`` expression.
 
     :func:`.nulls_last` is intended to modify the expression produced
@@ -1394,7 +1498,10 @@ def nulls_last(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
         :meth:`_expression.Select.order_by`
 
     """  # noqa: E501
-    return UnaryExpression._create_nulls_last(column)
+    if isinstance(column, operators.OrderingOperators):
+        return column.nulls_last()
+    else:
+        return UnaryExpression._create_nulls_last(column)
 
 
 def or_(  # type: ignore[empty-body]
@@ -1508,6 +1615,7 @@ def over(
     order_by: Optional[_ByArgument] = None,
     range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
 ) -> Over[_T]:
     r"""Produce an :class:`.Over` object against a function.
 
@@ -1525,8 +1633,9 @@ def over(
 
         ROW_NUMBER() OVER(ORDER BY some_column)
 
-    Ranges are also possible using the :paramref:`.expression.over.range_`
-    and :paramref:`.expression.over.rows` parameters.  These
+    Ranges are also possible using the :paramref:`.expression.over.range_`,
+    :paramref:`.expression.over.rows`, and :paramref:`.expression.over.groups`
+    parameters.  These
     mutually-exclusive parameters each accept a 2-tuple, which contains
     a combination of integers and None::
 
@@ -1559,6 +1668,10 @@ def over(
 
         func.row_number().over(order_by="x", range_=(1, 3))
 
+    * GROUPS BETWEEN 1 FOLLOWING AND 3 FOLLOWING::
+
+        func.row_number().over(order_by="x", groups=(1, 3))
+
     :param element: a :class:`.FunctionElement`, :class:`.WithinGroup`,
      or other compatible construct.
     :param partition_by: a column element or string, or a list
@@ -1570,10 +1683,14 @@ def over(
     :param range\_: optional range clause for the window.  This is a
      tuple value which can contain integer values or ``None``,
      and will render a RANGE BETWEEN PRECEDING / FOLLOWING clause.
-
     :param rows: optional rows clause for the window.  This is a tuple
      value which can contain integer values or None, and will render
      a ROWS BETWEEN PRECEDING / FOLLOWING clause.
+    :param groups: optional groups clause for the window.  This is a
+     tuple value which can contain integer values or ``None``,
+     and will render a GROUPS BETWEEN PRECEDING / FOLLOWING clause.
+
+     .. versionadded:: 2.0.40
 
     This function is also available from the :data:`~.expression.func`
     construct itself via the :meth:`.FunctionElement.over` method.
@@ -1587,7 +1704,7 @@ def over(
         :func:`_expression.within_group`
 
     """  # noqa: E501
-    return Over(element, partition_by, order_by, range_, rows)
+    return Over(element, partition_by, order_by, range_, rows, groups)
 
 
 @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
@@ -1711,7 +1828,7 @@ def true() -> True_:
 
 
 def tuple_(
-    *clauses: _ColumnExpressionArgument[Any],
+    *clauses: _ColumnExpressionOrLiteralArgument[Any],
     types: Optional[Sequence[_TypeEngineArgument[Any]]] = None,
 ) -> Tuple:
     """Return a :class:`.Tuple`.
@@ -1722,8 +1839,6 @@ def tuple_(
         from sqlalchemy import tuple_
 
         tuple_(table.c.col1, table.c.col2).in_([(1, 2), (5, 12), (10, 19)])
-
-    .. versionchanged:: 1.3.6 Added support for SQLite IN tuples.
 
     .. warning::
 
@@ -1828,20 +1943,24 @@ def within_group(
 
     Used against so-called "ordered set aggregate" and "hypothetical
     set aggregate" functions, including :class:`.percentile_cont`,
-    :class:`.rank`, :class:`.dense_rank`, etc.
+    :class:`.rank`, :class:`.dense_rank`, etc.  This feature is typically
+    used by Oracle Database, Microsoft SQL Server.
+
+    For generalized ORDER BY of aggregate functions on all included
+    backends, including PostgreSQL, MySQL/MariaDB, SQLite as well as Oracle
+    and SQL Server, the :func:`_sql.aggregate_order_by` provides a more
+    general approach that compiles to "WITHIN GROUP" only on those backends
+    which require it.
 
     :func:`_expression.within_group` is usually called using
     the :meth:`.FunctionElement.within_group` method, e.g.::
 
-        from sqlalchemy import within_group
-
         stmt = select(
-            department.c.id,
             func.percentile_cont(0.5).within_group(department.c.salary.desc()),
         )
 
     The above statement would produce SQL similar to
-    ``SELECT department.id, percentile_cont(0.5)
+    ``SELECT percentile_cont(0.5)
     WITHIN GROUP (ORDER BY department.salary DESC)``.
 
     :param element: a :class:`.FunctionElement` construct, typically
@@ -1854,9 +1973,62 @@ def within_group(
         :ref:`tutorial_functions_within_group` - in the
         :ref:`unified_tutorial`
 
+        :func:`_sql.aggregate_order_by` - helper for PostgreSQL, MySQL,
+         SQLite aggregate functions
+
         :data:`.expression.func`
 
         :func:`_expression.over`
 
     """
     return WithinGroup(element, *order_by)
+
+
+def aggregate_order_by(
+    element: FunctionElement[_T], *order_by: _ColumnExpressionArgument[Any]
+) -> AggregateOrderBy[_T]:
+    r"""Produce a :class:`.AggregateOrderBy` object against a function.
+
+    Used for aggregating functions such as :class:`_functions.array_agg`,
+    ``group_concat``, ``json_agg`` on backends that support ordering via an
+    embedded ``ORDER BY`` parameter, e.g. PostgreSQL, MySQL/MariaDB, SQLite.
+    When used on backends like Oracle and SQL Server, SQL compilation uses that
+    of :class:`.WithinGroup`.  On PostgreSQL, compilation is fixed at embedded
+    ``ORDER BY``; for set aggregation functions where PostgreSQL requires the
+    use of ``WITHIN GROUP``, :func:`_expression.within_group` should be used
+    explicitly.
+
+    :func:`_expression.aggregate_order_by` is usually called using
+    the :meth:`.FunctionElement.aggregate_order_by` method, e.g.::
+
+        stmt = select(
+            func.array_agg(department.c.code).aggregate_order_by(
+                department.c.code.desc()
+            ),
+        )
+
+    which would produce an expression resembling:
+
+    .. sourcecode:: sql
+
+        SELECT array_agg(department.code ORDER BY department.code DESC)
+        AS array_agg_1 FROM department
+
+    The ORDER BY argument may also be multiple terms.
+
+    When using the backend-agnostic :class:`_functions.aggregate_strings`
+    string aggregation function, use the
+    :paramref:`_functions.aggregate_strings.order_by` parameter to indicate a
+    dialect-agnostic ORDER BY expression.
+
+    .. versionadded:: 2.0.44 Generalized the PostgreSQL-specific
+       :func:`_postgresql.aggregate_order_by` function to a method on
+       :class:`.Function` that is backend agnostic.
+
+    .. seealso::
+
+        :class:`_functions.aggregate_strings` - backend-agnostic string
+        concatenation function which also supports ORDER BY
+
+    """  # noqa: E501
+    return AggregateOrderBy(element, *order_by)

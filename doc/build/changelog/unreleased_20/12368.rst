@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sqlite
-    :tickets: 12368
-
-    Fixed issue that omitted the comma between multiple SQLite table extension
-    clauses, currently ``WITH ROWID`` and ``STRICT``, when both options
-    :paramref:`.Table.sqlite_with_rowid` and  :paramref:`.Table.sqlite_strict`
-    were configured at their non-default settings at the same time.  Pull
-    request courtesy david-fed.

@@ -1,3 +1,5 @@
+import pickle
+
 from sqlalchemy import desc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -27,8 +29,7 @@ from sqlalchemy.testing.schema import Table
 
 
 def pickle_protocols():
-    return iter([-1, 1, 2])
-    # return iter([-1, 0, 1, 2])
+    return range(-2, pickle.HIGHEST_PROTOCOL)
 
 
 class User(ComparableEntity):
@@ -299,6 +300,16 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
         (
             lambda: func.max(users.c.name).over(rows=(0, None)),
             "max(users.name) OVER (ROWS BETWEEN CURRENT "
+            "ROW AND UNBOUNDED FOLLOWING)",
+        ),
+        (
+            lambda: func.max(users.c.name).over(groups=(None, 0)),
+            "max(users.name) OVER (GROUPS BETWEEN UNBOUNDED "
+            "PRECEDING AND CURRENT ROW)",
+        ),
+        (
+            lambda: func.max(users.c.name).over(groups=(0, None)),
+            "max(users.name) OVER (GROUPS BETWEEN CURRENT "
             "ROW AND UNBOUNDED FOLLOWING)",
         ),
     )

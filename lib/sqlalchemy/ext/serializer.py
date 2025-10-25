@@ -90,9 +90,9 @@ class Serializer(pickle.Pickler):
 
     def persistent_id(self, obj):
         # print "serializing:", repr(obj)
-        if isinstance(obj, Mapper) and not obj.non_primary:
+        if isinstance(obj, Mapper):
             id_ = "mapper:" + b64encode(pickle.dumps(obj.class_))
-        elif isinstance(obj, MapperProperty) and not obj.parent.non_primary:
+        elif isinstance(obj, MapperProperty):
             id_ = (
                 "mapperprop:"
                 + b64encode(pickle.dumps(obj.parent.class_))

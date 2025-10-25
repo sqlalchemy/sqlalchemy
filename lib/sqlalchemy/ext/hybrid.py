@@ -320,59 +320,140 @@ The ``length(self, value)`` method is now called upon set::
 
 .. _hybrid_bulk_update:
 
-Allowing Bulk ORM Update
-------------------------
+Supporting ORM Bulk INSERT and UPDATE
+-------------------------------------
 
-A hybrid can define a custom "UPDATE" handler for when using
-ORM-enabled updates, allowing the hybrid to be used in the
-SET clause of the update.
+Hybrids have support for use in ORM Bulk INSERT/UPDATE operations described
+at :ref:`orm_expression_update_delete`.   There are two distinct hooks
+that may be used supply a hybrid value within a DML operation:
 
-Normally, when using a hybrid with :func:`_sql.update`, the SQL
-expression is used as the column that's the target of the SET.  If our
-``Interval`` class had a hybrid ``start_point`` that linked to
-``Interval.start``, this could be substituted directly::
+1. The :meth:`.hybrid_property.update_expression` hook indicates a method that
+   can provide one or more expressions to render in the SET clause of an
+   UPDATE or INSERT statement, in response to when a hybrid attribute is referenced
+   directly in the :meth:`.UpdateBase.values` method; i.e. the use shown
+   in :ref:`orm_queryguide_update_delete_where` and :ref:`orm_queryguide_insert_values`
 
-    from sqlalchemy import update
+2. The :meth:`.hybrid_property.bulk_dml` hook indicates a method that
+   can intercept individual parameter dictionaries sent to :meth:`_orm.Session.execute`,
+   i.e. the use shown at :ref:`orm_queryguide_bulk_insert` as well
+   as :ref:`orm_queryguide_bulk_update`.
 
-    stmt = update(Interval).values({Interval.start_point: 10})
+Using update_expression with update.values() and insert.values()
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-However, when using a composite hybrid like ``Interval.length``, this
-hybrid represents more than one column.   We can set up a handler that will
-accommodate a value passed in the VALUES expression which can affect
-this, using the :meth:`.hybrid_property.update_expression` decorator.
-A handler that works similarly to our setter would be::
+The :meth:`.hybrid_property.update_expression` decorator indicates a method
+that is invoked when a hybrid is used in the :meth:`.ValuesBase.values` clause
+of an :func:`_sql.update` or :func:`_sql.insert` statement.  It returns a list
+of tuple pairs ``[(x1, y1), (x2, y2), ...]`` which will expand into the SET
+clause of an UPDATE statement as ``SET x1=y1, x2=y2, ...``.
 
-    from typing import List, Tuple, Any
+The :func:`_sql.from_dml_column` construct is often useful as it can create a
+SQL expression that refers to another column that may also present in the same
+INSERT or UPDATE statement, alternatively falling back to referring to the
+original column if such an expression is not present.
+
+In the example below, the ``total_price`` hybrid will derive the ``price``
+column, by taking the given "total price" value and dividing it by a
+``tax_rate`` value that is also present in the :meth:`.ValuesBase.values` call::
+
+    from sqlalchemy import from_dml_column
 
 
-    class Interval(Base):
-        # ...
+    class Product(Base):
+        __tablename__ = "product"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        price: Mapped[float]
+        tax_rate: Mapped[float]
 
         @hybrid_property
-        def length(self) -> int:
-            return self.end - self.start
+        def total_price(self) -> float:
+            return self.price * (1 + self.tax_rate)
 
-        @length.inplace.setter
-        def _length_setter(self, value: int) -> None:
-            self.end = self.start + value
-
-        @length.inplace.update_expression
-        def _length_update_expression(
+        @total_price.inplace.update_expression
+        @classmethod
+        def _total_price_update_expression(
             cls, value: Any
         ) -> List[Tuple[Any, Any]]:
-            return [(cls.end, cls.start + value)]
+            return [(cls.price, value / (1 + from_dml_column(cls.tax_rate)))]
 
-Above, if we use ``Interval.length`` in an UPDATE expression, we get
-a hybrid SET expression:
+When used in an UPDATE statement, :func:`_sql.from_dml_column` creates a
+reference to the ``tax_rate`` column that will use the value passed to
+the :meth:`.ValuesBase.values` method, rather than the existing value on the column
+in the database. This allows the hybrid to access other values being
+updated in the same statement:
 
 .. sourcecode:: pycon+sql
 
+    >>> from sqlalchemy import update
+    >>> print(
+    ...     update(Product).values(
+    ...         {Product.tax_rate: 0.08, Product.total_price: 125.00}
+    ...     )
+    ... )
+    {printsql}UPDATE product SET tax_rate=:tax_rate, price=(:total_price / (:tax_rate + :param_1))
+
+When the column referenced by :func:`_sql.from_dml_column` (in this case ``product.tax_rate``)
+is omitted from :meth:`.ValuesBase.values`, the rendered expression falls back to
+using the original column:
+
+.. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import update
-    >>> print(update(Interval).values({Interval.length: 25}))
-    {printsql}UPDATE interval SET "end"=(interval.start + :start_1)
+    >>> print(update(Product).values({Product.total_price: 125.00}))
+    {printsql}UPDATE product SET price=(:total_price / (tax_rate + :param_1))
 
-This SET expression is accommodated by the ORM automatically.
+
+
+Using bulk_dml to intercept bulk parameter dictionaries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 2.1
+
+For bulk operations that pass a list of parameter dictionaries to
+methods like :meth:`.Session.execute`, the
+:meth:`.hybrid_property.bulk_dml` decorator provides a hook that can
+receive each dictionary and populate it with new values.
+
+The implementation for the :meth:`.hybrid_property.bulk_dml` hook can retrieve
+other column values from the parameter dictionary::
+
+    from typing import MutableMapping
+
+
+    class Product(Base):
+        __tablename__ = "product"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        price: Mapped[float]
+        tax_rate: Mapped[float]
+
+        @hybrid_property
+        def total_price(self) -> float:
+            return self.price * (1 + self.tax_rate)
+
+        @total_price.inplace.bulk_dml
+        @classmethod
+        def _total_price_bulk_dml(
+            cls, mapping: MutableMapping[str, Any], value: float
+        ) -> None:
+            mapping["price"] = value / (1 + mapping["tax_rate"])
+
+This allows for bulk INSERT/UPDATE with derived values::
+
+    # Bulk INSERT
+    session.execute(
+        insert(Product),
+        [
+            {"tax_rate": 0.08, "total_price": 125.00},
+            {"tax_rate": 0.05, "total_price": 110.00},
+        ],
+    )
+
+Note that the method decorated by :meth:`.hybrid_property.bulk_dml` is invoked
+only with parameter dictionaries and does not have the ability to use
+SQL expressions in the given dictionaries, only literal Python values that will
+be passed to parameters in the INSERT or UPDATE statement.
 
 .. seealso::
 
@@ -731,31 +812,36 @@ reference the instrumented attribute back to the hybrid object::
         def name(cls):
             return func.concat(cls.first_name, " ", cls.last_name)
 
+.. _hybrid_value_objects:
+
 Hybrid Value Objects
 --------------------
 
-Note in our previous example, if we were to compare the ``word_insensitive``
+In the example shown previously at :ref:`hybrid_custom_comparators`,
+if we were to compare the ``word_insensitive``
 attribute of a ``SearchWord`` instance to a plain Python string, the plain
 Python string would not be coerced to lower case - the
 ``CaseInsensitiveComparator`` we built, being returned by
 ``@word_insensitive.comparator``, only applies to the SQL side.
 
-A more comprehensive form of the custom comparator is to construct a *Hybrid
-Value Object*. This technique applies the target value or expression to a value
+A more comprehensive form of the custom comparator is to construct a **Hybrid
+Value Object**. This technique applies the target value or expression to a value
 object which is then returned by the accessor in all cases.   The value object
 allows control of all operations upon the value as well as how compared values
 are treated, both on the SQL expression side as well as the Python value side.
 Replacing the previous ``CaseInsensitiveComparator`` class with a new
 ``CaseInsensitiveWord`` class::
 
+    from sqlalchemy import func
+    from sqlalchemy.ext.hybrid import Comparator
+
+
     class CaseInsensitiveWord(Comparator):
         "Hybrid value representing a lower case representation of a word."
 
         def __init__(self, word):
-            if isinstance(word, basestring):
+            if isinstance(word, str):
                 self.word = word.lower()
-            elif isinstance(word, CaseInsensitiveWord):
-                self.word = word.word
             else:
                 self.word = func.lower(word)
 
@@ -774,11 +860,50 @@ Replacing the previous ``CaseInsensitiveComparator`` class with a new
         "Label to apply to Query tuple results"
 
 Above, the ``CaseInsensitiveWord`` object represents ``self.word``, which may
-be a SQL function, or may be a Python native.   By overriding ``operate()`` and
-``__clause_element__()`` to work in terms of ``self.word``, all comparison
-operations will work against the "converted" form of ``word``, whether it be
-SQL side or Python side. Our ``SearchWord`` class can now deliver the
-``CaseInsensitiveWord`` object unconditionally from a single hybrid call::
+be a SQL function, or may be a Python native string.    The hybrid value object should
+implement ``__clause_element__()``,  which allows the object to be coerced into
+a SQL-capable value when used in SQL expression constructs, as well as Python
+comparison methods such as ``__eq__()``, which is accomplished in the above
+example by subclassing :class:`.hybrid.Comparator` and overriding the
+``operate()`` method.
+
+.. topic:: Building the Value object with dataclasses
+
+    Hybrid value objects may also be implemented as Python dataclasses.  If
+    modification to values upon construction is needed, use the
+    ``__post_init__()`` dataclasses method.   Instance variables that work in
+    a "hybrid" fashion may be instance of a plain Python value, or an instance
+    of :class:`.SQLColumnExpression` genericized against that type.  Also make sure to disable
+    dataclass comparison features, as the :class:`.hybrid.Comparator` class
+    provides these::
+
+        from sqlalchemy import func
+        from sqlalchemy.ext.hybrid import Comparator
+        from dataclasses import dataclass
+
+
+        @dataclass(eq=False)
+        class CaseInsensitiveWord(Comparator):
+            word: str | SQLColumnExpression[str]
+
+            def __post_init__(self):
+                if isinstance(self.word, str):
+                    self.word = self.word.lower()
+                else:
+                    self.word = func.lower(self.word)
+
+            def operate(self, op, other, **kwargs):
+                if not isinstance(other, CaseInsensitiveWord):
+                    other = CaseInsensitiveWord(other)
+                return op(self.word, other.word, **kwargs)
+
+            def __clause_element__(self):
+                return self.word
+
+With ``__clause_element__()`` provided, our ``SearchWord`` class
+can now deliver the ``CaseInsensitiveWord`` object unconditionally from a
+single hybrid method, returning an object that behaves appropriately
+in both value-based and SQL contexts::
 
     class SearchWord(Base):
         __tablename__ = "searchword"
@@ -789,18 +914,20 @@ SQL side or Python side. Our ``SearchWord`` class can now deliver the
         def word_insensitive(self) -> CaseInsensitiveWord:
             return CaseInsensitiveWord(self.word)
 
-The ``word_insensitive`` attribute now has case-insensitive comparison behavior
-universally, including SQL expression vs. Python expression (note the Python
-value is converted to lower case on the Python side here):
+The class-level version of ``CaseInsensitiveWord`` will work in SQL
+constructs:
 
 .. sourcecode:: pycon+sql
 
-    >>> print(select(SearchWord).filter_by(word_insensitive="Trucks"))
+    >>> print(select(SearchWord).filter(SearchWord.word_insensitive == "Trucks"))
     {printsql}SELECT searchword.id AS searchword_id, searchword.word AS searchword_word
     FROM searchword
     WHERE lower(searchword.word) = :lower_1
 
-SQL expression versus SQL expression:
+By also subclassing :class:`.hybrid.Comparator` and providing an implementation
+for ``operate()``, the ``word_insensitive`` attribute also has case-insensitive
+comparison behavior universally, including SQL expression and Python expression
+(note the Python value is converted to lower case on the Python side here):
 
 .. sourcecode:: pycon+sql
 
@@ -841,6 +968,176 @@ measurement, currencies and encrypted passwords.
     <https://techspot.zzzeek.org/2011/10/29/value-agnostic-types-part-ii/>`_ -
     on the techspot.zzzeek.org blog
 
+.. _composite_hybrid_value_objects:
+
+Composite Hybrid Value Objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The functionality of :ref:`hybrid_value_objects` may also be expanded to
+support "composite" forms; in this pattern, SQLAlchemy hybrids begin to
+approximate most (though not all) the same functionality that is available from
+the ORM natively via the :ref:`mapper_composite` feature.    We can imitate the
+example of ``Point`` and ``Vertex`` from that section using hybrids, where
+``Point`` is modified to become a Hybrid Value Object::
+
+    from dataclasses import dataclass
+
+    from sqlalchemy import tuple_
+    from sqlalchemy.ext.hybrid import Comparator
+    from sqlalchemy import SQLColumnExpression
+
+
+    @dataclass(eq=False)
+    class Point(Comparator):
+        x: int | SQLColumnExpression[int]
+        y: int | SQLColumnExpression[int]
+
+        def operate(self, op, other, **kwargs):
+            return op(self.x, other.x) & op(self.y, other.y)
+
+        def __clause_element__(self):
+            return tuple_(self.x, self.y)
+
+Above, the ``operate()`` method is where the most "hybrid" behavior takes
+place, making use of ``op()`` (the Python operator function in use) along
+with the the bitwise ``&`` operator provides us with the SQL AND operator
+in a SQL context, and boolean "and" in a Python boolean context.
+
+Following from there, the owning ``Vertex`` class now uses hybrids to
+represent ``start`` and ``end``::
+
+    from sqlalchemy.orm import DeclarativeBase, Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.ext.hybrid import hybrid_property
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Vertex(Base):
+        __tablename__ = "vertices"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        x1: Mapped[int]
+        y1: Mapped[int]
+        x2: Mapped[int]
+        y2: Mapped[int]
+
+        @hybrid_property
+        def start(self) -> Point:
+            return Point(self.x1, self.y1)
+
+        @start.inplace.setter
+        def _set_start(self, value: Point) -> None:
+            self.x1 = value.x
+            self.y1 = value.y
+
+        @hybrid_property
+        def end(self) -> Point:
+            return Point(self.x2, self.y2)
+
+        @end.inplace.setter
+        def _set_end(self, value: Point) -> None:
+            self.x2 = value.x
+            self.y2 = value.y
+
+        def __repr__(self) -> str:
+            return f"Vertex(start={self.start}, end={self.end})"
+
+Using the above mapping, we can use expressions at the Python or SQL level
+using ``Vertex.start`` and ``Vertex.end``::
+
+    >>> v1 = Vertex(start=Point(3, 4), end=Point(15, 10))
+    >>> v1.end == Point(15, 10)
+    True
+    >>> stmt = (
+    ...     select(Vertex)
+    ...     .where(Vertex.start == Point(3, 4))
+    ...     .where(Vertex.end < Point(7, 8))
+    ... )
+    >>> print(stmt)
+    SELECT vertices.id, vertices.x1, vertices.y1, vertices.x2, vertices.y2
+    FROM vertices
+    WHERE vertices.x1 = :x1_1 AND vertices.y1 = :y1_1 AND vertices.x2 < :x2_1 AND vertices.y2 < :y2_1
+
+DML Support for Composite Value Objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Composite value objects like ``Point`` can also be used with the ORM's
+DML features. The :meth:`.hybrid_property.update_expression` decorator allows
+the hybrid to expand a composite value into multiple column assignments
+in UPDATE and INSERT statements::
+
+    class Location(Base):
+        __tablename__ = "location"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        x: Mapped[int]
+        y: Mapped[int]
+
+        @hybrid_property
+        def coordinates(self) -> Point:
+            return Point(self.x, self.y)
+
+        @coordinates.inplace.update_expression
+        @classmethod
+        def _coordinates_update_expression(
+            cls, value: Any
+        ) -> List[Tuple[Any, Any]]:
+            assert isinstance(value, Point)
+            return [(cls.x, value.x), (cls.y, value.y)]
+
+This allows UPDATE statements to work with the composite value:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import update
+    >>> print(
+    ...     update(Location)
+    ...     .where(Location.id == 5)
+    ...     .values({Location.coordinates: Point(25, 17)})
+    ... )
+    {printsql}UPDATE location SET x=:x, y=:y WHERE location.id = :id_1
+
+For bulk operations that use parameter dictionaries, the
+:meth:`.hybrid_property.bulk_dml` decorator provides a hook to
+convert composite values into individual column values::
+
+    from typing import MutableMapping
+
+
+    class Location(Base):
+        # ... (same as above)
+
+        @coordinates.inplace.bulk_dml
+        @classmethod
+        def _coordinates_bulk_dml(
+            cls, mapping: MutableMapping[str, Any], value: Point
+        ) -> None:
+            mapping["x"] = value.x
+            mapping["y"] = value.y
+
+This enables bulk operations with composite values::
+
+    # Bulk INSERT
+    session.execute(
+        insert(Location),
+        [
+            {"id": 1, "coordinates": Point(10, 20)},
+            {"id": 2, "coordinates": Point(30, 40)},
+        ],
+    )
+
+    # Bulk UPDATE
+    session.execute(
+        update(Location),
+        [
+            {"id": 1, "coordinates": Point(15, 25)},
+            {"id": 2, "coordinates": Point(35, 45)},
+        ],
+    )
 
 """  # noqa
 
@@ -849,10 +1146,14 @@ from __future__ import annotations
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Concatenate
 from typing import Generic
 from typing import List
+from typing import Literal
+from typing import MutableMapping
 from typing import Optional
 from typing import overload
+from typing import ParamSpec
 from typing import Protocol
 from typing import Sequence
 from typing import Tuple
@@ -861,6 +1162,7 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from .. import exc
 from .. import util
 from ..orm import attributes
 from ..orm import InspectionAttrExtensionType
@@ -871,9 +1173,6 @@ from ..sql import roles
 from ..sql._typing import is_has_clause_element
 from ..sql.elements import ColumnElement
 from ..sql.elements import SQLCoreOperations
-from ..util.typing import Concatenate
-from ..util.typing import Literal
-from ..util.typing import ParamSpec
 from ..util.typing import Self
 
 if TYPE_CHECKING:
@@ -923,11 +1222,11 @@ class HybridExtensionType(InspectionAttrExtensionType):
 
 
 class _HybridGetterType(Protocol[_T_co]):
-    def __call__(s, self: Any) -> _T_co: ...
+    def __call__(s, self: Any, /) -> _T_co: ...
 
 
 class _HybridSetterType(Protocol[_T_con]):
-    def __call__(s, self: Any, value: _T_con) -> None: ...
+    def __call__(s, self: Any, value: _T_con, /) -> None: ...
 
 
 class _HybridUpdaterType(Protocol[_T_con]):
@@ -938,13 +1237,22 @@ class _HybridUpdaterType(Protocol[_T_con]):
     ) -> List[Tuple[_DMLColumnArgument, Any]]: ...
 
 
+class _HybridBulkDMLType(Protocol[_T_co]):
+    def __call__(
+        s,
+        cls: Any,
+        mapping: MutableMapping[str, Any],
+        value: Any,
+    ) -> Any: ...
+
+
 class _HybridDeleterType(Protocol[_T_co]):
-    def __call__(s, self: Any) -> None: ...
+    def __call__(s, self: Any, /) -> None: ...
 
 
 class _HybridExprCallableType(Protocol[_T_co]):
     def __call__(
-        s, cls: Any
+        s, cls: Any, /
     ) -> Union[_HasClauseElement[_T_co], SQLColumnExpression[_T_co]]: ...
 
 
@@ -977,6 +1285,10 @@ class _HybridClassLevelAccessor(QueryableAttribute[_T]):
 
         def update_expression(
             self, meth: _HybridUpdaterType[_T]
+        ) -> hybrid_property[_T]: ...
+
+        def bulk_dml(
+            self, meth: _HybridBulkDMLType[_T]
         ) -> hybrid_property[_T]: ...
 
 
@@ -1093,6 +1405,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         expr: Optional[_HybridExprCallableType[_T]] = None,
         custom_comparator: Optional[Comparator[_T]] = None,
         update_expr: Optional[_HybridUpdaterType[_T]] = None,
+        bulk_dml_setter: Optional[_HybridBulkDMLType[_T]] = None,
     ):
         """Create a new :class:`.hybrid_property`.
 
@@ -1117,6 +1430,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         self.expr = _unwrap_classmethod(expr)
         self.custom_comparator = _unwrap_classmethod(custom_comparator)
         self.update_expr = _unwrap_classmethod(update_expr)
+        self.bulk_dml_setter = _unwrap_classmethod(bulk_dml_setter)
         util.update_wrapper(self, fget)  # type: ignore[arg-type]
 
     @overload
@@ -1140,10 +1454,12 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         else:
             return self.fget(instance)
 
-    def __set__(self, instance: object, value: Any) -> None:
+    def __set__(
+        self, instance: object, value: Union[SQLCoreOperations[_T], _T]
+    ) -> None:
         if self.fset is None:
             raise AttributeError("can't set attribute")
-        self.fset(instance, value)
+        self.fset(instance, value)  # type: ignore[arg-type]
 
     def __delete__(self, instance: object) -> None:
         if self.fdel is None:
@@ -1186,8 +1502,6 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
                 @SuperClass.foobar.overrides.expression
                 def foobar(cls):
                     return func.subfoobar(self._foobar)
-
-        .. versionadded:: 1.2
 
         .. seealso::
 
@@ -1239,6 +1553,11 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         ) -> hybrid_property[_TE]:
             return self._set(update_expr=meth)
 
+        def bulk_dml(
+            self, meth: _HybridBulkDMLType[_TE]
+        ) -> hybrid_property[_TE]:
+            return self._set(bulk_dml_setter=meth)
+
     @property
     def inplace(self) -> _InPlace[_T]:
         """Return the inplace mutator for this :class:`.hybrid_property`.
@@ -1272,11 +1591,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         return hybrid_property._InPlace(self)
 
     def getter(self, fget: _HybridGetterType[_T]) -> hybrid_property[_T]:
-        """Provide a modifying decorator that defines a getter method.
-
-        .. versionadded:: 1.2
-
-        """
+        """Provide a modifying decorator that defines a getter method."""
 
         return self._copy(fget=fget)
 
@@ -1391,10 +1706,16 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
                     fname, lname = value.split(" ", 1)
                     return [(cls.first_name, fname), (cls.last_name, lname)]
 
-        .. versionadded:: 1.2
-
         """
         return self._copy(update_expr=meth)
+
+    def bulk_dml(self, meth: _HybridBulkDMLType[_T]) -> hybrid_property[_T]:
+        """Define a setter for bulk dml.
+
+        .. versionadded:: 2.1
+
+        """
+        return self._copy(bulk_dml=meth)
 
     @util.memoized_property
     def _expr_comparator(
@@ -1506,7 +1827,8 @@ class ExprComparator(Comparator[_T]):
         return self.hybrid.info
 
     def _bulk_update_tuples(
-        self, value: Any
+        self,
+        value: Any,
     ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
         if isinstance(self.expression, attributes.QueryableAttribute):
             return self.expression._bulk_update_tuples(value)
@@ -1514,6 +1836,28 @@ class ExprComparator(Comparator[_T]):
             return self.hybrid.update_expr(self.cls, value)
         else:
             return [(self.expression, value)]
+
+    def _bulk_dml_setter(self, key: str) -> Optional[Callable[..., Any]]:
+        """return a callable that will process a bulk INSERT value"""
+
+        meth = None
+
+        def prop(mapping: MutableMapping[str, Any]) -> None:
+            nonlocal meth
+            value = mapping[key]
+
+            if meth is None:
+                if self.hybrid.bulk_dml_setter is None:
+                    raise exc.InvalidRequestError(
+                        "Can't evaluate bulk DML statement; please "
+                        "supply a bulk_dml decorated function"
+                    )
+
+                meth = self.hybrid.bulk_dml_setter
+
+            meth(self.cls, mapping, value)
+
+        return prop
 
     @util.non_memoized_property
     def property(self) -> MapperProperty[_T]:

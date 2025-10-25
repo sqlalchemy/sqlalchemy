@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sqlite, reflection
+    :tickets: 12924
+
+    A series of improvements have been made for reflection of CHECK constraints
+    on SQLite. The reflection logic now correctly handles table names
+    containing the strings "CHECK" or "CONSTRAINT", properly supports all four
+    SQLite identifier quoting styles (double quotes, single quotes, brackets,
+    and backticks) for constraint names, and accurately parses CHECK constraint
+    expressions containing parentheses within string literals using balanced
+    parenthesis matching with string context tracking.    Big thanks to
+    GruzdevAV for new test cases and implementation ideas.

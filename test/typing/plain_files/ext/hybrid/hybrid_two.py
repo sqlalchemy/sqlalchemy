@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import typing
+from typing import assert_type
 
 from sqlalchemy import Float
 from sqlalchemy import func
+from sqlalchemy import Function
+from sqlalchemy.ext.hybrid import _HybridClassLevelAccessor
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.expression import ColumnElement
 
 
@@ -44,11 +48,9 @@ class Interval(Base):
 
         # while we are here, check some Float[] / div type stuff
         if typing.TYPE_CHECKING:
-            # EXPECTED_RE_TYPE: sqlalchemy.*Function\[builtins.float\*?\]
-            reveal_type(f1)
+            assert_type(f1, Function[float])
 
-            # EXPECTED_RE_TYPE: sqlalchemy.*ColumnElement\[builtins.float\*?\]
-            reveal_type(expr)
+            assert_type(expr, ColumnElement[float])
         return expr
 
     # new way - use the original decorator with inplace
@@ -66,11 +68,9 @@ class Interval(Base):
 
         # while we are here, check some Float[] / div type stuff
         if typing.TYPE_CHECKING:
-            # EXPECTED_RE_TYPE: sqlalchemy.*Function\[builtins.float\*?\]
-            reveal_type(f1)
+            assert_type(f1, Function[float])
 
-            # EXPECTED_RE_TYPE: sqlalchemy.*ColumnElement\[builtins.float\*?\]
-            reveal_type(expr)
+            assert_type(expr, ColumnElement[float])
         return expr
 
 
@@ -92,38 +92,27 @@ expr3n = Interval.new_radius.in_([0.5, 5.2])
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: builtins.int\*?
-    reveal_type(i1.length)
+    assert_type(i1.length, int)
 
-    # EXPECTED_RE_TYPE: builtins.float\*?
-    reveal_type(i2.old_radius)
+    assert_type(i2.old_radius, float)
 
-    # EXPECTED_RE_TYPE: builtins.float\*?
-    reveal_type(i2.new_radius)
+    assert_type(i2.new_radius, float)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.int\*?\]
-    reveal_type(Interval.length)
+    assert_type(Interval.length, _HybridClassLevelAccessor[int])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.float\*?\]
-    reveal_type(Interval.old_radius)
+    assert_type(Interval.old_radius, _HybridClassLevelAccessor[float])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.float\*?\]
-    reveal_type(Interval.new_radius)
+    assert_type(Interval.new_radius, _HybridClassLevelAccessor[float])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
-    reveal_type(expr1)
+    assert_type(expr1, BinaryExpression[bool])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.float\*?\]
-    reveal_type(expr2o)
+    assert_type(expr2o, _HybridClassLevelAccessor[float])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.float\*?\]
-    reveal_type(expr2n)
+    assert_type(expr2n, _HybridClassLevelAccessor[float])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
-    reveal_type(expr3o)
+    assert_type(expr3o, BinaryExpression[bool])
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.BinaryExpression\[builtins.bool\*?\]
-    reveal_type(expr3n)
+    assert_type(expr3n, BinaryExpression[bool])
 
 # test #9268
 
@@ -133,7 +122,6 @@ class Foo(Base):
 
     def needs_update_getter(self) -> bool:
         return self.val
-        ...
 
     def needs_update_setter(self, value: bool) -> None:
         self.val = value

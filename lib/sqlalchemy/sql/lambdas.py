@@ -19,6 +19,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import Optional
 from typing import Tuple
@@ -42,7 +43,6 @@ from .operators import ColumnOperators
 from .. import exc
 from .. import inspection
 from .. import util
-from ..util.typing import Literal
 
 
 if TYPE_CHECKING:
@@ -256,10 +256,7 @@ class LambdaElement(elements.ClauseElement):
 
                 self.closure_cache_key = cache_key
 
-                try:
-                    rec = lambda_cache[tracker_key + cache_key]
-                except KeyError:
-                    rec = None
+                rec = lambda_cache.get(tracker_key + cache_key)
             else:
                 cache_key = _cache_key.NO_CACHE
                 rec = None
@@ -303,7 +300,9 @@ class LambdaElement(elements.ClauseElement):
             while lambda_element is not None:
                 rec = lambda_element._rec
                 if rec.bindparam_trackers:
-                    tracker_instrumented_fn = rec.tracker_instrumented_fn
+                    tracker_instrumented_fn = (
+                        rec.tracker_instrumented_fn  # type:ignore [union-attr] # noqa: E501
+                    )
                     for tracker in rec.bindparam_trackers:
                         tracker(
                             lambda_element.fn,
@@ -605,7 +604,7 @@ class StatementLambdaElement(
         return self._rec_expected_expr
 
     @property
-    def _with_options(self):
+    def _with_options(self):  # type: ignore[override]
         return self._proxied._with_options
 
     @property
@@ -613,7 +612,7 @@ class StatementLambdaElement(
         return self._proxied._effective_plugin_target
 
     @property
-    def _execution_options(self):
+    def _execution_options(self):  # type: ignore[override]
         return self._proxied._execution_options
 
     @property
@@ -621,27 +620,27 @@ class StatementLambdaElement(
         return self._proxied._all_selected_columns
 
     @property
-    def is_select(self):
+    def is_select(self):  # type: ignore[override]
         return self._proxied.is_select
 
     @property
-    def is_update(self):
+    def is_update(self):  # type: ignore[override]
         return self._proxied.is_update
 
     @property
-    def is_insert(self):
+    def is_insert(self):  # type: ignore[override]
         return self._proxied.is_insert
 
     @property
-    def is_text(self):
+    def is_text(self):  # type: ignore[override]
         return self._proxied.is_text
 
     @property
-    def is_delete(self):
+    def is_delete(self):  # type: ignore[override]
         return self._proxied.is_delete
 
     @property
-    def is_dml(self):
+    def is_dml(self):  # type: ignore[override]
         return self._proxied.is_dml
 
     def spoil(self) -> NullLambdaStatement:
@@ -1173,7 +1172,7 @@ class AnalyzedFunction:
                         closure_pywrappers.append(bind)
                 else:
                     value = fn.__globals__[name]
-                    new_globals[name] = bind = PyWrapper(fn, name, value)
+                    new_globals[name] = PyWrapper(fn, name, value)
 
             # rewrite the original fn.   things that look like they will
             # become bound parameters are wrapped in a PyWrapper.

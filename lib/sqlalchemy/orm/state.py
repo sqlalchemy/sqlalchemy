@@ -19,6 +19,7 @@ from typing import Callable
 from typing import Dict
 from typing import Generic
 from typing import Iterable
+from typing import Literal
 from typing import Optional
 from typing import Protocol
 from typing import Set
@@ -45,7 +46,6 @@ from .path_registry import PathRegistry
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
-from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
@@ -269,8 +269,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             :class:`.Session`, use the :attr:`.InstanceState.was_deleted`
             accessor.
 
-        .. versionadded: 1.1
-
         .. seealso::
 
             :ref:`session_object_states`
@@ -336,8 +334,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def _track_last_known_value(self, key: str) -> None:
         """Track the last known value of a particular key after expiration
         operations.
-
-        .. versionadded:: 1.3
 
         """
 

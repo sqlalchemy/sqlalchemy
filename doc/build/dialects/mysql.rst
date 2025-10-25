@@ -223,6 +223,8 @@ MySQL DML Constructs
 .. autoclass:: sqlalchemy.dialects.mysql.Insert
   :members:
 
+.. autofunction:: sqlalchemy.dialects.mysql.limit
+
 
 
 mysqlclient (fork of MySQL-Python)

@@ -5,22 +5,19 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Base types API.
-
-"""
+"""Base types API."""
 
 from __future__ import annotations
 
 from enum import Enum
-from types import ModuleType
 import typing
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import ClassVar
 from typing import Dict
 from typing import Generic
 from typing import Mapping
-from typing import NewType
 from typing import Optional
 from typing import overload
 from typing import Protocol
@@ -29,19 +26,22 @@ from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypedDict
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
+from sqlalchemy.util.typing import _MatchedOnType
 from .base import SchemaEventTarget
 from .cache_key import CacheConst
 from .cache_key import NO_CACHE
+from .operators import _OPERATOR_CLASSES
 from .operators import ColumnOperators
+from .operators import custom_op
+from .operators import OperatorClass
 from .visitors import Visitable
 from .. import exc
 from .. import util
 from ..util.typing import Self
-from ..util.typing import TypeAliasType
-from ..util.typing import TypeGuard
 
 # these are back-assigned by sqltypes.
 if typing.TYPE_CHECKING:
@@ -58,8 +58,8 @@ if typing.TYPE_CHECKING:
     from .sqltypes import NUMERICTYPE as NUMERICTYPE  # noqa: F401
     from .sqltypes import STRINGTYPE as STRINGTYPE  # noqa: F401
     from .sqltypes import TABLEVALUE as TABLEVALUE  # noqa: F401
+    from ..engine.interfaces import DBAPIModule
     from ..engine.interfaces import Dialect
-    from ..util.typing import GenericProtocol
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -67,10 +67,7 @@ _T_con = TypeVar("_T_con", bound=Any, contravariant=True)
 _O = TypeVar("_O", bound=object)
 _TE = TypeVar("_TE", bound="TypeEngine[Any]")
 _CT = TypeVar("_CT", bound=Any)
-
-_MatchedOnType = Union[
-    "GenericProtocol[Any]", TypeAliasType, NewType, Type[Any]
-]
+_RT = TypeVar("_RT", bound=Any)
 
 
 class _NoValueInList(Enum):
@@ -161,6 +158,17 @@ class TypeEngine(Visitable, Generic[_T]):
 
     """
 
+    operator_classes: ClassVar[OperatorClass] = OperatorClass.UNSPECIFIED
+    """Indicate categories of operators that should be available on this type.
+
+    .. versionadded:: 2.1
+
+    .. seealso::
+
+        :class:`.OperatorClass`
+
+    """
+
     class Comparator(
         ColumnOperators,
         Generic[_CT],
@@ -187,21 +195,82 @@ class TypeEngine(Visitable, Generic[_T]):
             return self.__class__, (self.expr,)
 
         @util.preload_module("sqlalchemy.sql.default_comparator")
+        def _resolve_operator_lookup(self, op: OperatorType) -> Tuple[
+            Callable[..., "ColumnElement[Any]"],
+            util.immutabledict[
+                str, Union["OperatorType", Callable[..., "ColumnElement[Any]"]]
+            ],
+        ]:
+            default_comparator = util.preloaded.sql_default_comparator
+
+            op_fn, addtl_kw = default_comparator.operator_lookup[op.__name__]
+
+            if op_fn is default_comparator._custom_op_operate:
+                if TYPE_CHECKING:
+                    assert isinstance(op, custom_op)
+                operator_class = op.operator_class
+            else:
+                try:
+                    operator_class = _OPERATOR_CLASSES[op]
+                except KeyError:
+                    operator_class = OperatorClass.UNSPECIFIED
+
+            if not operator_class & self.type.operator_classes:
+
+                if self.type.operator_classes is OperatorClass.UNSPECIFIED:
+                    util.warn_deprecated(
+                        f"Type object {self.type.__class__} does not refer "
+                        "to an OperatorClass in its operator_classes "
+                        "attribute. This attribute will be required in a "
+                        "future release.",
+                        "2.1",
+                    )
+                else:
+                    if isinstance(op, custom_op):
+                        op_description = f"custom operator {op.opstring!r}"
+                    else:
+                        op_description = f"operator {op.__name__!r}"
+
+                    util.warn_deprecated(
+                        f"Type object {self.type.__class__!r} does not "
+                        "include "
+                        f"{op_description} in its operator classes.  "
+                        "Using built-in operators (not including custom or "
+                        "overridden operators) outside of "
+                        "a type's stated operator classes is deprecated and "
+                        "will raise InvalidRequestError in a future release",
+                        "2.1",
+                    )
+
+            return op_fn, addtl_kw
+
+        @overload
+        def operate(
+            self,
+            op: OperatorType,
+            *other: Any,
+            result_type: Type[TypeEngine[_RT]],
+            **kwargs: Any,
+        ) -> ColumnElement[_RT]: ...
+
+        @overload
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
-        ) -> ColumnElement[_CT]:
-            default_comparator = util.preloaded.sql_default_comparator
-            op_fn, addtl_kw = default_comparator.operator_lookup[op.__name__]
+        ) -> ColumnElement[_CT]: ...
+
+        def operate(
+            self, op: OperatorType, *other: Any, **kwargs: Any
+        ) -> ColumnElement[Any]:
+            op_fn, addtl_kw = self._resolve_operator_lookup(op)
             if kwargs:
                 addtl_kw = addtl_kw.union(kwargs)
             return op_fn(self.expr, op, *other, **addtl_kw)
 
-        @util.preload_module("sqlalchemy.sql.default_comparator")
         def reverse_operate(
             self, op: OperatorType, other: Any, **kwargs: Any
         ) -> ColumnElement[_CT]:
-            default_comparator = util.preloaded.sql_default_comparator
-            op_fn, addtl_kw = default_comparator.operator_lookup[op.__name__]
+            op_fn, addtl_kw = self._resolve_operator_lookup(op)
+
             if kwargs:
                 addtl_kw = addtl_kw.union(kwargs)
             return op_fn(self.expr, op, other, reverse=True, **addtl_kw)
@@ -275,8 +344,6 @@ class TypeEngine(Visitable, Generic[_T]):
 
     The default value of ``None`` indicates that the values stored by
     this type are self-sorting.
-
-    .. versionadded:: 1.3.8
 
     """
 
@@ -376,7 +443,7 @@ class TypeEngine(Visitable, Generic[_T]):
         as the sole positional argument and will return a string representation
         to be rendered in a SQL statement.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -410,7 +477,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         If processing is not necessary, the method should return ``None``.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -446,7 +513,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         If processing is not necessary, the method should return ``None``.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -485,11 +552,19 @@ class TypeEngine(Visitable, Generic[_T]):
         It is the SQL analogue of the :meth:`.TypeEngine.result_processor`
         method.
 
+        .. note:: The :func:`.TypeEngine.column_expression` method is applied
+           only to the **outermost columns clause** of a SELECT statement, that
+           is, the columns that are to be delivered directly into the returned
+           result rows.  It does **not** apply to the columns clause inside
+           of subqueries.  This necessarily avoids double conversions against
+           the column and only runs the conversion when ready to be returned
+           to the client.
+
         This method is called during the **SQL compilation** phase of a
         statement, when rendering a SQL string. It is **not** called
         against specific values.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -599,7 +674,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         return x == y  # type: ignore[no-any-return]
 
-    def get_dbapi_type(self, dbapi: ModuleType) -> Optional[Any]:
+    def get_dbapi_type(self, dbapi: DBAPIModule) -> Optional[Any]:
         """Return the corresponding type object from the underlying DB-API, if
         any.
 
@@ -1362,6 +1437,8 @@ class UserDefinedType(
 
     ensure_kwarg = "get_col_spec"
 
+    operator_classes = OperatorClass.ANY
+
     def coerce_compared_value(
         self, op: Optional[OperatorType], value: Any
     ) -> TypeEngine[Any]:
@@ -1377,6 +1454,10 @@ class UserDefinedType(
 
         return self
 
+    if TYPE_CHECKING:
+
+        def get_col_spec(self, **kw: Any) -> str: ...
+
 
 class Emulated(TypeEngineMixin):
     """Mixin for base types that emulate the behavior of a DB-native type.
@@ -1391,8 +1472,6 @@ class Emulated(TypeEngineMixin):
 
     Current examples of :class:`.Emulated` are:  :class:`.Interval`,
     :class:`.Enum`, :class:`.Boolean`.
-
-    .. versionadded:: 1.2.0b3
 
     """
 
@@ -1451,11 +1530,7 @@ def _is_native_for_emulated(
 
 
 class NativeForEmulated(TypeEngineMixin):
-    """Indicates DB-native types supported by an :class:`.Emulated` type.
-
-    .. versionadded:: 1.2.0b3
-
-    """
+    """Indicates DB-native types supported by an :class:`.Emulated` type."""
 
     @classmethod
     def adapt_native_to_emulated(
@@ -1701,6 +1776,12 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
     constants.
 
     """
+
+    if not TYPE_CHECKING:
+
+        @property
+        def operator_classes(self) -> OperatorClass:
+            return self.impl_instance.operator_classes
 
     class Comparator(TypeEngine.Comparator[_CT]):
         """A :class:`.TypeEngine.Comparator` that is specific to
@@ -2252,7 +2333,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         instance.__dict__.update(self.__dict__)
         return instance
 
-    def get_dbapi_type(self, dbapi: ModuleType) -> Optional[Any]:
+    def get_dbapi_type(self, dbapi: DBAPIModule) -> Optional[Any]:
         """Return the DBAPI type object represented by this
         :class:`.TypeDecorator`.
 

@@ -1,8 +1,8 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools>=61.0",
-    "cython>=3; platform_python_implementation == 'CPython'", # Skip cython when using pypy
+    "setuptools>=77.0.3",
+    "cython>=3.1; platform_python_implementation == 'CPython'", # Skip cython when using pypy
 ]
 
 
@@ -11,24 +11,24 @@ name = "SQLAlchemy"
 description = "Database Abstraction Library"
 readme = "README.rst"
 authors = [{name = "Mike Bayer", email = "mike_mp@zzzcomputing.com"}]
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database :: Front-Ends",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "typing-extensions >= 4.6.0",
 ]
@@ -43,10 +43,10 @@ Changelog = "https://docs.sqlalchemy.org/latest/changelog/index.html"
 Discussions = "https://github.com/sqlalchemy/sqlalchemy/discussions"
 
 [project.optional-dependencies]
-asyncio = ["greenlet!=0.4.17"]
+asyncio = ["greenlet>=1"]
 mypy = [
     "mypy >= 1.7",
-    "types-greenlet >= 2"
+    "types-greenlet >= 2",
 ]
 mssql = ["pyodbc"]
 mssql-pymssql = ["pymssql"]
@@ -59,7 +59,7 @@ oracle-oracledb = ["oracledb>=1.0.1"]
 postgresql = ["psycopg2>=2.7"]
 postgresql-pg8000 = ["pg8000>=1.29.3"]
 postgresql-asyncpg = [
-    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "asyncpg",
 ]
 postgresql-psycopg2binary = ["psycopg2-binary"]
@@ -67,20 +67,21 @@ postgresql-psycopg2cffi = ["psycopg2cffi"]
 postgresql-psycopg = ["psycopg>=3.0.7,!=3.1.15"]
 postgresql-psycopgbinary = ["psycopg[binary]>=3.0.7,!=3.1.15"]
 pymysql = ["pymysql"]
+cymysql = ["cymysql"]
 aiomysql = [
-    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "aiomysql",
 ]
 aioodbc = [
-    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "aioodbc",
 ]
 asyncmy = [
-    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "asyncmy>=0.2.3,!=0.2.4,!=0.2.6",
 ]
 aiosqlite = [
-    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
+    "sqlalchemy[asyncio]",
     "aiosqlite",
 ]
 sqlcipher = ["sqlcipher3_binary"]
@@ -98,9 +99,105 @@ postgresql_psycopg2cffi = ["sqlalchemy[postgresql-psycopg2cffi]"]
 postgresql_psycopg = ["sqlalchemy[postgresql-psycopg]"]
 postgresql_psycopgbinary = ["sqlalchemy[postgresql-psycopgbinary]"]
 
+[dependency-groups]
+tests = [
+    "pytest>=7.0.0,<8.4",
+    "pytest-xdist",
+]
+
+coverage = ["pytest-cov"]
+
+tests-greenlet = ["sqlalchemy[asyncio]"]
+
+tests-sqlite = []
+
+tests-sqlite-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-sqlite"},
+    "sqlalchemy[aiosqlite]"
+]
+
+tests-sqlite-file = [{include-group = "tests-sqlite"}]
+tests-sqlite-file-asyncio = [{include-group = "tests-sqlite-asyncio"}]
+
+tests-postgresql = [
+    "sqlalchemy[postgresql]",
+    "sqlalchemy[postgresql-psycopg]",
+    "sqlalchemy[postgresql-pg8000]",
+]
+
+tests-postgresql-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-postgresql"},
+    "sqlalchemy[postgresql-asyncpg]"
+]
+
+tests-mysql = [
+    "sqlalchemy[mysql]",
+    "sqlalchemy[pymysql]",
+    "sqlalchemy[mysql-connector]",
+
+    # originally to fix https://jira.mariadb.org/browse/CONPY-318,
+    # more recent versions still have attribute errors and other random
+    # problems
+    "mariadb>=1.0.1,!=1.1.2,!=1.1.5,!=1.1.10,<1.1.13",
+
+]
+tests-mysql-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-mysql"},
+    "sqlalchemy[aiomysql]",
+    "sqlalchemy[asyncmy]",
+]
+
+tests-oracle-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-oracle"},
+]
+tests-oracle = [
+    "sqlalchemy[oracle]",
+    "sqlalchemy[oracle-oracledb]",
+]
+
+tests-mssql = [
+    "sqlalchemy[mssql]",
+    "sqlalchemy[mssql-pymssql]",
+]
+
+tests-mssql-asyncio = [
+    {include-group = "tests-greenlet"},
+    {include-group = "tests-mssql"},
+    "aioodbc"
+]
+
+lint = [
+    {include-group = "tests-greenlet"},
+    "flake8>=7.2.0",
+    "flake8-import-order>=0.19.2",
+    "flake8-import-single==0.1.5",
+    "flake8-builtins",
+    "flake8-future-annotations>=0.0.5",
+    "flake8-docstrings",
+    "flake8-unused-arguments",
+    "flake8-rst-docstrings",
+    "pydocstyle<4.0.0",
+    "pygments",
+    "black==25.1.0",
+    "slotscheck>=0.17.0",
+    "zimports",  # required by generate_tuple_map_overloads
+]
+
+mypy = [
+    {include-group = "tests-greenlet"},
+    "mypy>=1.16.0",
+    "nox",  # because we check noxfile.py
+    "pytest>8,<8.4",  # alembic/testing imports pytest
+    "types-greenlet",
+]
+
+
 [tool.setuptools]
 include-package-data = true
-license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["lib"]
@@ -117,7 +214,7 @@ tag-build = "dev"
 
 [tool.black]
 line-length = 79
-target-version = ['py39']
+target-version = ['py310']
 
 
 [tool.zimports]
@@ -154,6 +251,13 @@ filterwarnings = [
     # sqlite3 warnings due to test/dialect/test_sqlite.py->test_native_datetime,
     # which is asserting that these deprecated-in-py312 handlers are functional
     "ignore:The default (date)?(time)?(stamp)? (adapter|converter):DeprecationWarning",
+
+    # warning regarding using "fork" mode for multiprocessing when the parent
+    # has threads; using pytest-xdist introduces threads in the parent
+    # and we use multiprocessing in test/aaa_profiling/test_memusage.py where
+    # we require "fork" mode
+    # https://github.com/python/cpython/pull/100229#issuecomment-2704616288
+    "ignore:This process .* is multi-threaded:DeprecationWarning",
 ]
 markers = [
     "memory_intensive: memory / CPU intensive suite tests",
@@ -161,6 +265,7 @@ markers = [
     "timing_intensive: time-oriented tests that are sensitive to race conditions",
     "backend: tests that should run on all backends; typically dialect-sensitive",
     "sparse_backend: tests that should run on multiple backends, not necessarily all",
+    "gc_intensive: needs extremely predictable GC behavior",
 ]
 
 
@@ -176,6 +281,8 @@ reportTypedDictNotRequiredAccess = "warning"
 mypy_path = "./lib/"
 show_error_codes = true
 incremental = true
+# would be nice to enable this but too many error are surfaceds
+# enable_error_code = "ignore-without-code"
 
 [[tool.mypy.overrides]]
 

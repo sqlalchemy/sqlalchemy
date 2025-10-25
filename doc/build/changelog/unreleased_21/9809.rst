@@ -1,0 +1,16 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 9809
+
+    Session autoflush behavior has been simplified to unconditionally flush the
+    session each time an execution takes place, regardless of whether an ORM
+    statement or Core statement is being executed. This change eliminates the
+    previous conditional logic that only flushed when ORM-related statements
+    were detected, which had become difficult to define clearly with the unified
+    v2 syntax that allows both Core and ORM execution patterns. The change
+    provides more consistent and predictable session behavior across all types
+    of SQL execution.
+
+    .. seealso::
+
+        :ref:`change_9809`

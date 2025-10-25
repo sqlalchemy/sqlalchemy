@@ -57,6 +57,7 @@ from .pool import StaticPool as StaticPool
 from .schema import BaseDDLElement as BaseDDLElement
 from .schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .schema import CheckConstraint as CheckConstraint
+from .schema import CheckFirst as CheckFirst
 from .schema import Column as Column
 from .schema import ColumnDefault as ColumnDefault
 from .schema import Computed as Computed
@@ -80,6 +81,8 @@ from .sql import ColumnExpressionArgument as ColumnExpressionArgument
 from .sql import NotNullable as NotNullable
 from .sql import Nullable as Nullable
 from .sql import SelectLabelStyle as SelectLabelStyle
+from .sql.expression import aggregate_order_by as aggregate_order_by
+from .sql.expression import AggregateOrderBy as AggregateOrderBy
 from .sql.expression import Alias as Alias
 from .sql.expression import alias as alias
 from .sql.expression import AliasedReturnsRows as AliasedReturnsRows
@@ -124,6 +127,7 @@ from .sql.expression import Extract as Extract
 from .sql.expression import extract as extract
 from .sql.expression import false as false
 from .sql.expression import False_ as False_
+from .sql.expression import from_dml_column as from_dml_column
 from .sql.expression import FromClause as FromClause
 from .sql.expression import FromGrouping as FromGrouping
 from .sql.expression import func as func
@@ -168,6 +172,7 @@ from .sql.expression import nullsfirst as nullsfirst
 from .sql.expression import nullslast as nullslast
 from .sql.expression import Operators as Operators
 from .sql.expression import or_ as or_
+from .sql.expression import OrderByList as OrderByList
 from .sql.expression import outerjoin as outerjoin
 from .sql.expression import outparam as outparam
 from .sql.expression import Over as Over
@@ -279,14 +284,3 @@ def __go(lcls: Any) -> None:
 
 
 __go(locals())
-
-
-def __getattr__(name: str) -> Any:
-    if name == "SingleonThreadPool":
-        _util.warn_deprecated(
-            "SingleonThreadPool was a typo in the v2 series. "
-            "Please use the correct SingletonThreadPool name.",
-            "2.0.24",
-        )
-        return SingletonThreadPool
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

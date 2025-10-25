@@ -20,12 +20,15 @@ from sqlalchemy import true
 from sqlalchemy import union
 from sqlalchemy import update
 from sqlalchemy import util
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -45,6 +48,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import Variation
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.util.langhelpers import hybridproperty
@@ -365,7 +369,13 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
 
 
 class PropagateAttrsTest(QueryTest):
+    __backend__ = True
+
     def propagate_cases():
+        def distinct_deprecated(User, user_table):
+            with expect_deprecated("Passing expression to"):
+                return select(1).distinct(User.id).select_from(user_table)
+
         return testing.combinations(
             (lambda: select(1), False),
             (lambda User: select(User.id), True),
@@ -431,8 +441,13 @@ class PropagateAttrsTest(QueryTest):
             ),
             (
                 # changed as part of #9805
-                lambda User, user_table: select(1)
-                .distinct(User.id)
+                distinct_deprecated,
+                True,
+                testing.requires.supports_distinct_on,
+            ),
+            (
+                lambda user_table, User: select(1)
+                .ext(distinct_on(User.id))
                 .select_from(user_table),
                 True,
                 testing.requires.supports_distinct_on,
@@ -488,10 +503,8 @@ class PropagateAttrsTest(QueryTest):
                 r = s.execute(stmt)
                 r.close()
 
-        if expected:
-            eq_(before_flush.mock_calls, [mock.call()])
-        else:
-            eq_(before_flush.mock_calls, [])
+        # After issue #9809: unconditionally autoflush on all executions
+        eq_(before_flush.mock_calls, [mock.call()])
 
 
 class DMLTest(QueryTest, AssertsCompiledSQL):
@@ -881,6 +894,81 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         stmt = stmt.params(**bindparams)
 
         self.assert_compile(stmt, expected, checkparams=expected_params)
+
+    @testing.fixture
+    def grandchild_fixture(self, decl_base):
+        class Parent(decl_base):
+            __tablename__ = "parent"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+
+        class Child(decl_base):
+            __tablename__ = "child"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+
+        class GrandchildWParent(decl_base):
+            __tablename__ = "grandchildwparent"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+            child_id: Mapped[int] = mapped_column(ForeignKey("child.id"))
+
+        return Parent, Child, GrandchildWParent
+
+    @testing.variation(
+        "jointype",
+        ["child_grandchild", "parent_grandchild", "grandchild_alone"],
+    )
+    def test_join_from_favors_explicit_left(
+        self, grandchild_fixture, jointype
+    ):
+        """test #12931 in terms of ORM joins"""
+
+        Parent, Child, GrandchildWParent = grandchild_fixture
+
+        if jointype.child_grandchild:
+            stmt = (
+                select(Parent)
+                .join_from(Parent, Child)
+                .join_from(Child, GrandchildWParent)
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent JOIN "
+                "child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON child.id = grandchildwparent.child_id",
+            )
+
+        elif jointype.parent_grandchild:
+            stmt = (
+                select(Parent)
+                .join_from(Parent, Child)
+                .join_from(Parent, GrandchildWParent)
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent "
+                "JOIN child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON parent.id = grandchildwparent.parent_id",
+            )
+        elif jointype.grandchild_alone:
+            stmt = (
+                select(Parent).join_from(Parent, Child).join(GrandchildWParent)
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent "
+                "JOIN child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON child.id = grandchildwparent.child_id",
+            )
+        else:
+            jointype.fail()
 
 
 class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):

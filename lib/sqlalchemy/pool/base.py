@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
-"""Base constructs for connection pools.
-
-"""
+"""Base constructs for connection pools."""
 
 from __future__ import annotations
 
@@ -24,6 +22,7 @@ from typing import cast
 from typing import Deque
 from typing import Dict
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Protocol
 from typing import Tuple
@@ -35,7 +34,6 @@ from .. import event
 from .. import exc
 from .. import log
 from .. import util
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ..engine.interfaces import DBAPIConnection
@@ -270,8 +268,6 @@ class Pool(log.Identified, event.EventTarget):
          other pooled connections established prior to that timestamp are
          invalidated.     Requires that a dialect is passed as well to
          interpret the disconnection error.
-
-         .. versionadded:: 1.2
 
         """
         if logging_name:
@@ -1075,9 +1071,11 @@ class PoolProxiedConnection(ManagesConnection):
 
         def commit(self) -> None: ...
 
-        def cursor(self) -> DBAPICursor: ...
+        def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor: ...
 
         def rollback(self) -> None: ...
+
+        def __getattr__(self, key: str) -> Any: ...
 
     @property
     def is_valid(self) -> bool:

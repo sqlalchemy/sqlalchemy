@@ -26,6 +26,7 @@ from typing import ClassVar
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import NamedTuple
 from typing import Optional
 from typing import overload
@@ -33,6 +34,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -45,6 +47,7 @@ from .base import ATTR_EMPTY
 from .base import ATTR_WAS_SET
 from .base import CALLABLES_OK
 from .base import DEFERRED_HISTORY_LOAD
+from .base import DONT_SET
 from .base import INCLUDE_PENDING_MUTATIONS  # noqa
 from .base import INIT_OK
 from .base import instance_dict as instance_dict
@@ -89,9 +92,7 @@ from ..sql import visitors
 from ..sql.cache_key import HasCacheKey
 from ..sql.visitors import _TraverseInternalsType
 from ..sql.visitors import InternalTraversal
-from ..util.typing import Literal
 from ..util.typing import Self
-from ..util.typing import TypeGuard
 
 if TYPE_CHECKING:
     from ._typing import _EntityType
@@ -391,6 +392,11 @@ class QueryableAttribute(
 
         return self.comparator._bulk_update_tuples(value)
 
+    def _bulk_dml_setter(self, key: str) -> Optional[Callable[..., Any]]:
+        """return a callable that will process a bulk INSERT value"""
+
+        return self.comparator._bulk_dml_setter(key)
+
     def adapt_to_entity(self, adapt_to_entity: AliasedInsp[Any]) -> Self:
         assert not self._of_type
         return self.__class__(
@@ -461,6 +467,9 @@ class QueryableAttribute(
         self, state: InstanceState[Any], optimistic: bool = False
     ) -> bool:
         return self.impl.hasparent(state, optimistic=optimistic) is not False
+
+    def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+        return (self,)
 
     def __getattr__(self, key: str) -> Any:
         try:
@@ -595,7 +604,7 @@ def _create_proxied_attribute(
     # TODO: can move this to descriptor_props if the need for this
     # function is removed from ext/hybrid.py
 
-    class Proxy(QueryableAttribute[Any]):
+    class Proxy(QueryableAttribute[_T_co]):
         """Presents the :class:`.QueryableAttribute` interface as a
         proxy on top of a Python descriptor / :class:`.PropComparator`
         combination.
@@ -610,13 +619,13 @@ def _create_proxied_attribute(
 
         def __init__(
             self,
-            class_,
-            key,
-            descriptor,
-            comparator,
-            adapt_to_entity=None,
-            doc=None,
-            original_property=None,
+            class_: _ExternalEntityType[Any],
+            key: str,
+            descriptor: Any,
+            comparator: interfaces.PropComparator[_T_co],
+            adapt_to_entity: Optional[AliasedInsp[Any]] = None,
+            doc: Optional[str] = None,
+            original_property: Optional[QueryableAttribute[_T_co]] = None,
         ):
             self.class_ = class_
             self.key = key
@@ -627,11 +636,11 @@ def _create_proxied_attribute(
             self._doc = self.__doc__ = doc
 
         @property
-        def _parententity(self):
+        def _parententity(self):  # type: ignore[override]
             return inspection.inspect(self.class_, raiseerr=False)
 
         @property
-        def parent(self):
+        def parent(self):  # type: ignore[override]
             return inspection.inspect(self.class_, raiseerr=False)
 
         _is_internal_proxy = True
@@ -640,6 +649,13 @@ def _create_proxied_attribute(
             ("key", visitors.ExtendedInternalTraversal.dp_string),
             ("_parententity", visitors.ExtendedInternalTraversal.dp_multi),
         ]
+
+        def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+            prop = self.original_property
+            if prop is None:
+                return ()
+            else:
+                return prop._column_strategy_attrs()
 
         @property
         def _impl_uses_objects(self):
@@ -1045,20 +1061,9 @@ class _AttributeImpl:
     def _default_value(
         self, state: InstanceState[Any], dict_: _InstanceDict
     ) -> Any:
-        """Produce an empty value for an uninitialized scalar attribute."""
+        """Produce an empty value for an uninitialized attribute."""
 
-        assert self.key not in dict_, (
-            "_default_value should only be invoked for an "
-            "uninitialized or expired attribute"
-        )
-
-        value = None
-        for fn in self.dispatch.init_scalar:
-            ret = fn(state, value, dict_)
-            if ret is not ATTR_EMPTY:
-                value = ret
-
-        return value
+        raise NotImplementedError()
 
     def get(
         self,
@@ -1211,14 +1216,37 @@ class _ScalarAttributeImpl(_AttributeImpl):
     collection = False
     dynamic = False
 
-    __slots__ = "_replace_token", "_append_token", "_remove_token"
+    __slots__ = (
+        "_default_scalar_value",
+        "_replace_token",
+        "_append_token",
+        "_remove_token",
+    )
 
-    def __init__(self, *arg, **kw):
+    def __init__(self, *arg, default_scalar_value=None, **kw):
         super().__init__(*arg, **kw)
+        self._default_scalar_value = default_scalar_value
         self._replace_token = self._append_token = AttributeEventToken(
             self, OP_REPLACE
         )
         self._remove_token = AttributeEventToken(self, OP_REMOVE)
+
+    def _default_value(
+        self, state: InstanceState[Any], dict_: _InstanceDict
+    ) -> Any:
+        """Produce an empty value for an uninitialized scalar attribute."""
+
+        assert self.key not in dict_, (
+            "_default_value should only be invoked for an "
+            "uninitialized or expired attribute"
+        )
+        value = self._default_scalar_value
+        for fn in self.dispatch.init_scalar:
+            ret = fn(state, value, dict_)
+            if ret is not ATTR_EMPTY:
+                value = ret
+
+        return value
 
     def delete(self, state: InstanceState[Any], dict_: _InstanceDict) -> None:
         if self.dispatch._active_history:
@@ -1268,6 +1296,9 @@ class _ScalarAttributeImpl(_AttributeImpl):
         check_old: Optional[object] = None,
         pop: bool = False,
     ) -> None:
+        if value is DONT_SET:
+            return
+
         if self.dispatch._active_history:
             old = self.get(state, dict_, PASSIVE_RETURN_NO_VALUE)
         else:
@@ -1433,6 +1464,9 @@ class _ScalarObjectAttributeImpl(_ScalarAttributeImpl):
         pop: bool = False,
     ) -> None:
         """Set a value on the given InstanceState."""
+
+        if value is DONT_SET:
+            return
 
         if self.dispatch._active_history:
             old = self.get(
@@ -1918,6 +1952,10 @@ class _CollectionAttributeImpl(_HasCollectionAdapter, _AttributeImpl):
         pop: bool = False,
         _adapt: bool = True,
     ) -> None:
+
+        if value is DONT_SET:
+            return
+
         iterable = orig_iterable = value
         new_keys = None
 
@@ -1925,33 +1963,32 @@ class _CollectionAttributeImpl(_HasCollectionAdapter, _AttributeImpl):
         # not trigger a lazy load of the old collection.
         new_collection, user_data = self._initialize_collection(state)
         if _adapt:
-            if new_collection._converter is not None:
-                iterable = new_collection._converter(iterable)
+            setting_type = util.duck_type_collection(iterable)
+            receiving_type = self._duck_typed_as
+
+            if setting_type is not receiving_type:
+                given = (
+                    "None" if iterable is None else iterable.__class__.__name__
+                )
+                wanted = (
+                    "None"
+                    if self._duck_typed_as is None
+                    else self._duck_typed_as.__name__
+                )
+                raise TypeError(
+                    "Incompatible collection type: %s is not %s-like"
+                    % (given, wanted)
+                )
+
+            # If the object is an adapted collection, return the (iterable)
+            # adapter.
+            if hasattr(iterable, "_sa_iterator"):
+                iterable = iterable._sa_iterator()
+            elif setting_type is dict:
+                new_keys = list(iterable)
+                iterable = iterable.values()
             else:
-                setting_type = util.duck_type_collection(iterable)
-                receiving_type = self._duck_typed_as
-
-                if setting_type is not receiving_type:
-                    given = (
-                        iterable is None
-                        and "None"
-                        or iterable.__class__.__name__
-                    )
-                    wanted = self._duck_typed_as.__name__
-                    raise TypeError(
-                        "Incompatible collection type: %s is not %s-like"
-                        % (given, wanted)
-                    )
-
-                # If the object is an adapted collection, return the (iterable)
-                # adapter.
-                if hasattr(iterable, "_sa_iterator"):
-                    iterable = iterable._sa_iterator()
-                elif setting_type is dict:
-                    new_keys = list(iterable)
-                    iterable = iterable.values()
-                else:
-                    iterable = iter(iterable)
+                iterable = iter(iterable)
         elif util.duck_type_collection(iterable) is dict:
             new_keys = list(value)
 
@@ -2707,7 +2744,7 @@ def init_state_collection(
     return adapter
 
 
-def set_committed_value(instance, key, value):
+def set_committed_value(instance: object, key: str, value: Any) -> None:
     """Set the value of an attribute with no history events.
 
     Cancels any previous history present.  The value should be
@@ -2752,8 +2789,6 @@ def set_attribute(
      an existing event listening function where an :class:`.Event` object
      is being supplied; the object may be used to track the origin of the
      chain of events.
-
-     .. versionadded:: 1.2.3
 
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
@@ -2822,8 +2857,6 @@ def flag_dirty(instance: object) -> None:
     will be able to see the object in the :attr:`.Session.dirty` collection and
     may establish changes on it, which will then be included in the SQL
     emitted.
-
-    .. versionadded:: 1.2
 
     .. seealso::
 

@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 12357
-
-    Fixed issue where the "is ORM" flag of a :func:`.select` or other ORM
-    statement would not be propagated to the ORM :class:`.Session` based on a
-    multi-part operator expression alone, e.g. such as ``Cls.attr + Cls.attr +
-    Cls.attr`` or similar, leading to ORM behaviors not taking place for such
-    statements.

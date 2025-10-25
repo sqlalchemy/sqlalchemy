@@ -619,18 +619,10 @@ convenient for generating WHERE criteria quickly, SQL results should be
 inspected and "unrolled" into explicit JOIN criteria for best use, especially
 when chaining association proxies together.
 
-
-.. versionchanged:: 1.3 Association proxy features distinct querying modes
-   based on the type of target.   See :ref:`change_4351`.
-
-
-
 .. _cascade_scalar_deletes:
 
 Cascading Scalar Deletes
 ------------------------
-
-.. versionadded:: 1.3
 
 Given a mapping as::
 

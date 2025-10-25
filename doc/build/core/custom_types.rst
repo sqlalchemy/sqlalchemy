@@ -15,7 +15,7 @@ A frequent need is to force the "string" version of a type, that is
 the one rendered in a CREATE TABLE statement or other SQL function
 like CAST, to be changed.   For example, an application may want
 to force the rendering of ``BINARY`` for all platforms
-except for one, in which is wants ``BLOB`` to be rendered.  Usage
+except for one, in which it wants ``BLOB`` to be rendered.  Usage
 of an existing generic type, in this case :class:`.LargeBinary`, is
 preferred for most use cases.  But to control
 types more accurately, a compilation directive that is per-dialect
@@ -176,7 +176,7 @@ Backend-agnostic GUID Type
     just as an example of a type decorator that receives and returns
     python objects.
 
-Receives and returns Python uuid() objects.  
+Receives and returns Python uuid() objects.
 Uses the PG UUID type when using PostgreSQL, UNIQUEIDENTIFIER when using MSSQL,
 CHAR(32) on other backends, storing them in stringified format.
 The ``GUIDHyphens`` version stores the value with hyphens instead of just the hex
@@ -405,16 +405,32 @@ to coerce incoming and outgoing data between an application and persistence form
 Examples include using database-defined encryption/decryption functions, as well
 as stored procedures that handle geographic data.
 
-Any :class:`.TypeEngine`, :class:`.UserDefinedType` or :class:`.TypeDecorator` subclass
-can include implementations of
-:meth:`.TypeEngine.bind_expression` and/or :meth:`.TypeEngine.column_expression`, which
-when defined to return a non-``None`` value should return a :class:`_expression.ColumnElement`
-expression to be injected into the SQL statement, either surrounding
-bound parameters or a column expression.  For example, to build a ``Geometry``
-type which will apply the PostGIS function ``ST_GeomFromText`` to all outgoing
-values and the function ``ST_AsText`` to all incoming data, we can create
-our own subclass of :class:`.UserDefinedType` which provides these methods
-in conjunction with :data:`~.sqlalchemy.sql.expression.func`::
+Any :class:`.TypeEngine`, :class:`.UserDefinedType` or :class:`.TypeDecorator`
+subclass can include implementations of :meth:`.TypeEngine.bind_expression`
+and/or :meth:`.TypeEngine.column_expression`, which when defined to return a
+non-``None`` value should return a :class:`_expression.ColumnElement`
+expression to be injected into the SQL statement, either surrounding bound
+parameters or a column expression.
+
+.. tip:: As SQL-level result processing features are intended to assist with
+   coercing data from a SELECT statement into result rows in Python, the
+   :meth:`.TypeEngine.column_expression` conversion method is applied only to
+   the **outermost** columns clause in a SELECT; it does **not** apply to
+   columns rendered inside of subqueries, as these column expressions are not
+   directly delivered to a result.  The expression should not be applied to
+   both, as this would lead to double-conversion of columns, and the
+   "outermost" level rather than the "innermost" level is used so that
+   conversion routines don't interfere with the internal expressions used by
+   the statement, and so that only data that's outgoing to a result row is
+   actually subject to conversion, which is consistent with the result
+   row processing functionality provided by
+   :meth:`.TypeDecorator.process_result_value`.
+
+For example, to build a ``Geometry`` type which will apply the PostGIS function
+``ST_GeomFromText`` to all outgoing values and the function ``ST_AsText`` to
+all incoming data, we can create our own subclass of :class:`.UserDefinedType`
+which provides these methods in conjunction with
+:data:`~.sqlalchemy.sql.expression.func`::
 
     from sqlalchemy import func
     from sqlalchemy.types import UserDefinedType

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12915
+
+    Some improvements to the :meth:`_sql.ClauseElement.params` method to
+    replace bound parameters in a query were made, however the ultimate issue
+    in :ticket:`12915` involving ORM :func:`_orm.aliased` cannot be fixed fully
+    until 2.1, where the method is being rewritten to work without relying on
+    Core cloned traversal.

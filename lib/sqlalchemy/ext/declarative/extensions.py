@@ -24,7 +24,7 @@ from ...orm import exc as orm_exc
 from ...orm import relationships
 from ...orm.base import _mapper_or_none
 from ...orm.clsregistry import _resolver
-from ...orm.decl_base import _DeferredMapperConfig
+from ...orm.decl_base import _DeferredDeclarativeConfig
 from ...orm.util import polymorphic_union
 from ...schema import Table
 from ...util import OrderedDict
@@ -40,7 +40,7 @@ class ConcreteBase:
     function automatically, against all tables mapped as a subclass
     to this class.   The function is called via the
     ``__declare_last__()`` function, which is essentially
-    a hook for the :meth:`.after_configured` event.
+    a hook for the :meth:`.MapperEvents.after_configured` event.
 
     :class:`.ConcreteBase` produces a mapped
     table for the class itself.  Compare to :class:`.AbstractConcreteBase`,
@@ -79,10 +79,6 @@ class ConcreteBase:
 
         class Employee(ConcreteBase, Base):
             _concrete_discriminator_name = "_concrete_discriminator"
-
-    .. versionadded:: 1.3.19 Added the ``_concrete_discriminator_name``
-       attribute to :class:`_declarative.ConcreteBase` so that the
-       virtual discriminator column name can be customized.
 
     .. versionchanged:: 1.4.2 The ``_concrete_discriminator_name`` attribute
        need only be placed on the basemost class to take correct effect for
@@ -133,7 +129,7 @@ class AbstractConcreteBase(ConcreteBase):
     function automatically, against all tables mapped as a subclass
     to this class.   The function is called via the
     ``__declare_first__()`` function, which is essentially
-    a hook for the :meth:`.before_configured` event.
+    a hook for the :meth:`.MapperEvents.before_configured` event.
 
     :class:`.AbstractConcreteBase` applies :class:`_orm.Mapper` for its
     immediately inheriting class, as would occur for any other
@@ -274,7 +270,7 @@ class AbstractConcreteBase(ConcreteBase):
         if getattr(cls, "__mapper__", None):
             return
 
-        to_map = _DeferredMapperConfig.config_for_cls(cls)
+        to_map = _DeferredDeclarativeConfig.config_for_cls(cls)
 
         # can't rely on 'self_and_descendants' here
         # since technically an immediate subclass
@@ -455,7 +451,7 @@ class DeferredReflection:
 
         """
 
-        to_map = _DeferredMapperConfig.classes_for_base(cls)
+        to_map = _DeferredDeclarativeConfig.classes_for_base(cls)
 
         metadata_to_table = collections.defaultdict(set)
 

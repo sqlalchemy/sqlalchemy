@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import collections
 import itertools
 from typing import Any
 from typing import cast
@@ -239,7 +240,7 @@ class _AbstractORMCompileState(CompileState):
         if compiler is None:
             # this is the legacy / testing only ORM _compile_state() use case.
             # there is no need to apply criteria options for this.
-            self.global_attributes = ga = {}
+            self.global_attributes = {}
             assert toplevel
             return
         else:
@@ -651,6 +652,10 @@ class _ORMCompileState(_AbstractORMCompileState):
         passed to with_polymorphic (which is completely unnecessary in modern
         use).
 
+        TODO: What is a "quasi-legacy" case?   Do we need this method with
+        2.0 style select() queries or not?   Why is with_polymorphic referring
+        to an alias or subquery "legacy" ?
+
         """
         if (
             not ext_info.is_aliased_class
@@ -862,8 +867,8 @@ class _ORMFromStatementCompileState(_ORMCompileState):
                 if opt._is_compile_state:
                     opt.process_compile_state(self)
 
-        if statement_container._with_context_options:
-            for fn, key in statement_container._with_context_options:
+        if statement_container._compile_state_funcs:
+            for fn, key in statement_container._compile_state_funcs:
                 fn(self)
 
         self.primary_columns = []
@@ -1230,8 +1235,8 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         # after it's been set up above
         # self._dump_option_struct()
 
-        if select_statement._with_context_options:
-            for fn, key in select_statement._with_context_options:
+        if select_statement._compile_state_funcs:
+            for fn, key in select_statement._compile_state_funcs:
                 fn(self)
 
         self.primary_columns = []
@@ -1339,6 +1344,11 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
 
         self.distinct = query._distinct
 
+        self.syntax_extensions = {
+            key: current_adapter(value, True) if current_adapter else value
+            for key, value in query._get_syntax_extensions_as_dict().items()
+        }
+
         if query._correlate:
             # ORM mapped entities that are mapped to joins can be passed
             # to .correlate, so here they are broken into their component
@@ -1395,11 +1405,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         if self.order_by is False:
             self.order_by = None
 
-        if (
-            self.multi_row_eager_loaders
-            and self.eager_adding_joins
-            and self._should_nest_selectable
-        ):
+        if self._should_nest_selectable:
             self.statement = self._compound_eager_statement()
         else:
             self.statement = self._simple_statement()
@@ -1489,7 +1495,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
 
         stmt.__dict__.update(
             _with_options=statement._with_options,
-            _with_context_options=statement._with_context_options,
+            _compile_state_funcs=statement._compile_state_funcs,
             _execution_options=statement._execution_options,
             _propagate_attrs=statement._propagate_attrs,
         )
@@ -1723,6 +1729,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         group_by,
         independent_ctes,
         independent_ctes_opts,
+        syntax_extensions,
     ):
         statement = Select._create_raw_select(
             _raw_columns=raw_columns,
@@ -1739,9 +1746,10 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             statement._order_by_clauses += tuple(order_by)
 
         if distinct_on:
-            statement.distinct.non_generative(statement, *distinct_on)
+            statement._distinct = True
+            statement._distinct_on = distinct_on
         elif distinct:
-            statement.distinct.non_generative(statement)
+            statement._distinct = True
 
         if group_by:
             statement._group_by_clauses += tuple(group_by)
@@ -1752,6 +1760,8 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         statement._fetch_clause_options = fetch_clause_options
         statement._independent_ctes = independent_ctes
         statement._independent_ctes_opts = independent_ctes_opts
+        if syntax_extensions:
+            statement._set_syntax_extensions(**syntax_extensions)
 
         if prefixes:
             statement._prefixes = prefixes
@@ -1814,17 +1824,14 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             # subquery of itself, i.e. _from_selectable(), apply adaption
             # to all SQL constructs.
             adapters.append(
-                (
-                    True,
-                    self._from_obj_alias.replace,
-                )
+                self._from_obj_alias.replace,
             )
 
         # this was *hopefully* the only adapter we were going to need
         # going forward...however, we unfortunately need _from_obj_alias
         # for query.union(), which we can't drop
         if self._polymorphic_adapters:
-            adapters.append((False, self._adapt_polymorphic_element))
+            adapters.append(self._adapt_polymorphic_element)
 
         if not adapters:
             return None
@@ -1834,15 +1841,10 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             # tagged as 'ORM' constructs ?
 
             def replace(elem):
-                is_orm_adapt = (
-                    "_orm_adapt" in elem._annotations
-                    or "parententity" in elem._annotations
-                )
-                for always_adapt, adapter in adapters:
-                    if is_orm_adapt or always_adapt:
-                        e = adapter(elem)
-                        if e is not None:
-                            return e
+                for adapter in adapters:
+                    e = adapter(elem)
+                    if e is not None:
+                        return e
 
             return visitors.replacement_traverse(clause, {}, replace)
 
@@ -1875,8 +1877,6 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
                         "Expected mapped entity or "
                         "selectable/table as join target"
                     )
-
-            of_type = None
 
             if isinstance(onclause, interfaces.PropComparator):
                 # descriptor/property given (or determined); this tells us
@@ -1959,6 +1959,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
 
         """
 
+        explicit_left = left
         if left is None:
             # left not given (e.g. no relationship object/name specified)
             # figure out the best "left" side based on our existing froms /
@@ -2003,6 +2004,9 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             # splice into an existing element in the
             # self._from_obj list
             left_clause = self.from_clauses[replace_from_obj_index]
+
+            if explicit_left is not None and onclause is None:
+                onclause = _ORMJoin._join_condition(explicit_left, right)
 
             self.from_clauses = (
                 self.from_clauses[:replace_from_obj_index]
@@ -2421,14 +2425,25 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             "independent_ctes_opts": (
                 self.select_statement._independent_ctes_opts
             ),
+            "syntax_extensions": self.syntax_extensions,
         }
 
     @property
     def _should_nest_selectable(self):
         kwargs = self._select_args
+
+        if not self.eager_adding_joins:
+            return False
+
         return (
-            kwargs.get("limit_clause") is not None
-            or kwargs.get("offset_clause") is not None
+            (
+                kwargs.get("limit_clause") is not None
+                and self.multi_row_eager_loaders
+            )
+            or (
+                kwargs.get("offset_clause") is not None
+                and self.multi_row_eager_loaders
+            )
             or kwargs.get("distinct", False)
             or kwargs.get("distinct_on", ())
             or kwargs.get("group_by", False)
@@ -2481,31 +2496,82 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
                     ext_info._adapter if ext_info.is_aliased_class else None,
                 )
 
-        search = set(self.extra_criteria_entities.values())
+        _where_criteria_to_add = ()
 
-        for ext_info, adapter in search:
+        merged_single_crit = collections.defaultdict(
+            lambda: (util.OrderedSet(), set())
+        )
+
+        for ext_info, adapter in util.OrderedSet(
+            self.extra_criteria_entities.values()
+        ):
             if ext_info in self._join_entities:
                 continue
 
-            single_crit = ext_info.mapper._single_table_criterion
-
-            if self.compile_options._for_refresh_state:
-                additional_entity_criteria = []
+            # assemble single table inheritance criteria.
+            if (
+                ext_info.is_aliased_class
+                and ext_info._base_alias()._is_with_polymorphic
+            ):
+                # for a with_polymorphic(), we always include the full
+                # hierarchy from what's given as the base class for the wpoly.
+                # this is new in 2.1 for #12395 so that it matches the behavior
+                # of joined inheritance.
+                hierarchy_root = ext_info._base_alias()
             else:
-                additional_entity_criteria = self._get_extra_criteria(ext_info)
+                hierarchy_root = ext_info
 
-            if single_crit is not None:
-                additional_entity_criteria += (single_crit,)
+            single_crit_component = (
+                hierarchy_root.mapper._single_table_criteria_component
+            )
 
-            current_adapter = self._get_current_adapter()
-            for crit in additional_entity_criteria:
+            if single_crit_component is not None:
+                polymorphic_on, criteria = single_crit_component
+
+                polymorphic_on = polymorphic_on._annotate(
+                    {
+                        "parententity": hierarchy_root,
+                        "parentmapper": hierarchy_root.mapper,
+                    }
+                )
+
+                list_of_single_crits, adapters = merged_single_crit[
+                    (hierarchy_root, polymorphic_on)
+                ]
+                list_of_single_crits.update(criteria)
                 if adapter:
-                    crit = adapter.traverse(crit)
+                    adapters.add(adapter)
 
-                if current_adapter:
-                    crit = sql_util._deep_annotate(crit, {"_orm_adapt": True})
-                    crit = current_adapter(crit, False)
+            # assemble "additional entity criteria", which come from
+            # with_loader_criteria() options
+            if not self.compile_options._for_refresh_state:
+                additional_entity_criteria = self._get_extra_criteria(ext_info)
+                _where_criteria_to_add += tuple(
+                    adapter.traverse(crit) if adapter else crit
+                    for crit in additional_entity_criteria
+                )
+
+        # merge together single table inheritance criteria keyed to
+        # top-level mapper / aliasedinsp (which may be a with_polymorphic())
+        for (ext_info, polymorphic_on), (
+            merged_crit,
+            adapters,
+        ) in merged_single_crit.items():
+            new_crit = polymorphic_on.in_(merged_crit)
+            for adapter in adapters:
+                new_crit = adapter.traverse(new_crit)
+            _where_criteria_to_add += (new_crit,)
+
+        current_adapter = self._get_current_adapter()
+        if current_adapter:
+            # finally run all the criteria through the "main" adapter, if we
+            # have one, and concatenate to final WHERE criteria
+            for crit in _where_criteria_to_add:
+                crit = current_adapter(crit, False)
                 self._where_criteria += (crit,)
+        else:
+            # else just concatenate our criteria to the final WHERE criteria
+            self._where_criteria += _where_criteria_to_add
 
 
 def _column_descriptions(
@@ -2539,7 +2605,7 @@ def _column_descriptions(
 
 
 def _legacy_filter_by_entity_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]]
+    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]],
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if self._setup_joins:
@@ -2554,7 +2620,7 @@ def _legacy_filter_by_entity_zero(
 
 
 def _entity_from_pre_ent_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]]
+    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]],
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if not self._raw_columns:

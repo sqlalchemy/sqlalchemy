@@ -11,6 +11,7 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import cast
+from typing import Concatenate
 from typing import Dict
 from typing import Generic
 from typing import Iterable
@@ -18,6 +19,7 @@ from typing import Iterator
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import ParamSpec
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -38,8 +40,6 @@ from ...orm import Session
 from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
-from ...util.typing import Concatenate
-from ...util.typing import ParamSpec
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
@@ -49,13 +49,13 @@ if TYPE_CHECKING:
     from .engine import AsyncConnection
     from .engine import AsyncEngine
     from ...engine import Connection
-    from ...engine import CursorResult
     from ...engine import Engine
     from ...engine import Result
     from ...engine import Row
     from ...engine import RowMapping
     from ...engine import ScalarResult
     from ...engine.interfaces import _CoreAnyExecuteParams
+    from ...engine.interfaces import _ExecuteOptions
     from ...engine.interfaces import CoreExecuteOptionsParameter
     from ...event import dispatcher
     from ...orm._typing import _IdentityKeyType
@@ -70,7 +70,6 @@ if TYPE_CHECKING:
     from ...orm.session import _SessionBindKey
     from ...sql._typing import _InfoType
     from ...sql.base import Executable
-    from ...sql.dml import UpdateBase
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
@@ -205,6 +204,7 @@ class AsyncAttrs:
         "autoflush",
         "no_autoflush",
         "info",
+        "execution_options",
     ],
 )
 class AsyncSession(ReversibleProxy[Session]):
@@ -417,18 +417,6 @@ class AsyncSession(ReversibleProxy[Session]):
     @overload
     async def execute(
         self,
-        statement: UpdateBase,
-        params: Optional[_CoreAnyExecuteParams] = None,
-        *,
-        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
-    ) -> CursorResult[Unpack[TupleAny]]: ...
-
-    @overload
-    async def execute(
-        self,
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
@@ -631,8 +619,7 @@ class AsyncSession(ReversibleProxy[Session]):
         """Return an instance based on the given primary key identifier,
         or raise an exception if not found.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
-        no rows.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
         ..versionadded: 2.0.22
 
@@ -843,7 +830,9 @@ class AsyncSession(ReversibleProxy[Session]):
         """
         trans = self.sync_session.get_transaction()
         if trans is not None:
-            return AsyncSessionTransaction._retrieve_proxy_for_target(trans)
+            return AsyncSessionTransaction._retrieve_proxy_for_target(
+                trans, async_session=self
+            )
         else:
             return None
 
@@ -859,7 +848,9 @@ class AsyncSession(ReversibleProxy[Session]):
 
         trans = self.sync_session.get_nested_transaction()
         if trans is not None:
-            return AsyncSessionTransaction._retrieve_proxy_for_target(trans)
+            return AsyncSessionTransaction._retrieve_proxy_for_target(
+                trans, async_session=self
+            )
         else:
             return None
 
@@ -1598,6 +1589,19 @@ class AsyncSession(ReversibleProxy[Session]):
 
         return self._proxied.info
 
+    @property
+    def execution_options(self) -> _ExecuteOptions:
+        r"""Proxy for the :attr:`_orm.Session.execution_options` attribute
+        on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.execution_options
+
+    @execution_options.setter
+    def execution_options(self, attr: _ExecuteOptions) -> None:
+        self._proxied.execution_options = attr
+
     @classmethod
     def object_session(cls, instance: object) -> Optional[Session]:
         r"""Return the :class:`.Session` to which an object belongs.
@@ -1895,6 +1899,21 @@ class AsyncSessionTransaction(
         """Commit this :class:`_asyncio.AsyncTransaction`."""
 
         await greenlet_spawn(self._sync_transaction().commit)
+
+    @classmethod
+    def _regenerate_proxy_for_target(  # type: ignore[override]
+        cls,
+        target: SessionTransaction,
+        async_session: AsyncSession,
+        **additional_kw: Any,  # noqa: U100
+    ) -> AsyncSessionTransaction:
+        sync_transaction = target
+        nested = target.nested
+        obj = cls.__new__(cls)
+        obj.session = async_session
+        obj.sync_transaction = obj._assign_proxied(sync_transaction)
+        obj.nested = nested
+        return obj
 
     async def start(
         self, is_ctxmanager: bool = False

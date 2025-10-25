@@ -52,6 +52,7 @@ from .base import VARCHAR
 from .base import YEAR
 from .dml import Insert
 from .dml import insert
+from .dml import limit
 from .expression import match
 from .mariadb import INET4
 from .mariadb import INET6
@@ -101,4 +102,5 @@ __all__ = (
     "insert",
     "Insert",
     "match",
+    "limit",
 )

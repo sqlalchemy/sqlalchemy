@@ -18,7 +18,6 @@ class X(Base):
 
 scoped_session.object_session(object())
 scoped_session.identity_key()
-scoped_session.close_all()
 ss = scoped_session(sessionmaker())
 value: bool = "foo" in ss
 list(ss)

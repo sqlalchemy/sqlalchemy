@@ -5,9 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""ORM event interfaces.
-
-"""
+"""ORM event interfaces."""
 from __future__ import annotations
 
 from typing import Any
@@ -25,6 +23,7 @@ from typing import TypeVar
 from typing import Union
 import weakref
 
+from . import decl_api
 from . import instrumentation
 from . import interfaces
 from . import mapperlib
@@ -66,6 +65,7 @@ if TYPE_CHECKING:
     from ..orm.context import QueryContext
     from ..orm.decl_api import DeclarativeAttributeIntercept
     from ..orm.decl_api import DeclarativeMeta
+    from ..orm.decl_api import registry
     from ..orm.mapper import Mapper
     from ..orm.state import InstanceState
 
@@ -244,9 +244,6 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
        to target the object appropriately.  A warning is emitted if the
        object is moved to a new loader context from within one of these
        events if this flag is not set.
-
-       .. versionadded:: 1.3.14
-
 
     """
 
@@ -461,15 +458,6 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
                 @event.listens_for(SomeClass, "load", restore_load_context=True)
                 def on_load(instance, context):
                     instance.some_unloaded_attribute
-
-            .. versionchanged:: 1.3.14 Added
-               :paramref:`.InstanceEvents.restore_load_context`
-               and :paramref:`.SessionEvents.restore_load_context` flags which
-               apply to "on load" events, which will ensure that the loading
-               context for an object is restored when the event hook is
-               complete; a warning is emitted if the load context of the object
-               changes without this flag being set.
-
 
         The :meth:`.InstanceEvents.load` event is also available in a
         class-method decorator format called :func:`_orm.reconstructor`.
@@ -727,7 +715,8 @@ class _InstanceEventsHold(_EventsHold[_ET]):
     def resolve(self, class_: Type[_O]) -> Optional[ClassManager[_O]]:
         return instrumentation.opt_manager_of_class(class_)
 
-    class HoldInstanceEvents(_EventsHold.HoldEvents[_ET], InstanceEvents):  # type: ignore [misc] # noqa: E501
+    # this fails on pyright if you use Any.  Fails on mypy if you use _ET
+    class HoldInstanceEvents(_EventsHold.HoldEvents[_ET], InstanceEvents):  # type: ignore[valid-type,misc] # noqa: E501
         pass
 
     dispatch = event.dispatcher(HoldInstanceEvents)
@@ -827,7 +816,14 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
                 "event target, use the 'sqlalchemy.orm.Mapper' class.",
                 "2.0",
             )
-            return mapperlib.Mapper
+            target = mapperlib.Mapper
+
+        if identifier in ("before_configured", "after_configured"):
+            if target is mapperlib.Mapper:
+                return target
+            else:
+                return None
+
         elif isinstance(target, type):
             if issubclass(target, mapperlib.Mapper):
                 return target
@@ -854,16 +850,6 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             event_key.identifier,
             event_key._listen_fn,
         )
-
-        if (
-            identifier in ("before_configured", "after_configured")
-            and target is not mapperlib.Mapper
-        ):
-            util.warn(
-                "'before_configured' and 'after_configured' ORM events "
-                "only invoke with the Mapper class "
-                "as the target."
-            )
 
         if not raw or not retval:
             if not raw:
@@ -966,44 +952,42 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
         """
 
+    @event._omit_standard_example
     def before_mapper_configured(
         self, mapper: Mapper[_O], class_: Type[_O]
     ) -> None:
         """Called right before a specific mapper is to be configured.
 
-        This event is intended to allow a specific mapper to be skipped during
-        the configure step, by returning the :attr:`.orm.interfaces.EXT_SKIP`
-        symbol which indicates to the :func:`.configure_mappers` call that this
-        particular mapper (or hierarchy of mappers, if ``propagate=True`` is
-        used) should be skipped in the current configuration run. When one or
-        more mappers are skipped, the "new mappers" flag will remain set,
-        meaning the :func:`.configure_mappers` function will continue to be
-        called when mappers are used, to continue to try to configure all
-        available mappers.
+        The :meth:`.MapperEvents.before_mapper_configured` event is invoked
+        for each mapper that is encountered when the
+        :func:`_orm.configure_mappers` function proceeds through the current
+        list of not-yet-configured mappers.   It is similar to the
+        :meth:`.MapperEvents.mapper_configured` event, except that it's invoked
+        right before the configuration occurs, rather than afterwards.
 
-        In comparison to the other configure-level events,
-        :meth:`.MapperEvents.before_configured`,
-        :meth:`.MapperEvents.after_configured`, and
-        :meth:`.MapperEvents.mapper_configured`, the
-        :meth:`.MapperEvents.before_mapper_configured` event provides for a
-        meaningful return value when it is registered with the ``retval=True``
-        parameter.
+        The :meth:`.MapperEvents.before_mapper_configured` event includes
+        the special capability where it can force the configure step for a
+        specific mapper to be skipped; to use this feature, establish
+        the event using the ``retval=True`` parameter and return
+        the :attr:`.orm.interfaces.EXT_SKIP` symbol to indicate the mapper
+        should be left unconfigured::
 
-        .. versionadded:: 1.3
-
-        e.g.::
-
+            from sqlalchemy import event
             from sqlalchemy.orm import EXT_SKIP
+            from sqlalchemy.orm import DeclarativeBase
 
-            Base = declarative_base()
 
-            DontConfigureBase = declarative_base()
+            class DontConfigureBase(DeclarativeBase):
+                pass
 
 
             @event.listens_for(
                 DontConfigureBase,
                 "before_mapper_configured",
+                # support return values for the event
                 retval=True,
+                # propagate the listener to all subclasses of
+                # DontConfigureBase
                 propagate=True,
             )
             def dont_configure(mapper, cls):
@@ -1014,6 +998,10 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             :meth:`.MapperEvents.before_configured`
 
             :meth:`.MapperEvents.after_configured`
+
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.RegistryEvents.after_configured`
 
             :meth:`.MapperEvents.mapper_configured`
 
@@ -1048,15 +1036,14 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         event; this event invokes only after all known mappings have been
         fully configured.
 
-        The :meth:`.MapperEvents.mapper_configured` event, unlike
+        The :meth:`.MapperEvents.mapper_configured` event, unlike the
         :meth:`.MapperEvents.before_configured` or
-        :meth:`.MapperEvents.after_configured`,
-        is called for each mapper/class individually, and the mapper is
-        passed to the event itself.  It also is called exactly once for
-        a particular mapper.  The event is therefore useful for
-        configurational steps that benefit from being invoked just once
-        on a specific mapper basis, which don't require that "backref"
-        configurations are necessarily ready yet.
+        :meth:`.MapperEvents.after_configured` events, is called for each
+        mapper/class individually, and the mapper is passed to the event
+        itself.  It also is called exactly once for a particular mapper.  The
+        event is therefore useful for configurational steps that benefit from
+        being invoked just once on a specific mapper basis, which don't require
+        that "backref" configurations are necessarily ready yet.
 
         :param mapper: the :class:`_orm.Mapper` which is the target
          of this event.
@@ -1068,11 +1055,16 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             :meth:`.MapperEvents.after_configured`
 
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.RegistryEvents.after_configured`
+
             :meth:`.MapperEvents.before_mapper_configured`
 
         """
         # TODO: need coverage for this event
 
+    @event._omit_standard_example
     def before_configured(self) -> None:
         """Called before a series of mappers have been configured.
 
@@ -1084,9 +1076,15 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         new mappers have been made available and new mapper use is
         detected.
 
+        Similar events to this one include
+        :meth:`.MapperEvents.after_configured`, which is invoked after a series
+        of mappers has been configured, as well as
+        :meth:`.MapperEvents.before_mapper_configured` and
+        :meth:`.MapperEvents.mapper_configured`, which are both invoked on a
+        per-mapper basis.
+
         This event can **only** be applied to the :class:`_orm.Mapper` class,
-        and not to individual mappings or mapped classes. It is only invoked
-        for all mappings as a whole::
+        and not to individual mappings or mapped classes::
 
             from sqlalchemy.orm import Mapper
 
@@ -1094,25 +1092,11 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             @event.listens_for(Mapper, "before_configured")
             def go(): ...
 
-        Contrast this event to :meth:`.MapperEvents.after_configured`,
-        which is invoked after the series of mappers has been configured,
-        as well as :meth:`.MapperEvents.before_mapper_configured`
-        and :meth:`.MapperEvents.mapper_configured`, which are both invoked
-        on a per-mapper basis.
-
-        Theoretically this event is called once per
-        application, but is actually called any time new mappers
-        are to be affected by a :func:`_orm.configure_mappers`
-        call.   If new mappings are constructed after existing ones have
-        already been used, this event will likely be called again.  To ensure
-        that a particular event is only called once and no further, the
-        ``once=True`` argument (new in 0.9.4) can be applied::
-
-            from sqlalchemy.orm import mapper
-
-
-            @event.listens_for(mapper, "before_configured", once=True)
-            def go(): ...
+        Typically, this event is called once per application, but in practice
+        may be called more than once, any time new mappers are to be affected
+        by a :func:`_orm.configure_mappers` call.   If new mappings are
+        constructed after existing ones have already been used, this event will
+        likely be called again.
 
         .. seealso::
 
@@ -1122,8 +1106,13 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             :meth:`.MapperEvents.after_configured`
 
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.RegistryEvents.after_configured`
+
         """
 
+    @event._omit_standard_example
     def after_configured(self) -> None:
         """Called after a series of mappers have been configured.
 
@@ -1135,17 +1124,15 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         new mappers have been made available and new mapper use is
         detected.
 
-        Contrast this event to the :meth:`.MapperEvents.mapper_configured`
-        event, which is called on a per-mapper basis while the configuration
-        operation proceeds; unlike that event, when this event is invoked,
-        all cross-configurations (e.g. backrefs) will also have been made
-        available for any mappers that were pending.
-        Also contrast to :meth:`.MapperEvents.before_configured`,
-        which is invoked before the series of mappers has been configured.
+        Similar events to this one include
+        :meth:`.MapperEvents.before_configured`, which is invoked before a
+        series of mappers are configured, as well as
+        :meth:`.MapperEvents.before_mapper_configured` and
+        :meth:`.MapperEvents.mapper_configured`, which are both invoked on a
+        per-mapper basis.
 
         This event can **only** be applied to the :class:`_orm.Mapper` class,
-        and not to individual mappings or
-        mapped classes.  It is only invoked for all mappings as a whole::
+        and not to individual mappings or mapped classes::
 
             from sqlalchemy.orm import Mapper
 
@@ -1153,19 +1140,11 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             @event.listens_for(Mapper, "after_configured")
             def go(): ...
 
-        Theoretically this event is called once per
-        application, but is actually called any time new mappers
-        have been affected by a :func:`_orm.configure_mappers`
-        call.   If new mappings are constructed after existing ones have
-        already been used, this event will likely be called again.  To ensure
-        that a particular event is only called once and no further, the
-        ``once=True`` argument (new in 0.9.4) can be applied::
-
-            from sqlalchemy.orm import mapper
-
-
-            @event.listens_for(mapper, "after_configured", once=True)
-            def go(): ...
+        Typically, this event is called once per application, but in practice
+        may be called more than once, any time new mappers are to be affected
+        by a :func:`_orm.configure_mappers` call.   If new mappings are
+        constructed after existing ones have already been used, this event will
+        likely be called again.
 
         .. seealso::
 
@@ -1174,6 +1153,10 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
             :meth:`.MapperEvents.mapper_configured`
 
             :meth:`.MapperEvents.before_configured`
+
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.RegistryEvents.after_configured`
 
         """
 
@@ -1535,7 +1518,8 @@ class _MapperEventsHold(_EventsHold[_ET]):
     ) -> Optional[Mapper[_T]]:
         return _mapper_or_none(class_)
 
-    class HoldMapperEvents(_EventsHold.HoldEvents[_ET], MapperEvents):  # type: ignore [misc] # noqa: E501
+    # this fails on pyright if you use Any.  Fails on mypy if you use _ET
+    class HoldMapperEvents(_EventsHold.HoldEvents[_ET], MapperEvents):  # type: ignore[valid-type,misc] # noqa: E501
         pass
 
     dispatch = event.dispatcher(HoldMapperEvents)
@@ -1574,16 +1558,12 @@ class SessionEvents(event.Events[Session]):
        objects will be the instance's :class:`.InstanceState` management
        object, rather than the mapped instance itself.
 
-       .. versionadded:: 1.3.14
-
     :param restore_load_context=False: Applies to the
        :meth:`.SessionEvents.loaded_as_persistent` event.  Restores the loader
        context of the object when the event hook is complete, so that ongoing
        eager load operations continue to target the object appropriately.  A
        warning is emitted if the object is moved to a new loader context from
        within this event if this flag is not set.
-
-       .. versionadded:: 1.3.14
 
     """
 
@@ -1592,7 +1572,7 @@ class SessionEvents(event.Events[Session]):
     _dispatch_target = Session
 
     def _lifecycle_event(  # type: ignore [misc]
-        fn: Callable[[SessionEvents, Session, Any], None]
+        fn: Callable[[SessionEvents, Session, Any], None],
     ) -> Callable[[SessionEvents, Session, Any], None]:
         _sessionevents_lifecycle_event_names.add(fn.__name__)
         return fn
@@ -2705,8 +2685,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
                 else:
                     return value
 
-        .. versionadded:: 1.2
-
         :param target: the object instance receiving the event.
           If the listener is registered with ``raw=True``, this will
           be the :class:`.InstanceState` object.
@@ -2993,11 +2971,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
 
         The old collection received will contain its previous contents.
 
-        .. versionchanged:: 1.2 The collection passed to
-           :meth:`.AttributeEvents.dispose_collection` will now have its
-           contents before the dispose intact; previously, the collection
-           would be empty.
-
         .. seealso::
 
             :class:`.AttributeEvents` - background on listener options such
@@ -3011,8 +2984,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         This event is triggered when the :func:`.attributes.flag_modified`
         function is used to trigger a modify event on an attribute without
         any specific value being set.
-
-        .. versionadded:: 1.2
 
         :param target: the object instance receiving the event.
           If the listener is registered with ``raw=True``, this will
@@ -3098,11 +3069,6 @@ class QueryEvents(event.Events[Query[Any]]):
         once, and not called for subsequent invocations of a particular query
         that is being cached.
 
-        .. versionadded:: 1.3.11  - added the "bake_ok" flag to the
-           :meth:`.QueryEvents.before_compile` event and disallowed caching via
-           the "baked" extension from occurring for event handlers that
-           return  a new :class:`_query.Query` object if this flag is not set.
-
         .. seealso::
 
             :meth:`.QueryEvents.before_compile_update`
@@ -3156,8 +3122,6 @@ class QueryEvents(event.Events[Query[Any]]):
          dictionary can be modified to alter the VALUES clause of the
          resulting UPDATE statement.
 
-        .. versionadded:: 1.2.17
-
         .. seealso::
 
             :meth:`.QueryEvents.before_compile`
@@ -3196,8 +3160,6 @@ class QueryEvents(event.Events[Query[Any]]):
         :param delete_context: a "delete context" object which is
          the same kind of object as described in
          :paramref:`.QueryEvents.after_bulk_delete.delete_context`.
-
-        .. versionadded:: 1.2.17
 
         .. seealso::
 
@@ -3239,3 +3201,186 @@ class QueryEvents(event.Events[Query[Any]]):
         wrap._bake_ok = bake_ok  # type: ignore [attr-defined]
 
         event_key.base_listen(**kw)
+
+
+class RegistryEvents(event.Events["registry"]):
+    """Define events specific to :class:`_orm.registry` lifecycle.
+
+    The :class:`_orm.RegistryEvents` class defines events that are specific
+    to the lifecycle and operation of the :class:`_orm.registry` object.
+
+    e.g.::
+
+        from typing import Any
+
+        from sqlalchemy import event
+        from sqlalchemy.orm import registry
+        from sqlalchemy.orm import TypeResolve
+        from sqlalchemy.types import TypeEngine
+
+        reg = registry()
+
+
+        @event.listens_for(reg, "resolve_type_annotation")
+        def resolve_custom_type(
+            resolve_type: TypeResolve,
+        ) -> TypeEngine[Any] | None:
+            if python_type is MyCustomType:
+                return MyCustomSQLType()
+            return None
+
+    The events defined by :class:`_orm.RegistryEvents` include
+    :meth:`_orm.RegistryEvents.resolve_type_annotation`,
+    :meth:`_orm.RegistryEvents.before_configured`, and
+    :meth:`_orm.RegistryEvents.after_configured`.`.   These events may be
+    applied to a :class:`_orm.registry` object as shown in the preceding
+    example, as well as to a declarative base class directly, which will
+    automtically locate the registry for the event to be applied::
+
+        from typing import Any
+
+        from sqlalchemy import event
+        from sqlalchemy.orm import DeclarativeBase
+        from sqlalchemy.orm import registry as RegistryType
+        from sqlalchemy.orm import TypeResolve
+        from sqlalchemy.types import TypeEngine
+
+
+        class Base(DeclarativeBase):
+            pass
+
+
+        @event.listens_for(Base, "resolve_type_annotation")
+        def resolve_custom_type(
+            resolve_type: TypeResolve,
+        ) -> TypeEngine[Any] | None:
+            if resolve_type.resolved_type is MyCustomType:
+                return MyCustomSQLType()
+            else:
+                return None
+
+
+        @event.listens_for(Base, "after_configured")
+        def after_base_configured(registry: RegistryType) -> None:
+            print(f"Registry {registry} fully configured")
+
+    .. versionadded:: 2.1
+
+
+    """
+
+    _target_class_doc = "SomeRegistry"
+    _dispatch_target = decl_api.registry
+
+    @classmethod
+    def _accept_with(
+        cls,
+        target: Any,
+        identifier: str,
+    ) -> Any:
+        if isinstance(target, decl_api.registry):
+            return target
+        elif (
+            isinstance(target, type)
+            and "_sa_registry" in target.__dict__
+            and isinstance(target.__dict__["_sa_registry"], decl_api.registry)
+        ):
+            return target._sa_registry  # type: ignore[attr-defined]
+        else:
+            return None
+
+    @classmethod
+    def _listen(
+        cls,
+        event_key: _EventKey["registry"],
+        **kw: Any,
+    ) -> None:
+        identifier = event_key.identifier
+
+        # Only resolve_type_annotation needs retval=True
+        if identifier == "resolve_type_annotation":
+            kw["retval"] = True
+
+        event_key.base_listen(**kw)
+
+    def resolve_type_annotation(
+        self, resolve_type: decl_api.TypeResolve
+    ) -> Optional[Any]:
+        """Intercept and customize type annotation resolution.
+
+        This event is fired when the :class:`_orm.registry` attempts to
+        resolve a Python type annotation to a SQLAlchemy type. This is
+        particularly useful for handling advanced typing scenarios such as
+        nested :pep:`695` type aliases.
+
+        The :meth:`.RegistryEvents.resolve_type_annotation` event automatically
+        sets up ``retval=True`` when the event is set up, so that implementing
+        functions may return a resolved type, or ``None`` to indicate no type
+        was resolved, and the default resolution for the type should proceed.
+
+        :param resolve_type: A :class:`_orm.TypeResolve` object which contains
+         all the relevant information about the type, including a link to the
+         registry and its resolver function.
+
+        :return: A SQLAlchemy type to use for the given Python type.  If
+         ``None`` is returned, the default resolution behavior will proceed
+         from there.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :ref:`orm_declarative_resolve_type_event`
+
+        """
+
+    def before_configured(self, registry: "registry") -> None:
+        """Called before a series of mappers in this registry are configured.
+
+        This event is invoked each time the :func:`_orm.configure_mappers`
+        function is invoked and this registry has mappers that are part of
+        the configuration process.
+
+        Compared to the :meth:`.MapperEvents.before_configured` event hook,
+        this event is local to the mappers within a specific
+        :class:`_orm.registry` and not for all :class:`.Mapper` objects
+        globally.
+
+        :param registry: The :class:`_orm.registry` instance.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :meth:`.RegistryEvents.after_configured`
+
+            :meth:`.MapperEvents.before_configured`
+
+            :meth:`.MapperEvents.after_configured`
+
+        """
+
+    def after_configured(self, registry: "registry") -> None:
+        """Called after a series of mappers in this registry are configured.
+
+        This event is invoked each time the :func:`_orm.configure_mappers`
+        function completes and this registry had mappers that were part of
+        the configuration process.
+
+        Compared to the :meth:`.MapperEvents.after_configured` event hook, this
+        event is local to the mappers within a specific :class:`_orm.registry`
+        and not for all :class:`.Mapper` objects globally.
+
+        :param registry: The :class:`_orm.registry` instance.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :meth:`.RegistryEvents.before_configured`
+
+            :meth:`.MapperEvents.before_configured`
+
+            :meth:`.MapperEvents.after_configured`
+
+        """

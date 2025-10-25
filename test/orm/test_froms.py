@@ -2842,10 +2842,32 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             self.assert_compile(q, exp)
 
     def test_aliased_adapt_on_names(self):
-        User, Address = self.classes.User, self.classes.Address
+        User, Address = self.classes("User", "Address")
+        agg_address = select(
+            Address.id,
+            func.sum(func.length(Address.email_address)).label(
+                "email_address"
+            ),
+        ).group_by(Address.user_id)
+        ag2 = aliased(Address, agg_address.subquery(), adapt_on_names=True)
 
-        sess = fixture_session()
-        agg_address = sess.query(
+        # second, 'email_address' matches up to the aggregate, and we get a
+        # smooth JOIN from users->subquery and that's it
+        self.assert_compile(
+            select(User, ag2.email_address)
+            .join(ag2, User.addresses)
+            .filter(ag2.email_address > 5),
+            "SELECT users.id, users.name, anon_1.email_address FROM users "
+            "JOIN ("
+            "SELECT addresses.id AS id, sum(length(addresses.email_address)) "
+            "AS email_address FROM addresses GROUP BY addresses.user_id) AS "
+            "anon_1 ON users.id = addresses.user_id "
+            "WHERE anon_1.email_address > :email_address_1",
+        )
+
+    def test_aliased_warns_missing_column(self):
+        User, Address = self.classes("User", "Address")
+        agg_address = select(
             Address.id,
             func.sum(func.length(Address.email_address)).label(
                 "email_address"
@@ -2853,37 +2875,57 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         ).group_by(Address.user_id)
 
         ag1 = aliased(Address, agg_address.subquery())
-        ag2 = aliased(Address, agg_address.subquery(), adapt_on_names=True)
 
-        # first, without adapt on names, 'email_address' isn't matched up - we
+        # without adapt on names, 'email_address' isn't matched up - we
         # get the raw "address" element in the SELECT
-        self.assert_compile(
-            sess.query(User, ag1.email_address)
-            .join(ag1, User.addresses)
-            .filter(ag1.email_address > 5),
-            "SELECT users.id "
-            "AS users_id, users.name AS users_name, addresses.email_address "
-            "AS addresses_email_address FROM users JOIN "
-            "(SELECT addresses.id AS id, sum(length(addresses.email_address)) "
-            "AS email_address FROM addresses GROUP BY addresses.user_id) AS "
-            "anon_1 ON users.id = addresses.user_id, addresses "
-            "WHERE addresses.email_address > :email_address_1",
-        )
+        with testing.expect_warnings(
+            r"Did not locate an expression in selectable for attribute "
+            r"'email_address'; to match by name, use the "
+            r"adapt_on_names parameter"
+        ):
+            self.assert_compile(
+                select(User, ag1.email_address)
+                .join(ag1, User.addresses)
+                .filter(ag1.email_address > 5),
+                "SELECT users.id, users.name, addresses.email_address "
+                "FROM users JOIN "
+                "(SELECT addresses.id AS id, "
+                "sum(length(addresses.email_address)) "
+                "AS email_address FROM addresses "
+                "GROUP BY addresses.user_id) AS "
+                "anon_1 ON users.id = addresses.user_id, addresses "
+                "WHERE addresses.email_address > :email_address_1",
+            )
 
-        # second, 'email_address' matches up to the aggregate, and we get a
-        # smooth JOIN from users->subquery and that's it
-        self.assert_compile(
-            sess.query(User, ag2.email_address)
-            .join(ag2, User.addresses)
-            .filter(ag2.email_address > 5),
-            "SELECT users.id AS users_id, users.name AS users_name, "
-            "anon_1.email_address AS anon_1_email_address FROM users "
-            "JOIN ("
-            "SELECT addresses.id AS id, sum(length(addresses.email_address)) "
-            "AS email_address FROM addresses GROUP BY addresses.user_id) AS "
-            "anon_1 ON users.id = addresses.user_id "
-            "WHERE anon_1.email_address > :email_address_1",
-        )
+    def test_aliased_warns_unmatched_name(self):
+        User, Address = self.classes("User", "Address")
+        agg_address = select(
+            Address.id,
+            func.sum(func.length(Address.email_address)).label(
+                "email_address_misspelled"
+            ),
+        ).group_by(Address.user_id)
+
+        ag1 = aliased(Address, agg_address.subquery(), adapt_on_names=True)
+
+        # adapt_on_names is set but still wrong name
+        with testing.expect_warnings(
+            r"Did not locate an expression in selectable for attribute "
+            r"'email_address'; ensure name is correct in expression"
+        ):
+            self.assert_compile(
+                select(User, ag1.email_address)
+                .join(ag1, User.addresses)
+                .filter(ag1.email_address > 5),
+                "SELECT users.id, users.name, addresses.email_address "
+                "FROM users JOIN "
+                "(SELECT addresses.id AS id, "
+                "sum(length(addresses.email_address)) "
+                "AS email_address_misspelled FROM addresses "
+                "GROUP BY addresses.user_id) AS "
+                "anon_1 ON users.id = addresses.user_id, addresses "
+                "WHERE addresses.email_address > :email_address_1",
+            )
 
 
 class SelectFromTest(QueryTest, AssertsCompiledSQL):

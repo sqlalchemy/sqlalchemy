@@ -306,15 +306,19 @@ class DialectTest(fixtures.TestBase):
         )[1]
         eq_(kw["buffered"], True)
 
-        kw = dialect.create_connect_args(
-            make_url("mysql+mysqlconnector://u:p@host/db?buffered=false")
-        )[1]
-        eq_(kw["buffered"], False)
+        # this is turned off for now due to
+        # https://bugs.mysql.com/bug.php?id=117548
+        if dialect.supports_server_side_cursors:
+            kw = dialect.create_connect_args(
+                make_url("mysql+mysqlconnector://u:p@host/db?buffered=false")
+            )[1]
+            eq_(kw["buffered"], False)
 
-        kw = dialect.create_connect_args(
-            make_url("mysql+mysqlconnector://u:p@host/db")
-        )[1]
-        eq_(kw["buffered"], True)
+            kw = dialect.create_connect_args(
+                make_url("mysql+mysqlconnector://u:p@host/db")
+            )[1]
+            # defaults to False as of 2.0.39
+            eq_(kw.get("buffered"), None)
 
     def test_mysqlconnector_raise_on_warnings_arg(self):
         from sqlalchemy.dialects.mysql import mysqlconnector

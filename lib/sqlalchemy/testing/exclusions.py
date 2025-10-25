@@ -31,10 +31,18 @@ def fails_if(predicate, reason=None):
     return rule
 
 
+def warns_if(predicate, expression, assert_):
+    rule = compound()
+    pred = _as_predicate(predicate)
+    rule.warns[pred] = (expression, assert_)
+    return rule
+
+
 class compound:
     def __init__(self):
         self.fails = set()
         self.skips = set()
+        self.warns = {}
 
     def __add__(self, other):
         return self.add(other)
@@ -49,16 +57,24 @@ class compound:
         copy = compound()
         copy.fails.update(self.fails)
         copy.skips.update(self.skips)
+        copy.warns.update(self.warns)
 
         for other in others:
             copy.fails.update(other.fails)
             copy.skips.update(other.skips)
+            copy.warns.update(other.warns)
         return copy
 
     def not_(self):
         copy = compound()
         copy.fails.update(NotPredicate(fail) for fail in self.fails)
         copy.skips.update(NotPredicate(skip) for skip in self.skips)
+        copy.warns.update(
+            {
+                NotPredicate(warn): element
+                for warn, element in self.warns.items()
+            }
+        )
         return copy
 
     @property
@@ -72,6 +88,13 @@ class compound:
         else:
             return True
 
+    def matching_warnings(self, config):
+        return [
+            message
+            for predicate, (message, assert_) in self.warns.items()
+            if predicate(config)
+        ]
+
     def matching_config_reasons(self, config):
         return [
             predicate._as_string(config)
@@ -82,6 +105,7 @@ class compound:
     def _extend(self, other):
         self.skips.update(other.skips)
         self.fails.update(other.fails)
+        self.warns.update(other.warns)
 
     def __call__(self, fn):
         if hasattr(fn, "_sa_exclusion_extend"):
@@ -117,8 +141,25 @@ class compound:
                 )
                 config.skip_test(msg)
 
+        if self.warns:
+            from .assertions import expect_warnings
+
+            @contextlib.contextmanager
+            def _expect_warnings():
+                with contextlib.ExitStack() as stack:
+                    for expression, assert_ in self.warns.values():
+                        stack.enter_context(
+                            expect_warnings(expression, assert_=assert_)
+                        )
+                    yield
+
+            ctx = _expect_warnings()
+        else:
+            ctx = contextlib.nullcontext()
+
         try:
-            return_value = fn(*args, **kw)
+            with ctx:
+                return_value = fn(*args, **kw)
         except Exception as ex:
             self._expect_failure(cfg, ex, name=fn.__name__)
         else:
@@ -392,8 +433,8 @@ def open():  # noqa
     return skip_if(BooleanPredicate(False, "mark as execute"))
 
 
-def closed():
-    return skip_if(BooleanPredicate(True, "marked as skip"))
+def closed(reason="marked as skip"):
+    return skip_if(BooleanPredicate(True, reason))
 
 
 def fails(reason=None):

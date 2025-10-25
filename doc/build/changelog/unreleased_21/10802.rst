@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 10802
+
+    Fixed issue in "insertmanyvalues" feature where an INSERT..RETURNING 
+    that also made use of a sentinel column to track results would fail to 
+    filter out the additional column when :meth:`.Result.unique` were used 
+    to uniquify the result set.

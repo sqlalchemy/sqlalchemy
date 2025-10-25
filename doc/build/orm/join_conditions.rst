@@ -360,8 +360,6 @@ Above, the :meth:`.FunctionElement.as_comparison` indicates that the
 ``Point.geom`` expressions. The :func:`.foreign` annotation additionally notes
 which column takes on the "foreign key" role in this particular relationship.
 
-.. versionadded:: 1.3 Added :meth:`.FunctionElement.as_comparison`.
-
 .. _relationship_overlapping_foreignkeys:
 
 Overlapping Foreign Keys
@@ -389,7 +387,7 @@ for both; then to make ``Article`` refer to ``Writer`` as well,
 
         article_id = mapped_column(Integer)
         magazine_id = mapped_column(ForeignKey("magazine.id"))
-        writer_id = mapped_column()
+        writer_id = mapped_column(Integer)
 
         magazine = relationship("Magazine")
         writer = relationship("Writer")
@@ -424,13 +422,19 @@ What this refers to originates from the fact that ``Article.magazine_id`` is
 the subject of two different foreign key constraints; it refers to
 ``Magazine.id`` directly as a source column, but also refers to
 ``Writer.magazine_id`` as a source column in the context of the
-composite key to ``Writer``.   If we associate an ``Article`` with a
-particular ``Magazine``, but then associate the ``Article`` with a
-``Writer`` that's  associated  with a *different* ``Magazine``, the ORM
-will overwrite ``Article.magazine_id`` non-deterministically, silently
-changing which magazine to which we refer; it may
-also attempt to place NULL into this column if we de-associate a
-``Writer`` from an ``Article``.  The warning lets us know this is the case.
+composite key to ``Writer``.
+
+When objects are added to an ORM :class:`.Session` using :meth:`.Session.add`,
+the ORM :term:`flush` process takes on the task of reconciling object
+refereneces that correspond to :func:`_orm.relationship` configurations and
+delivering this state to the databse using INSERT/UPDATE/DELETE statements.  In
+this specific example, if we associate an ``Article`` with a particular
+``Magazine``, but then associate the ``Article`` with a ``Writer`` that's
+associated  with a *different* ``Magazine``, this flush process will overwrite
+``Article.magazine_id`` non-deterministically, silently changing which magazine
+to which we refer; it may also attempt to place NULL into this column if we
+de-associate a ``Writer`` from an ``Article``.  The warning lets us know that
+this scenario may occur during ORM flush sequences.
 
 To solve this, we need to break out the behavior of ``Article`` to include
 all three of the following features:
@@ -1051,7 +1055,14 @@ conjunction with :class:`_query.Query` as follows:
 
         @property
         def addresses(self):
-            return object_session(self).query(Address).with_parent(self).filter(...).all()
+            # query using any kind of filter() criteria
+            return (
+                object_session(self)
+                .query(Address)
+                .filter(Address.user_id == self.id)
+                .filter(...)
+                .all()
+            )
 
 In other cases, the descriptor can be built to make use of existing in-Python
 data.  See the section on :ref:`mapper_hybrids` for more general discussion

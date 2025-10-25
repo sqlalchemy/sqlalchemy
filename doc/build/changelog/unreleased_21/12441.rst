@@ -1,0 +1,17 @@
+.. change::
+    :tags: misc, changed
+    :tickets: 12441
+
+    Removed multiple api that were deprecated in the 1.3 series and earlier.
+    The list of removed features includes:
+
+    * The ``force`` parameter of ``IdentifierPreparer.quote`` and
+      ``IdentifierPreparer.quote_schema``;
+    * The ``threaded`` parameter of the cx-Oracle dialect;
+    * The ``_json_serializer`` and ``_json_deserializer`` parameters of the
+      SQLite dialect;
+    * The ``collection.converter`` decorator;
+    * The ``Mapper.mapped_table`` property;
+    * The ``Session.close_all`` method;
+    * Support for multiple arguments in :func:`_orm.defer` and
+      :func:`_orm.undefer`.

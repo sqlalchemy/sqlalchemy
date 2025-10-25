@@ -1,5 +1,5 @@
 .. change::
-    :tags: change, installation
+    :tags: change, platform
     :tickets: 10197
 
     The ``greenlet`` dependency used for asyncio support no longer installs

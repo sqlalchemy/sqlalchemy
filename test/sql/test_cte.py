@@ -1900,6 +1900,37 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"id": 1, "price": 20, "param_1": 10, "price_1": 50},
         )
 
+    @testing.variation("num_ctes", ["one", "two"])
+    def test_multiple_multivalues_inserts(self, num_ctes):
+        """test #12363"""
+
+        t1 = table("table1", column("id"), column("a"), column("b"))
+
+        t2 = table("table2", column("id"), column("a"), column("b"))
+
+        if num_ctes.one:
+            self.assert_compile(
+                insert(t1)
+                .values([{"a": 1}, {"a": 2}])
+                .add_cte(insert(t2).values([{"a": 5}, {"a": 6}]).cte()),
+                "WITH anon_1 AS "
+                "(INSERT INTO table2 (a) VALUES (:param_1), (:param_2)) "
+                "INSERT INTO table1 (a) VALUES (:a_m0), (:a_m1)",
+            )
+
+        elif num_ctes.two:
+            self.assert_compile(
+                insert(t1)
+                .values([{"a": 1}, {"a": 2}])
+                .add_cte(insert(t1).values([{"b": 5}, {"b": 6}]).cte())
+                .add_cte(insert(t2).values([{"a": 5}, {"a": 6}]).cte()),
+                "WITH anon_1 AS "
+                "(INSERT INTO table1 (b) VALUES (:param_1), (:param_2)), "
+                "anon_2 AS "
+                "(INSERT INTO table2 (a) VALUES (:param_3), (:param_4)) "
+                "INSERT INTO table1 (a) VALUES (:a_m0), (:a_m1)",
+            )
+
     def test_insert_from_select_uses_independent_cte(self):
         """test #7036"""
 

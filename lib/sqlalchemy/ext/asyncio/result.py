@@ -9,6 +9,7 @@ from __future__ import annotations
 import operator
 from typing import Any
 from typing import AsyncIterator
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -30,7 +31,6 @@ from ...engine.row import RowMapping
 from ...sql.base import _generative
 from ...util import deprecated
 from ...util.concurrency import greenlet_spawn
-from ...util.typing import Literal
 from ...util.typing import Self
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
@@ -854,7 +854,7 @@ class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):
             """
             ...
 
-        async def __aiter__(self) -> AsyncIterator[_R]: ...
+        def __aiter__(self) -> AsyncIterator[_R]: ...
 
         async def __anext__(self) -> _R: ...
 
@@ -988,4 +988,7 @@ async def _ensure_sync_result(result: _RT, calling_method: Any) -> _RT:
                 calling_method.__self__.__class__.__name__,
             )
         )
+
+    if is_cursor and cursor_result.cursor is not None:
+        await cursor_result.cursor._async_soft_close()
     return result

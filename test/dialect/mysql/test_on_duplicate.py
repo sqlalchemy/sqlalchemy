@@ -1,3 +1,5 @@
+import random
+
 from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import exc
@@ -211,3 +213,25 @@ class OnDuplicateTest(fixtures.TablesTest):
             stmt.on_duplicate_key_update(bar=stmt.inserted.bar, baz="newbz")
         )
         eq_(result.inserted_primary_key, (1,))
+
+    def test_bound_caching(self, connection):
+        foos = self.tables.foos
+        connection.execute(insert(foos).values(dict(id=1, bar="b", baz="bz")))
+
+        for scenario in [
+            (random.choice(["c", "d", "e"]), random.choice(["f", "g", "h"]))
+            for i in range(10)
+        ]:
+            stmt = insert(foos).values(dict(id=1, bar="q"))
+            stmt = stmt.on_duplicate_key_update(
+                bar=scenario[0], baz=scenario[1]
+            )
+
+            connection.execute(stmt)
+
+            eq_(
+                connection.execute(
+                    foos.select().where(foos.c.id == 1)
+                ).fetchall(),
+                [(1, scenario[0], scenario[1], False)],
+            )

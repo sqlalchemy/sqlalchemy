@@ -57,6 +57,14 @@ grandchild = Table(
     Column("child_id", ForeignKey("child.id")),
 )
 
+grandchild_w_parent = Table(
+    "grandchildwparent",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("parent_id", ForeignKey("parent.id")),
+    Column("child_id", ForeignKey("child.id")),
+)
+
 
 class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
@@ -173,6 +181,68 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable JOIN myothertable "
             "ON mytable.myid = myothertable.otherid",
         )
+
+    @testing.variation(
+        "jointype",
+        ["child_grandchild", "parent_grandchild", "grandchild_alone"],
+    )
+    def test_join_from_multiple_explicit_left_side_implicit_onclause(
+        self, jointype
+    ):
+        """test #12931
+
+        when join_from() is indicated, favor the explicit "left" side given
+        over the "left side of hte join" for creating onclause.
+
+        when join() is indicated, use the normal behavior of assuming
+        right side of the previous join is the new left side.
+
+        """
+
+        if jointype.child_grandchild:
+            stmt = (
+                select(parent)
+                .join_from(parent, child)
+                .join_from(child, grandchild_w_parent)
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent JOIN "
+                "child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON child.id = grandchildwparent.child_id",
+            )
+
+        elif jointype.parent_grandchild:
+            stmt = (
+                select(parent)
+                .join_from(parent, child)
+                .join_from(parent, grandchild_w_parent)
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent "
+                "JOIN child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON parent.id = grandchildwparent.parent_id",
+            )
+        elif jointype.grandchild_alone:
+            stmt = (
+                select(parent)
+                .join_from(parent, child)
+                .join(grandchild_w_parent)
+            )
+            self.assert_compile(
+                stmt,
+                "SELECT parent.id, parent.data FROM parent "
+                "JOIN child ON parent.id = child.parent_id "
+                "JOIN grandchildwparent "
+                "ON child.id = grandchildwparent.child_id",
+            )
+        else:
+            jointype.fail()
 
     def test_outerjoin_nofrom_explicit_left_side_explicit_onclause(self):
         stmt = select(table1).outerjoin_from(

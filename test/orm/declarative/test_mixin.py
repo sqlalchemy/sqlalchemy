@@ -1,6 +1,5 @@
 from operator import is_not
-
-from typing_extensions import Annotated
+from typing import Annotated
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
@@ -37,6 +36,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import uses_deprecated
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import mapped_column
@@ -299,6 +299,10 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.name, "testing")
         eq_(obj.foo(), "bar1")
 
+    @uses_deprecated(
+        "The declarative_mixin decorator was used only by the now removed "
+        "mypy plugin so it has no longer any use and can be safely removed."
+    )
     def test_declarative_mixin_decorator(self):
         @declarative_mixin
         class MyMixin:

@@ -5,30 +5,51 @@ SQLALCHEMY UNIT TESTS
 Basic Test Running
 ==================
 
-Tox is used to run the test suite fully.   For basic test runs against
+Nox is used to run the test suite fully.   For basic test runs against
 a single Python interpreter::
 
+    nox
+
+The previous runner, tox, still retains functionality in the near term however
+will eventually be removed::
+
+    # still works but deprecated
     tox
 
-Advanced Tox Options
+The newer nox version retains most of the same kinds of functionality as the
+tox version, including a custom tagging utility that allows the nox runner
+to accept similar "tag" style arguments as were used by the tox runner.
+
+Advanced Nox Options
 ====================
 
-For more elaborate CI-style test running, the tox script provided will
+For more elaborate CI-style test running, the nox script provided will
 run against various Python / database targets.   For a basic run against
-Python 3.11 using an in-memory SQLite database::
+Python 3.13 using an in-memory SQLite database::
 
-    tox -e py311-sqlite
+    nox -t py313-sqlite
 
-The tox runner contains a series of target combinations that can run
-against various combinations of databases.  The test suite can be
-run against SQLite with "backend" tests also running against a PostgreSQL
-database::
+The nox runner contains a series of target combinations that can run
+against each database backend.  Unlike the previous tox runner, targets
+that refer to multiple database backends at once are no longer
+supported at the nox level, in favor of running against multiple tags
+instead.  So for example to run tests for sqlite and postgresql, while
+reducing how many tests run for postgresql to just those that are sensitive
+to the database backend::
 
-    tox -e py311-sqlite-postgresql
+    nox -t py313-sqlite py313-postgresql-backendonly
 
-Or to run just "backend" tests against a MySQL database::
+Where above, the full suite will run against SQLite under Python 3.13, then
+the "backend only" version of the suite will for the PostgreSQL database.
 
-    tox -e py311-mysql-backendonly
+The nox runner, like the tox runner before it, has options for running the
+tests with or without the Cython extensions built, with or without greenlet
+installed, as well as tags that select or deselect various memory/threading/
+performance intensive tests; the rules for how these environments are selected
+should be much more straightforward to understand with nox's imperative
+configuration style.  For advanced use of nox it's worth it
+to poke around ``noxfile.py`` to get a general sense of what varieties
+of tests it can run.
 
 Running against backends other than SQLite requires that a database of that
 vendor be available at a specific URL.  See "Setting Up Databases" below
@@ -37,7 +58,7 @@ for details.
 The pytest Engine
 =================
 
-The tox runner is using pytest to invoke the test suite.   Within the realm of
+The nox runner uses pytest to invoke the test suite.   Within the realm of
 pytest, SQLAlchemy itself is adding a large series of option and
 customizations to the pytest runner using plugin points, to allow for
 SQLAlchemy's multiple database support, database setup/teardown and
@@ -127,13 +148,13 @@ Above, we can now run the tests with ``my_postgresql``::
     pytest --db my_postgresql
 
 We can also override the existing names in our ``test.cfg`` file, so that we can run
-with the tox runner also::
+with the nox/tox runners also::
 
     # test.cfg file
     [db]
     postgresql=postgresql+psycopg2://username:pass@hostname/dbname
 
-Now when we run ``tox -e py311-postgresql``, it will use our custom URL instead
+Now when we run ``nox -t py313-postgresql``, it will use our custom URL instead
 of the fixed one in setup.cfg.
 
 Database Configuration

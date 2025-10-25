@@ -22,6 +22,8 @@ Column Element Foundational Constructors
 Standalone functions imported from the ``sqlalchemy`` namespace which are
 used when building up SQLAlchemy Expression Language constructs.
 
+.. autofunction:: aggregate_order_by
+
 .. autofunction:: and_
 
 .. autofunction:: bindparam
@@ -42,6 +44,8 @@ used when building up SQLAlchemy Expression Language constructs.
 .. autofunction:: extract
 
 .. autofunction:: false
+
+.. autofunction:: from_dml_column
 
 .. autodata:: func
 
@@ -168,12 +172,15 @@ The classes here are generated using the constructors listed at
    well as ORM-mapped attributes that will have a ``__clause_element__()``
    method.
 
+.. autoclass:: AggregateOrderBy
+   :members:
 
 .. autoclass:: ColumnOperators
    :members:
    :special-members:
    :inherited-members:
 
+.. autoclass:: DMLTargetCopy
 
 .. autoclass:: Extract
    :members:
@@ -190,9 +197,16 @@ The classes here are generated using the constructors listed at
 .. autoclass:: Null
    :members:
 
+.. autoclass:: OperatorClass
+   :members:
+   :undoc-members:
+
 .. autoclass:: Operators
    :members:
    :special-members:
+
+.. autoclass:: OrderByList
+   :members:
 
 .. autoclass:: Over
    :members:

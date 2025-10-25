@@ -21,13 +21,6 @@ or global basis using the :mod:`sqlalchemy.ext.instrumentation`
 module, which provides the means to build and specify
 alternate instrumentation forms.
 
-.. versionchanged: 0.8
-   The instrumentation extension system was moved out of the
-   ORM and into the external :mod:`sqlalchemy.ext.instrumentation`
-   package.  When that package is imported, it installs
-   itself within sqlalchemy.orm so that its more comprehensive
-   resolution mechanics take effect.
-
 """
 
 
@@ -41,6 +34,7 @@ from typing import Dict
 from typing import Generic
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Protocol
 from typing import Set
@@ -61,7 +55,6 @@ from .attributes import _is_collection_attribute_impl
 from .. import util
 from ..event import EventTarget
 from ..util import HasMemoized
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ._typing import _RegistryType

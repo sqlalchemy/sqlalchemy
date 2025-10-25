@@ -4,7 +4,13 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+
+from __future__ import annotations
+
+from typing import Any
+from typing import Optional
+from typing import Sequence
+from typing import TYPE_CHECKING
 
 from .array import ARRAY
 from .types import OID
@@ -23,31 +29,37 @@ from ...types import String
 from ...types import Text
 from ...types import TypeDecorator
 
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _ResultProcessorType
+
 
 # types
-class NAME(TypeDecorator):
+class NAME(TypeDecorator[str]):
     impl = String(64, collation="C")
     cache_ok = True
 
 
-class PG_NODE_TREE(TypeDecorator):
+class PG_NODE_TREE(TypeDecorator[str]):
     impl = Text(collation="C")
     cache_ok = True
 
 
-class INT2VECTOR(TypeDecorator):
+class INT2VECTOR(TypeDecorator[Sequence[int]]):
     impl = ARRAY(SmallInteger)
     cache_ok = True
 
 
-class OIDVECTOR(TypeDecorator):
+class OIDVECTOR(TypeDecorator[Sequence[int]]):
     impl = ARRAY(OID)
     cache_ok = True
 
 
 class _SpaceVector:
-    def result_processor(self, dialect, coltype):
-        def process(value):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> _ResultProcessorType[list[int]]:
+        def process(value: Any) -> Optional[list[int]]:
             if value is None:
                 return value
             return [int(p) for p in value.split(" ")]
@@ -297,4 +309,36 @@ pg_collation = Table(
     Column("colliculocale", Text),
     Column("collicurules", Text, info={"server_version": (16,)}),
     Column("collversion", Text, info={"server_version": (10,)}),
+)
+
+pg_opclass = Table(
+    "pg_opclass",
+    pg_catalog_meta,
+    Column("oid", OID, info={"server_version": (9, 3)}),
+    Column("opcmethod", NAME),
+    Column("opcname", NAME),
+    Column("opsnamespace", OID),
+    Column("opsowner", OID),
+    Column("opcfamily", OID),
+    Column("opcintype", OID),
+    Column("opcdefault", Boolean),
+    Column("opckeytype", OID),
+)
+
+pg_inherits = Table(
+    "pg_inherits",
+    pg_catalog_meta,
+    Column("inhrelid", OID),
+    Column("inhparent", OID),
+    Column("inhseqno", Integer),
+    Column("inhdetachpending", Boolean, info={"server_version": (14,)}),
+)
+
+pg_tablespace = Table(
+    "pg_tablespace",
+    pg_catalog_meta,
+    Column("oid", OID),
+    Column("spcname", NAME),
+    Column("spcowner", OID),
+    Column("spcoptions", ARRAY(Text)),
 )

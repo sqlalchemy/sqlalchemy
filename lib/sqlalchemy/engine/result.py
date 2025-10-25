@@ -22,6 +22,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -44,7 +45,6 @@ from ..sql.base import InPlaceGenerative
 from ..util import deprecated
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import NONE_SET
-from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
@@ -325,7 +325,7 @@ class SimpleResultMetaData(ResultMetaData):
         )
 
     def _index_for_key(self, key: Any, raiseerr: bool = True) -> int:
-        if int in key.__class__.__mro__:
+        if isinstance(key, int):
             key = self._keys[key]
         try:
             rec = self._keymap[key]
@@ -341,7 +341,7 @@ class SimpleResultMetaData(ResultMetaData):
         self, keys: Sequence[Any]
     ) -> Iterator[_KeyMapRecType]:
         for key in keys:
-            if int in key.__class__.__mro__:
+            if isinstance(key, int):
                 key = self._keys[key]
 
             try:
@@ -354,9 +354,7 @@ class SimpleResultMetaData(ResultMetaData):
     def _reduce(self, keys: Sequence[Any]) -> ResultMetaData:
         try:
             metadata_for_keys = [
-                self._keymap[
-                    self._keys[key] if int in key.__class__.__mro__ else key
-                ]
+                self._keymap[self._keys[key] if isinstance(key, int) else key]
                 for key in keys
             ]
         except KeyError as ke:
@@ -726,6 +724,14 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     @overload
     def _only_one_row(
+        self: ResultInternal[Row[_T, Unpack[TupleAny]]],
+        raise_for_second_row: bool,
+        raise_for_none: bool,
+        scalar: Literal[True],
+    ) -> _T: ...
+
+    @overload
+    def _only_one_row(
         self,
         raise_for_second_row: bool,
         raise_for_none: Literal[True],
@@ -811,7 +817,6 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     "was required"
                 )
         else:
-            next_row = _NO_ROW
             # if we checked for second row then that would have
             # closed us :)
             self._soft_close(hard=True)
@@ -1464,13 +1469,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             raise_for_second_row=True, raise_for_none=False, scalar=False
         )
 
-    @overload
-    def scalar_one(self: Result[_T]) -> _T: ...
-
-    @overload
-    def scalar_one(self) -> Any: ...
-
-    def scalar_one(self) -> Any:
+    def scalar_one(self: Result[_T, Unpack[TupleAny]]) -> _T:
         """Return exactly one scalar result or raise an exception.
 
         This is equivalent to calling :meth:`_engine.Result.scalars` and
@@ -1487,13 +1486,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             raise_for_second_row=True, raise_for_none=True, scalar=True
         )
 
-    @overload
-    def scalar_one_or_none(self: Result[_T]) -> Optional[_T]: ...
-
-    @overload
-    def scalar_one_or_none(self) -> Optional[Any]: ...
-
-    def scalar_one_or_none(self) -> Optional[Any]:
+    def scalar_one_or_none(self: Result[_T, Unpack[TupleAny]]) -> Optional[_T]:
         """Return exactly one scalar result or ``None``.
 
         This is equivalent to calling :meth:`_engine.Result.scalars` and
@@ -1513,8 +1506,8 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
     def one(self) -> Row[Unpack[_Ts]]:
         """Return exactly one row or raise an exception.
 
-        Raises :class:`.NoResultFound` if the result returns no
-        rows, or :class:`.MultipleResultsFound` if multiple rows
+        Raises :class:`_exc.NoResultFound` if the result returns no
+        rows, or :class:`_exc.MultipleResultsFound` if multiple rows
         would be returned.
 
         .. note::  This method returns one **row**, e.g. tuple, by default.
@@ -1543,13 +1536,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             raise_for_second_row=True, raise_for_none=True, scalar=False
         )
 
-    @overload
-    def scalar(self: Result[_T]) -> Optional[_T]: ...
-
-    @overload
-    def scalar(self) -> Any: ...
-
-    def scalar(self) -> Any:
+    def scalar(self: Result[_T, Unpack[TupleAny]]) -> Optional[_T]:
         """Fetch the first column of the first row, and close the result set.
 
         Returns ``None`` if there are no rows to fetch.
@@ -2038,7 +2025,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         return self
 
     def columns(self, *col_expressions: _KeyIndexType) -> Self:
-        r"""Establish the columns that should be returned in each row."""
+        """Establish the columns that should be returned in each row."""
         return self._column_slices(col_expressions)
 
     def partitions(
@@ -2198,7 +2185,8 @@ class FrozenResult(Generic[Unpack[_Ts]]):
         else:
             self.data = result.fetchall()
 
-    def rewrite_rows(self) -> Sequence[Sequence[Any]]:
+    def _rewrite_rows(self) -> Sequence[Sequence[Any]]:
+        # used only by the orm fn merge_frozen_result
         if self._source_supports_scalars:
             return [[elem] for elem in self.data]
         else:

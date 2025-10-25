@@ -43,6 +43,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.types import TypeEngine
 
 
@@ -309,6 +310,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "OFFSET __[POSTCOMPILE_param_1] ROWS "
             "FETCH FIRST __[POSTCOMPILE_param_2] ROWS ONLY",
             checkparams={"param_1": 20, "param_2": 10},
+        )
+
+    @testing.only_on("oracle>=23.4")
+    def test_fetch_type(self):
+        t = table("sometable", column("col1"), column("col2"))
+        s = select(t).fetch(2, oracle_fetch_approximate=True)
+        self.assert_compile(
+            s,
+            "SELECT sometable.col1, sometable.col2 FROM sometable "
+            "FETCH APPROX FIRST __[POSTCOMPILE_param_1] ROWS ONLY",
+            checkparams={"param_1": 2},
         )
 
     def test_limit_two(self):
@@ -1679,6 +1691,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             f"CREATE TABLE table1 (x INTEGER) {expected_sql}",
         )
 
+    @testing.combinations(
+        (lambda t: t.c.a**t.c.b, "POWER(t.a, t.b)", {}),
+        (lambda t: t.c.a**3, "POWER(t.a, :pow_1)", {"pow_1": 3}),
+        (lambda t: t.c.c.match(t.c.d), "CONTAINS (t.c, t.d)", {}),
+        (lambda t: t.c.c.match("w"), "CONTAINS (t.c, :c_1)", {"c_1": "w"}),
+        (lambda t: func.pow(t.c.a, 3), "POWER(t.a, :pow_1)", {"pow_1": 3}),
+        (lambda t: func.power(t.c.a, t.c.b), "power(t.a, t.b)", {}),
+    )
+    def test_simple_compile(self, fn, string, params):
+        t = table(
+            "t",
+            column("a", Integer),
+            column("b", Integer),
+            column("c", String),
+            column("d", String),
+        )
+        expr = resolve_lambda(fn, t=t)
+        self.assert_compile(expr, string, params)
+
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_basic(self):
@@ -1733,7 +1764,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def setup_test(self):
         self.table = table(
-            "mytable", column("myid", Integer), column("name", String)
+            "mytable", column("myid", String), column("name", String)
         )
 
     def test_regexp_match(self):

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime
 import decimal
+import re
 from typing import TYPE_CHECKING
 
 from sqlalchemy import alias
@@ -50,6 +51,7 @@ from sqlalchemy import nullsfirst
 from sqlalchemy import nullslast
 from sqlalchemy import Numeric
 from sqlalchemy import or_
+from sqlalchemy import OrderByList
 from sqlalchemy import outerjoin
 from sqlalchemy import over
 from sqlalchemy import schema
@@ -1981,8 +1983,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_distinct_on(self):
         with testing.expect_deprecated(
+            "Passing expression to",
             "DISTINCT ON is currently supported only by the PostgreSQL "
-            "dialect"
+            "dialect",
         ):
             select("*").distinct(table1.c.myid).compile()
 
@@ -3207,6 +3210,41 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 10, "param_2": 1},
         )
 
+        self.assert_compile(
+            select(func.row_number().over(order_by=expr, groups=(None, 0))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            "UNBOUNDED PRECEDING AND CURRENT ROW)"
+            " AS anon_1 FROM mytable",
+        )
+
+        self.assert_compile(
+            select(func.row_number().over(order_by=expr, groups=(-5, 10))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            ":param_1 PRECEDING AND :param_2 FOLLOWING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 5, "param_2": 10},
+        )
+
+        self.assert_compile(
+            select(func.row_number().over(order_by=expr, groups=(1, 10))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            ":param_1 FOLLOWING AND :param_2 FOLLOWING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 1, "param_2": 10},
+        )
+
+        self.assert_compile(
+            select(func.row_number().over(order_by=expr, groups=(-10, -1))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            ":param_1 PRECEDING AND :param_2 PRECEDING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 10, "param_2": 1},
+        )
+
     def test_over_invalid_framespecs(self):
         assert_raises_message(
             exc.ArgumentError,
@@ -3224,10 +3262,35 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "'range_' and 'rows' are mutually exclusive",
+            "only one of 'rows', 'range_', or 'groups' may be provided",
             func.row_number().over,
             range_=(-5, 8),
             rows=(-2, 5),
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "only one of 'rows', 'range_', or 'groups' may be provided",
+            func.row_number().over,
+            range_=(-5, 8),
+            groups=(None, None),
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "only one of 'rows', 'range_', or 'groups' may be provided",
+            func.row_number().over,
+            rows=(-2, 5),
+            groups=(None, None),
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "only one of 'rows', 'range_', or 'groups' may be provided",
+            func.row_number().over,
+            range_=(-5, 8),
+            rows=(-2, 5),
+            groups=(None, None),
         )
 
     def test_over_within_group(self):
@@ -6079,8 +6142,9 @@ class StringifySpecialTest(fixtures.TestBase):
         )
         eq_ignore_whitespace(
             str(stmt),
-            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
-            "WITHIN GROUP (ORDER BY mytable.name DESC) AS anon_1 FROM mytable",
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_2) "
+            "WITHIN GROUP (ORDER BY mytable.name DESC) AS percentile_cont_1 "
+            "FROM mytable",
         )
 
     @testing.combinations(
@@ -6669,6 +6733,9 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
                 "FOO RESTRICT",
                 "CASCADE WRONG",
                 "SET  NULL",
+                # test that PostgreSQL's syntax added in #11595 is not
+                # accepted by base compiler
+                "SET NULL(postgresql_db.some_column)",
             ):
                 const = schema.AddConstraint(
                     schema.ForeignKeyConstraint(
@@ -6677,7 +6744,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
                 assert_raises_message(
                     exc.CompileError,
-                    r"Unexpected SQL phrase: '%s'" % phrase,
+                    rf"Unexpected SQL phrase: '{re.escape(phrase)}'",
                     const.compile,
                 )
 
@@ -6896,65 +6963,59 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             render_schema_translate=True,
         )
 
-    def test_schema_non_schema_disambiguation(self):
-        """test #7471"""
-
-        t1 = table("some_table", column("id"), column("q"))
-        t2 = table("some_table", column("id"), column("p"), schema="foo")
-
-        self.assert_compile(
-            select(t1, t2),
+    @testing.combinations(
+        (
+            lambda t1, t2: select(t1, t2),
             "SELECT some_table_1.id, some_table_1.q, "
             "foo.some_table.id AS id_1, foo.some_table.p "
             "FROM some_table AS some_table_1, foo.some_table",
-        )
-
-        self.assert_compile(
-            select(t1, t2).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+        ),
+        (
+            lambda t1, t2: select(t1, t2).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             # the original "tablename_colname" label is preserved despite
             # the alias of some_table
             "SELECT some_table_1.id AS some_table_id, some_table_1.q AS "
             "some_table_q, foo.some_table.id AS foo_some_table_id, "
             "foo.some_table.p AS foo_some_table_p "
             "FROM some_table AS some_table_1, foo.some_table",
-        )
-
-        self.assert_compile(
-            select(t1, t2).join_from(t1, t2, t1.c.id == t2.c.id),
+        ),
+        (
+            lambda t1, t2: select(t1, t2).join_from(
+                t1, t2, t1.c.id == t2.c.id
+            ),
             "SELECT some_table_1.id, some_table_1.q, "
             "foo.some_table.id AS id_1, foo.some_table.p "
             "FROM some_table AS some_table_1 "
             "JOIN foo.some_table ON some_table_1.id = foo.some_table.id",
-        )
-
-        self.assert_compile(
-            select(t1, t2).where(t1.c.id == t2.c.id),
+        ),
+        (
+            lambda t1, t2: select(t1, t2).where(t1.c.id == t2.c.id),
             "SELECT some_table_1.id, some_table_1.q, "
             "foo.some_table.id AS id_1, foo.some_table.p "
             "FROM some_table AS some_table_1, foo.some_table "
             "WHERE some_table_1.id = foo.some_table.id",
-        )
-
-        self.assert_compile(
-            select(t1).where(t1.c.id == t2.c.id),
+        ),
+        (
+            lambda t1, t2: select(t1).where(t1.c.id == t2.c.id),
             "SELECT some_table_1.id, some_table_1.q "
             "FROM some_table AS some_table_1, foo.some_table "
             "WHERE some_table_1.id = foo.some_table.id",
-        )
-
-        subq = select(t1).where(t1.c.id == t2.c.id).subquery()
-        self.assert_compile(
-            select(t2).select_from(t2).join(subq, t2.c.id == subq.c.id),
+        ),
+        (
+            lambda t2, subq: select(t2)
+            .select_from(t2)
+            .join(subq, t2.c.id == subq.c.id),
             "SELECT foo.some_table.id, foo.some_table.p "
             "FROM foo.some_table JOIN "
             "(SELECT some_table_1.id AS id, some_table_1.q AS q "
             "FROM some_table AS some_table_1, foo.some_table "
             "WHERE some_table_1.id = foo.some_table.id) AS anon_1 "
             "ON foo.some_table.id = anon_1.id",
-        )
-
-        self.assert_compile(
-            select(t1, subq.c.id)
+        ),
+        (
+            lambda t1, subq: select(t1, subq.c.id)
             .select_from(t1)
             .join(subq, t1.c.id == subq.c.id),
             # some_table is only aliased inside the subquery.  this is not
@@ -6966,7 +7027,58 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM some_table AS some_table_1, foo.some_table "
             "WHERE some_table_1.id = foo.some_table.id) AS anon_1 "
             "ON some_table.id = anon_1.id",
+        ),
+        (
+            # issue #12451
+            lambda t1alias, t2: select(t2, t1alias),
+            "SELECT foo.some_table.id, foo.some_table.p, "
+            "some_table_1.id AS id_1, some_table_1.q FROM foo.some_table, "
+            "some_table AS some_table_1",
+        ),
+        (
+            # issue #12451
+            lambda t1alias, t2: select(t2).join(
+                t1alias, t1alias.c.q == t2.c.p
+            ),
+            "SELECT foo.some_table.id, foo.some_table.p FROM foo.some_table "
+            "JOIN some_table AS some_table_1 "
+            "ON some_table_1.q = foo.some_table.p",
+        ),
+        (
+            # issue #12451
+            lambda t1alias, t2: select(t1alias).join(
+                t2, t1alias.c.q == t2.c.p
+            ),
+            "SELECT some_table_1.id, some_table_1.q "
+            "FROM some_table AS some_table_1 "
+            "JOIN foo.some_table ON some_table_1.q = foo.some_table.p",
+        ),
+        (
+            # issue #12451
+            lambda t1alias, t2alias: select(t1alias, t2alias).join(
+                t2alias, t1alias.c.q == t2alias.c.p
+            ),
+            "SELECT some_table_1.id, some_table_1.q, "
+            "some_table_2.id AS id_1, some_table_2.p "
+            "FROM some_table AS some_table_1 "
+            "JOIN foo.some_table AS some_table_2 "
+            "ON some_table_1.q = some_table_2.p",
+        ),
+    )
+    def test_schema_non_schema_disambiguation(self, stmt, expected):
+        """test #7471, and its regression #12451"""
+
+        t1 = table("some_table", column("id"), column("q"))
+        t2 = table("some_table", column("id"), column("p"), schema="foo")
+        t1alias = t1.alias()
+        t2alias = t2.alias()
+        subq = select(t1).where(t1.c.id == t2.c.id).subquery()
+
+        stmt = testing.resolve_lambda(
+            stmt, t1=t1, t2=t2, subq=subq, t1alias=t1alias, t2alias=t2alias
         )
+
+        self.assert_compile(stmt, expected)
 
     def test_alias(self):
         a = alias(table4, "remtable")
@@ -8073,4 +8185,63 @@ class OmitFromStatementsTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(t1).order_by(t1.c.d),
             "SELECT t1.id, t1.a, t1.c, t1.e FROM t1 ORDER BY t1.d",
+        )
+
+
+class OrderByListTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_order_by_list(self):
+        """Test standalone OrderByList with various operators"""
+        col1 = Column("x", Integer)
+        col2 = Column("y", Integer)
+
+        # Test basic OrderByList creation
+        order_list = OrderByList([col1, col2])
+        self.assert_compile(
+            select(literal(1)).order_by(order_list),
+            "SELECT :param_1 AS anon_1 ORDER BY x, y",
+        )
+
+        # Test OrderByList with desc
+        order_list_desc = order_list.desc()
+        self.assert_compile(
+            select(literal(1)).order_by(order_list_desc),
+            "SELECT :param_1 AS anon_1 ORDER BY x DESC, y DESC",
+        )
+
+        # Test OrderByList with asc
+        order_list_asc = order_list.asc()
+        self.assert_compile(
+            select(literal(1)).order_by(order_list_asc),
+            "SELECT :param_1 AS anon_1 ORDER BY x ASC, y ASC",
+        )
+
+        # Test OrderByList with nulls_first
+        order_list_nf = order_list.nulls_first()
+        self.assert_compile(
+            select(literal(1)).order_by(order_list_nf),
+            "SELECT :param_1 AS anon_1 ORDER BY x NULLS FIRST, y NULLS FIRST",
+        )
+
+        # Test OrderByList with nulls_last
+        order_list_nl = order_list.nulls_last()
+        self.assert_compile(
+            select(literal(1)).order_by(order_list_nl),
+            "SELECT :param_1 AS anon_1 ORDER BY x NULLS LAST, y NULLS LAST",
+        )
+
+    def test_order_by_list_chained_ops(self):
+        """Test chained operations on OrderByList"""
+        col1 = Column("x", Integer)
+        col2 = Column("y", Integer)
+
+        order_list = OrderByList([col1, col2])
+
+        # Test chained desc().nulls_first()
+        chained = order_list.desc().nulls_first()
+        self.assert_compile(
+            select(literal(1)).order_by(chained),
+            "SELECT :param_1 AS anon_1 ORDER BY x DESC NULLS FIRST, "
+            "y DESC NULLS FIRST",
         )

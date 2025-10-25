@@ -18,6 +18,7 @@ from typing import ClassVar
 from typing import Dict
 from typing import Generator
 from typing import Generic
+from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -27,7 +28,6 @@ import weakref
 
 from . import exc as async_exc
 from ... import util
-from ...util.typing import Literal
 from ...util.typing import Self
 
 _T = TypeVar("_T", bound=Any)
@@ -71,26 +71,26 @@ class ReversibleProxy(Generic[_PT]):
         cls._proxy_objects.pop(ref, None)
 
     @classmethod
-    def _regenerate_proxy_for_target(cls, target: _PT) -> Self:
+    def _regenerate_proxy_for_target(
+        cls, target: _PT, **additional_kw: Any
+    ) -> Self:
         raise NotImplementedError()
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
-        cls,
-        target: _PT,
-        regenerate: Literal[True] = ...,
+        cls, target: _PT, regenerate: Literal[True] = ..., **additional_kw: Any
     ) -> Self: ...
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
-        cls, target: _PT, regenerate: bool = True
+        cls, target: _PT, regenerate: bool = True, **additional_kw: Any
     ) -> Optional[Self]: ...
 
     @classmethod
     def _retrieve_proxy_for_target(
-        cls, target: _PT, regenerate: bool = True
+        cls, target: _PT, regenerate: bool = True, **additional_kw: Any
     ) -> Optional[Self]:
         try:
             proxy_ref = cls._proxy_objects[weakref.ref(target)]
@@ -102,7 +102,7 @@ class ReversibleProxy(Generic[_PT]):
                 return proxy  # type: ignore
 
         if regenerate:
-            return cls._regenerate_proxy_for_target(target)
+            return cls._regenerate_proxy_for_target(target, **additional_kw)
         else:
             return None
 
@@ -148,7 +148,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
 
     async def start(self, is_ctxmanager: bool = False) -> _T_co:
         try:
-            start_value = await util.anext_(self.gen)
+            start_value = await anext(self.gen)
         except StopAsyncIteration:
             raise RuntimeError("generator didn't yield") from None
 
@@ -167,7 +167,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
         # vendored from contextlib.py
         if typ is None:
             try:
-                await util.anext_(self.gen)
+                await anext(self.gen)
             except StopAsyncIteration:
                 return False
             else:
@@ -215,7 +215,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
 
 
 def asyncstartablecontext(
-    func: Callable[..., AsyncIterator[_T_co]]
+    func: Callable[..., AsyncIterator[_T_co]],
 ) -> Callable[..., GeneratorStartableContext[_T_co]]:
     """@asyncstartablecontext decorator.
 

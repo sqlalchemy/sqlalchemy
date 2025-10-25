@@ -179,7 +179,6 @@ class _AdaptedCollectionProtocol(Protocol):
     _sa_appender: Callable[..., Any]
     _sa_remover: Callable[..., Any]
     _sa_iterator: Callable[..., Iterable[Any]]
-    _sa_converter: _CollectionConverterProtocol
 
 
 class collection:
@@ -187,7 +186,7 @@ class collection:
 
     The decorators fall into two groups: annotations and interception recipes.
 
-    The annotating decorators (appender, remover, iterator, converter,
+    The annotating decorators (appender, remover, iterator,
     internally_instrumented) indicate the method's purpose and take no
     arguments.  They are not written with parens::
 
@@ -319,47 +318,7 @@ class collection:
         return fn
 
     @staticmethod
-    @util.deprecated(
-        "1.3",
-        "The :meth:`.collection.converter` handler is deprecated and will "
-        "be removed in a future release.  Please refer to the "
-        ":class:`.AttributeEvents.bulk_replace` listener interface in "
-        "conjunction with the :func:`.event.listen` function.",
-    )
-    def converter(fn):
-        """Tag the method as the collection converter.
-
-        This optional method will be called when a collection is being
-        replaced entirely, as in::
-
-            myobj.acollection = [newvalue1, newvalue2]
-
-        The converter method will receive the object being assigned and should
-        return an iterable of values suitable for use by the ``appender``
-        method.  A converter must not assign values or mutate the collection,
-        its sole job is to adapt the value the user provides into an iterable
-        of values for the ORM's use.
-
-        The default converter implementation will use duck-typing to do the
-        conversion.  A dict-like collection will be convert into an iterable
-        of dictionary values, and other types will simply be iterated::
-
-            @collection.converter
-            def convert(self, other): ...
-
-        If the duck-typing of the object does not match the type of this
-        collection, a TypeError is raised.
-
-        Supply an implementation of this method if you want to expand the
-        range of possible types that can be assigned in bulk or perform
-        validation on the values about to be assigned.
-
-        """
-        fn._sa_instrument_role = "converter"
-        return fn
-
-    @staticmethod
-    def adds(arg):
+    def adds(arg: int) -> Callable[[_FN], _FN]:
         """Mark the method as adding an entity to the collection.
 
         Adds "add to collection" handling to the method.  The decorator
@@ -478,7 +437,6 @@ class CollectionAdapter:
         "_key",
         "_data",
         "owner_state",
-        "_converter",
         "invalidated",
         "empty",
     )
@@ -490,7 +448,6 @@ class CollectionAdapter:
     _data: Callable[..., _AdaptedCollectionProtocol]
 
     owner_state: InstanceState[Any]
-    _converter: _CollectionConverterProtocol
     invalidated: bool
     empty: bool
 
@@ -512,7 +469,6 @@ class CollectionAdapter:
 
         self.owner_state = owner_state
         data._sa_adapter = self
-        self._converter = data._sa_converter
         self.invalidated = False
         self.empty = False
 
@@ -770,7 +726,6 @@ class CollectionAdapter:
         # see note in constructor regarding this type: ignore
         self._data = weakref.ref(d["data"])  # type: ignore
 
-        self._converter = d["data"]._sa_converter
         d["data"]._sa_adapter = self
         self.invalidated = d["invalidated"]
         self.attr = getattr(d["owner_cls"], self._key).impl
@@ -905,12 +860,7 @@ def _locate_roles_and_methods(cls):
             # note role declarations
             if hasattr(method, "_sa_instrument_role"):
                 role = method._sa_instrument_role
-                assert role in (
-                    "appender",
-                    "remover",
-                    "iterator",
-                    "converter",
-                )
+                assert role in ("appender", "remover", "iterator")
                 roles.setdefault(role, name)
 
             # transfer instrumentation requests from decorated function
@@ -1009,8 +959,6 @@ def _set_collection_attributes(cls, roles, methods):
 
     cls._sa_adapter = None
 
-    if not hasattr(cls, "_sa_converter"):
-        cls._sa_converter = None
     cls._sa_instrumented = id(cls)
 
 

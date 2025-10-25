@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import assert_type
 from typing import Final
 
 from sqlalchemy import Column
@@ -52,14 +53,12 @@ user_keyword_table: Final[Table] = Table(
 
 user = User("jek")
 
-# EXPECTED_TYPE: list[Keyword]
-reveal_type(user.kw)
+assert_type(user.kw, list[Keyword])
 
 user.kw.append(Keyword("cheese-inspector"))
 
 user.keywords.append("cheese-inspector")
 
-# EXPECTED_TYPE: list[str]
-reveal_type(user.keywords)
+assert_type(user.keywords, list[str])
 
 user.keywords.append("snack ninja")

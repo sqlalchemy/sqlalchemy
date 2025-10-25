@@ -25,6 +25,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -39,6 +40,7 @@ from . import attributes
 from . import interfaces
 from . import relationships
 from . import strategies
+from .base import ATTR_EMPTY
 from .base import NEVER_SET
 from .base import object_mapper
 from .base import PassiveFlag
@@ -54,7 +56,6 @@ from ..sql import update
 from ..sql.dml import Delete
 from ..sql.dml import Insert
 from ..sql.dml import Update
-from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from . import QueryableAttribute
@@ -236,15 +237,11 @@ class _WriteOnlyAttributeImpl(
         return _DynamicCollectionAdapter(data)  # type: ignore[return-value]
 
     @util.memoized_property
-    def _append_token(  # type:ignore[override]
-        self,
-    ) -> attributes.AttributeEventToken:
+    def _append_token(self) -> attributes.AttributeEventToken:
         return attributes.AttributeEventToken(self, attributes.OP_APPEND)
 
     @util.memoized_property
-    def _remove_token(  # type:ignore[override]
-        self,
-    ) -> attributes.AttributeEventToken:
+    def _remove_token(self) -> attributes.AttributeEventToken:
         return attributes.AttributeEventToken(self, attributes.OP_REMOVE)
 
     def fire_append_event(
@@ -389,6 +386,17 @@ class _WriteOnlyAttributeImpl(
         c = self._get_collection_history(state, passive)
         return [(attributes.instance_state(x), x) for x in c.all_items]
 
+    def _default_value(
+        self, state: InstanceState[Any], dict_: _InstanceDict
+    ) -> Any:
+        value = None
+        for fn in self.dispatch.init_scalar:
+            ret = fn(state, value, dict_)
+            if ret is not ATTR_EMPTY:
+                value = ret
+
+        return value
+
     def _get_collection_history(
         self, state: InstanceState[Any], passive: PassiveFlag
     ) -> WriteOnlyHistory[Any]:
@@ -415,7 +423,7 @@ class _WriteOnlyAttributeImpl(
         initiator: Optional[AttributeEventToken],
         passive: PassiveFlag = PassiveFlag.PASSIVE_NO_FETCH,
     ) -> None:
-        if initiator is not self:
+        if initiator is not self:  # type: ignore[comparison-overlap]
             self.fire_append_event(state, dict_, value, initiator)
 
     def remove(
@@ -426,7 +434,7 @@ class _WriteOnlyAttributeImpl(
         initiator: Optional[AttributeEventToken],
         passive: PassiveFlag = PassiveFlag.PASSIVE_NO_FETCH,
     ) -> None:
-        if initiator is not self:
+        if initiator is not self:  # type: ignore[comparison-overlap]
             self.fire_remove_event(state, dict_, value, initiator)
 
     def pop(

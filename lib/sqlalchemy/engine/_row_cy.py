@@ -35,7 +35,7 @@ except ModuleNotFoundError:
 
 def _is_compiled() -> bool:
     """Utility function to indicate if this module is compiled or not."""
-    return cython.compiled  # type: ignore[no-any-return]
+    return cython.compiled  # type: ignore[no-any-return,unused-ignore]
 
 
 # END GENERATED CYTHON IMPORT
@@ -112,8 +112,10 @@ class BaseRow:
     def __hash__(self) -> int:
         return hash(self._data)
 
-    def __getitem__(self, key: Any) -> Any:
-        return self._data[key]
+    if not TYPE_CHECKING:
+
+        def __getitem__(self, key: Any) -> Any:
+            return self._data[key]
 
     def _get_by_key_impl_mapping(self, key: _KeyType) -> Any:
         return self._get_by_key_impl(key, False)

@@ -37,7 +37,7 @@ except ModuleNotFoundError:
 
 def _is_compiled() -> bool:
     """Utility function to indicate if this module is compiled or not."""
-    return cython.compiled  # type: ignore[no-any-return]
+    return cython.compiled  # type: ignore[no-any-return,unused-ignore]
 
 
 # END GENERATED CYTHON IMPORT
@@ -57,7 +57,17 @@ def _is_mapping_or_tuple(value: object, /) -> cython.bint:
     )
 
 
-# _is_mapping_or_tuple could be inlined if pure python perf is a problem
+@cython.inline
+@cython.cfunc
+def _is_mapping(value: object, /) -> cython.bint:
+    return (
+        isinstance(value, dict)
+        or isinstance(value, Mapping)
+        # only do immutabledict or abc.__instancecheck__ for Mapping after
+        # we've checked for plain dictionaries and would otherwise raise
+    )
+
+
 def _distill_params_20(
     params: Optional[_CoreAnyExecuteParams],
 ) -> _CoreMultiExecuteParams:
@@ -73,19 +83,18 @@ def _distill_params_20(
                 "future SQLAlchemy release",
                 "2.1",
             )
-        elif not _is_mapping_or_tuple(params[0]):
+        elif not _is_mapping(params[0]):
             raise exc.ArgumentError(
-                "List argument must consist only of tuples or dictionaries"
+                "List argument must consist only of dictionaries"
             )
         return params
-    elif isinstance(params, dict) or isinstance(params, Mapping):
-        # only do immutabledict or abc.__instancecheck__ for Mapping after
-        # we've checked for plain dictionaries and would otherwise raise
-        return [params]
+    elif _is_mapping(params):
+        return [params]  # type: ignore[list-item]
     else:
         raise exc.ArgumentError("mapping or list expected for parameters")
 
 
+# _is_mapping_or_tuple could be inlined if pure python perf is a problem
 def _distill_raw_params(
     params: Optional[_DBAPIAnyExecuteParams],
 ) -> _DBAPIMultiExecuteParams:

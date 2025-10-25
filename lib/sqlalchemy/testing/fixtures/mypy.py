@@ -19,7 +19,6 @@ import tempfile
 from .base import TestBase
 from .. import config
 from ..assertions import eq_
-from ... import util
 
 try:
     from mypy import version
@@ -29,8 +28,6 @@ try:
     )
 except ImportError:
     _mypy_vers_tuple = (0, 0, 0)
-
-mypy_14 = _mypy_vers_tuple >= (1, 4)
 
 
 @config.add_to_marker.mypy
@@ -148,55 +145,20 @@ class MypyTest(TestBase):
                     is_mypy = bool(m.group(1))
                     is_re = bool(m.group(2))
                     is_type = bool(m.group(3))
-
                     expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(4))
+
                     if is_type:
-                        if not is_re:
-                            # the goal here is that we can cut-and-paste
-                            # from vscode -> pylance into the
-                            # EXPECTED_TYPE: line, then the test suite will
-                            # validate that line against what mypy produces
-                            expected_msg = re.sub(
-                                r"([\[\]])",
-                                lambda m: rf"\{m.group(0)}",
-                                expected_msg,
-                            )
-
-                            # note making sure preceding text matches
-                            # with a dot, so that an expect for "Select"
-                            # does not match "TypedSelect"
-                            expected_msg = re.sub(
-                                r"([\w_]+)",
-                                lambda m: rf"(?:.*\.)?{m.group(1)}\*?",
-                                expected_msg,
-                            )
-
-                            expected_msg = re.sub(
-                                "List", "builtins.list", expected_msg
-                            )
-
-                            expected_msg = re.sub(
-                                r"\b(int|str|float|bool)\b",
-                                lambda m: rf"builtins.{m.group(0)}\*?",
-                                expected_msg,
-                            )
-                            # expected_msg = re.sub(
-                            #     r"(Sequence|Tuple|List|Union)",
-                            #     lambda m: fr"typing.{m.group(0)}\*?",
-                            #     expected_msg,
-                            # )
 
                         is_mypy = is_re = True
                         expected_msg = f'Revealed type is "{expected_msg}"'
 
-                    if mypy_14 and util.py310:
-                        # use_or_syntax, py310 and above
-                        # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L368  # noqa: E501
-                        expected_msg = re.sub(
-                            r"Optional\[(.*?)\]",
-                            lambda m: f"{m.group(1)} | None",
-                            expected_msg,
-                        )
+                    # use_or_syntax
+                    # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L368  # noqa: E501
+                    expected_msg = re.sub(
+                        r"Optional\[(.*?)\]",
+                        lambda m: f"{m.group(1)} | None",
+                        expected_msg,
+                    )
                     current_assert_messages.append(
                         (is_mypy, is_re, expected_msg.strip())
                     )
@@ -213,7 +175,9 @@ class MypyTest(TestBase):
 
         return expected_messages
 
-    def _check_output(self, path, expected_messages, stdout, stderr, exitcode):
+    def _check_output(
+        self, path, expected_messages, stdout: str, stderr, exitcode
+    ):
         not_located = []
         filename = os.path.basename(path)
         if expected_messages:
@@ -233,7 +197,8 @@ class MypyTest(TestBase):
                 ):
                     while raw_lines:
                         ol = raw_lines.pop(0)
-                        if not re.match(r".+\.py:\d+: note: +def \[.*", ol):
+                        if not re.match(r".+\.py:\d+: note: +def .*", ol):
+                            raw_lines.insert(0, ol)
                             break
                 elif re.match(
                     r".+\.py:\d+: note: .*(?:perhaps|suggestion)", e, re.I

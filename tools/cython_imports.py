@@ -1,7 +1,6 @@
 from pathlib import Path
 import re
 
-
 from sqlalchemy.util.tool_support import code_writer_cmd
 
 sa_path = Path(__file__).parent.parent / "lib/sqlalchemy"
@@ -28,7 +27,7 @@ except ModuleNotFoundError:
 
 def _is_compiled() -> bool:
     """Utility function to indicate if this module is compiled or not."""
-    return cython.compiled  # type: ignore[no-any-return]
+    return cython.compiled  # type: ignore[no-any-return,unused-ignore]
 
 
 # END GENERATED CYTHON IMPORT\

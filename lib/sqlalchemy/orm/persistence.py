@@ -456,8 +456,13 @@ def _collect_update_commands(
 
         pks = mapper._pks_by_table[table]
 
-        if use_orm_update_stmt is not None:
+        if (
+            use_orm_update_stmt is not None
+            and not use_orm_update_stmt._maintain_values_ordering
+        ):
             # TODO: ordered values, etc
+            # ORM bulk_persistence will raise for the maintain_values_ordering
+            # case right now
             value_params = use_orm_update_stmt._values
         else:
             value_params = {}
@@ -1374,7 +1379,13 @@ def _emit_post_update_statements(
             )
 
             rows += c.rowcount
-            for state, state_dict, mapper_rec, connection, params in records:
+            for i, (
+                state,
+                state_dict,
+                mapper_rec,
+                connection,
+                params,
+            ) in enumerate(records):
                 _postfetch_post_update(
                     mapper_rec,
                     uowtransaction,
@@ -1382,7 +1393,7 @@ def _emit_post_update_statements(
                     state,
                     state_dict,
                     c,
-                    c.context.compiled_parameters[0],
+                    c.context.compiled_parameters[i],
                 )
 
         if check_rowcount:

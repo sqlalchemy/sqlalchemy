@@ -171,14 +171,6 @@ multi-valued INSERT construct, the subset of parameters that corresponds to
 the individual VALUES clause is isolated from the full parameter dictionary
 and returned alone.
 
-.. versionadded:: 1.2
-
-    Added :meth:`.DefaultExecutionContext.get_current_parameters` method,
-    which improves upon the still-present
-    :attr:`.DefaultExecutionContext.current_parameters` attribute
-    by offering the service of organizing multiple VALUES clauses
-    into individual parameter dictionaries.
-
 .. _defaults_client_invoked_sql:
 
 Client-Invoked SQL Expressions
@@ -634,8 +626,6 @@ including the default schema, if any.
 Computed Columns (GENERATED ALWAYS AS)
 --------------------------------------
 
-.. versionadded:: 1.3.11
-
 The :class:`.Computed` construct allows a :class:`_schema.Column` to be declared in
 DDL as a "GENERATED ALWAYS AS" column, that is, one which has a value that is
 computed by the database server.    The construct accepts a SQL expression
@@ -659,7 +649,7 @@ Example::
         Column("perimeter", Integer, Computed("4 * side")),
     )
 
-The DDL for the ``square`` table when run on a PostgreSQL 12 backend will look
+The DDL for the ``square`` table when run on a PostgreSQL 18 backend [#pgnote]_ will look
 like:
 
 .. sourcecode:: sql
@@ -667,8 +657,8 @@ like:
     CREATE TABLE square (
         id SERIAL NOT NULL,
         side INTEGER,
-        area INTEGER GENERATED ALWAYS AS (side * side) STORED,
-        perimeter INTEGER GENERATED ALWAYS AS (4 * side) STORED,
+        area INTEGER GENERATED ALWAYS AS (side * side),
+        perimeter INTEGER GENERATED ALWAYS AS (4 * side),
         PRIMARY KEY (id)
     )
 
@@ -702,7 +692,7 @@ eagerly fetched.
 
 * MariaDB 10.x series and onwards
 
-* PostgreSQL as of version 12
+* PostgreSQL as of version 12 [#pgnote]_
 
 * Oracle Database - with the caveat that RETURNING does not work correctly with
   UPDATE (a warning will be emitted to this effect when the UPDATE..RETURNING
@@ -721,7 +711,10 @@ DDL is emitted to the database.
 
 .. seealso::
 
-    :class:`.Computed`
+    :class:`.Computed` - produces a GENERATED ALWAYS AS phrase for :class:`.Column`
+
+    .. [#pgnote] :ref:`postgresql_computed_column_notes` - notes for GENERATED ALWAYS AS
+       on PostgreSQL including behavioral changes as of PostgreSQL 18
 
 .. _identity_ddl:
 

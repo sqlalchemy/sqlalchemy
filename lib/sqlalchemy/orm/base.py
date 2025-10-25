@@ -5,9 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Constants and rudimental functions used throughout the ORM.
-
-"""
+"""Constants and rudimental functions used throughout the ORM."""
 
 from __future__ import annotations
 
@@ -18,6 +16,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Generic
+from typing import Literal
 from typing import no_type_check
 from typing import Optional
 from typing import overload
@@ -37,7 +36,6 @@ from ..sql.elements import SQLColumnExpression
 from ..sql.elements import SQLCoreOperations
 from ..util import FastIntFlag
 from ..util.langhelpers import TypingOnly
-from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
@@ -97,6 +95,8 @@ class LoaderCallableStatus(Enum):
 
     """
 
+    DONT_SET = 5
+
 
 (
     PASSIVE_NO_RESULT,
@@ -104,6 +104,7 @@ class LoaderCallableStatus(Enum):
     ATTR_WAS_SET,
     ATTR_EMPTY,
     NO_VALUE,
+    DONT_SET,
 ) = tuple(LoaderCallableStatus)
 
 NEVER_SET = NO_VALUE
@@ -435,7 +436,7 @@ def _inspect_mapped_object(instance: _T) -> Optional[InstanceState[_T]]:
 
 
 def _class_to_mapper(
-    class_or_mapper: Union[Mapper[_T], Type[_T]]
+    class_or_mapper: Union[Mapper[_T], Type[_T]],
 ) -> Mapper[_T]:
     # can't get mypy to see an overload for this
     insp = inspection.inspect(class_or_mapper, False)
@@ -447,7 +448,7 @@ def _class_to_mapper(
 
 
 def _mapper_or_none(
-    entity: Union[Type[_T], _InternalEntityType[_T]]
+    entity: Union[Type[_T], _InternalEntityType[_T]],
 ) -> Optional[Mapper[_T]]:
     """Return the :class:`_orm.Mapper` for the given class or None if the
     class is not mapped.
@@ -620,11 +621,7 @@ class InspectionAttr:
     """
 
     _is_internal_proxy = False
-    """True if this object is an internal proxy object.
-
-    .. versionadded:: 1.2.12
-
-    """
+    """True if this object is an internal proxy object."""
 
     is_clause_element = False
     """True if this object is an instance of

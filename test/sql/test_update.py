@@ -2,10 +2,13 @@ import itertools
 import random
 
 from sqlalchemy import bindparam
+from sqlalchemy import cast
 from sqlalchemy import column
+from sqlalchemy import DateTime
 from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
+from sqlalchemy import from_dml_column
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal
@@ -27,7 +30,6 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -41,6 +43,14 @@ class _UpdateFromTestBase:
             Column("myid", Integer),
             Column("name", String(30)),
             Column("description", String(50)),
+        )
+        Table(
+            "mytable_with_onupdate",
+            metadata,
+            Column("myid", Integer),
+            Column("name", String(30)),
+            Column("description", String(50)),
+            Column("updated_at", DateTime, onupdate=func.now()),
         )
         Table(
             "myothertable",
@@ -627,19 +637,36 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             t.update().values(x=5, z=5).compile,
         )
 
-    def test_unconsumed_names_values_dict(self):
+    @testing.variation("include_in_from", [True, False])
+    @testing.variation("use_mysql", [True, False])
+    def test_unconsumed_names_values_dict(self, include_in_from, use_mysql):
         t = table("t", column("x"), column("y"))
         t2 = table("t2", column("q"), column("z"))
 
-        assert_raises_message(
-            exc.CompileError,
-            "Unconsumed column names: j",
-            t.update()
-            .values(x=5, j=7)
-            .values({t2.c.z: 5})
-            .where(t.c.x == t2.c.q)
-            .compile,
-        )
+        stmt = t.update().values(x=5, j=7).values({t2.c.z: 5})
+        if include_in_from:
+            stmt = stmt.where(t.c.x == t2.c.q)
+
+        if use_mysql:
+            if not include_in_from:
+                msg = (
+                    "Statement is not a multi-table UPDATE statement; cannot "
+                    r"include columns from table\(s\) 't2' in SET clause"
+                )
+            else:
+                msg = "Unconsumed column names: j"
+        else:
+            msg = (
+                "Backend does not support additional tables in the SET "
+                r"clause; cannot include columns from table\(s\) 't2' in "
+                "SET clause"
+            )
+
+        with expect_raises_message(exc.CompileError, msg):
+            if use_mysql:
+                stmt.compile(dialect=mysql.dialect())
+            else:
+                stmt.compile()
 
     def test_unconsumed_names_kwargs_w_keys(self):
         t = table("t", column("x"), column("y"))
@@ -833,31 +860,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "UPDATE mytable SET foo(myid)=:param_1",
         )
 
-    @testing.fixture
-    def randomized_param_order_update(self):
-        from sqlalchemy.sql.dml import UpdateDMLState
-
-        super_process_ordered_values = UpdateDMLState._process_ordered_values
-
-        # this fixture is needed for Python 3.6 and above to work around
-        # dictionaries being insert-ordered.  in python 2.7 the previous
-        # logic fails pretty easily without this fixture.
-        def _process_ordered_values(self, statement):
-            super_process_ordered_values(self, statement)
-
-            tuples = list(self._dict_parameters.items())
-            random.shuffle(tuples)
-            self._dict_parameters = dict(tuples)
-
-        dialect = default.StrCompileDialect()
-        dialect.paramstyle = "qmark"
-        dialect.positional = True
-
-        with mock.patch.object(
-            UpdateDMLState, "_process_ordered_values", _process_ordered_values
-        ):
-            yield
-
     def random_update_order_parameters():
         from sqlalchemy import ARRAY
 
@@ -890,9 +892,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     @random_update_order_parameters()
-    def test_update_to_expression_two(
-        self, randomized_param_order_update, t, idx_to_value
-    ):
+    def test_update_to_expression_two(self, t, idx_to_value):
         """test update from an expression.
 
         this logic is triggered currently by a left side that doesn't
@@ -1020,6 +1020,161 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             paramstyle.fail()
 
 
+class FromDMLColumnTest(
+    _UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL
+):
+    """test the from_dml_column() feature added as part of #12496"""
+
+    __dialect__ = "default_enhanced"
+
+    def test_from_bound_col_value(self):
+        mytable = self.tables.mytable
+
+        # from_dml_column() refers to another column in SET, then the
+        # same parameter is rendered
+        stmt = mytable.update().values(
+            name="some name", description=from_dml_column(mytable.c.name)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=:name, description=:name",
+            checkparams={"name": "some name"},
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=?, description=?",
+            checkpositional=("some name", "some name"),
+            dialect="sqlite",
+        )
+
+    def test_from_static_col_value(self):
+        mytable = self.tables.mytable
+
+        # from_dml_column() refers to a column not in SET, then the
+        # column is rendered
+        stmt = mytable.update().values(
+            description=from_dml_column(mytable.c.name)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET description=mytable.name",
+            checkparams={},
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET description=mytable.name",
+            checkpositional=(),
+            dialect="sqlite",
+        )
+
+    def test_from_sql_onupdate(self):
+        """test combinations with a column that has a SQL onupdate"""
+
+        mytable = self.tables.mytable_with_onupdate
+        stmt = mytable.update().values(
+            description=from_dml_column(mytable.c.updated_at)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET description=now(), "
+            "updated_at=now()",
+        )
+
+        stmt = mytable.update().values(
+            description=cast(from_dml_column(mytable.c.updated_at), String)
+            + " o clock"
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET "
+            "description=(CAST(now() AS VARCHAR) || :param_1), "
+            "updated_at=now()",
+        )
+
+        stmt = mytable.update().values(
+            description=cast(from_dml_column(mytable.c.updated_at), String)
+            + " "
+            + from_dml_column(mytable.c.name)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET "
+            "description=(CAST(now() AS VARCHAR) || :param_1 || "
+            "mytable_with_onupdate.name), updated_at=now()",
+        )
+
+        stmt = mytable.update().values(
+            name="some name",
+            description=cast(from_dml_column(mytable.c.updated_at), String)
+            + " "
+            + from_dml_column(mytable.c.name),
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET "
+            "name=:name, "
+            "description=(CAST(now() AS VARCHAR) || :param_1 || "
+            ":name), updated_at=now()",
+            checkparams={"name": "some name", "param_1": " "},
+        )
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET "
+            "name=?, "
+            "description=(CAST(CURRENT_TIMESTAMP AS VARCHAR) || ? || "
+            "?), updated_at=CURRENT_TIMESTAMP",
+            checkpositional=("some name", " ", "some name"),
+            dialect="sqlite",
+        )
+
+    def test_from_sql_expr(self):
+        mytable = self.tables.mytable
+        stmt = mytable.update().values(
+            name=mytable.c.name + "lala",
+            description=from_dml_column(mytable.c.name),
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=(mytable.name || :name_1), "
+            "description=(mytable.name || :name_1)",
+            checkparams={"name_1": "lala"},
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=(mytable.name || ?), "
+            "description=(mytable.name || ?)",
+            checkpositional=("lala", "lala"),
+            dialect="sqlite",
+        )
+
+    def test_from_sql_expr_multiple_dmlcol(self):
+        mytable = self.tables.mytable
+        stmt = mytable.update().values(
+            name=mytable.c.name + "lala",
+            description=from_dml_column(mytable.c.name)
+            + " "
+            + cast(from_dml_column(mytable.c.myid), String),
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=(mytable.name || :name_1), "
+            "description=((mytable.name || :name_1) || :param_1 || "
+            "CAST(mytable.myid AS VARCHAR))",
+            checkparams={"name_1": "lala", "param_1": " "},
+        )
+
+
 class UpdateFromCompileTest(
     _UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL
 ):
@@ -1027,54 +1182,164 @@ class UpdateFromCompileTest(
 
     run_create_tables = run_inserts = run_deletes = None
 
-    def test_alias_one(self):
-        table1 = self.tables.mytable
+    @testing.variation("use_onupdate", [True, False])
+    def test_alias_one(self, use_onupdate):
+
+        if use_onupdate:
+            table1 = self.tables.mytable_with_onupdate
+            tname = "mytable_with_onupdate"
+        else:
+            table1 = self.tables.mytable
+            tname = "mytable"
         talias1 = table1.alias("t1")
 
         # this case is nonsensical.  the UPDATE is entirely
         # against the alias, but we name the table-bound column
-        # in values.   The behavior here isn't really defined
+        # in values.   The behavior here isn't really defined.
+        # onupdates get skipped.
         self.assert_compile(
             update(talias1)
             .where(talias1.c.myid == 7)
             .values({table1.c.name: "fred"}),
-            "UPDATE mytable AS t1 "
+            f"UPDATE {tname} AS t1 "
             "SET name=:name "
             "WHERE t1.myid = :myid_1",
         )
 
-    def test_alias_two(self):
-        table1 = self.tables.mytable
+    @testing.variation("use_onupdate", [True, False])
+    def test_alias_two(self, use_onupdate):
+        """test a multi-table UPDATE/SET is actually supported on SQLite, PG
+        if we are only using an alias of the main table
+
+        """
+        if use_onupdate:
+            table1 = self.tables.mytable_with_onupdate
+            tname = "mytable_with_onupdate"
+            onupdate = ", updated_at=now() "
+        else:
+            table1 = self.tables.mytable
+            tname = "mytable"
+            onupdate = " "
         talias1 = table1.alias("t1")
 
         # Here, compared to
         # test_alias_one(), here we actually have UPDATE..FROM,
         # which is causing the "table1.c.name" param to be handled
-        # as an "extra table", hence we see the full table name rendered.
+        # as an "extra table", hence we see the full table name rendered
+        # as well as ON UPDATEs coming in nicely.
         self.assert_compile(
             update(talias1)
             .where(table1.c.myid == 7)
             .values({table1.c.name: "fred"}),
-            "UPDATE mytable AS t1 "
-            "SET name=:mytable_name "
-            "FROM mytable "
-            "WHERE mytable.myid = :myid_1",
-            checkparams={"mytable_name": "fred", "myid_1": 7},
+            f"UPDATE {tname} AS t1 "
+            f"SET name=:{tname}_name{onupdate}"
+            f"FROM {tname} "
+            f"WHERE {tname}.myid = :myid_1",
+            checkparams={f"{tname}_name": "fred", "myid_1": 7},
         )
 
-    def test_alias_two_mysql(self):
-        table1 = self.tables.mytable
+    @testing.variation("use_onupdate", [True, False])
+    def test_alias_two_mysql(self, use_onupdate):
+        if use_onupdate:
+            table1 = self.tables.mytable_with_onupdate
+            tname = "mytable_with_onupdate"
+            onupdate = ", mytable_with_onupdate.updated_at=now() "
+        else:
+            table1 = self.tables.mytable
+            tname = "mytable"
+            onupdate = " "
         talias1 = table1.alias("t1")
 
         self.assert_compile(
             update(talias1)
             .where(table1.c.myid == 7)
             .values({table1.c.name: "fred"}),
-            "UPDATE mytable AS t1, mytable SET mytable.name=%s "
-            "WHERE mytable.myid = %s",
-            checkparams={"mytable_name": "fred", "myid_1": 7},
+            f"UPDATE {tname} AS t1, {tname} SET {tname}.name=%s{onupdate}"
+            f"WHERE {tname}.myid = %s",
+            checkparams={f"{tname}_name": "fred", "myid_1": 7},
             dialect="mysql",
         )
+
+    @testing.variation("use_alias", [True, False])
+    @testing.variation("use_alias_in_set", [True, False])
+    @testing.variation("include_in_from", [True, False])
+    @testing.variation("use_mysql", [True, False])
+    def test_raise_if_totally_different_table(
+        self, use_alias, include_in_from, use_alias_in_set, use_mysql
+    ):
+        """test cases for #12962"""
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        if use_alias:
+            target = table1.alias("t1")
+        else:
+            target = table1
+
+        stmt = update(target).where(table1.c.myid == 7)
+
+        if use_alias_in_set:
+            stmt = stmt.values({table2.alias().c.othername: "fred"})
+        else:
+            stmt = stmt.values({table2.c.othername: "fred"})
+
+        if include_in_from:
+            stmt = stmt.where(table2.c.otherid == 12)
+
+        if use_mysql and include_in_from and not use_alias_in_set:
+            if not use_alias:
+                self.assert_compile(
+                    stmt,
+                    "UPDATE mytable, myothertable "
+                    "SET myothertable.othername=%s "
+                    "WHERE mytable.myid = %s AND myothertable.otherid = %s",
+                    dialect="mysql",
+                )
+            else:
+                self.assert_compile(
+                    stmt,
+                    "UPDATE mytable AS t1, mytable, myothertable "
+                    "SET myothertable.othername=%s WHERE mytable.myid = %s "
+                    "AND myothertable.otherid = %s",
+                    dialect="mysql",
+                )
+            return
+
+        if use_alias_in_set:
+            tabledesc = "Anonymous alias of myothertable"
+        else:
+            tabledesc = "myothertable"
+
+        if use_mysql:
+            if include_in_from:
+                msg = (
+                    r"Multi-table UPDATE statement does not include "
+                    rf"table\(s\) '{tabledesc}'"
+                )
+            else:
+                if use_alias:
+                    msg = (
+                        rf"Multi-table UPDATE statement does not include "
+                        rf"table\(s\) '{tabledesc}'"
+                    )
+                else:
+                    msg = (
+                        rf"Statement is not a multi-table UPDATE statement; "
+                        r"cannot include columns from table\(s\) "
+                        rf"'{tabledesc}' in SET clause"
+                    )
+        else:
+            msg = (
+                r"Backend does not support additional tables in the "
+                r"SET clause; cannot include columns from table\(s\) "
+                rf"'{tabledesc}' in SET clause"
+            )
+
+        with expect_raises_message(exc.CompileError, msg):
+            if use_mysql:
+                stmt.compile(dialect=mysql.dialect())
+            else:
+                stmt.compile()
 
     def test_update_from_multitable_same_name_mysql(self):
         users, addresses = self.tables.users, self.tables.addresses

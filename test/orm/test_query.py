@@ -160,17 +160,10 @@ class MiscTest(QueryTest):
 
         q = Session().query(literal_column("1"))
 
-        if executor == "session":
-            with testing.expect_deprecated(
-                r"Object .*Query.* should not be used directly in a "
-                r"SQL statement context"
-            ):
-                meth(q)
-        else:
-            with testing.expect_raises_message(
-                sa_exc.ObjectNotExecutableError, "Not an executable object"
-            ):
-                meth(q)
+        with testing.expect_raises_message(
+            sa_exc.ObjectNotExecutableError, "Not an executable object: .*"
+        ):
+            meth(q)
 
 
 class OnlyReturnTuplesTest(QueryTest):
@@ -2004,9 +1997,13 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_collate(self):
         User = self.classes.User
 
-        self._test(collate(User.id, "utf8_bin"), "users.id COLLATE utf8_bin")
+        self._test(
+            collate(User.name, "utf8_bin"), "users.name COLLATE utf8_bin"
+        )
 
-        self._test(User.id.collate("utf8_bin"), "users.id COLLATE utf8_bin")
+        self._test(
+            User.name.collate("utf8_bin"), "users.name COLLATE utf8_bin"
+        )
 
     def test_selfref_between(self):
         User = self.classes.User
@@ -4981,36 +4978,6 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             "addresses_email_address FROM users, addresses) AS anon_1",
         )
 
-    def test_columns_augmented_sql_union_two(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-
-        q = (
-            sess.query(
-                User.id,
-                User.name.label("foo"),
-                Address.id,
-            )
-            .distinct(Address.email_address)
-            .order_by(User.id, User.name)
-        )
-        q2 = sess.query(User.id, User.name.label("foo"), Address.id)
-
-        self.assert_compile(
-            q.union(q2),
-            "SELECT anon_1.users_id AS anon_1_users_id, "
-            "anon_1.foo AS anon_1_foo, anon_1.addresses_id AS "
-            "anon_1_addresses_id FROM "
-            "((SELECT DISTINCT ON (addresses.email_address) users.id "
-            "AS users_id, users.name AS foo, "
-            "addresses.id AS addresses_id FROM users, addresses "
-            "ORDER BY users.id, users.name) "
-            "UNION SELECT users.id AS users_id, users.name AS foo, "
-            "addresses.id AS addresses_id FROM users, addresses) AS anon_1",
-            dialect="postgresql",
-        )
-
     def test_columns_augmented_sql_two(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -5046,14 +5013,112 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             "addresses_1.id",
         )
 
-    def test_columns_augmented_sql_three(self):
+
+class DistinctOnTest(
+    QueryTest, AssertsCompiledSQL, fixtures.DistinctOnFixture
+):
+    """a test suite that is obstensibly specific to the PostgreSQL-only
+    DISTINCT ON clause, however is actually testing a few things:
+
+    1. the legacy query.distinct() feature's handling of this directly
+    2. PostgreSQL's distinct_on() extension
+    3. the ability for Query to use statement extensions in general
+    4. ORM compilation of statement extensions, with or without adaptations
+
+    items 3 and 4 are universal to all statement extensions, with the PG
+    distinct_on() extension serving as the test case.
+
+    """
+
+    __dialect__ = "default"
+
+    @testing.fixture
+    def distinct_on_transform(self, distinct_on_fixture):
+
+        def go(expr):
+            def transform(query):
+                return distinct_on_fixture(query, expr)
+
+            return transform
+
+        return go
+
+    def test_distinct_on_definitely_adapted(self, distinct_on_transform):
+        """there are few cases where a query-wide adapter is used on
+        per-column expressions in SQLAlchemy 2 and greater.   however the
+        legacy query.union() case still relies on such an adapter, so make
+        use of this codepath to exercise column adaptation for edge features
+        such as "distinct_on"
+
+        """
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+
+        q = sess.query(
+            User.id,
+            User.name.label("foo"),
+            Address.email_address,
+        ).order_by(User.id, User.name)
+        q2 = sess.query(User.id, User.name.label("foo"), Address.email_address)
+
+        q3 = q.union(q2).with_transformation(
+            distinct_on_transform(Address.email_address)
+        )
+
+        self.assert_compile(
+            q3,
+            "SELECT DISTINCT ON (anon_1.addresses_email_address) "
+            "anon_1.users_id AS anon_1_users_id, anon_1.foo AS anon_1_foo, "
+            "anon_1.addresses_email_address AS anon_1_addresses_email_address "
+            "FROM ((SELECT users.id AS users_id, users.name AS foo, "
+            "addresses.email_address AS addresses_email_address FROM users, "
+            "addresses ORDER BY users.id, users.name) "
+            "UNION SELECT users.id AS users_id, users.name AS foo, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM users, addresses) AS anon_1",
+            dialect="postgresql",
+        )
+
+    def test_columns_augmented_sql_union_two(self, distinct_on_transform):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+
+        q = (
+            sess.query(
+                User.id,
+                User.name.label("foo"),
+                Address.id,
+            )
+            .with_transformation(distinct_on_transform(Address.email_address))
+            .order_by(User.id, User.name)
+        )
+
+        q2 = sess.query(User.id, User.name.label("foo"), Address.id)
+
+        self.assert_compile(
+            q.union(q2),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.foo AS anon_1_foo, anon_1.addresses_id AS "
+            "anon_1_addresses_id FROM "
+            "((SELECT DISTINCT ON (addresses.email_address) users.id "
+            "AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id FROM users, addresses "
+            "ORDER BY users.id, users.name) "
+            "UNION SELECT users.id AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id FROM users, addresses) AS anon_1",
+            dialect="postgresql",
+        )
+
+    def test_columns_augmented_three(self, distinct_on_transform):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
 
         q = (
             sess.query(User.id, User.name.label("foo"), Address.id)
-            .distinct(User.name)
+            .with_transformation(distinct_on_transform(User.name))
             .order_by(User.id, User.name, Address.email_address)
         )
 
@@ -5066,7 +5131,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_columns_augmented_distinct_on(self):
+    def test_columns_augmented_four(self, distinct_on_transform):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
@@ -5078,7 +5143,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
                 Address.id,
                 Address.email_address,
             )
-            .distinct(Address.email_address)
+            .with_transformation(distinct_on_transform(Address.email_address))
             .order_by(User.id, User.name, Address.email_address)
             .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
@@ -5105,16 +5170,17 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_columns_augmented_sql_three_using_label_reference(self):
+    def test_legacy_columns_augmented_sql_three_using_label_reference(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
 
-        q = (
-            sess.query(User.id, User.name.label("foo"), Address.id)
-            .distinct("name")
-            .order_by(User.id, User.name, Address.email_address)
-        )
+        with expect_deprecated("Passing expression to"):
+            q = (
+                sess.query(User.id, User.name.label("foo"), Address.id)
+                .distinct("name")
+                .order_by(User.id, User.name, Address.email_address)
+            )
 
         # no columns are added when DISTINCT ON is used
         self.assert_compile(
@@ -5125,14 +5191,15 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_columns_augmented_sql_illegal_label_reference(self):
+    def test_legacy_columns_augmented_sql_illegal_label_reference(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
 
-        q = sess.query(User.id, User.name.label("foo"), Address.id).distinct(
-            "not a label"
-        )
+        with expect_deprecated("Passing expression to"):
+            q = sess.query(
+                User.id, User.name.label("foo"), Address.id
+            ).distinct("not a label")
 
         from sqlalchemy.dialects import postgresql
 
@@ -5146,7 +5213,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
-    def test_columns_augmented_sql_four(self):
+    def test_columns_augmented_sql_four(self, distinct_on_transform):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
@@ -5154,7 +5221,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         q = (
             sess.query(User)
             .join(User.addresses)
-            .distinct(Address.email_address)
+            .with_transformation(distinct_on_transform(Address.email_address))
             .options(joinedload(User.addresses))
             .order_by(desc(Address.email_address))
             .limit(2)

@@ -44,6 +44,7 @@ from typing import Final
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -52,8 +53,10 @@ from typing import Protocol
 from typing import Sequence as _typing_Sequence
 from typing import Set
 from typing import Tuple
+from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypedDict
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
 
@@ -71,7 +74,9 @@ from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
 from .base import SchemaEventTarget as SchemaEventTarget
+from .base import SchemaVisitable as SchemaVisitable
 from .coercions import _document_text_coercion
+from .ddl import CheckFirst
 from .elements import ClauseElement
 from .elements import ColumnClause
 from .elements import ColumnElement
@@ -85,12 +90,11 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..util import HasMemoized
-from ..util.typing import Literal
 from ..util.typing import Self
-from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
     from ._typing import _AutoIncrementType
+    from ._typing import _CreateDropBind
     from ._typing import _DDLColumnArgument
     from ._typing import _DDLColumnReferenceArgument
     from ._typing import _InfoType
@@ -102,6 +106,7 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .elements import KeyedColumnElement
     from .functions import Function
+    from .sqltypes import SchemaType
     from .type_api import TypeEngine
     from .visitors import anon_map
     from ..engine import Connection
@@ -109,7 +114,6 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import ExecutionContext
-    from ..engine.mock import MockConnection
     from ..engine.reflection import _ReflectionInfo
     from ..sql.selectable import FromClause
 
@@ -117,8 +121,6 @@ _T = TypeVar("_T", bound="Any")
 _SI = TypeVar("_SI", bound="SchemaItem")
 _TAB = TypeVar("_TAB", bound="Table")
 
-
-_CreateDropBind = Union["Engine", "Connection", "MockConnection"]
 
 _ConstraintNameArgument = Optional[Union[str, _NoneName]]
 
@@ -213,7 +215,7 @@ def _copy_expression(
 
 
 @inspection._self_inspects
-class SchemaItem(SchemaEventTarget, visitors.Visitable):
+class SchemaItem(SchemaVisitable):
     """Base class for items that define a database schema."""
 
     __visit_name__ = "schema_item"
@@ -354,7 +356,7 @@ class Table(
         @util.ro_non_memoized_property
         def foreign_keys(self) -> Set[ForeignKey]: ...
 
-    _columns: DedupeColumnCollection[Column[Any]]
+    _columns: DedupeColumnCollection[Column[Any]]  # type: ignore[assignment]
 
     _sentinel_column: Optional[Column[Any]]
 
@@ -478,7 +480,7 @@ class Table(
             table.dispatch.before_parent_attach(table, metadata)
             metadata._add_table(name, schema, table)
             try:
-                table.__init__(name, metadata, *args, _no_init=False, **kw)
+                table.__init__(name, metadata, *args, _no_init=False, **kw)  # type: ignore[misc] # noqa: E501
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
             except Exception:
@@ -684,8 +686,6 @@ class Table(
             :class:`_schema.Table` will
             resolve to that table normally.
 
-            .. versionadded:: 1.3
-
             .. seealso::
 
                 :paramref:`.MetaData.reflect.resolve_fks`
@@ -798,10 +798,6 @@ class Table(
 
         :param comment: Optional string that will render an SQL comment on table
             creation.
-
-            .. versionadded:: 1.2 Added the :paramref:`_schema.Table.comment`
-                parameter
-                to :class:`_schema.Table`.
 
         :param \**kw: Additional keyword arguments not mentioned above are
             dialect specific, and passed in the form ``<dialectname>_<argname>``.
@@ -1207,8 +1203,55 @@ class Table(
         """
         self._extra_dependencies.add(table)
 
+    def _insert_col_impl(
+        self,
+        column: ColumnClause[Any],
+        *,
+        index: Optional[int] = None,
+        replace_existing: bool = False,
+    ) -> None:
+        try:
+            column._set_parent_with_dispatch(
+                self,
+                allow_replacements=replace_existing,
+                all_names={c.name: c for c in self.c},
+                index=index,
+            )
+        except exc.DuplicateColumnError as de:
+            raise exc.DuplicateColumnError(
+                f"{de.args[0]} Specify replace_existing=True to "
+                "Table.append_column() or Table.insert_column() to replace an "
+                "existing column."
+            ) from de
+
+    def insert_column(
+        self,
+        column: ColumnClause[Any],
+        index: int,
+        *,
+        replace_existing: bool = False,
+    ) -> None:
+        """Insert a :class:`_schema.Column` to this :class:`_schema.Table` at
+        a specific position.
+
+        Behavior is identical to :meth:`.Table.append_column` except that
+        the index position can be controlled using the
+        :paramref:`.Table.insert_column.index`
+        parameter.
+
+        :param replace_existing:
+         see :paramref:`.Table.append_column.replace_existing`
+        :param index: integer index to insert the new column.
+
+        .. versionadded:: 2.1
+
+        """
+        self._insert_col_impl(
+            column, index=index, replace_existing=replace_existing
+        )
+
     def append_column(
-        self, column: ColumnClause[Any], replace_existing: bool = False
+        self, column: ColumnClause[Any], *, replace_existing: bool = False
     ) -> None:
         """Append a :class:`_schema.Column` to this :class:`_schema.Table`.
 
@@ -1233,20 +1276,13 @@ class Table(
             version of sqlalchemy will instead rise a warning.
 
             .. versionadded:: 1.4.0
-        """
 
-        try:
-            column._set_parent_with_dispatch(
-                self,
-                allow_replacements=replace_existing,
-                all_names={c.name: c for c in self.c},
-            )
-        except exc.DuplicateColumnError as de:
-            raise exc.DuplicateColumnError(
-                f"{de.args[0]} Specify replace_existing=True to "
-                "Table.append_column() to replace an "
-                "existing column."
-            ) from de
+        .. seealso::
+
+            :meth:`.Table.insert_column`
+
+        """
+        self._insert_col_impl(column, replace_existing=replace_existing)
 
     def append_constraint(self, constraint: Union[Index, Constraint]) -> None:
         """Append a :class:`_schema.Constraint` to this
@@ -1275,7 +1311,11 @@ class Table(
         metadata._add_table(self.name, self.schema, self)
         self.metadata = metadata
 
-    def create(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
+    def create(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.TYPES,
+    ) -> None:
         """Issue a ``CREATE`` statement for this
         :class:`_schema.Table`, using the given
         :class:`.Connection` or :class:`.Engine`
@@ -1287,9 +1327,14 @@ class Table(
 
         """
 
+        # the default is to only check for schema objects
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
+    def drop(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+    ) -> None:
         """Issue a ``DROP`` statement for this
         :class:`_schema.Table`, using the given
         :class:`.Connection` or :class:`.Engine` for connectivity.
@@ -1763,7 +1808,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         :param insert_default: An alias of :paramref:`.Column.default`
             for compatibility with :func:`_orm.mapped_column`.
 
-            .. versionadded: 2.0.31
+            .. versionadded:: 2.0.31
 
         :param doc: optional String that can be used by the ORM or similar
             to document attributes on the Python side.   This attribute does
@@ -2030,10 +2075,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         :param comment: Optional string that will render an SQL comment on
              table creation.
 
-             .. versionadded:: 1.2 Added the
-                :paramref:`_schema.Column.comment`
-                parameter to :class:`_schema.Column`.
-
         :param insert_sentinel: Marks this :class:`_schema.Column` as an
          :term:`insert sentinel` used for optimizing the performance of the
          :term:`insertmanyvalues` feature for tables that don't
@@ -2123,6 +2164,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             self._set_type(self.type)
 
         if insert_default is not _NoArg.NO_ARG:
+            if default is not _NoArg.NO_ARG:
+                raise exc.ArgumentError(
+                    "The 'default' and 'insert_default' parameters "
+                    "of Column are mutually exclusive"
+                )
             resolved_default = insert_default
         elif default is not _NoArg.NO_ARG:
             resolved_default = default
@@ -2245,7 +2291,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         return _DefaultDescriptionTuple._from_column_default(self.onupdate)
 
     @util.memoized_property
-    def _gen_static_annotations_cache_key(self) -> bool:  # type: ignore
+    def _gen_static_annotations_cache_key(self) -> bool:
         """special attribute used by cache key gen, if true, we will
         use a static cache key for the annotations dictionary, else we
         will generate a new cache key for annotations each time.
@@ -2319,6 +2365,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         *,
         all_names: Dict[str, Column[Any]],
         allow_replacements: bool,
+        index: Optional[int] = None,
         **kw: Any,
     ) -> None:
         table = parent
@@ -2383,7 +2430,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 "reflection operation, specify autoload_replace=False to "
                 "prevent this replacement."
             )
-        table._columns.replace(self, extra_remove=extra_remove)
+        table._columns.replace(self, extra_remove=extra_remove, index=index)
         all_names[self.name] = self
         self.table = table
 
@@ -2533,8 +2580,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
         return self._schema_item_copy(c)
 
-    def _merge(self, other: Column[Any]) -> None:
-        """merge the elements of another column into this one.
+    def _merge(
+        self, other: Column[Any], *, omit_defaults: bool = False
+    ) -> None:
+        """merge the elements of this column onto "other"
 
         this is used by ORM pep-593 merge and will likely need a lot
         of fixes.
@@ -2575,7 +2624,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             other.nullable = self.nullable
             other._user_defined_nullable = self._user_defined_nullable
 
-        if self.default is not None and other.default is None:
+        if (
+            not omit_defaults
+            and self.default is not None
+            and other.default is None
+        ):
             new_default = self.default._copy()
             new_default._set_parent(other)
 
@@ -2841,9 +2894,18 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             issuing DDL for this constraint. Typical values include CASCADE,
             DELETE and RESTRICT.
 
+            .. seealso::
+
+                :ref:`on_update_on_delete`
+
         :param ondelete: Optional string. If set, emit ON DELETE <value> when
             issuing DDL for this constraint. Typical values include CASCADE,
-            SET NULL and RESTRICT.
+            SET NULL and RESTRICT.  Some dialects may allow for additional
+            syntaxes.
+
+            .. seealso::
+
+                :ref:`on_update_on_delete`
 
         :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
             DEFERRABLE when issuing DDL for this constraint.
@@ -3515,7 +3577,7 @@ class ColumnDefault(DefaultGenerator, ABC):
 class ScalarElementColumnDefault(ColumnDefault):
     """default generator for a fixed scalar Python value
 
-    .. versionadded: 2.0
+    .. versionadded:: 2.0
 
     """
 
@@ -3664,8 +3726,6 @@ class CallableColumnDefault(ColumnDefault):
 class IdentityOptions(DialectKWArgs):
     """Defines options for a named database sequence or an identity column.
 
-    .. versionadded:: 1.3.18
-
     .. seealso::
 
         :class:`.Sequence`
@@ -3797,6 +3857,8 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
     column: Optional[Column[Any]]
     data_type: Optional[TypeEngine[int]]
+
+    metadata: Optional[MetaData]
 
     @util.deprecated_params(
         order=(
@@ -3980,14 +4042,16 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
             self.schema = schema = metadata.schema
         else:
             self.schema = quoted_name.construct(schema, quote_schema)
-        self.metadata = metadata
         self._key = _get_table_key(name, schema)
-        if metadata:
-            self._set_metadata(metadata)
         if data_type is not None:
             self.data_type = to_instance(data_type)
         else:
             self.data_type = None
+
+        if metadata:
+            self._set_metadata(metadata)
+        else:
+            self.metadata = None
 
     @util.preload_module("sqlalchemy.sql.functions")
     def next_value(self) -> Function[int]:
@@ -3997,12 +4061,6 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
         """
         return util.preloaded.sql_functions.func.next_value(self)
-
-    def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
-        column = parent
-        assert isinstance(column, Column)
-        super()._set_parent(column)
-        column._on_table_attach(self._set_table)
 
     def _copy(self) -> Sequence:
         return Sequence(
@@ -4016,19 +4074,33 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
             **self.dialect_kwargs,
         )
 
+    def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
+        assert isinstance(parent, Column)
+        super()._set_parent(parent, **kw)
+        parent._on_table_attach(self._set_table)
+
     def _set_table(self, column: Column[Any], table: Table) -> None:
         self._set_metadata(table.metadata)
 
     def _set_metadata(self, metadata: MetaData) -> None:
         self.metadata = metadata
-        self.metadata._sequences[self._key] = self
+        self.metadata._register_object(self)
+        metadata._sequences[self._key] = self
 
-    def create(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
+    def create(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.SEQUENCES,
+    ) -> None:
         """Creates this sequence in the database."""
 
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
+    def drop(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.SEQUENCES,
+    ) -> None:
         """Drops this sequence from the database."""
 
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
@@ -4691,12 +4763,21 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         :param name: Optional, the in-database name of the key.
 
         :param onupdate: Optional string. If set, emit ON UPDATE <value> when
-          issuing DDL for this constraint. Typical values include CASCADE,
-          DELETE and RESTRICT.
+            issuing DDL for this constraint. Typical values include CASCADE,
+            DELETE and RESTRICT.
+
+            .. seealso::
+
+                :ref:`on_update_on_delete`
 
         :param ondelete: Optional string. If set, emit ON DELETE <value> when
-          issuing DDL for this constraint. Typical values include CASCADE,
-          SET NULL and RESTRICT.
+            issuing DDL for this constraint. Typical values include CASCADE,
+            SET NULL and RESTRICT.  Some dialects may allow for additional
+            syntaxes.
+
+            .. seealso::
+
+                :ref:`on_update_on_delete`
 
         :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
           DEFERRABLE when issuing DDL for this constraint.
@@ -5384,7 +5465,11 @@ class Index(
                 assert False
         self.expressions = self._table_bound_expressions = exprs
 
-    def create(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
+    def create(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+    ) -> None:
         """Issue a ``CREATE`` statement for this
         :class:`.Index`, using the given
         :class:`.Connection` or :class:`.Engine`` for connectivity.
@@ -5396,7 +5481,11 @@ class Index(
         """
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
+    def drop(
+        self,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+    ) -> None:
         """Issue a ``DROP`` statement for this
         :class:`.Index`, using the given
         :class:`.Connection` or :class:`.Engine` for connectivity.
@@ -5585,11 +5674,6 @@ class MetaData(HasSchemaAttr):
               it along with a ``fn(constraint, table)`` callable to the
               naming_convention dictionary.
 
-          .. versionadded:: 1.3.0 - added new ``%(column_0N_name)s``,
-             ``%(column_0_N_name)s``, and related tokens that produce
-             concatenations of names, keys, or labels for all columns referred
-             to by a given constraint.
-
           .. seealso::
 
                 :ref:`constraint_naming_conventions` - for detailed usage
@@ -5615,6 +5699,7 @@ class MetaData(HasSchemaAttr):
         self._fk_memos: Dict[Tuple[str, Optional[str]], List[ForeignKey]] = (
             collections.defaultdict(list)
         )
+        self._objects: Set[Union[HasSchemaAttr, SchemaType]] = set()
 
     tables: util.FacadeDict[str, Table]
     """A dictionary of :class:`_schema.Table`
@@ -5669,6 +5754,7 @@ class MetaData(HasSchemaAttr):
             "sequences": self._sequences,
             "fk_memos": self._fk_memos,
             "naming_convention": self.naming_convention,
+            "objects": self._objects,
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
@@ -5678,13 +5764,16 @@ class MetaData(HasSchemaAttr):
         self._sequences = state["sequences"]
         self._schemas = state["schemas"]
         self._fk_memos = state["fk_memos"]
+        self._objects = state.get("objects", set())
 
     def clear(self) -> None:
-        """Clear all Table objects from this MetaData."""
+        """Clear all objects from this MetaData."""
 
-        dict.clear(self.tables)  # type: ignore
+        dict.clear(self.tables)
         self._schemas.clear()
         self._fk_memos.clear()
+        self._sequences.clear()
+        self._objects.clear()
 
     def remove(self, table: Table) -> None:
         """Remove the given Table object from this MetaData."""
@@ -5720,13 +5809,6 @@ class MetaData(HasSchemaAttr):
             automatically return foreign key constraints in a separate
             collection when cycles are detected so that they may be applied
             to a schema separately.
-
-            .. versionchanged:: 1.3.17 - a warning is emitted when
-               :attr:`.MetaData.sorted_tables` cannot perform a proper sort
-               due to cyclical dependencies.  This will be an exception in a
-               future release.  Additionally, the sort will continue to return
-               other tables not involved in the cycle in dependency order which
-               was not the case previously.
 
         .. seealso::
 
@@ -5852,8 +5934,6 @@ class MetaData(HasSchemaAttr):
          operation is
          complete.   Defaults to True.
 
-         .. versionadded:: 1.3.0
-
          .. seealso::
 
             :paramref:`_schema.Table.resolve_fks`
@@ -5896,13 +5976,17 @@ class MetaData(HasSchemaAttr):
 
             kind = util.preloaded.engine_reflection.ObjectKind.TABLE
             available: util.OrderedSet[str] = util.OrderedSet(
-                insp.get_table_names(schema)
+                insp.get_table_names(schema, **dialect_kwargs)
             )
             if views:
                 kind = util.preloaded.engine_reflection.ObjectKind.ANY
-                available.update(insp.get_view_names(schema))
+                available.update(insp.get_view_names(schema, **dialect_kwargs))
                 try:
-                    available.update(insp.get_materialized_view_names(schema))
+                    available.update(
+                        insp.get_materialized_view_names(
+                            schema, **dialect_kwargs
+                        )
+                    )
                 except NotImplementedError:
                     pass
 
@@ -5964,7 +6048,7 @@ class MetaData(HasSchemaAttr):
         self,
         bind: _CreateDropBind,
         tables: Optional[_typing_Sequence[Table]] = None,
-        checkfirst: bool = True,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.ALL,
     ) -> None:
         """Create all tables stored in this metadata.
 
@@ -5979,9 +6063,9 @@ class MetaData(HasSchemaAttr):
           Optional list of ``Table`` objects, which is a subset of the total
           tables in the ``MetaData`` (others are ignored).
 
-        :param checkfirst:
-          Defaults to True, don't issue CREATEs for tables already present
-          in the target database.
+        :param checkfirst: A boolean value or instance of :class:`.CheckFirst`.
+          Indicates which objects should be checked for within a separate pass
+          before creating schema objects.
 
         """
         bind._run_ddl_visitor(
@@ -5992,7 +6076,7 @@ class MetaData(HasSchemaAttr):
         self,
         bind: _CreateDropBind,
         tables: Optional[_typing_Sequence[Table]] = None,
-        checkfirst: bool = True,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.ALL,
     ) -> None:
         """Drop all tables stored in this metadata.
 
@@ -6007,14 +6091,78 @@ class MetaData(HasSchemaAttr):
           Optional list of ``Table`` objects, which is a subset of the
           total tables in the ``MetaData`` (others are ignored).
 
-        :param checkfirst:
-          Defaults to True, only issue DROPs for tables confirmed to be
-          present in the target database.
+        :param checkfirst: A boolean value or instance of :class:`.CheckFirst`.
+          Indicates which objects should be checked for within a separate pass
+          before dropping schema objects.
 
         """
         bind._run_ddl_visitor(
             ddl.SchemaDropper, self, checkfirst=checkfirst, tables=tables
         )
+
+    @property
+    def schemas(self) -> _typing_Sequence[str]:
+        """A sequence of schema names that are present in this MetaData."""
+        schemas = self._schemas
+        if self.schema:
+            schemas = schemas | {self.schema}
+        return tuple(schemas)
+
+    def get_schema_objects(
+        self,
+        kind: Type[_T],
+        *,
+        schema: Union[str, None, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
+    ) -> _typing_Sequence[_T]:
+        """Return a sequence of schema objects of the given kind.
+
+        This method can be used to return :class:`_sqltypes.Enum`,
+        :class:`.Sequence`, etc. objects registered in this
+        :class:`_schema.MetaData`.
+
+        :param kind: a type that indicates what object to return, such as
+         :class:`Enum` or :class:`Sequence`.
+        :param schema: Optional, a schema name to filter the objects by. If
+         not provided the default schema of the metadata is used.
+
+        """
+
+        if schema is _NoArg.NO_ARG:
+            schema = self.schema
+        return tuple(
+            obj
+            for obj in self._objects
+            if isinstance(obj, kind) and obj.schema == schema
+        )
+
+    def get_schema_object_by_name(
+        self,
+        kind: Type[_T],
+        name: str,
+        *,
+        schema: Union[str, None, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
+    ) -> Optional[_T]:
+        """Return a schema objects of the given kind and name if found.
+
+        This method can be used to return :class:`_sqltypes.Enum`,
+        :class:`.Sequence`, etc. objects registered in this
+        :class:`_schema.MetaData`.
+
+        :param kind: a type that indicates what object to return, such as
+         :class:`Enum` or :class:`Sequence`.
+        :param name: the name of the object to return.
+        :param schema: Optional, a schema name to filter the objects by. If
+         not provided the default schema of the metadata is used.
+
+        """
+
+        for obj in self.get_schema_objects(kind, schema=schema):
+            if getattr(obj, "name", None) == name:
+                return obj
+        return None
+
+    def _register_object(self, obj: Union[HasSchemaAttr, SchemaType]) -> None:
+        self._objects.add(obj)
 
 
 class Computed(FetchedValue, SchemaItem):
@@ -6033,8 +6181,6 @@ class Computed(FetchedValue, SchemaItem):
         )
 
     See the linked documentation below for complete details.
-
-    .. versionadded:: 1.3.11
 
     .. seealso::
 

@@ -1,3 +1,5 @@
+import random
+
 from sqlalchemy import BLOB
 from sqlalchemy import BOOLEAN
 from sqlalchemy import Boolean
@@ -53,6 +55,7 @@ from sqlalchemy import UnicodeText
 from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.dialects.mysql import limit
 from sqlalchemy.dialects.mysql import match
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
@@ -72,6 +75,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import Variation
+from sqlalchemy.testing.fixtures import CacheKeyFixture
 
 
 class ReservedWordFixture(AssertsCompiledSQL):
@@ -438,6 +442,41 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "description", String(255), server_default=func.lower("hi")
             ),
             Column("data", JSON, server_default=func.json_object()),
+            Column(
+                "updated1",
+                DateTime,
+                server_default=text("now() on update now()"),
+            ),
+            Column(
+                "updated2",
+                DateTime,
+                server_default=text("now() On  UpDate now()"),
+            ),
+            Column(
+                "updated3",
+                DateTime,
+                server_default=text("now() ON UPDATE now()"),
+            ),
+            Column(
+                "updated4",
+                DateTime,
+                server_default=text("now(3)"),
+            ),
+            Column(
+                "updated5",
+                DateTime,
+                server_default=text("nOW(3)"),
+            ),
+            Column(
+                "updated6",
+                DateTime,
+                server_default=text("notnow(1)"),
+            ),
+            Column(
+                "updated7",
+                DateTime,
+                server_default=text("CURRENT_TIMESTAMP(3)"),
+            ),
         )
 
         eq_(dialect._support_default_function, has_brackets)
@@ -446,10 +485,17 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             self.assert_compile(
                 schema.CreateTable(tbl),
                 "CREATE TABLE testtbl ("
-                "time DATETIME DEFAULT (CURRENT_TIMESTAMP), "
+                "time DATETIME DEFAULT CURRENT_TIMESTAMP, "
                 "name VARCHAR(255) DEFAULT 'some str', "
                 "description VARCHAR(255) DEFAULT (lower('hi')), "
-                "data JSON DEFAULT (json_object()))",
+                "data JSON DEFAULT (json_object()), "
+                "updated1 DATETIME DEFAULT now() on update now(), "
+                "updated2 DATETIME DEFAULT now() On  UpDate now(), "
+                "updated3 DATETIME DEFAULT now() ON UPDATE now(), "
+                "updated4 DATETIME DEFAULT now(3), "
+                "updated5 DATETIME DEFAULT nOW(3), "
+                "updated6 DATETIME DEFAULT (notnow(1)), "
+                "updated7 DATETIME DEFAULT CURRENT_TIMESTAMP(3))",
                 dialect=dialect,
             )
         else:
@@ -459,7 +505,14 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "time DATETIME DEFAULT CURRENT_TIMESTAMP, "
                 "name VARCHAR(255) DEFAULT 'some str', "
                 "description VARCHAR(255) DEFAULT lower('hi'), "
-                "data JSON DEFAULT json_object())",
+                "data JSON DEFAULT json_object(), "
+                "updated1 DATETIME DEFAULT now() on update now(), "
+                "updated2 DATETIME DEFAULT now() On  UpDate now(), "
+                "updated3 DATETIME DEFAULT now() ON UPDATE now(), "
+                "updated4 DATETIME DEFAULT now(3), "
+                "updated5 DATETIME DEFAULT nOW(3), "
+                "updated6 DATETIME DEFAULT notnow(1), "
+                "updated7 DATETIME DEFAULT CURRENT_TIMESTAMP(3))",
                 dialect=dialect,
             )
 
@@ -623,7 +676,159 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
+class CustomExtensionTest(
+    fixtures.TestBase, AssertsCompiledSQL, fixtures.CacheKeySuite
+):
+    __dialect__ = "mysql"
+
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_insert_on_duplicate_key_cache_key(self):
+        table = Table(
+            "foos",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("bar", String(10)),
+            Column("baz", String(10)),
+        )
+
+        def stmt0():
+            # note a multivalues INSERT is not cacheable; use just one
+            # set of values
+            return insert(table).values(
+                {"id": 1, "bar": "ab"},
+            )
+
+        def stmt1():
+            stmt = stmt0()
+            return stmt.on_duplicate_key_update(
+                bar=stmt.inserted.bar, baz=stmt.inserted.baz
+            )
+
+        def stmt15():
+            stmt = insert(table).values(
+                {"id": 1},
+            )
+            return stmt.on_duplicate_key_update(
+                bar=stmt.inserted.bar, baz=stmt.inserted.baz
+            )
+
+        def stmt2():
+            stmt = stmt0()
+            return stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
+
+        def stmt3():
+            stmt = stmt0()
+            # use different literal values; ensure each cache key is
+            # identical
+            return stmt.on_duplicate_key_update(
+                bar=random.choice(["a", "b", "c"])
+            )
+
+        return lambda: [stmt0(), stmt1(), stmt15(), stmt2(), stmt3()]
+
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_dml_limit_cache_key(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+        return lambda: [
+            t.update().ext(limit(5)),
+            t.delete().ext(limit(5)),
+            t.update(),
+            t.delete(),
+        ]
+
+    def test_update_limit(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        self.assert_compile(
+            t.update().values({"col1": 123}).ext(limit(5)),
+            "UPDATE t SET col1=%s LIMIT __[POSTCOMPILE_param_1]",
+            params={"col1": 123, "param_1": 5},
+            check_literal_execute={"param_1": 5},
+        )
+
+        # does not make sense but we want this to compile
+        self.assert_compile(
+            t.update().values({"col1": 123}).ext(limit(0)),
+            "UPDATE t SET col1=%s LIMIT __[POSTCOMPILE_param_1]",
+            params={"col1": 123, "param_1": 0},
+            check_literal_execute={"param_1": 0},
+        )
+
+        # many times is fine too
+        self.assert_compile(
+            t.update()
+            .values({"col1": 123})
+            .ext(limit(0))
+            .ext(limit(3))
+            .ext(limit(42)),
+            "UPDATE t SET col1=%s LIMIT __[POSTCOMPILE_param_1]",
+            params={"col1": 123, "param_1": 42},
+            check_literal_execute={"param_1": 42},
+        )
+
+    def test_delete_limit(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        self.assert_compile(
+            t.delete().ext(limit(5)),
+            "DELETE FROM t LIMIT __[POSTCOMPILE_param_1]",
+            params={"param_1": 5},
+            check_literal_execute={"param_1": 5},
+        )
+
+        # does not make sense but we want this to compile
+        self.assert_compile(
+            t.delete().ext(limit(0)),
+            "DELETE FROM t LIMIT __[POSTCOMPILE_param_1]",
+            params={"param_1": 5},
+            check_literal_execute={"param_1": 0},
+        )
+
+        # many times is fine too
+        self.assert_compile(
+            t.delete().ext(limit(0)).ext(limit(3)).ext(limit(42)),
+            "DELETE FROM t LIMIT __[POSTCOMPILE_param_1]",
+            params={"param_1": 42},
+            check_literal_execute={"param_1": 42},
+        )
+
+    @testing.combinations((update,), (delete,))
+    def test_update_delete_limit_int_only(self, crud_fn):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        with expect_raises(ValueError):
+            # note using coercions we get an immediate raise
+            # without having to wait for compilation
+            crud_fn(t).ext(limit("not an int"))
+
+    def test_legacy_update_limit_ext_interaction(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        stmt = (
+            t.update()
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=5)
+        )
+        stmt.apply_syntax_extension_point(
+            lambda existing: [literal_column("this is a clause")],
+            "post_criteria",
+        )
+        self.assert_compile(
+            stmt, "UPDATE t SET col1=%s LIMIT 5 this is a clause"
+        )
+
+    def test_legacy_delete_limit_ext_interaction(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        stmt = t.delete().with_dialect_options(mysql_limit=5)
+        stmt.apply_syntax_extension_point(
+            lambda existing: [literal_column("this is a clause")],
+            "post_criteria",
+        )
+        self.assert_compile(stmt, "DELETE FROM t LIMIT 5 this is a clause")
+
+
+class SQLTest(fixtures.TestBase, AssertsCompiledSQL, CacheKeyFixture):
     """Tests MySQL-dialect specific compilation."""
 
     __dialect__ = mysql.dialect()
@@ -718,7 +923,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=mysql.dialect(),
         )
 
-    def test_update_limit(self):
+    def test_legacy_update_limit(self):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
         self.assert_compile(
@@ -752,7 +957,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1",
         )
 
-    def test_delete_limit(self):
+    def test_legacy_delete_limit(self):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
         self.assert_compile(t.delete(), "DELETE FROM t")
@@ -777,7 +982,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     @testing.combinations((update,), (delete,))
-    def test_update_delete_limit_int_only(self, crud_fn):
+    def test_legacy_update_delete_limit_int_only(self, crud_fn):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
         with expect_raises(ValueError):
@@ -1370,7 +1575,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
 class RegexpCommon(testing.AssertsCompiledSQL):
     def setup_test(self):
         self.table = table(
-            "mytable", column("myid", Integer), column("name", String)
+            "mytable", column("myid", String), column("name", String)
         )
 
     def test_regexp_match(self):

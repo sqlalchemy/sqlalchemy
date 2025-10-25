@@ -4,9 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-"""Defines :class:`_engine.Connection` and :class:`_engine.Engine`.
-
-"""
+"""Defines :class:`_engine.Connection` and :class:`_engine.Engine`."""
 from __future__ import annotations
 
 import contextlib
@@ -73,12 +71,11 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _InfoType
     from ..sql.compiler import Compiled
     from ..sql.ddl import ExecutableDDLElement
-    from ..sql.ddl import SchemaDropper
-    from ..sql.ddl import SchemaGenerator
+    from ..sql.ddl import InvokeDDLBase
     from ..sql.functions import FunctionElement
     from ..sql.schema import DefaultGenerator
     from ..sql.schema import HasSchemaAttr
-    from ..sql.schema import SchemaItem
+    from ..sql.schema import SchemaVisitable
     from ..sql.selectable import TypedReturnsRows
 
 
@@ -536,8 +533,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     def get_execution_options(self) -> _ExecuteOptions:
         """Get the non-SQL options which will take effect during execution.
-
-        .. versionadded:: 1.3
 
         .. seealso::
 
@@ -1132,10 +1127,16 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if self._still_open_and_dbapi_connection_is_valid:
             if self._echo:
                 if self._is_autocommit_isolation():
-                    self._log_info(
-                        "ROLLBACK using DBAPI connection.rollback(), "
-                        "DBAPI should ignore due to autocommit mode"
-                    )
+                    if self.dialect.skip_autocommit_rollback:
+                        self._log_info(
+                            "ROLLBACK will be skipped by "
+                            "skip_autocommit_rollback"
+                        )
+                    else:
+                        self._log_info(
+                            "ROLLBACK using DBAPI connection.rollback(); "
+                            "set skip_autocommit_rollback to prevent fully"
+                        )
                 else:
                     self._log_info("ROLLBACK")
             try:
@@ -1151,7 +1152,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             if self._is_autocommit_isolation():
                 self._log_info(
                     "COMMIT using DBAPI connection.commit(), "
-                    "DBAPI should ignore due to autocommit mode"
+                    "has no effect due to autocommit mode"
                 )
             else:
                 self._log_info("COMMIT")
@@ -1664,56 +1665,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             self.dispatch.after_execute(
                 self,
                 elem,
-                event_multiparams,
-                event_params,
-                exec_opts,
-                ret,
-            )
-        return ret
-
-    def _execute_compiled(
-        self,
-        compiled: Compiled,
-        distilled_parameters: _CoreMultiExecuteParams,
-        execution_options: CoreExecuteOptionsParameter = _EMPTY_EXECUTION_OPTS,
-    ) -> CursorResult[Unpack[TupleAny]]:
-        """Execute a sql.Compiled object.
-
-        TODO: why do we have this?   likely deprecate or remove
-
-        """
-
-        exec_opts = compiled.execution_options.merge_with(
-            self._execution_options, execution_options
-        )
-
-        if self._has_events or self.engine._has_events:
-            (
-                compiled,
-                distilled_parameters,
-                event_multiparams,
-                event_params,
-            ) = self._invoke_before_exec_event(
-                compiled, distilled_parameters, exec_opts
-            )
-
-        dialect = self.dialect
-
-        ret = self._execute_context(
-            dialect,
-            dialect.execution_ctx_cls._init_compiled,
-            compiled,
-            distilled_parameters,
-            exec_opts,
-            compiled,
-            distilled_parameters,
-            None,
-            None,
-        )
-        if self._has_events or self.engine._has_events:
-            self.dispatch.after_execute(
-                self,
-                compiled,
                 event_multiparams,
                 event_params,
                 exec_opts,
@@ -2439,9 +2390,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     break
 
             if sqlalchemy_exception and is_disconnect != ctx.is_disconnect:
-                sqlalchemy_exception.connection_invalidated = is_disconnect = (
-                    ctx.is_disconnect
-                )
+                sqlalchemy_exception.connection_invalidated = ctx.is_disconnect
 
         if newraise:
             raise newraise.with_traceback(exc_info[2]) from e
@@ -2454,8 +2403,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: SchemaItem,
+        visitorcallable: Type[InvokeDDLBase],
+        element: SchemaVisitable,
         **kwargs: Any,
     ) -> None:
         """run a DDL visitor.
@@ -2464,7 +2413,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         options given to the visitor so that "checkfirst" is skipped.
 
         """
-        visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
+        visitorcallable(
+            dialect=self.dialect, connection=self, **kwargs
+        ).traverse_single(element)
 
 
 class ExceptionContextImpl(ExceptionContext):
@@ -3138,8 +3089,6 @@ class Engine(
     def get_execution_options(self) -> _ExecuteOptions:
         """Get the non-SQL options which will take effect during execution.
 
-        .. versionadded: 1.3
-
         .. seealso::
 
             :meth:`_engine.Engine.execution_options`
@@ -3252,8 +3201,8 @@ class Engine(
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: SchemaItem,
+        visitorcallable: Type[InvokeDDLBase],
+        element: SchemaVisitable,
         **kwargs: Any,
     ) -> None:
         with self.begin() as conn:

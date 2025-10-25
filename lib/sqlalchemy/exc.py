@@ -115,6 +115,44 @@ class SQLAlchemyError(HasDescriptionCode, Exception):
         return self._sql_message()
 
 
+class EmulatedDBAPIException(Exception):
+    """Serves as the base of the DBAPI ``Error`` class for dialects where
+    a DBAPI exception hierrchy needs to be emulated.
+
+    The current example is the asyncpg dialect.
+
+    .. versionadded:: 2.1
+
+    """
+
+    orig: Exception | None
+
+    def __init__(self, message: str, orig: Exception | None = None):
+        # we accept None for Exception since all DBAPI.Error objects
+        # need to support construction with a message alone
+        super().__init__(message)
+        self.orig = orig
+
+    @property
+    def driver_exception(self) -> Exception:
+        """The original driver exception that was raised.
+
+        This exception object will always originate from outside of
+        SQLAlchemy.
+
+        """
+
+        if self.orig is None:
+            raise ValueError(
+                "No original exception is present.  Was this "
+                "EmulatedDBAPIException constructed without a driver error?"
+            )
+        return self.orig
+
+    def __reduce__(self) -> Any:
+        return self.__class__, (self.args[0], self.orig)
+
+
 class ArgumentError(SQLAlchemyError):
     """Raised when an invalid or conflicting function argument is supplied.
 
@@ -139,7 +177,7 @@ class ObjectNotExecutableError(ArgumentError):
     """
 
     def __init__(self, target: Any):
-        super().__init__("Not an executable object: %r" % target)
+        super().__init__(f"Not an executable object: {target!r}")
         self.target = target
 
     def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
@@ -277,8 +315,6 @@ class InvalidatePoolError(DisconnectionError):
     :class:`_exc.DisconnectionError`, allowing three attempts to reconnect
     before giving up.
 
-    .. versionadded:: 1.2
-
     """
 
     invalidate_pool: bool = True
@@ -412,11 +448,7 @@ class NoSuchTableError(InvalidRequestError):
 
 
 class UnreflectableTableError(InvalidRequestError):
-    """Table exists but can't be reflected for some reason.
-
-    .. versionadded:: 1.2
-
-    """
+    """Table exists but can't be reflected for some reason."""
 
 
 class UnboundExecutionError(InvalidRequestError):
@@ -468,6 +500,12 @@ class StatementError(SQLAlchemyError):
 
     orig: Optional[BaseException] = None
     """The original exception that was thrown.
+
+    .. seealso::
+
+        :attr:`.DBAPIError.driver_exception` - a more specific attribute that
+        is guaranteed to return the exception object raised by the third
+        party driver in use, even when using asyncio.
 
     """
 
@@ -560,6 +598,8 @@ class DBAPIError(StatementError):
     """
 
     code = "dbapi"
+
+    orig: Optional[Exception]
 
     @overload
     @classmethod
@@ -717,6 +757,42 @@ class DBAPIError(StatementError):
             ismulti=ismulti,
         )
         self.connection_invalidated = connection_invalidated
+
+    @property
+    def driver_exception(self) -> Exception:
+        """The exception object originating from the driver (DBAPI) outside
+        of SQLAlchemy.
+
+        In the case of some asyncio dialects, special steps are taken to
+        resolve the exception to what the third party driver has raised, even
+        for SQLAlchemy dialects that include an "emulated" DBAPI exception
+        hierarchy.
+
+        For non-asyncio dialects, this attribute will be the same attribute
+        as the :attr:`.StatementError.orig` attribute.
+
+        For an asyncio dialect provided by SQLAlchemy, depending on if the
+        dialect provides an "emulated" exception hierarchy or if the underlying
+        DBAPI raises DBAPI-style exceptions, it will refer to either the
+        :attr:`.EmulatedDBAPIException.driver_exception` attribute on the
+        :class:`.EmulatedDBAPIException` that's thrown (such as when using
+        asyncpg), or to the actual exception object thrown by the
+        third party driver.
+
+        .. versionadded:: 2.1
+
+        """
+
+        if self.orig is None:
+            raise ValueError(
+                "No original exception is present.  Was this "
+                "DBAPIError constructed without a driver error?"
+            )
+
+        if isinstance(self.orig, EmulatedDBAPIException):
+            return self.orig.driver_exception
+        else:
+            return self.orig
 
 
 class InterfaceError(DBAPIError):

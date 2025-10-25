@@ -7,6 +7,7 @@ from sqlalchemy import BigInteger
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
@@ -20,11 +21,13 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
+from sqlalchemy import text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
+from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.dialects.postgresql import INTEGER
 from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.dialects.postgresql import pg_catalog
@@ -432,7 +435,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.fixture
     def testtable(self, connection, testdomain):
         connection.exec_driver_sql(
-            "CREATE TABLE testtable (question integer, answer " "testdomain)"
+            "CREATE TABLE testtable (question integer, answer testdomain)"
         )
         yield
         connection.exec_driver_sql("DROP TABLE testtable")
@@ -483,7 +486,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             "CREATE DOMAIN arraydomain_2d AS INTEGER[][]"
         )
         connection.exec_driver_sql(
-            "CREATE DOMAIN arraydomain_3d AS  INTEGER[][][]"
+            "CREATE DOMAIN arraydomain_3d AS INTEGER[][][]"
         )
         yield
         connection.exec_driver_sql("DROP DOMAIN arraydomain")
@@ -907,6 +910,56 @@ class ReflectionTest(
         meta2 = MetaData()
         subject = Table("subject", meta2, autoload_with=connection)
         eq_(subject.primary_key.columns.keys(), ["p2", "p1"])
+
+    @testing.skip_if(
+        "postgresql < 15.0", "on delete with column list not supported"
+    )
+    def test_reflected_foreign_key_ondelete_column_list(
+        self, metadata, connection
+    ):
+        meta1 = metadata
+        pktable = Table(
+            "pktable",
+            meta1,
+            Column("tid", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True),
+        )
+        Table(
+            "fktable",
+            meta1,
+            Column("tid", Integer),
+            Column("id", Integer),
+            Column("fk_id_del_set_null", Integer),
+            Column("fk_id_del_set_default", Integer, server_default=text("0")),
+            ForeignKeyConstraint(
+                name="fktable_tid_fk_id_del_set_null_fkey",
+                columns=["tid", "fk_id_del_set_null"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET NULL (fk_id_del_set_null)",
+            ),
+            ForeignKeyConstraint(
+                name="fktable_tid_fk_id_del_set_default_fkey",
+                columns=["tid", "fk_id_del_set_default"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET DEFAULT(fk_id_del_set_default)",
+            ),
+        )
+
+        meta1.create_all(connection)
+        meta2 = MetaData()
+        fktable = Table("fktable", meta2, autoload_with=connection)
+        fkey_set_null = next(
+            c
+            for c in fktable.foreign_key_constraints
+            if c.name == "fktable_tid_fk_id_del_set_null_fkey"
+        )
+        eq_(fkey_set_null.ondelete, "SET NULL (fk_id_del_set_null)")
+        fkey_set_default = next(
+            c
+            for c in fktable.foreign_key_constraints
+            if c.name == "fktable_tid_fk_id_del_set_default_fkey"
+        )
+        eq_(fkey_set_default.ondelete, "SET DEFAULT (fk_id_del_set_default)")
 
     def test_pg_weirdchar_reflection(self, metadata, connection):
         meta1 = metadata
@@ -1672,6 +1725,54 @@ class ReflectionTest(
             "gin",
         )
 
+    def test_index_reflection_with_operator_class(self, metadata, connection):
+        """reflect indexes with operator class on columns"""
+
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, nullable=False),
+            Column("name", String),
+            Column("alias", String),
+            Column("addr1", INET),
+            Column("addr2", INET),
+        )
+        metadata.create_all(connection)
+
+        # 'name' and 'addr1' use a non-default operator, 'addr2' uses the
+        # default one, and 'alias' uses no operator.
+        connection.exec_driver_sql(
+            "CREATE INDEX ix_t ON t USING btree"
+            " (name text_pattern_ops, alias, addr1 cidr_ops, addr2 inet_ops)"
+        )
+
+        ind = inspect(connection).get_indexes("t", None)
+        expected = [
+            {
+                "unique": False,
+                "column_names": ["name", "alias", "addr1", "addr2"],
+                "name": "ix_t",
+                "dialect_options": {
+                    "postgresql_ops": {
+                        "addr1": "cidr_ops",
+                        "name": "text_pattern_ops",
+                    },
+                },
+            }
+        ]
+        if connection.dialect.server_version_info >= (11, 0):
+            expected[0]["include_columns"] = []
+            expected[0]["dialect_options"]["postgresql_include"] = []
+        eq_(ind, expected)
+
+        m = MetaData()
+        t1 = Table("t", m, autoload_with=connection)
+        r_ind = list(t1.indexes)[0]
+        eq_(
+            r_ind.dialect_options["postgresql"]["ops"],
+            {"name": "text_pattern_ops", "addr1": "cidr_ops"},
+        )
+
     @testing.skip_if("postgresql < 15.0", "nullsnotdistinct not supported")
     def test_nullsnotdistinct(self, metadata, connection):
         Table(
@@ -1721,6 +1822,7 @@ class ReflectionTest(
                 "column_names": ["y"],
                 "name": "unq1",
                 "dialect_options": {
+                    "postgresql_include": [],
                     "postgresql_nulls_not_distinct": True,
                 },
                 "comment": None,
@@ -2134,6 +2236,17 @@ class ReflectionTest(
 
         t = Table("t", MetaData(), autoload_with=connection)
         eq_(t.c.x.type.enums, [])
+
+    def test_enum_starts_with_interval(self, metadata, connection):
+        """Test for #12744"""
+        enum_type = postgresql.ENUM("day", "week", name="intervalunit")
+        t1 = Table("t1", metadata, Column("col", enum_type))
+        t1.create(connection)
+
+        insp = inspect(connection)
+        cols = insp.get_columns("t1")
+        is_true(isinstance(cols[0]["type"], postgresql.ENUM))
+        eq_(cols[0]["type"].enums, ["day", "week"])
 
     def test_reflection_with_unique_constraint(self, metadata, connection):
         insp = inspect(connection)
@@ -2553,12 +2666,63 @@ class ReflectionTest(
             connection.execute(sa_ddl.DropConstraintComment(cst))
         all_none()
 
+    @testing.skip_if("postgresql < 11.0", "not supported")
+    def test_reflection_constraints_with_include(self, connection, metadata):
+        Table(
+            "foo",
+            metadata,
+            Column("id", Integer, nullable=False),
+            Column("value", Integer, nullable=False),
+            Column("foo", String),
+            Column("arr", ARRAY(Integer)),
+            Column("bar", SmallInteger),
+        )
+        metadata.create_all(connection)
+        connection.exec_driver_sql(
+            "ALTER TABLE foo ADD UNIQUE (id) INCLUDE (value)"
+        )
+        connection.exec_driver_sql(
+            "ALTER TABLE foo "
+            "ADD PRIMARY KEY (id) INCLUDE (arr, foo, bar, value)"
+        )
+
+        unq = inspect(connection).get_unique_constraints("foo")
+        expected_unq = [
+            {
+                "column_names": ["id"],
+                "name": "foo_id_value_key",
+                "dialect_options": {
+                    "postgresql_nulls_not_distinct": False,
+                    "postgresql_include": ["value"],
+                },
+                "comment": None,
+            }
+        ]
+        eq_(unq, expected_unq)
+
+        pk = inspect(connection).get_pk_constraint("foo")
+        expected_pk = {
+            "comment": None,
+            "constrained_columns": ["id"],
+            "dialect_options": {
+                "postgresql_include": ["arr", "foo", "bar", "value"]
+            },
+            "name": "foo_pkey",
+        }
+        eq_(pk, expected_pk)
+
 
 class CustomTypeReflectionTest(fixtures.TestBase):
+    class NTL:
+        def __init__(self, enums, domains):
+            self.enums = enums
+            self.domains = domains
+
     class CustomType:
-        def __init__(self, arg1=None, arg2=None):
+        def __init__(self, arg1=None, arg2=None, collation=None):
             self.arg1 = arg1
             self.arg2 = arg2
+            self.collation = collation
 
     ischema_names = None
 
@@ -2584,12 +2748,13 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "format_type": sch,
                 "default": None,
                 "not_null": False,
+                "collation": "cc" if sch == "my_custom_type()" else None,
                 "comment": None,
                 "generated": "",
                 "identity_options": None,
             }
             column_info = dialect._get_columns_info(
-                [row_dict], {}, {}, "public"
+                [row_dict], self.NTL({}, {}), "public"
             )
             assert ("public", "tblname") in column_info
             column_info = column_info[("public", "tblname")]
@@ -2598,6 +2763,10 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             assert isinstance(column_info["type"], self.CustomType)
             eq_(column_info["type"].arg1, args[0])
             eq_(column_info["type"].arg2, args[1])
+            if sch == "my_custom_type()":
+                eq_(column_info["type"].collation, "cc")
+            else:
+                eq_(column_info["type"].collation, None)
 
     def test_clslevel(self):
         postgresql.PGDialect.ischema_names["my_custom_type"] = self.CustomType
@@ -2626,12 +2795,13 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "format_type": None,
                 "default": None,
                 "not_null": False,
+                "collation": None,
                 "comment": None,
                 "generated": "",
                 "identity_options": None,
             }
             column_info = dialect._get_columns_info(
-                [row_dict], {}, {}, "public"
+                [row_dict], self.NTL({}, {}), "public"
             )
             assert ("public", "tblname") in column_info
             column_info = column_info[("public", "tblname")]
@@ -2829,3 +2999,106 @@ class TestReflectDifficultColTypes(fixtures.TablesTest):
         is_true(len(rows) > 0)
         for row in rows:
             self.check_int_list(row, "conkey")
+
+
+class TestTableOptionsReflection(fixtures.TestBase):
+    __only_on__ = "postgresql"
+    __backend__ = True
+
+    def test_table_inherits(self, metadata, connection):
+        def assert_inherits_from(table_name, expect_base_tables):
+            table_options = inspect(connection).get_table_options(table_name)
+            eq_(
+                table_options.get("postgresql_inherits", ()),
+                expect_base_tables,
+            )
+
+        def assert_column_names(table_name, expect_columns):
+            columns = inspect(connection).get_columns(table_name)
+            eq_([c["name"] for c in columns], expect_columns)
+
+        Table("base", metadata, Column("id", INTEGER, primary_key=True))
+        Table("name_mixin", metadata, Column("name", String(16)))
+        Table("single_inherits", metadata, postgresql_inherits="base")
+        Table(
+            "single_inherits_tuple_arg",
+            metadata,
+            postgresql_inherits=("base",),
+        )
+        Table(
+            "inherits_mixin",
+            metadata,
+            postgresql_inherits=("base", "name_mixin"),
+        )
+
+        metadata.create_all(connection)
+
+        assert_inherits_from("base", ())
+        assert_inherits_from("name_mixin", ())
+
+        assert_inherits_from("single_inherits", ("base",))
+        assert_column_names("single_inherits", ["id"])
+
+        assert_inherits_from("single_inherits_tuple_arg", ("base",))
+
+        assert_inherits_from("inherits_mixin", ("base", "name_mixin"))
+        assert_column_names("inherits_mixin", ["id", "name"])
+
+    def test_table_storage_params(self, metadata, connection):
+        def assert_has_storage_param(table_name, option_key, option_value):
+            table_options = inspect(connection).get_table_options(table_name)
+            storage_params = table_options["postgresql_with"]
+            assert isinstance(storage_params, dict)
+            eq_(storage_params[option_key], option_value)
+
+        Table("table_no_storage_params", metadata)
+        Table(
+            "table_with_fillfactor",
+            metadata,
+            postgresql_with={"fillfactor": 10},
+        )
+        Table(
+            "table_with_parallel_workers",
+            metadata,
+            postgresql_with={"parallel_workers": 15},
+        )
+
+        metadata.create_all(connection)
+
+        no_params_options = inspect(connection).get_table_options(
+            "table_no_storage_params"
+        )
+        assert "postgresql_with" not in no_params_options
+
+        assert_has_storage_param("table_with_fillfactor", "fillfactor", "10")
+        assert_has_storage_param(
+            "table_with_parallel_workers", "parallel_workers", "15"
+        )
+
+    def test_table_using_default(self, metadata: MetaData, connection):
+        Table("table_using_heap", metadata, postgresql_using="heap").create(
+            connection
+        )
+        options = inspect(connection).get_table_options("table_using_heap")
+        is_false("postgresql_using" in options)
+
+    def test_table_using_custom(self, metadata: MetaData, connection):
+        if not connection.exec_driver_sql(
+            "SELECT rolsuper FROM pg_roles WHERE rolname = current_user"
+        ).scalar():
+            config.skip_test("superuser required for CREATE ACCESS METHOD")
+        connection.exec_driver_sql(
+            "CREATE ACCESS METHOD myaccessmethod "
+            "TYPE TABLE "
+            "HANDLER heap_tableam_handler"
+        )
+        Table(
+            "table_using_myaccessmethod",
+            metadata,
+            postgresql_using="myaccessmethod",
+        ).create(connection)
+
+        options = inspect(connection).get_table_options(
+            "table_using_myaccessmethod"
+        )
+        eq_(options["postgresql_using"], "myaccessmethod")

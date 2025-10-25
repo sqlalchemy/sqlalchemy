@@ -52,7 +52,8 @@ decorator.
 Dataclass conversion may be added to any Declarative class either by adding the
 :class:`_orm.MappedAsDataclass` mixin to a :class:`_orm.DeclarativeBase` class
 hierarchy, or for decorator mapping by using the
-:meth:`_orm.registry.mapped_as_dataclass` class decorator.
+:meth:`_orm.registry.mapped_as_dataclass` class decorator or its
+functional variant :func:`_orm.mapped_as_dataclass`.
 
 The :class:`_orm.MappedAsDataclass` mixin may be applied either
 to the Declarative ``Base`` class or any superclass, as in the example
@@ -95,7 +96,7 @@ Or may be applied directly to classes that extend from the Declarative base::
         id: Mapped[int] = mapped_column(init=False, primary_key=True)
         name: Mapped[str]
 
-When using the decorator form, only the :meth:`_orm.registry.mapped_as_dataclass`
+When using the decorator form, the :meth:`_orm.registry.mapped_as_dataclass`
 decorator is supported::
 
     from sqlalchemy.orm import Mapped
@@ -112,6 +113,28 @@ decorator is supported::
 
         id: Mapped[int] = mapped_column(init=False, primary_key=True)
         name: Mapped[str]
+
+The same method is available in a standalone function form, which may
+have better compatibility with some versions of the mypy type checker::
+
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+
+
+    reg = registry()
+
+
+    @mapped_as_dataclass(reg)
+    class User:
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(init=False, primary_key=True)
+        name: Mapped[str]
+
+.. versionadded:: 2.0.44 Added :func:`_orm.mapped_as_dataclass` after observing
+   mypy compatibility issues with the method form of the same feature
 
 Class level feature configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,8 +165,9 @@ class configuration arguments are passed as class-level parameters::
         id: Mapped[int] = mapped_column(init=False, primary_key=True)
         name: Mapped[str]
 
-When using the decorator form with :meth:`_orm.registry.mapped_as_dataclass`,
-class configuration arguments are passed to the decorator directly::
+When using the decorator form with :meth:`_orm.registry.mapped_as_dataclass` or
+:func:`_orm.mapped_as_dataclass`, class configuration arguments are passed to
+the decorator directly::
 
     from sqlalchemy.orm import registry
     from sqlalchemy.orm import Mapped
@@ -208,13 +232,14 @@ and ``fullname`` is optional.  The ``id`` field, which we expect to be
 database-generated, is not part of the constructor at all::
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
 
@@ -245,13 +270,14 @@ but where the parameter is optional in the constructor::
 
     from sqlalchemy import func
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
 
@@ -300,6 +326,7 @@ emit a deprecation warning::
     from typing import Annotated
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
@@ -309,7 +336,7 @@ emit a deprecation warning::
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
         id: Mapped[intpk]
@@ -325,6 +352,7 @@ the other arguments can remain within the ``Annotated`` construct::
     from typing import Annotated
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
@@ -333,7 +361,7 @@ the other arguments can remain within the ``Annotated`` construct::
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
 
@@ -348,15 +376,19 @@ the other arguments can remain within the ``Annotated`` construct::
 Using mixins and abstract superclasses
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Any mixins or base classes that are used in a :class:`_orm.MappedAsDataclass`
-mapped class which include :class:`_orm.Mapped` attributes must themselves be
-part of a :class:`_orm.MappedAsDataclass`
-hierarchy, such as in the example below using a mixin::
+Mixin and abstract superclass are supported with the Declarative Dataclass
+Mapping by defining classes that are part of the :class:`_orm.MappedAsDataclass`
+hierarchy, either without including a declarative base or by setting
+``__abstract__ = True``.  The example below illustrates a class ``Mixin`` that is
+not itself mapped, but serves as part of the base for a mapped class::
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import MappedAsDataclass
 
 
     class Mixin(MappedAsDataclass):
         create_user: Mapped[int] = mapped_column()
-        update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+        update_user: Mapped[Optional[int]] = mapped_column(default=None)
 
 
     class Base(DeclarativeBase, MappedAsDataclass):
@@ -372,22 +404,79 @@ hierarchy, such as in the example below using a mixin::
         username: Mapped[str] = mapped_column()
         email: Mapped[str] = mapped_column()
 
-Python type checkers which support :pep:`681` will otherwise not consider
-attributes from non-dataclass mixins to be part of the dataclass.
+.. tip::
 
-.. deprecated:: 2.0.8  Using mixins and abstract bases within
-   :class:`_orm.MappedAsDataclass` or
-   :meth:`_orm.registry.mapped_as_dataclass` hierarchies which are not
-   themselves dataclasses is deprecated, as these fields are not supported
-   by :pep:`681` as belonging to the dataclass.  A warning is emitted for this
-   case which will later be an error.
+    When using :class:`_orm.MappedAsDataclass` without a declarative base in
+    the hiearchy, the target class is still turned into a real Python dataclass,
+    so that it may properly serve as a base for a mapped dataclass.   Using
+    :class:`_orm.MappedAsDataclass` (or the :func:`_orm.unmapped_dataclass` decorator
+    described later in this section) is required in order for the class to be correctly
+    recognized by type checkers as SQLAlchemy-enabled dataclasses.   Declarative
+    itself will reject mixins / abstract classes that are not themselves
+    Declarative Dataclasses (e.g. they can't be plain classes nor can they be
+    plain ``@dataclass`` classes).
 
-   .. seealso::
+    .. seealso::
 
-       :ref:`error_dcmx` - background on rationale
+        :ref:`error_dcmx` - further background
+
+Another example, where an abstract base combines :class:`_orm.MappedAsDataclass`
+with ``__abstract__ = True``::
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import MappedAsDataclass
 
 
+    class Base(DeclarativeBase, MappedAsDataclass):
+        pass
 
+
+    class AbstractUser(Base):
+        __abstract__ = True
+
+        create_user: Mapped[int] = mapped_column()
+        update_user: Mapped[Optional[int]] = mapped_column(default=None)
+
+
+    class User(AbstractUser):
+        __tablename__ = "sys_user"
+
+        uid: Mapped[str] = mapped_column(
+            String(50), init=False, default_factory=uuid4, primary_key=True
+        )
+        username: Mapped[str] = mapped_column()
+        email: Mapped[str] = mapped_column()
+
+Finally, for a hierarchy that's based on use of the :func:`_orm.mapped_as_dataclass`
+decorator, mixins may be defined using the :func:`_orm.unmapped_dataclass` decorator::
+
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm import mapped_as_dataclass
+    from sqlalchemy.orm import unmapped_dataclass
+
+
+    @unmapped_dataclass()
+    class Mixin:
+        create_user: Mapped[int] = mapped_column()
+        update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+
+
+    reg = registry()
+
+
+    @mapped_as_dataclass(reg)
+    class User(Mixin):
+        __tablename__ = "sys_user"
+
+        uid: Mapped[str] = mapped_column(
+            String(50), init=False, default_factory=uuid4, primary_key=True
+        )
+        username: Mapped[str] = mapped_column()
+        email: Mapped[str] = mapped_column()
+
+.. versionadded:: 2.1 Added :func:`_orm.unmapped_dataclass`
+
+.. _orm_declarative_dc_relationships:
 
 Relationship Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -405,6 +494,7 @@ scalar object references may make use of
 
     from sqlalchemy import ForeignKey
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
     from sqlalchemy.orm import relationship
@@ -412,7 +502,7 @@ scalar object references may make use of
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class Parent:
         __tablename__ = "parent"
         id: Mapped[int] = mapped_column(primary_key=True)
@@ -421,7 +511,7 @@ scalar object references may make use of
         )
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class Child:
         __tablename__ = "child"
         id: Mapped[int] = mapped_column(primary_key=True)
@@ -454,13 +544,14 @@ of the object, but will not be persisted by the ORM::
 
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class Data:
         __tablename__ = "data"
 
@@ -489,13 +580,14 @@ function, such as `bcrypt <https://pypi.org/project/bcrypt/>`_ or
     from typing import Optional
 
     from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
     reg = registry()
 
 
-    @reg.mapped_as_dataclass
+    @mapped_as_dataclass(reg)
     class User:
         __tablename__ = "user_account"
 
@@ -547,7 +639,8 @@ Integrating with Alternate Dataclass Providers such as Pydantic
     details which **explicitly resolve** these incompatibilities.
 
 SQLAlchemy's :class:`_orm.MappedAsDataclass` class
-and :meth:`_orm.registry.mapped_as_dataclass` method call directly into
+:meth:`_orm.registry.mapped_as_dataclass` method, and
+:func:`_orm.mapped_as_dataclass` functions call directly into
 the Python standard library ``dataclasses.dataclass`` class decorator, after
 the declarative mapping process has been applied to the class.  This
 function call may be swapped out for alternateive dataclasses providers,
@@ -933,6 +1026,11 @@ applies when using this mapping style.
 Applying ORM mappings to an existing attrs class
 -------------------------------------------------
 
+.. warning:: The ``attrs`` library is not part of SQLAlchemy's continuous
+   integration testing, and compatibility with this library may change without
+   notice due to incompatibilities introduced by either side.
+
+
 The attrs_ library is a popular third party library that provides similar
 features as dataclasses, with many additional features provided not
 found in ordinary dataclasses.
@@ -942,103 +1040,27 @@ initiates a process to scan the class for attributes that define the class'
 behavior, which are then used to generate methods, documentation, and
 annotations.
 
-The SQLAlchemy ORM supports mapping an attrs_ class using **Declarative with
-Imperative Table** or **Imperative** mapping. The general form of these two
-styles is fully equivalent to the
-:ref:`orm_declarative_dataclasses_declarative_table` and
-:ref:`orm_declarative_dataclasses_imperative_table` mapping forms used with
-dataclasses, where the inline attribute directives used by dataclasses or attrs
-are unchanged, and SQLAlchemy's table-oriented instrumentation is applied at
-runtime.
+The SQLAlchemy ORM supports mapping an attrs_ class using **Imperative** mapping.
+The general form of this style is equivalent to the
+:ref:`orm_imperative_dataclasses` mapping form used with
+dataclasses, where the class construction uses ``attrs`` alone, with ORM mappings
+applied after the fact without any class attribute scanning.
 
 The ``@define`` decorator of attrs_ by default replaces the annotated class
 with a new __slots__ based class, which is not supported. When using the old
 style annotation ``@attr.s`` or using ``define(slots=False)``, the class
-does not get replaced. Furthermore attrs removes its own class-bound attributes
+does not get replaced. Furthermore ``attrs`` removes its own class-bound attributes
 after the decorator runs, so that SQLAlchemy's mapping process takes over these
 attributes without any issue. Both decorators, ``@attr.s`` and ``@define(slots=False)``
 work with SQLAlchemy.
 
-Mapping attrs with Declarative "Imperative Table"
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. versionchanged:: 2.0  SQLAlchemy integration with ``attrs`` works only
+   with imperative mapping style, that is, not using Declarative.
+   The introduction of ORM Annotated Declarative style is not cross-compatible
+   with ``attrs``.
 
-In the "Declarative with Imperative Table" style, a :class:`_schema.Table`
-object is declared inline with the declarative class.   The
-``@define`` decorator is applied to the class first, then the
-:meth:`_orm.registry.mapped` decorator second::
-
-    from __future__ import annotations
-
-    from typing import List
-    from typing import Optional
-
-    from attrs import define
-    from sqlalchemy import Column
-    from sqlalchemy import ForeignKey
-    from sqlalchemy import Integer
-    from sqlalchemy import MetaData
-    from sqlalchemy import String
-    from sqlalchemy import Table
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import registry
-    from sqlalchemy.orm import relationship
-
-    mapper_registry = registry()
-
-
-    @mapper_registry.mapped
-    @define(slots=False)
-    class User:
-        __table__ = Table(
-            "user",
-            mapper_registry.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("name", String(50)),
-            Column("FullName", String(50), key="fullname"),
-            Column("nickname", String(12)),
-        )
-        id: Mapped[int]
-        name: Mapped[str]
-        fullname: Mapped[str]
-        nickname: Mapped[str]
-        addresses: Mapped[List[Address]]
-
-        __mapper_args__ = {  # type: ignore
-            "properties": {
-                "addresses": relationship("Address"),
-            }
-        }
-
-
-    @mapper_registry.mapped
-    @define(slots=False)
-    class Address:
-        __table__ = Table(
-            "address",
-            mapper_registry.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("user_id", Integer, ForeignKey("user.id")),
-            Column("email_address", String(50)),
-        )
-        id: Mapped[int]
-        user_id: Mapped[int]
-        email_address: Mapped[Optional[str]]
-
-.. note:: The ``attrs`` ``slots=True`` option, which enables ``__slots__`` on
-   a mapped class, cannot be used with SQLAlchemy mappings without fully
-   implementing alternative
-   :ref:`attribute instrumentation <examples_instrumentation>`, as mapped
-   classes normally rely upon direct access to ``__dict__`` for state storage.
-   Behavior is undefined when this option is present.
-
-
-
-Mapping attrs with Imperative Mapping
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Just as is the case with dataclasses, we can make use of
-:meth:`_orm.registry.map_imperatively` to map an existing ``attrs`` class
-as well::
+The ``attrs`` class is built first.  The SQLAlchemy ORM mapping can be
+applied after the fact using :meth:`_orm.registry.map_imperatively`::
 
     from __future__ import annotations
 
@@ -1101,11 +1123,6 @@ as well::
     )
 
     mapper_registry.map_imperatively(Address, address)
-
-The above form is equivalent to the previous example using
-Declarative with Imperative Table.
-
-
 
 .. _dataclass: https://docs.python.org/3/library/dataclasses.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html

@@ -7,7 +7,9 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
+from types import ModuleType
 from typing import Any
+from typing import Dict
 from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING
@@ -21,14 +23,16 @@ from ...sql import roles
 from ...sql import sqltypes
 from ...sql import type_api
 from ...sql.base import _NoArg
+from ...sql.ddl import CheckFirst
 from ...sql.ddl import InvokeCreateDDLBase
 from ...sql.ddl import InvokeDropDDLBase
 
 if TYPE_CHECKING:
+    from ...sql._typing import _CreateDropBind
     from ...sql._typing import _TypeEngineArgument
 
 
-class NamedType(sqltypes.TypeEngine):
+class NamedType(schema.SchemaVisitable, sqltypes.TypeEngine):
     """Base for named types."""
 
     __abstract__ = True
@@ -36,7 +40,9 @@ class NamedType(sqltypes.TypeEngine):
     DDLDropper: Type[NamedTypeDropper]
     create_type: bool
 
-    def create(self, bind, checkfirst=True, **kw):
+    def create(
+        self, bind: _CreateDropBind, checkfirst: bool = True, **kw: Any
+    ) -> None:
         """Emit ``CREATE`` DDL for this type.
 
         :param bind: a connectable :class:`_engine.Engine`,
@@ -50,7 +56,9 @@ class NamedType(sqltypes.TypeEngine):
         """
         bind._run_ddl_visitor(self.DDLGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind, checkfirst=True, **kw):
+    def drop(
+        self, bind: _CreateDropBind, checkfirst: bool = True, **kw: Any
+    ) -> None:
         """Emit ``DROP`` DDL for this type.
 
         :param bind: a connectable :class:`_engine.Engine`,
@@ -63,7 +71,9 @@ class NamedType(sqltypes.TypeEngine):
         """
         bind._run_ddl_visitor(self.DDLDropper, self, checkfirst=checkfirst)
 
-    def _check_for_name_in_memos(self, checkfirst, kw):
+    def _check_for_name_in_memos(
+        self, checkfirst: CheckFirst, kw: Dict[str, Any]
+    ) -> bool:
         """Look in the 'ddl runner' for 'memos', then
         note our name in that collection.
 
@@ -87,31 +97,48 @@ class NamedType(sqltypes.TypeEngine):
         else:
             return False
 
-    def _on_table_create(self, target, bind, checkfirst=False, **kw):
-        if (
-            checkfirst
-            or (
-                not self.metadata
-                and not kw.get("_is_metadata_operation", False)
-            )
-        ) and not self._check_for_name_in_memos(checkfirst, kw):
-            self.create(bind=bind, checkfirst=checkfirst)
-
-    def _on_table_drop(self, target, bind, checkfirst=False, **kw):
-        if (
-            not self.metadata
-            and not kw.get("_is_metadata_operation", False)
-            and not self._check_for_name_in_memos(checkfirst, kw)
-        ):
-            self.drop(bind=bind, checkfirst=checkfirst)
-
-    def _on_metadata_create(self, target, bind, checkfirst=False, **kw):
+    def _on_table_create(
+        self,
+        target: schema.Table,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+        **kw: Any,
+    ) -> None:
+        checkfirst = CheckFirst(checkfirst) & CheckFirst.TYPES
         if not self._check_for_name_in_memos(checkfirst, kw):
-            self.create(bind=bind, checkfirst=checkfirst)
+            self.create(bind=bind, checkfirst=bool(checkfirst))
 
-    def _on_metadata_drop(self, target, bind, checkfirst=False, **kw):
+    def _on_table_drop(
+        self,
+        target: Any,
+        bind: _CreateDropBind,
+        checkfirst: CheckFirst = CheckFirst.NONE,
+        **kw: Any,
+    ) -> None:
+        # do nothing since the enum is attached to a metadata
+        assert self.metadata is not None
+
+    def _on_metadata_create(
+        self,
+        target: schema.MetaData,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+        **kw: Any,
+    ) -> None:
+        checkfirst = CheckFirst(checkfirst) & CheckFirst.TYPES
         if not self._check_for_name_in_memos(checkfirst, kw):
-            self.drop(bind=bind, checkfirst=checkfirst)
+            self.create(bind=bind, checkfirst=bool(checkfirst))
+
+    def _on_metadata_drop(
+        self,
+        target: schema.MetaData,
+        bind: _CreateDropBind,
+        checkfirst: Union[bool, CheckFirst] = CheckFirst.NONE,
+        **kw: Any,
+    ) -> None:
+        checkfirst = CheckFirst(checkfirst) & CheckFirst.TYPES
+        if not self._check_for_name_in_memos(checkfirst, kw):
+            self.drop(bind=bind, checkfirst=bool(checkfirst))
 
 
 class NamedTypeGenerator(InvokeCreateDDLBase):
@@ -174,16 +201,12 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
     type as the implementation, so the special create/drop rules
     will be used.
 
-    The create/drop behavior of ENUM is necessarily intricate, due to the
-    awkward relationship the ENUM type has in relationship to the
-    parent table, in that it may be "owned" by just a single table, or
-    may be shared among many tables.
+    The create/drop behavior of ENUM tries to follow the PostgreSQL behavior,
+    with an usability improvement indicated below.
 
     When using :class:`_types.Enum` or :class:`_postgresql.ENUM`
-    in an "inline" fashion, the ``CREATE TYPE`` and ``DROP TYPE`` is emitted
-    corresponding to when the :meth:`_schema.Table.create` and
-    :meth:`_schema.Table.drop`
-    methods are called::
+    in an "inline" fashion, the ``CREATE TYPE`` is emitted
+    corresponding to when the :meth:`_schema.Table.create` method is called::
 
         table = Table(
             "sometable",
@@ -191,13 +214,19 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
             Column("some_enum", ENUM("a", "b", "c", name="myenum")),
         )
 
-        table.create(engine)  # will emit CREATE ENUM and CREATE TABLE
-        table.drop(engine)  # will emit DROP TABLE and DROP ENUM
+        # will check if enum exists and emit CREATE ENUM then CREATE TABLE
+        table.create(engine)
+        table.drop(engine)  # will *not* drop the enum.
+
+    The enum will not be dropped when the table is dropped, since it's
+    associated with the metadata, not the table itself. Call drop on the
+    :class:`_postgresql.ENUM` directly to drop the type::
+
+        metadata.get_schema_object_by_name("enum", "myenum").drop(engine)
 
     To use a common enumerated type between multiple tables, the best
     practice is to declare the :class:`_types.Enum` or
-    :class:`_postgresql.ENUM` independently, and associate it with the
-    :class:`_schema.MetaData` object itself::
+    :class:`_postgresql.ENUM` independently::
 
         my_enum = ENUM("a", "b", "c", name="myenum", metadata=metadata)
 
@@ -205,20 +234,13 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
 
         t2 = Table("sometable_two", metadata, Column("some_enum", myenum))
 
-    When this pattern is used, care must still be taken at the level
-    of individual table creates.  Emitting CREATE TABLE without also
-    specifying ``checkfirst=True`` will still cause issues::
+    Like before, the type will be created if it does not exist::
 
-        t1.create(engine)  # will fail: no such type 'myenum'
+        # will check if enum exists and emit CREATE ENUM then CREATE TABLE
+        t1.create(engine)
 
-    If we specify ``checkfirst=True``, the individual table-level create
-    operation will check for the ``ENUM`` and create if not exists::
-
-        # will check if enum exists, and emit CREATE TYPE if not
-        t1.create(engine, checkfirst=True)
-
-    When using a metadata-level ENUM type, the type will always be created
-    and dropped if either the metadata-wide create/drop is called::
+    The type will always be created and dropped if either the metadata-wide
+    create/drop is called::
 
         metadata.create_all(engine)  # will emit CREATE TYPE
         metadata.drop_all(engine)  # will emit DROP TYPE
@@ -227,6 +249,16 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
 
         my_enum.create(engine)
         my_enum.drop(engine)
+
+    .. versionchanged:: 2.1 The behavior of :class:`_postgresql.ENUM` and
+      other named types has been changed to better reflect how PostgreSQL
+      handles CREATE TYPE and DROP TYPE operations.
+      Named types are still created when needed during table
+      creation if they do not already exist. However, they are no longer
+      dropped for an individual :meth:`.Table.drop` operation, since the type
+      may be referenced by other tables as well.  Instead,
+      :meth:`.Enum.drop` may be used or :meth:`.MetaData.drop_all` will drop
+      all associated types.
 
     """
 
@@ -251,9 +283,7 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
          Indicates that ``CREATE TYPE`` should be
          emitted, after optionally checking for the
          presence of the type, when the parent
-         table is being created; and additionally
-         that ``DROP TYPE`` is called when the table
-         is dropped.    When ``False``, no check
+         table is being created.    When ``False``, no check
          will be performed and no ``CREATE TYPE``
          or ``DROP TYPE`` is emitted, unless
          :meth:`~.postgresql.ENUM.create`
@@ -275,9 +305,9 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
                 "always refers to ENUM.   Use sqlalchemy.types.Enum for "
                 "non-native enum."
             )
-        self.create_type = create_type
         if name is not _NoArg.NO_ARG:
             kw["name"] = name
+        kw["create_type"] = create_type
         super().__init__(*enums, **kw)
 
     def coerce_compared_value(self, op, value):
@@ -302,19 +332,17 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
         """
         kw.setdefault("validate_strings", impl.validate_strings)
         kw.setdefault("name", impl.name)
+        kw.setdefault("create_type", impl.create_type)
         kw.setdefault("schema", impl.schema)
-        kw.setdefault("inherit_schema", impl.inherit_schema)
         kw.setdefault("metadata", impl.metadata)
         kw.setdefault("_create_events", False)
         kw.setdefault("values_callable", impl.values_callable)
         kw.setdefault("omit_aliases", impl._omit_aliases)
         kw.setdefault("_adapted_from", impl)
-        if type_api._is_native_for_emulated(impl.__class__):
-            kw.setdefault("create_type", impl.create_type)
 
         return cls(**kw)
 
-    def create(self, bind=None, checkfirst=True):
+    def create(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
         """Emit ``CREATE TYPE`` for this
         :class:`_postgresql.ENUM`.
 
@@ -335,7 +363,7 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
 
         super().create(bind, checkfirst=checkfirst)
 
-    def drop(self, bind=None, checkfirst=True):
+    def drop(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
         """Emit ``DROP TYPE`` for this
         :class:`_postgresql.ENUM`.
 
@@ -355,7 +383,7 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
 
         super().drop(bind, checkfirst=checkfirst)
 
-    def get_dbapi_type(self, dbapi):
+    def get_dbapi_type(self, dbapi: ModuleType) -> None:
         """dont return dbapi.STRING for ENUM in PostgreSQL, since that's
         a different type"""
 
@@ -392,6 +420,9 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
             Text,
             check="VALUE ~ '^\d{5}$' OR VALUE ~ '^\d{5}-\d{4}$'",
         )
+
+    :class:`_postgresql.DOMAIN` has the same create/drop behavior specified
+    in :class:`_postgresql.ENUM`.
 
     See the `PostgreSQL documentation`__ for additional details
 
@@ -463,26 +494,11 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         if check is not None:
             check = coercions.expect(roles.DDLExpressionRole, check)
         self.check = check
-        self.create_type = create_type
-        super().__init__(name=name, **kw)
+        super().__init__(name=name, create_type=create_type, **kw)
 
     @classmethod
     def __test_init__(cls):
         return cls("name", sqltypes.Integer)
-
-    def adapt(self, impl, **kw):
-        if self.default:
-            kw["default"] = self.default
-        if self.constraint_name is not None:
-            kw["constraint_name"] = self.constraint_name
-        if self.not_null:
-            kw["not_null"] = self.not_null
-        if self.check is not None:
-            kw["check"] = str(self.check)
-        if self.create_type:
-            kw["create_type"] = self.create_type
-
-        return super().adapt(impl, **kw)
 
 
 class CreateEnumType(schema._CreateDropBase):

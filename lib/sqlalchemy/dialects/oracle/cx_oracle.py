@@ -117,12 +117,6 @@ symbol::
         "oracle+cx_oracle://user:pass@dsn?encoding=UTF-8&nencoding=UTF-8&mode=SYSDBA&events=true"
     )
 
-.. versionchanged:: 1.3 the cx_Oracle dialect now accepts all argument names
-   within the URL string itself, to be passed to the cx_Oracle DBAPI.   As
-   was the case earlier but not correctly documented, the
-   :paramref:`_sa.create_engine.connect_args` parameter also accepts all
-   cx_Oracle DBAPI connect arguments.
-
 To pass arguments directly to ``.connect()`` without using the query
 string, use the :paramref:`_sa.create_engine.connect_args` dictionary.
 Any cx_Oracle parameter value and/or constant may be passed, such as::
@@ -323,12 +317,6 @@ set, the two options are to use the :class:`_types.NCHAR` and
 the SQLAlchemy dialect to use NCHAR/NCLOB for the :class:`.Unicode` /
 :class:`.UnicodeText` datatypes instead of VARCHAR/CLOB.
 
-.. versionchanged:: 1.3 The :class:`.Unicode` and :class:`.UnicodeText`
-   datatypes now correspond to the ``VARCHAR2`` and ``CLOB`` Oracle Database
-   datatypes unless the ``use_nchar_for_unicode=True`` is passed to the dialect
-   when :func:`_sa.create_engine` is called.
-
-
 .. _cx_oracle_unicode_encoding_errors:
 
 Encoding Errors
@@ -342,9 +330,6 @@ handled.  The value is ultimately consumed by the Python `decode
 is passed both via cx_Oracle's ``encodingErrors`` parameter consumed by
 ``Cursor.var()``, as well as SQLAlchemy's own decoding function, as the
 cx_Oracle dialect makes use of both under different circumstances.
-
-.. versionadded:: 1.3.11
-
 
 .. _cx_oracle_setinputsizes:
 
@@ -371,9 +356,6 @@ On the SQLAlchemy side, the :meth:`.DialectEvents.do_setinputsizes` event can
 be used both for runtime visibility (e.g. logging) of the setinputsizes step as
 well as to fully control how ``setinputsizes()`` is used on a per-statement
 basis.
-
-.. versionadded:: 1.2.9 Added :meth:`.DialectEvents.setinputsizes`
-
 
 Example 1 - logging all setinputsizes calls
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -483,10 +465,6 @@ disable this coercion to decimal for performance reasons, pass the flag
 The ``coerce_to_decimal`` flag only impacts the results of plain string
 SQL statements that are not otherwise associated with a :class:`.Numeric`
 SQLAlchemy type (or a subclass of such).
-
-.. versionchanged:: 1.2  The numeric handling system for cx_Oracle has been
-   reworked to take advantage of newer cx_Oracle features as well
-   as better integration of outputtypehandlers.
 
 """  # noqa
 from __future__ import annotations
@@ -1089,28 +1067,14 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     execute_sequence_format = list
 
-    _cx_oracle_threaded = None
-
     _cursor_var_unicode_kwargs = util.immutabledict()
 
-    @util.deprecated_params(
-        threaded=(
-            "1.3",
-            "The 'threaded' parameter to the cx_oracle/oracledb dialect "
-            "is deprecated as a dialect-level argument, and will be removed "
-            "in a future release.  As of version 1.3, it defaults to False "
-            "rather than True.  The 'threaded' option can be passed to "
-            "cx_Oracle directly in the URL query string passed to "
-            ":func:`_sa.create_engine`.",
-        )
-    )
     def __init__(
         self,
         auto_convert_lobs=True,
         coerce_to_decimal=True,
         arraysize=None,
         encoding_errors=None,
-        threaded=None,
         **kwargs,
     ):
         OracleDialect.__init__(self, **kwargs)
@@ -1120,8 +1084,6 @@ class OracleDialect_cx_oracle(OracleDialect):
             self._cursor_var_unicode_kwargs = {
                 "encodingErrors": encoding_errors
             }
-        if threaded is not None:
-            self._cx_oracle_threaded = threaded
         self.auto_convert_lobs = auto_convert_lobs
         self.coerce_to_decimal = coerce_to_decimal
         if self._use_nchar_for_unicode:
@@ -1241,6 +1203,9 @@ class OracleDialect_cx_oracle(OracleDialect):
             dbapi_connection.rollback()
             with dbapi_connection.cursor() as cursor:
                 cursor.execute(f"ALTER SESSION SET ISOLATION_LEVEL={level}")
+
+    def detect_autocommit_setting(self, dbapi_conn) -> bool:
+        return bool(dbapi_conn.autocommit)
 
     def _detect_decimal_char(self, connection):
         # we have the option to change this setting upon connect,
@@ -1395,17 +1360,6 @@ class OracleDialect_cx_oracle(OracleDialect):
     def create_connect_args(self, url):
         opts = dict(url.query)
 
-        for opt in ("use_ansi", "auto_convert_lobs"):
-            if opt in opts:
-                util.warn_deprecated(
-                    f"{self.driver} dialect option {opt!r} should only be "
-                    "passed to create_engine directly, not within the URL "
-                    "string",
-                    version="1.3",
-                )
-                util.coerce_kw_type(opts, opt, bool)
-                setattr(self, opt, opts.pop(opt))
-
         database = url.database
         service_name = opts.pop("service_name", None)
         if database or service_name:
@@ -1437,9 +1391,6 @@ class OracleDialect_cx_oracle(OracleDialect):
             opts["password"] = url.password
         if url.username is not None:
             opts["user"] = url.username
-
-        if self._cx_oracle_threaded is not None:
-            opts.setdefault("threaded", self._cx_oracle_threaded)
 
         def convert_cx_oracle_constant(value):
             if isinstance(value, str):

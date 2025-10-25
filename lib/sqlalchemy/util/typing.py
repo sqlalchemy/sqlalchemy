@@ -13,14 +13,17 @@ from collections import deque
 import collections.abc as collections_abc
 import re
 import sys
+from types import NoneType
 import typing
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Dict
 from typing import ForwardRef
 from typing import Generic
+from typing import get_args
+from typing import get_origin
 from typing import Iterable
+from typing import Literal
 from typing import Mapping
 from typing import NewType
 from typing import NoReturn
@@ -31,31 +34,25 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeGuard
 from typing import TypeVar
 from typing import Union
+
+import typing_extensions
 
 from . import compat
 
 if True:  # zimports removes the tailing comments
-    from typing_extensions import Annotated as Annotated  # 3.9
-    from typing_extensions import Concatenate as Concatenate  # 3.10
     from typing_extensions import (
         dataclass_transform as dataclass_transform,  # 3.11,
     )
-    from typing_extensions import get_args as get_args  # 3.10
-    from typing_extensions import get_origin as get_origin  # 3.10
-    from typing_extensions import (
-        Literal as Literal,
-    )  # 3.8 but has bugs before 3.10
     from typing_extensions import NotRequired as NotRequired  # 3.11
-    from typing_extensions import ParamSpec as ParamSpec  # 3.10
-    from typing_extensions import TypeAlias as TypeAlias  # 3.10
-    from typing_extensions import TypeGuard as TypeGuard  # 3.10
     from typing_extensions import TypeVarTuple as TypeVarTuple  # 3.11
     from typing_extensions import Self as Self  # 3.11
     from typing_extensions import TypeAliasType as TypeAliasType  # 3.12
     from typing_extensions import Unpack as Unpack  # 3.11
     from typing_extensions import Never as Never  # 3.11
+    from typing_extensions import LiteralString as LiteralString  # 3.11
 
 
 _T = TypeVar("_T", bound=Any)
@@ -67,23 +64,17 @@ _VT_co = TypeVar("_VT_co", covariant=True)
 
 TupleAny = Tuple[Any, ...]
 
-# typing_extensions.Literal is different from typing.Literal until
-# Python 3.10.1
-LITERAL_TYPES = frozenset([typing.Literal, Literal])
 
-
-if compat.py310:
-    # why they took until py310 to put this in stdlib is beyond me,
-    # I've been wanting it since py27
-    from types import NoneType as NoneType
-else:
-    NoneType = type(None)  # type: ignore
-
-NoneFwd = ForwardRef("None")
+def is_fwd_none(typ: Any) -> bool:
+    return isinstance(typ, ForwardRef) and typ.__forward_arg__ == "None"
 
 
 _AnnotationScanType = Union[
     Type[Any], str, ForwardRef, NewType, TypeAliasType, "GenericProtocol[Any]"
+]
+
+_MatchedOnType = Union[
+    "GenericProtocol[Any]", TypeAliasType, NewType, Type[Any]
 ]
 
 
@@ -330,7 +321,7 @@ def resolve_name_to_real_class_name(name: str, module_name: str) -> str:
 
 
 def is_pep593(type_: Optional[Any]) -> bool:
-    return type_ is not None and get_origin(type_) is Annotated
+    return type_ is not None and get_origin(type_) in _type_tuples.Annotated
 
 
 def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
@@ -340,14 +331,11 @@ def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
 
 
 def is_literal(type_: Any) -> bool:
-    return get_origin(type_) in LITERAL_TYPES
+    return get_origin(type_) in _type_tuples.Literal
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
-    return hasattr(type_, "__supertype__")
-    # doesn't work in 3.9, 3.8, 3.7 as it passes a closure, not an
-    # object instance
-    # return isinstance(type_, NewType)
+    return isinstance(type_, _type_tuples.NewType)
 
 
 def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
@@ -355,7 +343,13 @@ def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
 
 
 def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
-    return isinstance(type_, TypeAliasType)
+    # NOTE: a generic TAT does not instance check as TypeAliasType outside of
+    # python 3.10. For sqlalchemy use cases it's fine to consider it a TAT
+    # though.
+    # NOTE: things seems to work also without this additional check
+    if is_generic(type_):
+        return is_pep695(type_.__origin__)
+    return isinstance(type_, _type_instances.TypeAliasType)
 
 
 def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
@@ -367,15 +361,15 @@ def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
     """
     _seen = set()
 
-    def recursive_value(type_):
-        if type_ in _seen:
+    def recursive_value(inner_type):
+        if inner_type in _seen:
             # recursion are not supported (at least it's flagged as
             # an error by pyright). Just avoid infinite loop
-            return type_
-        _seen.add(type_)
-        if not is_pep695(type_):
-            return type_
-        value = type_.__value__
+            return inner_type
+        _seen.add(inner_type)
+        if not is_pep695(inner_type):
+            return inner_type
+        value = inner_type.__value__
         if not is_union(value):
             return value
         return [recursive_value(t) for t in value.__args__]
@@ -389,20 +383,36 @@ def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
             if isinstance(t, list):
                 stack.extend(t)
             else:
-                types.add(None if t in {NoneType, NoneFwd} else t)
+                types.add(None if t is NoneType or is_fwd_none(t) else t)
         return types
     else:
         return {res}
+
+
+@overload
+def is_fwd_ref(
+    type_: _AnnotationScanType,
+    check_generic: bool = ...,
+    check_for_plain_string: Literal[False] = ...,
+) -> TypeGuard[ForwardRef]: ...
+
+
+@overload
+def is_fwd_ref(
+    type_: _AnnotationScanType,
+    check_generic: bool = ...,
+    check_for_plain_string: bool = ...,
+) -> TypeGuard[Union[str, ForwardRef]]: ...
 
 
 def is_fwd_ref(
     type_: _AnnotationScanType,
     check_generic: bool = False,
     check_for_plain_string: bool = False,
-) -> TypeGuard[ForwardRef]:
+) -> TypeGuard[Union[str, ForwardRef]]:
     if check_for_plain_string and isinstance(type_, str):
         return True
-    elif isinstance(type_, ForwardRef):
+    elif isinstance(type_, _type_instances.ForwardRef):
         return True
     elif check_generic and is_generic(type_):
         return any(
@@ -424,6 +434,10 @@ def de_optionalize_union_types(type_: Type[Any]) -> Type[Any]: ...
 
 
 @overload
+def de_optionalize_union_types(type_: _MatchedOnType) -> _MatchedOnType: ...
+
+
+@overload
 def de_optionalize_union_types(
     type_: _AnnotationScanType,
 ) -> _AnnotationScanType: ...
@@ -441,10 +455,11 @@ def de_optionalize_union_types(
         return _de_optionalize_fwd_ref_union_types(type_, False)
 
     elif is_union(type_) and includes_none(type_):
-        typ = set(type_.__args__)
-
-        typ.discard(NoneType)
-        typ.discard(NoneFwd)
+        typ = {
+            t
+            for t in type_.__args__
+            if t is not NoneType and not is_fwd_none(t)
+        }
 
         return make_union_type(*typ)
 
@@ -520,7 +535,8 @@ def _de_optionalize_fwd_ref_union_types(
 
 def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
     """Make a Union type."""
-    return Union.__getitem__(types)  # type: ignore
+
+    return Union[types]  # type: ignore
 
 
 def includes_none(type_: Any) -> bool:
@@ -545,7 +561,23 @@ def includes_none(type_: Any) -> bool:
         return any(includes_none(t) for t in pep695_values(type_))
     if is_newtype(type_):
         return includes_none(type_.__supertype__)
-    return type_ in (NoneFwd, NoneType, None)
+    try:
+        return type_ in (NoneType, None) or is_fwd_none(type_)
+    except TypeError:
+        # if type_ is Column, mapped_column(), etc. the use of "in"
+        # resolves to ``__eq__()`` which then gives us an expression object
+        # that can't resolve to boolean.  just catch it all via exception
+        return False
+
+
+def is_a_type(type_: Any) -> bool:
+    return (
+        isinstance(type_, type)
+        or get_origin(type_) is not None
+        or getattr(type_, "__module__", None)
+        in ("typing", "typing_extensions")
+        or type(type_).__mro__[0].__module__ in ("typing", "typing_extensions")
+    )
 
 
 def is_union(type_: Any) -> TypeGuard[ArgsTypeProtocol]:
@@ -575,20 +607,9 @@ def is_origin_of(
     if origin is None:
         return False
 
-    return _get_type_name(origin) in names and (
+    return origin.__name__ in names and (
         module is None or origin.__module__.startswith(module)
     )
-
-
-def _get_type_name(type_: Type[Any]) -> str:
-    if compat.py310:
-        return type_.__name__
-    else:
-        typ_name = getattr(type_, "__name__", None)
-        if typ_name is None:
-            typ_name = getattr(type_, "_name", None)
-
-        return typ_name  # type: ignore
 
 
 class DescriptorProto(Protocol):
@@ -661,3 +682,30 @@ class CallableReference(Generic[_FN]):
         def __set__(self, instance: Any, value: _FN) -> None: ...
 
         def __delete__(self, instance: Any) -> None: ...
+
+
+class _TypingInstances:
+    def __getattr__(self, key: str) -> tuple[type, ...]:
+        types = tuple(
+            {
+                t
+                for t in [
+                    getattr(typing, key, None),
+                    getattr(typing_extensions, key, None),
+                ]
+                if t is not None
+            }
+        )
+        if not types:
+            raise AttributeError(key)
+        self.__dict__[key] = types
+        return types
+
+
+_type_tuples = _TypingInstances()
+if TYPE_CHECKING:
+    _type_instances = typing_extensions
+else:
+    _type_instances = _type_tuples
+
+LITERAL_TYPES = _type_tuples.Literal

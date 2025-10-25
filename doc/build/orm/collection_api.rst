@@ -180,7 +180,7 @@ may be appropriately parametrized::
 
     >>> item = Item()
     >>> item.notes["a"] = Note("a", "atext")
-    >>> item.notes.items()
+    >>> item.notes
     {'a': <__main__.Note object at 0x2eaaf0>}
 
 :func:`.attribute_keyed_dict` will ensure that
@@ -220,7 +220,7 @@ of the ``Note.text`` field::
         keyword: Mapped[str]
         text: Mapped[str]
 
-        item: Mapped["Item"] = relationship()
+        item: Mapped["Item"] = relationship(back_populates="notes")
 
         @property
         def note_key(self):

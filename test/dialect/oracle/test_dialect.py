@@ -681,7 +681,6 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         dialect._get_server_version_info = server_version_info
         dialect.get_isolation_level = Mock()
-        dialect._check_unicode_returns = Mock()
         dialect._check_unicode_description = Mock()
         dialect._get_default_schema_name = Mock()
         dialect._detect_decimal_char = Mock()
@@ -996,19 +995,6 @@ class BaseConnectArgsTest:
         arg, kw = dialect.create_connect_args(url_obj)
         assert key not in kw
 
-    def _test_dialect_param_from_url(self, url_string, key, value):
-        url_obj = url.make_url(url_string)
-        dialect = self.dialect_cls(dbapi=self.dbapi)
-        with testing.expect_deprecated(
-            f"{self.name} dialect option %r should" % key
-        ):
-            arg, kw = dialect.create_connect_args(url_obj)
-        eq_(getattr(dialect, key), value)
-
-        # test setting it on the dialect normally
-        dialect = self.dialect_cls(dbapi=self.dbapi, **{key: value})
-        eq_(getattr(dialect, key), value)
-
     def test_mode(self):
         self._test_db_opt(
             f"oracle+{self.name}://scott:tiger@host/?mode=sYsDBA",
@@ -1059,30 +1045,6 @@ class BaseConnectArgsTest:
             f"oracle+{self.name}://scott:tiger@host/?events=true",
             "events",
             True,
-        )
-
-    def test_threaded_deprecated_at_dialect_level(self):
-        with testing.expect_deprecated(
-            "The 'threaded' parameter to the cx_oracle/oracledb dialect"
-        ):
-            dialect = self.dialect_cls(threaded=False)
-        arg, kw = dialect.create_connect_args(
-            url.make_url(f"oracle+{self.name}://scott:tiger@dsn")
-        )
-        eq_(kw["threaded"], False)
-
-    def test_deprecated_use_ansi(self):
-        self._test_dialect_param_from_url(
-            f"oracle+{self.name}://scott:tiger@host/?use_ansi=False",
-            "use_ansi",
-            False,
-        )
-
-    def test_deprecated_auto_convert_lobs(self):
-        self._test_dialect_param_from_url(
-            f"oracle+{self.name}://scott:tiger@host/?auto_convert_lobs=False",
-            "auto_convert_lobs",
-            False,
         )
 
 

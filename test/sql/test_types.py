@@ -298,6 +298,8 @@ class AdaptTest(fixtures.TestBase):
                     "schema",
                     "metadata",
                     "name",
+                    "dispatch",
+                    "_schema_provided",
                 ):
                     continue
                 # assert each value was copied, or that
@@ -635,8 +637,9 @@ class PickleTypesTest(fixtures.TestBase):
             proc = subprocess.run(
                 [sys.executable, "-c", code],
                 env={**os.environ, "PYTHONPATH": pythonpath},
+                stderr=subprocess.PIPE,
             )
-            eq_(proc.returncode, 0)
+            eq_(proc.returncode, 0, proc.stderr.decode(errors="replace"))
             os.unlink(name)
 
 
@@ -898,6 +901,35 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
             ],
         )
 
+    def test_unary_operator(self, connection):
+        users = self.tables.users
+        self._data_fixture(connection)
+
+        eq_(
+            connection.scalar(
+                select(-users.c.goofy8).order_by(users.c.user_id)
+            ),
+            -1200,
+        )
+
+    def test_unary_operator_standalone(self, connection):
+        """test #12681"""
+
+        class MyNewIntType(types.TypeDecorator):
+            impl = Integer
+            cache_ok = True
+
+            def process_bind_param(self, value, dialect):
+                if value is None:
+                    value = 29
+                return value * 10
+
+            def process_result_value(self, value, dialect):
+                return value * 10
+
+        eq_(connection.scalar(select(literal(12, MyNewIntType))), 1200)
+        eq_(connection.scalar(select(-literal(12, MyNewIntType))), -1200)
+
     def test_plain_in_typedec(self, connection):
         users = self.tables.users
         self._data_fixture(connection)
@@ -999,8 +1031,8 @@ class TypeDecoratorSpecialCasesTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(expr2.right.type._type_affinity, Integer)
 
         self.assert_compile(
-            column("q", ArrayDec).any(7, operator=operators.lt),
-            "%(q_1)s < ANY (q)",
+            7 < column("q", ArrayDec).any_(),
+            "%(param_1)s < ANY (q)",
             dialect="postgresql",
         )
 
@@ -2805,13 +2837,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "y",
             name="somename",
             quote=True,
-            inherit_schema=True,
             native_enum=False,
         )
         eq_(
             repr(e),
-            "Enum('x', 'y', name='somename', "
-            "inherit_schema=True, native_enum=False)",
+            "Enum('x', 'y', name='somename', native_enum=False)",
         )
 
     def test_repr_two(self):
@@ -2865,7 +2895,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     def test_none_length_non_native(self):
         e = Enum("x", "y", native_enum=False, length=None)
         eq_(e.length, None)
-        eq_(repr(e), "Enum('x', 'y', native_enum=False, length=None)")
+        eq_(
+            repr(e),
+            "Enum('x', 'y', native_enum=False, length=None)",
+        )
         self.assert_compile(e, "VARCHAR", dialect="default")
 
     def test_omit_aliases(self, connection):
@@ -3082,7 +3115,7 @@ class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
         compiled = select(cast(literal(util.b("foo")), LargeBinary)).compile(
             dialect=testing.db.dialect, compile_kwargs={"literal_binds": True}
         )
-        result = connection.execute(compiled)
+        result = connection.exec_driver_sql(compiled.string)
         eq_(result.scalar(), util.b("foo"))
 
     def test_bind_processor_no_dbapi(self):
@@ -3842,7 +3875,7 @@ class ExpressionTest(
         expr = column("bar", types.Interval) + column("foo", types.Date)
         eq_(expr.type._type_affinity, types.DateTime)
 
-        expr = column("bar", types.Interval) * column("foo", types.Numeric)
+        expr = column("bar", types.Interval) - column("foo", types.Numeric)
         eq_(expr.type._type_affinity, types.Interval)
 
     @testing.combinations(

@@ -5,9 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""State tracking utilities used by :class:`_orm.Session`.
-
-"""
+"""State tracking utilities used by :class:`_orm.Session`."""
 
 from __future__ import annotations
 
@@ -17,6 +15,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Iterator
+from typing import Literal
 from typing import NoReturn
 from typing import Optional
 from typing import Tuple
@@ -25,7 +24,6 @@ from typing import Union
 
 from .. import exc as sa_exc
 from .. import util
-from ..util.typing import Literal
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 

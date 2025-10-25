@@ -136,99 +136,199 @@ name to be ``INTEGER`` when compiled against SQLite::
 
     `Datatypes In SQLite Version 3 <https://sqlite.org/datatype3.html>`_
 
-.. _sqlite_concurrency:
+.. _sqlite_transactions:
 
-Database Locking Behavior / Concurrency
----------------------------------------
+Transactions with SQLite and the sqlite3 driver
+-----------------------------------------------
 
-SQLite is not designed for a high level of write concurrency. The database
-itself, being a file, is locked completely during write operations within
-transactions, meaning exactly one "connection" (in reality a file handle)
-has exclusive access to the database during this period - all other
-"connections" will be blocked during this time.
+As a file-based database, SQLite's approach to transactions differs from
+traditional databases in many ways.  Additionally, the ``sqlite3`` driver
+standard with Python (as well as the async version ``aiosqlite`` which builds
+on top of it) has several quirks, workarounds, and API features in the
+area of transaction control, all of which generally need to be addressed when
+constructing a SQLAlchemy application that uses SQLite.
 
-The Python DBAPI specification also calls for a connection model that is
-always in a transaction; there is no ``connection.begin()`` method,
-only ``connection.commit()`` and ``connection.rollback()``, upon which a
-new transaction is to be begun immediately.  This may seem to imply
-that the SQLite driver would in theory allow only a single filehandle on a
-particular database file at any time; however, there are several
-factors both within SQLite itself as well as within the pysqlite driver
-which loosen this restriction significantly.
+Legacy Transaction Mode with the sqlite3 driver
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-However, no matter what locking modes are used, SQLite will still always
-lock the database file once a transaction is started and DML (e.g. INSERT,
-UPDATE, DELETE) has at least been emitted, and this will block
-other transactions at least at the point that they also attempt to emit DML.
-By default, the length of time on this block is very short before it times out
-with an error.
+The most important aspect of transaction handling with the sqlite3 driver is
+that it defaults (which will continue through Python 3.15 before being
+removed in Python 3.16) to legacy transactional behavior which does
+not strictly follow :pep:`249`.  The way in which the driver diverges from the
+PEP is that it does not "begin" a transaction automatically as dictated by
+:pep:`249` except in the case of DML statements, e.g. INSERT, UPDATE, and
+DELETE.   Normally, :pep:`249` dictates that a BEGIN must be emitted upon
+the first SQL statement of any kind, so that all subsequent operations will
+be established within a transaction until ``connection.commit()`` has been
+called.   The ``sqlite3`` driver, in an effort to be easier to use in
+highly concurrent environments, skips this step for DQL (e.g. SELECT) statements,
+and also skips it for DDL (e.g. CREATE TABLE etc.) statements for more legacy
+reasons.  Statements such as SAVEPOINT are also skipped.
 
-This behavior becomes more critical when used in conjunction with the
-SQLAlchemy ORM.  SQLAlchemy's :class:`.Session` object by default runs
-within a transaction, and with its autoflush model, may emit DML preceding
-any SELECT statement.   This may lead to a SQLite database that locks
-more quickly than is expected.   The locking mode of SQLite and the pysqlite
-driver can be manipulated to some degree, however it should be noted that
-achieving a high degree of write-concurrency with SQLite is a losing battle.
+In modern versions of the ``sqlite3`` driver as of Python 3.12, this legacy
+mode of operation is referred to as
+`"legacy transaction control" <https://docs.python.org/3/library/sqlite3.html#sqlite3-transaction-control-isolation-level>`_, and is in
+effect by default due to the ``Connection.autocommit`` parameter being set to
+the constant ``sqlite3.LEGACY_TRANSACTION_CONTROL``.  Prior to Python 3.12,
+the ``Connection.autocommit`` attribute did not exist.
 
-For more information on SQLite's lack of write concurrency by design, please
-see
-`Situations Where Another RDBMS May Work Better - High Concurrency
-<https://www.sqlite.org/whentouse.html>`_ near the bottom of the page.
+The implications of legacy transaction mode include:
 
-The following subsections introduce areas that are impacted by SQLite's
-file-based architecture and additionally will usually require workarounds to
-work when using the pysqlite driver.
+* **Incorrect support for transactional DDL** - statements like CREATE TABLE, ALTER TABLE,
+  CREATE INDEX etc. will not automatically BEGIN a transaction if one were not
+  started already, leading to the changes by each statement being
+  "autocommitted" immediately unless BEGIN were otherwise emitted first.   Very
+  old (pre Python 3.6) versions of SQLite would also force a COMMIT for these
+  operations even if a transaction were present, however this is no longer the
+  case.
+* **SERIALIZABLE behavior not fully functional** - SQLite's transaction isolation
+  behavior is normally consistent with SERIALIZABLE isolation, as it is a file-
+  based system that locks the database file entirely for write operations,
+  preventing COMMIT until all reader transactions (and associated file locks)
+  have completed.  However, sqlite3's legacy transaction mode fails to emit BEGIN for SELECT
+  statements, which causes these SELECT statements to no longer be "repeatable",
+  failing one of the consistency guarantees of SERIALIZABLE.
+* **Incorrect behavior for SAVEPOINT** - as the SAVEPOINT statement does not
+  imply a BEGIN, a new SAVEPOINT emitted before a BEGIN will function on its
+  own but fails to participate in the enclosing transaction, meaning a ROLLBACK
+  of the transaction will not rollback elements that were part of a released
+  savepoint.
+
+Legacy transaction mode first existed in order to faciliate working around
+SQLite's file locks.  Because SQLite relies upon whole-file locks, it is easy to
+get "database is locked" errors, particularly when newer features like "write
+ahead logging" are disabled.   This is a key reason why ``sqlite3``'s legacy
+transaction mode is still the default mode of operation; disabling it will
+produce behavior that is more susceptible to locked database errors.  However
+note that **legacy transaction mode will no longer be the default** in a future
+Python version (3.16 as of this writing).
+
+.. _sqlite_enabling_transactions:
+
+Enabling Non-Legacy SQLite Transactional Modes with the sqlite3 or aiosqlite driver
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Current SQLAlchemy support allows either for setting the
+``.Connection.autocommit`` attribute, most directly by using a
+:func:`._sa.create_engine` parameter, or if on an older version of Python where
+the attribute is not available, using event hooks to control the behavior of
+BEGIN.
+
+* **Enabling modern sqlite3 transaction control via the autocommit connect parameter** (Python 3.12 and above)
+
+  To use SQLite in the mode described at `Transaction control via the autocommit attribute <https://docs.python.org/3/library/sqlite3.html#transaction-control-via-the-autocommit-attribute>`_,
+  the most straightforward approach is to set the attribute to its recommended value
+  of ``False`` at the connect level using :paramref:`_sa.create_engine.connect_args``::
+
+    from sqlalchemy import create_engine
+
+    engine = create_engine(
+        "sqlite:///myfile.db", connect_args={"autocommit": False}
+    )
+
+  This parameter is also passed through when using the aiosqlite driver::
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///myfile.db", connect_args={"autocommit": False}
+    )
+
+  The parameter can also be set at the attribute level using the :meth:`.PoolEvents.connect`
+  event hook, however this will only work for sqlite3, as aiosqlite does not yet expose this
+  attribute on its ``Connection`` object::
+
+    from sqlalchemy import create_engine, event
+
+    engine = create_engine("sqlite:///myfile.db")
+
+
+    @event.listens_for(engine, "connect")
+    def do_connect(dbapi_connection, connection_record):
+        # enable autocommit=False mode
+        dbapi_connection.autocommit = False
+
+* **Using SQLAlchemy to emit BEGIN in lieu of SQLite's transaction control** (all Python versions, sqlite3 and aiosqlite)
+
+  For older versions of ``sqlite3`` or for cross-compatiblity with older and
+  newer versions, SQLAlchemy can also take over the job of transaction control.
+  This is achieved by using the :meth:`.ConnectionEvents.begin` hook
+  to emit the "BEGIN" command directly, while also disabling SQLite's control
+  of this command using the :meth:`.PoolEvents.connect` event hook to set the
+  ``Connection.isolation_level`` attribute to ``None``::
+
+
+    from sqlalchemy import create_engine, event
+
+    engine = create_engine("sqlite:///myfile.db")
+
+
+    @event.listens_for(engine, "connect")
+    def do_connect(dbapi_connection, connection_record):
+        # disable sqlite3's emitting of the BEGIN statement entirely.
+        dbapi_connection.isolation_level = None
+
+
+    @event.listens_for(engine, "begin")
+    def do_begin(conn):
+        # emit our own BEGIN.   sqlite3 still emits COMMIT/ROLLBACK correctly
+        conn.exec_driver_sql("BEGIN")
+
+  When using the asyncio variant ``aiosqlite``, refer to ``engine.sync_engine``
+  as in the example below::
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine("sqlite+aiosqlite:///myfile.db")
+
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def do_connect(dbapi_connection, connection_record):
+        # disable aiosqlite's emitting of the BEGIN statement entirely.
+        dbapi_connection.isolation_level = None
+
+
+    @event.listens_for(engine.sync_engine, "begin")
+    def do_begin(conn):
+        # emit our own BEGIN.  aiosqlite still emits COMMIT/ROLLBACK correctly
+        conn.exec_driver_sql("BEGIN")
 
 .. _sqlite_isolation_level:
 
-Transaction Isolation Level / Autocommit
-----------------------------------------
+Using SQLAlchemy's Driver Level AUTOCOMMIT Feature with SQLite
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-SQLite supports "transaction isolation" in a non-standard way, along two
-axes.  One is that of the
-`PRAGMA read_uncommitted <https://www.sqlite.org/pragma.html#pragma_read_uncommitted>`_
-instruction.   This setting can essentially switch SQLite between its
-default mode of ``SERIALIZABLE`` isolation, and a "dirty read" isolation
-mode normally referred to as ``READ UNCOMMITTED``.
+SQLAlchemy has a comprehensive database isolation feature with optional
+autocommit support that is introduced in the section :ref:`dbapi_autocommit`.
 
-SQLAlchemy ties into this PRAGMA statement using the
-:paramref:`_sa.create_engine.isolation_level` parameter of
-:func:`_sa.create_engine`.
-Valid values for this parameter when used with SQLite are ``"SERIALIZABLE"``
-and ``"READ UNCOMMITTED"`` corresponding to a value of 0 and 1, respectively.
-SQLite defaults to ``SERIALIZABLE``, however its behavior is impacted by
-the pysqlite driver's default behavior.
+For the ``sqlite3`` and ``aiosqlite`` drivers, SQLAlchemy only includes
+built-in support for "AUTOCOMMIT".    Note that this mode is currently incompatible
+with the non-legacy isolation mode hooks documented in the previous
+section at :ref:`sqlite_enabling_transactions`.
 
-When using the pysqlite driver, the ``"AUTOCOMMIT"`` isolation level is also
-available, which will alter the pysqlite connection using the ``.isolation_level``
-attribute on the DBAPI connection and set it to None for the duration
-of the setting.
+To use the ``sqlite3`` driver with SQLAlchemy driver-level autocommit,
+create an engine setting the :paramref:`_sa.create_engine.isolation_level`
+parameter to "AUTOCOMMIT"::
 
-.. versionadded:: 1.3.16 added support for SQLite AUTOCOMMIT isolation level
-   when using the pysqlite / sqlite3 SQLite driver.
+    eng = create_engine("sqlite:///myfile.db", isolation_level="AUTOCOMMIT")
 
+When using the above mode, any event hooks that set the sqlite3 ``Connection.autocommit``
+parameter away from its default of ``sqlite3.LEGACY_TRANSACTION_CONTROL``
+as well as hooks that emit ``BEGIN`` should be disabled.
 
-The other axis along which SQLite's transactional locking is impacted is
-via the nature of the ``BEGIN`` statement used.   The three varieties
-are "deferred", "immediate", and "exclusive", as described at
-`BEGIN TRANSACTION <https://sqlite.org/lang_transaction.html>`_.   A straight
-``BEGIN`` statement uses the "deferred" mode, where the database file is
-not locked until the first read or write operation, and read access remains
-open to other transactions until the first write operation.  But again,
-it is critical to note that the pysqlite driver interferes with this behavior
-by *not even emitting BEGIN* until the first write operation.
+Additional Reading for SQLite / sqlite3 transaction control
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. warning::
+Links with important information on SQLite, the sqlite3 driver,
+as well as long historical conversations on how things got to their current state:
 
-    SQLite's transactional scope is impacted by unresolved
-    issues in the pysqlite driver, which defers BEGIN statements to a greater
-    degree than is often feasible. See the section :ref:`pysqlite_serializable`
-    or :ref:`aiosqlite_serializable` for techniques to work around this behavior.
+* `Isolation in SQLite <https://www.sqlite.org/isolation.html>`_ - on the SQLite website
+* `Transaction control <https://docs.python.org/3/library/sqlite3.html#transaction-control>`_ - describes the sqlite3 autocommit attribute as well
+  as the legacy isolation_level attribute.
+* `sqlite3 SELECT does not BEGIN a transaction, but should according to spec <https://github.com/python/cpython/issues/54133>`_ - imported Python standard library issue on github
+* `sqlite3 module breaks transactions and potentially corrupts data <https://github.com/python/cpython/issues/54949>`_ - imported Python standard library issue on github
 
-.. seealso::
-
-    :ref:`dbapi_autocommit`
 
 INSERT/UPDATE/DELETE...RETURNING
 ---------------------------------
@@ -268,38 +368,6 @@ To specify an explicit ``RETURNING`` clause, use the
 
 .. versionadded:: 2.0  Added support for SQLite RETURNING
 
-SAVEPOINT Support
-----------------------------
-
-SQLite supports SAVEPOINTs, which only function once a transaction is
-begun.   SQLAlchemy's SAVEPOINT support is available using the
-:meth:`_engine.Connection.begin_nested` method at the Core level, and
-:meth:`.Session.begin_nested` at the ORM level.   However, SAVEPOINTs
-won't work at all with pysqlite unless workarounds are taken.
-
-.. warning::
-
-    SQLite's SAVEPOINT feature is impacted by unresolved
-    issues in the pysqlite and aiosqlite drivers, which defer BEGIN statements
-    to a greater degree than is often feasible. See the sections
-    :ref:`pysqlite_serializable` and :ref:`aiosqlite_serializable`
-    for techniques to work around this behavior.
-
-Transactional DDL
-----------------------------
-
-The SQLite database supports transactional :term:`DDL` as well.
-In this case, the pysqlite driver is not only failing to start transactions,
-it also is ending any existing transaction when DDL is detected, so again,
-workarounds are required.
-
-.. warning::
-
-    SQLite's transactional DDL is impacted by unresolved issues
-    in the pysqlite driver, which fails to emit BEGIN and additionally
-    forces a COMMIT to cancel any transaction when DDL is encountered.
-    See the section :ref:`pysqlite_serializable`
-    for techniques to work around this behavior.
 
 .. _sqlite_foreign_keys:
 
@@ -328,9 +396,17 @@ new connections through the usage of events::
 
     @event.listens_for(Engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
+        # the sqlite3 driver will not set PRAGMA foreign_keys
+        # if autocommit=False; set to True temporarily
+        ac = dbapi_connection.autocommit
+        dbapi_connection.autocommit = True
+
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
+
+        # restore previous autocommit setting
+        dbapi_connection.autocommit = ac
 
 .. warning::
 
@@ -378,9 +454,6 @@ indicated from a :class:`_schema.Column` object.
 
     `ON CONFLICT <https://www.sqlite.org/lang_conflict.html>`_ - in the SQLite
     documentation
-
-.. versionadded:: 1.3
-
 
 The ``sqlite_on_conflict`` parameters accept a  string argument which is just
 the resolution name to be chosen, which on SQLite can be one of ROLLBACK,
@@ -916,7 +989,10 @@ from __future__ import annotations
 import datetime
 import numbers
 import re
+from typing import Any
+from typing import Callable
 from typing import Optional
+from typing import TYPE_CHECKING
 
 from .json import JSON
 from .json import JSONIndexType
@@ -932,7 +1008,6 @@ from ...engine import processors
 from ...engine import reflection
 from ...engine.reflection import ReflectionDefaults
 from ...sql import coercions
-from ...sql import ColumnElement
 from ...sql import compiler
 from ...sql import elements
 from ...sql import roles
@@ -949,6 +1024,13 @@ from ...types import SMALLINT  # noqa
 from ...types import TEXT  # noqa
 from ...types import TIMESTAMP  # noqa
 from ...types import VARCHAR  # noqa
+
+if TYPE_CHECKING:
+    from ...engine.interfaces import DBAPIConnection
+    from ...engine.interfaces import Dialect
+    from ...engine.interfaces import IsolationLevel
+    from ...sql.type_api import _BindProcessorType
+    from ...sql.type_api import _ResultProcessorType
 
 
 class _SQliteJson(JSON):
@@ -1049,6 +1131,10 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
             regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)",
         )
 
+    :param truncate_microseconds: when ``True`` microseconds will be truncated
+     from the datetime. Can't be specified together with ``storage_format``
+     or ``regexp``.
+
     :param storage_format: format string which will be applied to the dict
      with keys year, month, day, hour, minute, second, and microsecond.
 
@@ -1084,7 +1170,9 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
                 "%(hour)02d:%(minute)02d:%(second)02d"
             )
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> Optional[_BindProcessorType[Any]]:
         datetime_datetime = datetime.datetime
         datetime_date = datetime.date
         format_ = self._storage_format
@@ -1120,7 +1208,9 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
         return process
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Optional[_ResultProcessorType[Any]]:
         if self._reg:
             return processors.str_to_datetime_processor_factory(
                 self._reg, datetime.datetime
@@ -1175,7 +1265,9 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
     _storage_format = "%(year)04d-%(month)02d-%(day)02d"
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> Optional[_BindProcessorType[Any]]:
         datetime_date = datetime.date
         format_ = self._storage_format
 
@@ -1196,7 +1288,9 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
         return process
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Optional[_ResultProcessorType[Any]]:
         if self._reg:
             return processors.str_to_datetime_processor_factory(
                 self._reg, datetime.date
@@ -1234,6 +1328,10 @@ class TIME(_DateTimeMixin, sqltypes.Time):
             storage_format="%(hour)02d-%(minute)02d-%(second)02d-%(microsecond)06d",
             regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?"),
         )
+
+    :param truncate_microseconds: when ``True`` microseconds will be truncated
+     from the time. Can't be specified together with ``storage_format``
+     or ``regexp``.
 
     :param storage_format: format string which will be applied to the dict
      with keys hour, minute, second, and microsecond.
@@ -1360,7 +1458,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return "CURRENT_TIMESTAMP"
 
     def visit_localtimestamp_func(self, func, **kw):
-        return 'DATETIME(CURRENT_TIMESTAMP, "localtime")'
+        return "DATETIME(CURRENT_TIMESTAMP, 'localtime')"
 
     def visit_true(self, expr, **kw):
         return "1"
@@ -1372,7 +1470,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return "length%s" % self.function_argspec(fn)
 
     def visit_aggregate_strings_func(self, fn, **kw):
-        return "group_concat%s" % self.function_argspec(fn)
+        return super().visit_aggregate_strings_func(
+            fn, use_function_name="group_concat", **kw
+        )
 
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
@@ -1441,7 +1541,16 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.right),
         )
 
-    def visit_json_getitem_op_binary(self, binary, operator, **kw):
+    def visit_json_getitem_op_binary(
+        self, binary, operator, _cast_applied=False, **kw
+    ):
+        if (
+            not _cast_applied
+            and binary.type._type_affinity is not sqltypes.JSON
+        ):
+            kw["_cast_applied"] = True
+            return self.process(sql.cast(binary, binary.type), **kw)
+
         if binary.type._type_affinity is sqltypes.JSON:
             expr = "JSON_QUOTE(JSON_EXTRACT(%s, %s))"
         else:
@@ -1452,7 +1561,16 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
-    def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
+    def visit_json_path_getitem_op_binary(
+        self, binary, operator, _cast_applied=False, **kw
+    ):
+        if (
+            not _cast_applied
+            and binary.type._type_affinity is not sqltypes.JSON
+        ):
+            kw["_cast_applied"] = True
+            return self.process(sql.cast(binary, binary.type), **kw)
+
         if binary.type._type_affinity is sqltypes.JSON:
             expr = "JSON_QUOTE(JSON_EXTRACT(%s, %s))"
         else:
@@ -1533,16 +1651,11 @@ class SQLiteCompiler(compiler.SQLCompiler):
             else:
                 continue
 
-            if coercions._is_literal(value):
-                value = elements.BindParameter(None, value, type_=c.type)
-
-            else:
-                if (
-                    isinstance(value, elements.BindParameter)
-                    and value.type._isnull
-                ):
-                    value = value._clone()
-                    value.type = c.type
+            if (
+                isinstance(value, elements.BindParameter)
+                and value.type._isnull
+            ):
+                value = value._with_binary_element_type(c.type)
             value_text = self.process(value.self_group(), use_schema=False)
 
             key_text = self.preparer.quote(c.name)
@@ -1594,9 +1707,13 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         colspec = self.preparer.format_column(column) + " " + coltype
         default = self.get_column_default_string(column)
         if default is not None:
-            if isinstance(column.server_default.arg, ColumnElement):
-                default = "(" + default + ")"
-            colspec += " DEFAULT " + default
+
+            if not re.match(r"""^\s*[\'\"\(]""", default) and re.match(
+                r".*\W.*", default
+            ):
+                colspec += f" DEFAULT ({default})"
+            else:
+                colspec += f" DEFAULT {default}"
 
         if not column.nullable:
             colspec += " NOT NULL"
@@ -2022,35 +2139,15 @@ class SQLiteDialect(default.DefaultDialect):
     _broken_fk_pragma_quotes = False
     _broken_dotted_colnames = False
 
-    @util.deprecated_params(
-        _json_serializer=(
-            "1.3.7",
-            "The _json_serializer argument to the SQLite dialect has "
-            "been renamed to the correct name of json_serializer.  The old "
-            "argument name will be removed in a future release.",
-        ),
-        _json_deserializer=(
-            "1.3.7",
-            "The _json_deserializer argument to the SQLite dialect has "
-            "been renamed to the correct name of json_deserializer.  The old "
-            "argument name will be removed in a future release.",
-        ),
-    )
     def __init__(
         self,
-        native_datetime=False,
-        json_serializer=None,
-        json_deserializer=None,
-        _json_serializer=None,
-        _json_deserializer=None,
-        **kwargs,
-    ):
+        native_datetime: bool = False,
+        json_serializer: Optional[Callable[..., Any]] = None,
+        json_deserializer: Optional[Callable[..., Any]] = None,
+        **kwargs: Any,
+    ) -> None:
         default.DefaultDialect.__init__(self, **kwargs)
 
-        if _json_serializer:
-            json_serializer = _json_serializer
-        if _json_deserializer:
-            json_deserializer = _json_deserializer
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
 
@@ -2112,7 +2209,9 @@ class SQLiteDialect(default.DefaultDialect):
     def get_isolation_level_values(self, dbapi_connection):
         return list(self._isolation_lookup)
 
-    def set_isolation_level(self, dbapi_connection, level):
+    def set_isolation_level(
+        self, dbapi_connection: DBAPIConnection, level: IsolationLevel
+    ) -> None:
         isolation_level = self._isolation_lookup[level]
 
         cursor = dbapi_connection.cursor()
@@ -2300,7 +2399,10 @@ class SQLiteDialect(default.DefaultDialect):
                 )
                 # remove create table
                 match = re.match(
-                    r"create table .*?\((.*)\)$",
+                    (
+                        r"create table .*?\((.*)\)"
+                        r"(?:\s*,?\s*(?:WITHOUT\s+ROWID|STRICT))*$"
+                    ),
                     tablesql.strip(),
                     re.DOTALL | re.IGNORECASE,
                 )
@@ -2684,27 +2786,88 @@ class SQLiteDialect(default.DefaultDialect):
             connection, table_name, schema=schema, **kw
         )
 
-        # NOTE NOTE NOTE
-        # DO NOT CHANGE THIS REGULAR EXPRESSION.   There is no known way
-        # to parse CHECK constraints that contain newlines themselves using
-        # regular expressions, and the approach here relies upon each
-        # individual
-        # CHECK constraint being on a single line by itself.   This
-        # necessarily makes assumptions as to how the CREATE TABLE
-        # was emitted.   A more comprehensive DDL parsing solution would be
-        # needed to improve upon the current situation. See #11840 for
-        # background
-        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?CHECK *\( *(.+) *\),? *"
+        # Extract CHECK constraints by properly handling balanced parentheses
+        # and avoiding false matches when CHECK/CONSTRAINT appear in table
+        # names. See #12924 for context.
+        #
+        # SQLite supports 4 identifier quote styles (see
+        # sqlite.org/lang_keywords.html):
+        # - Double quotes "..." (standard SQL)
+        # - Brackets [...] (MS Access/SQL Server compatibility)
+        # - Backticks `...` (MySQL compatibility)
+        # - Single quotes '...' (SQLite extension)
+        #
+        # NOTE: there is not currently a way to parse CHECK constraints that
+        # contain newlines as the approach here relies upon each individual
+        # CHECK constraint being on a single line by itself.   This necessarily
+        # makes assumptions as to how the CREATE TABLE was emitted.
+        CHECK_PATTERN = re.compile(
+            r"""
+            (?<![A-Za-z0-9_])   # Negative lookbehind: ensure CHECK is not
+                                # part of an identifier (e.g., table name
+                                # like "tableCHECK")
+
+            (?:                 # Optional CONSTRAINT clause
+                CONSTRAINT\s+
+                (               # Group 1: Constraint name (quoted or unquoted)
+                    "(?:[^"]|"")+"        # Double-quoted: "name" or "na""me"
+                    |'(?:[^']|'')+'  # Single-quoted: 'name' or 'na''me'
+                    |\[(?:[^\]]|\]\])+\]  # Bracket-quoted: [name] or [na]]me]
+                    |`(?:[^`]|``)+`       # Backtick-quoted: `name` or `na``me`
+                    |\S+                  # Unquoted: simple_name
+                )
+                \s+
+            )?
+
+            CHECK\s*\(          # CHECK keyword followed by opening paren
+            """,
+            re.VERBOSE | re.IGNORECASE,
+        )
         cks = []
 
-        for match in re.finditer(CHECK_PATTERN, table_data or "", re.I):
+        for match in re.finditer(CHECK_PATTERN, table_data or ""):
+            constraint_name = match.group(1)
 
-            name = match.group(1)
+            if constraint_name:
+                # Remove surrounding quotes if present
+                # Double quotes: "name" -> name
+                # Single quotes: 'name' -> name
+                # Brackets: [name] -> name
+                # Backticks: `name` -> name
+                constraint_name = re.sub(
+                    r'^(["\'`])(.+)\1$|^\[(.+)\]$',
+                    lambda m: m.group(2) or m.group(3),
+                    constraint_name,
+                    flags=re.DOTALL,
+                )
 
-            if name:
-                name = re.sub(r'^"|"$', "", name)
+            # Find the matching closing parenthesis by counting balanced parens
+            # Must track string context to ignore parens inside string literals
+            start = match.end()  # Position after 'CHECK ('
+            paren_count = 1
+            in_single_quote = False
+            in_double_quote = False
 
-            cks.append({"sqltext": match.group(2), "name": name})
+            for pos, char in enumerate(table_data[start:], start):
+                # Track string literal context
+                if char == "'" and not in_double_quote:
+                    in_single_quote = not in_single_quote
+                elif char == '"' and not in_single_quote:
+                    in_double_quote = not in_double_quote
+                # Only count parens when not inside a string literal
+                elif not in_single_quote and not in_double_quote:
+                    if char == "(":
+                        paren_count += 1
+                    elif char == ")":
+                        paren_count -= 1
+                        if paren_count == 0:
+                            # Successfully found matching closing parenthesis
+                            sqltext = table_data[start:pos].strip()
+                            cks.append(
+                                {"sqltext": sqltext, "name": constraint_name}
+                            )
+                            break
+
         cks.sort(key=lambda d: d["name"] or "~")  # sort None as last
         if cks:
             return cks

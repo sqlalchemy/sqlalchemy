@@ -416,12 +416,6 @@ set, the two options are to use the :class:`_types.NCHAR` and
 the SQLAlchemy dialect to use NCHAR/NCLOB for the :class:`.Unicode` /
 :class:`.UnicodeText` datatypes instead of VARCHAR/CLOB.
 
-.. versionchanged:: 1.3 The :class:`.Unicode` and :class:`.UnicodeText`
-   datatypes now correspond to the ``VARCHAR2`` and ``CLOB`` Oracle Database
-   datatypes unless the ``use_nchar_for_unicode=True`` is passed to the dialect
-   when :func:`_sa.create_engine` is called.
-
-
 .. _oracledb_unicode_encoding_errors:
 
 Encoding Errors
@@ -435,9 +429,6 @@ handled.  The value is ultimately consumed by the Python `decode
 is passed both via python-oracledb's ``encodingErrors`` parameter consumed by
 ``Cursor.var()``, as well as SQLAlchemy's own decoding function, as the
 python-oracledb dialect makes use of both under different circumstances.
-
-.. versionadded:: 1.3.11
-
 
 .. _oracledb_setinputsizes:
 
@@ -464,9 +455,6 @@ On the SQLAlchemy side, the :meth:`.DialectEvents.do_setinputsizes` event can
 be used both for runtime visibility (e.g. logging) of the setinputsizes step as
 well as to fully control how ``setinputsizes()`` is used on a per-statement
 basis.
-
-.. versionadded:: 1.2.9 Added :meth:`.DialectEvents.setinputsizes`
-
 
 Example 1 - logging all setinputsizes calls
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -585,10 +573,6 @@ The ``coerce_to_decimal`` flag only impacts the results of plain string
 SQL statements that are not otherwise associated with a :class:`.Numeric`
 SQLAlchemy type (or a subclass of such).
 
-.. versionchanged:: 1.2 The numeric handling system for the oracle dialects has
-   been reworked to take advantage of newer driver features as well as better
-   integration of outputtypehandlers.
-
 .. versionadded:: 2.0.0 added support for the python-oracledb driver.
 
 """  # noqa
@@ -603,6 +587,7 @@ from . import cx_oracle as _cx_oracle
 from ... import exc
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...engine import default
 from ...util import await_
@@ -732,6 +717,8 @@ class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
 
 class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
     _cursor: AsyncCursor
+    _awaitable_cursor_close: bool = False
+
     __slots__ = ()
 
     @property
@@ -744,10 +731,6 @@ class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
 
     def var(self, *args, **kwargs):
         return self._cursor.var(*args, **kwargs)
-
-    def close(self):
-        self._rows.clear()
-        self._cursor.close()
 
     def setinputsizes(self, *args: Any, **kwargs: Any) -> Any:
         return self._cursor.setinputsizes(*args, **kwargs)
@@ -856,8 +839,9 @@ class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
         return await_(self._connection.tpc_rollback(*args, **kwargs))
 
 
-class OracledbAdaptDBAPI:
+class OracledbAdaptDBAPI(AsyncAdapt_dbapi_module):
     def __init__(self, oracledb) -> None:
+        super().__init__(oracledb)
         self.oracledb = oracledb
 
         for k, v in self.oracledb.__dict__.items():
@@ -866,8 +850,8 @@ class OracledbAdaptDBAPI:
 
     def connect(self, *arg, **kw):
         creator_fn = kw.pop("async_creator_fn", self.oracledb.connect_async)
-        return AsyncAdapt_oracledb_connection(
-            self, await_(creator_fn(*arg, **kw))
+        return await_(
+            AsyncAdapt_oracledb_connection.create(self, creator_fn(*arg, **kw))
         )
 
 

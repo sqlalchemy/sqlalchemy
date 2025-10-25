@@ -1,10 +1,12 @@
 from typing import Any
+from typing import assert_type
 
 from sqlalchemy import column
 from sqlalchemy import ColumnElement
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import table
+from sqlalchemy.sql.expression import ColumnClause
 
 
 def test_col_accessors() -> None:
@@ -27,11 +29,10 @@ def test_col_get() -> None:
     col_alt = column("alt", Integer)
     tbl = table("mytable", col_id)
 
-    # EXPECTED_TYPE: Union[ColumnClause[Any], None]
-    reveal_type(tbl.c.get("id"))
-    # EXPECTED_TYPE: Union[ColumnClause[Any], None]
-    reveal_type(tbl.c.get("id", None))
-    # EXPECTED_TYPE: Union[ColumnClause[Any], ColumnClause[int]]
-    reveal_type(tbl.c.get("alt", col_alt))
+    assert_type(tbl.c.get("id"), ColumnClause[Any] | None)
+    assert_type(tbl.c.get("id", None), ColumnClause[Any] | None)
+    assert_type(
+        tbl.c.get("alt", col_alt), ColumnClause[Any] | ColumnClause[int]
+    )
     col: ColumnElement[Any] = tbl.c.get("foo", literal("bar"))
     print(col)
