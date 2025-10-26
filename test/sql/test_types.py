@@ -3112,10 +3112,9 @@ class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
 
     @testing.requires.binary_literals
     def test_literal_roundtrip(self, connection):
-        compiled = select(cast(literal(util.b("foo")), LargeBinary)).compile(
-            dialect=testing.db.dialect, compile_kwargs={"literal_binds": True}
+        result = connection.execute(
+            select(cast(literal(b"foo", literal_execute=True), LargeBinary))
         )
-        result = connection.exec_driver_sql(compiled.string)
         eq_(result.scalar(), util.b("foo"))
 
     def test_bind_processor_no_dbapi(self):
