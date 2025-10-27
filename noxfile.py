@@ -192,6 +192,10 @@ def _tests(
     timing_intensive: bool = True,
     coverage: bool = False,
 ) -> None:
+
+    # ensure external PYTHONPATH not interfering
+    session.env["PYTHONPATH"] = ""
+
     # PYTHONNOUSERSITE - this *MUST* be set so that the ./lib/ import
     # set up explicitly in test/conftest.py is *disabled*, so that
     # when SQLAlchemy is built into the .nox area, we use that and not the
