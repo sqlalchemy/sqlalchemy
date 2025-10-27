@@ -196,6 +196,19 @@ mypy = [
 ]
 
 
+[tool.coverage.paths]
+source="lib/"
+
+[tool.coverage.run]
+relative_files = true
+omit = [
+    "lib/sqlalchemy/testing/plugin/*",
+    "lib/sqlalchemy/testing/fixtures/mypy.py",
+    "lib/sqlalchemy/testing/profiling.py",
+    "lib/sqlalchemy/util/tool_support.py",
+]
+
+
 [tool.setuptools]
 include-package-data = true
 
