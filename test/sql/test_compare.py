@@ -2,6 +2,7 @@ import importlib
 from inspect import signature
 import itertools
 import random
+import re
 
 from sqlalchemy import and_
 from sqlalchemy import Boolean
@@ -2318,13 +2319,16 @@ class TypesTest(fixtures.TestBase):
         ne_(c1, c3)
 
 
-class TestWhatsDifferentUtil(fixtures.TestBase):
-    """Test the CacheKey._whats_different() utility method
+class TestCacheKeyUtil(fixtures.TestBase):
 
-    Note: The _whats_different() method has a limitation where it can only
-    properly handle nested tuple structures. It was designed to work with
-    real cache keys which are always nested tuples.
-    """
+    def test_str(self):
+        eq_(
+            re.compile(r"[\n\s]+", re.M).sub(
+                " ",
+                str(CacheKey(key=((1, (2, 7, 4), 5),), bindparams=[])),
+            ),
+            "CacheKey(key=( ( 1, ( 2, 7, 4, ), 5, ), ),)",
+        )
 
     def test_nested_tuple_difference(self):
         """Test difference detection in nested tuples"""
