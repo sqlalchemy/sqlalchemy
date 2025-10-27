@@ -197,7 +197,7 @@ mypy = [
 
 
 [tool.coverage.paths]
-source="lib/"
+source=["lib/"]
 
 [tool.coverage.run]
 relative_files = true
