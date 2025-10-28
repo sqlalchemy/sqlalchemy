@@ -137,6 +137,12 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         s._expunge_states([attributes.instance_state(u1)])
 
+        u1is = u1._sa_instance_state
+
+        del u1
+        gc_collect()
+        u1is._force_dereference()
+
         u1 = s.query(User).first()
 
         # primary key change.  now we
