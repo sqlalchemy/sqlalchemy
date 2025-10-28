@@ -1895,10 +1895,13 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             )
 
             uis = user._sa_instance_state
+            ais = user.addresses[0]._sa_instance_state
+
             del user
             gc_collect()
 
             uis._force_dereference()
+            ais._force_dereference()
             assert len(s.identity_map) == 0
 
             user = s.query(User).options(joinedload(User.addresses)).one()
