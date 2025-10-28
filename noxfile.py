@@ -165,21 +165,35 @@ def coverage(
 def github_cext_greenlet(session: nox.Session) -> None:
     """run tests for github actions"""
 
-    _tests(session, "sqlite", "cext", greenlet=True, timing_intensive=False)
+    _tests(
+        session,
+        "sqlite",
+        "cext",
+        greenlet=True,
+        timing_intensive=False,
+        platform_intensive=True,
+    )
 
 
 @nox.session(name="github-cext")
 def github_cext(session: nox.Session) -> None:
     """run tests for github actions"""
 
-    _tests(session, "sqlite", "cext", greenlet=False, timing_intensive=False)
+    _tests(
+        session,
+        "sqlite",
+        "cext",
+        greenlet=False,
+        timing_intensive=False,
+        platform_intensive=True,
+    )
 
 
 @nox.session(name="github-nocext")
 def github_nocext(session: nox.Session) -> None:
     """run tests for github actions"""
 
-    _tests(session, "sqlite", "cext", greenlet=False)
+    _tests(session, "sqlite", "cext", greenlet=False, platform_intensive=True)
 
 
 def _tests(
