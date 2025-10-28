@@ -1950,8 +1950,11 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
                 User(name="ed", addresses=[Address(email_address="ed1")]),
             )
 
+            uis = user._sa_instance_state
             del user
             gc_collect()
+
+            uis._force_dereference()
             assert len(s.identity_map) == 0
 
             user = s.query(User).options(joinedload(User.addresses)).one()
