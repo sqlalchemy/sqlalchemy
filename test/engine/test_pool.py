@@ -1081,21 +1081,32 @@ class QueuePoolTest(PoolTestBase):
         assert_raises(tsa.exc.TimeoutError, p.connect)
         assert int(time.time() - now) == 2
 
-    @testing.requires.timing_intensive
     def test_timeout_subsecond_precision(self):
-        p = self._queuepool_fixture(pool_size=1, max_overflow=0, timeout=0.5)
-        c1 = p.connect()  # noqa
-        with expect_raises(tsa.exc.TimeoutError):
-            now = time.time()
-            c2 = p.connect()  # noqa
-        # Python timing is not very accurate, the time diff should be very
-        # close to 0.5s but we give 200ms of slack.
+        """test that a subsecond precision is passed to queue.get()
+        and that the math comparison is float sensitive
 
-        total = time.time() - now
-        assert 0.3 <= total <= 0.9, (
-            f"Pool timeout not respected, got {total} which "
-            "is not between .3 and .9 seconds"
-        )
+        """
+        times = [
+            # will set endtime at 1761659753.1250672 + .5
+            1761659753.1250672,
+            # will be within the timeout
+            1761659753.349,
+            # will be outside the timeout, should raise Empty
+            # if the timeout is a whole number, then this would not be
+            # enough time to wait and we get "pop from an empty list"
+            1761659753.715,
+        ]
+
+        def mock_time():
+            return times.pop(0)
+
+        with mock.patch("sqlalchemy.util.queue._time", mock_time):
+            p = self._queuepool_fixture(
+                pool_size=1, max_overflow=0, timeout=0.5
+            )
+            c1 = p.connect()  # noqa
+            with expect_raises(tsa.exc.TimeoutError):
+                p.connect()
 
     @testing.requires.threading_with_mock
     @testing.requires.timing_intensive
