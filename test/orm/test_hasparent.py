@@ -107,24 +107,22 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         self._assert_not_hasparent(a1)
 
-    @testing.add_to_marker.gc_intensive
-    @testing.requires.predictable_gc
     def test_stale_state_positive_gc(self):
         User = self.classes.User
         s, u1, a1 = self._fixture()
 
         s.expunge(u1)
-        del u1
-        gc_collect()
+
+        u1_is = u1._sa_instance_state
+        # act as though GC happened
+        u1_is._force_dereference()
 
         u1 = s.query(User).first()
         u1.addresses.remove(a1)
 
         self._assert_not_hasparent(a1)
 
-    @testing.add_to_marker.gc_intensive
     @testing.requires.updateable_autoincrement_pks
-    @testing.requires.predictable_gc
     def test_stale_state_positive_pk_change(self):
         """Illustrate that we can't easily link a
         stale state to a fresh one if the fresh one has
@@ -138,9 +136,6 @@ class ParentRemovalTest(fixtures.MappedTest):
         s, u1, a1 = self._fixture()
 
         s._expunge_states([attributes.instance_state(u1)])
-
-        del u1
-        gc_collect()
 
         u1 = s.query(User).first()
 
@@ -169,8 +164,6 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         self._assert_not_hasparent(a1)
 
-    @testing.add_to_marker.gc_intensive
-    @testing.requires.predictable_gc
     def test_stale_state_negative_child_expired(self):
         """illustrate the current behavior of
         expiration on the child.
@@ -189,15 +182,9 @@ class ParentRemovalTest(fixtures.MappedTest):
         u1.addresses.remove(a1)
 
         u2_is = u2._sa_instance_state
-        del u2
 
-        for i in range(5):
-            gc_collect()
-        # heisenberg the GC a little bit, since #7823 caused a lot more
-        # GC when mappings are set up, larger test suite started failing
-        # on this being gc'ed
-        o = u2_is.obj()
-        assert o is None
+        # act as though GC happened
+        u2_is._force_dereference()
 
         # controversy here.  The action is
         # to expire one object, not the other, and remove;
@@ -208,8 +195,6 @@ class ParentRemovalTest(fixtures.MappedTest):
         self._assert_not_hasparent(a1)
         # self._assert_hasparent(a1)
 
-    @testing.add_to_marker.gc_intensive
-    @testing.requires.predictable_gc
     def test_stale_state_negative(self):
         User = self.classes.User
         s, u1, a1 = self._fixture()
@@ -221,15 +206,8 @@ class ParentRemovalTest(fixtures.MappedTest):
         s._expunge_states([attributes.instance_state(u2)])
 
         u2_is = u2._sa_instance_state
-        del u2
 
-        for i in range(5):
-            gc_collect()
-        # heisenberg the GC a little bit, since #7823 caused a lot more
-        # GC when mappings are set up, larger test suite started failing
-        # on this being gc'ed
-        o = u2_is.obj()
-        assert o is None
+        u2_is._force_dereference()
 
         assert_raises_message(
             orm_exc.StaleDataError,
