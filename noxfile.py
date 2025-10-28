@@ -11,7 +11,7 @@ from typing import Set
 import nox
 
 nox.needs_version = ">=2025.10.16"
-
+nox.options.default_venv_backend = "venv"
 
 if True:
     sys.path.insert(0, ".")
