@@ -10,7 +10,9 @@ from typing import Set
 
 import nox
 
-nox.needs_version = ">=2025.10.16"
+if sys.version_info > (3, 12):
+    nox.needs_version = ">=2025.10.16"
+
 nox.options.default_venv_backend = "venv"
 
 if True:
