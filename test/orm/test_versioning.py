@@ -1421,7 +1421,6 @@ class ServerVersioningTest(fixtures.MappedTest):
             statements.append(
                 CompiledSQL(
                     "SELECT version_table.version_id "
-                    "AS version_table_version_id "
                     "FROM version_table WHERE version_table.id = :pk_1",
                     lambda ctx: [{"pk_1": 1}],
                 )
@@ -1479,7 +1478,6 @@ class ServerVersioningTest(fixtures.MappedTest):
                 ),
                 CompiledSQL(
                     "SELECT version_table.version_id "
-                    "AS version_table_version_id "
                     "FROM version_table WHERE version_table.id = :pk_1",
                     lambda ctx: [{"pk_1": 1}],
                 ),
@@ -1630,19 +1628,16 @@ class ServerVersioningTest(fixtures.MappedTest):
                 ),
                 CompiledSQL(
                     "SELECT version_table.version_id "
-                    "AS version_table_version_id "
                     "FROM version_table WHERE version_table.id = :pk_1",
                     lambda ctx: [{"pk_1": 1}],
                 ),
                 CompiledSQL(
                     "SELECT version_table.version_id "
-                    "AS version_table_version_id "
                     "FROM version_table WHERE version_table.id = :pk_1",
                     lambda ctx: [{"pk_1": 2}],
                 ),
                 CompiledSQL(
                     "SELECT version_table.version_id "
-                    "AS version_table_version_id "
                     "FROM version_table WHERE version_table.id = :pk_1",
                     lambda ctx: [{"pk_1": 3}],
                 ),

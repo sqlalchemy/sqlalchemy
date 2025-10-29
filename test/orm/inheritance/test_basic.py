@@ -1706,8 +1706,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
             s.flush()
         asserter.assert_(
             CompiledSQL(
-                "SELECT a.id AS a_id, a.type AS a_type "
-                "FROM a WHERE a.id = :pk_1",
+                "SELECT a.id, a.type FROM a WHERE a.id = :pk_1",
                 [{"pk_1": 1}],
             ),
             CompiledSQL("DELETE FROM a WHERE a.id = :id", [{"id": 1}]),
@@ -1748,8 +1747,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
             s.flush()
         asserter.assert_(
             CompiledSQL(
-                "SELECT a.id AS a_id, a.type AS a_type "
-                "FROM a WHERE a.id = :pk_1",
+                "SELECT a.id, a.type FROM a WHERE a.id = :pk_1",
                 [{"pk_1": 1}],
             ),
             CompiledSQL("DELETE FROM a WHERE a.id = :id", [{"id": 1}]),
@@ -1786,8 +1784,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
             s.flush()
         asserter.assert_(
             CompiledSQL(
-                "SELECT a.id AS a_id, a.type AS a_type "
-                "FROM a WHERE a.id = :pk_1",
+                "SELECT a.id, a.type FROM a WHERE a.id = :pk_1",
                 [{"pk_1": 1}],
             ),
             CompiledSQL("DELETE FROM a WHERE a.id = :id", [{"id": 1}]),
@@ -3220,9 +3217,9 @@ class OptimizedLoadTest(fixtures.MappedTest):
                         bool(eager_defaults),
                         [
                             CompiledSQL(
-                                "SELECT base.counter AS base_counter, "
-                                "sub.subcounter AS sub_subcounter, "
-                                "sub.subcounter2 AS sub_subcounter2 "
+                                "SELECT base.counter, "
+                                "sub.subcounter, "
+                                "sub.subcounter2 "
                                 "FROM base JOIN sub ON base.id = sub.id "
                                 "WHERE base.id = :pk_1",
                                 lambda ctx: {"pk_1": s1.id},

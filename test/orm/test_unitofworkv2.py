@@ -848,7 +848,7 @@ class RaiseLoadIgnoredTest(
             sess.flush,
             # for the flush process, lazy="raise" is ignored
             CompiledSQL(
-                "SELECT b.id, b.a_id FROM b " "WHERE :param_1 = b.a_id",
+                "SELECT b.id, b.a_id FROM b WHERE :param_1 = b.a_id",
                 [{"param_1": 1}],
             ),
             CompiledSQL(
@@ -2496,14 +2496,12 @@ class EagerDefaultsTest(fixtures.MappedTest):
                     enable_returning=False,
                 ),
                 CompiledSQL(
-                    "SELECT test.foo AS test_foo FROM test "
-                    "WHERE test.id = :pk_1",
+                    "SELECT test.foo FROM test WHERE test.id = :pk_1",
                     [{"pk_1": 1}],
                     enable_returning=False,
                 ),
                 CompiledSQL(
-                    "SELECT test.foo AS test_foo FROM test "
-                    "WHERE test.id = :pk_1",
+                    "SELECT test.foo FROM test WHERE test.id = :pk_1",
                     [{"pk_1": 2}],
                     enable_returning=False,
                 ),
@@ -2564,13 +2562,11 @@ class EagerDefaultsTest(fixtures.MappedTest):
                         [{"id": 1}, {"id": 2}],
                     ),
                     CompiledSQL(
-                        "SELECT test.foo AS test_foo FROM test "
-                        "WHERE test.id = :pk_1",
+                        "SELECT test.foo FROM test WHERE test.id = :pk_1",
                         [{"pk_1": 1}],
                     ),
                     CompiledSQL(
-                        "SELECT test.foo AS test_foo FROM test "
-                        "WHERE test.id = :pk_1",
+                        "SELECT test.foo FROM test WHERE test.id = :pk_1",
                         [{"pk_1": 2}],
                     ),
                 ],
@@ -2630,12 +2626,12 @@ class EagerDefaultsTest(fixtures.MappedTest):
                         ],
                     ),
                     CompiledSQL(
-                        "SELECT test3.foo AS test3_foo "
+                        "SELECT test3.foo "
                         "FROM test3 WHERE test3.id = :pk_1",
                         [{"pk_1": 1}],
                     ),
                     CompiledSQL(
-                        "SELECT test3.foo AS test3_foo "
+                        "SELECT test3.foo "
                         "FROM test3 WHERE test3.id = :pk_1",
                         [{"pk_1": 2}],
                     ),
@@ -2721,12 +2717,12 @@ class EagerDefaultsTest(fixtures.MappedTest):
                         enable_returning=False,
                     ),
                     CompiledSQL(
-                        "SELECT test2.bar AS test2_bar FROM test2 "
+                        "SELECT test2.bar FROM test2 "
                         "WHERE test2.id = :pk_1",
                         [{"pk_1": 1}],
                     ),
                     CompiledSQL(
-                        "SELECT test2.bar AS test2_bar FROM test2 "
+                        "SELECT test2.bar FROM test2 "
                         "WHERE test2.id = :pk_1",
                         [{"pk_1": 3}],
                     ),
@@ -2820,13 +2816,13 @@ class EagerDefaultsTest(fixtures.MappedTest):
                         enable_returning=False,
                     ),
                     CompiledSQL(
-                        "SELECT test4.bar AS test4_bar FROM test4 "
+                        "SELECT test4.bar FROM test4 "
                         "WHERE test4.id = :pk_1",
                         [{"pk_1": 1}],
                         enable_returning=False,
                     ),
                     CompiledSQL(
-                        "SELECT test4.bar AS test4_bar FROM test4 "
+                        "SELECT test4.bar FROM test4 "
                         "WHERE test4.id = :pk_1",
                         [{"pk_1": 3}],
                         enable_returning=False,
@@ -2924,18 +2920,15 @@ class EagerDefaultsTest(fixtures.MappedTest):
                     enable_returning=False,
                 ),
                 CompiledSQL(
-                    "SELECT test2.bar AS test2_bar FROM test2 "
-                    "WHERE test2.id = :pk_1",
+                    "SELECT test2.bar FROM test2 WHERE test2.id = :pk_1",
                     [{"pk_1": 1}],
                 ),
                 CompiledSQL(
-                    "SELECT test2.bar AS test2_bar FROM test2 "
-                    "WHERE test2.id = :pk_1",
+                    "SELECT test2.bar FROM test2 WHERE test2.id = :pk_1",
                     [{"pk_1": 3}],
                 ),
                 CompiledSQL(
-                    "SELECT test2.bar AS test2_bar FROM test2 "
-                    "WHERE test2.id = :pk_1",
+                    "SELECT test2.bar FROM test2 WHERE test2.id = :pk_1",
                     [{"pk_1": 4}],
                 ),
             )
@@ -3114,7 +3107,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
                         [{"id": 1, "bar": 5}],
                     ),
                     CompiledSQL(
-                        "SELECT anon_1.foo AS anon_1_foo FROM "
+                        "SELECT anon_1.foo FROM "
                         "(SELECT test.id AS id, test.foo AS foo, "
                         "test2.id AS id2, test2.bar AS bar FROM test "
                         "JOIN test2 ON test.foo = test2.foo) AS anon_1 "

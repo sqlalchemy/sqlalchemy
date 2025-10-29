@@ -388,14 +388,12 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                     enable_returning=False,
                 ),
                 CompiledSQL(
-                    "SELECT test.bar AS test_bar FROM test "
-                    "WHERE test.id = :pk_1",
+                    "SELECT test.bar FROM test WHERE test.id = :pk_1",
                     [{"pk_1": 1}],
                     enable_returning=False,
                 ),
                 CompiledSQL(
-                    "SELECT test.bar AS test_bar FROM test "
-                    "WHERE test.id = :pk_1",
+                    "SELECT test.bar FROM test WHERE test.id = :pk_1",
                     [{"pk_1": 2}],
                     enable_returning=False,
                 ),
