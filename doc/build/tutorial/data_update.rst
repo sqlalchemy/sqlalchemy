@@ -291,8 +291,9 @@ is available from the :attr:`_engine.CursorResult.rowcount` attribute:
     specific to the DBAPI ``cursor`` object.  An instance of this subclass is
     returned when a statement is invoked via the
     :meth:`_engine.Connection.execute` method. When using the ORM, the
-    :meth:`_orm.Session.execute` method returns an object of this type for
-    all INSERT, UPDATE, and DELETE statements.
+    :meth:`_orm.Session.execute` method will normally **not** return this type
+    of object, unless the given query uses only Core :class:`.Table` objects
+    directly.
 
 Facts about :attr:`_engine.CursorResult.rowcount`:
 
