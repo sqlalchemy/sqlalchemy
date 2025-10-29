@@ -121,8 +121,8 @@ tests-sqlite-file = [{include-group = "tests-sqlite"}]
 tests-sqlite-file-asyncio = [{include-group = "tests-sqlite-asyncio"}]
 
 tests-postgresql = [
-    "sqlalchemy[postgresql]",
-    "sqlalchemy[postgresql-psycopg]",
+    "sqlalchemy[postgresql-psycopg2binary]",
+    "sqlalchemy[postgresql-psycopgbinary]",
     "sqlalchemy[postgresql-pg8000]",
 ]
 
