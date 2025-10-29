@@ -59,6 +59,82 @@ The asyncio version of the dialect may also be specified explicitly using the
     dialect shares most of its behavior with the ``psycopg2`` dialect.
     Further documentation is available there.
 
+Using psycopg Connection Pooling
+--------------------------------
+
+The ``psycopg`` driver provides its own connection pool implementation that
+may be used in place of SQLAlchemy's pooling functionality.
+This pool implementation provides support for fixed and dynamic pool sizes
+(including automatic downsizing for unused connections), connection health
+pre-checks, and support for both synchronous and asynchronous code
+environments.
+
+Here is an example that uses the sync version of the pool, using
+``psycopg_pool >= 3.3`` that introduces support for ``close_returns=True``::
+
+    import psycopg_pool
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+
+    # Create a psycopg_pool connection pool
+    my_pool = psycopg_pool.ConnectionPool(
+        conninfo="postgresql://scott:tiger@localhost/test",
+        close_returns=True,  # Return "closed" active connections to the pool
+        # ... other pool parameters as desired ...
+    )
+
+    # Create an engine that uses the connection pool to get a connection
+    engine = create_engine(
+        url="postgresql+psycopg://",  # Only need the dialect now
+        poolclass=NullPool,  # Disable SQLAlchemy's default connection pool
+        creator=my_pool.getconn,  # Use Psycopg 3 connection pool to obtain connections
+    )
+
+Similarly an the async example::
+
+    import psycopg_pool
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+
+    async def define_engine():
+        # Create a psycopg_pool connection pool
+        my_pool = psycopg_pool.AsyncConnectionPool(
+            conninfo="postgresql://scott:tiger@localhost/test",
+            open=False,  # See comment below
+            close_returns=True,  # Return "closed" active connections to the pool
+            # ... other pool parameters as desired ...
+        )
+
+        # Must explicitly open AsyncConnectionPool outside constructor
+        # https://www.psycopg.org/psycopg3/docs/api/pool.html#psycopg_pool.AsyncConnectionPool
+        await my_pool.open()
+
+        # Create an engine that uses the connection pool to get a connection
+        engine = create_async_engine(
+            url="postgresql+psycopg://",  # Only need the dialect now
+            poolclass=NullPool,  # Disable SQLAlchemy's default connection pool
+            async_creator=my_pool.getconn,  # Use Psycopg 3 connection pool to obtain connections
+        )
+
+        return engine, my_pool
+
+The resulting engine may then be used normally. Internally, Psycopg 3 handles
+connection pooling::
+
+    with engine.connect() as conn:
+        print(conn.scalar(text("select 42")))
+
+.. seealso::
+
+    `Connection pools <https://www.psycopg.org/psycopg3/docs/advanced/pool.html>`_ -
+    the Psycopg 3 documentation for ``psycopg_pool.ConnectionPool``.
+
+    `Example for older version of psycopg_pool
+    <https://github.com/sqlalchemy/sqlalchemy/discussions/12522#discussioncomment-13024666>`_ -
+    An example about using the ``psycopg_pool<3.3`` that did not have the
+    ``close_returns``` parameter.
+
 Using a different Cursor class
 ------------------------------
 
