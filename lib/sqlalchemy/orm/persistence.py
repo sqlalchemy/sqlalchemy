@@ -28,13 +28,11 @@ from . import loading
 from . import sync
 from .base import state_str
 from .. import exc as sa_exc
-from .. import future
 from .. import sql
 from .. import util
 from ..engine import cursor as _cursor
 from ..sql import operators
 from ..sql.elements import BooleanClauseList
-from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
 
 def _save_obj(base_mapper, states, uowtransaction, single=False):
@@ -1559,9 +1557,7 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
         if toload_now:
             state.key = base_mapper._identity_key_from_state(state)
-            stmt = future.select(mapper).set_label_style(
-                LABEL_STYLE_TABLENAME_PLUS_COL
-            )
+            stmt = sql.select(mapper)
             loading._load_on_ident(
                 uowtransaction.session,
                 stmt,

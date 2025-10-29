@@ -89,7 +89,6 @@ from ..sql.base import _NoArg
 from ..sql.base import CompileState
 from ..sql.schema import Table
 from ..sql.selectable import ForUpdateArg
-from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import deprecated_params
 from ..util import IdentitySet
 from ..util.typing import TupleAny
@@ -3903,17 +3902,11 @@ class Session(_SessionClassMethods, EventTarget):
             # TODO: this was being tested before, but this is not possible
             assert instance is not LoaderCallableStatus.PASSIVE_CLASS_MISMATCH
 
-        # set_label_style() not strictly necessary, however this will ensure
-        # that tablename_colname style is used which at the moment is
-        # asserted in a lot of unit tests :)
-
         load_options = context.QueryContext.default_load_options
 
         if populate_existing:
             load_options += {"_populate_existing": populate_existing}
-        statement = sql.select(mapper).set_label_style(
-            LABEL_STYLE_TABLENAME_PLUS_COL
-        )
+        statement = sql.select(mapper)
         if with_for_update is not None:
             statement._for_update_arg = ForUpdateArg._from_argument(
                 with_for_update

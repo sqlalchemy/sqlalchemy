@@ -4144,13 +4144,13 @@ class GenerativeSelect(DialectKWArgs, SelectBase, Generative):
 
         .. seealso::
 
-            :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`
+            :attr:`_sql.SelectLabelStyle.LABEL_STYLE_DISAMBIGUATE_ONLY`
 
-            :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`
+            :attr:`_sql.SelectLabelStyle.LABEL_STYLE_TABLENAME_PLUS_COL`
 
-            :data:`_sql.LABEL_STYLE_NONE`
+            :attr:`_sql.SelectLabelStyle.LABEL_STYLE_NONE`
 
-            :data:`_sql.LABEL_STYLE_DEFAULT`
+            :attr:`_sql.SelectLabelStyle.LABEL_STYLE_DEFAULT`
 
         """
         if self._label_style is not style:

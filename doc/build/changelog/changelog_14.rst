@@ -6663,9 +6663,10 @@ This document details individual issue-level changes made throughout
         :meth:`_sql.GenerativeSelect.apply_labels` with explicit getters and
         setters :meth:`_sql.GenerativeSelect.get_label_style` and
         :meth:`_sql.GenerativeSelect.set_label_style` to accommodate the three
-        supported label styles: :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`,
-        :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`, and
-        :data:`_sql.LABEL_STYLE_NONE`.
+        supported label styles:
+        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_DISAMBIGUATE_ONLY`,
+        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_TABLENAME_PLUS_COL`, and
+        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_NONE`.
 
         In addition, for Core and "future style" ORM queries,
         ``LABEL_STYLE_DISAMBIGUATE_ONLY`` is now the default label style. This

@@ -1127,7 +1127,7 @@ class _UOWTests:
             testing.db,
             sess.flush,
             CompiledSQL(
-                "SELECT users.id AS users_id, users.name AS users_name "
+                "SELECT users.id, users.name "
                 "FROM users WHERE users.id = :pk_1",
                 lambda ctx: [{"pk_1": u1_id}],
             ),
@@ -1160,8 +1160,8 @@ class _UOWTests:
             testing.db,
             sess.flush,
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, addresses.email_address "
-                "AS addresses_email_address FROM addresses "
+                "SELECT addresses.id, addresses.email_address "
+                "FROM addresses "
                 "WHERE addresses.id = :pk_1",
                 lambda ctx: [{"pk_1": a2_id}],
             ),
@@ -1171,7 +1171,7 @@ class _UOWTests:
                 lambda ctx: [{"addresses_id": a2_id, "user_id": None}],
             ),
             CompiledSQL(
-                "SELECT users.id AS users_id, users.name AS users_name "
+                "SELECT users.id, users.name "
                 "FROM users WHERE users.id = :pk_1",
                 lambda ctx: [{"pk_1": u1_id}],
             ),
