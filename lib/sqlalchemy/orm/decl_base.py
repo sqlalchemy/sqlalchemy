@@ -1218,7 +1218,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             # dataclasses callable, based on the fields present.  This
             # means remove the Mapped[] container and ensure all Field
             # entries have an annotation
-            restored = getattr(klass, "__annotations__", None)
+            restored = util.get_annotations(klass)
             klass.__annotations__ = cast("Dict[str, Any]", use_annotations)
         else:
             restored = None
@@ -1249,7 +1249,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                 if restored is None:
                     del klass.__annotations__
                 else:
-                    klass.__annotations__ = restored
+                    klass.__annotations__ = restored  # type: ignore[assignment]  # noqa: E501
 
     @classmethod
     def _assert_dc_arguments(cls, arguments: _DataclassArguments) -> None:

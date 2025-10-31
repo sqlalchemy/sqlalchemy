@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12952
+
+    Fixed issue in Python 3.14 where dataclass transformation would fail when
+    a mapped class using :class:`.MappedAsDataclass` included a
+    :func:`.relationship` referencing a class that was not available at
+    runtime (e.g., within a ``TYPE_CHECKING`` block). This occurred when using
+    Python 3.14's :pep:`649` deferred annotations feature, which is the
+    default behavior without a ``from __future__ import annotations``
+    directive.
