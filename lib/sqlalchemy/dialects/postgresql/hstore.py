@@ -18,6 +18,7 @@ from .operators import HAS_ANY
 from .operators import HAS_KEY
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
+from ...sql import operators
 from ...types import OperatorClass
 
 __all__ = ("HSTORE", "hstore")
@@ -104,6 +105,7 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     __visit_name__ = "HSTORE"
     hashable = False
     text_type = sqltypes.Text()
+    use_subscripting_operator = False
 
     operator_classes = (
         OperatorClass.BASE
@@ -112,15 +114,29 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
         | OperatorClass.CONCATENABLE
     )
 
-    def __init__(self, text_type=None):
+    def __init__(self, text_type=None, use_subscripting_operator=False):
         """Construct a new :class:`.HSTORE`.
 
         :param text_type: the type that should be used for indexed values.
          Defaults to :class:`_types.Text`.
 
+        :param use_subscripting_operator: Whether to use subscription
+         to access values (``data['key']``), instead of the ``->`` operator.
+
+         This is only supported by PostgreSQL 14 and later,
+         and allows to use index operations in :func:`.update` statements::
+
+            update(data_table).values({data_table.c.data["key"]: "value"})
+
+         Defaults to ``False``.
+
+         .. versionadded:: 2.1
+
         """
         if text_type is not None:
             self.text_type = text_type
+        if use_subscripting_operator is True:
+            self.use_subscripting_operator = use_subscripting_operator
 
     class Comparator(
         sqltypes.Indexable.Comparator, sqltypes.Concatenable.Comparator
@@ -159,6 +175,8 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
             )
 
         def _setup_getitem(self, index):
+            if self.type.use_subscripting_operator:
+                return operators.getitem, index, self.type.text_type
             return GETITEM, index, self.type.text_type
 
         def defined(self, key):

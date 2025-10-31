@@ -1,0 +1,9 @@
+.. change::
+    :tags: feature, postgresql
+    :tickets: 12948
+
+    Added new parameter :paramref:`_postgresql.HSTORE.use_subscripting_operator`
+    to :class:`_postgresql.HSTORE` columns, making indexing use subscription
+    (``data['key']``) instead of the ``->`` operator.  This requires
+    PostgreSQL 14+, and allows to update individual values in :func:`.update`
+    statements.  Pull request courtesy Loïc Simon.

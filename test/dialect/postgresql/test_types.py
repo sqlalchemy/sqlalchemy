@@ -41,6 +41,7 @@ from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import types
 from sqlalchemy import Unicode
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import aggregate_order_by
@@ -4376,6 +4377,144 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
 
+class HStoreSubscriptingOperatorTest(HStoreTest):
+    # Test HSTORE behave the same when using use_subscripting_operator = True
+    # except for subscription tests
+
+    def setup_test(self):
+        metadata = MetaData()
+        self.test_table = Table(
+            "test_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("hash", HSTORE(use_subscripting_operator=True)),
+        )
+        self.hashcol = self.test_table.c.hash
+
+    def test_ret_type_text(self):
+        col = column("x", HSTORE(use_subscripting_operator=True))
+
+        is_(col["foo"].type.__class__, Text)
+
+    def test_ret_type_custom(self):
+        class MyType(types.UserDefinedType):
+            pass
+
+        col = column(
+            "x", HSTORE(use_subscripting_operator=True, text_type=MyType)
+        )
+
+        is_(col["foo"].type.__class__, MyType)
+
+    def test_where_getitem(self):
+        self._test_where(
+            self.hashcol["bar"] == None,  # noqa
+            "test_table.hash[%(hash_1)s] IS NULL",
+        )
+
+    def test_where_getitem_any(self):
+        self._test_where(
+            self.hashcol["bar"] == any_(array(["foo"])),  # noqa
+            "test_table.hash[%(hash_1)s] = ANY (ARRAY[%(param_1)s])",
+        )
+
+    @testing.combinations(
+        (
+            lambda self: self.hashcol["foo"],
+            "test_table.hash[%(hash_1)s] AS anon_1",
+            True,
+        ),
+        (
+            lambda self: self.hashcol.delete("foo"),
+            "delete(test_table.hash, %(delete_2)s) AS delete_1",
+            True,
+        ),
+        (
+            lambda self: self.hashcol.delete(postgresql.array(["foo", "bar"])),
+            (
+                "delete(test_table.hash, ARRAY[%(param_1)s, %(param_2)s]) "
+                "AS delete_1"
+            ),
+            True,
+        ),
+        (
+            lambda self: self.hashcol.delete(hstore("1", "2")),
+            (
+                "delete(test_table.hash, hstore(%(hstore_1)s, %(hstore_2)s)) "
+                "AS delete_1"
+            ),
+            True,
+        ),
+        (
+            lambda self: self.hashcol.slice(postgresql.array(["1", "2"])),
+            (
+                "slice(test_table.hash, ARRAY[%(param_1)s, %(param_2)s]) "
+                "AS slice_1"
+            ),
+            True,
+        ),
+        (
+            lambda self: self.hashcol.concat(
+                hstore(cast(self.test_table.c.id, Text), "3")
+            ),
+            (
+                "test_table.hash || hstore(CAST(test_table.id AS TEXT), "
+                "%(hstore_1)s) AS anon_1"
+            ),
+            True,
+        ),
+        (
+            lambda self: hstore("foo", "bar") + self.hashcol,
+            "hstore(%(hstore_1)s, %(hstore_2)s) || test_table.hash AS anon_1",
+            True,
+        ),
+        (
+            lambda self: (self.hashcol + self.hashcol)["foo"],
+            "(test_table.hash || test_table.hash)[%(param_1)s] AS anon_1",
+            True,
+        ),
+        (
+            lambda self: self.hashcol["foo"] != None,  # noqa
+            "test_table.hash[%(hash_1)s] IS NOT NULL AS anon_1",
+            True,
+        ),
+        (
+            # hide from 2to3
+            lambda self: getattr(self.hashcol, "keys")(),
+            "akeys(test_table.hash) AS akeys_1",
+            True,
+        ),
+        (
+            lambda self: self.hashcol.vals(),
+            "avals(test_table.hash) AS avals_1",
+            True,
+        ),
+        (
+            lambda self: self.hashcol.array(),
+            "hstore_to_array(test_table.hash) AS hstore_to_array_1",
+            True,
+        ),
+        (
+            lambda self: self.hashcol.matrix(),
+            "hstore_to_matrix(test_table.hash) AS hstore_to_matrix_1",
+            True,
+        ),
+    )
+    def test_cols(self, colclause_fn, expected, from_):
+        colclause = colclause_fn(self)
+        stmt = select(colclause)
+        self.assert_compile(
+            stmt,
+            ("SELECT %s" + (" FROM test_table" if from_ else "")) % expected,
+        )
+
+    def test_update_getitem(self):
+        stmt = update(self.test_table).values({self.hashcol["bar"]: "foo"})
+        self.assert_compile(
+            stmt, "UPDATE test_table SET hash[%(hash_1)s]=%(param_1)s"
+        )
+
+
 class HStoreRoundTripTest(fixtures.TablesTest):
     __requires__ = ("hstore",)
     __dialect__ = "postgresql"
@@ -4419,6 +4558,18 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         )
         self._assert_data([{"k1": "r1v1", "k2": "r1v2"}], connection)
 
+    def _test_update(self, connection):
+        data_table = self.tables.data_table
+        connection.execute(
+            data_table.insert(),
+            [{"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}}],
+        )
+        connection.execute(
+            data_table.update(),
+            {"name": "r1", "data": {"k1": "r1v3", "k3": "r3v1"}},
+        )
+        self._assert_data([{"k1": "r1v3", "k3": "r3v1"}], connection)
+
     @testing.fixture
     def non_native_hstore_connection(self, testing_engine):
         local_engine = testing.requires.native_hstore.enabled
@@ -4457,6 +4608,13 @@ class HStoreRoundTripTest(fixtures.TablesTest):
 
     def test_insert_python(self, non_native_hstore_connection):
         self._test_insert(non_native_hstore_connection)
+
+    @testing.requires.native_hstore
+    def test_update_native(self, connection):
+        self._test_update(connection)
+
+    def test_update_python(self, non_native_hstore_connection):
+        self._test_update(non_native_hstore_connection)
 
     @testing.requires.native_hstore
     def test_criterion_native(self, connection):
@@ -4548,6 +4706,44 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             )
             s.add(d)
             eq_(s.query(Data.data, Data).all(), [(d.data, d)])
+
+
+class HStoreSubscriptionOperatorRoundTripTest(HStoreRoundTripTest):
+    # Test HSTORE behave the same when using use_subscripting_operator = True
+    # and that updating a specific key works
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "data_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30), nullable=False),
+            Column("data", HSTORE(use_subscripting_operator=True)),
+        )
+
+    def _test_update_item(self, connection):
+        data_table = self.tables.data_table
+        connection.execute(
+            data_table.insert(),
+            [{"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}}],
+        )
+        hashcol = data_table.c.data
+        connection.execute(
+            data_table.update().values(
+                {hashcol["k1"]: "r1v3", hashcol["k3"]: "r3v1"}
+            )
+        )
+        self._assert_data(
+            [{"k1": "r1v3", "k2": "r1v2", "k3": "r3v1"}], connection
+        )
+
+    @testing.requires.native_hstore
+    def test_update_item_native(self, connection):
+        self._test_update_item(connection)
+
+    def test_update_item_python(self, non_native_hstore_connection):
+        self._test_update_item(non_native_hstore_connection)
 
 
 class BitTests(fixtures.TestBase):
