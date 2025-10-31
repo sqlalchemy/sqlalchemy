@@ -1,0 +1,16 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 12948
+
+    Added support for PostgreSQL 14+ HSTORE subscripting syntax. When connected
+    to PostgreSQL 14 or later, HSTORE columns now automatically use the native
+    subscript notation ``hstore_col['key']`` instead of the arrow operator
+    ``hstore_col -> 'key'`` for both read and write operations. This provides
+    better compatibility with PostgreSQL's native HSTORE subscripting feature
+    while maintaining backward compatibility with older PostgreSQL versions.
+
+    .. warning:: Indexes in existing PostgreSQL databases which were indexed
+       on an HSTORE subscript expression would need to be updated in order to
+       match the new SQL syntax.
+
+

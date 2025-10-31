@@ -278,6 +278,7 @@ class Operators:
         ] = None,
         python_impl: Optional[Callable[..., Any]] = None,
         operator_class: OperatorClass = OperatorClass.BASE,
+        visit_name: Optional[str] = None,
     ) -> Callable[[Any], Operators]:
         """Produce a generic operator function.
 
@@ -369,6 +370,17 @@ class Operators:
 
             :ref:`relationship_custom_operator`
 
+        :param visit_name: string name indicating a series of methods that
+         maybe be implemented by a :class:`.Dialect`, specifically using its
+         :class:`.SQLCompiler` implementation.  The naming scheme is
+         ``visit_<visit_name>_op_[binary|unary]``; e.g. using the visit name
+         ``hstore`` means that a binary expression using the operator will
+         attempt to locate a method ``visit_hstore_op_binary()`` on the
+         target dialect's compiler class, which can then provide a compilation
+         string for the full binary expression.
+
+         .. versionadded:: 2.1
+
         """
         operator = custom_op(
             opstring,
@@ -377,6 +389,7 @@ class Operators:
             return_type=return_type,
             python_impl=python_impl,
             operator_class=operator_class,
+            visit_name=visit_name,
         )
 
         def against(other: Any) -> Operators:
@@ -488,6 +501,7 @@ class custom_op(OperatorType, Generic[_T]):
         "return_type",
         "python_impl",
         "operator_class",
+        "visit_name",
     )
 
     def __init__(
@@ -503,7 +517,13 @@ class custom_op(OperatorType, Generic[_T]):
         eager_grouping: bool = False,
         python_impl: Optional[Callable[..., Any]] = None,
         operator_class: OperatorClass = OperatorClass.BASE,
+        visit_name: Optional[str] = None,
     ):
+        """Create a new :class:`.custom_op`.
+
+        See :meth:`.Operators.op` for parameter information.
+
+        """
         self.opstring = opstring
         self.precedence = precedence
         self.is_comparison = is_comparison
@@ -514,6 +534,7 @@ class custom_op(OperatorType, Generic[_T]):
         )
         self.python_impl = python_impl
         self.operator_class = operator_class
+        self.visit_name = visit_name
 
     def __eq__(self, other: Any) -> bool:
         return (

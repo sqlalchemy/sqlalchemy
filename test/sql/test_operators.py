@@ -4655,6 +4655,77 @@ class CustomOpTest(fixtures.TestBase):
             col == "test"
 
 
+class CustomOpDialectCompileTest(
+    testing.AssertsCompiledSQL, fixtures.TestBase
+):
+    """test new custom op dispatch feature added as part of #12948"""
+
+    @testing.fixture
+    def dialect_fixture(self):
+
+        class MyCompiler(compiler.SQLCompiler):
+            def visit_myop_op_binary(self, binary, operator, **kw):
+                return "|%s| ->%s<-" % (
+                    self.process(binary.left, **kw),
+                    self.process(binary.right, **kw),
+                )
+
+            def visit_myop_op_unary(self, unary, operator, **kw):
+                if operator is unary.modifier:
+                    return "%s->|" % (self.process(unary.element, **kw))
+                elif operator is unary.operator:
+                    return "|->%s" % (self.process(unary.element, **kw))
+
+        class MyDialect(default.DefaultDialect):
+            statement_compiler = MyCompiler
+
+        myop = operators.custom_op(
+            "---",
+            precedence=15,
+            natural_self_precedent=True,
+            eager_grouping=True,
+            visit_name="myop",
+        )
+        return MyDialect, myop
+
+    @testing.variation("dialect", ["default", "custom"])
+    def test_binary_override(self, dialect_fixture, dialect):
+        MyDialect, myop = dialect_fixture
+
+        if dialect.default:
+            self.assert_compile(
+                myop(column("q", String), column("y", String)), "q --- y"
+            )
+        elif dialect.custom:
+            self.assert_compile(
+                myop(column("q", String), column("y", String)),
+                "|q| ->y<-",
+                dialect=MyDialect(),
+            )
+
+    @testing.variation("dialect", ["default", "custom"])
+    def test_unary_modifier_override(self, dialect_fixture, dialect):
+        MyDialect, myop = dialect_fixture
+
+        unary = UnaryExpression(column("zqr"), modifier=myop, type_=Numeric)
+
+        if dialect.default:
+            self.assert_compile(unary, "zqr ---")
+        elif dialect.custom:
+            self.assert_compile(unary, "zqr->|", dialect=MyDialect())
+
+    @testing.variation("dialect", ["default", "custom"])
+    def test_unary_operator_override(self, dialect_fixture, dialect):
+        MyDialect, myop = dialect_fixture
+
+        unary = UnaryExpression(column("zqr"), operator=myop, type_=Numeric)
+
+        if dialect.default:
+            self.assert_compile(unary, "--- zqr")
+        elif dialect.custom:
+            self.assert_compile(unary, "|->zqr", dialect=MyDialect())
+
+
 class TupleTypingTest(fixtures.TestBase):
     def _assert_types(self, expr):
         eq_(expr[0]._type_affinity, Integer)
