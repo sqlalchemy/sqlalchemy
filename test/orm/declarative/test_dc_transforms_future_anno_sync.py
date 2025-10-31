@@ -937,6 +937,36 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(fields["id"].metadata, {})
         eq_(fields["value"].metadata, {"meta_key": "meta_value"})
 
+    @testing.requires.python314
+    def test_apply_dc_deferred_annotations(self, dc_decl_base):
+        """test for #12952"""
+
+        class Message(dc_decl_base):
+            __tablename__ = "message"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            content: Mapped[str]
+            user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+
+            # annotation is unquoted and refers to nonexistent class (and if
+            # this is test_dc_transforms.py, __future__ annotations is not
+            # turned on), so would be rejected by any python interpreter < 3.14
+            # up front.  with python 3.14, the dataclass scan takes place
+            # and has to fetch the annotations using get_annotations()
+            # so that refs are turned into FwdRef without being resolved
+            user: Mapped[UnavailableUser] = relationship(  # type: ignore  # noqa
+                back_populates="messages"
+            )
+
+        # The key assertion: Message should be a dataclass
+        is_true(dataclasses.is_dataclass(Message))
+
+        # Verify the dataclass has proper __init__ signature
+        sig = pyinspect.signature(Message.__init__)
+        is_true("id" in sig.parameters)
+        is_true("content" in sig.parameters)
+        is_true("user_id" in sig.parameters)
+
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
 

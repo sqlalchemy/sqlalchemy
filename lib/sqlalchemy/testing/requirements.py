@@ -1647,6 +1647,12 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def python314(self):
+        return exclusions.only_if(
+            lambda: util.py314, "Python 3.14 or above required"
+        )
+
+    @property
     def fail_python314b1(self):
         return exclusions.fails_if(
             lambda: util.compat.py314b1, "Fails as of python 3.14.0b1"
