@@ -2610,11 +2610,10 @@ class AbstractPolymorphicTest(
                 ],
             ),
             CompiledSQL(
-                "SELECT employee.company_id AS employee_company_id, "
-                "employee.id AS employee_id, employee.name AS employee_name, "
-                "employee.type AS employee_type, "
-                "employee.executive_background AS "
-                "employee_executive_background "
+                "SELECT employee.company_id, "
+                "employee.id, employee.name, "
+                "employee.type, "
+                "employee.executive_background "
                 "FROM employee WHERE employee.company_id "
                 "IN (__[POSTCOMPILE_primary_keys]) "
                 "AND employee.type IN (__[POSTCOMPILE_type_1])",

@@ -1499,8 +1499,8 @@ class O2MWOSideFixedTest(fixtures.MappedTest):
             testing.db,
             go,
             CompiledSQL(
-                "SELECT person.id AS person_id, person.city_id AS "
-                "person_city_id FROM person WHERE person.city_id = :param_1 "
+                "SELECT person.id, person.city_id "
+                "FROM person WHERE person.city_id = :param_1 "
                 "AND :param_2 = 0",
                 {"param_1": 2, "param_2": 1},
             ),
@@ -1690,8 +1690,8 @@ class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
         asserter.assert_(
             CompiledSQL(
-                "SELECT pets.id AS pets_id, pets.person_id AS "
-                "pets_person_id FROM pets WHERE pets.person_id = "
+                "SELECT pets.id, pets.person_id "
+                "FROM pets WHERE pets.person_id = "
                 "CAST(:param_1 AS INTEGER)",
                 [{"param_1": 5}],
             )

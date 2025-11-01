@@ -2048,13 +2048,11 @@ class DeferredMergeTest(fixtures.MappedTest):
             go,
             [
                 (
-                    "SELECT book.summary AS book_summary "
-                    "FROM book WHERE book.id = :pk_1",
+                    "SELECT book.summary FROM book WHERE book.id = :pk_1",
                     {"pk_1": 1},
                 ),
                 (
-                    "SELECT book.excerpt AS book_excerpt "
-                    "FROM book WHERE book.id = :pk_1",
+                    "SELECT book.excerpt FROM book WHERE book.id = :pk_1",
                     {"pk_1": 1},
                 ),
             ],
@@ -2094,13 +2092,11 @@ class DeferredMergeTest(fixtures.MappedTest):
             go,
             [
                 (
-                    "SELECT book.summary AS book_summary "
-                    "FROM book WHERE book.id = :pk_1",
+                    "SELECT book.summary FROM book WHERE book.id = :pk_1",
                     {"pk_1": 1},
                 ),
                 (
-                    "SELECT book.excerpt AS book_excerpt "
-                    "FROM book WHERE book.id = :pk_1",
+                    "SELECT book.excerpt FROM book WHERE book.id = :pk_1",
                     {"pk_1": 1},
                 ),
             ],

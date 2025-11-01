@@ -1873,9 +1873,9 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 {"primary_language_1": "java"},
             ),
             CompiledSQL(
-                "SELECT paperwork.person_id AS paperwork_person_id, "
-                "paperwork.paperwork_id AS paperwork_paperwork_id, "
-                "paperwork.description AS paperwork_description "
+                "SELECT paperwork.person_id, "
+                "paperwork.paperwork_id, "
+                "paperwork.description "
                 "FROM paperwork WHERE paperwork.person_id "
                 "IN (__[POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.paperwork_id",
@@ -1923,9 +1923,9 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 },
             ),
             CompiledSQL(
-                "SELECT paperwork.person_id AS paperwork_person_id, "
-                "paperwork.paperwork_id AS paperwork_paperwork_id, "
-                "paperwork.description AS paperwork_description "
+                "SELECT paperwork.person_id, "
+                "paperwork.paperwork_id, "
+                "paperwork.description "
                 "FROM paperwork WHERE paperwork.person_id "
                 "IN (__[POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.paperwork_id",
@@ -1969,9 +1969,9 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "DESC LIMIT :param_1"
             ),
             CompiledSQL(
-                "SELECT paperwork.person_id AS paperwork_person_id, "
-                "paperwork.paperwork_id AS paperwork_paperwork_id, "
-                "paperwork.description AS paperwork_description "
+                "SELECT paperwork.person_id, "
+                "paperwork.paperwork_id, "
+                "paperwork.description "
                 "FROM paperwork WHERE paperwork.person_id "
                 "IN (__[POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.paperwork_id",
@@ -2023,9 +2023,9 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "LIMIT :param_1"
             ),
             CompiledSQL(
-                "SELECT paperwork.person_id AS paperwork_person_id, "
-                "paperwork.paperwork_id AS paperwork_paperwork_id, "
-                "paperwork.description AS paperwork_description "
+                "SELECT paperwork.person_id, "
+                "paperwork.paperwork_id, "
+                "paperwork.description "
                 "FROM paperwork WHERE paperwork.person_id "
                 "IN (__[POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.paperwork_id",
@@ -2071,9 +2071,9 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
                 "ORDER BY engineers_1.primary_language DESC LIMIT :param_1"
             ),
             CompiledSQL(
-                "SELECT paperwork.person_id AS paperwork_person_id, "
-                "paperwork.paperwork_id AS paperwork_paperwork_id, "
-                "paperwork.description AS paperwork_description "
+                "SELECT paperwork.person_id, "
+                "paperwork.paperwork_id, "
+                "paperwork.description "
                 "FROM paperwork WHERE paperwork.person_id "
                 "IN (__[POSTCOMPILE_primary_keys]) "
                 "ORDER BY paperwork.paperwork_id",
@@ -2293,7 +2293,7 @@ class TupleTest(fixtures.DeclarativeMappedTest):
                 {},
             ),
             CompiledSQL(
-                "SELECT b.a_id1 AS b_a_id1, b.a_id2 AS b_a_id2, b.id AS b_id "
+                "SELECT b.a_id1, b.a_id2, b.id "
                 "FROM b WHERE (b.a_id1, b.a_id2) IN "
                 "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
                 [{"primary_keys": [(i, i + 2) for i in range(1, 20)]}],
@@ -2325,7 +2325,7 @@ class TupleTest(fixtures.DeclarativeMappedTest):
                 {},
             ),
             CompiledSQL(
-                "SELECT a.id1 AS a_id1, a.id2 AS a_id2 FROM a "
+                "SELECT a.id1, a.id2 FROM a "
                 "WHERE (a.id1, a.id2) IN (__[POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [(i, i + 2) for i in range(1, 20)]}],
             ),
@@ -2398,19 +2398,19 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
             go,
             CompiledSQL("SELECT a.id AS a_id FROM a ORDER BY a.id", {}),
             CompiledSQL(
-                "SELECT b.a_id AS b_a_id, b.id AS b_id "
+                "SELECT b.a_id, b.id "
                 "FROM b WHERE b.a_id IN "
                 "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
                 {"primary_keys": list(range(1, 48))},
             ),
             CompiledSQL(
-                "SELECT b.a_id AS b_a_id, b.id AS b_id "
+                "SELECT b.a_id, b.id "
                 "FROM b WHERE b.a_id IN "
                 "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
                 {"primary_keys": list(range(48, 95))},
             ),
             CompiledSQL(
-                "SELECT b.a_id AS b_a_id, b.id AS b_id "
+                "SELECT b.a_id, b.id "
                 "FROM b WHERE b.a_id IN "
                 "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
                 {"primary_keys": list(range(95, 101))},
@@ -2474,19 +2474,19 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
             ),
             # chunk size is 47.  so first chunk are a 1->47...
             CompiledSQL(
-                "SELECT a.id AS a_id FROM a WHERE a.id IN "
+                "SELECT a.id FROM a WHERE a.id IN "
                 "(__[POSTCOMPILE_primary_keys])",
                 {"primary_keys": list(range(1, 48))},
             ),
             # second chunk is a 48-94
             CompiledSQL(
-                "SELECT a.id AS a_id FROM a WHERE a.id IN "
+                "SELECT a.id FROM a WHERE a.id IN "
                 "(__[POSTCOMPILE_primary_keys])",
                 {"primary_keys": list(range(48, 95))},
             ),
             # third and final chunk 95-100.
             CompiledSQL(
-                "SELECT a.id AS a_id FROM a WHERE a.id IN "
+                "SELECT a.id FROM a WHERE a.id IN "
                 "(__[POSTCOMPILE_primary_keys])",
                 {"primary_keys": list(range(95, 101))},
             ),
@@ -3011,15 +3011,14 @@ class SelfRefInheritanceAliasedTest(
                     [{"id_1": 2}],
                 ),
                 CompiledSQL(
-                    "SELECT foo_1.id AS foo_1_id, "
-                    "foo_1.type AS foo_1_type, foo_1.foo_id AS foo_1_foo_id "
+                    "SELECT foo_1.id, foo_1.type, foo_1.foo_id "
                     "FROM foo AS foo_1 "
                     "WHERE foo_1.id IN (__[POSTCOMPILE_primary_keys])",
                     {"primary_keys": [3]},
                 ),
                 CompiledSQL(
-                    "SELECT foo.id AS foo_id_1, foo.type AS foo_type, "
-                    "foo.foo_id AS foo_foo_id FROM foo "
+                    "SELECT foo.id, foo.type, "
+                    "foo.foo_id FROM foo "
                     "WHERE foo.id IN (__[POSTCOMPILE_primary_keys])",
                     {"primary_keys": [1]},
                 ),
@@ -3188,7 +3187,7 @@ class SingleInhSubclassTest(
                 {"type_1": ["employer"]},
             ),
             CompiledSQL(
-                "SELECT role.user_id AS role_user_id, role.id AS role_id "
+                "SELECT role.user_id, role.id "
                 "FROM role WHERE role.user_id "
                 "IN (__[POSTCOMPILE_primary_keys])",
                 {"primary_keys": [1]},
@@ -3312,7 +3311,7 @@ class M2OWDegradeTest(
                 [{"id_1": [1, 3]}],
             ),
             CompiledSQL(
-                "SELECT b.id AS b_id, b.x AS b_x, b.y AS b_y "
+                "SELECT b.id, b.x, b.y "
                 "FROM b WHERE b.id IN (__[POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [1, 2]}],
             ),
@@ -3345,8 +3344,7 @@ class M2OWDegradeTest(
             # emit either for each parent object individually, or as a second
             # query for them.
             CompiledSQL(
-                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.x AS b_x, "
-                "b.y AS b_y "
+                "SELECT a_1.id, b.id, b.x, b.y "
                 "FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
                 "WHERE a_1.id IN (__[POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [1, 3]}],
@@ -3371,7 +3369,7 @@ class M2OWDegradeTest(
                 [{}],
             ),
             CompiledSQL(
-                "SELECT b.id AS b_id, b.x AS b_x, b.y AS b_y "
+                "SELECT b.id, b.x, b.y "
                 "FROM b WHERE b.id IN (__[POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [1, 2]}],
             ),
@@ -3402,8 +3400,8 @@ class M2OWDegradeTest(
                 [{}],
             ),
             CompiledSQL(
-                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.x AS b_x, "
-                "b.y AS b_y FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
+                "SELECT a_1.id, b.id, b.x, b.y "
+                "FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
                 "WHERE a_1.id IN (__[POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [1, 2, 3, 4, 5]}],
             ),
@@ -3436,8 +3434,7 @@ class M2OWDegradeTest(
             # emit either for each parent object individually, or as a second
             # query for them.
             CompiledSQL(
-                "SELECT a_1.id AS a_1_id, b.id AS b_id, b.x AS b_x, "
-                "b.y AS b_y "
+                "SELECT a_1.id, b.id, b.x, b.y "
                 "FROM a AS a_1 JOIN b ON b.id = a_1.b_id "
                 "WHERE a_1.id IN (__[POSTCOMPILE_primary_keys])",
                 [{"primary_keys": [1, 2, 3, 4, 5]}],
@@ -3549,15 +3546,15 @@ class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
             ),
             AllOf(
                 CompiledSQL(
-                    "SELECT child_a.parent_id AS child_a_parent_id, "
-                    "child_a.id AS child_a_id FROM child_a "
+                    "SELECT child_a.parent_id, "
+                    "child_a.id FROM child_a "
                     "WHERE child_a.parent_id IN "
                     "(__[POSTCOMPILE_primary_keys])",
                     [{"primary_keys": [1]}],
                 ),
                 CompiledSQL(
-                    "SELECT child_b.parent_id AS child_b_parent_id, "
-                    "child_b.id AS child_b_id FROM child_b "
+                    "SELECT child_b.parent_id, "
+                    "child_b.id FROM child_b "
                     "WHERE child_b.parent_id IN "
                     "(__[POSTCOMPILE_primary_keys])",
                     [{"primary_keys": [2]}],
