@@ -266,4 +266,7 @@ class RowTest(fixtures.TestBase):
             def __iter__(self):
                 return iter(self.data)
 
+            def __len__(self):
+                return len(self.data)
+
         self._test_getitem_value_refcounts_new(CustomSeq)
