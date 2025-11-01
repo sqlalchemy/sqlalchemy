@@ -2541,9 +2541,12 @@ class SQLiteDialect(default.DefaultDialect):
         constraint_name = None
         table_data = self._get_table_sql(connection, table_name, schema=schema)
         if table_data:
-            PK_PATTERN = r"CONSTRAINT (\w+) PRIMARY KEY"
+            PK_PATTERN = r'CONSTRAINT +(?:"(.+?)"|(\w+)) +PRIMARY KEY'
             result = re.search(PK_PATTERN, table_data, re.I)
-            constraint_name = result.group(1) if result else None
+            if result:
+                constraint_name = result.group(1) or result.group(2)
+            else:
+                constraint_name = None
 
         cols = self.get_columns(connection, table_name, schema, **kw)
         # consider only pk columns. This also avoids sorting the cached
@@ -2643,7 +2646,7 @@ class SQLiteDialect(default.DefaultDialect):
             # so parsing the columns is really about matching it up to what
             # we already have.
             FK_PATTERN = (
-                r"(?:CONSTRAINT (\w+) +)?"
+                r'(?:CONSTRAINT +(?:"(.+?)"|(\w+)) +)?'
                 r"FOREIGN KEY *\( *(.+?) *\) +"
                 r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\( *((?:(?:"[^"]+"|[a-z0-9_]+) *(?:, *)?)+)\) *'  # noqa: E501
                 r"((?:ON (?:DELETE|UPDATE) "
@@ -2653,6 +2656,7 @@ class SQLiteDialect(default.DefaultDialect):
             )
             for match in re.finditer(FK_PATTERN, table_data, re.I):
                 (
+                    constraint_quoted_name,
                     constraint_name,
                     constrained_columns,
                     referred_quoted_name,
@@ -2661,7 +2665,8 @@ class SQLiteDialect(default.DefaultDialect):
                     onupdatedelete,
                     deferrable,
                     initially,
-                ) = match.group(1, 2, 3, 4, 5, 6, 7, 8)
+                ) = match.group(1, 2, 3, 4, 5, 6, 7, 8, 9)
+                constraint_name = constraint_quoted_name or constraint_name
                 constrained_columns = list(
                     self._find_cols_in_sig(constrained_columns)
                 )
@@ -2756,14 +2761,17 @@ class SQLiteDialect(default.DefaultDialect):
         def parse_uqs():
             if table_data is None:
                 return
-            UNIQUE_PATTERN = r'(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
+            UNIQUE_PATTERN = (
+                r'(?:CONSTRAINT +(?:"(.+?)"|(\w+)) +)?UNIQUE *\((.+?)\)'
+            )
             INLINE_UNIQUE_PATTERN = (
                 r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?)[\t ]'
                 r"+[a-z0-9_ ]+?[\t ]+UNIQUE"
             )
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):
-                name, cols = match.group(1, 2)
+                quoted_name, unquoted_name, cols = match.group(1, 2, 3)
+                name = quoted_name or unquoted_name
                 yield name, list(self._find_cols_in_sig(cols))
 
             # we need to match inlines as well, as we seek to differentiate
