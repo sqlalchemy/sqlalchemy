@@ -329,12 +329,25 @@ class Config:
         self.test_schema = "test_schema"
         self.test_schema_2 = "test_schema_2"
 
+        self.is_default_dialect = (
+            db.url._get_entrypoint()
+            is db.url.set(
+                drivername=db.url.get_backend_name()
+            )._get_entrypoint()
+        )
         self.is_async = db.dialect.is_async and not util.asbool(
             db.url.query.get("async_fallback", False)
         )
 
     _stack = collections.deque()
     _configs = set()
+
+    def __repr__(self):
+        return (
+            f"sqlalchemy.testing.config.Config"
+            f"({self.db.name}+{self.db.driver}, "
+            f"{self.db.dialect.server_version_info})"
+        )
 
     def _set_name(self, db):
         suffix = "_async" if db.dialect.is_async else ""

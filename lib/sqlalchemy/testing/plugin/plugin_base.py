@@ -683,16 +683,19 @@ def _possible_configs_for_cls(cls, reasons=None, sparse=False):
         # sorted so we get the same backend each time selecting the highest
         # server version info.
         per_dialect = {}
-        for cfg in reversed(
+
+        sorted_all_configs = reversed(
             sorted(
                 all_configs,
                 key=lambda cfg: (
+                    "z" if cfg.is_default_dialect else "a",
                     cfg.db.name,
                     cfg.db.driver,
                     cfg.db.dialect.server_version_info,
                 ),
             )
-        ):
+        )
+        for cfg in sorted_all_configs:
             db = cfg.db.name
             if db not in per_dialect:
                 per_dialect[db] = cfg
