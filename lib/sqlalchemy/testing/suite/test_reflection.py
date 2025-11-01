@@ -1823,6 +1823,37 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         )
 
     @testing.combinations(
+        "PK_test_table",
+        "pk_test_table",
+        "mixedCasePK",
+        "pk.with.dots",
+        argnames="pk_name",
+    )
+    @testing.requires.primary_key_constraint_reflection
+    @testing.requires.reflects_pk_names
+    def test_get_pk_constraint_quoted_name(
+        self, connection, metadata, pk_name
+    ):
+        """Test that primary key constraint names with various casing are
+        properly reflected."""
+
+        Table(
+            "test_table",
+            metadata,
+            Column("id", Integer),
+            Column("data", String(50)),
+            sa.PrimaryKeyConstraint("id", name=pk_name),
+        )
+
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        pk_cons = insp.get_pk_constraint("test_table")
+
+        eq_(pk_cons["name"], pk_name)
+        eq_(pk_cons["constrained_columns"], ["id"])
+
+    @testing.combinations(
         (False,), (True, testing.requires.schemas), argnames="use_schema"
     )
     @testing.requires.foreign_key_constraint_reflection
@@ -1863,6 +1894,53 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
 
         no_cst = self.tables.no_constraints.name
         eq_(insp.get_foreign_keys(no_cst, schema=schema), [])
+
+    @testing.combinations(
+        "FK_users_id",
+        "fk_users_id",
+        "mixedCaseName",
+        "fk.with.dots",
+        argnames="fk_name",
+    )
+    @testing.requires.foreign_key_constraint_reflection
+    def test_get_foreign_keys_quoted_name(self, connection, metadata, fk_name):
+        """Test that foreign key constraint names with various casing are
+        properly reflected."""
+
+        Table(
+            "users_ref",
+            metadata,
+            Column("user_id", Integer, primary_key=True),
+            test_needs_fk=True,
+        )
+
+        Table(
+            "user_orders",
+            metadata,
+            Column("order_id", Integer, primary_key=True),
+            Column("user_id", Integer),
+            sa.ForeignKeyConstraint(
+                ["user_id"],
+                ["users_ref.user_id"],
+                name=fk_name,
+            ),
+            test_needs_fk=True,
+        )
+
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        fkeys = insp.get_foreign_keys("user_orders")
+
+        eq_(len(fkeys), 1)
+        fkey = fkeys[0]
+
+        with testing.requires.named_constraints.fail_if():
+            eq_(fkey["name"], fk_name)
+
+        eq_(fkey["referred_table"], "users_ref")
+        eq_(fkey["referred_columns"], ["user_id"])
+        eq_(fkey["constrained_columns"], ["user_id"])
 
     @testing.requires.cross_schema_fk_reflection
     @testing.requires.schemas
@@ -1949,6 +2027,38 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         eq_(len(t.indexes), 1)
         is_(list(t.indexes)[0].table, t)
         eq_(list(t.indexes)[0].name, ixname)
+
+    @testing.combinations(
+        "IX_test_data",
+        "ix_test_data",
+        "mixedCaseIndex",
+        "ix.with.dots",
+        argnames="idx_name",
+    )
+    @testing.requires.index_reflection
+    def test_get_indexes_quoted_name(self, connection, metadata, idx_name):
+        """Test that index names with various casing are properly reflected."""
+
+        t = Table(
+            "test_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50)),
+        )
+        Index(idx_name, t.c.data)
+
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        indexes = insp.get_indexes("test_table")
+
+        index_names = [idx["name"] for idx in indexes]
+        assert idx_name in index_names, f"Expected {idx_name} in {index_names}"
+
+        # Find the specific index
+        matching_idx = [idx for idx in indexes if idx["name"] == idx_name]
+        eq_(len(matching_idx), 1)
+        eq_(matching_idx[0]["column_names"], ["data"])
 
     @testing.requires.temp_table_reflection
     @testing.requires.unique_constraint_reflection
@@ -2067,6 +2177,37 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
 
         no_cst = self.tables.no_constraints.name
         eq_(insp.get_unique_constraints(no_cst, schema=schema), [])
+
+    @testing.combinations(
+        "UQ_email",
+        "uq_email",
+        "mixedCaseUQ",
+        "uq.with.dots",
+        argnames="uq_name",
+    )
+    @testing.requires.unique_constraint_reflection
+    def test_get_unique_constraints_quoted_name(
+        self, connection, metadata, uq_name
+    ):
+        """Test that unique constraint names with various casing are
+        properly reflected."""
+
+        Table(
+            "test_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("email", String(50)),
+            sa.UniqueConstraint("email", name=uq_name),
+        )
+
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        uq_cons = insp.get_unique_constraints("test_table")
+
+        eq_(len(uq_cons), 1)
+        eq_(uq_cons[0]["name"], uq_name)
+        eq_(uq_cons[0]["column_names"], ["email"])
 
     @testing.requires.view_reflection
     @testing.combinations(
