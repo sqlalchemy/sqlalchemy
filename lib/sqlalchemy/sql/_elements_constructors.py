@@ -2021,7 +2021,7 @@ def aggregate_order_by(
     :paramref:`_functions.aggregate_strings.order_by` parameter to indicate a
     dialect-agnostic ORDER BY expression.
 
-    .. versionadded:: 2.0.44 Generalized the PostgreSQL-specific
+    .. versionadded:: 2.1 Generalized the PostgreSQL-specific
        :func:`_postgresql.aggregate_order_by` function to a method on
        :class:`.Function` that is backend agnostic.
 

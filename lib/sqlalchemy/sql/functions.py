@@ -483,7 +483,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         See :func:`_expression.aggregate_order_by` for a full description.
 
-        .. versionadded:: 2.0.44 Generalized the PostgreSQL-specific
+        .. versionadded:: 2.1 Generalized the PostgreSQL-specific
           :func:`_postgresql.aggregate_order_by` function to a method on
           :class:`.Function` that is backend agnostic.
 
