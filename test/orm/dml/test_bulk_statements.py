@@ -29,6 +29,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DictBundle
 from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
@@ -482,7 +483,8 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         "insert_type",
         ["bulk", ("values", testing.requires.multivalues_inserts), "single"],
     )
-    def test_insert_returning_bundle(self, decl_base, insert_type):
+    @testing.combinations(Bundle, DictBundle, argnames="kind")
+    def test_insert_returning_bundle(self, decl_base, insert_type, kind):
         """test #10776"""
 
         class User(decl_base):
@@ -496,7 +498,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
 
         decl_base.metadata.create_all(testing.db)
         insert_stmt = insert(User).returning(
-            User.name, Bundle("mybundle", User.id, User.x, User.y)
+            User.name, kind("mybundle", User.id, User.x, User.y)
         )
 
         s = fixture_session()
@@ -528,16 +530,23 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             insert_type.fail()
 
         if insert_type.single:
-            eq_(result.all(), [("some name 1", (1, 1, 2))])
+            exp = {Bundle: (1, 1, 2), DictBundle: {"id": 1, "x": 1, "y": 2}}
+            eq_(result.all(), [("some name 1", exp[kind])])
         else:
-            eq_(
-                result.all(),
-                [
+            if kind is Bundle:
+                exp = [
                     ("some name 1", (1, 1, 2)),
                     ("some name 2", (2, 2, 3)),
                     ("some name 3", (3, 3, 4)),
-                ],
-            )
+                ]
+            else:
+                exp = [
+                    ("some name 1", {"id": 1, "x": 1, "y": 2}),
+                    ("some name 2", {"id": 2, "x": 2, "y": 3}),
+                    ("some name 3", {"id": 3, "x": 3, "y": 4}),
+                ]
+
+            eq_(result.all(), exp)
 
     @testing.variation(
         "use_returning", [(True, testing.requires.insert_returning), False]

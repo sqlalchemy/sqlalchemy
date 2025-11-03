@@ -231,10 +231,13 @@ The :class:`_orm.Bundle` is potentially useful for creating lightweight views
 and custom column groupings. :class:`_orm.Bundle` may also be subclassed in
 order to return alternate data structures; see
 :meth:`_orm.Bundle.create_row_processor` for an example.
+A dict-returning subclass :class:`_orm.DictBundle` is provided for convenience.
 
 .. seealso::
 
     :class:`_orm.Bundle`
+
+    :class:`_orm.DictBundle`
 
     :meth:`_orm.Bundle.create_row_processor`
 

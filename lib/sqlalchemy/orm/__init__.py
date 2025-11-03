@@ -157,6 +157,7 @@ from .strategy_options import with_expression as with_expression
 from .unitofwork import UOWTransaction as UOWTransaction
 from .util import Bundle as Bundle
 from .util import CascadeOptions as CascadeOptions
+from .util import DictBundle as DictBundle
 from .util import LoaderCriteriaOption as LoaderCriteriaOption
 from .util import object_mapper as object_mapper
 from .util import polymorphic_union as polymorphic_union

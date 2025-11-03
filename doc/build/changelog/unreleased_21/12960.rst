@@ -1,0 +1,6 @@
+.. change::
+    :tags: orm, usecase
+    :tickets: 12960
+
+    Added :class:`_orm.DictBundle` as a subclass of :class:`_orm.Bundle`
+    that returns ``dict`` objects.

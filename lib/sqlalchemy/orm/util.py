@@ -37,7 +37,6 @@ from typing import Union
 import weakref
 
 from . import attributes  # noqa
-from . import exc
 from . import exc as orm_exc
 from ._typing import _O
 from ._typing import insp_is_aliased_class
@@ -1519,7 +1518,7 @@ def _inspect_mc(
         if class_manager is None or not class_manager.is_mapped:
             return None
         mapper = class_manager.mapper
-    except exc.NO_STATE:
+    except orm_exc.NO_STATE:
         return None
     else:
         return mapper
@@ -1559,6 +1558,7 @@ class Bundle(
 
         :ref:`bundles`
 
+        :class:`.DictBundle`
 
     """
 
@@ -1582,7 +1582,7 @@ class Bundle(
 
     def __init__(
         self, name: str, *exprs: _ColumnExpressionArgument[Any], **kw: Any
-    ):
+    ) -> None:
         r"""Construct a new :class:`.Bundle`.
 
         e.g.::
@@ -1748,11 +1748,58 @@ class Bundle(
             for row in session.execute(select(bn)).where(bn.c.data1 == "d1"):
                 print(row.mybundle["data1"], row.mybundle["data2"])
 
+        The above example is available natively using :class:`.DictBundle`
+
+        .. seealso::
+
+            :class:`.DictBundle`
+
         """  # noqa: E501
         keyed_tuple = result_tuple(labels, [() for l in labels])
 
         def proc(row: Row[Unpack[TupleAny]]) -> Any:
             return keyed_tuple([proc(row) for proc in procs])
+
+        return proc
+
+
+class DictBundle(Bundle[_T]):
+    """Like :class:`.Bundle` but returns ``dict`` instances instead of
+    named tuple like objects::
+
+        bn = DictBundle("mybundle", MyClass.data1, MyClass.data2)
+        for row in session.execute(select(bn)).where(bn.c.data1 == "d1"):
+            print(row.mybundle["data1"], row.mybundle["data2"])
+
+    Differently from :class:`.Bundle`, multiple columns with the same name are
+    not supported.
+
+    .. versionadded:: 2.1
+
+    .. seealso::
+
+        :ref:`bundles`
+
+        :class:`.Bundle`
+    """
+
+    def __init__(
+        self, name: str, *exprs: _ColumnExpressionArgument[Any], **kw: Any
+    ) -> None:
+        super().__init__(name, *exprs, **kw)
+        if len(set(self.c.keys())) != len(self.c):
+            raise sa_exc.ArgumentError(
+                "DictBundle does not support duplicate column names"
+            )
+
+    def create_row_processor(
+        self,
+        query: Select[Unpack[TupleAny]],
+        procs: Sequence[Callable[[Row[Unpack[TupleAny]]], Any]],
+        labels: Sequence[str],
+    ) -> Callable[[Row[Unpack[TupleAny]]], dict[str, Any]]:
+        def proc(row: Row[Unpack[TupleAny]]) -> dict[str, Any]:
+            return dict(zip(labels, (proc(row) for proc in procs)))
 
         return proc
 

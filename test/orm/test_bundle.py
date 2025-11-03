@@ -9,6 +9,7 @@ from sqlalchemy import testing
 from sqlalchemy import tuple_
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import DictBundle
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ClauseList
@@ -16,6 +17,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -124,6 +126,14 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
         self.assert_compile(ClauseList(Data.id, Other.id), "data.id, other.id")
         self.assert_compile(bundle.__clause_element__(), "data.id, other.id")
 
+    def test_dict_same_named_col_clauselist(self):
+        Data, Other = self.classes("Data", "Other")
+        with expect_raises_message(
+            exc.ArgumentError,
+            "DictBundle does not support duplicate column names",
+        ):
+            DictBundle("pk", Data.id, Other.id)
+
     def test_same_named_col_in_orderby(self):
         Data, Other = self.classes("Data", "Other")
         bundle = Bundle("pk", Data.id, Other.id)
@@ -151,10 +161,11 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             [((1, 1),), ((2, 2),)],
         )
 
-    def test_c_attr(self):
+    @testing.combinations(Bundle, DictBundle, argnames="kind")
+    def test_c_attr(self, kind):
         Data = self.classes.Data
 
-        b1 = Bundle("b1", Data.d1, Data.d2)
+        b1 = kind("b1", Data.d1, Data.d2)
 
         self.assert_compile(
             select(b1.c.d1, b1.c.d2), "SELECT data.d1, data.d2 FROM data"
@@ -225,13 +236,6 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
         """test #11347"""
         Data = self.classes.Data
         sess = fixture_session()
-
-        class DictBundle(Bundle):
-            def create_row_processor(self, query, procs, labels):
-                def proc(row):
-                    return dict(zip(labels, (proc(row) for proc in procs)))
-
-                return proc
 
         if col_type.core:
             data_table = self.tables.data
@@ -323,7 +327,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
         class MyBundle(Bundle):
             def create_row_processor(self, query, procs, labels):
                 def proc(row):
-                    return dict(zip(labels, (proc(row) for proc in procs)))
+                    return list(zip(labels, (proc(row) for proc in procs)))
 
                 return proc
 
@@ -332,9 +336,9 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
         eq_(
             sess.query(b1).filter(b1.c.d1.between("d3d1", "d5d1")).all(),
             [
-                ({"d2": "d3d2", "d1": "d3d1"},),
-                ({"d2": "d4d2", "d1": "d4d1"},),
-                ({"d2": "d5d2", "d1": "d5d1"},),
+                ([("d1", "d3d1"), ("d2", "d3d2")],),
+                ([("d1", "d4d1"), ("d2", "d4d2")],),
+                ([("d1", "d5d1"), ("d2", "d5d2")],),
             ],
         )
 

@@ -528,6 +528,8 @@ Additional ORM API Constructs
 .. autoclass:: sqlalchemy.orm.Bundle
     :members:
 
+.. autoclass:: sqlalchemy.orm.DictBundle
+
 .. autofunction:: sqlalchemy.orm.with_loader_criteria
 
 .. autofunction:: sqlalchemy.orm.join
