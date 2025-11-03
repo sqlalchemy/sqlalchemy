@@ -234,7 +234,9 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
 
     def test_limit_render_multiple_times(self, connection):
         table = self.tables.some_table
-        stmt = select(table.c.id).limit(1).scalar_subquery()
+        stmt = (
+            select(table.c.id).order_by(table.c.id).limit(1).scalar_subquery()
+        )
 
         u = union(select(stmt), select(stmt)).subquery().select()
 
