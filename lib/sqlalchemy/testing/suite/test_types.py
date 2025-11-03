@@ -433,7 +433,9 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
         connection.execute(t.insert(), [{"x": "AB"}, {"x": "BC"}, {"x": "AC"}])
 
         eq_(
-            connection.scalars(select(t.c.x).where(t.c.x.like(expr))).all(),
+            connection.scalars(
+                select(t.c.x).where(t.c.x.like(expr)).order_by(t.c.x)
+            ).all(),
             expected,
         )
 
