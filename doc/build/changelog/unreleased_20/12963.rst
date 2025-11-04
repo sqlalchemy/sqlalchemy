@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, typing
+
+    Fixed typing issue where :class:`.coalesce` would not return the correct
+    return type when a nullable form of that argument were passed, even though
+    this function is meant to select the non-null entry among possibly null
+    arguments.  Pull request courtesy Yannick PÉROUX.
+

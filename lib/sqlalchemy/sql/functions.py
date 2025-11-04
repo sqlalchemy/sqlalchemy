@@ -1047,7 +1047,7 @@ class _FunctionGenerator:
         @overload
         def coalesce(
             self,
-            col: _ColumnExpressionArgument[_T],
+            col: _ColumnExpressionArgument[Optional[_T]],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]: ...
@@ -1055,14 +1055,14 @@ class _FunctionGenerator:
         @overload
         def coalesce(
             self,
-            col: _T,
+            col: Optional[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]: ...
 
         def coalesce(
             self,
-            col: _ColumnExpressionOrLiteralArgument[_T],
+            col: _ColumnExpressionOrLiteralArgument[Optional[_T]],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]: ...
@@ -1661,7 +1661,42 @@ class ReturnTypeFromArgs(GenericFunction[_T]):
         super().__init__(*fn_args, **kwargs)
 
 
-class coalesce(ReturnTypeFromArgs[_T]):
+class ReturnTypeFromOptionalArgs(ReturnTypeFromArgs[_T]):
+    inherit_cache = True
+
+    @overload
+    def __init__(
+        self,
+        col: ColumnElement[_T],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
+        **kwargs: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        col: _ColumnExpressionArgument[Optional[_T]],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
+        **kwargs: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        col: Optional[_T],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
+        **kwargs: Any,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        *args: _ColumnExpressionOrLiteralArgument[Optional[_T]],
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)  # type: ignore
+
+
+class coalesce(ReturnTypeFromOptionalArgs[_T]):
     _has_args = True
     inherit_cache = True
 

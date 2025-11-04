@@ -14,6 +14,7 @@ import typing_extensions
 
 from sqlalchemy.sql.functions import _registry
 from sqlalchemy.sql.functions import ReturnTypeFromArgs
+from sqlalchemy.sql.functions import ReturnTypeFromOptionalArgs
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.util.tool_support import code_writer_cmd
 
@@ -22,7 +23,7 @@ def _fns_in_deterministic_order():
     reg = _registry["_default"]
     for key in sorted(reg):
         cls = reg[key]
-        if cls is ReturnTypeFromArgs:
+        if cls is ReturnTypeFromArgs or cls is ReturnTypeFromOptionalArgs:
             continue
         yield key, cls
 
@@ -63,6 +64,11 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                     is_reserved_word = key in builtins
 
                     if issubclass(fn_class, ReturnTypeFromArgs):
+                        if issubclass(fn_class, ReturnTypeFromOptionalArgs):
+                            _TEE = "Optional[_T]"
+                        else:
+                            _TEE = "_T"
+
                         buf.write(
                             textwrap.indent(
                                 f"""
@@ -84,7 +90,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _ColumnExpressionArgument[_T],
+    col: _ColumnExpressionArgument[{_TEE}],
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
@@ -93,7 +99,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _T,
+    col: {_TEE},
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
@@ -101,7 +107,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _ColumnExpressionOrLiteralArgument[_T],
+    col: _ColumnExpressionOrLiteralArgument[{_TEE}],
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:

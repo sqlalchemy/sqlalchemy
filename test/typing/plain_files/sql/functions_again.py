@@ -1,10 +1,14 @@
+from typing import assert_type
+
 from sqlalchemy import column
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.sql.functions import coalesce
 
 
 class Base(DeclarativeBase):
@@ -18,6 +22,11 @@ class Foo(Base):
     a: Mapped[int]
     b: Mapped[int]
     c: Mapped[str]
+    _d: Mapped[int | None] = mapped_column("d")
+
+    @hybrid_property
+    def d(self) -> int | None:
+        return self._d
 
 
 # EXPECTED_TYPE: Over[Any]
@@ -60,6 +69,7 @@ reveal_type(func.coalesce("a", "b"))
 # EXPECTED_TYPE: coalesce[int]
 reveal_type(func.coalesce(column("x", Integer), 3))
 
+assert_type(func.coalesce(Foo._d, 100), coalesce[int])
 
 stmt2 = select(Foo.a, func.coalesce(Foo.c, "a", "b")).group_by(Foo.a)
 # EXPECTED_TYPE: Select[Tuple[int, str]]
