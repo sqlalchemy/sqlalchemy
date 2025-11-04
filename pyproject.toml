@@ -184,7 +184,7 @@ lint = [
     "pygments",
     "black==25.9.0",
     "slotscheck>=0.17.0",
-    "zimports",  # required by generate_tuple_map_overloads
+    "zimports>=0.6.3",  # required by generate_tuple_map_overloads
 ]
 
 mypy = [

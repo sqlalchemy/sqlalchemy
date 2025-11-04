@@ -62,7 +62,7 @@ if compat.py314:
     # vendor a minimal form of get_annotations per
     # https://github.com/python/cpython/issues/133684#issuecomment-2863841891
 
-    from annotationlib import call_annotate_function  # type: ignore
+    from annotationlib import call_annotate_function  # type: ignore[import-not-found,unused-ignore]  # noqa: E501
     from annotationlib import Format
 
     def _get_and_call_annotate(obj, format):  # noqa: A002
