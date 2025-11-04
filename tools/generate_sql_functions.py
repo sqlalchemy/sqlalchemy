@@ -61,6 +61,7 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                 builtins = set(dir(__builtins__))
                 for key, fn_class in _fns_in_deterministic_order():
                     is_reserved_word = key in builtins
+                    is_first_arg_optional = fn_class.__name__ == "coalesce"
 
                     if issubclass(fn_class, ReturnTypeFromArgs):
                         buf.write(
@@ -84,7 +85,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _ColumnExpressionArgument[_T],
+    col: _ColumnExpressionArgument[{'Optional[_T]' if is_first_arg_optional else '_T'}],
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
@@ -93,7 +94,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _T,
+    col: {'Optional[_T]' if is_first_arg_optional else '_T'},
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
@@ -101,7 +102,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _ColumnExpressionOrLiteralArgument[_T],
+    col: _ColumnExpressionOrLiteralArgument[{'Optional[_T]' if is_first_arg_optional else '_T'}],
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
