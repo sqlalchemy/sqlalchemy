@@ -157,6 +157,22 @@ method in conjunction with the :class:`_sql.Insert` construct, the
 will be expressed in the VALUES clause of the :class:`_sql.Insert`
 construct automatically.
 
+.. tip::
+
+    When passing a list of dictionaries to :meth:`_engine.Connection.execute`
+    along with a Core :class:`_sql.Insert`, **only the first dictionary in the
+    list determines what columns will be in the VALUES clause**. The rest of
+    the dictionaries are not scanned. This is both because within traditional
+    ``executemany()``, the INSERT statement can only have one VALUES clause for
+    all parameters, and additionally SQLAlchemy does not want to add overhead
+    by scanning every parameter dictionary to verify each contains the identical
+    keys as the first one.
+
+    Note this behavior is distinctly different from that of an :ref:`ORM
+    enabled INSERT <tutorial_orm_bulk>`, introduced later in this tutorial,
+    which performs a full scan of parameter sets in terms of an ORM entity.
+
+
 .. deepalchemy::
 
     Hi, welcome to the first edition of **Deep Alchemy**.   The person on the

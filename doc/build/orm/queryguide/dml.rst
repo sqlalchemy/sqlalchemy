@@ -79,6 +79,15 @@ or :func:`_orm.mapped_column` declarations, as well as with
 the **ORM mapped attribute name** and **not** the actual database column name,
 if these two names happen to be different.
 
+.. tip:: ORM bulk INSERT **allows each dictionary to have different keys**.
+   The operation will emit multiple INSERT statements with different VALUES
+   clauses for each set of keys. This is distinctly different from a Core
+   :class:`_sql.Insert` operation, which as introduced at
+   :ref:`tutorial_core_insert_values_clause` only uses the **first** dictionary
+   in the list to determine a single VALUES clause for all parameter sets.
+
+
+
 .. versionchanged:: 2.0  Passing an :class:`_dml.Insert` construct to the
    :meth:`_orm.Session.execute` method now invokes a "bulk insert", which
    makes use of the same functionality as the legacy
