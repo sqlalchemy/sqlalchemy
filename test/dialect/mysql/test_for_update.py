@@ -196,6 +196,10 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
     for_update_of_dialect = mysql.dialect()
     for_update_of_dialect.server_version_info = (8, 0, 0)
     for_update_of_dialect.supports_for_update_of = True
+    for_update_of_dialect.supports_for_share = True
+    for_share_dialect = mysql.dialect()
+    for_share_dialect.server_version_info = (8, 0, 0)
+    for_share_dialect.supports_for_share = True
 
     def test_for_update_basic(self):
         self.assert_compile(
@@ -213,6 +217,16 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_for_update(read=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s LOCK IN SHARE MODE",
+        )
+
+    def test_for_update_read_mysql80(self):
+        self.assert_compile(
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s FOR SHARE",
+            dialect=self.for_share_dialect,
         )
 
     def test_for_update_skip_locked(self):
@@ -235,6 +249,17 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "LOCK IN SHARE MODE SKIP LOCKED",
         )
 
+    def test_for_update_read_skip_locked_mysql80(self):
+        self.assert_compile(
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True, skip_locked=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s "
+            "FOR SHARE SKIP LOCKED",
+            dialect=self.for_share_dialect,
+        )
+
     def test_for_update_nowait(self):
         self.assert_compile(
             self.table1.select()
@@ -253,6 +278,17 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "LOCK IN SHARE MODE NOWAIT",
+        )
+
+    def test_for_update_read_nowait_mysql80(self):
+        self.assert_compile(
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True, nowait=True),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s "
+            "FOR SHARE NOWAIT",
+            dialect=self.for_share_dialect,
         )
 
     def test_for_update_of_nowait(self):
@@ -340,7 +376,7 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_for_update(read=True, of=self.table1, nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
-            "LOCK IN SHARE MODE OF mytable NOWAIT",
+            "FOR SHARE OF mytable NOWAIT",
             dialect=self.for_update_of_dialect,
         )
 
@@ -351,7 +387,7 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_for_update(read=True, of=self.table1, skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
-            "LOCK IN SHARE MODE OF mytable SKIP LOCKED",
+            "FOR SHARE OF mytable SKIP LOCKED",
             dialect=self.for_update_of_dialect,
         )
 
@@ -366,7 +402,7 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
-            "LOCK IN SHARE MODE OF mytable NOWAIT",
+            "FOR SHARE OF mytable NOWAIT",
             dialect=self.for_update_of_dialect,
         )
 
@@ -377,7 +413,7 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_for_update(read=True, of=self.table1),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
-            "LOCK IN SHARE MODE OF mytable",
+            "FOR SHARE OF mytable",
             dialect=self.for_update_of_dialect,
         )
 

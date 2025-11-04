@@ -1781,7 +1781,10 @@ class MySQLCompiler(compiler.SQLCompiler):
     ) -> str:
         assert select._for_update_arg is not None
         if select._for_update_arg.read:
-            tmp = " LOCK IN SHARE MODE"
+            if self.dialect.supports_for_share:
+                tmp = " FOR SHARE"
+            else:
+                tmp = " LOCK IN SHARE MODE"
         else:
             tmp = " FOR UPDATE"
 
@@ -2735,6 +2738,7 @@ class MySQLDialect(default.DefaultDialect):
     sequences_optional = False
 
     supports_for_update_of = False  # default for MySQL ...
+    supports_for_share = False  # default for MySQL ...
     # ... may be updated to True for MySQL 8+ in initialize()
 
     _requires_alias_for_on_duplicate_key = False  # Only available ...
@@ -3191,6 +3195,10 @@ class MySQLDialect(default.DefaultDialect):
         )
 
         self.supports_for_update_of = (
+            self._is_mysql and self.server_version_info >= (8,)
+        )
+
+        self.supports_for_share = (
             self._is_mysql and self.server_version_info >= (8,)
         )
 

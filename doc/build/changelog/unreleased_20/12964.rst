@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 12964
+
+    Resolved MySQL 8 ``FOR SHARE`` compilation so that
+    :meth:`_sql.Select.with_for_update` emits ``FOR SHARE`` (with ``OF``,
+    ``NOWAIT`` and ``SKIP LOCKED`` modifiers) when supported, while maintaining
+    ``LOCK IN SHARE MODE`` for older MySQL versions.
