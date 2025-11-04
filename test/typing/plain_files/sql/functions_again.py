@@ -7,10 +7,10 @@ from sqlalchemy import Function
 from sqlalchemy import Integer
 from sqlalchemy import Select
 from sqlalchemy import select
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql.expression import FunctionFilter
 from sqlalchemy.sql.expression import Over
 from sqlalchemy.sql.expression import WithinGroup
@@ -31,7 +31,7 @@ class Foo(Base):
     b: Mapped[int]
     c: Mapped[str]
     _d: Mapped[int | None] = mapped_column("d")
-    
+
     @hybrid_property
     def d(self) -> int | None:
         return self._d
