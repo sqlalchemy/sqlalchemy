@@ -1076,7 +1076,7 @@ class _FunctionGenerator:
         @overload
         def coalesce(
             self,
-            col: _ColumnExpressionArgument[_T],
+            col: _ColumnExpressionArgument[Optional[_T]],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]: ...
@@ -1084,14 +1084,14 @@ class _FunctionGenerator:
         @overload
         def coalesce(
             self,
-            col: _T,
+            col: Optional[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]: ...
 
         def coalesce(
             self,
-            col: _ColumnExpressionOrLiteralArgument[_T],
+            col: _ColumnExpressionOrLiteralArgument[Optional[_T]],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]: ...
