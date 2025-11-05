@@ -1781,7 +1781,10 @@ class MySQLCompiler(compiler.SQLCompiler):
     ) -> str:
         assert select._for_update_arg is not None
         if select._for_update_arg.read:
-            tmp = " LOCK IN SHARE MODE"
+            if self.dialect.use_mysql_for_share:
+                tmp = " FOR SHARE"
+            else:
+                tmp = " LOCK IN SHARE MODE"
         else:
             tmp = " FOR UPDATE"
 
@@ -2729,16 +2732,19 @@ class MySQLDialect(default.DefaultDialect):
 
     returns_native_bytes = True
 
-    supports_sequences = False  # default for MySQL ...
     # ... may be updated to True for MariaDB 10.3+ in initialize()
+    supports_sequences = False
 
     sequences_optional = False
 
-    supports_for_update_of = False  # default for MySQL ...
     # ... may be updated to True for MySQL 8+ in initialize()
+    supports_for_update_of = False
 
-    _requires_alias_for_on_duplicate_key = False  # Only available ...
-    # ... in MySQL 8+
+    # mysql 8.0.1 uses this syntax
+    use_mysql_for_share = False
+
+    # Only available ... ... in MySQL 8+
+    _requires_alias_for_on_duplicate_key = False
 
     # MySQL doesn't support "DEFAULT VALUES" but *does* support
     # "VALUES (DEFAULT)"
@@ -3192,6 +3198,10 @@ class MySQLDialect(default.DefaultDialect):
 
         self.supports_for_update_of = (
             self._is_mysql and self.server_version_info >= (8,)
+        )
+
+        self.use_mysql_for_share = (
+            self._is_mysql and self.server_version_info >= (8, 0, 1)
         )
 
         self._needs_correct_for_88718_96365 = (
