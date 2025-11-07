@@ -120,6 +120,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via turbodbc)            | sqlalchemy-turbodbc_                  |
 +------------------------------------------------+---------------------------------------+
+| Mimer SQL                                      | sqlalchemy-mimer_                     |
++------------------------------------------------+---------------------------------------+
 | MonetDB                                        | sqlalchemy-monetdb_                   |
 +------------------------------------------------+---------------------------------------+
 | OceanBase                                      | oceanbase-sqlalchemy_                 |
@@ -161,6 +163,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-solr: https://github.com/aadel/sqlalchemy-solr
 .. _sqlalchemy_exasol: https://github.com/blue-yonder/sqlalchemy_exasol
 .. _sqlalchemy-sqlany: https://github.com/sqlanywhere/sqlalchemy-sqlany
+.. _sqlalchemy-mimer: https://pypi.org/project/sqlalchemy-mimer
 .. _sqlalchemy-monetdb: https://github.com/MonetDB/sqlalchemy-monetdb
 .. _snowflake-sqlalchemy: https://github.com/snowflakedb/snowflake-sqlalchemy
 .. _sqlalchemy-pytds: https://pypi.org/project/sqlalchemy-pytds/
