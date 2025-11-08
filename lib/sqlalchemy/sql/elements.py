@@ -864,6 +864,7 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
             return_type: _TypeEngineArgument[_OPT],
             python_impl: Optional[Callable[..., Any]] = None,
             operator_class: OperatorClass = ...,
+            visit_name: Optional[str] = ...,
         ) -> Callable[[Any], BinaryExpression[_OPT]]: ...
 
         @overload
@@ -875,6 +876,7 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
             return_type: Optional[_TypeEngineArgument[Any]] = ...,
             python_impl: Optional[Callable[..., Any]] = ...,
             operator_class: OperatorClass = ...,
+            visit_name: Optional[str] = ...,
         ) -> Callable[[Any], BinaryExpression[Any]]: ...
 
         def op(
@@ -885,6 +887,7 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
             return_type: Optional[_TypeEngineArgument[Any]] = None,
             python_impl: Optional[Callable[..., Any]] = None,
             operator_class: OperatorClass = OperatorClass.BASE,
+            visit_name: Optional[str] = None,
         ) -> Callable[[Any], BinaryExpression[Any]]: ...
 
         def bool_op(

@@ -4253,21 +4253,17 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_getitem(self):
         self._test_where(
             self.hashcol["bar"] == None,  # noqa
-            "(test_table.hash -> %(hash_1)s) IS NULL",
+            "test_table.hash[%(hash_1)s] IS NULL",
         )
 
     def test_where_getitem_any(self):
         self._test_where(
             self.hashcol["bar"] == any_(array(["foo"])),  # noqa
-            "(test_table.hash -> %(hash_1)s) = ANY (ARRAY[%(param_1)s])",
+            "test_table.hash[%(hash_1)s] = ANY (ARRAY[%(param_1)s])",
         )
 
+    # Test combinations that don't use subscript operator
     @testing.combinations(
-        (
-            lambda self: self.hashcol["foo"],
-            "test_table.hash -> %(hash_1)s AS anon_1",
-            True,
-        ),
         (
             lambda self: self.hashcol.delete("foo"),
             "delete(test_table.hash, %(delete_2)s) AS delete_1",
@@ -4298,29 +4294,6 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
             True,
         ),
         (
-            lambda self: hstore("foo", "3")["foo"],
-            "hstore(%(hstore_1)s, %(hstore_2)s) -> %(hstore_3)s AS anon_1",
-            False,
-        ),
-        (
-            lambda self: hstore(
-                postgresql.array(["1", "2"]), postgresql.array(["3", None])
-            )["1"],
-            (
-                "hstore(ARRAY[%(param_1)s, %(param_2)s], "
-                "ARRAY[%(param_3)s, NULL]) -> %(hstore_1)s AS anon_1"
-            ),
-            False,
-        ),
-        (
-            lambda self: hstore(postgresql.array(["1", "2", "3", None]))["3"],
-            (
-                "hstore(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, NULL]) "
-                "-> %(hstore_1)s AS anon_1"
-            ),
-            False,
-        ),
-        (
             lambda self: self.hashcol.concat(
                 hstore(cast(self.test_table.c.id, Text), "3")
             ),
@@ -4333,16 +4306,6 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             lambda self: hstore("foo", "bar") + self.hashcol,
             "hstore(%(hstore_1)s, %(hstore_2)s) || test_table.hash AS anon_1",
-            True,
-        ),
-        (
-            lambda self: (self.hashcol + self.hashcol)["foo"],
-            "(test_table.hash || test_table.hash) -> %(param_1)s AS anon_1",
-            True,
-        ),
-        (
-            lambda self: self.hashcol["foo"] != None,  # noqa
-            "(test_table.hash -> %(hash_1)s) IS NOT NULL AS anon_1",
             True,
         ),
         (
@@ -4368,6 +4331,55 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         ),
     )
     def test_cols(self, colclause_fn, expected, from_):
+        colclause = colclause_fn(self)
+        stmt = select(colclause)
+        self.assert_compile(
+            stmt,
+            ("SELECT %s" + (" FROM test_table" if from_ else "")) % expected,
+        )
+
+    # Test combinations that use subscript operator (PG 14+ uses [] syntax)
+    @testing.combinations(
+        (
+            lambda self: self.hashcol["foo"],
+            "test_table.hash[%(hash_1)s] AS anon_1",
+            True,
+        ),
+        (
+            lambda self: hstore("foo", "3")["foo"],
+            "(hstore(%(hstore_1)s, %(hstore_2)s))[%(hstore_3)s] AS anon_1",
+            False,
+        ),
+        (
+            lambda self: hstore(
+                postgresql.array(["1", "2"]), postgresql.array(["3", None])
+            )["1"],
+            (
+                "(hstore(ARRAY[%(param_1)s, %(param_2)s], "
+                "ARRAY[%(param_3)s, NULL]))[%(hstore_1)s] AS anon_1"
+            ),
+            False,
+        ),
+        (
+            lambda self: hstore(postgresql.array(["1", "2", "3", None]))["3"],
+            (
+                "(hstore(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, NULL]))"
+                "[%(hstore_1)s] AS anon_1"
+            ),
+            False,
+        ),
+        (
+            lambda self: (self.hashcol + self.hashcol)["foo"],
+            "(test_table.hash || test_table.hash)[%(param_1)s] AS anon_1",
+            True,
+        ),
+        (
+            lambda self: self.hashcol["foo"] != None,  # noqa
+            "test_table.hash[%(hash_1)s] IS NOT NULL AS anon_1",
+            True,
+        ),
+    )
+    def test_cols_subscript(self, colclause_fn, expected, from_):
         colclause = colclause_fn(self)
         stmt = select(colclause)
         self.assert_compile(

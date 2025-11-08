@@ -29,6 +29,7 @@ from sqlalchemy import tuple_
 from sqlalchemy import Uuid
 from sqlalchemy import values
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.sql.expression import type_coerce
@@ -2000,4 +2001,151 @@ class JSONUpdateTest(fixtures.TablesTest):
         eq_(
             row.jb,
             {"tags": ["python", "postgresql", "postgres"], "priority": "high"},
+        )
+
+
+class HstoreUpdateTest(fixtures.TablesTest):
+    """round trip tests related to using HSTORE in UPDATE statements
+    with PG-specific features
+
+    """
+
+    __only_on__ = "postgresql"
+    __backend__ = True
+    __requires__ = ("native_hstore",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("h", HSTORE),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables["t"].insert(),
+            [
+                {"id": 1, "h": {"k1": "v1", "k2": "v2"}},
+                {"id": 2, "h": {"k3": "v3", "k4": "v4"}},
+            ],
+        )
+
+    @testing.only_on("postgresql>=14")
+    def test_hstore_element_update_basic(self, connection):
+        """Test updating individual HSTORE elements with subscript syntax
+
+        test #12948
+
+        """
+        t = self.tables["t"]
+
+        # Insert test data with HSTORE
+        connection.execute(
+            t.insert(),
+            [
+                {
+                    "id": 10,
+                    "h": {"name": "Alice", "status": "active"},
+                },
+                {
+                    "id": 11,
+                    "h": {"name": "Bob", "status": "inactive"},
+                },
+            ],
+        )
+
+        # Update specific elements using HSTORE subscript syntax
+        # This tests the new HSTORE subscripting feature from issue #12948
+        connection.execute(
+            t.update()
+            .values({t.c.h["name"]: "Alice Updated"})
+            .where(t.c.id == 10)
+        )
+
+        connection.execute(
+            t.update().values({t.c.h["status"]: "active"}).where(t.c.id == 11)
+        )
+
+        results = connection.execute(
+            t.select().where(t.c.id.in_([10, 11])).order_by(t.c.id)
+        )
+
+        eq_(
+            [row.h for row in results],
+            [
+                {"name": "Alice Updated", "status": "active"},
+                {"name": "Bob", "status": "active"},
+            ],
+        )
+
+    @testing.only_on("postgresql>=14")
+    def test_hstore_element_update_multiple_keys(self, connection):
+        """Test updating multiple HSTORE elements in a single statement
+
+        test #12948
+
+        """
+        t = self.tables["t"]
+
+        connection.execute(
+            t.insert(),
+            {
+                "id": 20,
+                "h": {
+                    "config_theme": "dark",
+                    "config_lang": "en",
+                    "version": "1",
+                },
+            },
+        )
+
+        # Update multiple elements at once
+        connection.execute(
+            t.update()
+            .values({t.c.h["config_theme"]: "light", t.c.h["version"]: "2"})
+            .where(t.c.id == 20)
+        )
+
+        # Verify the updates
+        row = connection.execute(t.select().where(t.c.id == 20)).one()
+
+        eq_(
+            row.h,
+            {"config_theme": "light", "config_lang": "en", "version": "2"},
+        )
+
+    @testing.only_on("postgresql>=14")
+    def test_hstore_element_update_new_key(self, connection):
+        """Test adding new keys to HSTORE using subscript syntax
+
+        test #12948
+
+        """
+        t = self.tables["t"]
+
+        # Insert test data
+        connection.execute(
+            t.insert(),
+            {
+                "id": 30,
+                "h": {"existing_key": "existing_value"},
+            },
+        )
+
+        # Add a new key using subscript syntax
+        connection.execute(
+            t.update()
+            .values({t.c.h["new_key"]: "new_value"})
+            .where(t.c.id == 30)
+        )
+
+        # Verify the update
+        row = connection.execute(t.select().where(t.c.id == 30)).fetchone()
+
+        eq_(
+            row.h,
+            {"existing_key": "existing_value", "new_key": "new_value"},
         )

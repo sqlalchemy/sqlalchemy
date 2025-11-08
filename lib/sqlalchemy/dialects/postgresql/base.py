@@ -2070,6 +2070,23 @@ class PGCompiler(compiler.SQLCompiler):
             binary, " #> " if not _cast_applied else " #>> ", **kw
         )
 
+    def visit_hstore_getitem_op_binary(self, binary, operator, **kw):
+        kw["eager_grouping"] = True
+
+        if self.dialect._supports_jsonb_subscripting:
+            # use subscript notation: col['key'] instead of col -> 'key'
+            # For function calls, wrap in parentheses: (func())[key]
+            left_str = self.process(binary.left, **kw)
+            if isinstance(binary.left, sql.functions.FunctionElement):
+                left_str = f"({left_str})"
+            return "%s[%s]" % (
+                left_str,
+                self.process(binary.right, **kw),
+            )
+        else:
+            # Fall back to arrow notation for older versions
+            return self._generate_generic_binary(binary, " -> ", **kw)
+
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (
             self.process(binary.left, **kw),

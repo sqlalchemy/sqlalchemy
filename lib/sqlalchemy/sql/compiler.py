@@ -3163,6 +3163,10 @@ class SQLCompiler(Compiled):
         )
         return getattr(self, attrname, None)
 
+    def _get_custom_operator_dispatch(self, operator_, qualifier1):
+        attrname = "visit_%s_op_%s" % (operator_.visit_name, qualifier1)
+        return getattr(self, attrname, None)
+
     def visit_unary(
         self, unary, add_to_result_map=None, result_map_targets=(), **kw
     ):
@@ -3527,6 +3531,11 @@ class SQLCompiler(Compiled):
             )
 
     def visit_custom_op_binary(self, element, operator, **kw):
+        if operator.visit_name:
+            disp = self._get_custom_operator_dispatch(operator, "binary")
+            if disp:
+                return disp(element, operator, **kw)
+
         kw["eager_grouping"] = operator.eager_grouping
         return self._generate_generic_binary(
             element,
@@ -3535,11 +3544,21 @@ class SQLCompiler(Compiled):
         )
 
     def visit_custom_op_unary_operator(self, element, operator, **kw):
+        if operator.visit_name:
+            disp = self._get_custom_operator_dispatch(operator, "unary")
+            if disp:
+                return disp(element, operator, **kw)
+
         return self._generate_generic_unary_operator(
             element, self.escape_literal_column(operator.opstring) + " ", **kw
         )
 
     def visit_custom_op_unary_modifier(self, element, operator, **kw):
+        if operator.visit_name:
+            disp = self._get_custom_operator_dispatch(operator, "unary")
+            if disp:
+                return disp(element, operator, **kw)
+
         return self._generate_generic_unary_modifier(
             element, " " + self.escape_literal_column(operator.opstring), **kw
         )

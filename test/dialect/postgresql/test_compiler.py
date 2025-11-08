@@ -50,6 +50,7 @@ from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
+from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.dialects.postgresql import JSONB
@@ -2901,6 +2902,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "UPDATE data SET x -> %(x_1)s=(data.x -> %(x_2)s)",
+        )
+
+    @testing.variation("pgversion", ["pg14", "pg13"])
+    def test_hstore_subscripting(self, pgversion):
+        """test #12948 - PostgreSQL 14+ HSTORE subscripting syntax"""
+        data = table("data", column("id", Integer), column("h", HSTORE))
+
+        dialect = postgresql.dialect()
+
+        if pgversion.pg13:
+            dialect._supports_jsonb_subscripting = False
+
+        # Test SELECT with HSTORE indexing
+        stmt = select(data.c.h["key"])
+        self.assert_compile(
+            stmt,
+            (
+                "SELECT data.h[%(h_1)s] AS anon_1 FROM data"
+                if pgversion.pg14
+                else "SELECT data.h -> %(h_1)s AS anon_1 FROM data"
+            ),
+            dialect=dialect,
+        )
+
+        # Test UPDATE with HSTORE indexing (the original issue case)
+        stmt = update(data).values({data.c.h["new_key"]: data.c.h["old_key"]})
+        self.assert_compile(
+            stmt,
+            (
+                "UPDATE data SET h[%(h_1)s]=(data.h[%(h_2)s])"
+                if pgversion.pg14
+                else "UPDATE data SET h -> %(h_1)s=(data.h -> %(h_2)s)"
+            ),
+            dialect=dialect,
         )
 
     def test_jsonb_functions_use_parentheses_with_subscripting(self):
