@@ -665,29 +665,6 @@ See :ref:`tutorial_create_table_as` for a tutorial.
 :ticket:`4950`
 
 
-.. _change_11250:
-
-Potential breaking change to odbc_connect= handling for mssql+pyodbc
---------------------------------------------------------------------
-
-Fixed a mssql+pyodbc issue where valid plus signs in an already-unquoted
-``odbc_connect=`` (raw DBAPI) connection string were replaced with spaces.
-
-Previously, the pyodbc connector would always pass the odbc_connect value
-to unquote_plus(), even if it was not required. So, if the (unquoted)
-odbc_connect value contained ``PWD=pass+word`` that would get changed to
-``PWD=pass word``, and the login would fail. One workaround was to quote
-just the plus sign — ``PWD=pass%2Bword`` — which would then get unquoted
-to ``PWD=pass+word``.
-
-Implementations using the above workaround with :meth:`_engine.URL.create`
-to specify a plus sign in the ``PWD=`` argument of an odbc_connect string
-will have to remove the workaround and just pass the ``PWD=`` value as it
-would appear in a valid ODBC connection string (i.e., the same as would be
-required if using the connection string directly with ``pyodbc.connect()``).
-
-:ticket:`11250`
-
 .. _change_12496:
 
 New Hybrid DML hook features
@@ -777,31 +754,6 @@ using the original column expression:
     :ref:`hybrid_bulk_update`
 
 :ticket:`12496`
-
-.. _change_10556:
-
-Addition of ``BitString`` subclass for handling postgresql ``BIT`` columns
---------------------------------------------------------------------------
-
-Values of :class:`_postgresql.BIT` columns in the PostgreSQL dialect are
-returned as instances of a new ``str`` subclass,
-:class:`_postgresql.BitString`.  Previously, the value of :class:`_postgresql.BIT`
-columns was driver dependent, with most drivers returning ``str`` instances
-except ``asyncpg``, which used ``asyncpg.BitString``.
-
-With this change, for the ``psycopg``, ``psycopg2``, and ``pg8000`` drivers,
-the new :class:`_postgresql.BitString` type is mostly compatible with ``str``, but
-adds methods for bit manipulation and supports bitwise operators.
-
-As :class:`_postgresql.BitString` is a string subclass, hashability as well
-as equality tests continue to work against plain strings.   This also leaves
-ordering operators intact.
-
-For implementations using the ``asyncpg`` driver, the new type is incompatible with
-the existing ``asyncpg.BitString`` type.
-
-:ticket:`10556`
-
 
 .. _change_12736:
 
@@ -895,6 +847,47 @@ will make use of the operator classes declared by the "impl" type.
     :class:`.OperatorClass`
 
 :ticket:`12736`
+
+.. _change_12596:
+
+Non-integer RANGE window frame clauses now supported
+-----------------------------------------------------
+
+The :func:`_sql.over` clause now supports non-integer values in the
+:paramref:`_sql.over.range_` parameter through the new :class:`_sql.FrameClause`
+construct. Previously, only integer values were allowed in RANGE clauses, which
+limited their use to integer-based ordering columns.
+
+With this change, applications can now use RANGE with other data types such
+as floating-point numbers, dates, and intervals. The new :class:`_sql.FrameClause`
+construct provides explicit control over frame boundaries using the
+:class:`_sql.FrameClauseType` enum::
+
+    from datetime import timedelta
+    from sqlalchemy import FrameClause, FrameClauseType
+
+    # Example: date-based RANGE with a 7-day window
+    func.sum(my_table.c.amount).over(
+        order_by=my_table.c.date,
+        range_=FrameClause(
+            start=timedelta(days=7),
+            end=None,
+            start_frame_type=FrameClauseType.PRECEDING,
+            end_frame_type=FrameClauseType.CURRENT,
+        ),
+    )
+
+For backwards compatibility, the traditional tuple-based syntax continues to
+work with integer values::
+
+    # This continues to work unchanged
+    func.row_number().over(order_by=table.c.col, range_=(None, 10))
+
+However, attempting to use non-integer values in the tuple syntax will now
+raise an error, directing users to use :class:`_sql.FrameClause` instead.
+
+
+:ticket:`12596`
 
 
 PostgreSQL
@@ -1004,5 +997,115 @@ used by the :class:`.MetaData` is not what's desired.
 
 :ticket:`10594`
 
+.. _change_10556:
 
-`
+Addition of ``BitString`` subclass for handling postgresql ``BIT`` columns
+--------------------------------------------------------------------------
+
+Values of :class:`_postgresql.BIT` columns in the PostgreSQL dialect are
+returned as instances of a new ``str`` subclass,
+:class:`_postgresql.BitString`.  Previously, the value of :class:`_postgresql.BIT`
+columns was driver dependent, with most drivers returning ``str`` instances
+except ``asyncpg``, which used ``asyncpg.BitString``.
+
+With this change, for the ``psycopg``, ``psycopg2``, and ``pg8000`` drivers,
+the new :class:`_postgresql.BitString` type is mostly compatible with ``str``, but
+adds methods for bit manipulation and supports bitwise operators.
+
+As :class:`_postgresql.BitString` is a string subclass, hashability as well
+as equality tests continue to work against plain strings.   This also leaves
+ordering operators intact.
+
+For implementations using the ``asyncpg`` driver, the new type is incompatible with
+the existing ``asyncpg.BitString`` type.
+
+:ticket:`10556`
+
+.. _change_12948:
+
+HSTORE subscripting now uses native PostgreSQL 14+ syntax
+----------------------------------------------------------
+
+When connected to PostgreSQL 14 or later, HSTORE column subscripting operations
+now automatically use PostgreSQL's native subscript notation ``hstore_col['key']``
+instead of the traditional arrow operator ``hstore_col -> 'key'``. This change
+applies to both read and write operations and provides better compatibility with
+PostgreSQL's native HSTORE subscripting feature introduced in version 14.
+
+The change is similar to the equivalent change made for JSONB columns in
+SQLAlchemy 2.0.42.   The change for HSTORE is kept in 2.1 to provide a longer
+migration buffer for the issue of indexes which may refer to a subscript
+function, which was unanticipated when the JSONB change was made.
+
+For PostgreSQL versions prior to 14, SQLAlchemy continues to use the arrow
+operator syntax automatically, ensuring backward compatibility.
+
+Example of the new syntax when connected to PostgreSQL 14+::
+
+    from sqlalchemy import table, column, update
+    from sqlalchemy.dialects.postgresql import HSTORE
+
+    data = table("data", column("h", HSTORE))
+
+    # SELECT operations use subscript notation
+    stmt = select(data.c.h["key"])
+    # Renders as: SELECT data.h['key'] FROM data
+
+    # UPDATE operations also use subscript notation
+    stmt = update(data).values({data.c.h["status"]: "active"})
+    # Renders as: UPDATE data SET h['status'] = 'active'
+
+On PostgreSQL 13 and earlier, the same code automatically renders using the
+arrow operator::
+
+    # Same code on PostgreSQL 13 renders as:
+    # SELECT data.h -> 'key' FROM data
+    # UPDATE data SET h -> 'status' = 'active'
+
+Impact on Existing Indexes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If existing PostgreSQL 14+ databases have expression indexes on HSTORE
+subscript operations, those indexes will need to be recreated to match
+the new SQL syntax. The index definitions that used the arrow operator
+syntax (``h -> 'key'``) will not match the new subscript syntax
+(``h['key']``), which may cause index scans to not be used.
+
+To update an existing index::
+
+    -- Drop the old index
+    DROP INDEX IF EXISTS idx_hstore_key;
+
+    -- Create new index with subscript syntax
+    CREATE INDEX idx_hstore_key ON my_table ((h['key']));
+
+:ticket:`12948`
+
+
+Microsoft SQL Server
+====================
+
+.. _change_11250:
+
+Potential breaking change to odbc_connect= handling for mssql+pyodbc
+--------------------------------------------------------------------
+
+Fixed a mssql+pyodbc issue where valid plus signs in an already-unquoted
+``odbc_connect=`` (raw DBAPI) connection string were replaced with spaces.
+
+Previously, the pyodbc connector would always pass the odbc_connect value
+to unquote_plus(), even if it was not required. So, if the (unquoted)
+odbc_connect value contained ``PWD=pass+word`` that would get changed to
+``PWD=pass word``, and the login would fail. One workaround was to quote
+just the plus sign — ``PWD=pass%2Bword`` — which would then get unquoted
+to ``PWD=pass+word``.
+
+Implementations using the above workaround with :meth:`_engine.URL.create`
+to specify a plus sign in the ``PWD=`` argument of an odbc_connect string
+will have to remove the workaround and just pass the ``PWD=`` value as it
+would appear in a valid ODBC connection string (i.e., the same as would be
+required if using the connection string directly with ``pyodbc.connect()``).
+
+:ticket:`11250`
+
+

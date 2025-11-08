@@ -2,6 +2,8 @@
     :tags: bug, sql
     :tickets: 12596
 
+    .. _change_12596_changelog:
+
     Updated the :func:`_sql.over` clause to allow non integer values in
     :paramref:`_sql.over.range_` clause. Previously, only integer values
     were allowed and any other values would lead to a failure.
@@ -21,3 +23,7 @@
                 )
             )
         )
+
+    .. seealso::
+
+        :ref:`change_12596` - in the :ref:`migration guide <whatsnew_21_toplevel>`
