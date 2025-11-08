@@ -58,7 +58,9 @@ if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _DMLOnlyColumnArgument
     from ._typing import _TypeEngineArgument
+    from .elements import _FrameIntTuple
     from .elements import BinaryExpression
+    from .elements import FrameClause
     from .selectable import FromClause
     from .type_api import TypeEngine
 
@@ -1611,11 +1613,11 @@ if not TYPE_CHECKING:
 
 def over(
     element: FunctionElement[_T],
-    partition_by: Optional[_ByArgument] = None,
-    order_by: Optional[_ByArgument] = None,
-    range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-    rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-    groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    partition_by: _ByArgument | None = None,
+    order_by: _ByArgument | None = None,
+    range_: _FrameIntTuple | FrameClause | None = None,
+    rows: _FrameIntTuple | FrameClause | None = None,
+    groups: _FrameIntTuple | FrameClause | None = None,
 ) -> Over[_T]:
     r"""Produce an :class:`.Over` object against a function.
 
@@ -1672,6 +1674,26 @@ def over(
 
         func.row_number().over(order_by="x", groups=(1, 3))
 
+    Depending on the type of the order column, the 'RANGE' value may not be
+    an integer. In this case use a :class:`_expression.FrameClause` directly
+    to specify the frame boundaries.  E.g.::
+
+        from datetime import timedelta
+        from sqlalchemy import FrameClause, FrameClauseType
+
+        func.sum(my_table.c.amount).over(
+            order_by=my_table.c.date,
+            range_=FrameClause(
+                start=timedelta(days=7),
+                end=None,
+                start_frame_type=FrameClauseType.PRECEDING,
+                end_frame_type=FrameClauseType.UNBOUNDED,
+            ),
+        )
+
+    .. versionchanged:: 2.1 Added support for range types that are not
+       integer-based, via the :class:`_expression.FrameClause` construct.
+
     :param element: a :class:`.FunctionElement`, :class:`.WithinGroup`,
      or other compatible construct.
     :param partition_by: a column element or string, or a list
@@ -1681,14 +1703,22 @@ def over(
      of such, that will be used as the ORDER BY clause
      of the OVER construct.
     :param range\_: optional range clause for the window.  This is a
-     tuple value which can contain integer values or ``None``,
+     two-tuple value which can contain integer values or ``None``,
      and will render a RANGE BETWEEN PRECEDING / FOLLOWING clause.
-    :param rows: optional rows clause for the window.  This is a tuple
+     Can also be a :class:`_expression.FrameClause` instance to
+     specify non-integer values.
+
+     .. versionchanged:: 2.1 Added support for range types that are not
+        integer-based, via the :class:`_expression.FrameClause` construct.
+
+    :param rows: optional rows clause for the window.  This is a two-tuple
      value which can contain integer values or None, and will render
-     a ROWS BETWEEN PRECEDING / FOLLOWING clause.
+     a ROWS BETWEEN PRECEDING / FOLLOWING clause. Can also be a
+     :class:`_expression.FrameClause` instance.
     :param groups: optional groups clause for the window.  This is a
-     tuple value which can contain integer values or ``None``,
+     two-tuple value which can contain integer values or ``None``,
      and will render a GROUPS BETWEEN PRECEDING / FOLLOWING clause.
+     Can also be a :class:`_expression.FrameClause` instance.
 
      .. versionadded:: 2.0.40
 

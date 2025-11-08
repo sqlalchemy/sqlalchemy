@@ -70,7 +70,9 @@ if TYPE_CHECKING:
     from ._typing import _StarOrOne
     from ._typing import _TypeEngineArgument
     from .base import _EntityNamespace
+    from .elements import _FrameIntTuple
     from .elements import ClauseElement
+    from .elements import FrameClause
     from .elements import KeyedColumnElement
     from .elements import TableValuedColumn
     from .operators import OperatorType
@@ -431,11 +433,11 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
     def over(
         self,
         *,
-        partition_by: Optional[_ByArgument] = None,
-        order_by: Optional[_ByArgument] = None,
-        rows: Optional[Tuple[Optional[int], Optional[int]]] = None,
-        range_: Optional[Tuple[Optional[int], Optional[int]]] = None,
-        groups: Optional[Tuple[Optional[int], Optional[int]]] = None,
+        partition_by: _ByArgument | None = None,
+        order_by: _ByArgument | None = None,
+        rows: _FrameIntTuple | FrameClause | None = None,
+        range_: _FrameIntTuple | FrameClause | None = None,
+        groups: _FrameIntTuple | FrameClause | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this function.
 

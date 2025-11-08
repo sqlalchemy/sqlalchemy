@@ -211,6 +211,12 @@ The classes here are generated using the constructors listed at
 .. autoclass:: Over
    :members:
 
+.. autoclass:: FrameClause
+   :members:
+
+.. autoclass:: FrameClauseType
+   :members:
+
 .. autoclass:: SQLColumnExpression
 
 .. autoclass:: TextClause

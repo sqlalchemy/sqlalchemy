@@ -48,6 +48,8 @@ from sqlalchemy.sql import table
 from sqlalchemy.sql import util
 from sqlalchemy.sql.compiler import AggregateOrderByStyle
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
+from sqlalchemy.sql.elements import FrameClause
+from sqlalchemy.sql.elements import FrameClauseType
 from sqlalchemy.sql.functions import FunctionElement
 from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.testing import assert_raises
@@ -68,6 +70,7 @@ table1 = table(
     column("myid", Integer),
     column("name", String),
     column("description", String),
+    column("myfloat", Float),
 )
 
 
@@ -864,6 +867,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FOLLOWING AND :param_2 FOLLOWING) "
             "AS anon_1 FROM mytable",
             checkparams={"name_1": "foo", "param_1": 1, "param_2": 5},
+        )
+
+        self.assert_compile(
+            select(
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .over(
+                    range_=FrameClause(
+                        3.14,
+                        2.71,
+                        FrameClauseType.PRECEDING,
+                        FrameClauseType.FOLLOWING,
+                    ),
+                    partition_by=["myfloat"],
+                )
+            ),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (PARTITION BY mytable.myfloat RANGE BETWEEN :param_1 "
+            "PRECEDING AND :param_2 FOLLOWING) "
+            "AS anon_1 FROM mytable",
+            checkparams={"name_1": "foo", "param_1": 3.14, "param_2": 2.71},
         )
 
     def test_funcfilter_windowing_range_positional(self):

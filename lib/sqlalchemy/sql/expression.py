@@ -88,6 +88,8 @@ from .elements import DMLTargetCopy as DMLTargetCopy
 from .elements import ExpressionClauseList as ExpressionClauseList
 from .elements import Extract as Extract
 from .elements import False_ as False_
+from .elements import FrameClause as FrameClause
+from .elements import FrameClauseType as FrameClauseType
 from .elements import FunctionFilter as FunctionFilter
 from .elements import Grouping as Grouping
 from .elements import Label as Label

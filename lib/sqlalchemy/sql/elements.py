@@ -4374,6 +4374,9 @@ class _OverrideBinds(Grouping[_T]):
         return ck
 
 
+_FrameIntTuple = tuple[int | None, int | None]
+
+
 class Over(ColumnElement[_T]):
     """Represent an OVER clause.
 
@@ -4402,18 +4405,18 @@ class Over(ColumnElement[_T]):
     """The underlying expression object to which this :class:`.Over`
     object refers."""
 
-    range_: Optional[_FrameClause]
-    rows: Optional[_FrameClause]
-    groups: Optional[_FrameClause]
+    range_: FrameClause | None
+    rows: FrameClause | None
+    groups: FrameClause | None
 
     def __init__(
         self,
         element: ColumnElement[_T],
         partition_by: Optional[_ByArgument] = None,
         order_by: Optional[_ByArgument] = None,
-        range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-        rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        range_: _FrameIntTuple | FrameClause | None = None,
+        rows: _FrameIntTuple | FrameClause | None = None,
+        groups: _FrameIntTuple | FrameClause | None = None,
     ):
         self.element = element
         if order_by is not None:
@@ -4426,14 +4429,14 @@ class Over(ColumnElement[_T]):
                 _literal_as_text_role=roles.ByOfRole,
             )
 
-        if sum(bool(item) for item in (range_, rows, groups)) > 1:
+        if sum(item is not None for item in (range_, rows, groups)) > 1:
             raise exc.ArgumentError(
                 "only one of 'rows', 'range_', or 'groups' may be provided"
             )
         else:
-            self.range_ = _FrameClause(range_) if range_ else None
-            self.rows = _FrameClause(rows) if rows else None
-            self.groups = _FrameClause(groups) if groups else None
+            self.range_ = FrameClause._parse(range_, coerce_int=False)
+            self.rows = FrameClause._parse(rows, coerce_int=True)
+            self.groups = FrameClause._parse(groups, coerce_int=True)
 
     if not TYPE_CHECKING:
 
@@ -4454,16 +4457,37 @@ class Over(ColumnElement[_T]):
         )
 
 
-class _FrameClauseType(Enum):
-    RANGE_UNBOUNDED = 0
-    RANGE_CURRENT = 1
-    RANGE_PRECEDING = 2
-    RANGE_FOLLOWING = 3
+class FrameClauseType(Enum):
+    """Frame clause type enum for FrameClause lower_type and upper_type.
+
+    .. versionadded:: 2.1
+
+    """
+
+    UNBOUNDED = 0
+    """Produces an "UNBOUNDED PRECEDING" or "UNBOUNDED FOLLOWING" frame
+    clause depending on the position.
+    Requires a ``None`` value for the corresponding bound value.
+    """
+    CURRENT = 1
+    """Produces a "CURRENT ROW" frame clause.
+    Requires a ``None`` value for the corresponding bound value.
+    """
+    PRECEDING = 2
+    """Produces a "PRECEDING" frame clause."""
+    FOLLOWING = 3
+    """Produces a "FOLLOWING" frame clause."""
 
 
-class _FrameClause(ClauseElement):
-    """indicate the 'rows' or 'range' field of a window function, e.g. using
-    :class:`.Over`.
+_require_none = (
+    FrameClauseType.CURRENT,
+    FrameClauseType.UNBOUNDED,
+)
+
+
+class FrameClause(ClauseElement):
+    """Indicate the 'rows' 'range' or 'group' field of a window function,
+    e.g. using :class:`.Over`.
 
     .. versionadded:: 2.1
 
@@ -4472,70 +4496,116 @@ class _FrameClause(ClauseElement):
     __visit_name__ = "frame_clause"
 
     _traverse_internals: _TraverseInternalsType = [
-        ("lower_integer_bind", InternalTraversal.dp_clauseelement),
-        ("upper_integer_bind", InternalTraversal.dp_clauseelement),
+        ("lower_bind", InternalTraversal.dp_clauseelement),
+        ("upper_bind", InternalTraversal.dp_clauseelement),
         ("lower_type", InternalTraversal.dp_plain_obj),
         ("upper_type", InternalTraversal.dp_plain_obj),
     ]
 
     def __init__(
         self,
-        range_: typing_Tuple[Optional[int], Optional[int]],
-    ):
+        start: Any,
+        end: Any,
+        start_frame_type: FrameClauseType,
+        end_frame_type: FrameClauseType,
+        _validate: bool = True,
+    ) -> None:
+        """Creates a new FrameClause specifying the bounds of a window frame.
+
+        :param start: The start value.
+        :param end: The end value.
+        :param start_frame_type: The :class:`FrameClauseType` for the
+            start value.
+        :param end_frame_type: The :class:`FrameClauseType` for the end value.
+        """
+        self.lower_bind = self._as_literal(start)
+        self.upper_bind = self._as_literal(end)
+        self.lower_type = FrameClauseType(start_frame_type)
+        self.upper_type = FrameClauseType(end_frame_type)
+        if _validate:
+            if (
+                self.lower_type in _require_none
+                and self.lower_bind is not None
+            ):
+                raise exc.ArgumentError(
+                    "Cannot specify a value for start with frame type "
+                    f"{self.lower_type.name}"
+                )
+            if (
+                self.upper_type in _require_none
+                and self.upper_bind is not None
+            ):
+                raise exc.ArgumentError(
+                    "Cannot specify a value for end with frame type "
+                    f"{self.upper_type.name}"
+                )
+
+    @classmethod
+    def _as_literal(cls, value: Any) -> BindParameter[Any] | None:
+        if value is None:
+            return None
+        elif isinstance(value, int):
+            return literal(value, type_api.INTEGERTYPE)
+        elif isinstance(value, BindParameter):
+            return value
+        else:
+            return literal(value)  # let the default type resolution occur
+
+    @classmethod
+    def _handle_int(
+        cls, value: Any | None, coerce_int: bool
+    ) -> tuple[int | None, FrameClauseType]:
+        if value is None:
+            return None, FrameClauseType.UNBOUNDED
+
+        if coerce_int:
+            try:
+                integer = int(value)
+            except ValueError as err:
+                raise exc.ArgumentError(
+                    "Integer or None expected for values in rows/groups frame"
+                ) from err
+        elif not isinstance(value, int):
+            raise exc.ArgumentError(
+                "When using a tuple to specify a range only integer or none "
+                "values are allowed in the range frame. To specify a "
+                "different type use the FrameClause directly."
+            )
+        else:
+            integer = value
+        if integer == 0:
+            return None, FrameClauseType.CURRENT
+        elif integer < 0:
+            return abs(integer), FrameClauseType.PRECEDING
+        else:
+            return integer, FrameClauseType.FOLLOWING
+
+    @classmethod
+    def _parse(
+        cls,
+        range_: _FrameIntTuple | FrameClause | None,
+        coerce_int: bool,
+    ) -> FrameClause | None:
+        if range_ is None or isinstance(range_, FrameClause):
+            return range_
+
         try:
             r0, r1 = range_
         except (ValueError, TypeError) as ve:
-            raise exc.ArgumentError("2-tuple expected for range/rows") from ve
+            raise exc.ArgumentError(
+                "2-tuple expected for range/rows/groups"
+            ) from ve
 
-        if r0 is None:
-            self.lower_type = _FrameClauseType.RANGE_UNBOUNDED
-            self.lower_integer_bind = None
-        else:
-            try:
-                lower_integer = int(r0)
-            except ValueError as err:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
-                ) from err
-            else:
-                if lower_integer == 0:
-                    self.lower_type = _FrameClauseType.RANGE_CURRENT
-                    self.lower_integer_bind = None
-                elif lower_integer < 0:
-                    self.lower_type = _FrameClauseType.RANGE_PRECEDING
-                    self.lower_integer_bind = literal(
-                        abs(lower_integer), type_api.INTEGERTYPE
-                    )
-                else:
-                    self.lower_type = _FrameClauseType.RANGE_FOLLOWING
-                    self.lower_integer_bind = literal(
-                        lower_integer, type_api.INTEGERTYPE
-                    )
+        l_b, l_t = cls._handle_int(r0, coerce_int)
+        u_b, u_t = cls._handle_int(r1, coerce_int)
 
-        if r1 is None:
-            self.upper_type = _FrameClauseType.RANGE_UNBOUNDED
-            self.upper_integer_bind = None
-        else:
-            try:
-                upper_integer = int(r1)
-            except ValueError as err:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
-                ) from err
-            else:
-                if upper_integer == 0:
-                    self.upper_type = _FrameClauseType.RANGE_CURRENT
-                    self.upper_integer_bind = None
-                elif upper_integer < 0:
-                    self.upper_type = _FrameClauseType.RANGE_PRECEDING
-                    self.upper_integer_bind = literal(
-                        abs(upper_integer), type_api.INTEGERTYPE
-                    )
-                else:
-                    self.upper_type = _FrameClauseType.RANGE_FOLLOWING
-                    self.upper_integer_bind = literal(
-                        upper_integer, type_api.INTEGERTYPE
-                    )
+        return FrameClause(
+            start=l_b,
+            end=u_b,
+            start_frame_type=l_t,
+            end_frame_type=u_t,
+            _validate=False,
+        )
 
 
 class AggregateOrderBy(WrapsColumnExpression[_T]):
@@ -4597,11 +4667,11 @@ class AggregateOrderBy(WrapsColumnExpression[_T]):
     def over(
         self,
         *,
-        partition_by: Optional[_ByArgument] = None,
-        order_by: Optional[_ByArgument] = None,
-        rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-        range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        partition_by: _ByArgument | None = None,
+        order_by: _ByArgument | None = None,
+        rows: _FrameIntTuple | FrameClause | None = None,
+        range_: _FrameIntTuple | FrameClause | None = None,
+        groups: _FrameIntTuple | FrameClause | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
@@ -4741,21 +4811,11 @@ class FunctionFilter(Generative, ColumnElement[_T]):
 
     def over(
         self,
-        partition_by: Optional[
-            Union[
-                Iterable[_ColumnExpressionArgument[Any]],
-                _ColumnExpressionArgument[Any],
-            ]
-        ] = None,
-        order_by: Optional[
-            Union[
-                Iterable[_ColumnExpressionArgument[Any]],
-                _ColumnExpressionArgument[Any],
-            ]
-        ] = None,
-        range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-        rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        partition_by: _ByArgument | None = None,
+        order_by: _ByArgument | None = None,
+        range_: _FrameIntTuple | FrameClause | None = None,
+        rows: _FrameIntTuple | FrameClause | None = None,
+        groups: _FrameIntTuple | FrameClause | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this filtered function.
 
