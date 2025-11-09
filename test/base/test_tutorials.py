@@ -74,6 +74,18 @@ class DocTest(fixtures.TestBase):
         parser = doctest.DocTestParser()
         globs = {"print_function": print}
 
+        try:
+            self._run_doctest_impl(fnames, sqla_base, runner, parser, globs)
+        finally:
+            # Clear all references from doctest execution
+            globs.clear()
+
+            # Delete references to avoid keeping stack frames alive
+            del runner
+            del parser
+            del globs
+
+    def _run_doctest_impl(self, fnames, sqla_base, runner, parser, globs):
         for fname in fnames:
             path = os.path.join(sqla_base, "doc/build", fname)
             if not os.path.exists(path):
@@ -103,8 +115,13 @@ class DocTest(fixtures.TestBase):
                         buf[0][0],
                     )
                     buf[:] = []
-                    runner.run(test, clear_globs=False)
-                    globs.update(test.globs)
+                    try:
+                        runner.run(test, clear_globs=False)
+                        globs.update(test.globs)
+                    finally:
+                        # Clear test object references
+                        test.globs.clear()
+                        test.examples.clear()
 
                 doctest_enabled = True
 
@@ -132,8 +149,8 @@ class DocTest(fixtures.TestBase):
 
                 run_buf(fname, False)
 
-                runner.summarize()
-                assert not runner.failures
+            runner.summarize()
+            assert not runner.failures
 
     @requires.has_json_each
     def test_20_style(self):
