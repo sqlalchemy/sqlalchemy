@@ -1071,7 +1071,9 @@ the new SQL syntax. The index definitions that used the arrow operator
 syntax (``h -> 'key'``) will not match the new subscript syntax
 (``h['key']``), which may cause index scans to not be used.
 
-To update an existing index::
+To update an existing index:
+
+.. sourcecode:: sql
 
     -- Drop the old index
     DROP INDEX IF EXISTS idx_hstore_key;
