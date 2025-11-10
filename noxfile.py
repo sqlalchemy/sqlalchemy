@@ -250,7 +250,9 @@ def _tests(
         if not timing_intensive:
             includes_excludes["m"].append("not timing_intensive")
 
-    cmd = ["python", "-m", "pytest"]
+    # add test/ argument so that we avoid
+    # https://github.com/pytest-dev/pytest/issues/13913
+    cmd = ["python", "-m", "pytest", "test"]
 
     cmd.extend(os.environ.get("TOX_WORKERS", "-n4").split())
 
@@ -338,7 +340,7 @@ def test_mypy(session: nox.Session) -> None:
         ["mypy"],
     )
 
-    cmd = ["pytest", "-m", "mypy"]
+    cmd = ["pytest", "-m", "mypy", "test"]
 
     session.run(*cmd, *posargs)
 
