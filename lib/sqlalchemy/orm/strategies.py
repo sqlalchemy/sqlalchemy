@@ -1028,7 +1028,6 @@ class _LazyLoader(
         stmt = Select._create_raw_select(
             _raw_columns=[clauseelement],
             _propagate_attrs=clauseelement._propagate_attrs,
-            _label_style=LABEL_STYLE_TABLENAME_PLUS_COL,
             _compile_options=_ORMCompileState.default_compile_options,
         )
         load_options = QueryContext.default_load_options
@@ -3212,7 +3211,6 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         entity_sql = effective_entity.__clause_element__()
         q = Select._create_raw_select(
             _raw_columns=[bundle_sql, entity_sql],
-            _label_style=LABEL_STYLE_TABLENAME_PLUS_COL,
             _compile_options=_ORMCompileState.default_compile_options,
             _propagate_attrs={
                 "compile_state_plugin": "orm",

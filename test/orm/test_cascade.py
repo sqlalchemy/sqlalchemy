@@ -1094,8 +1094,7 @@ class M2OwNoUseGetCascadeTest(
             sess.flush,
             # looking for other bs'
             CompiledSQL(
-                "SELECT b.id AS b_id, b.email AS b_email "
-                "FROM b WHERE :param_1 = b.email",
+                "SELECT b.id, b.email " "FROM b WHERE :param_1 = b.email",
                 lambda ctx: [{"param_1": "x"}],
             ),
             CompiledSQL(
@@ -1127,8 +1126,7 @@ class M2OwNoUseGetCascadeTest(
             # we would like it to be able to skip this SELECT but this is not
             # implemented right now
             CompiledSQL(
-                "SELECT a.id AS a_id, a.email AS a_email FROM a "
-                "WHERE a.email = :param_1",
+                "SELECT a.id, a.email FROM a " "WHERE a.email = :param_1",
                 [{"param_1": "x"}],
             ),
             CompiledSQL(

@@ -3198,9 +3198,9 @@ class SingleSubclassInRelationship(
 
         asserter.assert_(
             CompiledSQL(
-                "SELECT log_entry_1.id AS log_entry_1_id, "
-                "log_entry_1.timestamp AS log_entry_1_timestamp, "
-                "log_entry_1.type AS log_entry_1_type "
+                "SELECT log_entry_1.id, "
+                "log_entry_1.timestamp, "
+                "log_entry_1.type "
                 "FROM log_entry AS log_entry_1 "
                 "WHERE log_entry_1.timestamp >= :param_1 AND "
                 "((SELECT min(log_entry_2.timestamp) AS min_1 "

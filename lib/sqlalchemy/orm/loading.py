@@ -51,7 +51,6 @@ from ..engine.result import SimpleResultMetaData
 from ..sql import select
 from ..sql import util as sql_util
 from ..sql.selectable import ForUpdateArg
-from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectState
 from ..util import EMPTY_DICT
 from ..util.typing import TupleAny
@@ -1671,7 +1670,7 @@ def _load_scalar_attributes(mapper, state, attribute_names, passive):
 
     result = _load_on_ident(
         session,
-        select(mapper).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+        select(mapper),
         identity_key,
         refresh_state=state,
         only_load_props=attribute_names,

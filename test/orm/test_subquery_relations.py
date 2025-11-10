@@ -147,9 +147,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             # issue 7505
             # subqueryload degrades for a from_statement.  this is a lazyload
             CompiledSQL(
-                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
-                "addresses_user_id, addresses.email_address AS "
-                "addresses_email_address FROM addresses "
+                "SELECT addresses.id, addresses.user_id, "
+                "addresses.email_address "
+                "FROM addresses "
                 "WHERE :param_1 = addresses.user_id ORDER BY addresses.id",
                 [{"param_1": 7}],
             ),

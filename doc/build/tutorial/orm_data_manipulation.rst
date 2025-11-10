@@ -337,8 +337,7 @@ Let's load up ``patrick`` from the database:
 .. sourcecode:: pycon+sql
 
     >>> patrick = session.get(User, 3)
-    {execsql}SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
-    user_account.fullname AS user_account_fullname
+    {execsql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.id = ?
     [...] (3,)
@@ -354,8 +353,7 @@ until the flush proceeds, which as mentioned before occurs if we emit a query:
 .. sourcecode:: pycon+sql
 
     >>> session.execute(select(User).where(User.name == "patrick")).first()
-    {execsql}SELECT address.id AS address_id, address.email_address AS address_email_address,
-    address.user_id AS address_user_id
+    {execsql}SELECT address.id, address.email_address, address.user_id
     FROM address
     WHERE ? = address.user_id
     [...] (3,)
@@ -465,8 +463,7 @@ a new transaction and refresh ``sandy`` with the current database row:
 
     >>> sandy.fullname
     {execsql}BEGIN (implicit)
-    SELECT user_account.id AS user_account_id, user_account.name AS user_account_name,
-    user_account.fullname AS user_account_fullname
+    SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
     WHERE user_account.id = ?
     [...] (2,){stop}
@@ -548,7 +545,7 @@ a context manager as well, accomplishes the following things:
       >>> session.add(squidward)
       >>> squidward.name
       {execsql}BEGIN (implicit)
-      SELECT user_account.id AS user_account_id, user_account.name AS user_account_name, user_account.fullname AS user_account_fullname
+      SELECT user_account.id, user_account.name, user_account.fullname
       FROM user_account
       WHERE user_account.id = ?
       [...] (4,){stop}
