@@ -1047,20 +1047,28 @@ Example of the new syntax when connected to PostgreSQL 14+::
 
     data = table("data", column("h", HSTORE))
 
-    # SELECT operations use subscript notation
-    stmt = select(data.c.h["key"])
-    # Renders as: SELECT data.h['key'] FROM data
+    stmt1 = select(data.c.h["key"])
 
-    # UPDATE operations also use subscript notation
-    stmt = update(data).values({data.c.h["status"]: "active"})
-    # Renders as: UPDATE data SET h['status'] = 'active'
+    stmt2 = update(data).values({data.c.h["status"]: "active"})
 
-On PostgreSQL 13 and earlier, the same code automatically renders using the
-arrow operator::
+On PostgreSQL 14 and above, the statements above would render as:
 
-    # Same code on PostgreSQL 13 renders as:
-    # SELECT data.h -> 'key' FROM data
-    # UPDATE data SET h -> 'status' = 'active'
+.. sourcecode:: sql
+
+    -- new subscript operator on PostgreSQL 14+
+    SELECT data.h['key'] FROM data
+
+    UPDATE data SET h['status'] = 'active'
+
+On PostgreSQL 13 and earlier, they would render using the
+arrow operator:
+
+.. sourcecode:: sql
+
+    -- Same code on PostgreSQL 13 renders as:
+    SELECT data.h -> 'key' FROM data
+
+    UPDATE data SET h -> 'status' = 'active'
 
 Impact on Existing Indexes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
