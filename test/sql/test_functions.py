@@ -59,6 +59,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.engines import all_dialects
@@ -691,12 +692,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE users.id > anon_1.z",
         )
 
-        s = select(users).where(
-            users.c.id.between(
-                calculate.alias("c1").unique_params(x=17, y=45).c.z,
-                calculate.alias("c2").unique_params(x=5, y=12).c.z,
-            ),
-        )
+        with expect_deprecated(
+            r"The params\(\) and unique_params\(\) methods on non-statement"
+        ):
+            s = select(users).where(
+                users.c.id.between(
+                    calculate.alias("c1").unique_params(x=17, y=45).c.z,
+                    calculate.alias("c2").unique_params(x=5, y=12).c.z,
+                ),
+            )
 
         self.assert_compile(
             s,

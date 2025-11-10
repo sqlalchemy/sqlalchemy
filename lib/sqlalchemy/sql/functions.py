@@ -36,7 +36,7 @@ from . import util as sqlutil
 from ._typing import is_table_value_type
 from .base import _entity_namespace
 from .base import ColumnCollection
-from .base import Executable
+from .base import ExecutableStatement
 from .base import Generative
 from .base import HasMemoized
 from .elements import _type_from_args
@@ -114,7 +114,9 @@ def register_function(
     reg[identifier] = fn
 
 
-class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
+class FunctionElement(
+    ColumnElement[_T], ExecutableStatement, FromClause, Generative
+):
     """Base for SQL function-oriented constructs.
 
     This is a `generic type <https://peps.python.org/pep-0484/#generics>`_,
@@ -140,7 +142,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         ("clause_expr", InternalTraversal.dp_clauseelement),
         ("_with_ordinality", InternalTraversal.dp_boolean),
         ("_table_value_type", InternalTraversal.dp_has_cache_key),
-    ] + Executable._executable_traverse_internals
+    ] + ExecutableStatement._executable_traverse_internals
 
     packagenames: Tuple[str, ...] = ()
 

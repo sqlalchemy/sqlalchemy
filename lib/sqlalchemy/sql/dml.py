@@ -48,6 +48,7 @@ from .base import ColumnSet
 from .base import CompileState
 from .base import DialectKWArgs
 from .base import Executable
+from .base import ExecutableStatement
 from .base import Generative
 from .base import HasCompileState
 from .base import HasSyntaxExtensions
@@ -1249,7 +1250,7 @@ class Insert(ValuesBase, HasSyntaxExtensions[Literal["post_values"]]):
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
-        + Executable._executable_traverse_internals
+        + ExecutableStatement._executable_traverse_internals
         + HasCTE._has_ctes_traverse_internals
     )
 
@@ -1614,7 +1615,7 @@ class Update(
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
-        + Executable._executable_traverse_internals
+        + ExecutableStatement._executable_traverse_internals
         + HasCTE._has_ctes_traverse_internals
     )
 
@@ -1815,7 +1816,7 @@ class Delete(
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
-        + Executable._executable_traverse_internals
+        + ExecutableStatement._executable_traverse_internals
         + HasCTE._has_ctes_traverse_internals
     )
 

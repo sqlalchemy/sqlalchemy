@@ -1329,6 +1329,7 @@ class DefaultExecutionContext(ExecutionContext):
         invoked_statement: Executable,
         extracted_parameters: Optional[Sequence[BindParameter[Any]]],
         cache_hit: CacheStats = CacheStats.CACHING_DISABLED,
+        param_dict: _CoreSingleExecuteParams | None = None,
     ) -> ExecutionContext:
         """Initialize execution context for a Compiled construct."""
 
@@ -1417,6 +1418,7 @@ class DefaultExecutionContext(ExecutionContext):
                 compiled.construct_params(
                     extracted_parameters=extracted_parameters,
                     escape_names=False,
+                    _collected_params=param_dict,
                 )
             ]
         else:
@@ -1426,6 +1428,7 @@ class DefaultExecutionContext(ExecutionContext):
                     escape_names=False,
                     _group_number=grp,
                     extracted_parameters=extracted_parameters,
+                    _collected_params=param_dict,
                 )
                 for grp, m in enumerate(parameters)
             ]

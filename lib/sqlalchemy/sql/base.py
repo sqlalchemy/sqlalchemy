@@ -56,6 +56,7 @@ from .visitors import InternalTraversal
 from .. import event
 from .. import exc
 from .. import util
+from ..util import EMPTY_DICT
 from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
 from ..util.typing import Self
@@ -92,6 +93,7 @@ if TYPE_CHECKING:
     from ..engine import Connection
     from ..engine import CursorResult
     from ..engine.interfaces import _CoreMultiExecuteParams
+    from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import _ExecuteOptions
     from ..engine.interfaces import _ImmutableExecuteOptions
     from ..engine.interfaces import CacheStats
@@ -1010,7 +1012,7 @@ class CacheableOptions(Options, HasCacheKey):
 
     @hybridmethod
     def _generate_cache_key(self) -> Optional[CacheKey]:
-        return HasCacheKey._generate_cache_key_for_object(self)
+        return HasCacheKey._generate_cache_key(self)
 
 
 class ExecutableOption(HasCopyInternals):
@@ -1287,8 +1289,11 @@ class Executable(roles.StatementRole):
             for_executemany: bool = False,
             schema_translate_map: Optional[SchemaTranslateMapType] = None,
             **kw: Any,
-        ) -> Tuple[
-            Compiled, Optional[Sequence[BindParameter[Any]]], CacheStats
+        ) -> tuple[
+            Compiled,
+            Sequence[BindParameter[Any]] | None,
+            _CoreSingleExecuteParams | None,
+            CacheStats,
         ]: ...
 
         def _execute_on_connection(
@@ -1538,6 +1543,50 @@ class Executable(roles.StatementRole):
             :meth:`.Executable.execution_options`
         """
         return self._execution_options
+
+
+class ExecutableStatement(Executable):
+    """Executable subclass that implements a lightweight version of ``params``
+    that avoids a full cloned traverse.
+
+    .. versionadded:: 2.1
+
+    """
+
+    _params: util.immutabledict[str, Any] = EMPTY_DICT
+
+    _executable_traverse_internals = (
+        Executable._executable_traverse_internals
+        + [("_params", InternalTraversal.dp_params)]
+    )
+
+    @_generative
+    def params(
+        self,
+        __optionaldict: _CoreSingleExecuteParams | None = None,
+        /,
+        **kwargs: Any,
+    ) -> Self:
+        """Return a copy with the provided bindparam values.
+
+        Returns a copy of this Executable with bindparam values set
+        to the given dictionary::
+
+          >>> clause = column("x") + bindparam("foo")
+          >>> print(clause.compile().params)
+          {'foo': None}
+          >>> print(clause.params({"foo": 7}).compile().params)
+          {'foo': 7}
+
+        """
+        if __optionaldict:
+            kwargs.update(__optionaldict)
+        self._params = (
+            util.immutabledict(kwargs)
+            if not self._params
+            else self._params | kwargs
+        )
+        return self
 
 
 class SchemaEventTarget(event.EventTarget):

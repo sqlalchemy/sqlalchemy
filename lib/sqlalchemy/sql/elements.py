@@ -58,6 +58,7 @@ from .base import _expand_cloned
 from .base import _generative
 from .base import _NoArg
 from .base import Executable
+from .base import ExecutableStatement
 from .base import Generative
 from .base import HasMemoized
 from .base import Immutable
@@ -77,6 +78,7 @@ from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
+from ..util import deprecated
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
 from ..util.typing import Self
@@ -117,6 +119,7 @@ if typing.TYPE_CHECKING:
     from ..engine import Connection
     from ..engine import Dialect
     from ..engine.interfaces import _CoreMultiExecuteParams
+    from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import CacheStats
     from ..engine.interfaces import CompiledCacheType
     from ..engine.interfaces import CoreExecuteOptionsParameter
@@ -610,6 +613,12 @@ class ClauseElement(
         """
         return self._replace_params(False, __optionaldict, kwargs)
 
+    @deprecated(
+        "2.1",
+        "The params() and unique_params() methods on non-statement "
+        "ClauseElement objects are deprecated; params() is now limited to "
+        "statement level objects such as select(), insert(), union(), etc. ",
+    )
     def _replace_params(
         self,
         unique: bool,
@@ -691,8 +700,11 @@ class ClauseElement(
         for_executemany: bool = False,
         schema_translate_map: Optional[SchemaTranslateMapType] = None,
         **kw: Any,
-    ) -> typing_Tuple[
-        Compiled, Optional[Sequence[BindParameter[Any]]], CacheStats
+    ) -> tuple[
+        Compiled,
+        Sequence[BindParameter[Any]] | None,
+        _CoreSingleExecuteParams | None,
+        CacheStats,
     ]:
         elem_cache_key: Optional[CacheKey]
 
@@ -706,7 +718,7 @@ class ClauseElement(
             if TYPE_CHECKING:
                 assert compiled_cache is not None
 
-            cache_key, extracted_params = elem_cache_key
+            cache_key, extracted_params, param_dict = elem_cache_key
             key = (
                 dialect,
                 cache_key,
@@ -726,19 +738,26 @@ class ClauseElement(
                     schema_translate_map=schema_translate_map,
                     **kw,
                 )
+                # ensure that params of the current statement are not
+                # left in the cache
+                assert not compiled_sql._collect_params  # type: ignore[attr-defined] # noqa: E501
                 compiled_cache[key] = compiled_sql
             else:
                 cache_hit = dialect.CACHE_HIT
         else:
+            param_dict = None
             extracted_params = None
             compiled_sql = self._compiler(
                 dialect,
-                cache_key=elem_cache_key,
+                cache_key=None,
                 column_keys=column_keys,
                 for_executemany=for_executemany,
                 schema_translate_map=schema_translate_map,
                 **kw,
             )
+            # here instead the params need to be extracted, since we don't
+            # have them otherwise
+            assert compiled_sql._collect_params  # type: ignore[attr-defined] # noqa: E501
 
             if not dialect._supports_statement_cache:
                 cache_hit = dialect.NO_DIALECT_SUPPORT
@@ -747,7 +766,7 @@ class ClauseElement(
             else:
                 cache_hit = dialect.NO_CACHE_KEY
 
-        return compiled_sql, extracted_params, cache_hit
+        return compiled_sql, extracted_params, param_dict, cache_hit
 
     def __invert__(self):
         # undocumented element currently used by the ORM for
@@ -2314,7 +2333,7 @@ class TextClause(
     roles.SelectStatementRole,
     roles.InElementRole,
     Generative,
-    Executable,
+    ExecutableStatement,
     DQLDMLClauseElement,
     roles.BinaryElementRole[Any],
     inspection.Inspectable["TextClause"],
@@ -2343,7 +2362,7 @@ class TextClause(
     _traverse_internals: _TraverseInternalsType = [
         ("_bindparams", InternalTraversal.dp_string_clauseelement_dict),
         ("text", InternalTraversal.dp_string),
-    ] + Executable._executable_traverse_internals
+    ] + ExecutableStatement._executable_traverse_internals
 
     _is_text_clause = True
 

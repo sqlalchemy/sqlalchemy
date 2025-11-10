@@ -38,6 +38,7 @@ from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql import and_
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql import visitors
 from sqlalchemy.sql.selectable import Join as core_join
 from sqlalchemy.sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -366,6 +367,60 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
             "ROWS FETCH FIRST :param_2 %s" % (fetch_clause,),
             checkparams={"param_1": 6, "param_2": 5},
         )
+
+    @testing.variation("use_get_params", [True, False])
+    def test_annotated_cte_params_traverse(self, use_get_params):
+        """test #12915
+
+        Tests the original issue in #12915 which was a specific issue
+        involving cloned_traverse with Annotated subclasses, where traversal
+        would not properly cover a CTE's self-referential structure.
+
+        This case still does not work in the general ORM case, so the
+        implementation of .params() was changed to not rely upon
+        cloned_traversal.
+
+        """
+        User = self.classes.User
+        ids_param = bindparam("ids")
+        cte = select(User).where(User.id == ids_param).cte("cte")
+        ca = cte._annotate({"foo": "bar"})
+        stmt = select(ca)
+        if use_get_params:
+            stmt = stmt.params(ids=17)
+        else:
+            # test without using params(), in case the implementation
+            # for params() changes we still want to test cloned_traverse
+            def visit_bindparam(bind):
+                if bind.key == "ids":
+                    bind.value = 17
+                    bind.required = False
+
+            stmt = visitors.cloned_traverse(
+                stmt,
+                {"maintain_key": True, "detect_subquery_cols": True},
+                {"bindparam": visit_bindparam},
+            )
+        self.assert_compile(
+            stmt,
+            "WITH cte AS (SELECT users.id AS id, users.name AS name "
+            "FROM users WHERE users.id = :ids) "
+            "SELECT cte.id, cte.name FROM cte",
+            checkparams={"ids": 17},
+        )
+
+    def test_orm_cte_with_params(self, connection):
+        """test for #12915's new implementation"""
+        User = self.classes.User
+        ids_param = bindparam("ids")
+        cte = select(User).where(User.id == ids_param).cte("cte")
+        stmt = select(aliased(User, cte.alias("a1"), adapt_on_names=True))
+
+        res = connection.execute(stmt, {"ids": 7}).all()
+        eq_(res, [(7, "jack")])
+        with Session(connection) as s:
+            res = s.scalars(stmt, {"ids": 7}).all()
+        eq_(res, [User(id=7, name="jack")])
 
 
 class PropagateAttrsTest(QueryTest):

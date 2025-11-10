@@ -66,6 +66,7 @@ from .base import _from_objects as _from_objects
 from .base import _select_iterables as _select_iterables
 from .base import ColumnCollection as ColumnCollection
 from .base import Executable as Executable
+from .base import ExecutableStatement as ExecutableStatement
 from .cache_key import CacheKey as CacheKey
 from .dml import Delete as Delete
 from .dml import Insert as Insert

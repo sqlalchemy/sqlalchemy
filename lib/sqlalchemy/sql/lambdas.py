@@ -37,6 +37,7 @@ from . import schema
 from . import visitors
 from .base import _clone
 from .base import Executable
+from .base import ExecutableStatement
 from .base import Options
 from .cache_key import CacheConst
 from .operators import ColumnOperators
@@ -499,7 +500,7 @@ class DeferredLambdaElement(LambdaElement):
 
 
 class StatementLambdaElement(
-    roles.AllowsLambdaRole, LambdaElement, Executable
+    roles.AllowsLambdaRole, ExecutableStatement, LambdaElement
 ):
     """Represent a composable SQL statement as a :class:`_sql.LambdaElement`.
 

@@ -410,6 +410,9 @@ class InternalTraversal(Enum):
     """Visit a list of inspectable objects which upon inspection are
     HasCacheKey objects."""
 
+    dp_params = "PM"
+    """Visit the _params collection of ExecutableStatement"""
+
 
 _TraverseInternalsType = List[Tuple[str, InternalTraversal]]
 """a structure that defines how a HasTraverseInternals should be

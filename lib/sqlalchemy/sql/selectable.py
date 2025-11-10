@@ -76,6 +76,7 @@ from .base import CompileState
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
+from .base import ExecutableStatement
 from .base import Generative
 from .base import HasCompileState
 from .base import HasMemoized
@@ -290,7 +291,7 @@ class ReturnsRows(roles.ReturnsRowsRole, DQLDMLClauseElement):
         raise NotImplementedError()
 
 
-class ExecutableReturnsRows(Executable, ReturnsRows):
+class ExecutableReturnsRows(ExecutableStatement, ReturnsRows):
     """base for executable statements that return rows."""
 
 
@@ -4593,7 +4594,7 @@ class CompoundSelect(
         + SupportsCloneAnnotations._clone_annotations_traverse_internals
         + HasCTE._has_ctes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
-        + Executable._executable_traverse_internals
+        + ExecutableStatement._executable_traverse_internals
     )
 
     selects: List[SelectBase]
@@ -5484,7 +5485,7 @@ class Select(
         + HasSuffixes._has_suffixes_traverse_internals
         + HasHints._has_hints_traverse_internals
         + SupportsCloneAnnotations._clone_annotations_traverse_internals
-        + Executable._executable_traverse_internals
+        + ExecutableStatement._executable_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
     )
 
@@ -7251,7 +7252,7 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
         ]
         + SupportsCloneAnnotations._clone_annotations_traverse_internals
         + HasCTE._has_ctes_traverse_internals
-        + Executable._executable_traverse_internals
+        + ExecutableStatement._executable_traverse_internals
     )
 
     _is_textual = True

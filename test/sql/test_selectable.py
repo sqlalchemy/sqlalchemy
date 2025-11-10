@@ -3147,7 +3147,7 @@ class AnnotationsTest(fixtures.TestBase):
         """
         user = Table("user", MetaData(), Column("id", Integer))
 
-        ids_param = bindparam("ids")
+        ids_param = bindparam("ids", -1)
 
         cte = select(user).where(user.c.id == ids_param).cte("cte")
 
@@ -3157,6 +3157,8 @@ class AnnotationsTest(fixtures.TestBase):
 
         if use_get_params:
             stmt = stmt.params(ids=17)
+            exp = -1
+            eq_(stmt._generate_cache_key()[2], {"ids": 17})
         else:
             # test without using params(), as the implementation
             # for params() will be changing
@@ -3170,13 +3172,16 @@ class AnnotationsTest(fixtures.TestBase):
                 {"maintain_key": True, "detect_subquery_cols": True},
                 {"bindparam": visit_bindparam},
             )
+            exp = 17
+            eq_(stmt._generate_cache_key()[2], None)
 
         eq_(
             stmt.selected_columns.id.table.element._where_criteria[
                 0
             ].right.value,
-            17,
+            exp,
         )
+        eq_(stmt.compile().params, {"ids": 17})
 
     def test_basic_attrs(self):
         t = Table(

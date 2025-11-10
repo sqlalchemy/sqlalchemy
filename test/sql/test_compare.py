@@ -2353,29 +2353,37 @@ class TestCacheKeyUtil(fixtures.TestBase):
         eq_(
             re.compile(r"[\n\s]+", re.M).sub(
                 " ",
-                str(CacheKey(key=((1, (2, 7, 4), 5),), bindparams=[])),
+                str(
+                    CacheKey(
+                        key=((1, (2, 7, 4), 5),), bindparams=[], params={}
+                    )
+                ),
             ),
             "CacheKey(key=( ( 1, ( 2, 7, 4, ), 5, ), ),)",
         )
 
     def test_nested_tuple_difference(self):
         """Test difference detection in nested tuples"""
-        k1 = CacheKey(key=((1, (2, 3, 4), 5),), bindparams=[])
-        k2 = CacheKey(key=((1, (2, 7, 4), 5),), bindparams=[])
+        k1 = CacheKey(key=((1, (2, 3, 4), 5),), bindparams=[], params={})
+        k2 = CacheKey(key=((1, (2, 7, 4), 5),), bindparams=[], params={})
 
         eq_(list(k1._whats_different(k2)), ["key[0][1][1]:  3 != 7"])
 
     def test_deeply_nested_tuple_difference(self):
         """Test difference detection in deeply nested tuples"""
-        k1 = CacheKey(key=((1, (2, (3, 4, 5), 6), 7),), bindparams=[])
-        k2 = CacheKey(key=((1, (2, (3, 9, 5), 6), 7),), bindparams=[])
+        k1 = CacheKey(
+            key=((1, (2, (3, 4, 5), 6), 7),), bindparams=[], params={}
+        )
+        k2 = CacheKey(
+            key=((1, (2, (3, 9, 5), 6), 7),), bindparams=[], params={}
+        )
 
         eq_(list(k1._whats_different(k2)), ["key[0][1][1][1]:  4 != 9"])
 
     def test_multiple_differences_nested(self):
         """Test detection of multiple differences in nested structure"""
-        k1 = CacheKey(key=((1, (2, 3), 4),), bindparams=[])
-        k2 = CacheKey(key=((1, (5, 7), 4),), bindparams=[])
+        k1 = CacheKey(key=((1, (2, 3), 4),), bindparams=[], params={})
+        k2 = CacheKey(key=((1, (5, 7), 4),), bindparams=[], params={})
 
         eq_(
             list(k1._whats_different(k2)),
@@ -2384,21 +2392,29 @@ class TestCacheKeyUtil(fixtures.TestBase):
 
     def test_diff_method(self):
         """Test the _diff() method that returns a comma-separated string"""
-        k1 = CacheKey(key=((1, (2, 3)),), bindparams=[])
-        k2 = CacheKey(key=((1, (5, 7)),), bindparams=[])
+        k1 = CacheKey(key=((1, (2, 3)),), bindparams=[], params={})
+        k2 = CacheKey(key=((1, (5, 7)),), bindparams=[], params={})
 
         eq_(k1._diff(k2), "key[0][1][0]:  2 != 5, key[0][1][1]:  3 != 7")
 
     def test_with_string_differences(self):
         """Test detection of string differences"""
-        k1 = CacheKey(key=(("name", ("x", "value")),), bindparams=[])
-        k2 = CacheKey(key=(("name", ("y", "value")),), bindparams=[])
+        k1 = CacheKey(
+            key=(("name", ("x", "value")),), bindparams=[], params={}
+        )
+        k2 = CacheKey(
+            key=(("name", ("y", "value")),), bindparams=[], params={}
+        )
 
         eq_(list(k1._whats_different(k2)), ["key[0][1][0]:  x != y"])
 
     def test_with_mixed_types(self):
         """Test detection of differences with mixed types"""
-        k1 = CacheKey(key=(("id", 1, ("nested", 100)),), bindparams=[])
-        k2 = CacheKey(key=(("id", 1, ("nested", 200)),), bindparams=[])
+        k1 = CacheKey(
+            key=(("id", 1, ("nested", 100)),), bindparams=[], params={}
+        )
+        k2 = CacheKey(
+            key=(("id", 1, ("nested", 200)),), bindparams=[], params={}
+        )
 
         eq_(list(k1._whats_different(k2)), ["key[0][2][1]:  100 != 200"])
