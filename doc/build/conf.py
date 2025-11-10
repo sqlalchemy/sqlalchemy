@@ -487,6 +487,9 @@ def setup(app):  # noqa: U100
     # delete class attributes with a value, where the value has ``__doc__``
     # defined, but we want to see only the docstring under the attribute
     # itself.
-    from sqlalchemy.ext.asyncio import AsyncSession
-
-    del AsyncSession.sync_session_class
+    try:
+        from sqlalchemy.ext.asyncio import AsyncSession
+    except ImportError:
+        pass
+    else:
+        del AsyncSession.sync_session_class
