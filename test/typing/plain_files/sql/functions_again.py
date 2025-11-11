@@ -7,6 +7,7 @@ from sqlalchemy import Function
 from sqlalchemy import Integer
 from sqlalchemy import Select
 from sqlalchemy import select
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -29,6 +30,11 @@ class Foo(Base):
     a: Mapped[int]
     b: Mapped[int]
     c: Mapped[str]
+    _d: Mapped[int | None] = mapped_column("d")
+
+    @hybrid_property
+    def d(self) -> int | None:
+        return self._d
 
 
 assert_type(
@@ -66,6 +72,7 @@ assert_type(func.coalesce(Foo.c, "a", "b"), coalesce[str])
 assert_type(func.coalesce("a", "b"), coalesce[str])
 assert_type(func.coalesce(column("x", Integer), 3), coalesce[int])
 
+assert_type(func.coalesce(Foo._d, 100), coalesce[int])
 
 stmt2 = select(Foo.a, func.coalesce(Foo.c, "a", "b")).group_by(Foo.a)
 assert_type(stmt2, Select[int, str])
