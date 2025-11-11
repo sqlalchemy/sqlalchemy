@@ -31,7 +31,9 @@ from typing import Union
 
 from . import coercions
 from . import roles
+from . import util as sql_util
 from .base import _generative
+from .base import DialectKWArgs
 from .base import Executable
 from .base import SchemaVisitor
 from .elements import ClauseElement
@@ -41,6 +43,7 @@ from .. import exc
 from .. import util
 from ..util import topological
 from ..util.typing import Self
+
 
 if typing.TYPE_CHECKING:
     from .compiler import Compiled
@@ -469,10 +472,22 @@ class _CreateBase(_CreateDropBase[_SI]):
         self.if_not_exists = if_not_exists
 
 
+class TableCreateDDL(_CreateBase["Table"]):
+
+    def to_metadata(self, metadata: MetaData, table: Table) -> Self:
+        raise NotImplementedError()
+
+
 class _DropBase(_CreateDropBase[_SI]):
     def __init__(self, element: _SI, if_exists: bool = False) -> None:
         super().__init__(element)
         self.if_exists = if_exists
+
+
+class TableDropDDL(_DropBase["Table"]):
+
+    def to_metadata(self, metadata: MetaData, table: Table) -> Self:
+        raise NotImplementedError()
 
 
 class CreateSchema(_CreateBase[str]):
@@ -519,7 +534,7 @@ class DropSchema(_DropBase[str]):
         self.cascade = cascade
 
 
-class CreateTable(_CreateBase["Table"]):
+class CreateTable(TableCreateDDL):
     """Represent a CREATE TABLE statement."""
 
     __visit_name__ = "create_table"
@@ -552,89 +567,17 @@ class CreateTable(_CreateBase["Table"]):
         self.columns = [CreateColumn(column) for column in element.columns]
         self.include_foreign_key_constraints = include_foreign_key_constraints
 
+    def to_metadata(self, metadata: MetaData, table: Table) -> Self:
+        return self.__class__(table, if_not_exists=self.if_not_exists)
 
-class CreateTableAs(ExecutableDDLElement):
-    """Represent a CREATE TABLE ... AS statement.
 
-    This creates a new table directly from the output of a SELECT.
-    The set of columns in the new table is derived from the
-    SELECT list; constraints, indexes, and defaults are not copied.
-
-    E.g.::
-
-        from sqlalchemy import select
-        from sqlalchemy.sql.ddl import CreateTableAs
-
-        # Create a new table from a SELECT
-        stmt = CreateTableAs(
-            select(users.c.id, users.c.name).where(users.c.status == "active"),
-            "active_users",
-        )
-
-        with engine.begin() as conn:
-            conn.execute(stmt)
-
-        # With optional flags
-        stmt = CreateTableAs(
-            select(users.c.id, users.c.name),
-            "temp_snapshot",
-            temporary=True,
-            if_not_exists=True,
-        )
-
-    The generated table object can be accessed via the :attr:`.table` property,
-    which will be an instance of :class:`.Table`; by default this is associated
-    with a local :class:`.MetaData` construct::
-
-        stmt = CreateTableAs(select(users.c.id, users.c.name), "active_users")
-        active_users_table = stmt.table
-
-    To associate the :class:`.Table` with an existing :class:`.MetaData`,
-    use the :paramref:`_schema.CreateTableAs.metadata` parameter::
-
-        stmt = CreateTableAs(
-            select(users.c.id, users.c.name),
-            "active_users",
-            metadata=some_metadata,
-        )
-        active_users_table = stmt.table
+class _TableViaSelect(TableCreateDDL, ExecutableDDLElement):
+    """Common base class for DDL constructs that generate and render for a
+    :class:`.Table` given a :class:`.Select`
 
     .. versionadded:: 2.1
 
-    :param selectable: :class:`_sql.Select`
-        The SELECT statement providing the columns and rows.
-
-    :param table_name: str
-        Table name as a string. Must be unqualified; use the ``schema``
-        argument for qualification.
-
-    :param metadata: :class:`_schema.MetaData`, optional
-        If provided, the :class:`_schema.Table` object available via the
-        :attr:`.table` attribute will be associated with this
-        :class:`.MetaData`.  Otherwise, a new, empty :class:`.MetaData`
-        is created.
-
-    :param schema: str, optional schema or owner name.
-
-    :param temporary: bool, default False.
-        If True, render ``TEMPORARY``
-
-    :param if_not_exists: bool, default False.
-        If True, render ``IF NOT EXISTS``
-
-    .. seealso::
-
-        :ref:`tutorial_create_table_as` - in the :ref:`unified_tutorial`
-
-        :meth:`_sql.SelectBase.into` - convenience method to create a
-        :class:`_schema.CreateTableAs` from a SELECT statement
-
-
-
     """
-
-    __visit_name__ = "create_table_as"
-    inherit_cache = False
 
     table: Table
     """:class:`.Table` object representing the table that this
@@ -643,7 +586,7 @@ class CreateTableAs(ExecutableDDLElement):
     def __init__(
         self,
         selectable: SelectBase,
-        table_name: str,
+        name: str,
         *,
         metadata: Optional["MetaData"] = None,
         schema: Optional[str] = None,
@@ -653,25 +596,27 @@ class CreateTableAs(ExecutableDDLElement):
         # Coerce selectable to a Select statement
         selectable = coercions.expect(roles.DMLSelectRole, selectable)
 
-        if isinstance(table_name, str):
-            if not table_name:
-                raise exc.ArgumentError("Table name must be non-empty")
-
-            if "." in table_name:
-                raise exc.ArgumentError(
-                    "Target string must be unqualified (use schema=)."
-                )
-
         self.schema = schema
         self.selectable = selectable
         self.temporary = bool(temporary)
         self.if_not_exists = bool(if_not_exists)
         self.metadata = metadata
-        self.table_name = table_name
+        self.table_name = name
         self._gen_table()
 
+    @property
+    def element(self):  # type: ignore
+        return self.table
+
+    def to_metadata(self, metadata: MetaData, table: Table) -> Self:
+        new = self.__class__.__new__(self.__class__)
+        new.__dict__.update(self.__dict__)
+        new.metadata = metadata
+        new.table = table
+        return new
+
     @util.preload_module("sqlalchemy.sql.schema")
-    def _gen_table(self):
+    def _gen_table(self) -> None:
         MetaData = util.preloaded.sql_schema.MetaData
         Column = util.preloaded.sql_schema.Column
         Table = util.preloaded.sql_schema.Table
@@ -696,18 +641,284 @@ class CreateTableAs(ExecutableDDLElement):
             metadata,
             *(Column(name, typ) for name, typ in column_name_type_pairs),
             schema=self.schema,
+            _creator_ddl=self,
         )
 
 
-class _DropView(_DropBase["Table"]):
-    """Semi-public 'DROP VIEW' construct.
+class CreateTableAs(DialectKWArgs, _TableViaSelect):
+    """Represent a CREATE TABLE ... AS statement.
 
-    Used by the test suite for dialect-agnostic drops of views.
-    This object will eventually be part of a public "view" API.
+    This creates a new table directly from the output of a SELECT, including
+    its schema and its initial set of data.   Unlike a view, the
+    new table is fixed and does not synchronize further with the originating
+    SELECT statement.
+
+    The example below illustrates basic use of :class:`.CreateTableAs`; given a
+    :class:`.Select` and optional :class:`.MetaData`, the
+    :class:`.CreateTableAs` may be invoked directly via
+    :meth:`.Connection.execute` or indirectly via :meth:`.MetaData.create_all`;
+    the :attr:`.CreateTableAs.table` attribute provides a :class:`.Table`
+    object with which to generate new queries::
+
+        from sqlalchemy import CreateTableAs
+        from sqlalchemy import select
+
+        # instantiate CreateTableAs given a select() and optional MetaData
+        cas = CreateTableAs(
+            select(users.c.id, users.c.name).where(users.c.status == "active"),
+            "active_users",
+            metadata=some_metadata,
+        )
+
+        # a Table object is available immediately via the .table attribute
+        new_statement = select(cas.table)
+
+        # to emit CREATE TABLE AS, either invoke CreateTableAs directly...
+        with engine.begin() as conn:
+            conn.execute(cas)
+
+        # or alternatively, invoke metadata.create_all()
+        some_metdata.create_all(engine)
+
+        # drop is performed in the usual way, via drop_all
+        # or table.drop()
+        some_metdata.drop_all(engine)
+
+    For detailed background on :class:`.CreateTableAs` see
+    :ref:`metadata_create_table_as`.
+
+    .. versionadded:: 2.1
+
+    :param selectable: :class:`_sql.Select`
+        The SELECT statement providing the columns and rows.
+
+    :param table_name: table name as a string. Combine with the optional
+        :paramref:`.CreateTableAs.schema` parameter to indicate a
+        schema-qualified table name.
+
+    :param metadata: :class:`_schema.MetaData`, optional
+        If provided, the :class:`_schema.Table` object available via the
+        :attr:`.table` attribute will be associated with this
+        :class:`.MetaData`.  Otherwise, a new, empty :class:`.MetaData`
+        is created.
+
+    :param schema: str, optional schema or owner name.
+
+    :param temporary: bool, default False.
+        If True, render ``TEMPORARY``
+
+    :param if_not_exists: bool, default False.
+        If True, render ``IF NOT EXISTS``
+
+    .. seealso::
+
+        :ref:`metadata_create_table_as` - in :ref:`metadata_toplevel`
+
+        :meth:`_sql.SelectBase.into` - convenience method to create a
+        :class:`_schema.CreateTableAs` from a SELECT statement
+
+        :class:`.CreateView`
+
+
+    """
+
+    __visit_name__ = "create_table_as"
+    inherit_cache = False
+
+    table: Table
+    """:class:`.Table` object representing the table that this
+    :class:`.CreateTableAs` would generate when executed."""
+
+    def __init__(
+        self,
+        selectable: SelectBase,
+        table_name: str,
+        *,
+        metadata: Optional["MetaData"] = None,
+        schema: Optional[str] = None,
+        temporary: bool = False,
+        if_not_exists: bool = False,
+        **dialect_kwargs: Any,
+    ):
+        self._validate_dialect_kwargs(dialect_kwargs)
+        super().__init__(
+            selectable=selectable,
+            name=table_name,
+            metadata=metadata,
+            schema=schema,
+            temporary=temporary,
+            if_not_exists=if_not_exists,
+        )
+
+
+class CreateView(DialectKWArgs, _TableViaSelect):
+    """Represent a CREATE VIEW statement.
+
+    This creates a new view based on a particular SELECT statement. The schema
+    of the view is based on the columns of the SELECT statement, and the data
+    present in the view is derived from the rows represented by the
+    SELECT.  A non-materialized view will evaluate the SELECT statement
+    dynamicaly as it is queried, whereas a materialized view represents a
+    snapshot of the SELECT statement at a particular point in time and
+    typically needs to be refreshed manually using database-specific commands.
+
+    The example below illustrates basic use of :class:`.CreateView`; given a
+    :class:`.Select` and optional :class:`.MetaData`, the
+    :class:`.CreateView` may be invoked directly via
+    :meth:`.Connection.execute` or indirectly via :meth:`.MetaData.create_all`;
+    the :attr:`.CreateView.table` attribute provides a :class:`.Table`
+    object with which to generate new queries::
+
+
+        from sqlalchemy import select
+        from sqlalchemy.sql.ddl import CreateView
+
+        # instantiate CreateView given a select() and optional MetaData
+        create_view = CreateView(
+            select(users.c.id, users.c.name).where(users.c.status == "active"),
+            "active_users_view",
+            metadata=some_metadata,
+        )
+
+        # a Table object is available immediately via the .table attribute
+        new_statement = select(create_view.table)
+
+        # to emit CREATE VIEW, either invoke CreateView directly...
+        with engine.begin() as conn:
+            conn.execute(create_view)
+
+        # or alternatively, invoke metadata.create_all()
+        some_metdata.create_all(engine)
+
+        # drop is performed in the usual way, via drop_all
+        # or table.drop() (will emit DROP VIEW)
+        some_metdata.drop_all(engine)
+
+    For detailed background on :class:`.CreateView` see
+    :ref:`metadata_create_view`.
+
+    .. versionadded:: 2.1
+
+    :param selectable: :class:`_sql.Select`
+        The SELECT statement defining the view.
+
+    :param view_name: table name as a string. Combine with the optional
+        :paramref:`.CreateView.schema` parameter to indicate a
+        schema-qualified table name.
+
+    :param metadata: :class:`_schema.MetaData`, optional
+        If provided, the :class:`_schema.Table` object available via the
+        :attr:`.table` attribute will be associated with this
+        :class:`.MetaData`.  Otherwise, a new, empty :class:`.MetaData`
+        is created.
+
+    :param schema: str, optional schema or owner name.
+
+    :param temporary: bool, default False.
+        If True, render ``TEMPORARY``
+
+    :param or_replace: bool, default False.
+        If True, render ``OR REPLACE`` to replace an existing view if it
+        exists. Supported by PostgreSQL, MySQL, MariaDB, and Oracle.
+        Not supported by SQLite or SQL Server.
+
+        .. versionadded:: 2.1
+
+    :param materialized: bool, default False.
+        If True, render ``MATERIALIZED`` to create a materialized view.
+        Materialized views store the query results physically and can be
+        refreshed periodically. Not supported by all database backends.
+
+        .. versionadded:: 2.1
+
+    :param dialect_kw: Additional keyword arguments are dialect-specific and
+        are passed as keyword arguments to the dialect's compiler.
+
+        .. note::
+
+            For SQLite, the ``sqlite_if_not_exists`` boolean parameter
+            is supported to render ``CREATE VIEW IF NOT EXISTS``.
+
+        .. versionadded:: 2.1
+
+    .. seealso::
+
+        :ref:`metadata_create_view` - in :ref:`metadata_toplevel`
+
+        :class:`.CreateTableAs` - for creating a table from a SELECT statement
+
+    """
+
+    __visit_name__ = "create_view"
+
+    inherit_cache = False
+
+    table: Table
+    """:class:`.Table` object representing the view that this
+    :class:`.CreateView` would generate when executed."""
+
+    materialized: bool
+    """Boolean flag indicating if this is a materialized view."""
+
+    or_replace: bool
+    """Boolean flag indicating if OR REPLACE should be used."""
+
+    def __init__(
+        self,
+        selectable: SelectBase,
+        view_name: str,
+        *,
+        metadata: Optional["MetaData"] = None,
+        schema: Optional[str] = None,
+        temporary: bool = False,
+        or_replace: bool = False,
+        materialized: bool = False,
+        **dialect_kwargs: Any,
+    ):
+        self._validate_dialect_kwargs(dialect_kwargs)
+        super().__init__(
+            selectable=selectable,
+            name=view_name,
+            metadata=metadata,
+            schema=schema,
+            temporary=temporary,
+            if_not_exists=False,
+        )
+        self.materialized = materialized
+        self.or_replace = or_replace
+        self.table._dropper_ddl = DropView(
+            self.table, materialized=materialized
+        )
+
+
+class DropView(TableDropDDL):
+    """'DROP VIEW' construct.
+
+    .. versionadded:: 2.1 the :class:`.DropView` construct became public
+       and was renamed from ``_DropView``.
 
     """
 
     __visit_name__ = "drop_view"
+
+    materialized: bool
+    """Boolean flag indicating if this is a materialized view."""
+
+    def __init__(
+        self,
+        element: Table,
+        *,
+        if_exists: bool = False,
+        materialized: bool = False,
+    ) -> None:
+        super().__init__(element, if_exists=if_exists)
+        self.materialized = materialized
+
+    def to_metadata(self, metadata: MetaData, table: Table) -> Self:
+        new = self.__class__.__new__(self.__class__)
+        new.__dict__.update(self.__dict__)
+        new.element = table
+        return new
 
 
 class CreateConstraint(BaseDDLElement):
@@ -836,7 +1047,7 @@ class CreateColumn(BaseDDLElement):
         self.element = element
 
 
-class DropTable(_DropBase["Table"]):
+class DropTable(TableDropDDL):
     """Represent a DROP TABLE statement."""
 
     __visit_name__ = "drop_table"
@@ -854,6 +1065,9 @@ class DropTable(_DropBase["Table"]):
 
         """
         super().__init__(element, if_exists=if_exists)
+
+    def to_metadata(self, metadata: MetaData, table: Table) -> Self:
+        return self.__class__(table, if_exists=self.if_exists)
 
 
 class CreateSequence(_CreateBase["Sequence"]):
@@ -1082,6 +1296,9 @@ class CheckFirst(Flag):
     TABLES = 2
     """Check for tables"""
 
+    VIEWS = auto()
+    """Check for views"""
+
     INDEXES = auto()
     """Check for indexes"""
 
@@ -1095,7 +1312,7 @@ class CheckFirst(Flag):
 
     """
 
-    ALL = TABLES | INDEXES | SEQUENCES | TYPES  # equivalent to True
+    ALL = TABLES | VIEWS | INDEXES | SEQUENCES | TYPES  # equivalent to True
 
     @classmethod
     def _missing_(cls, value: object) -> Any:
@@ -1125,8 +1342,12 @@ class SchemaGenerator(InvokeCreateDDLBase):
         effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
+
+        bool_to_check = (
+            CheckFirst.TABLES if not table.is_view else CheckFirst.VIEWS
+        )
         return (
-            not self.checkfirst & CheckFirst.TABLES
+            not self.checkfirst & bool_to_check
             or not self.dialect.has_table(
                 self.connection, table.name, schema=effective_schema
             )
@@ -1220,12 +1441,17 @@ class SchemaGenerator(InvokeCreateDDLBase):
                 # e.g., don't omit any foreign key constraints
                 include_foreign_key_constraints = None
 
-            CreateTable(
-                table,
-                include_foreign_key_constraints=(
-                    include_foreign_key_constraints
-                ),
-            )._invoke_with(self.connection)
+            if table._creator_ddl is not None:
+                table_create_ddl = table._creator_ddl
+            else:
+                table_create_ddl = CreateTable(
+                    table,
+                    include_foreign_key_constraints=(
+                        include_foreign_key_constraints
+                    ),
+                )
+
+            table_create_ddl._invoke_with(self.connection)
 
             if hasattr(table, "indexes"):
                 for index in table.indexes:
@@ -1368,11 +1594,12 @@ class SchemaDropper(InvokeDropDDLBase):
         effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return (
-            not self.checkfirst & CheckFirst.TABLES
-            or self.dialect.has_table(
-                self.connection, table.name, schema=effective_schema
-            )
+        bool_to_check = (
+            CheckFirst.TABLES if not table.is_view else CheckFirst.VIEWS
+        )
+
+        return not self.checkfirst & bool_to_check or self.dialect.has_table(
+            self.connection, table.name, schema=effective_schema
         )
 
     def _can_drop_index(self, index):
@@ -1423,7 +1650,11 @@ class SchemaDropper(InvokeDropDDLBase):
             checkfirst=self.checkfirst,
             _is_metadata_operation=_is_metadata_operation,
         ):
-            DropTable(table)._invoke_with(self.connection)
+            if table._dropper_ddl is not None:
+                table_dropper_ddl = table._dropper_ddl
+            else:
+                table_dropper_ddl = DropTable(table)
+            table_dropper_ddl._invoke_with(self.connection)
 
             # traverse client side defaults which may refer to server-side
             # sequences. noting that some of these client side defaults may
@@ -1535,6 +1766,7 @@ def sort_tables(
     ]
 
 
+@util.preload_module("sqlalchemy.sql.schema")
 def sort_tables_and_constraints(
     tables, filter_fn=None, extra_dependencies=None, _warn_for_cycles=False
 ):
@@ -1580,6 +1812,7 @@ def sort_tables_and_constraints(
 
 
     """
+    Table = util.preloaded.sql_schema.Table
 
     fixed_dependencies = set()
     mutable_dependencies = set()
@@ -1604,6 +1837,22 @@ def sort_tables_and_constraints(
             dependent_on = fkc.referred_table
             if dependent_on is not table:
                 mutable_dependencies.add((dependent_on, table))
+
+        if isinstance(table._creator_ddl, _TableViaSelect):
+            selectable = table._creator_ddl.selectable
+            for selected_table in sql_util.find_tables(
+                selectable,
+                check_columns=True,
+                include_aliases=True,
+                include_joins=True,
+                include_selects=True,
+                include_crud=True,
+            ):
+                if (
+                    isinstance(selected_table, Table)
+                    and selected_table.metadata is table.metadata
+                ):
+                    fixed_dependencies.add((selected_table, table))
 
         fixed_dependencies.update(
             (parent, table) for parent in table._extra_dependencies

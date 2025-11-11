@@ -736,6 +736,11 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def create_or_replace_view(self):
+        """target database supports CREATE OR REPLACE VIEW"""
+        return only_on(["postgresql", "mysql", "mariadb", "oracle", "mssql"])
+
+    @property
     def table_value_constructor(self):
         return only_on(["postgresql", "mssql"])
 

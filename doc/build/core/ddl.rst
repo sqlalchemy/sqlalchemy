@@ -329,20 +329,19 @@ DDL Expression Constructs API
 .. autoclass:: CreateTable
     :members:
 
-.. autoclass:: CreateTableAs
-    :members:
-
 .. autoclass:: DropTable
     :members:
 
+.. autoclass:: DropView
+    :members:
 
 .. autoclass:: CreateColumn
     :members:
 
+.. autofunction:: insert_sentinel
 
 .. autoclass:: CreateSequence
     :members:
-
 
 .. autoclass:: DropSequence
     :members:

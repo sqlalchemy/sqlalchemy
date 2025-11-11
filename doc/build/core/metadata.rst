@@ -153,6 +153,7 @@ table include::
   ``employees.c["some column"]``.  See :class:`_sql.ColumnCollection` for
   further information.
 
+.. _metadata_creating_and_dropping:
 
 Creating and Dropping Database Tables
 -------------------------------------
@@ -558,9 +559,309 @@ The schema feature of SQLAlchemy interacts with the table reflection
 feature introduced at :ref:`metadata_reflection_toplevel`.  See the section
 :ref:`metadata_reflection_schemas` for additional details on how this works.
 
+.. _metadata_alt_create_forms:
 
-Backend-Specific Options
-------------------------
+Alternate CREATE TABLE forms: CREATE VIEW, CREATE TABLE AS
+----------------------------------------------------------
+
+.. versionadded:: 2.1 SQLAlchemy 2.1 introduces new table creation DDL
+    sequences CREATE VIEW and CREATE TABLE AS, both of which create a
+    table or table-like object derived from a SELECT statement
+
+The :meth:`.MetaData.create_all` sequence discussed at
+:ref:`metadata_creating_and_dropping` makes use of a :class:`.DDL` construct
+called :class:`.CreateTable` in order to emit the actual ``CREATE TABLE``
+statement. SQLAlchemy 2.1 features additional DDL constructs that can create
+tables and views from SELECT statements: :class:`.CreateTableAs` and
+:class:`.CreateView`. Both classes are constructed with a :func:`_sql.select`
+object that serves as the source of data. Once constructed, they each provide
+access to a dynamically-generated :class:`.Table` object that contains the
+correct name and :class:`.Column` configuration; this :class:`.Table` can
+then be used in subsequent :func:`_sql.select` statements to query the new
+table or view. To emit the actual ``CREATE TABLE AS`` or ``CREATE VIEW``
+statement to a database, the :class:`.CreateTableAs` or :class:`.CreateView`
+objects may be invoked directly via :meth:`.Connection.execute`, or they
+will be invoked automatically via the :meth:`.Table.create` method or
+:meth:`.MetaData.create_all` if a :class:`.MetaData` is provided to the
+constructor.
+
+
+.. _metadata_create_view:
+
+Using :class:`.CreateView`
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :class:`.CreateView` construct provides support for the ``CREATE VIEW``
+DDL construct, which allows the creation of database views that represent
+the result of a SELECT statement. Unlike a table, a view does not store data
+directly; instead, it dynamically evaluates the underlying SELECT query
+whenever the view is accessed. A compatible SQL syntax is supported by all
+included SQLAlchemy backends.
+
+A :class:`.CreateView` expression may be produced from a
+:func:`_sql.select` created against any combinations of tables::
+
+    >>> from sqlalchemy.sql.ddl import CreateView
+    >>> select_stmt = select(user.c.user_id, user.c.user_name).where(user.c.status == "active")
+    >>> create_view = CreateView(select_stmt, "active_users")
+
+Stringifying this construct illustrates the ``CREATE VIEW`` syntax::
+
+    >>> print(create_view)
+    CREATE VIEW active_users AS SELECT "user".user_id, "user".user_name
+    FROM "user"
+    WHERE "user".status = 'active'
+
+A :class:`.Table` object corresponding to the structure of the view that would
+be created can be accessed via the :attr:`.CreateView.table` attribute as soon
+as the object is constructed.  New Core :func:`_sql.select`
+objects can use this :class:`.Table` like any other selectable::
+
+    >>> view_stmt = select(create_view.table).where(create_view.table.c.user_id > 5)
+    >>> print(view_stmt)
+    SELECT active_users.user_id, active_users.user_name
+    FROM active_users
+    WHERE active_users.user_id > :user_id_1
+
+The DDL for :class:`.CreateView` may be executed in a database either
+by calling standard :meth:`.Table.create` or :meth:`.MetaData.create_all`
+methods, or by executing the construct directly:
+
+.. sourcecode:: pycon+sql
+
+    >>> with engine.begin() as connection:
+    ...     connection.execute(create_view)
+    {opensql}BEGIN (implicit)
+    CREATE VIEW active_users AS SELECT user.user_id, user.user_name
+    FROM user
+    WHERE user.status = 'active'
+    COMMIT
+
+The database now has a new view ``active_users`` which will dynamically
+evaluate the SELECT statement whenever the view is queried.
+
+:class:`.CreateView` interacts with a :class:`.MetaData` collection; an
+explicit :class:`.MetaData` may be passed using the
+:paramref:`.CreateView.metadata` parameter, where operations like
+:meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` may be used to
+emit a CREATE / DROP DDL within larger DDL sequences.   :class:`.CreateView`
+includes itself in the new :class:`.Table` via the :meth:`.Table.set_creator_ddl`
+method and also applies :class:`.DropView` to the :meth:`.Table.set_dropper_ddl`
+elements, so that ``CREATE VIEW`` and ``DROP VIEW`` will be emitted for the
+:class:`.Table`:
+
+.. sourcecode:: pycon+sql
+
+    >>> create_view = CreateView(select_stmt, "active_users", metadata=metadata_obj)
+    >>> metadata_obj.create_all(engine)
+    {opensql}BEGIN (implicit)
+    PRAGMA main.table_info("active_users")
+    ...
+    CREATE VIEW active_users AS SELECT user.user_id, user.user_name
+    FROM user
+    WHERE user.status = 'active'
+    COMMIT
+
+DROP may be emitted for this view alone using :meth:`.Table.drop`
+against :attr:`.CreateView.table`, just like it would be used for
+any other table; the :class:`.DropView` DDL construct will be invoked:
+
+.. sourcecode:: pycon+sql
+
+    >>> create_view.table.drop(engine)
+    {opensql}DROP VIEW active_users
+    COMMIT
+
+:class:`.CreateView` supports optional flags such as ``TEMPORARY``,
+``OR REPLACE``, and ``MATERIALIZED`` where supported by the target
+database::
+
+    >>> # Create a view with OR REPLACE
+    >>> stmt = CreateView(
+    ...     select(user.c.user_id, user.c.user_name),
+    ...     "user_snapshot",
+    ...     or_replace=True,
+    ... )
+    >>> print(stmt)
+    CREATE OR REPLACE VIEW user_snapshot AS SELECT user.user_id, user.user_name
+    FROM user
+
+The ``OR REPLACE`` clause renders in all forms, including a simple use
+of :meth:`.Table.create`, which does not use a "checkfirst" query by default::
+
+    >>> stmt.table.create(engine)
+    BEGIN (implicit)
+    CREATE OR REPLACE VIEW user_snapshot AS SELECT user.user_id, user.user_name
+    FROM user
+    COMMIT
+
+.. tip::
+
+    The exact phrase ``OR REPLACE`` is supported by PostgreSQL, Oracle
+    Database, MySQL and MariaDB.   When :class:`.CreateView` with
+    :paramref:`.CreateView.or_replace` is used on Microsoft SQL Server, the
+    equivalent keywords ``OR ALTER`` is emitted instead.   The remaining
+    SQLAlchemy-native dialect, SQLite, remains an outlier - for SQLite, the
+    dialect-specific parameter ``sqlite_if_not_exists`` may be used to create a
+    view with a check for already existing::
+
+        stmt = CreateView(
+            select(user.c.user_id, user.c.user_name),
+            "user_snapshot",
+            sqlite_if_not_exists=True,
+        )
+
+    ``sqlite_if_not_exists`` is separate from :paramref:`.CreateView.or_replace`
+    since it has a different meaning, leaving an existing view unmodified
+    whereas :paramref:`.CreateView.or_replace` will update the definition of
+    an existing view.
+
+The ``MATERIALIZED`` keyword may be emitted by specifying :paramref:`.CreateView.materialized`::
+
+    >>> stmt = CreateView(
+    ...     select(user.c.user_id, user.c.user_name),
+    ...     "user_snapshot",
+    ...     materialized=True,
+    ... )
+    >>> print(stmt)
+    CREATE MATERIALIZED VIEW user_snapshot AS SELECT user.user_id, user.user_name
+    FROM user
+
+Materialized views store the query results physically and can offer performance
+benefits for complex queries, though they typically need to be refreshed periodically
+using database-specific commands.   The Oracle and PostgreSQL backends currently
+support ``MATERIALIZED``; however it may be the case that ``MATERIALIZED`` cannot be
+combined with ``OR REPLACE``.
+
+
+.. _metadata_create_table_as:
+
+Using :class:`.CreateTableAs` or :meth:`.Select.into`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+The :class:`.CreateTableAs` construct, along with a complementing method
+:meth:`.Select.into`, provides support for the "CREATE TABLE AS" / "SELECT INTO"
+DDL constructs, which allows the creation of new tables in the database that
+represent the contents of an arbitrary SELECT statement. A compatible SQL
+syntax is supported by all included SQLAlchemy backends.
+
+A :class:`_schema.CreateTableAs` expression may be produced from a
+:func:`_sql.select` created against any combinations of tables::
+
+    >>> from sqlalchemy import select, CreateTableAs
+    >>> select_stmt = select(user.c.user_id, user.c.user_name).where(
+    ...     user.c.user_name.like("sponge%")
+    ... )
+    >>> create_table_as = CreateTableAs(select_stmt, "spongebob_users")
+
+The equivalent :meth:`.Select.into` method may also be used; this creates
+a :class:`.CreateTableAs` construct as well::
+
+    >>> create_table_as = select_stmt.into("spongebob_users")
+
+Stringifying this construct on most backends illustrates the ``CREATE TABLE AS`` syntax::
+
+    >>> print(create_table_as)
+    CREATE TABLE spongebob_users AS SELECT "user".user_id, "user".user_name
+    FROM "user"
+    WHERE "user".user_name LIKE 'sponge%'
+
+On Microsoft SQL Server, SELECT INTO is generated instead::
+
+    >>> from sqlalchemy.dialects import mssql
+    >>> print(create_table_as.compile(dialect=mssql.dialect()))
+    SELECT [user].user_id, [user].user_name INTO spongebob_users
+    FROM [user]
+    WHERE [user].user_name LIKE 'sponge%'
+
+A :class:`.Table` object corresponding to the structure of the view that would
+be created can be accessed via the :attr:`.CreateTableAs.table` attribute as soon
+as the object is constructed.  New Core :func:`_sql.select`
+objects can use this :class:`.Table` like any other selectable::
+
+    >>> ctas_stmt = select(create_table_as.table).where(create_table_as.table.c.user_id > 5)
+    >>> print(ctas_stmt)
+    SELECT spongebob_users.user_id, spongebob_users.user_name
+    FROM spongebob_users
+    WHERE spongebob_users.user_id > :user_id_1
+
+The DDL for :class:`.CreateTableAs` may be executed in a database either
+by calling standard :meth:`.Table.create` or :meth:`.MetaData.create_all`
+methods, or by executing the construct directly:
+
+.. sourcecode:: pycon+sql
+
+    >>> with engine.begin() as connection:
+    ...     connection.execute(create_table_as)
+    {opensql}BEGIN (implicit)
+    CREATE TABLE spongebob_users AS SELECT user.user_id, user.user_name
+    FROM user
+    WHERE user.user_name LIKE 'sponge%'
+    COMMIT
+
+The database now has a new table ``spongebob_users`` which contains all the
+columns and rows that would be returned by the SELECT statement.   This is a
+real table in the database that will remain until we drop it (unless it's a
+temporary table that automatically drops, or if transactional DDL is rolled
+back).
+
+Like :class:`.CreateView`, :class:`.CreateTableAs` interacts
+with a :class:`.MetaData` collection; an explicit :class:`.MetaData` may be
+passed using the :paramref:`.CreateTableAs.metadata` parameter, where
+operations like :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` may
+be used to emit a CREATE / DROP DDL within larger DDL sequences.   :class:`.CreateView`
+includes itself in the new :class:`.Table` via the :meth:`.Table.set_creator_ddl`
+method, so that ``CREATE TABLE AS <statement>`` will be emitted for the
+:class:`.Table`:
+
+.. sourcecode:: pycon+sql
+
+    >>> create_table_as = CreateTableAs(select_stmt, "spongebob_users", metadata=metadata_obj)
+    >>> metadata_obj.create_all(engine)
+    {opensql}BEGIN (implicit)
+    PRAGMA main.table_info("spongebob_users")
+    ...
+    CREATE TABLE spongebob_users AS SELECT user.user_id, user.user_name
+    FROM user
+    WHERE user.user_name LIKE 'sponge%'
+    COMMIT
+
+
+DROP may be emitted for this table alone using :meth:`.Table.drop`
+against :attr:`.CreateTableAs.table`, just like it would be used for
+any other table:
+
+.. sourcecode:: pycon+sql
+
+    >>> create_table_as.table.drop(engine)
+    {opensql}DROP TABLE spongebob_users
+    COMMIT
+
+:class:`.CreateTableAs` and :meth:`.Select.into` both support optional flags
+such as ``TEMPORARY`` and ``IF NOT EXISTS`` where supported by the target
+database::
+
+    >>> # Create a temporary table with IF NOT EXISTS
+    >>> stmt = select(user.c.user_id, user.c.user_name).into(
+    ...     "temp_snapshot", temporary=True, if_not_exists=True
+    ... )
+    >>> print(stmt)
+    CREATE TEMPORARY TABLE IF NOT EXISTS temp_snapshot AS SELECT user_account.id, user_account.name
+    FROM user_account
+
+The ``IF NOT EXISTS`` clause renders in all forms, including a simple use
+of :meth:`.Table.create`, which does not use a "checkfirst" query by default::
+
+    >>> stmt.table.create(engine)
+    BEGIN (implicit)
+    CREATE TEMPORARY TABLE IF NOT EXISTS temp_snapshot AS SELECT user.user_id, user.user_name
+    FROM user
+    COMMIT
+
+
+Backend-Specific Options for :class:`.Table`
+--------------------------------------------
 
 :class:`~sqlalchemy.schema.Table` supports database-specific options. For
 example, MySQL has different table backend types, including "MyISAM" and
@@ -597,6 +898,11 @@ Column, Table, MetaData API
     :members:
     :inherited-members:
 
+.. autoclass:: CreateTableAs
+    :members:
+
+.. autoclass:: CreateView
+    :members:
 
 .. autoclass:: MetaData
     :members:
@@ -606,8 +912,6 @@ Column, Table, MetaData API
 
 .. autoclass:: SchemaItem
     :members:
-
-.. autofunction:: insert_sentinel
 
 .. autoclass:: Table
     :members:

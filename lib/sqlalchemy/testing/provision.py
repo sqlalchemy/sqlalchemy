@@ -290,7 +290,7 @@ def drop_views(cfg, eng):
         with eng.begin() as conn:
             for vname in view_names:
                 conn.execute(
-                    ddl._DropView(schema.Table(vname, schema.MetaData()))
+                    ddl.DropView(schema.Table(vname, schema.MetaData()))
                 )
 
     if config.requirements.schemas.enabled_for_config(cfg):
@@ -302,7 +302,7 @@ def drop_views(cfg, eng):
             with eng.begin() as conn:
                 for vname in view_names:
                     conn.execute(
-                        ddl._DropView(
+                        ddl.DropView(
                             schema.Table(
                                 vname,
                                 schema.MetaData(),

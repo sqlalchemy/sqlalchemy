@@ -3847,7 +3847,7 @@ class SelectBase(
 
         :param metadata: :class:`_schema.MetaData`, optional
             If provided, the :class:`_schema.Table` object available via the
-            :attr:`.table` attribute will be associated with this
+            :attr:`.CreateTableAs.table` attribute will be associated with this
             :class:`.MetaData`.  Otherwise, a new, empty :class:`.MetaData`
             is created.
 
@@ -3861,7 +3861,7 @@ class SelectBase(
 
         .. seealso::
 
-            :ref:`tutorial_create_table_as` - in the :ref:`unified_tutorial`
+            :ref:`metadata_create_table_as` - in :ref:`metadata_toplevel`
 
             :class:`_schema.CreateTableAs`
 

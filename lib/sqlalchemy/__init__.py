@@ -62,10 +62,14 @@ from .schema import Column as Column
 from .schema import ColumnDefault as ColumnDefault
 from .schema import Computed as Computed
 from .schema import Constraint as Constraint
+from .schema import CreateTable as CreateTable
 from .schema import CreateTableAs as CreateTableAs
+from .schema import CreateView as CreateView
 from .schema import DDL as DDL
 from .schema import DDLElement as DDLElement
 from .schema import DefaultClause as DefaultClause
+from .schema import DropTable as DropTable
+from .schema import DropView as DropView
 from .schema import ExecutableDDLElement as ExecutableDDLElement
 from .schema import FetchedValue as FetchedValue
 from .schema import ForeignKey as ForeignKey

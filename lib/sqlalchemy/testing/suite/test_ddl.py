@@ -122,6 +122,20 @@ class TableDDLTest(fixtures.TestBase):
         is_true(inspect(connection).has_table("test_table"))
         connection.execute(schema.CreateTable(table, if_not_exists=True))
 
+    @requirements.table_ddl_if_exists
+    @util.provide_metadata
+    def test_create_table_if_not_exists_via_create(self, connection):
+        table = self._simple_fixture()
+
+        table.set_creator_ddl(schema.CreateTable(table, if_not_exists=True))
+
+        table.create(connection, checkfirst=False)
+
+        is_true(inspect(connection).has_table("test_table"))
+
+        # works!
+        table.create(connection, checkfirst=False)
+
     @requirements.index_ddl_if_exists
     @util.provide_metadata
     def test_create_index_if_not_exists(self, connection):
@@ -163,6 +177,23 @@ class TableDDLTest(fixtures.TestBase):
         is_false(inspect(connection).has_table("test_table"))
 
         connection.execute(schema.DropTable(table, if_exists=True))
+
+    @requirements.table_ddl_if_exists
+    @util.provide_metadata
+    def test_drop_table_if_exists_via_drop(self, connection):
+        table = self._simple_fixture()
+
+        table.create(connection)
+
+        is_true(inspect(connection).has_table("test_table"))
+
+        table.set_dropper_ddl(schema.DropTable(table, if_exists=True))
+        table.drop(connection, checkfirst=False)
+
+        is_false(inspect(connection).has_table("test_table"))
+
+        # works!!
+        table.drop(connection, checkfirst=False)
 
     @requirements.index_ddl_if_exists
     @util.provide_metadata

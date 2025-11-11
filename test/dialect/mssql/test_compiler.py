@@ -29,6 +29,7 @@ from sqlalchemy.dialects.mssql import base as mssql_base
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
+from sqlalchemy.sql.ddl import CreateView
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -1869,6 +1870,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         expr = resolve_lambda(fn, t=t)
         self.assert_compile(expr, string, params)
+
+    def test_create_view_or_replace(self):
+        t = Table("t", MetaData(), Column("a", Integer), Column("b", String))
+        stmt = CreateView(
+            select(t.c.a, t.c.b).where(t.c.a > 5),
+            "my_view",
+            or_replace=True,
+        )
+        self.assert_compile(
+            stmt,
+            "CREATE OR ALTER VIEW my_view AS "
+            "SELECT t.a, t.b FROM t WHERE t.a > 5",
+        )
+
+    def test_create_view_basic(self):
+        t = Table("t", MetaData(), Column("a", Integer), Column("b", String))
+        stmt = CreateView(
+            select(t.c.a, t.c.b).where(t.c.a > 5),
+            "my_view",
+        )
+        self.assert_compile(
+            stmt,
+            "CREATE VIEW my_view AS SELECT t.a, t.b FROM t WHERE t.a > 5",
+        )
 
 
 class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):

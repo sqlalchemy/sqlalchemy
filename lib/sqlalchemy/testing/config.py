@@ -168,6 +168,7 @@ def combinations_list(arg_iterable: Iterable[Tuple[Any, ...]], **kw):
 
 
 class Variation:
+    __match_args__ = ("_name",)
     __slots__ = ("_name", "_argname")
 
     def __init__(self, case, argname, case_names):
@@ -195,6 +196,14 @@ class Variation:
 
     def __repr__(self):
         return str(self)
+
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, str):
+            return self._name == value
+        elif isinstance(value, Variation):
+            return self.name == value.name and self._argname == self._argname
+        else:
+            return NotImplemented
 
     def fail(self) -> NoReturn:
         fail(f"Unknown {self}")
