@@ -1832,6 +1832,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def mysql_for_update_read(self):
+        return self.mysql_for_update + only_on(["mysql >= 8.0.0", "mariadb"])
+
+    @property
     def mysql_fsp(self):
         return only_if(["mysql >= 5.6.4", "mariadb"])
 
