@@ -375,8 +375,7 @@ class TableViaSelectTest(fixtures.TablesTest):
         assert viewname in insp.get_view_names()
 
         # Verify initial view returns all 3 rows
-        dst_view = Table(viewname, MetaData(), autoload_with=connection)
-        result = connection.execute(select(dst_view)).fetchall()
+        result = connection.execute(select(stmt.table)).fetchall()
         eq_(len(result), 3)
 
         # Replace view with filtered query (only id > 1)
@@ -393,8 +392,7 @@ class TableViaSelectTest(fixtures.TablesTest):
         insp = inspect(connection)
         assert viewname in insp.get_view_names()
 
-        dst_view = Table(viewname, MetaData(), autoload_with=connection)
-        result = connection.execute(select(dst_view)).fetchall()
+        result = connection.execute(select(stmt.table)).fetchall()
         eq_(len(result), 2)
 
     @testing.requires.materialized_views
