@@ -31,6 +31,7 @@ from sqlalchemy.testing.schema import Table
 
 class MergeTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -130,7 +131,9 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
         sess2.connection()  # autobegin
 
-        @profiling.function_call_count(variance=0.10)
+        # use a huge variance on this because it really changes quite randomly
+        # on different Python verrsions / CPUs etc.
+        @profiling.function_call_count(variance=0.50)
         def go():
             sess2.merge(p1)
 
@@ -156,6 +159,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
     """
 
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -247,6 +251,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
 class MergeBackrefsTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -341,6 +346,7 @@ class MergeBackrefsTest(NoCache, fixtures.MappedTest):
 
 class DeferOptionsTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -408,6 +414,7 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
 
 class AttributeOverheadTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -487,6 +494,7 @@ class AttributeOverheadTest(NoCache, fixtures.MappedTest):
 
 class SessionTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -555,6 +563,7 @@ class SessionTest(NoCache, fixtures.MappedTest):
 
 class QueryTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -627,6 +636,7 @@ class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
     """
 
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -714,6 +724,7 @@ class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
 
 class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -879,6 +890,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
 
 class JoinConditionTest(NoCache, fixtures.DeclarativeMappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def setup_classes(cls):
@@ -983,6 +995,7 @@ class JoinConditionTest(NoCache, fixtures.DeclarativeMappedTest):
 
 class BranchedOptionTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1158,6 +1171,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
 
 class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1325,6 +1339,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
 class WithExpresionLoaderOptTest(fixtures.DeclarativeMappedTest):
     # keep caching on with this test.
     __requires__ = ("python_profiling_backend",)
+    __backend__ = True
 
     """test #11085"""
 
