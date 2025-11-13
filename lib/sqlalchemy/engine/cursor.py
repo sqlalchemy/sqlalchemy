@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import collections
-import functools
 import operator
 import typing
 from typing import Any
@@ -1657,30 +1656,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         )
 
         if cursor_description is not None:
-            # inline of Result._row_getter(), set up an initial row
-            # getter assuming no transformations will be called as this
-            # is the most common case
-
-            metadata = self._init_metadata(context, cursor_description)
-
-            _make_row: Any
-            proc = metadata._effective_processors
-            tf = metadata._tuplefilter
-            _make_row = functools.partial(
-                Row,
-                metadata,
-                proc if tf is None or proc is None else tf(proc),
-                metadata._key_to_index,
-            )
-            if tf is not None:
-                _fixed_tf = tf  # needed to make mypy happy...
-
-                def _sliced_row(raw_data: Any) -> Any:
-                    return _make_row(_fixed_tf(raw_data))
-
-                sliced_row = _sliced_row
-            else:
-                sliced_row = _make_row
+            self._init_metadata(context, cursor_description)
 
             if echo:
                 log = self.context.connection._log_debug
@@ -1691,13 +1667,8 @@ class CursorResult(Result[Unpack[_Ts]]):
 
                 self._row_logging_fn = _log_row
 
-                def _make_row_2(row: Any) -> Any:
-                    return _log_row(sliced_row(row))
-
-                make_row = _make_row_2
-            else:
-                make_row = sliced_row  # type: ignore[assignment]
-            self._set_memoized_attribute("_row_getter", make_row)
+            # call Result._row_getter to set up the row factory
+            self._row_getter
 
         else:
             assert context._num_sentinel_cols == 0

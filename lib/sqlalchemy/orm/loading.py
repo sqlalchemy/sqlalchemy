@@ -292,7 +292,7 @@ def instances(
                 "against collections"
             )
 
-        result._unique_filter_state = (None, require_unique)
+        result._unique_filter_state = (set(), require_unique)
 
     if context.yield_per:
         result.yield_per(context.yield_per)

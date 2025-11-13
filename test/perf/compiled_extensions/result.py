@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import product
 from operator import itemgetter
+from types import FunctionType
 from typing import Callable
 from typing import Optional
 
@@ -11,11 +12,55 @@ from sqlalchemy.dialects import sqlite
 from sqlalchemy.engine import cursor
 from sqlalchemy.engine import result
 from sqlalchemy.engine.default import DefaultExecutionContext
+from sqlalchemy.util.langhelpers import load_uncompiled_module
 from .base import Case
 from .base import test_case
 
 
 class _CommonResult(Case):
+
+    @staticmethod
+    def _load_python_module():
+        from sqlalchemy.engine import _result_cy
+
+        py_result = load_uncompiled_module(_result_cy)
+        assert not py_result._is_compiled()
+        # NOTE: the enums must be couped over otherwise they are not the
+        # same object and `is` comparisons fail
+        py_result._NoRow = _result_cy._NoRow
+        py_result._NO_ROW = _result_cy._NO_ROW
+        return py_result
+
+    @staticmethod
+    def _make_subclass(
+        name: str, result_internal: type, base: type[result.Result]
+    ) -> type[result.Result]:
+        # Need to also create a python version of the scalar result
+        class PyScalarResult(result_internal, result.ScalarResult):
+            _fetchiter_impl = result.ScalarResult._fetchiter_impl
+            _fetchone_impl = result.ScalarResult._fetchone_impl
+            _fetchmany_impl = result.ScalarResult._fetchmany_impl
+            _fetchall_impl = result.ScalarResult._fetchall_impl
+            _soft_close = result.ScalarResult._soft_close
+
+        def scalars(self, index=0):
+            return PyScalarResult(self, index)
+
+        cls_dict = dict(
+            _fetchiter_impl=base._fetchiter_impl,
+            _fetchone_impl=base._fetchone_impl,
+            _fetchmany_impl=base._fetchmany_impl,
+            _fetchall_impl=base._fetchall_impl,
+            _soft_close=base._soft_close,
+            scalars=scalars,
+        )
+
+        return type(name, (result_internal, base), cls_dict)
+
+    @classmethod
+    def update_results(cls, results):
+        cls._divide_results(results, "cython", "python", "cy / py")
+
     @classmethod
     def init_class(cls):
         # 3-col
@@ -173,10 +218,31 @@ class IteratorResult(_CommonResult):
     impl: result.IteratorResult
 
     @staticmethod
-    def default():
-        return cursor.IteratorResult
+    def python():
+        py_result = _CommonResult._load_python_module()
 
-    IMPLEMENTATIONS = {"default": default.__func__}
+        PyIteratorResult = _CommonResult._make_subclass(
+            "PyIteratorResult",
+            py_result.BaseResultInternal,
+            result.IteratorResult,
+        )
+
+        assert PyIteratorResult._allrows.__class__ is FunctionType
+        return PyIteratorResult
+
+    @staticmethod
+    def cython():
+        from sqlalchemy.engine import _result_cy
+
+        assert _result_cy._is_compiled()
+
+        assert result.IteratorResult._allrows.__class__ is not FunctionType
+        return result.IteratorResult
+
+    IMPLEMENTATIONS = {
+        "python": python.__func__,
+        "cython": cython.__func__,
+    }
 
     @classmethod
     def get_init_args_callable(
@@ -196,10 +262,30 @@ class CursorResult(_CommonResult):
     impl: cursor.CursorResult
 
     @staticmethod
-    def default():
+    def python():
+        py_result = _CommonResult._load_python_module()
+
+        PyCursorResult = _CommonResult._make_subclass(
+            "PyCursorResult",
+            py_result.BaseResultInternal,
+            cursor.CursorResult,
+        )
+
+        return PyCursorResult
+
+    @staticmethod
+    def cython():
+        from sqlalchemy.engine import _result_cy
+
+        assert _result_cy._is_compiled()
+
+        assert cursor.CursorResult._allrows.__class__ is not FunctionType
         return cursor.CursorResult
 
-    IMPLEMENTATIONS = {"default": default.__func__}
+    IMPLEMENTATIONS = {
+        "python": python.__func__,
+        "cython": cython.__func__,
+    }
 
     @classmethod
     def get_init_args_callable(

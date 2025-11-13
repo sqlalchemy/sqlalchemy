@@ -1507,7 +1507,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         stmt = s.query(User).join(User.addresses).statement
 
-        @assert_cycles(4)
+        @assert_cycles(8)
         def go():
             result = s.execute(stmt)
             rows = result.fetchall()  # noqa
@@ -1522,7 +1522,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         stmt = s.query(User).join(User.addresses).statement
 
-        @assert_cycles(4)
+        @assert_cycles(8)
         def go():
             result = s.execute(stmt)
             for partition in result.partitions(3):
@@ -1538,7 +1538,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         stmt = s.query(User).join(User.addresses).statement
 
-        @assert_cycles(4)
+        @assert_cycles(8)
         def go():
             result = s.execute(stmt)
             for partition in result.unique().partitions(3):

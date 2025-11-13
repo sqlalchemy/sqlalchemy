@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
+import math
 import subprocess
 
 import sqlalchemy as sa
@@ -146,21 +147,53 @@ def main():
         else:
             compare_by_meth = {}
 
-        result_by_impl, impl_names = case.run_case(args.factor, args.filter)
+        result_by_impl, impl_names, computed = case.run_case(
+            args.factor, args.filter
+        )
 
+        add_mean = set(computed)
+        add_sum = set(impl_names)
         result_by_method = defaultdict(dict)
         all_impls = dict.fromkeys(result_by_impl)
+        sum_str = "> sum of values"
+        avg_str = "> mean of values"
         for impl in result_by_impl:
             for meth in result_by_impl[impl]:
                 meth_dict = result_by_method[meth]
                 meth_dict[impl] = result_by_impl[impl][meth]
                 if meth in compare_by_meth and impl in compare_by_meth[meth]:
                     cmp_impl = f"compare {impl}"
+                    add_sum.add(cmp_impl)
                     over = f"{impl} / compare"
+                    add_mean.add(over)
                     all_impls[cmp_impl] = None
                     all_impls[over] = None
                     meth_dict[cmp_impl] = compare_by_meth[meth][impl]
                     meth_dict[over] = meth_dict[impl] / meth_dict[cmp_impl]
+
+        for impl in add_sum | add_mean:
+            if impl in result_by_impl:
+                data = result_by_impl[impl]
+            else:
+                key = next(iter(result_by_method))
+                assert impl in result_by_method[key]
+                data = {
+                    m: md[impl]
+                    for m, md in result_by_method.items()
+                    if impl in md
+                }
+
+            if impl in add_sum:
+                assert sum_str not in data
+                total = sum(data.values())
+                result_by_method[sum_str][impl] = total
+            if impl in add_mean:
+                assert avg_str not in data
+                not_na = [v for v in data.values() if not math.isnan(v)]
+                if not not_na:
+                    continue
+                avg = sum(not_na) / len(not_na)
+                result_by_method[avg_str][impl] = avg
 
         tabulate(list(all_impls), result_by_method)
 
