@@ -17,7 +17,7 @@ nox.options.default_venv_backend = "venv"
 
 if True:
     sys.path.insert(0, ".")
-    from tools.toxnox import extract_opts
+    from tools.toxnox import apply_pytest_opts
     from tools.toxnox import tox_parameters
 
 
@@ -89,8 +89,8 @@ def _setup_for_driver(
 
     # e.g. TOX_POSTGRESQL, TOX_MYSQL, etc.
     dburl_env = f"TOX_{basename.upper()}"
-    # e.g. --db postgresql, --db mysql, etc.
-    default_dburl = f"--db {basename}"
+    # e.g. --db=postgresql, --db=mysql, etc.
+    default_dburl = f"--db={basename}"
     cmd.extend(os.environ.get(dburl_env, default_dburl).split())
 
     # set up extra drivers using --dbdriver.   this first looks in
@@ -113,8 +113,9 @@ def _setup_for_driver(
     if greenlet:
         dbdrivers.update(extra_drivers["greenlet"])
 
-    for dbdriver in dbdrivers:
-        cmd.extend(["--dbdriver", dbdriver])
+    # use equals sign so that we avoid
+    # https://github.com/pytest-dev/pytest/issues/13913
+    cmd.extend([f"--dbdriver={dbdriver}" for dbdriver in dbdrivers])
 
 
 pyproject = nox.project.load_toml("pyproject.toml")
@@ -204,7 +205,6 @@ def _tests(
     platform_intensive: bool = False,
     timing_intensive: bool = True,
     coverage: bool = False,
-    mypy: bool = False,
 ) -> None:
 
     # ensure external PYTHONPATH not interfering
@@ -264,23 +264,11 @@ def _tests(
 
     cmd = ["python", "-m", "pytest"]
 
-    if coverage:
-        assert not platform_intensive
-        cmd.extend(
-            [
-                "--cov=sqlalchemy",
-                "--cov-append",
-                "--cov-report",
-                "term",
-                "--cov-report",
-                "xml",
-            ],
-        )
-        includes_excludes["k"].append("not aaa_profiling")
-
     cmd.extend(os.environ.get("TOX_WORKERS", "-n4").split())
 
     if coverage:
+        assert not platform_intensive
+        includes_excludes["k"].append("not aaa_profiling")
         session.install("-e", ".")
         session.install(*nox.project.dependency_groups(pyproject, "coverage"))
     else:
@@ -304,30 +292,35 @@ def _tests(
         if collection:
             cmd.extend([f"-{letter}", " and ".join(collection)])
 
-    posargs, opts = extract_opts(session.posargs, "generate-junit", "dry-run")
-
-    if opts.generate_junit:
-        # produce individual junit files that are per-database
-        junitfile = f"junit-{database}.xml"
-        cmd.extend(["--junitxml", junitfile])
+    posargs = apply_pytest_opts(
+        session,
+        "sqlalchemy",
+        [
+            database,
+            cext,
+            "_greenlet" if greenlet else "nogreenlet",
+            "memusage" if platform_intensive else "_nomemusage",
+            "backendonly" if backendonly else "_notbackendonly",
+        ],
+        coverage=coverage,
+    )
 
     if database in ["oracle", "mssql", "sqlite_file"]:
-        cmd.extend(["--write-idents", "db_idents.txt"])
+        # use equals sign so that we avoid
+        # https://github.com/pytest-dev/pytest/issues/13913
+        cmd.extend(["--write-idents=db_idents.txt"])
 
     cmd.extend(posargs)
-
-    if opts.dry_run:
-        print(f"DRY RUN: command is: \n{' '.join(cmd)}")
-        return
 
     try:
         session.run(*cmd)
     finally:
         # Run cleanup for oracle/mssql
-        if database in ["oracle", "mssql", "sqlite_file"]:
-            if os.path.exists("db_idents.txt"):
-                session.run("python", "reap_dbs.py", "db_idents.txt")
-                os.unlink("db_idents.txt")
+        if database in ["oracle", "mssql", "sqlite_file"] and os.path.exists(
+            "db_idents.txt"
+        ):
+            session.run("python", "reap_dbs.py", "db_idents.txt")
+            os.unlink("db_idents.txt")
 
 
 @nox.session(name="pep484")
@@ -353,13 +346,13 @@ def test_mypy(session: nox.Session) -> None:
 
     session.install("-e", ".")
 
-    posargs, opts = extract_opts(session.posargs, "generate-junit")
+    posargs = apply_pytest_opts(
+        session,
+        "sqlalchemy",
+        ["mypy"],
+    )
 
     cmd = ["pytest", "-m", "mypy"]
-    if opts.generate_junit:
-        # produce individual junit files that are per-database
-        junitfile = "junit-mypy.xml"
-        cmd.extend(["--junitxml", junitfile])
 
     session.run(*cmd, *posargs)
 
@@ -377,11 +370,8 @@ def test_pep8(session: nox.Session) -> None:
         "setup.py doc/build/conf.py",
         "flake8  --extend-ignore='' ./lib/sqlalchemy/ext/asyncio "
         "./lib/sqlalchemy/orm/scoping.py",
-        "black --check ./lib/ ./test/ ./examples/ setup.py doc/build/conf.py "
-        "noxfile.py",
-        # test with cython and without cython exts running
+        "black --check ./lib/ ./test/ ./examples/ setup.py doc/build/conf.py",
         "slotscheck -m sqlalchemy",
-        "env DISABLE_SQLALCHEMY_CEXT_RUNTIME=1 slotscheck -m sqlalchemy",
         "python ./tools/format_docs_code.py --check",
         "python ./tools/generate_tuple_map_overloads.py --check",
         "python ./tools/generate_proxy_methods.py --check",
@@ -391,4 +381,4 @@ def test_pep8(session: nox.Session) -> None:
         "python ./tools/walk_packages.py",
     ]:
 
-        session.run(*cmd.split(), external=True)
+        session.run(*cmd.split())
