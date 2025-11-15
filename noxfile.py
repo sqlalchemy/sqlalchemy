@@ -78,8 +78,8 @@ def _setup_for_driver(
 
     # e.g. TOX_POSTGRESQL, TOX_MYSQL, etc.
     dburl_env = f"TOX_{basename.upper()}"
-    # e.g. --db postgresql, --db mysql, etc.
-    default_dburl = f"--db {basename}"
+    # e.g. --db=postgresql, --db=mysql, etc.
+    default_dburl = f"--db={basename}"
     cmd.extend(os.environ.get(dburl_env, default_dburl).split())
 
     # set up extra drivers using --dbdriver.   this first looks in
@@ -102,8 +102,9 @@ def _setup_for_driver(
     if greenlet:
         dbdrivers.update(extra_drivers["greenlet"])
 
-    for dbdriver in dbdrivers:
-        cmd.extend(["--dbdriver", dbdriver])
+    # use equals sign so that we avoid
+    # https://github.com/pytest-dev/pytest/issues/13913
+    cmd.extend([f"--dbdriver={dbdriver}" for dbdriver in dbdrivers])
 
 
 pyproject = nox.project.load_toml("pyproject.toml")
@@ -250,9 +251,7 @@ def _tests(
         if not timing_intensive:
             includes_excludes["m"].append("not timing_intensive")
 
-    # add test/ argument so that we avoid
-    # https://github.com/pytest-dev/pytest/issues/13913
-    cmd = ["python", "-m", "pytest", "test"]
+    cmd = ["python", "-m", "pytest"]
 
     cmd.extend(os.environ.get("TOX_WORKERS", "-n4").split())
 
@@ -296,7 +295,9 @@ def _tests(
     )
 
     if database in ["oracle", "mssql", "sqlite_file"]:
-        cmd.extend(["--write-idents", "db_idents.txt"])
+        # use equals sign so that we avoid
+        # https://github.com/pytest-dev/pytest/issues/13913
+        cmd.extend(["--write-idents=db_idents.txt"])
 
     cmd.extend(posargs)
 
@@ -340,7 +341,7 @@ def test_mypy(session: nox.Session) -> None:
         ["mypy"],
     )
 
-    cmd = ["pytest", "-m", "mypy", "test"]
+    cmd = ["pytest", "-m", "mypy"]
 
     session.run(*cmd, *posargs)
 

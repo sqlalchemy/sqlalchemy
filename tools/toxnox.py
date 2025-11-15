@@ -216,6 +216,10 @@ def apply_pytest_opts(
 ) -> list[str]:
     posargs, opts = extract_opts(session.posargs, "generate-junit")
 
+    if session.python and isinstance(session.python, str):
+        python_token = session.python.replace(".", "")
+        tokens.insert(0, python_token)
+
     file_suffix = "-".join(t for t in tokens if not t.startswith("_"))
 
     if coverage:
