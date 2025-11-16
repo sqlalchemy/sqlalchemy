@@ -513,6 +513,8 @@ in a manner roughly similar to that of :attr:`.Select.column_descriptions`::
    and :attr:`.UpdateBase.returning_column_descriptions` attributes.
 
 
+.. highlight:: python3
+
 .. _queryguide_additional:
 
 Additional ORM API Constructs
