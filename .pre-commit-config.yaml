@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 -   repo: https://github.com/python/black
-    rev: 25.9.0
+    rev: 25.11.0
     hooks:
     -   id: black
 
@@ -15,7 +15,9 @@ repos:
     rev: 7.3.0
     hooks:
     -   id: flake8
+        entry: python -m flake8p
         additional_dependencies:
+          - flake8-pyproject
           - flake8-import-order>=0.19.2
           - flake8-import-single==0.1.5
           - flake8-builtins
