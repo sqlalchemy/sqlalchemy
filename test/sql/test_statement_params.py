@@ -8,6 +8,7 @@ from sqlalchemy.sql import dml
 from sqlalchemy.sql import func
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
+from sqlalchemy.sql import tstring
 from sqlalchemy.sql.base import ExecutableStatement
 from sqlalchemy.sql.elements import literal
 from sqlalchemy.testing import eq_
@@ -18,6 +19,7 @@ from sqlalchemy.testing import ne_
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import Integer
 from sqlalchemy.types import Text
+from sqlalchemy.util.compat import Template
 from sqlalchemy.util.langhelpers import class_hierarchy
 
 
@@ -35,6 +37,7 @@ class BasicTests(fixtures.TestBase):
     def _relevant_impls():
         return (
             text("select 1 + 2"),
+            tstring(Template("select 1 + 2")),
             text("select 42 as q").columns(column("q", Integer)),
             func.max(42),
             select(1, 2).union(select(3, 4)),

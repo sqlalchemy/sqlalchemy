@@ -497,6 +497,70 @@ E.g.::
 New Features and Improvements - Core
 =====================================
 
+.. _change_12548:
+
+Template String (t-string) Support for Python 3.14+
+----------------------------------------------------
+
+SQLAlchemy 2.1 adds support for Python 3.14+ template strings (t-strings)
+via the new :func:`_sql.tstring` construct, as defined in :pep:`750`.
+This feature provides a more ergonomic way to construct SQL statements by
+automatically interpolating Python values and SQLAlchemy expressions within
+template strings.
+
+The :func:`_sql.tstring` function works similarly to :func:`_sql.text`, but
+automatically handles different types of interpolated values:
+
+* **String literals** from the template are rendered directly as SQL
+* **SQLAlchemy expressions** (columns, functions, subqueries, etc.) are
+  embedded as clause elements
+* **Plain Python values** are automatically wrapped with :func:`_sql.literal`
+
+Example usage::
+
+    from sqlalchemy import tstring, select, literal, JSON
+
+    # Python values become bound values
+    user_id = 42
+    stmt = tstring(t"SELECT * FROM users WHERE id = {user_id}")
+    # renders: SELECT * FROM users WHERE id = :param_1
+
+    # SQLAlchemy expressions are embedded
+    from sqlalchemy import table, column
+
+    stmt = tstring(t"SELECT {column('q')} FROM {table('t')}")
+    # renders: SELECT q FROM t
+
+    # Apply explicit SQL types to bound values using literal()
+    some_json = {"foo": "bar"}
+    stmt = tstring(t"SELECT {literal(some_json, JSON)}")
+
+Like :func:`_sql.text`, the :class:`_sql.TString` construct supports the
+:meth:`_sql.TString.columns` method to specify return columns and their types::
+
+    from sqlalchemy import column, Integer, String
+
+    stmt = tstring(t"SELECT id, name FROM users").columns(
+        column("id", Integer), column("name", String)
+    )
+
+    for id, name in connection.execute(stmt):
+        print(id, name)
+
+The :func:`_sql.tstring` construct is fully compatible with SQLAlchemy's
+statement caching system. Statements with the same structure but different
+literal values will share the same cache key, providing optimal performance.
+
+.. seealso::
+
+    :func:`_sql.tstring`
+
+    :class:`_sql.TString`
+
+    `PEP 750 <https://peps.python.org/pep-0750/>`_ - Template Strings
+
+:ticket:`12548`
+
 .. _change_10635:
 
 ``Row`` now represents individual column types directly without ``Tuple``

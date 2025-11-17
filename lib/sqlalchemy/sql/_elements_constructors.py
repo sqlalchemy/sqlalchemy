@@ -45,6 +45,7 @@ from .elements import Over
 from .elements import TextClause
 from .elements import True_
 from .elements import TryCast
+from .elements import TString
 from .elements import Tuple
 from .elements import TypeCoerce
 from .elements import UnaryExpression
@@ -52,6 +53,8 @@ from .elements import WithinGroup
 from .functions import FunctionElement
 
 if typing.TYPE_CHECKING:
+    from string.templatelib import Template
+
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
@@ -1815,6 +1818,86 @@ def text(text: str) -> TextClause:
 
     """
     return TextClause(text)
+
+
+def tstring(template: Template) -> TString:
+    r"""Construct a new :class:`_expression.TString` clause,
+    representing a SQL template string using Python 3.14+ t-strings.
+
+    .. versionadded:: 2.1
+
+    E.g.::
+
+        from sqlalchemy import tstring
+
+        a = 5
+        b = 10
+        stmt = tstring(t"select {a}, {b}")
+        result = connection.execute(stmt)
+
+    The :func:`_expression.tstring` function accepts a Python 3.14+
+    template string (t-string) and processes it to create a SQL statement.
+    Unlike :func:`_expression.text`, which requires manual bind parameter
+    specification, :func:`_expression.tstring` automatically handles
+    interpolation of Python values and SQLAlchemy expressions.
+
+    **Interpolation Behavior**:
+
+    - **SQL content** expressed in the plain string portions of the template
+      are rendered directly as SQL
+    - **SQLAlchemy expressions** (columns, functions, etc.) are embedded
+      as clause elements
+    - **Plain Python values** are automatically wrapped in
+      :func:`_expression.literal`
+
+    For example::
+
+        from sqlalchemy import tstring, select, literal, JSON, table, column
+
+        # Python values become bound parameters
+        user_id = 42
+        stmt = tstring(t"SELECT * FROM users WHERE id = {user_id}")
+        # renders: SELECT * FROM users WHERE id = :param_1
+
+        # SQLAlchemy expressions are embedded
+        stmt = tstring(t"SELECT {column('q')} FROM {table('t')}")
+        # renders: SELECT q FROM t
+
+        # Apply explicit SQL types to bound values using literal()
+        some_json = {"foo": "bar"}
+        stmt = tstring(t"SELECT {literal(some_json, JSON)}")
+
+    **Column Specification**:
+
+    Like :func:`_expression.text`, the :func:`_expression.tstring` construct
+    supports the :meth:`_expression.TString.columns` method to specify
+    return columns and their types::
+
+        from sqlalchemy import tstring, column, Integer, String
+
+        stmt = tstring(t"SELECT id, name FROM users").columns(
+            column("id", Integer), column("name", String)
+        )
+
+        for id, name in connection.execute(stmt):
+            print(id, name)
+
+    :param template:
+      a Python 3.14+ template string (t-string) containing SQL fragments
+      and Python expressions to be interpolated.
+
+    .. seealso::
+
+        :ref:`tutorial_select_arbitrary_text` - in the :ref:`unified_tutorial`
+
+        :class:`_expression.TString`
+
+        :func:`_expression.text`
+
+        `PEP 750 <https://peps.python.org/pep-0750/>`_ - Template Strings
+
+    """
+    return TString(template)
 
 
 def true() -> True_:

@@ -42,6 +42,7 @@ from ._elements_constructors import over as over
 from ._elements_constructors import text as text
 from ._elements_constructors import true as true
 from ._elements_constructors import try_cast as try_cast
+from ._elements_constructors import tstring as tstring
 from ._elements_constructors import tuple_ as tuple_
 from ._elements_constructors import type_coerce as type_coerce
 from ._elements_constructors import within_group as within_group
@@ -107,6 +108,7 @@ from .elements import SQLColumnExpression as SQLColumnExpression
 from .elements import TextClause as TextClause
 from .elements import True_ as True_
 from .elements import TryCast as TryCast
+from .elements import TString as TString
 from .elements import Tuple as Tuple
 from .elements import TypeClause as TypeClause
 from .elements import TypeCoerce as TypeCoerce

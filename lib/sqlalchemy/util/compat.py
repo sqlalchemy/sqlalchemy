@@ -31,6 +31,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 
 py314b1 = sys.version_info >= (3, 14, 0, "beta", 1)
 py314 = sys.version_info >= (3, 14)
@@ -49,6 +50,27 @@ is64bit = sys.maxsize > 2**32
 has_refcount_gc = bool(cpython)
 
 dottedgetter = operator.attrgetter
+
+if py314 or TYPE_CHECKING:
+    from string.templatelib import Template as Template
+else:
+
+    class Template:  # type: ignore[no-redef]
+        """Minimal Template for Python < 3.14 (test usage only)."""
+
+        def __init__(self, *parts: Any):
+            self._parts = parts
+
+        @property
+        def strings(self) -> Tuple[str, ...]:
+            return tuple(p for p in self._parts if isinstance(p, str))
+
+        @property
+        def interpolations(self) -> Tuple[Any, ...]:
+            return tuple(p for p in self._parts if not isinstance(p, str))
+
+        def __iter__(self) -> Any:
+            return iter(self._parts)
 
 
 class FullArgSpec(typing.NamedTuple):

@@ -95,6 +95,7 @@ from .elements import DQLDMLClauseElement
 from .elements import GroupedElement
 from .elements import literal_column
 from .elements import TableValuedColumn
+from .elements import TextClause
 from .elements import UnaryExpression
 from .operators import OperatorType
 from .sqltypes import NULLTYPE
@@ -142,11 +143,11 @@ if TYPE_CHECKING:
     from .ddl import CreateTableAs
     from .dml import Delete
     from .dml import Update
+    from .elements import AbstractTextClause
     from .elements import BinaryExpression
     from .elements import KeyedColumnElement
     from .elements import Label
     from .elements import NamedColumn
-    from .elements import TextClause
     from .functions import Function
     from .schema import ForeignKey
     from .schema import ForeignKeyConstraint
@@ -158,7 +159,7 @@ if TYPE_CHECKING:
 
 _ColumnsClauseElement = Union["FromClause", ColumnElement[Any], "TextClause"]
 _LabelConventionCallable = Callable[
-    [Union["ColumnElement[Any]", "TextClause"]], Optional[str]
+    [Union["ColumnElement[Any]", "AbstractTextClause"]], Optional[str]
 ]
 
 
@@ -197,7 +198,7 @@ _SetupJoinsElement = Tuple[
 ]
 
 
-_SelectIterable = Iterable[Union["ColumnElement[Any]", "TextClause"]]
+_SelectIterable = Iterable[Union["ColumnElement[Any]", "AbstractTextClause"]]
 
 
 class _OffsetLimitParam(BindParameter[int]):
@@ -2345,7 +2346,7 @@ class _ColumnsPlusNames(NamedTuple):
     required_label_name was not given
     """
 
-    column: Union[ColumnElement[Any], TextClause]
+    column: Union[ColumnElement[Any], AbstractTextClause]
     """
     the ColumnElement itself
     """
@@ -4879,7 +4880,7 @@ class SelectState(util.MemoizedSlots, CompileState):
         names = set()
 
         def go(
-            c: Union[ColumnElement[Any], TextClause],
+            c: Union[ColumnElement[Any], AbstractTextClause],
             col_name: Optional[str] = None,
         ) -> Optional[str]:
             if is_text_clause(c):
@@ -7286,7 +7287,7 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
 
     def _init(
         self,
-        text: TextClause,
+        text: AbstractTextClause,
         columns: List[NamedColumn[Any]],
         positional: bool = False,
     ) -> None:

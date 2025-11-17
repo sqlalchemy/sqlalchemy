@@ -795,6 +795,10 @@ class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
         )
 
 
+class TStringElementImpl(ExpressionElementImpl, RoleImpl):
+    __slots__ = ()
+
+
 class BinaryElementImpl(ExpressionElementImpl, RoleImpl):
     __slots__ = ()
 

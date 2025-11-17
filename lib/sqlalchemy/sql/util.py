@@ -74,8 +74,8 @@ if typing.TYPE_CHECKING:
     from ._typing import _EquivalentColumnMap
     from ._typing import _LimitOffsetType
     from ._typing import _TypeEngineArgument
+    from .elements import AbstractTextClause
     from .elements import BinaryExpression
-    from .elements import TextClause
     from .selectable import _JoinTargetElement
     from .selectable import _SelectIterable
     from .selectable import Selectable
@@ -884,14 +884,14 @@ def reduce_columns(
     columns: _SelectIterable,
     *clauses: Optional[ClauseElement],
     **kw: bool,
-) -> Sequence[Union[ColumnElement[Any], TextClause]]: ...
+) -> Sequence[Union[ColumnElement[Any], AbstractTextClause]]: ...
 
 
 def reduce_columns(
     columns: _SelectIterable,
     *clauses: Optional[ClauseElement],
     **kw: bool,
-) -> Collection[Union[ColumnElement[Any], TextClause]]:
+) -> Collection[Union[ColumnElement[Any], AbstractTextClause]]:
     r"""given a list of columns, return a 'reduced' set based on natural
     equivalents.
 
