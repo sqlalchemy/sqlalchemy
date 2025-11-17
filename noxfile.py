@@ -355,9 +355,12 @@ def test_pep8(session: nox.Session) -> None:
     session.install(*nox.project.dependency_groups(pyproject, "lint"))
 
     for cmd in [
-        "flake8 ./lib/ ./test/ ./examples/ noxfile.py "
+        "flake8p ./lib/ ./test/ ./examples/ noxfile.py "
         "setup.py doc/build/conf.py",
-        "flake8  --extend-ignore='' ./lib/sqlalchemy/ext/asyncio "
+        # run "unused argument" lints on asyncio, as we have a lot of
+        # proxy methods here
+        "flake8p  --ignore='' --select='U100,U101' "
+        "./lib/sqlalchemy/ext/asyncio "
         "./lib/sqlalchemy/orm/scoping.py",
         "black --check ./lib/ ./test/ ./examples/ setup.py doc/build/conf.py",
         "slotscheck -m sqlalchemy",

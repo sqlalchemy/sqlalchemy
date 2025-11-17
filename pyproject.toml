@@ -172,7 +172,8 @@ tests-mssql-asyncio = [
 
 lint = [
     {include-group = "tests-greenlet"},
-    "flake8>=7.2.0",
+    "flake8>=7.3.0",
+    "flake8-pyproject",
     "flake8-import-order>=0.19.2",
     "flake8-import-single==0.1.5",
     "flake8-builtins",
@@ -182,7 +183,7 @@ lint = [
     "flake8-rst-docstrings",
     "pydocstyle<4.0.0",
     "pygments",
-    "black==25.9.0",
+    "black==25.11.0",
     "slotscheck>=0.17.0",
     "zimports>=0.6.3",  # required by generate_tuple_map_overloads
 ]
@@ -233,6 +234,39 @@ target-version = ['py310']
 [tool.zimports]
 black-line-length = 79
 
+
+[tool.flake8]
+show-source = false
+enable-extensions = "G"
+
+# E203 is due to https://github.com/PyCQA/pycodestyle/issues/373
+ignore = [
+    "A003","A005",
+    "D",
+    "E203","E305","E701","E704","E711","E712","E721","E722","E741",
+    "I300",
+    "N801","N802","N806",
+    "RST304","RST303","RST299","RST399",
+    "W503","W504","W601",
+    "U100","U101"
+]
+
+exclude = [".venv",".git",".tox","dist","doc","*egg","build"]
+import-order-style = "google"
+application-import-names = ["sqlalchemy","test"]
+per-file-ignores =[
+    "**/__init__.py:F401",
+    "test/*:FA100",
+    "test/typing/plain_files/*:F821,E501,FA100",
+    "lib/sqlalchemy/events.py:F401",
+    "lib/sqlalchemy/schema.py:F401",
+    "lib/sqlalchemy/types.py:F401",
+    "lib/sqlalchemy/sql/expression.py:F401",
+    "lib/sqlalchemy/util/typing.py:F401"
+]
+
+unused-arguments-ignore-stub-functions=true
+unused-arguments-ignore-dunder=true
 
 [tool.slotscheck]
 exclude-modules = '''
