@@ -2212,6 +2212,7 @@ class Session(_SessionClassMethods, EventTarget):
                 (
                     statement,
                     combined_execution_options,
+                    params,
                 ) = compile_state_cls.orm_pre_session_exec(
                     self,
                     statement,
@@ -2253,6 +2254,7 @@ class Session(_SessionClassMethods, EventTarget):
             (
                 statement,
                 combined_execution_options,
+                params,
             ) = compile_state_cls.orm_pre_session_exec(
                 self,
                 statement,

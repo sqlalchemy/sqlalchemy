@@ -809,6 +809,7 @@ class _BulkUDCompileState(_ORMDMLState):
             util.immutabledict(execution_options).union(
                 {"_sa_orm_update_options": update_options}
             ),
+            params,
         )
 
     @classmethod
