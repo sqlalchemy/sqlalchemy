@@ -179,8 +179,13 @@ _ForUpdateOfArgument = Union[
         "_ColumnExpressionArgument[Any]",
         "_FromClauseArgument",
     ],
-    # or sequence of single column elements
-    Sequence["_ColumnExpressionArgument[Any]"],
+    # or sequence of column elements or from clauses
+    Sequence[
+        Union[
+            "_ColumnExpressionArgument[Any]",
+            "_FromClauseArgument",
+        ]
+    ],
 ]
 
 
