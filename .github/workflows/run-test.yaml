@@ -152,7 +152,7 @@ jobs:
         os:
           - "ubuntu-22.04"
         python-version:
-          - "3.13"
+          - "3.14"
         nox-env:
           - mypy
           - pep484
