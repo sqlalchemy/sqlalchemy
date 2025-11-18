@@ -1257,6 +1257,7 @@ class _BulkORMInsert(_ORMDMLState, InsertDMLState):
             util.immutabledict(execution_options).union(
                 {"_sa_orm_insert_options": insert_options}
             ),
+            params,
         )
 
     @classmethod
