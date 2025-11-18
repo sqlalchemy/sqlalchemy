@@ -11,6 +11,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import Integer
+from sqlalchemy import intersect
 from sqlalchemy import join
 from sqlalchemy import LargeBinary
 from sqlalchemy import literal_column
@@ -2387,6 +2388,51 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 "((a, b, c) NOT IN ((3, 'hi', 'there'), (4, 'Q', 'P')))",
                 literal_binds=True,
             )
+
+    def test_in_scalar_grouping(self):
+        """test for :ticket:`12987`
+
+        Test that using in_() with a nested CompoundSelect works correctly.
+        This occurs when a CompoundSelect is the first argument to another
+        CompoundSelect.
+
+        """
+
+        t = self.table1
+
+        # Create nested compound selects
+        inner_compound_stmt = union(
+            select(t.c.myid).where(t.c.myid == 5),
+            select(t.c.myid).where(t.c.myid == 6),
+        )
+        simple_stmt = select(t.c.myid).where(t.c.myid == 7)
+
+        # When simple statement is first, should work
+        outer_compound_stmt = intersect(simple_stmt, inner_compound_stmt)
+        self.assert_compile(
+            select(t).where(t.c.myid.in_(outer_compound_stmt)),
+            "SELECT mytable.myid FROM mytable "
+            "WHERE mytable.myid IN ("
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "
+            "INTERSECT (SELECT mytable.myid FROM mytable "
+            "WHERE mytable.myid = :myid_2 "
+            "UNION SELECT mytable.myid FROM mytable "
+            "WHERE mytable.myid = :myid_3))",
+        )
+
+        # When compound statement is first, previously raised
+        # NotImplementedError
+        outer_compound_stmt = intersect(inner_compound_stmt, simple_stmt)
+        self.assert_compile(
+            select(t).where(t.c.myid.in_(outer_compound_stmt)),
+            "SELECT mytable.myid FROM mytable "
+            "WHERE mytable.myid IN ("
+            "(SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "
+            "UNION SELECT mytable.myid FROM mytable "
+            "WHERE mytable.myid = :myid_2) "
+            "INTERSECT SELECT mytable.myid FROM mytable "
+            "WHERE mytable.myid = :myid_3)",
+        )
 
     @testing.combinations(True, False, argnames="is_in")
     @testing.combinations(True, False, argnames="negate")

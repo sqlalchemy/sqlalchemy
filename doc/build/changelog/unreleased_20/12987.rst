@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12987
+
+    Fixed issue where using the :meth:`.ColumnOperators.in_` operator with a
+    nested :class:`.CompoundSelect` statement (e.g. an ``INTERSECT`` of
+    ``UNION`` queries) would raise a :class:`NotImplementedError` when the
+    nested compound select was the first argument to the outer compound select.
+    The ``_scalar_type()`` internal method now properly handles nested compound
+    selects.

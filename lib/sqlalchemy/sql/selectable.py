@@ -3951,6 +3951,9 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
+    def _scalar_type(self) -> TypeEngine[Any]:
+        return self.element._scalar_type()
+
     def add_cte(self, *ctes: CTE, nest_here: bool = False) -> Self:
         # SelectStatementGrouping not generative: has no attribute '_generate'
         raise NotImplementedError
