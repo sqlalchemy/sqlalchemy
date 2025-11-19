@@ -898,6 +898,127 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
         else:
             eq_(m1.mock_calls, [])
 
+    def test_mutate_parameters_select(self):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def mutate_params(ctx):
+            if ctx.parameters is not None:
+                ctx.parameters = dict(ctx.parameters)
+                ctx.parameters["id"] = 7
+
+        with self.sql_execution_asserter() as asserter:
+            result = sess.scalar(
+                select(User).where(User.id == bindparam("id")), {"id": 18}
+            )
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users WHERE users.id = :id",
+                [{"id": 7}],
+            )
+        )
+        eq_(result, User(id=7))
+
+    def test_mutate_parameters_update(self):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def mutate_params(ctx):
+            if ctx.parameters is not None and "name" in ctx.parameters:
+                ctx.parameters = dict(ctx.parameters)
+                ctx.parameters["name"] = "mutated_name"
+
+        with self.sql_execution_asserter() as asserter:
+            sess.execute(
+                update(User).where(User.id == 7).values(name="original_name")
+            )
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE users SET name=:name WHERE users.id = :id_1",
+                [{"name": "mutated_name", "id_1": 7}],
+            )
+        )
+
+    def test_mutate_parameters_delete(self):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def mutate_params(ctx):
+            if ctx.parameters is not None and "id_param" in ctx.parameters:
+                ctx.parameters = dict(ctx.parameters)
+                ctx.parameters["id_param"] = 8
+
+        with self.sql_execution_asserter() as asserter:
+            sess.execute(
+                delete(User).where(User.id == bindparam("id_param")),
+                {"id_param": 18},
+            )
+        asserter.assert_(
+            CompiledSQL(
+                "DELETE FROM users WHERE users.id = :id_param",
+                [{"id_param": 8}],
+            )
+        )
+
+    def test_mutate_parameters_insert_single(self):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def mutate_params(ctx):
+            if ctx.parameters is not None and "name" in ctx.parameters:
+                ctx.parameters = dict(ctx.parameters)
+                ctx.parameters["name"] = "mutated_name"
+
+        with self.sql_execution_asserter() as asserter:
+            sess.execute(insert(User), {"id": 99, "name": "original_name"})
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO users (id, name) VALUES (:id, :name)",
+                [{"id": 99, "name": "mutated_name"}],
+            )
+        )
+
+    def test_mutate_parameters_insert_bulk(self):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def mutate_params(ctx):
+            if ctx.parameters is not None and isinstance(ctx.parameters, list):
+                ctx.parameters = [
+                    {**params, "name": f"mutated_{params['name']}"}
+                    for params in ctx.parameters
+                ]
+
+        with self.sql_execution_asserter() as asserter:
+            sess.execute(
+                insert(User),
+                [
+                    {"id": 100, "name": "name1"},
+                    {"id": 101, "name": "name2"},
+                    {"id": 102, "name": "name3"},
+                ],
+            )
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO users (id, name) VALUES (:id, :name)",
+                [
+                    {"id": 100, "name": "mutated_name1"},
+                    {"id": 101, "name": "mutated_name2"},
+                    {"id": 102, "name": "mutated_name3"},
+                ],
+            )
+        )
+
 
 class MapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
     run_inserts = None

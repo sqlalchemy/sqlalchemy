@@ -2244,6 +2244,7 @@ class Session(_SessionClassMethods, EventTarget):
 
             statement = orm_exec_state.statement
             combined_execution_options = orm_exec_state.local_execution_options
+            params = orm_exec_state.parameters
 
         if compile_state_cls is not None:
             # now run orm_pre_session_exec() "for real".   if there were
