@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import sys
 import typing
 from typing import Any
 from typing import Callable
@@ -19,6 +20,13 @@ from typing import Tuple as typing_Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
+
+if sys.version_info >= (3, 14):
+    from string.templatelib import Template as TemplateString
+    from string.templatelib import Interpolation
+else:
+    TemplateString = None
+    Interpolation = None
 
 from . import coercions
 from . import operators
@@ -63,6 +71,8 @@ if typing.TYPE_CHECKING:
     from .elements import FrameClause
     from .selectable import FromClause
     from .type_api import TypeEngine
+else:
+    FromClause = None
 
 _T = TypeVar("_T")
 
@@ -1804,17 +1814,76 @@ def text(text: str) -> TextClause:
     to it as an :class:`.Executable` object and may be used
     like any other statement passed to an ``.execute()`` method.
 
+    **Python 3.14+ Template String (t-string) Support:**
+
+    Starting with Python 3.14, template strings (t-strings) are supported.
+    When a t-string is passed to :func:`_expression.text`, interpolated
+    values are automatically converted to bound parameters::
+
+        # Requires Python 3.14+
+        user_id = 42
+        t = text(t"SELECT * FROM users WHERE id = {user_id}")
+        result = connection.execute(t)
+
+    The above will create a statement with a bound parameter for the
+    interpolated value. Column expressions and other SQLAlchemy constructs
+    can also be interpolated::
+
+        from sqlalchemy import table, column
+
+        users = table("users", column("id"), column("name"))
+        user_id = 42
+        stmt = text(
+            t"SELECT {users.c.name} FROM {users} "
+            t"WHERE {users.c.id} = {user_id}"
+        )
+
     :param text:
       the text of the SQL statement to be created.  Use ``:<param>``
       to specify bind parameters; they will be compiled to their
-      engine-specific format.
+      engine-specific format. In Python 3.14+, a template string
+      (t-string) may also be passed.
 
     .. seealso::
 
         :ref:`tutorial_select_arbitrary_text`
 
     """
+    if TemplateString is not None and isinstance(text, TemplateString):
+        return _text_from_template(text)
     return TextClause(text)
+
+
+def _text_from_template(template: Any) -> TextClause:
+    """Process a Python 3.14+ template string into a TextClause."""
+    from .selectable import FromClause as FromClauseType
+
+    parts = []
+    bind_params = {}
+    param_counter = 0
+
+    for item in template:
+        if isinstance(item, str):
+            parts.append(item)
+        elif hasattr(item, "value"):
+            value = item.value
+
+            if isinstance(value, (ColumnElement, FromClauseType)):
+                compiled = str(value)
+                parts.append(compiled)
+            else:
+                param_name = f"_tparam_{param_counter}"
+                param_counter += 1
+                parts.append(f":{param_name}")
+                bind_params[param_name] = value
+
+    sql_text = "".join(parts)
+    clause = TextClause(sql_text)
+
+    if bind_params:
+        clause = clause.bindparams(**bind_params)
+
+    return clause
 
 
 def true() -> True_:

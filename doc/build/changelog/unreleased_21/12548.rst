@@ -1,0 +1,26 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 12548
+
+    Added support for Python 3.14+ template strings (t-strings) in the
+    :func:`_sql.text` construct. When a t-string is passed to
+    :func:`_sql.text`, interpolated literal values are automatically converted
+    to bound parameters, while SQLAlchemy column expressions and table
+    references are compiled into their SQL representation::
+
+        # Python 3.14+
+        user_id = 42
+        stmt = text(t"SELECT * FROM users WHERE id = {user_id}")
+
+    Column and table objects can also be interpolated::
+
+        users = table("users", column("id"), column("name"))
+        user_id = 42
+        stmt = text(t"SELECT {users.c.name} FROM {users} WHERE {users.c.id} = {user_id}")
+
+    This feature requires Python 3.14 or later. On earlier Python versions,
+    the :func:`_sql.text` construct continues to accept only string arguments.
+
+    .. seealso::
+
+        :pep:`750` - Template Strings

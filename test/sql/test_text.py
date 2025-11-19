@@ -1145,3 +1145,183 @@ class OrderByLabelResolutionTest(
             "mytable_1.name AS t1name, foo(:foo_1) AS x "
             "FROM mytable AS mytable_1 ORDER BY mytable_1.myid, t1name, x",
         )
+
+
+class TStringTest(fixtures.TestBase, AssertsCompiledSQL):
+    """Test template string (t-string) support from Python 3.14+."""
+
+    __dialect__ = "default"
+
+    def _create_mock_template(self, *items):
+        """Create a mock template object that mimics Python 3.14 t-strings."""
+        import sys
+
+        if sys.version_info >= (3, 14):
+            return items
+
+        class MockInterpolation:
+            def __init__(
+                self, value, expression="", conversion=None, format_spec=""
+            ):
+                self.value = value
+                self.expression = expression
+                self.conversion = conversion
+                self.format_spec = format_spec
+
+        class MockTemplate:
+            def __init__(self, items):
+                self.items = items
+
+            def __iter__(self):
+                return iter(self.items)
+
+        result = []
+        for item in items:
+            if isinstance(item, tuple) and item[0] == "interp":
+                result.append(MockInterpolation(item[1]))
+            else:
+                result.append(item)
+
+        return MockTemplate(result)
+
+    def test_tstring_with_literal_values(self):
+        """Test t-string with literal scalar values."""
+        import sys
+        from sqlalchemy.sql._elements_constructors import _text_from_template
+
+        if sys.version_info >= (3, 14):
+            testing.skip("Test uses mock; real t-strings tested separately")
+
+        user_id = 42
+        name = "John"
+
+        mock_template = self._create_mock_template(
+            "SELECT * FROM users WHERE id = ",
+            ("interp", user_id),
+            " AND name = ",
+            ("interp", name),
+        )
+
+        clause = _text_from_template(mock_template)
+
+        self.assert_compile(
+            clause,
+            "SELECT * FROM users WHERE id = :_tparam_0 AND name = :_tparam_1",
+            checkparams={"_tparam_0": 42, "_tparam_1": "John"},
+        )
+
+    def test_tstring_with_column_elements(self):
+        """Test t-string with SQLAlchemy column elements."""
+        import sys
+        from sqlalchemy.sql._elements_constructors import _text_from_template
+
+        if sys.version_info >= (3, 14):
+            testing.skip("Test uses mock; real t-strings tested separately")
+
+        user_id = 42
+
+        mock_template = self._create_mock_template(
+            "SELECT ",
+            ("interp", table1.c.name),
+            " FROM ",
+            ("interp", table1),
+            " WHERE ",
+            ("interp", table1.c.myid),
+            " = ",
+            ("interp", user_id),
+        )
+
+        clause = _text_from_template(mock_template)
+
+        self.assert_compile(
+            clause,
+            "SELECT mytable.name FROM mytable WHERE mytable.myid = :_tparam_0",
+            checkparams={"_tparam_0": 42},
+        )
+
+    def test_tstring_only_literals(self):
+        """Test t-string with only literal values, no SQL elements."""
+        import sys
+        from sqlalchemy.sql._elements_constructors import _text_from_template
+
+        if sys.version_info >= (3, 14):
+            testing.skip("Test uses mock; real t-strings tested separately")
+
+        value1 = 100
+        value2 = "test"
+
+        mock_template = self._create_mock_template(
+            "SELECT id FROM users WHERE age > ",
+            ("interp", value1),
+            " AND status = ",
+            ("interp", value2),
+        )
+
+        clause = _text_from_template(mock_template)
+
+        self.assert_compile(
+            clause,
+            "SELECT id FROM users WHERE age > :_tparam_0 "
+            "AND status = :_tparam_1",
+            checkparams={"_tparam_0": 100, "_tparam_1": "test"},
+        )
+
+    def test_tstring_no_interpolations(self):
+        """Test t-string with no interpolations."""
+        import sys
+        from sqlalchemy.sql._elements_constructors import _text_from_template
+
+        if sys.version_info >= (3, 14):
+            testing.skip("Test uses mock; real t-strings tested separately")
+
+        mock_template = self._create_mock_template("SELECT * FROM users")
+
+        clause = _text_from_template(mock_template)
+
+        self.assert_compile(clause, "SELECT * FROM users")
+
+    def test_real_tstring_with_literals(self):
+        """Test real t-string with literal values on Python 3.14+."""
+        import sys
+
+        if sys.version_info < (3, 14):
+            testing.skip("Requires Python 3.14+")
+
+        code = """
+user_id = 42
+name = "John"
+clause = text(t"SELECT * FROM users WHERE id = {user_id} AND name = {name}")
+"""
+        local_vars = {"text": text}
+        exec(code, local_vars)
+        clause = local_vars["clause"]
+
+        self.assert_compile(
+            clause,
+            "SELECT * FROM users WHERE id = :_tparam_0 AND name = :_tparam_1",
+            checkparams={"_tparam_0": 42, "_tparam_1": "John"},
+        )
+
+    def test_real_tstring_with_sql_elements(self):
+        """Test real t-string with SQL elements on Python 3.14+."""
+        import sys
+
+        if sys.version_info < (3, 14):
+            testing.skip("Requires Python 3.14+")
+
+        code = '''
+user_id = 42
+clause = text(
+    t"SELECT {table1.c.name} FROM {table1} "
+    t"WHERE {table1.c.myid} = {user_id}"
+)
+'''
+        local_vars = {"text": text, "table1": table1}
+        exec(code, local_vars)
+        clause = local_vars["clause"]
+
+        self.assert_compile(
+            clause,
+            "SELECT mytable.name FROM mytable WHERE mytable.myid = :_tparam_0",
+            checkparams={"_tparam_0": 42},
+        )
