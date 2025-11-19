@@ -43,6 +43,19 @@ class User(Base):
     email: Mapped[str]
 
 
+class A(Base):
+    __tablename__ = "a"
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+
+class B(Base):
+    __tablename__ = "b"
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+
+a_table = Table("a", MetaData(), Column("id", Integer))
+b_table = Table("b", MetaData(), Column("id", Integer))
+
 user_table = Table(
     "user_table", MetaData(), Column("id", Integer), Column("email", String)
 )
@@ -152,6 +165,14 @@ s9174_6 = select(user_table).with_for_update(
     of=[user_table.c.id, user_table.c.email]
 )
 
+# test 12730 - multiple FROM clauses
+s12730_1 = select(A, B).with_for_update(of=(A, B))
+s12730_2 = select(A, B).with_for_update(of=(A,))
+s12730_3 = select(A, B).with_for_update(of=[A, B])
+s12730_4 = select(A, B).with_for_update(of=[A, B])
+s12730_5 = select(a_table, b_table).with_for_update(of=[a_table, b_table])
+
+
 # with_for_update but for query
 session = Session()
 user = session.query(User).with_for_update(of=User)
@@ -162,6 +183,9 @@ user = session.query(user_table).with_for_update(of=user_table.c.id)
 user = session.query(user_table).with_for_update(
     of=[user_table.c.id, user_table.c.email]
 )
+s12730_q1 = session.query(A, B).with_for_update(of=(A, B))
+s12730_q2 = session.query(A, B).with_for_update(of=(A, B))
+
 
 # literal
 # EXPECTED_TYPE: BindParameter[str]

@@ -166,13 +166,18 @@ _JoinTargetElement = Union["FromClause", _JoinTargetProtocol]
 _OnClauseElement = Union["ColumnElement[bool]", _JoinTargetProtocol]
 
 _ForUpdateOfArgument = Union[
-    # single column, Table, ORM Entity
+    # single column, Table, ORM entity
     Union[
         "_ColumnExpressionArgument[Any]",
         "_FromClauseArgument",
     ],
-    # or sequence of single column elements
-    Sequence["_ColumnExpressionArgument[Any]"],
+    # or sequence of column, Table, ORM entity
+    Sequence[
+        Union[
+            "_ColumnExpressionArgument[Any]",
+            "_FromClauseArgument",
+        ]
+    ],
 ]
 
 
