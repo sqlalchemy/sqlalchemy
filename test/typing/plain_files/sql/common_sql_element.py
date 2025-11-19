@@ -163,6 +163,24 @@ user = session.query(user_table).with_for_update(
     of=[user_table.c.id, user_table.c.email]
 )
 
+# test 12730 - tuples of DeclarativeBase classes
+
+
+class A(Base):
+    __tablename__ = "a"
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+
+class B(Base):
+    __tablename__ = "b"
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+
+s12730_1 = select(A, B).with_for_update(of=(A, B))
+s12730_2 = select(A, B).with_for_update(of=(A,))
+s12730_3 = select(A, B).with_for_update(of=[A, B])
+s12730_4 = session.query(A, B).with_for_update(of=(A, B))
+
 # literal
 assert_type(literal("5"), BindParameter[str])
 assert_type(literal("5", None), BindParameter[str])
