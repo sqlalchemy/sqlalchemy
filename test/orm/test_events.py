@@ -898,6 +898,179 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
         else:
             eq_(m1.mock_calls, [])
 
+    @testing.combinations(
+        (
+            lambda User: select(User).where(User.id == bindparam("id")),
+            {"id": 18},
+            {"id": 7},
+            "SELECT users.id, users.name FROM users WHERE users.id = :id",
+        ),
+        (
+            lambda User: select(User.__table__).where(
+                User.__table__.c.id == bindparam("id")
+            ),
+            {"id": 18},
+            {"id": 7},
+            "SELECT users.id, users.name FROM users WHERE users.id = :id",
+        ),
+        (
+            lambda User: update(User).where(User.id == 7),
+            {"name": "original_name"},
+            {"name": "mutated_name"},
+            "UPDATE users SET name=:name WHERE users.id = :id_1",
+        ),
+        (
+            lambda User: update(User.__table__).where(
+                User.__table__.c.id == 7
+            ),
+            {"name": "original_name"},
+            {"name": "mutated_name"},
+            "UPDATE users SET name=:name WHERE users.id = :id_1",
+        ),
+        (
+            lambda User: delete(User).where(User.id == bindparam("id_param")),
+            {"id_param": 18},
+            {"id_param": 10},  # row 10 does not have a related item
+            "DELETE FROM users WHERE users.id = :id_param",
+        ),
+        (
+            lambda User: insert(User),
+            {"id": 99, "name": "original_name"},
+            {"name": "mutated_name"},
+            "INSERT INTO users (id, name) VALUES (:id, :name)",
+        ),
+        (
+            lambda User: insert(User),
+            [
+                {"id": 100, "name": "name1"},
+                {"id": 101, "name": "name2"},
+                {"id": 102, "name": "name3"},
+            ],
+            [
+                {"id": 100, "name": "mutated_name1"},
+                {"id": 101, "name": "mutated_name2"},
+                {"id": 102, "name": "mutated_name3"},
+            ],
+            "INSERT INTO users (id, name) VALUES (:id, :name)",
+        ),
+        (
+            lambda User: insert(User.__table__),
+            [
+                {"id": 100, "name": "name1"},
+                {"id": 101, "name": "name2"},
+                {"id": 102, "name": "name3"},
+            ],
+            [
+                {"id": 100, "name": "mutated_name1"},
+                {"id": 101, "name": "mutated_name2"},
+                {"id": 102, "name": "mutated_name3"},
+            ],
+            "INSERT INTO users (id, name) VALUES (:id, :name)",
+        ),
+        argnames="stmt_callable,params,new_params,compiled_sql",
+    )
+    @testing.variation("param_op", ["mutate", "replace"])
+    def test_mutate_parameters(
+        self, stmt_callable, params, new_params, compiled_sql, param_op
+    ):
+        """test for #12921"""
+
+        User = self.classes.User
+
+        sess = Session(testing.db)
+        if param_op.mutate:
+
+            @event.listens_for(sess, "do_orm_execute")
+            def mutate_params(ctx):
+                # ensure change in place works
+                if isinstance(new_params, dict):
+                    ctx.parameters.update(new_params)
+                elif isinstance(new_params, list):
+                    ctx.parameters[:] = new_params
+
+        elif param_op.replace:
+
+            @event.listens_for(sess, "do_orm_execute")
+            def replace_params(ctx):
+                # ensure replace works
+                if isinstance(params, dict):
+                    replaced_params = dict(params)
+                    replaced_params.update(new_params)
+                    ctx.parameters = replaced_params
+                else:
+                    ctx.parameters = new_params
+
+        stmt = testing.resolve_lambda(stmt_callable, User=User)
+
+        # since we are doing mutate in place changes,
+        # uniquify the params dict so the combinations fixtures are
+        # not polluted
+        if isinstance(params, dict):
+            our_local_params = dict(params)
+            assert isinstance(new_params, dict)
+            expected_params = dict(params)
+            expected_params.update(new_params)
+        else:
+            assert isinstance(params, list)
+            our_local_params = [dict(p) for p in params]
+            expected_params = new_params
+
+        with self.sql_execution_asserter() as asserter:
+            sess.execute(
+                stmt,
+                our_local_params,
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                compiled_sql,
+                expected_params,
+            )
+        )
+
+    def test_mutate_parameters_selectinload(self, decl_base):
+        """test #12921 where we modify params for a relationship load"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            bs: Mapped[list["B"]] = relationship(
+                primaryjoin=lambda: (A.id == B.a_id)
+                & (B.status == bindparam("b_status"))
+            )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            status: Mapped[str]
+
+        decl_base.metadata.create_all(testing.db)
+
+        sess = Session(testing.db)
+
+        sess.add_all([A(id=1, bs=[B(status="x"), B(status="y")])])
+        sess.commit()
+
+        with Session(testing.db) as sess:
+
+            @event.listens_for(sess, "do_orm_execute")
+            def do_orm_execute(ctx):
+                if ctx.is_relationship_load:
+                    ctx.parameters["b_status"] = SELECT_STATUS
+
+            SELECT_STATUS = "x"
+            a1 = sess.scalars(select(A).options(selectinload(A.bs))).one()
+            eq_([b.status for b in a1.bs], ["x"])
+
+            SELECT_STATUS = "y"
+            a1 = sess.scalars(
+                select(A)
+                .execution_options(populate_existing=True)
+                .options(selectinload(A.bs))
+            ).one()
+            eq_([b.status for b in a1.bs], ["y"])
+
 
 class MapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
     run_inserts = None

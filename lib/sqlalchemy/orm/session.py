@@ -293,8 +293,16 @@ class ORMExecuteState(util.MemoizedSlots):
     """
 
     parameters: Optional[_CoreAnyExecuteParams]
-    """Dictionary of parameters that was passed to
-    :meth:`_orm.Session.execute`."""
+    """Optional mapping or list of mappings of parameters that was passed to
+    :meth:`_orm.Session.execute`.
+
+    May be mutated or re-assigned in place, which will take effect as the
+    effective parameters passed to the method.
+
+    .. versionchanged:: 2.1 :attr:`.ORMExecuteState.parameters` may now be
+       mutated or replaced.
+
+    """
 
     execution_options: _ExecuteOptions
     """The complete dictionary of current execution options.
@@ -2212,6 +2220,7 @@ class Session(_SessionClassMethods, EventTarget):
                 (
                     statement,
                     combined_execution_options,
+                    params,
                 ) = compile_state_cls.orm_pre_session_exec(
                     self,
                     statement,
@@ -2243,6 +2252,7 @@ class Session(_SessionClassMethods, EventTarget):
 
             statement = orm_exec_state.statement
             combined_execution_options = orm_exec_state.local_execution_options
+            params = orm_exec_state.parameters
 
         if compile_state_cls is not None:
             # now run orm_pre_session_exec() "for real".   if there were
@@ -2253,6 +2263,7 @@ class Session(_SessionClassMethods, EventTarget):
             (
                 statement,
                 combined_execution_options,
+                params,
             ) = compile_state_cls.orm_pre_session_exec(
                 self,
                 statement,

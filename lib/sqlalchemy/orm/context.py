@@ -368,7 +368,7 @@ class _AutoflushOnlyORMCompileState(_AbstractORMCompileState):
         if not is_pre_event and load_options._autoflush:
             session._autoflush()
 
-        return statement, execution_options
+        return statement, execution_options, params
 
     @classmethod
     def orm_setup_cursor_result(
@@ -590,7 +590,7 @@ class _ORMCompileState(_AbstractORMCompileState):
         if not is_pre_event and load_options._autoflush:
             session._autoflush()
 
-        return statement, execution_options
+        return statement, execution_options, params
 
     @classmethod
     def orm_setup_cursor_result(
