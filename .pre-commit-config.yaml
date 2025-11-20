@@ -7,7 +7,7 @@ repos:
     -   id: black
 
 -   repo: https://github.com/sqlalchemyorg/zimports
-    rev: v0.6.3
+    rev: v0.7.0
     hooks:
     -   id: zimports
 
