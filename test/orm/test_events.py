@@ -934,7 +934,8 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
 
         with self.sql_execution_asserter() as asserter:
             sess.execute(
-                update(User).where(User.id == 7).values(name="original_name")
+                update(User).where(User.id == 7),
+                {"name": "original_name"},
             )
         asserter.assert_(
             CompiledSQL(
