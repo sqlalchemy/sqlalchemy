@@ -1999,6 +1999,14 @@ class Query(
         entity of the query, or the last entity that was the
         target of a call to :meth:`_query.Query.join`.
 
+        .. note::
+
+            :class:`_query.Query` is a legacy construct as of SQLAlchemy 2.0.
+            See :meth:`_sql.Select.filter_by` for the comparable method on
+            2.0-style :func:`_sql.select` constructs, where the behavior has
+            been enhanced in version 2.1 to search across all FROM clause
+            entities. See :ref:`change_8601` for background.
+
         .. seealso::
 
             :meth:`_query.Query.filter` - filter on SQL expressions.

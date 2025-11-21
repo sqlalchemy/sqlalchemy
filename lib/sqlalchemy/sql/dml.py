@@ -38,7 +38,7 @@ from . import util as sql_util
 from ._typing import _unexpected_kw
 from ._typing import is_column_element
 from ._typing import is_named_from_clause
-from .base import _entity_namespace_key
+from .base import _entity_namespace_key_search_all
 from .base import _exclusive_against
 from .base import _from_objects
 from .base import _generative
@@ -1545,18 +1545,52 @@ class DMLWhereBase:
 
         return self.where(*criteria)
 
-    def _filter_by_zero(self) -> _DMLTableElement:
-        return self.table
-
     def filter_by(self, **kwargs: Any) -> Self:
-        r"""apply the given filtering criterion as a WHERE clause
-        to this select.
+        r"""Apply the given filtering criterion as a WHERE clause
+        to this DML statement, using keyword expressions.
 
-        """
-        from_entity = self._filter_by_zero()
+        E.g.::
+
+            stmt = update(User).filter_by(name="some name").values(fullname="New Name")
+
+        Multiple criteria may be specified as comma separated; the effect
+        is that they will be joined together using the :func:`.and_`
+        function::
+
+            stmt = delete(User).filter_by(name="some name", id=5)
+
+        The keyword expressions are extracted by searching across **all
+        entities present in the FROM clause** of the statement.
+
+        .. versionchanged:: 2.1
+
+            :meth:`.DMLWhereBase.filter_by` now searches across all FROM clause
+            entities, consistent with :meth:`_sql.Select.filter_by`.
+
+        .. seealso::
+
+            :meth:`.DMLWhereBase.where` - filter on SQL expressions.
+
+            :meth:`_sql.Select.filter_by`
+
+        """  # noqa: E501
+
+        entities: set[Any]
+
+        if not isinstance(self.table, TableClause):
+            entities = set(
+                sql_util.find_tables(
+                    self.table, check_columns=False, include_joins=False
+                )
+            )
+        else:
+            entities = {self.table}
+
+        if self.whereclause is not None:
+            entities.update(self.whereclause._from_objects)
 
         clauses = [
-            _entity_namespace_key(from_entity, key) == value
+            _entity_namespace_key_search_all(entities, key) == value
             for key, value in kwargs.items()
         ]
         return self.filter(*clauses)

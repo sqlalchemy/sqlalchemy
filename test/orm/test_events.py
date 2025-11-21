@@ -455,7 +455,7 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
         sess.execute(
             select(User.id, Address.email_address, User.name)
             .join(Address)
-            .filter_by(id=7)
+            .filter_by(name="somename")
         )
 
         eq_(
@@ -510,7 +510,7 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
 
         canary = self._flag_fixture(sess)
 
-        sess.execute(select(User).join(Address).filter_by(id=7))
+        sess.execute(select(User).join(Address).filter_by(name="somename"))
 
         eq_(
             canary.mock_calls,

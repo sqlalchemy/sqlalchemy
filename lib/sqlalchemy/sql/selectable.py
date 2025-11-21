@@ -21,6 +21,7 @@ from typing import Any as TODO_Any
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Collection
 from typing import Dict
 from typing import Generic
 from typing import Iterable
@@ -61,7 +62,7 @@ from .annotation import SupportsCloneAnnotations
 from .base import _clone
 from .base import _cloned_difference
 from .base import _cloned_intersection
-from .base import _entity_namespace_key
+from .base import _entity_namespace_key_search_all
 from .base import _EntityNamespace
 from .base import _expand_cloned
 from .base import _from_objects
@@ -109,7 +110,6 @@ from ..util import warn_deprecated
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
-
 
 and_ = BooleanClauseList.and_
 
@@ -5095,13 +5095,43 @@ class SelectState(util.MemoizedSlots, CompileState):
         return with_cols, only_froms, only_cols
 
     @classmethod
-    def determine_last_joined_entity(
-        cls, stmt: Select[Unpack[TupleAny]]
-    ) -> Optional[_JoinTargetElement]:
-        if stmt._setup_joins:
-            return stmt._setup_joins[-1][0]
-        else:
-            return None
+    def _get_filter_by_entities(
+        cls, statement: Select[Unpack[TupleAny]]
+    ) -> Collection[
+        Union[FromClause, _JoinTargetProtocol, ColumnElement[Any]]
+    ]:
+        """Return all entities to search for filter_by() attributes.
+
+        This includes:
+
+        * All joined entities from _setup_joins
+        * Memoized entities from previous operations (e.g.,
+          before with_only_columns)
+        * Explicit FROM objects from _from_obj
+        * Entities inferred from _raw_columns
+
+        .. versionadded:: 2.1
+
+        """
+        entities: set[
+            Union[FromClause, _JoinTargetProtocol, ColumnElement[Any]]
+        ]
+
+        entities = set(
+            join_element[0] for join_element in statement._setup_joins
+        )
+
+        for memoized in statement._memoized_select_entities:
+            entities.update(
+                join_element[0] for join_element in memoized._setup_joins
+            )
+
+        entities.update(statement._from_obj)
+
+        for col in statement._raw_columns:
+            entities.update(col._from_objects)
+
+        return entities
 
     @classmethod
     def all_selected_columns(
@@ -5556,24 +5586,6 @@ class Select(
 
         return self.where(*criteria)
 
-    def _filter_by_zero(
-        self,
-    ) -> Union[
-        FromClause, _JoinTargetProtocol, ColumnElement[Any], TextClause
-    ]:
-        if self._setup_joins:
-            meth = SelectState.get_plugin_class(
-                self
-            ).determine_last_joined_entity
-            _last_joined_entity = meth(self)
-            if _last_joined_entity is not None:
-                return _last_joined_entity
-
-        if self._from_obj:
-            return self._from_obj[0]
-
-        return self._raw_columns[0]
-
     if TYPE_CHECKING:
 
         @overload
@@ -5592,14 +5604,60 @@ class Select(
         def scalar_subquery(self) -> ScalarSelect[Any]: ...
 
     def filter_by(self, **kwargs: Any) -> Self:
-        r"""apply the given filtering criterion as a WHERE clause
-        to this select.
+        r"""Apply the given filtering criterion as a WHERE clause
+        to this select, using keyword expressions.
+
+        E.g.::
+
+            stmt = select(User).filter_by(name="some name")
+
+        Multiple criteria may be specified as comma separated; the effect
+        is that they will be joined together using the :func:`.and_`
+        function::
+
+            stmt = select(User).filter_by(name="some name", id=5)
+
+        The keyword expressions are extracted by searching across **all
+        entities present in the FROM clause** of the statement. If a
+        keyword name is present in more than one entity,
+        :class:`_exc.AmbiguousColumnError` is raised. In this case, use
+        :meth:`_sql.Select.filter` or :meth:`_sql.Select.where` with
+        explicit column references::
+
+            # both User and Address have an 'id' attribute
+            stmt = select(User).join(Address).filter_by(id=5)
+            # raises AmbiguousColumnError
+
+            # use filter() with explicit qualification instead
+            stmt = select(User).join(Address).filter(Address.id == 5)
+
+        .. versionchanged:: 2.1
+
+            :meth:`_sql.Select.filter_by` now searches across all FROM clause
+            entities rather than only searching the last joined entity or first
+            FROM entity. This allows the method to locate attributes
+            unambiguously across multiple joined tables. The new
+            :class:`_exc.AmbiguousColumnError` is raised when an attribute name
+            is present in more than one entity.
+
+            See :ref:`change_8601` for migration notes.
+
+        .. seealso::
+
+            :ref:`tutorial_selecting_data` - in the :ref:`unified_tutorial`
+
+            :meth:`_sql.Select.filter` - filter on SQL expressions.
+
+            :meth:`_sql.Select.where` - filter on SQL expressions.
 
         """
-        from_entity = self._filter_by_zero()
+        # Get all entities via plugin system
+        all_entities = SelectState.get_plugin_class(
+            self
+        )._get_filter_by_entities(self)
 
         clauses = [
-            _entity_namespace_key(from_entity, key) == value
+            _entity_namespace_key_search_all(all_entities, key) == value
             for key, value in kwargs.items()
         ]
         return self.filter(*clauses)

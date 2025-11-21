@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import re
 import uuid
 
 from sqlalchemy import Computed
 from sqlalchemy import delete
+from sqlalchemy import exc
 from sqlalchemy import FetchedValue
+from sqlalchemy import ForeignKey
 from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import literal
@@ -14,8 +17,11 @@ from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
@@ -431,3 +437,340 @@ class PGIssue11849Test(fixtures.DeclarativeMappedTest):
 
         # synchronizes on load
         eq_(obj.test_field, {"test1": 1, "test2": "2", "test3": {"test4": 4}})
+
+
+class _FilterByDMLSuite(fixtures.MappedTest, AssertsCompiledSQL):
+    """Base test suite for filter_by() on ORM DML statements.
+
+    Tests filter_by() functionality for UPDATE and DELETE with ORM entities,
+    verifying it can locate attributes across multiple joined tables and
+    raises AmbiguousColumnError for ambiguous names.
+    """
+
+    __dialect__ = "default_enhanced"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30), nullable=False),
+            Column("department_id", ForeignKey("departments.id")),
+        )
+        Table(
+            "addresses",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_id", None, ForeignKey("users.id")),
+            Column("name", String(30), nullable=False),
+            Column("email_address", String(50), nullable=False),
+        )
+        Table(
+            "dingalings",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("address_id", None, ForeignKey("addresses.id")),
+            Column("data", String(30)),
+        )
+        Table(
+            "departments",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+
+        class Address(cls.Comparable):
+            pass
+
+        class Dingaling(cls.Comparable):
+            pass
+
+        class Department(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        users = cls.tables.users
+
+        Address = cls.classes.Address
+        addresses = cls.tables.addresses
+
+        Dingaling = cls.classes.Dingaling
+        dingalings = cls.tables.dingalings
+
+        Department = cls.classes.Department
+        departments = cls.tables.departments
+
+        cls.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address),
+                "department": relationship(Department),
+            },
+        )
+        cls.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={"dingalings": relationship(Dingaling)},
+        )
+        cls.mapper_registry.map_imperatively(Dingaling, dingalings)
+        cls.mapper_registry.map_imperatively(Department, departments)
+
+    def test_filter_by_basic(self, one_table_statement):
+        """Test filter_by with a single ORM entity."""
+        stmt = one_table_statement
+
+        stmt = stmt.filter_by(name="somename")
+        self.assert_compile(
+            stmt,
+            re.compile(r"(?:UPDATE|DELETE) .* WHERE users\.name = :name_1"),
+            params={"name_1": "somename"},
+        )
+
+    def test_filter_by_two_tables_ambiguous_id(self, two_table_statement):
+        """Test filter_by raises error when 'id' is ambiguous."""
+        stmt = two_table_statement
+
+        # Filter by 'id' which exists in both tables - should raise error
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "id" is ambiguous',
+        ):
+            stmt.filter_by(id=5)
+
+    def test_filter_by_two_tables_secondary(self, two_table_statement):
+        """Test filter_by finds attribute in secondary table."""
+        stmt = two_table_statement
+
+        # Filter by 'email_address' which only exists in addresses table
+        stmt = stmt.filter_by(email_address="test@example.com")
+        self.assert_compile(
+            stmt,
+            re.compile(
+                r"(?:UPDATE|DELETE) .* addresses\.email_address = "
+                r":email_address_1"
+            ),
+        )
+
+    def test_filter_by_three_tables_ambiguous(self, three_table_statement):
+        """Test filter_by raises AmbiguousColumnError for ambiguous
+        names."""
+        stmt = three_table_statement
+
+        # interestingly, UPDATE/DELETE dont use an ORM specific version
+        # for filter_by() entity lookup, unlike SELECT
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "name" is ambiguous; it exists in multiple FROM '
+            "clause entities "
+            r"\((?:users(?:, )?|dingalings(?:, )?|addresses(?:, )?){3}\).",
+        ):
+            stmt.filter_by(name="ambiguous")
+
+    def test_filter_by_four_tables_ambiguous(self, four_table_statement):
+        """test the ellipses version of the ambiguous message"""
+        stmt = four_table_statement
+
+        # interestingly, UPDATE/DELETE dont use an ORM specific version
+        # for filter_by() entity lookup, unlike SELECT
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            r'Attribute name "name" is ambiguous; it exists in multiple '
+            r"FROM clause entities "
+            r"\((?:dingalings, |departments, |users, |addresses, ){3}\.\.\. "
+            r"\(4 total\)\)",
+        ):
+            stmt.filter_by(name="ambiguous")
+
+    def test_filter_by_three_tables_notfound(self, three_table_statement):
+        """test the three or fewer table not found message"""
+        stmt = three_table_statement
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r'None of the FROM clause entities have a property "unknown". '
+            r"Searched entities: (?:dingalings(?:, )?"
+            r"|users(?:, )?|addresses(?:, )?){3}",
+        ):
+            stmt.filter_by(unknown="notfound")
+
+    def test_filter_by_four_tables_notfound(self, four_table_statement):
+        """test the ellipses version of the not found message"""
+        stmt = four_table_statement
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r'None of the FROM clause entities have a property "unknown". '
+            r"Searched entities: "
+            r"(?:dingalings, |departments, |users, |addresses, ){3}\.\.\. "
+            r"\(4 total\)",
+        ):
+            stmt.filter_by(unknown="notfound")
+
+    def test_filter_by_three_tables_primary(self, three_table_statement):
+        """Test filter_by finds attribute in primary table with three
+        tables."""
+        stmt = three_table_statement
+
+        # Filter by 'id' - ambiguous across all three tables
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "id" is ambiguous',
+        ):
+            stmt.filter_by(id=5)
+
+    def test_filter_by_three_tables_secondary(self, three_table_statement):
+        """Test filter_by finds attribute in secondary table."""
+        stmt = three_table_statement
+
+        # Filter by 'email_address' which only exists in Address
+        stmt = stmt.filter_by(email_address="test@example.com")
+        self.assert_compile(
+            stmt,
+            re.compile(
+                r"(?:UPDATE|DELETE) .* addresses\.email_address = "
+                r":email_address_1"
+            ),
+        )
+
+    def test_filter_by_three_tables_tertiary(self, three_table_statement):
+        """Test filter_by finds attribute in third table (Dingaling)."""
+        stmt = three_table_statement
+
+        # Filter by 'data' which only exists in dingalings
+        stmt = stmt.filter_by(data="somedata")
+        self.assert_compile(
+            stmt,
+            re.compile(r"(?:UPDATE|DELETE) .* dingalings\.data = :data_1"),
+        )
+
+    def test_filter_by_three_tables_user_id(self, three_table_statement):
+        """Test filter_by finds user_id in Address (unambiguous)."""
+        stmt = three_table_statement
+
+        # Filter by 'user_id' which only exists in addresses
+        stmt = stmt.filter_by(user_id=7)
+        self.assert_compile(
+            stmt,
+            re.compile(
+                r"(?:UPDATE|DELETE) .* addresses\.user_id = :user_id_1"
+            ),
+        )
+
+    def test_filter_by_three_tables_address_id(self, three_table_statement):
+        """Test filter_by finds address_id in Dingaling (unambiguous)."""
+        stmt = three_table_statement
+
+        # Filter by 'address_id' which only exists in dingalings
+        stmt = stmt.filter_by(address_id=3)
+        self.assert_compile(
+            stmt,
+            re.compile(
+                r"(?:UPDATE|DELETE) .* dingalings\.address_id = "
+                r":address_id_1"
+            ),
+        )
+
+
+class UpdateFilterByTest(_FilterByDMLSuite):
+    @testing.fixture
+    def one_table_statement(self):
+        User = self.classes.User
+
+        return update(User).values(name="newname")
+
+    @testing.fixture
+    def two_table_statement(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        return (
+            update(User)
+            .values(name="newname")
+            .where(User.id == Address.user_id)
+        )
+
+    @testing.fixture
+    def three_table_statement(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        Dingaling = self.classes.Dingaling
+
+        return (
+            update(User)
+            .values(name="newname")
+            .where(User.id == Address.user_id)
+            .where(Address.id == Dingaling.address_id)
+        )
+
+    @testing.fixture
+    def four_table_statement(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        Dingaling = self.classes.Dingaling
+        Department = self.classes.Department
+
+        return (
+            update(User)
+            .values(name="newname")
+            .where(User.id == Address.user_id)
+            .where(Address.id == Dingaling.address_id)
+            .where(Department.id == User.department_id)
+        )
+
+
+class DeleteFilterByTest(_FilterByDMLSuite):
+    @testing.fixture
+    def one_table_statement(self):
+        User = self.classes.User
+
+        return delete(User)
+
+    @testing.fixture
+    def two_table_statement(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        return delete(User).where(User.id == Address.user_id)
+
+    @testing.fixture
+    def three_table_statement(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        Dingaling = self.classes.Dingaling
+
+        return (
+            delete(User)
+            .where(User.id == Address.user_id)
+            .where(Address.id == Dingaling.address_id)
+        )
+
+    @testing.fixture
+    def four_table_statement(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        Dingaling = self.classes.Dingaling
+        Department = self.classes.Department
+
+        return (
+            delete(User)
+            .where(User.id == Address.user_id)
+            .where(Address.id == Dingaling.address_id)
+            .where(Department.id == User.department_id)
+        )

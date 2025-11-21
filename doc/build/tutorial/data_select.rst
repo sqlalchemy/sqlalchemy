@@ -415,8 +415,8 @@ of ORM entities::
 
 For simple "equality" comparisons against a single entity, there's also a
 popular method known as :meth:`_sql.Select.filter_by` which accepts keyword
-arguments that match to column keys or ORM attribute names.  It will filter
-against the leftmost FROM clause or the last entity joined::
+arguments that match to column keys or ORM attribute names.  It searches
+across all entities in the FROM clause for the given attribute names::
 
     >>> print(select(User).filter_by(name="spongebob", fullname="Spongebob Squarepants"))
     {printsql}SELECT user_account.id, user_account.name, user_account.fullname

@@ -20,6 +20,7 @@ import re
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Collection
 from typing import Dict
 from typing import Final
 from typing import FrozenSet
@@ -2551,3 +2552,50 @@ def _entity_namespace_key(
         raise exc.InvalidRequestError(
             'Entity namespace for "%s" has no property "%s"' % (entity, key)
         ) from err
+
+
+def _entity_namespace_key_search_all(
+    entities: Collection[Any],
+    key: str,
+) -> SQLCoreOperations[Any]:
+    """Search multiple entities for a key, raise if ambiguous or not found.
+
+    This is used by filter_by() to search across all FROM clause entities
+    when a single entity doesn't have the requested attribute.
+
+    .. versionadded:: 2.1
+
+    Raises:
+        AmbiguousColumnError: If key exists in multiple entities
+        InvalidRequestError: If key doesn't exist in any entity
+    """
+
+    match_: SQLCoreOperations[Any] | None = None
+
+    for entity in entities:
+        ns = _entity_namespace(entity)
+        # Check if the attribute exists
+        if hasattr(ns, key):
+            if match_ is not None:
+                entity_desc = ", ".join(str(e) for e in list(entities)[:3])
+                if len(entities) > 3:
+                    entity_desc += f", ... ({len(entities)} total)"
+                raise exc.AmbiguousColumnError(
+                    f'Attribute name "{key}" is ambiguous; it exists in '
+                    f"multiple FROM clause entities ({entity_desc}). "
+                    f"Use filter() with explicit column references instead "
+                    f"of filter_by()."
+                )
+            match_ = getattr(ns, key)
+
+    if match_ is None:
+        # No entity has this attribute
+        entity_desc = ", ".join(str(e) for e in list(entities)[:3])
+        if len(entities) > 3:
+            entity_desc += f", ... ({len(entities)} total)"
+        raise exc.InvalidRequestError(
+            f'None of the FROM clause entities have a property "{key}". '
+            f"Searched entities: {entity_desc}"
+        )
+
+    return match_

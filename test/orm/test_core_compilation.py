@@ -14,6 +14,7 @@ from sqlalchemy import null
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
@@ -45,6 +46,7 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
@@ -64,17 +66,6 @@ from ..sql.test_compiler import CorrelateTest as _CoreCorrelateTest
 
 class SelectableTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
-
-    def test_filter_by(self):
-        User, Address = self.classes("User", "Address")
-
-        stmt = select(User).filter_by(name="ed")
-
-        self.assert_compile(
-            stmt,
-            "SELECT users.id, users.name FROM users "
-            "WHERE users.name = :name_1",
-        )
 
     def test_c_accessor_not_mutated_subq(self):
         """test #6394, ensure all_selected_columns is generated each time"""
@@ -874,15 +865,22 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "User", "Address", "Order", "Item", "Keyword"
         )
 
+        # Note: Both Order and Item have 'description' column
+        # After joining Item, filter_by(description=...) would be ambiguous
+        # Use explicit filter() for Item.description to avoid ambiguity
         stmt = (
             select(User)
             .filter_by(name="n1")
             .join(User.addresses)
             .filter_by(email_address="a1")
             .join_from(User, Order, User.orders)
-            .filter_by(description="d1")
+            .filter_by(
+                description="d1"
+            )  # Order.description (no ambiguity yet)
             .join(Order.items)
-            .filter_by(description="d2")
+            .filter(
+                Item.description == "d2"
+            )  # Use explicit filter() to avoid ambiguity
         )
         self.assert_compile(
             stmt,
@@ -3222,3 +3220,207 @@ class CrudParamOverlapTest(test_compiler.CrudParamOverlapTest):
             type_.fail()
 
         yield table1
+
+
+class FilterByTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_filter_by(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User).filter_by(name="ed")
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users "
+            "WHERE users.name = :name_1",
+        )
+
+    def test_filter_by_w_join(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User).join(Address).filter_by(name="ed")
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users JOIN addresses "
+            "ON users.id = addresses.user_id WHERE users.name = :name_1",
+        )
+
+    def test_filter_by_core_column_elem_only(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = (
+            select(Address.__table__.c.id)
+            .select_from(User)
+            .filter_by(email_address="ed")
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT addresses.id FROM users, addresses "
+            "WHERE addresses.email_address = :email_address_1",
+        )
+
+    def test_filter_by_select_from(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select("*").select_from(User).filter_by(name="ed")
+
+        self.assert_compile(
+            stmt, "SELECT * FROM users WHERE users.name = :name_1"
+        )
+
+    def test_filter_by_across_join_entities_issue_8601(self):
+        """Test issue #8601 - filter_by after with_only_columns."""
+        User, Address = self.classes("User", "Address")
+
+        # The original failing case from issue #8601
+        stmt = (
+            select(User)
+            .join(Address)
+            .with_only_columns(User.id)
+            .filter_by(email_address="foo@bar.com")
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id FROM users "
+            "JOIN addresses ON users.id = addresses.user_id "
+            "WHERE addresses.email_address = :email_address_1",
+        )
+
+    def test_filter_by_unambiguous_across_orm_joins(self):
+        """Test filter_by finds unambiguous attributes in ORM joins."""
+        User, Address = self.classes("User", "Address")
+
+        # email_address only exists in Address
+        stmt = (
+            select(User)
+            .join(Address)
+            .filter_by(email_address="test@example.com")
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users "
+            "JOIN addresses ON users.id = addresses.user_id "
+            "WHERE addresses.email_address = :email_address_1",
+        )
+
+    def test_filter_by_searches_all_joined_entities(self):
+        """Test that filter_by searches all joined entities, not just last"""
+        User, Address, Order = self.classes("User", "Address", "Order")
+
+        # Filter by Address attribute after joining to Order
+        stmt = (
+            select(User)
+            .join(User.addresses)
+            .join(User.orders)
+            .filter_by(email_address="test@example.com")
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users "
+            "JOIN addresses ON users.id = addresses.user_id "
+            "JOIN orders ON users.id = orders.user_id "
+            "WHERE addresses.email_address = :email_address_1",
+        )
+
+    def test_filter_by_with_only_columns_preserves_joins(self):
+        """Verify with_only_columns doesn't affect filter_by entity search"""
+        User, Address = self.classes("User", "Address")
+
+        # Change selected columns but still search all FROM entities
+        stmt = (
+            select(User)
+            .join(User.addresses)
+            .with_only_columns(User.id, User.name)
+            .filter_by(email_address="foo")
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users "
+            "JOIN addresses ON users.id = addresses.user_id "
+            "WHERE addresses.email_address = :email_address_1",
+        )
+
+    def test_filter_by_column_not_in_any_orm_entity(self):
+        """Test error when attribute not found in any ORM entity"""
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User).join(Address)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            'None of the FROM clause entities have a property "nonexistent"',
+        ):
+            stmt.filter_by(nonexistent="foo")
+
+    @testing.fixture
+    def m2m_fixture(self, decl_base):
+        atob = Table(
+            "atob",
+            decl_base.metadata,
+            Column("a_id", ForeignKey("a.a_id")),
+            Column("b_id", ForeignKey("b.b_id")),
+            Column("association", String(50)),
+        )
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            a_id: Mapped[int] = mapped_column(primary_key=True)
+            bs = relationship("B", secondary=atob)
+
+        class B(decl_base):
+            __tablename__ = "b"
+
+            b_id: Mapped[int] = mapped_column(primary_key=True)
+
+        return A, B, atob
+
+    def test_filter_by_ignores_secondary_w_overlap(self, m2m_fixture):
+        A, B, _ = m2m_fixture
+        stmt = select(A).join(A.bs).filter_by(a_id=5)
+        self.assert_compile(
+            stmt,
+            "SELECT a.a_id FROM a JOIN atob AS atob_1 ON a.a_id = atob_1.a_id "
+            "JOIN b ON b.b_id = atob_1.b_id WHERE a.a_id = :a_id_1",
+        )
+
+    def test_filter_by_ignores_secondary_will_raise(self, m2m_fixture):
+        A, B, _ = m2m_fixture
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            'None of the FROM clause entities have a property "association". '
+            r"Searched entities: Mapper\[(?:A|B).*], Mapper\[(?:A|B).*]",
+        ):
+            select(A).join(A.bs).filter_by(association="hi")
+
+    @testing.variation("jointype", ["join", "froms"])
+    def test_filter_by_with_table(self, m2m_fixture, jointype):
+        A, B, atob = m2m_fixture
+
+        if jointype.join:
+            stmt = select(A).join(atob).filter_by(b_id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT a.a_id FROM a JOIN atob ON a.a_id = atob.a_id "
+                "WHERE atob.b_id = :b_id_1",
+            )
+        elif jointype.froms:
+            stmt = (
+                select(A)
+                .select_from(A, atob)
+                .where(A.a_id == atob.c.a_id)
+                .filter_by(b_id=5)
+            )
+            self.assert_compile(
+                stmt,
+                "SELECT a.a_id FROM a, atob WHERE a.a_id = atob.a_id "
+                "AND atob.b_id = :b_id_1",
+            )

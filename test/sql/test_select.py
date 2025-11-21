@@ -408,13 +408,17 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_joins_w_filter_by(self):
+        # Note: Both parent and child have a "data" column
+        # After the join, filter_by will see both entities
+        # To avoid ambiguity, filter first on parent before join, or use
+        # filter() with explicit column references
         stmt = (
             select(parent)
-            .filter_by(data="p1")
+            .filter_by(data="p1")  # Filter parent.data before the join
             .join(child)
-            .filter_by(data="c1")
+            .filter(child.c.data == "c1")  # Explicit to avoid ambiguity
             .join_from(table1, table2, table1.c.myid == table2.c.otherid)
-            .filter_by(otherid=5)
+            .filter_by(otherid=5)  # otherid is unambiguous
         )
 
         self.assert_compile(
@@ -482,7 +486,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_filter_by_no_property_from_table(self):
         assert_raises_message(
             exc.InvalidRequestError,
-            'Entity namespace for "mytable" has no property "foo"',
+            'None of the FROM clause entities have a property "foo". '
+            "Searched entities: mytable",
             select(table1).filter_by,
             foo="bar",
         )
@@ -490,10 +495,99 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_filter_by_no_property_from_col(self):
         assert_raises_message(
             exc.InvalidRequestError,
-            'Entity namespace for "mytable.myid" has no property "foo"',
+            'None of the FROM clause entities have a property "foo". '
+            "Searched entities: mytable",
             select(table1.c.myid).filter_by,
             foo="bar",
         )
+
+    def test_filter_by_across_join_entities_issue_8601(self):
+        """Test issue #8601 - filter_by after with_only_columns."""
+        # The original failing case from issue #8601
+        # Use 'parent_id' which only exists in child table
+        stmt = (
+            select(parent)
+            .join(child)
+            .with_only_columns(parent.c.id)
+            .filter_by(parent_id=5)
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT parent.id FROM parent "
+            "JOIN child ON parent.id = child.parent_id "
+            "WHERE child.parent_id = :parent_id_1",
+            checkparams={"parent_id_1": 5},
+        )
+
+    def test_filter_by_ambiguous_column_error(self):
+        """Test filter_by() raises AmbiguousColumnError."""
+        # Both parent and child have 'data' column
+        stmt = select(parent).join(child)
+
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "data" is ambiguous; it exists in multiple '
+            r"FROM clause entities \((?:parent(?:, )?"
+            r"|child(?:, )?){2}\).",
+        ):
+            stmt.filter_by(data="foo")
+
+    def test_filter_by_unambiguous_across_joins(self):
+        """Test filter_by finds unambiguous columns across multiple joins"""
+        # 'parent_id' only exists in child
+        stmt = select(parent).join(child).filter_by(parent_id=5)
+
+        self.assert_compile(
+            stmt,
+            "SELECT parent.id, parent.data FROM parent "
+            "JOIN child ON parent.id = child.parent_id "
+            "WHERE child.parent_id = :parent_id_1",
+            checkparams={"parent_id_1": 5},
+        )
+
+    def test_filter_by_column_not_in_any_entity(self):
+        """Test error when attribute not found in any FROM entity"""
+        stmt = select(parent).join(child)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            'None of the FROM clause entities have a property "nonexistent". '
+            r"Searched entities: (?:parent(?:, )?"
+            r"|child(?:, )?){2}",
+        ):
+            stmt.filter_by(nonexistent="foo")
+
+    def test_filter_by_multiple_joins(self):
+        """Test filter_by() with multiple joins"""
+        # grandchild has unique 'child_id' column
+        stmt = (
+            select(parent)
+            .join(child, parent.c.id == child.c.parent_id)
+            .join(grandchild, child.c.id == grandchild.c.child_id)
+            .filter_by(child_id=3)
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT parent.id, parent.data FROM parent "
+            "JOIN child ON parent.id = child.parent_id "
+            "JOIN grandchild ON child.id = grandchild.child_id "
+            "WHERE grandchild.child_id = :child_id_1",
+            checkparams={"child_id_1": 3},
+        )
+
+    def test_filter_by_explicit_from_with_join(self):
+        """Test filter_by with explicit FROM and joins"""
+        stmt = select(parent.c.id).select_from(parent).join(child)
+
+        # Should be ambiguous since both have 'data'
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "data" is ambiguous; it exists in multiple '
+            r"FROM clause entities \((?:parent(?:, )?"
+            r"|child(?:, )?){2}\).",
+        ):
+            stmt.filter_by(data="child_data")
 
     def test_select_tuple_outer(self):
         stmt = select(tuple_(table1.c.myid, table1.c.name))

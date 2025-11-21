@@ -73,7 +73,6 @@ from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
-
 if TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from ._typing import OrmExecuteOptionsParameter
@@ -1448,10 +1447,62 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         return self
 
     @classmethod
-    def determine_last_joined_entity(cls, statement):
-        setup_joins = statement._setup_joins
+    def _get_filter_by_entities(cls, statement):
+        """Return all ORM entities for filter_by() searches.
 
-        return _determine_last_joined_entity(setup_joins, None)
+        the ORM version for Select is special vs. update/delete since it needs
+        to navigate along select.join() paths which have ORM specific
+        directives.
+
+        beyond that, it delivers other entities as the Mapper or Aliased
+        object rather than the Table or Alias, which mostly affects
+        how error messages regarding ambiguous entities or entity not
+        found are rendered; class-specific attributes like hybrid,
+        column_property() etc. work either way since
+        _entity_namespace_key_search_all() uses _entity_namespace().
+
+        DML Update and Delete objects, even though they also have filter_by()
+        and also accept ORM objects, don't use this routine since they
+        typically just have a single table, and if they have multiple tables
+        it's only via WHERE clause, which interestingly do not maintain ORM
+        annotations when used (that is, (User.name ==
+        'foo').left.table._annotations is empty; the ORMness of User.name is
+        lost in the expression construction process, since we don't annotate
+        (copy) Column objects with ORM entities the way we do for Table.
+
+        .. versionadded:: 2.1
+        """
+
+        def _setup_join_targets(collection):
+            for (target, *_) in collection:
+                if isinstance(target, attributes.QueryableAttribute):
+                    yield target.entity
+                elif "_no_filter_by" not in target._annotations:
+                    yield target
+
+        entities = set(_setup_join_targets(statement._setup_joins))
+
+        for memoized in statement._memoized_select_entities:
+            entities.update(_setup_join_targets(memoized._setup_joins))
+
+        entities.update(
+            (
+                from_obj._annotations["parententity"]
+                if "parententity" in from_obj._annotations
+                else from_obj
+            )
+            for from_obj in statement._from_obj
+            if "_no_filter_by" not in from_obj._annotations
+        )
+
+        for element in statement._raw_columns:
+            if "entity_namespace" in element._annotations:
+                ens = element._annotations["entity_namespace"]
+                entities.add(ens)
+            elif "_no_filter_by" not in element._annotations:
+                entities.update(element._from_objects)
+
+        return entities
 
     @classmethod
     def all_selected_columns(cls, statement):

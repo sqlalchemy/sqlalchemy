@@ -17,6 +17,7 @@ from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from .test_update import _FilterByDMLSuite
 
 
 class _DeleteTestBase:
@@ -381,3 +382,44 @@ class DeleteFromRoundTripTest(fixtures.TablesTest):
     def _assert_table(self, connection, table, expected):
         stmt = table.select().order_by(table.c.id)
         eq_(connection.execute(stmt).fetchall(), expected)
+
+
+class DeleteFilterByTest(_FilterByDMLSuite):
+    @testing.fixture
+    def one_table_statement(self):
+        users = self.tables.users
+
+        return users.delete()
+
+    @testing.fixture
+    def two_table_statement(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        return users.delete().where(users.c.id == addresses.c.user_id)
+
+    @testing.fixture
+    def three_table_statement(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+        dingalings = self.tables.dingalings
+
+        return (
+            users.delete()
+            .where(users.c.id == addresses.c.user_id)
+            .where(addresses.c.id == dingalings.c.address_id)
+        )
+
+    @testing.fixture
+    def four_table_statement(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+        dingalings = self.tables.dingalings
+        departments = self.tables.departments
+
+        return (
+            users.delete()
+            .where(users.c.id == addresses.c.user_id)
+            .where(addresses.c.id == dingalings.c.address_id)
+            .where(departments.c.id == users.c.department_id)
+        )

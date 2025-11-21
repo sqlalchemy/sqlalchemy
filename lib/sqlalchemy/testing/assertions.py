@@ -673,7 +673,14 @@ class AssertsCompiledSQL:
 
         cc = re.sub(r"[\n\t]", "", str(c))
 
-        eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
+        if isinstance(result, re.Pattern):
+            assert result.match(cc), "%r !~ %r on dialect %r" % (
+                cc,
+                result,
+                dialect,
+            )
+        else:
+            eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
         if checkparams is not None:
             if render_postcompile:

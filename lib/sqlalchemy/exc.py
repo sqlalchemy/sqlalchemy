@@ -364,6 +364,18 @@ class NoSuchColumnError(InvalidRequestError, KeyError):
     """A nonexistent column is requested from a ``Row``."""
 
 
+class AmbiguousColumnError(InvalidRequestError):
+    """Raised when a column/attribute name is ambiguous across multiple
+    entities.
+
+    This can occur when using :meth:`_sql.Select.filter_by` with multiple
+    joined tables that have columns with the same name.
+
+    .. versionadded:: 2.1
+
+    """
+
+
 class NoResultFound(InvalidRequestError):
     """A database result was required but none was found.
 

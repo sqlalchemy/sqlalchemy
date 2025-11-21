@@ -1,0 +1,20 @@
+.. change::
+    :tags: usecase, sql, orm
+    :tickets: 8601
+
+    The :meth:`_sql.Select.filter_by`, :meth:`_sql.Update.filter_by` and
+    :meth:`_sql.Delete.filter_by` methods now search across all entities
+    present in the statement, rather than limiting their search to only the
+    last joined entity or the first FROM entity. This allows these methods
+    to locate attributes unambiguously across multiple joined tables,
+    resolving issues where changing the order of operations such as
+    :meth:`_sql.Select.with_only_columns` would cause the method to fail.
+
+    If an attribute name exists in more than one FROM clause entity, an
+    :class:`_exc.AmbiguousColumnError` is now raised, indicating that
+    :meth:`_sql.Select.filter` (or :meth:`_sql.Select.where`) should be used
+    instead with explicit table-qualified column references.
+
+    .. seealso::
+
+        :ref:`change_8601` - Migration notes

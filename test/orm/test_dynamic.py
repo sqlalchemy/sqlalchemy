@@ -926,6 +926,9 @@ class WriteOnlyTest(
                 "polymorphic_identity": "sub",
             }
 
+        # NOTE: keep filter_by(id=1) here because this also tests that an
+        # overlap issue does not occur with filter_by and the secondary table
+        # being explicitly added to _from_obj
         gp = GrandParent(id=1)
         make_transient_to_detached(gp)
         self.assert_compile(

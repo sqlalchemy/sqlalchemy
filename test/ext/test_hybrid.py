@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import column
+from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import from_dml_column
@@ -709,6 +710,29 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         # no docstring here since we get a literal
         a1 = A(_value=10)
         eq_(a1.value, 5)
+
+    @testing.variation("use_inplace", [True, False])
+    @testing.variation("use_classmethod", [True, False])
+    def test_filter_by_update_dml(self, use_inplace, use_classmethod):
+        A = self._fixture(
+            use_inplace=use_inplace, use_classmethod=use_classmethod
+        )
+        self.assert_compile(
+            update(A).filter_by(value="foo").values(value="bar"),
+            "UPDATE a SET foo(value) + bar(value)=:param_1 "
+            "WHERE foo(a.value) + bar(a.value) = :param_2",
+        )
+
+    @testing.variation("use_inplace", [True, False])
+    @testing.variation("use_classmethod", [True, False])
+    def test_filter_by_delete_dml(self, use_inplace, use_classmethod):
+        A = self._fixture(
+            use_inplace=use_inplace, use_classmethod=use_classmethod
+        )
+        self.assert_compile(
+            delete(A).filter_by(value="foo"),
+            "DELETE FROM a WHERE foo(a.value) + bar(a.value) = :param_1",
+        )
 
 
 class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):

@@ -531,7 +531,13 @@ class _AbstractCollectionWriter(Generic[_T]):
 
             # note also, we are using the official ORM-annotated selectable
             # from __clause_element__(), see #7868
-            self._from_obj = (prop.mapper.__clause_element__(), prop.secondary)
+
+            # _no_filter_by annotation is to prevent this table from being
+            # considered by filter_by() as part of #8601
+            self._from_obj = (
+                prop.mapper.__clause_element__(),
+                prop.secondary._annotate({"_no_filter_by": True}),
+            )
         else:
             self._from_obj = ()
 

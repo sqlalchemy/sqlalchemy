@@ -1,5 +1,6 @@
 import itertools
 import random
+import re
 
 from sqlalchemy import bindparam
 from sqlalchemy import cast
@@ -1934,3 +1935,231 @@ class UpdateFromMultiTableUpdateDefaultsTest(
     def _assert_users(self, connection, users, expected):
         stmt = users.select().order_by(users.c.id)
         eq_(connection.execute(stmt).fetchall(), expected)
+
+
+class _FilterByDMLSuite(fixtures.TablesTest, AssertsCompiledSQL):
+    __dialect__ = "default_enhanced"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("department_id", ForeignKey("departments.id")),
+            Column("name", String(30), nullable=False),
+        )
+        Table(
+            "addresses",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_id", None, ForeignKey("users.id")),
+            Column("name", String(30), nullable=False),
+            Column("email_address", String(50), nullable=False),
+        )
+        Table(
+            "dingalings",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("address_id", None, ForeignKey("addresses.id")),
+            Column("data", String(30)),
+        )
+        Table(
+            "departments",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30)),
+        )
+
+    def test_filter_by_basic(self, one_table_statement):
+        """Test filter_by with a single table."""
+        stmt = one_table_statement
+
+        stmt = stmt.filter_by(name="somename")
+        self.assert_compile(
+            stmt,
+            re.compile(r"(?:UPDATE|DELETE) .* WHERE users\.name = :name_1"),
+            params={"name_1": "somename"},
+        )
+
+    def test_filter_by_three_tables_ambiguous(self, three_table_statement):
+        """test the three or fewer table ambiguous message"""
+        stmt = three_table_statement
+
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            r'Attribute name "name" is ambiguous; it exists in multiple '
+            r"FROM clause entities \((?:dingalings(?:, )?"
+            r"|users(?:, )?|addresses(?:, )?){3}\).",
+        ):
+            stmt.filter_by(name="ambiguous")
+
+    def test_filter_by_four_tables_ambiguous(self, four_table_statement):
+        """test the ellipses version of the ambiguous message"""
+        stmt = four_table_statement
+
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            r'Attribute name "name" is ambiguous; it exists in multiple '
+            r"FROM clause entities "
+            r"\((?:dingalings, |departments, |users, |addresses, ){3}\.\.\. "
+            r"\(4 total\)\)",
+        ):
+            stmt.filter_by(name="ambiguous")
+
+    def test_filter_by_three_tables_notfound(self, three_table_statement):
+        """test the three or fewer table not found message"""
+        stmt = three_table_statement
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r'None of the FROM clause entities have a property "unknown". '
+            r"Searched entities: (?:dingalings(?:, )?"
+            r"|users(?:, )?|addresses(?:, )?){3}",
+        ):
+            stmt.filter_by(unknown="notfound")
+
+    def test_filter_by_four_tables_notfound(self, four_table_statement):
+        """test the ellipses version of the not found message"""
+        stmt = four_table_statement
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r'None of the FROM clause entities have a property "unknown". '
+            r"Searched entities: "
+            r"(?:dingalings, |departments, |users, |addresses, ){3}\.\.\. "
+            r"\(4 total\)",
+        ):
+            stmt.filter_by(unknown="notfound")
+
+    def test_filter_by_two_tables_secondary(self, two_table_statement):
+        """Test filter_by finds attribute in secondary table (addresses)."""
+        stmt = two_table_statement
+
+        # Filter by 'email_address' which only exists in addresses table
+        stmt = stmt.filter_by(email_address="test@example.com")
+        self.assert_compile(
+            stmt,
+            re.compile(
+                r"(?:UPDATE|DELETE) .* addresses\.email_address = "
+                r":email_address_1"
+            ),
+        )
+
+    def test_filter_by_three_tables_primary(self, three_table_statement):
+        """Test filter_by finds attribute in primary table with three
+        tables."""
+        stmt = three_table_statement
+
+        # Filter by 'id' - ambiguous across all three tables
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "id" is ambiguous',
+        ):
+            stmt.filter_by(id=5)
+
+    def test_filter_by_three_tables_secondary(self, three_table_statement):
+        """Test filter_by finds attribute in secondary table (addresses)."""
+        stmt = three_table_statement
+
+        # Filter by 'email_address' which only exists in addresses
+        stmt = stmt.filter_by(email_address="test@example.com")
+        self.assert_compile(
+            stmt,
+            re.compile(
+                r"(?:UPDATE|DELETE) .* addresses\.email_address = "
+                r":email_address_1"
+            ),
+        )
+
+    def test_filter_by_three_tables_tertiary(self, three_table_statement):
+        """Test filter_by finds attribute in third table (dingalings)."""
+        stmt = three_table_statement
+
+        # Filter by 'data' which only exists in dingalings
+        stmt = stmt.filter_by(data="somedata")
+        self.assert_compile(
+            stmt,
+            re.compile(r"(?:UPDATE|DELETE) .* dingalings\.data = :data_1"),
+        )
+
+    def test_filter_by_three_tables_user_id(self, three_table_statement):
+        """Test filter_by finds user_id in addresses (unambiguous)."""
+        stmt = three_table_statement
+
+        # Filter by 'user_id' which only exists in addresses
+        stmt = stmt.filter_by(user_id=7)
+        self.assert_compile(
+            stmt,
+            re.compile(
+                r"(?:UPDATE|DELETE) .* addresses\.user_id = :user_id_1"
+            ),
+        )
+
+    def test_filter_by_three_tables_address_id(self, three_table_statement):
+        """Test filter_by finds address_id in dingalings (unambiguous)."""
+        stmt = three_table_statement
+
+        # Filter by 'address_id' which only exists in dingalings
+        stmt = stmt.filter_by(address_id=3)
+        self.assert_compile(
+            stmt,
+            re.compile(
+                r"(?:UPDATE|DELETE) .* dingalings\.address_id = :address_id_1"
+            ),
+        )
+
+
+class UpdateFilterByTest(_FilterByDMLSuite):
+    @testing.fixture
+    def one_table_statement(self):
+        users = self.tables.users
+
+        return users.update().values(name="newname")
+
+    @testing.fixture
+    def two_table_statement(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        return (
+            users.update()
+            .values(name="newname")
+            .where(users.c.id == addresses.c.user_id)
+        )
+
+    @testing.fixture
+    def three_table_statement(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+        dingalings = self.tables.dingalings
+
+        return (
+            users.update()
+            .values(name="newname")
+            .where(users.c.id == addresses.c.user_id)
+            .where(addresses.c.id == dingalings.c.address_id)
+        )
+
+    @testing.fixture
+    def four_table_statement(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+        dingalings = self.tables.dingalings
+        departments = self.tables.departments
+
+        return (
+            users.update()
+            .values(name="newname")
+            .where(users.c.id == addresses.c.user_id)
+            .where(addresses.c.id == dingalings.c.address_id)
+            .where(departments.c.id == users.c.department_id)
+        )

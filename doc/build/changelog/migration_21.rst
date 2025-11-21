@@ -721,6 +721,112 @@ up front, which would be verbose and not automatic.
 
 :ticket:`10635`
 
+.. _change_8601:
+
+``filter_by()`` now searches across all FROM clause entities
+-------------------------------------------------------------
+
+The :meth:`_sql.Select.filter_by` method, available for both Core
+:class:`_sql.Select` objects and ORM-enabled select statements, has been
+enhanced to search for attribute names across **all entities present in the
+FROM clause** of the statement, rather than only looking at the last joined
+entity or first FROM entity.
+
+This resolves a long-standing issue where the behavior of
+:meth:`_sql.Select.filter_by` was sensitive to the order of operations. For
+example, calling :meth:`_sql.Select.with_only_columns` after setting up joins
+would reset which entity was searched, causing :meth:`_sql.Select.filter_by`
+to fail even though the joined entity was still part of the FROM clause.
+
+Example - previously failing case now works::
+
+    from sqlalchemy import select, MetaData, Table, Column, Integer, String, ForeignKey
+
+    metadata = MetaData()
+
+    users = Table(
+        "users",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("name", String(50)),
+    )
+
+    addresses = Table(
+        "addresses",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("user_id", ForeignKey("users.id")),
+        Column("email", String(100)),
+    )
+
+    # This now works in 2.1 - previously raised an error
+    stmt = (
+        select(users)
+        .join(addresses)
+        .with_only_columns(users.c.id)  # changes selected columns
+        .filter_by(email="foo@bar.com")  # searches addresses table successfully
+    )
+
+Ambiguous Attribute Names
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When an attribute name exists in more than one entity in the FROM clause,
+:meth:`_sql.Select.filter_by` now raises :class:`_exc.AmbiguousColumnError`,
+indicating that :meth:`_sql.Select.filter` should be used instead with
+explicit column references::
+
+    # Both users and addresses have 'id' column
+    stmt = select(users).join(addresses)
+
+    # Raises AmbiguousColumnError in 2.1
+    stmt = stmt.filter_by(id=5)
+
+    # Use filter() with explicit qualification instead
+    stmt = stmt.filter(addresses.c.id == 5)
+
+The same behavior applies to ORM entities::
+
+    from sqlalchemy.orm import Session
+
+    stmt = select(User).join(Address)
+
+    # If both User and Address have an 'id' attribute, this raises
+    # AmbiguousColumnError
+    stmt = stmt.filter_by(id=5)
+
+    # Use filter() with explicit entity qualification
+    stmt = stmt.filter(Address.id == 5)
+
+Legacy Query Use is Unchanged
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The change to :meth:`.Select.filter_by` has **not** been applied to the
+:meth:`.Query.filter_by` method of :class:`.Query`; as :class:`.Query` is
+a legacy API, its behavior hasn't changed.
+
+Migration Path
+^^^^^^^^^^^^^^
+
+Code that was previously working should continue to work without modification
+in the vast majority of cases. The only breaking changes would be:
+
+1. **Ambiguous names that were previously accepted**: If your code had joins
+   where :meth:`_sql.Select.filter_by` happened to use an ambiguous column
+   name but it worked because it searched only one entity, this will now
+   raise :class:`_exc.AmbiguousColumnError`. The fix is to use
+   :meth:`_sql.Select.filter` with explicit column qualification.
+
+2. **Different entity selection**: In rare cases where the old behavior of
+   selecting the "last joined" or "first FROM" entity was being relied upon,
+   :meth:`_sql.Select.filter_by` might now find the attribute in a different
+   entity. Review any :meth:`_sql.Select.filter_by` calls in complex
+   multi-entity queries.
+
+It's hoped that in most cases, this change will make
+:meth:`_sql.Select.filter_by` more intuitive to use.
+
+:ticket:`8601`
+
 
 .. _change_11234:
 
