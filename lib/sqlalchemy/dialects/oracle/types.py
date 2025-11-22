@@ -23,6 +23,30 @@ if TYPE_CHECKING:
     from ...sql.type_api import _LiteralProcessorType
 
 
+class BOOLEAN(sqltypes.BOOLEAN):
+    """Oracle Database BOOLEAN type.
+
+    .. versionadded:: 2.1
+        Added support for native BOOLEAN type in Oracle Database 23c+.
+
+    The BOOLEAN type is natively supported in Oracle Database 23c and above.
+    When connected to Oracle 23c or later, SQLAlchemy will automatically use
+    the native BOOLEAN type for :class:`.Boolean` columns. For earlier Oracle
+    versions, boolean values are emulated using SMALLINT, where 1 represents
+    True and 0 represents False.
+
+    The dialect automatically detects the Oracle version and sets
+    :attr:`.OracleDialect.supports_native_boolean` accordingly.
+
+    .. seealso::
+
+        :class:`.Boolean` - generic boolean type
+
+    """
+
+    pass
+
+
 class RAW(sqltypes._Binary):
     __visit_name__ = "RAW"
 
