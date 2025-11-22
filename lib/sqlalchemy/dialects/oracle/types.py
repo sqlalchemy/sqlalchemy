@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from ...sql.type_api import _LiteralProcessorType
 
 
+BOOLEAN = sqltypes.BOOLEAN
+
+
 class RAW(sqltypes._Binary):
     __visit_name__ = "RAW"
 

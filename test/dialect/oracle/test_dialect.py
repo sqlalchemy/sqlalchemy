@@ -740,6 +740,17 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(Unicode(50), "NVARCHAR2(50)", dialect=dialect)
         self.assert_compile(UnicodeText(), "NCLOB", dialect=dialect)
 
+    def test_native_boolean_flag(self):
+        dialect = self._dialect((19, 0, 0))
+        assert dialect.supports_native_boolean
+        dialect.initialize(Mock())
+        assert not dialect.supports_native_boolean
+
+        dialect = self._dialect((23, 0, 0))
+        assert dialect.supports_native_boolean
+        dialect.initialize(Mock())
+        assert dialect.supports_native_boolean
+
     def test_ident_length_in_13_is_30(self):
         from sqlalchemy import __version__
 

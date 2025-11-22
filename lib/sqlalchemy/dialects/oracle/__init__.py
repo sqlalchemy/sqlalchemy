@@ -14,6 +14,7 @@ from .base import BFILE
 from .base import BINARY_DOUBLE
 from .base import BINARY_FLOAT
 from .base import BLOB
+from .base import BOOLEAN
 from .base import CHAR
 from .base import CLOB
 from .base import DATE
@@ -71,6 +72,7 @@ __all__ = (
     "NVARCHAR2",
     "ROWID",
     "REAL",
+    "BOOLEAN",
     "VECTOR",
     "VectorDistanceType",
     "VectorIndexType",

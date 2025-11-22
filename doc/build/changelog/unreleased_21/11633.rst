@@ -1,0 +1,9 @@
+.. change::
+    :tags: feature, oracle
+    :tickets: 11633
+
+    Added support for native BOOLEAN type in Oracle Database 23c and above.
+    The Oracle dialect now automatically uses the native BOOLEAN type when
+    connected to Oracle Database 23c or later, as determined by the server
+    version. For Oracle versions prior to 23c, boolean values continue to be
+    emulated using SMALLINT as before.

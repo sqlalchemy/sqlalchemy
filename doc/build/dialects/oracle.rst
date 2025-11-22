@@ -15,6 +15,7 @@ originate from :mod:`sqlalchemy.types` or from the local dialect::
     from sqlalchemy.dialects.oracle import (
         BFILE,
         BLOB,
+        BOOLEAN,
         CHAR,
         CLOB,
         DATE,
@@ -47,6 +48,9 @@ construction arguments, are as follows:
 
 .. autoclass:: BINARY_FLOAT
   :members: __init__
+
+.. autoclass:: BOOLEAN
+   :members: __init__
 
 .. autoclass:: DATE
    :members: __init__

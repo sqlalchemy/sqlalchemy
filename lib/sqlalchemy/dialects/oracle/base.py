@@ -640,6 +640,47 @@ E.g. to use this datatype in a :class:`.Table` definition::
         ),
     )
 
+Boolean Support
+---------------
+
+.. versionadded:: 2.1
+
+Oracle Database 23ai introduced native support for the ``BOOLEAN`` datatype.
+The Oracle dialect automatically detects the database version and uses the
+native ``BOOLEAN`` type when available, or falls back to emulation using
+``SMALLINT`` on older Oracle versions.
+
+The standard :class:`_types.Boolean` type can be used in table definitions::
+
+    from sqlalchemy import Boolean, Column, Integer, Table, MetaData
+
+    metadata = MetaData()
+
+    my_table = Table(
+        "my_table",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("flag", Boolean),
+    )
+
+On Oracle 23ai and later, this will generate DDL using the native ``BOOLEAN`` type:
+
+.. code-block:: sql
+
+    CREATE TABLE my_table (
+        id INTEGER NOT NULL,
+        flag BOOLEAN,
+        PRIMARY KEY (id)
+    )
+
+On earlier Oracle versions, it will use ``SMALLINT`` for storage with appropriate
+constraints and conversions.
+
+The :class:`_types.Boolean` type is also available as ``BOOLEAN`` from the Oracle
+dialect for consistency with other type names::
+
+    from sqlalchemy.dialects.oracle import BOOLEAN
+
 DateTime Compatibility
 ----------------------
 
@@ -964,6 +1005,7 @@ from .types import _OracleDate
 from .types import BFILE
 from .types import BINARY_DOUBLE
 from .types import BINARY_FLOAT
+from .types import BOOLEAN
 from .types import DATE
 from .types import FLOAT
 from .types import INTERVAL
@@ -1060,6 +1102,7 @@ ischema_names = {
     "BINARY_DOUBLE": BINARY_DOUBLE,
     "BINARY_FLOAT": BINARY_FLOAT,
     "ROWID": ROWID,
+    "BOOLEAN": BOOLEAN,
     "VECTOR": VECTOR,
 }
 
@@ -1207,7 +1250,10 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_NUMBER(type_, precision=19, **kw)
 
     def visit_boolean(self, type_, **kw):
-        return self.visit_SMALLINT(type_, **kw)
+        if self.dialect.supports_native_boolean:
+            return self.visit_BOOLEAN(type_, **kw)
+        else:
+            return self.visit_SMALLINT(type_, **kw)
 
     def visit_RAW(self, type_, **kw):
         if type_.length:
@@ -1973,6 +2019,7 @@ class OracleDialect(default.DefaultDialect):
     supports_default_metavalue = True
     supports_empty_insert = False
     supports_identity_columns = True
+    supports_native_boolean = True
 
     aggregate_order_by_style = AggregateOrderByStyle.WITHIN_GROUP
 
@@ -2053,6 +2100,7 @@ class OracleDialect(default.DefaultDialect):
             self.colspecs.pop(sqltypes.Interval)
             self.use_ansi = False
 
+        self.supports_native_boolean = self.server_version_info >= (23,)
         self.supports_identity_columns = self.server_version_info >= (12,)
         self._supports_offset_fetch = (
             self.enable_offset_fetch and self.server_version_info >= (12,)
