@@ -16,7 +16,7 @@ from __future__ import annotations
 import collections
 from enum import Enum
 import itertools
-from uuid import uuid4
+from os import urandom
 
 from typing import AbstractSet
 from typing import Any as TODO_Any
@@ -1744,7 +1744,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
                 name = getattr(selectable, "name", None)
                 if isinstance(name, _anonymous_label):
                     name = None
-            name = _anonymous_label.safe_construct(uuid4().hex, name or "anon")
+            name = _anonymous_label.safe_construct(urandom(8).hex(), name or "anon")
         self.name = name
 
     def _refresh_for_new_column(self, column: ColumnElement[Any]) -> None:
