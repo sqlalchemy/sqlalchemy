@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from ...sql.type_api import _LiteralProcessorType
 
 
+BOOLEAN = sqltypes.BOOLEAN
+
+
 class RAW(sqltypes._Binary):
     __visit_name__ = "RAW"
 
@@ -314,5 +317,34 @@ class ROWID(sqltypes.TypeEngine):
 
 
 class _OracleBoolean(sqltypes.Boolean):
+
     def get_dbapi_type(self, dbapi):
+        # this can probably be dbapi.BOOLEAN (including for older verisons),
+        # however sticking with NUMBER to avoid any surprises with older
+        # versions or non-bool values
         return dbapi.NUMBER
+
+    def result_processor(self, dialect, coltype):
+        # we dont need a result processor even if we are not native
+        # boolean because we use an outputtypehandler
+        return None
+
+    def _cx_oracle_outputtypehandler(self, dialect):
+        cx_Oracle = dialect.dbapi
+
+        def handler(cursor, name, default_type, size, precision, scale):
+            # if native boolean no handler needed
+            if default_type is cx_Oracle.BOOLEAN:
+                return None
+
+            # OTOH if we are getting a number back and we are either
+            # native boolean pulling from a smallint, or non native
+            # boolean pulling from a smallint that's emulated, use bool
+            return cursor.var(
+                cx_Oracle.NUMBER,
+                255,
+                arraysize=cursor.arraysize,
+                outconverter=bool,
+            )
+
+        return handler
