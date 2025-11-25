@@ -47,7 +47,7 @@ from sqlalchemy.testing.schema import Table
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_basic_reflection(self, connection, metadata):
         meta = metadata
@@ -1483,7 +1483,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
 
 class CreateDropTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     run_create_tables = None
 
@@ -1629,7 +1629,7 @@ class CreateDropTest(fixtures.TablesTest):
 
 
 class SchemaManipulationTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_append_constraint_unique(self):
         meta = MetaData()
@@ -1651,7 +1651,7 @@ class SchemaManipulationTest(fixtures.TestBase):
 
 
 class UnicodeReflectionTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1774,7 +1774,7 @@ class UnicodeReflectionTest(fixtures.TablesTest):
 
 
 class SchemaTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.schemas
     def test_has_schema(self):
@@ -2037,7 +2037,7 @@ def _drop_views(conn, schema=None):
 
 class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.denormalized_names
     def setup_test(self):
@@ -2072,7 +2072,7 @@ class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
 class CaseSensitiveTest(fixtures.TablesTest):
     """Nail down case sensitive behaviors, mostly on MySQL."""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2120,7 +2120,7 @@ class CaseSensitiveTest(fixtures.TablesTest):
 
 
 class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2343,7 +2343,7 @@ class ComputedColumnTest(fixtures.ComputedReflectionFixtureTest):
 class IdentityColumnTest(fixtures.TablesTest):
     run_inserts = run_deletes = None
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("identity_columns", "table_reflection")
 
     @classmethod

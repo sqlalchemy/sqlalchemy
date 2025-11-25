@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import collections
+import contextlib
 import logging
 
 from . import config
@@ -19,6 +20,7 @@ from .. import inspect
 from ..engine import url as sa_url
 from ..sql import ddl
 from ..sql import schema
+from ..util import decorator
 
 
 log = logging.getLogger(__name__)
@@ -500,3 +502,23 @@ def normalize_sequence(cfg, sequence):
     The default implementation does nothing
     """
     return sequence
+
+
+@register.init
+def allow_stale_update_impl(cfg):
+    return contextlib.nullcontext()
+
+
+@decorator
+def allow_stale_updates(fn, *arg, **kw):
+    """decorator around a test function that indicates the test will
+    be UPDATING rows that have been read and are now stale.
+
+    This normally doesn't require intervention except for mariadb 12
+    which now raises its own error for that, and we want to turn off
+    that setting just within the scope of the test that needs it
+    to be turned off (i.e. ORM stale version tests)
+
+    """
+    with allow_stale_update_impl(config._current):
+        return fn(*arg, **kw)

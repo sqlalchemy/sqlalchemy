@@ -24,7 +24,7 @@ from sqlalchemy.testing.schema import Table
 
 
 class LoadFromReturningTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("insert_returning",)
 
     @classmethod
@@ -174,7 +174,7 @@ class LoadFromReturningTest(fixtures.MappedTest):
 
 
 class OnUpdatePopulationTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.variation("populate_existing", [True, False])
     @testing.variation(
@@ -393,7 +393,7 @@ class OnUpdatePopulationTest(fixtures.TestBase):
 
 
 class PGIssue11849Test(fixtures.DeclarativeMappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __only_on__ = ("postgresql",)
 
     @classmethod

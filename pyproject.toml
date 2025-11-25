@@ -191,7 +191,8 @@ markers = [
     "mypy: mypy integration / plugin tests",
     "timing_intensive: time-oriented tests that are sensitive to race conditions",
     "backend: tests that should run on all backends; typically dialect-sensitive",
-    "sparse_backend: tests that should run on multiple backends, not necessarily all",
+    "sparse_backend: tests that should run on just one backend for each kind of db",
+    "sparse_driver_backend: tests that should run on just one kind of driver for each kind of db",
     "gc_intensive: needs extremely predictable GC behavior",
 ]
 

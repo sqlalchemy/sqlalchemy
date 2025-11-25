@@ -27,7 +27,7 @@ from sqlalchemy.testing.schema import Table
 
 
 class TransactionTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1105,7 +1105,7 @@ class TransactionTest(fixtures.TablesTest):
 
 
 class AutoRollbackTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_test_class(cls):
@@ -1145,13 +1145,19 @@ class AutoRollbackTest(fixtures.TestBase):
 
 
 class IsolationLevelTest(fixtures.TestBase):
-    """see also sqlalchemy/testing/suite/test_dialect.py::IsolationLevelTest"""
+    """see also sqlalchemy/testing/suite/test_dialect.py::IsolationLevelTest
+
+    this suite has sparse_backend / ad_hoc_engines so wont take place
+    for every dbdriver under a nox run.   the suite test should cover
+    that end of it
+
+    """
 
     __requires__ = (
         "isolation_level",
         "ad_hoc_engines",
     )
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _default_isolation_level(self):
         return testing.requires.get_isolation_levels(testing.config)["default"]
@@ -1664,7 +1670,7 @@ class ResetAgentTest(ResetFixture, fixtures.TestBase):
     # the state is cleared.    options to optimize this with clear
     # docs etc. should be added.
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_begin_close(self, reset_agent):
         with reset_agent.engine.connect() as connection:

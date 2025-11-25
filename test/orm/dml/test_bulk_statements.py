@@ -59,7 +59,7 @@ from sqlalchemy.types import NullType
 
 
 class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.variation(
         "style",
@@ -687,7 +687,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
 
 
 class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.variation(
         "use_onupdate",
@@ -2222,7 +2222,7 @@ class BulkDMLReturningJoinedInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
     __requires__ = ("insert_returning", "insert_executemany_returning")
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     use_sentinel = False
     randomize_returning = False
@@ -2339,7 +2339,7 @@ class BulkDMLReturningSingleInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
     __requires__ = ("insert_returning", "insert_executemany_returning")
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):
@@ -2382,7 +2382,7 @@ class BulkDMLReturningConcreteInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
     __requires__ = ("insert_returning", "insert_executemany_returning")
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):
@@ -2422,7 +2422,7 @@ class BulkDMLReturningConcreteInhTest(
 
 class CTETest(fixtures.DeclarativeMappedTest):
     __requires__ = ("insert_returning", "ctes_on_dml")
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):

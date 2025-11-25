@@ -32,7 +32,7 @@ from ._poly_fixtures import Person
 
 
 class _PolymorphicTestBase:
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __dialect__ = "default_enhanced"
 
     @classmethod

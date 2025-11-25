@@ -2797,7 +2797,7 @@ class ComparatorTest(QueryTest):
 # more slice tests are available in test/orm/generative.py
 class SliceTest(QueryTest):
     __dialect__ = "default"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_first(self):
         User = self.classes.User
@@ -5226,7 +5226,7 @@ class YieldTest(_fixtures.FixtureTest):
     run_setup_mappers = "each"
     run_inserts = "each"
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _eagerload_mappings(self, addresses_lazy=True, user_lazy=True):
         User, Address = self.classes("User", "Address")

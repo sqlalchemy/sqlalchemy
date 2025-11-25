@@ -486,7 +486,7 @@ class ForeignPKTest(fixtures.MappedTest):
 
 
 class ClauseAttributesTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3521,7 +3521,7 @@ class NoRowInsertedTest(fixtures.TestBase):
     # the test manipulates INSERTS to become UPDATES to simulate
     # "INSERT that returns no row" so both are needed; the manipulations
     # are currently postgresql or SQLite specific
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __only_on__ = ("postgresql", "sqlite")
 
     @testing.fixture

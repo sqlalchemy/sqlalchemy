@@ -275,7 +275,9 @@ def pytest_collection_modifyitems(session, config, items):
             ):
                 add_markers = {"backend"}
             elif getattr(test_class.cls, "__sparse_backend__", False):
-                add_markers = {"sparse_backend"}
+                add_markers = {"sparse_backend", "backend"}
+            elif getattr(test_class.cls, "__sparse_driver_backend__", False):
+                add_markers = {"sparse_driver_backend", "backend"}
             else:
                 add_markers = frozenset()
 

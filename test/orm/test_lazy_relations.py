@@ -1619,7 +1619,7 @@ class RefersToSelfLazyLoadInterferenceTest(fixtures.MappedTest):
 class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     """ORM-level test for [ticket:3531]"""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     class StringAsInt(TypeDecorator):
         impl = String(50)

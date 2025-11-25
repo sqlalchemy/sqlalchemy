@@ -1769,7 +1769,7 @@ class RowswitchM2OTest(fixtures.MappedTest):
 
 
 class BasicStaleChecksTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2315,7 +2315,7 @@ class NoAttrEventInFlushTest(fixtures.MappedTest):
 
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2360,7 +2360,7 @@ class NoAttrEventInFlushTest(fixtures.MappedTest):
 
 
 class EagerDefaultsTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3139,7 +3139,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
 class EagerDefaultsSettingTest(
     testing.AssertsExecutionResults, fixtures.TestBase
 ):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @variation_fixture("eager_defaults", ["unspecified", "auto", True, False])
     def eager_defaults_variations(self, request):
@@ -3949,7 +3949,7 @@ class ORMOnlyPrimaryKeyTest(fixtures.TestBase):
 
 
 class TryToFoolInsertManyValuesTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.variation(
         "pk_type",

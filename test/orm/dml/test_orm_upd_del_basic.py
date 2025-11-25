@@ -50,7 +50,7 @@ from sqlalchemy.testing.schema import Table
 
 
 class UpdateDeleteTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2316,7 +2316,7 @@ class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
 
 
 class UpdateDeleteFromTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

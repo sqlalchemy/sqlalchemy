@@ -45,7 +45,7 @@ from sqlalchemy.testing.assertsql import DialectSQL
 
 class FunctionTypingTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = "postgresql"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_count_star(self, connection):
         eq_(connection.scalar(func.count("*")), 1)

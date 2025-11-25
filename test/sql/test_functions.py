@@ -1138,7 +1138,7 @@ class ReturnTypeTest(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class ExecuteTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def teardown_test(self):
         pass

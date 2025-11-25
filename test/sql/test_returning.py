@@ -311,7 +311,7 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
 
 class InsertReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     __requires__ = ("insert_returning",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     run_create_tables = "each"
 
@@ -584,7 +584,7 @@ class InsertReturningTest(fixtures.TablesTest, AssertsExecutionResults):
 
 class UpdateReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     __requires__ = ("update_returning",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     run_create_tables = "each"
 
@@ -677,7 +677,7 @@ class UpdateReturningTest(fixtures.TablesTest, AssertsExecutionResults):
 
 class DeleteReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     __requires__ = ("delete_returning",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     run_create_tables = "each"
 
@@ -703,7 +703,7 @@ class DeleteReturningTest(fixtures.TablesTest, AssertsExecutionResults):
 
 class CompositeStatementTest(fixtures.TestBase):
     __requires__ = ("insert_returning",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.provide_metadata
     def test_select_doesnt_pollute_result(self, connection):
@@ -733,7 +733,7 @@ class CompositeStatementTest(fixtures.TestBase):
 
 class SequenceReturningTest(fixtures.TablesTest):
     __requires__ = "insert_returning", "sequences"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -767,7 +767,7 @@ class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     """test returning() works with columns that define 'key'."""
 
     __requires__ = ("insert_returning",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -800,7 +800,7 @@ class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
 class InsertReturnDefaultsTest(fixtures.TablesTest):
     __requires__ = ("insert_returning",)
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -966,7 +966,7 @@ class InsertReturnDefaultsTest(fixtures.TablesTest):
 class UpdatedReturnDefaultsTest(fixtures.TablesTest):
     __requires__ = ("update_returning",)
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     define_tables = InsertReturnDefaultsTest.define_tables
 
@@ -1107,7 +1107,7 @@ class UpdatedReturnDefaultsTest(fixtures.TablesTest):
 class DeleteReturnDefaultsTest(fixtures.TablesTest):
     __requires__ = ("delete_returning",)
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     define_tables = InsertReturnDefaultsTest.define_tables
 
@@ -1176,7 +1176,7 @@ class DeleteReturnDefaultsTest(fixtures.TablesTest):
 class InsertManyReturnDefaultsTest(fixtures.TablesTest):
     __requires__ = ("insert_executemany_returning",)
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     define_tables = InsertReturnDefaultsTest.define_tables
 
@@ -1313,7 +1313,7 @@ class InsertManyReturnDefaultsTest(fixtures.TablesTest):
 class InsertManyReturningTest(fixtures.TablesTest):
     __requires__ = ("insert_executemany_returning",)
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

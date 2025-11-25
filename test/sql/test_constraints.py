@@ -31,7 +31,7 @@ from sqlalchemy.testing.assertsql import RegexSQL
 
 class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
     __dialect__ = "default"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.provide_metadata
     def test_pk_fk_constraint_create(self):

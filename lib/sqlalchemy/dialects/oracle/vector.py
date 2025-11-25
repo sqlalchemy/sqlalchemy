@@ -15,8 +15,8 @@ from enum import Enum
 from typing import Optional
 from typing import Union
 
-import sqlalchemy.types as types
-from sqlalchemy.types import Float
+from ... import types
+from ...types import Float
 
 
 class VectorIndexType(Enum):
@@ -242,6 +242,7 @@ class VECTOR(types.TypeEngine):
     """
 
     cache_ok = True
+
     __visit_name__ = "VECTOR"
 
     _typecode_map = {

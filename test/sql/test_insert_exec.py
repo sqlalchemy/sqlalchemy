@@ -53,7 +53,7 @@ class ExpectExpr:
 
 
 class InsertExecTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -479,7 +479,7 @@ class TableInsertTest(fixtures.TablesTest):
     """
 
     run_create_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -743,7 +743,7 @@ class TableInsertTest(fixtures.TablesTest):
 
 
 class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("insertmanyvalues",)
 
     @classmethod
@@ -1221,7 +1221,7 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
 
 
 class IMVSentinelTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     __requires__ = ("insert_returning",)
 

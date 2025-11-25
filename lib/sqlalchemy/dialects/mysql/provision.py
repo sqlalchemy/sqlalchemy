@@ -5,7 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
+import contextlib
+
+from ... import event
 from ... import exc
+from ...testing.provision import allow_stale_update_impl
 from ...testing.provision import configure_follower
 from ...testing.provision import create_db
 from ...testing.provision import drop_db
@@ -111,3 +115,23 @@ def _upsert(
         *returning, sort_by_parameter_order=sort_by_parameter_order
     )
     return stmt
+
+
+@allow_stale_update_impl.for_db("mariadb")
+def _allow_stale_update_impl(cfg):
+    @contextlib.contextmanager
+    def go():
+        @event.listens_for(cfg.db, "engine_connect")
+        def turn_off_snapshot_isolation(conn):
+            conn.exec_driver_sql("SET innodb_snapshot_isolation = 'OFF'")
+            conn.rollback()
+
+        try:
+            yield
+        finally:
+            event.remove(cfg.db, "engine_connect", turn_off_snapshot_isolation)
+
+            # dispose the pool; quick way to just have those reset
+            cfg.db.dispose()
+
+    return go()

@@ -31,7 +31,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
     # we want to test the lambda expiration logic so use backend
     # to exercise that
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
     run_setup_mappers = None
 
     @testing.fixture
@@ -371,7 +371,7 @@ class PolymorphicTest(_poly_fixtures._Polymorphic):
 
 
 class UpdateDeleteTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     run_setup_mappers = "once"
 

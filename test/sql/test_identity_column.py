@@ -17,7 +17,7 @@ from sqlalchemy.testing import is_not_
 
 
 class _IdentityDDLFixture(testing.AssertsCompiledSQL):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.combinations(
         (dict(always=True), "ALWAYS AS IDENTITY"),

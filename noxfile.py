@@ -308,7 +308,7 @@ def _tests(
     if database in ["oracle", "mssql", "sqlite_file"]:
         # use equals sign so that we avoid
         # https://github.com/pytest-dev/pytest/issues/13913
-        cmd.extend(["--write-idents=db_idents.txt"])
+        cmd.extend(["--write-idents=db_idents.txt", "--low-connections"])
 
     cmd.extend(posargs)
 

@@ -139,7 +139,7 @@ class O2MTest(fixtures.MappedTest):
 
 
 class ColExpressionsTest(fixtures.DeclarativeMappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):
@@ -2797,7 +2797,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
 class OptimizedLoadTest(fixtures.MappedTest):
     """tests for the "optimized load" routine."""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

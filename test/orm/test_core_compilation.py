@@ -365,6 +365,8 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
 
 
 class PropagateAttrsTest(QueryTest):
+    __sparse_driver_backend__ = True
+
     def propagate_cases():
         return testing.combinations(
             (lambda: select(1), False),

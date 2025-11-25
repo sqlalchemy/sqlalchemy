@@ -3645,7 +3645,7 @@ class RefreshFlushInReturningTest(fixtures.MappedTest):
 
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
