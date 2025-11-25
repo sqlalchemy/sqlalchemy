@@ -37,7 +37,7 @@ from sqlalchemy.testing.util import resolve_lambda
 
 
 class QueryTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -881,7 +881,7 @@ class RequiredBindTest(fixtures.TablesTest):
 
 
 class LimitTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1011,7 +1011,7 @@ class CompoundTest(fixtures.TablesTest):
     """test compound statements like UNION, INTERSECT, particularly their
     ability to nest on different databases."""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     run_inserts = "each"
 
@@ -1403,7 +1403,7 @@ class JoinTest(fixtures.TablesTest):
     database seems to be sensitive to this.
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1754,7 +1754,7 @@ class JoinTest(fixtures.TablesTest):
 
 
 class OperatorTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

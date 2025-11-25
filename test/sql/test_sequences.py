@@ -26,7 +26,7 @@ from sqlalchemy.testing.schema import Table
 
 class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.combinations(
         (Sequence("foo_seq"), ""),
@@ -139,7 +139,7 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 class SequenceExecTest(fixtures.TestBase):
     __requires__ = ("sequences",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_test_class(cls):
@@ -399,7 +399,7 @@ class SequenceExecTest(fixtures.TestBase):
 
 class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __requires__ = ("sequences",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.combinations(
         (Sequence("foo_seq"),),
@@ -563,7 +563,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 class TableBoundSequenceTest(fixtures.TablesTest):
     __requires__ = ("sequences",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture
     def table_fixture(self, metadata, connection, implicit_returning):
@@ -687,7 +687,7 @@ class SequenceAsServerDefaultTest(
     testing.AssertsExecutionResults, fixtures.TablesTest
 ):
     __requires__ = ("sequences_as_server_defaults",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     run_create_tables = "each"
 

@@ -23,7 +23,7 @@ class InheritTest(fixtures.DeclarativeMappedTest):
     run_inserts = "each"
 
     run_deletes = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):
@@ -390,7 +390,7 @@ class InheritWPolyTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):

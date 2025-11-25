@@ -171,7 +171,7 @@ class IndexPropertyTest(fixtures.TestBase):
 
 class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
     __requires__ = ("array_type",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):
@@ -254,7 +254,7 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
     __requires__ = ("json_type",)
     __only_on__ = "postgresql"
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):

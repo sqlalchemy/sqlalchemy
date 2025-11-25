@@ -32,6 +32,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import provision
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -66,7 +67,7 @@ def conditional_sane_rowcount_warnings(
 
 
 class NullVersionIdTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -147,7 +148,7 @@ class NullVersionIdTest(fixtures.MappedTest):
 
 
 class VersioningTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -194,6 +195,7 @@ class VersioningTest(fixtures.MappedTest):
         finally:
             testing.db.dialect.supports_sane_rowcount = save
 
+    @provision.allow_stale_updates
     def test_basic(self):
         Foo = self.classes.Foo
 
@@ -341,6 +343,7 @@ class VersioningTest(fixtures.MappedTest):
             s1.commit()
         eq_(s1.query(Foo).count(), 0)
 
+    @provision.allow_stale_updates
     @engines.close_open_connections
     def test_versioncheck(self):
         """query.with_lockmode performs a 'version check' on an already loaded
@@ -588,7 +591,7 @@ class VersioningTest(fixtures.MappedTest):
 
 
 class VersionOnPostUpdateTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -802,7 +805,7 @@ class PostUpdatePrefetchTest(fixtures.DeclarativeMappedTest):
 
 
 class NoBumpOnRelationshipTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -895,7 +898,7 @@ class NoBumpOnRelationshipTest(fixtures.MappedTest):
 
 
 class ColumnTypeTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("sane_rowcount",)
 
     @classmethod
@@ -945,7 +948,7 @@ class ColumnTypeTest(fixtures.MappedTest):
 
 
 class RowSwitchTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1025,7 +1028,7 @@ class RowSwitchTest(fixtures.MappedTest):
 
 
 class AlternateGeneratorTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("sane_rowcount",)
 
     @classmethod
@@ -1145,7 +1148,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
 
 
 class PlainInheritanceTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1204,7 +1207,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
 
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1332,7 +1335,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
 class ServerVersioningTest(fixtures.MappedTest):
     run_define_tables = "each"
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1725,7 +1728,7 @@ class ServerVersioningTest(fixtures.MappedTest):
 
 class ManualVersionTest(fixtures.MappedTest):
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1822,7 +1825,7 @@ class ManualVersionTest(fixtures.MappedTest):
 
 class ManualInheritanceVersionTest(fixtures.MappedTest):
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("sane_rowcount",)
 
     @classmethod
@@ -1893,7 +1896,7 @@ class ManualInheritanceVersionTest(fixtures.MappedTest):
 class VersioningMappedSelectTest(fixtures.MappedTest):
     # test for #4193, see also #4194 for related notes
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2028,7 +2031,7 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
 class QuotedBindVersioningTest(fixtures.MappedTest):
     """test for #8056"""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

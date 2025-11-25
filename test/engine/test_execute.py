@@ -927,7 +927,7 @@ class ExecuteTest(fixtures.TablesTest):
 
 
 class ConvenienceExecuteTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1058,7 +1058,7 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
 
 
 class CompiledCacheTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_cache(self, connection, metadata):
         users = Table(
@@ -1263,7 +1263,7 @@ class MockStrategyTest(fixtures.TestBase):
 
 class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
     __requires__ = ("schemas",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture
     def plain_tables(self, metadata):
@@ -1720,7 +1720,7 @@ class ExecutionOptionsTest(fixtures.TestBase):
 
 class EngineEventsTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def teardown_test(self):
         Engine.dispatch._clear()
@@ -2842,7 +2842,7 @@ class EngineEventsTest(fixtures.TestBase):
 
 class HandleErrorTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def teardown_test(self):
         Engine.dispatch._clear()

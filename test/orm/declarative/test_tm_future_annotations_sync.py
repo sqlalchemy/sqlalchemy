@@ -4609,7 +4609,7 @@ class GenericMappingQueryTest(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class BackendTests(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.variation("native_enum", [True, False])
     @testing.variation("include_column", [True, False])

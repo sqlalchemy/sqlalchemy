@@ -55,7 +55,7 @@ from sqlalchemy.testing.schema import Table
 
 class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_test_class(cls):
@@ -354,7 +354,7 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class ConstraintTest(AssertsCompiledSQL, fixtures.TestBase):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture
     def plain_foo_table(self, metadata, connection):
@@ -544,7 +544,7 @@ class ConstraintTest(AssertsCompiledSQL, fixtures.TestBase):
 
 class SystemTableTablenamesTest(fixtures.TestBase):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def setup_test(self):
         with testing.db.begin() as conn:
@@ -594,7 +594,7 @@ class DontReflectIOTTest(fixtures.TestBase):
     table_names."""
 
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def setup_test(self):
         with testing.db.begin() as conn:
@@ -639,7 +639,7 @@ def enterprise_edition_or_version(version):
 
 class TableReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.only_on(enterprise_edition_or_version(18))
     def test_reflect_basic_compression(self, metadata, connection):
@@ -725,7 +725,7 @@ class TableReflectionTest(fixtures.TestBase):
 
 class ViewReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_test_class(cls):
@@ -933,7 +933,7 @@ class ViewReflectionTest(fixtures.TestBase):
 
 class RoundTripIndexTest(fixtures.TestBase):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_no_pk(self, metadata, connection):
         Table(
@@ -1244,7 +1244,7 @@ class RoundTripIndexTest(fixtures.TestBase):
 class DBLinkReflectionTest(fixtures.TestBase):
     __requires__ = ("oracle_test_dblink",)
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_test_class(cls):
@@ -1285,7 +1285,7 @@ class DBLinkReflectionTest(fixtures.TestBase):
 
 class TypeReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _run_test(self, metadata, connection, specs, attributes):
         columns = [Column("c%i" % (i + 1), t[0]) for i, t in enumerate(specs)]
@@ -1383,7 +1383,7 @@ class TypeReflectionTest(fixtures.TestBase):
 
 class IdentityReflectionTest(fixtures.TablesTest):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("identity_columns",)
 
     @classmethod
@@ -1425,7 +1425,7 @@ class IdentityReflectionTest(fixtures.TablesTest):
 
 class AdditionalReflectionTests(fixtures.TestBase):
     __only_on__ = "oracle"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_test_class(cls):

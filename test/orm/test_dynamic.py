@@ -1477,7 +1477,7 @@ class WriteOnlyUOWTest(
     _fixtures.FixtureTest,
     testing.AssertsExecutionResults,
 ):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture
     def passive_deletes_fixture(self, decl_base, connection):
@@ -1651,7 +1651,7 @@ class WriteOnlyBulkTest(
     testing.AssertsExecutionResults,
 ):
     run_inserts = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.insert_executemany_returning
     @testing.combinations(True, False, argnames="flush_user_first")

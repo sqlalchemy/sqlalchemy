@@ -43,7 +43,7 @@ class ToMetaDataTest(fixtures.TestBase):
 
 
 class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_empty_and_or(self):
         with testing.expect_deprecated(
@@ -223,7 +223,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
 class KeyTargetingTest(fixtures.TablesTest):
     run_inserts = "once"
     run_deletes = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -266,7 +266,7 @@ class KeyTargetingTest(fixtures.TablesTest):
 
 class PKIncrementTest(fixtures.TablesTest):
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

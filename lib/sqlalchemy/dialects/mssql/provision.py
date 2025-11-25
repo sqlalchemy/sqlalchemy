@@ -136,6 +136,12 @@ def _mssql_get_temp_table_name(cfg, eng, base_name):
 def drop_all_schema_objects_pre_tables(cfg, eng):
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         inspector = inspect(conn)
+
+        conn.exec_driver_sql(
+            "IF EXISTS (SELECT 1 FROM sys.fulltext_catalogs "
+            "WHERE name = 'Catalog') "
+            "DROP FULLTEXT CATALOG Catalog"
+        )
         for schema in (None, "dbo", cfg.test_schema, cfg.test_schema_2):
             for tname in inspector.get_table_names(schema=schema):
                 tb = Table(

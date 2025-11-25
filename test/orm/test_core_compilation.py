@@ -424,7 +424,7 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
 
 
 class PropagateAttrsTest(QueryTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def propagate_cases():
         def distinct_deprecated(User, user_table):

@@ -379,7 +379,7 @@ class DefaultObjectTest(fixtures.TestBase):
 
 
 class DefaultRoundTripTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -873,7 +873,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
 
 class CTEDefaultTest(fixtures.TablesTest):
     __requires__ = ("ctes", "insert_returning", "ctes_on_dml")
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -953,7 +953,7 @@ class CTEDefaultTest(fixtures.TablesTest):
 
 class PKDefaultTest(fixtures.TestBase):
     __requires__ = ("subqueries",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture
     def table_fixture(self, metadata, connection):
@@ -1026,7 +1026,7 @@ class PKDefaultTest(fixtures.TestBase):
 
 class PKIncrementTest(fixtures.TablesTest):
     run_define_tables = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1097,7 +1097,7 @@ class PKIncrementTest(fixtures.TablesTest):
 
 
 class AutoIncrementTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.empty_inserts
     def test_autoincrement_single_col(self, metadata, connection):
@@ -1253,7 +1253,7 @@ class SpecialTypePKTest(fixtures.TestBase):
 
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_test_class(cls):
@@ -1361,7 +1361,7 @@ class SpecialTypePKTest(fixtures.TestBase):
 
 
 class ServerDefaultsOnPKTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.provide_metadata
     def test_string_default_none_on_insert(self, connection):
@@ -1486,7 +1486,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
 
 
 class InsertFromSelectTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1556,7 +1556,7 @@ class InsertFromSelectTest(fixtures.TablesTest):
 
 
 class CurrentParametersTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

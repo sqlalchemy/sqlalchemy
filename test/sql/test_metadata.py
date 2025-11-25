@@ -2487,7 +2487,7 @@ class PKAutoIncrementTest(fixtures.TestBase):
 
 
 class SchemaTypeTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     class TrackEvents:
         column = None

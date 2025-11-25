@@ -19,7 +19,7 @@ from sqlalchemy.testing.schema import Table
 
 class TriggerDefaultsTest(fixtures.MappedTest):
     __requires__ = ("row_triggers",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -228,7 +228,7 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
     """test that computed columns are recognized as server
     oninsert/onupdate defaults."""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("computed_columns",)
 
     @classmethod
@@ -419,7 +419,7 @@ class IdentityDefaultsOnUpdateTest(fixtures.MappedTest):
     """test that computed columns are recognized as server
     oninsert/onupdate defaults."""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("identity_columns",)
     run_create_tables = "each"
 

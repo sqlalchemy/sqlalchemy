@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
 class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
     run_inserts = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_no_close_transaction_on_flush(self, connection):
         User, users = self.classes.User, self.tables.users
@@ -1132,7 +1132,7 @@ def subtransaction_recipe_three(self):
 )
 class SubtransactionRecipeTest(FixtureTest):
     run_inserts = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture
     def subtransaction_recipe(self):
@@ -1310,7 +1310,7 @@ class SubtransactionRecipeTest(FixtureTest):
 
 class FixtureDataTest(_LocalFixture):
     run_inserts = "each"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_attrs_on_rollback(self):
         User = self.classes.User
@@ -1352,7 +1352,7 @@ class CleanSavepointTest(FixtureTest):
     """
 
     run_inserts = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _run_test(self, update_fn):
         User, users = self.classes.User, self.tables.users
@@ -1409,7 +1409,7 @@ class CleanSavepointTest(FixtureTest):
 
 
 class AutoExpireTest(_LocalFixture):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_expunge_pending_on_rollback(self):
         User = self.classes.User
@@ -1521,7 +1521,7 @@ class AutoExpireTest(_LocalFixture):
 
 
 class TwoPhaseTest(_LocalFixture):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.two_phase_transactions
     def test_rollback_on_prepare(self):
@@ -1537,7 +1537,7 @@ class TwoPhaseTest(_LocalFixture):
 
 
 class RollbackRecoverTest(_LocalFixture):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_pk_violation(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1620,7 +1620,7 @@ class RollbackRecoverTest(_LocalFixture):
 
 
 class SavepointTest(_LocalFixture):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.savepoints
     def test_savepoint_rollback(self):
@@ -1869,7 +1869,7 @@ class SavepointTest(_LocalFixture):
 
 
 class AccountingFlagsTest(_LocalFixture):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_no_expire_on_commit(self):
         User, users = self.classes.User, self.tables.users
@@ -1890,7 +1890,7 @@ class AccountingFlagsTest(_LocalFixture):
 
 class ContextManagerPlusFutureTest(FixtureTest):
     run_inserts = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.savepoints
     @engines.close_open_connections
@@ -2328,7 +2328,7 @@ class TransactionFlagsTest(fixtures.TestBase):
 
 
 class NaturalPKRollbackTest(fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

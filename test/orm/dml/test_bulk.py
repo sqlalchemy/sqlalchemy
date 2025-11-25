@@ -24,7 +24,7 @@ class BulkTest(testing.AssertsExecutionResults):
 
 
 class BulkInsertUpdateVersionId(BulkTest, fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -79,7 +79,7 @@ class BulkInsertUpdateVersionId(BulkTest, fixtures.MappedTest):
 
 
 class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_mappers(cls):
@@ -385,7 +385,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
 
 class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -444,7 +444,7 @@ class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
 
 
 class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -633,7 +633,7 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
 
 
 class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1042,7 +1042,7 @@ class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
 
 
 class BulkIssue6793Test(BulkTest, fixtures.DeclarativeMappedTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_classes(cls):

@@ -784,7 +784,7 @@ class _UserDefinedTypeFixture:
 
 
 class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _data_fixture(self, connection):
         users = self.tables.users
@@ -980,7 +980,7 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
 
 
 class TypeDecoratorSpecialCasesTest(AssertsCompiledSQL, fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.array_type
     def test_typedec_of_array_modified(self, metadata, connection):
@@ -1113,7 +1113,7 @@ class BindProcessorInsertValuesTest(UserDefinedRoundTripTest):
     """related to #6770, test that insert().values() applies to
     bound parameter handlers including the None value."""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _data_fixture(self, connection):
         users = self.tables.users
@@ -1353,7 +1353,7 @@ class UserDefinedTest(
 
 
 class TypeCoerceCastTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1634,7 +1634,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
 
 class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture
     def variant_roundtrip(self, metadata, connection):
@@ -2019,7 +2019,7 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     SomeEnum = pep435_enum("SomeEnum")
 
@@ -2989,7 +2989,7 @@ MyPickleType = None
 
 
 class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -4117,7 +4117,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class TestKWArgPassThru(AssertsCompiledSQL, fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_user_defined(self):
         """test that dialects pass the column through on DDL."""
@@ -4137,7 +4137,7 @@ class NumericRawSQLTest(fixtures.TestBase):
 
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _fixture(self, connection, metadata, type_, data):
         t = Table("t", metadata, Column("val", type_))
@@ -4185,7 +4185,7 @@ class NumericRawSQLTest(fixtures.TestBase):
 
 
 class IntervalTest(fixtures.TablesTest, AssertsExecutionResults):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -4246,7 +4246,7 @@ class IntervalTest(fixtures.TablesTest, AssertsExecutionResults):
 
 
 class IntegerTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_integer_literal_processor(self):
         typ = Integer()
@@ -4270,7 +4270,7 @@ class BooleanTest(
 
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -4597,7 +4597,7 @@ class CallableTest(fixtures.TestBase):
 
 
 class LiteralTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.combinations(
         ("datetime", datetime.datetime.now()),

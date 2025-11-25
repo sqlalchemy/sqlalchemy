@@ -68,7 +68,7 @@ from sqlalchemy.testing.schema import Table
 
 
 class CursorResultTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2323,7 +2323,7 @@ class CursorResultTest(fixtures.TablesTest):
 class KeyTargetingTest(fixtures.TablesTest):
     run_inserts = "once"
     run_deletes = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2936,7 +2936,7 @@ class KeyTargetingTest(fixtures.TablesTest):
 class PositionalTextTest(fixtures.TablesTest):
     run_inserts = "once"
     run_deletes = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3661,7 +3661,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
 
 
 class MergeCursorResultTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     __requires__ = ("independent_cursors",)
 
@@ -3783,7 +3783,7 @@ class MergeCursorResultTest(fixtures.TablesTest):
 
 
 class GenerativeResultTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

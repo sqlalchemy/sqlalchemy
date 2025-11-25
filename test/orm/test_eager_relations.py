@@ -3324,7 +3324,7 @@ class SelectUniqueTest(_fixtures.FixtureTest):
 
 class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     __dialect__ = "default"
-    __backend__ = True  # exercise hardcore join nesting on backends
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3658,7 +3658,7 @@ class InnerJoinSplicingWSecondaryTest(
     fixtures.MappedTest, testing.AssertsCompiledSQL
 ):
     __dialect__ = "default"
-    __backend__ = True  # exercise hardcore join nesting on backends
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3788,7 +3788,7 @@ class InnerJoinSplicingWSecondarySelfRefTest(
     """test for issue 11449"""
 
     __dialect__ = "default"
-    __backend__ = True  # exercise hardcore join nesting on backends
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -7130,7 +7130,7 @@ class SingletonConstantSubqTest(_fixtures.FixtureTest):
     run_inserts = "once"
     run_deletes = None
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def setup_mappers(cls):

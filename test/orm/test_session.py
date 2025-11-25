@@ -63,7 +63,7 @@ if TYPE_CHECKING:
 
 class ExecutionTest(_fixtures.FixtureTest):
     run_inserts = None
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.combinations(
         (True,), (False,), argnames="add_do_orm_execute_event"
@@ -1674,7 +1674,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
 
 
 class SessionStateWFixtureTest(_fixtures.FixtureTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_autoflush_rollback(self):
         Address, addresses, users, User = (

@@ -444,7 +444,9 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(
             [
                 no_support("oracle", "Oracle XE usually can't handle these"),
-                no_support("mssql+pyodbc", "MS ODBC drivers struggle"),
+                no_support(
+                    "mssql", "MS drivers struggle plus the DB does too"
+                ),
                 no_support("+aiosqlite", "very unreliable driver"),
                 self._running_on_windows(),
             ]
@@ -1695,6 +1697,16 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def oracle_test_dblink2(self):
         return self._has_oracle_test_dblink("oracle_db_link2")
+
+    @property
+    def oracle_vector(self):
+        """oracle vector support"""
+        return only_on("oracle>=23.4") + only_on("oracle+oracledb")
+
+    @property
+    def oracle_sparse_vector(self):
+        """oracle vector support"""
+        return only_on("oracle>=23.7") + only_on("oracle+oracledb")
 
     @property
     def postgresql_test_dblink(self):

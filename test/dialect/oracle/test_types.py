@@ -960,7 +960,7 @@ class TypesTest(fixtures.TestBase):
         finally:
             exec_sql(connection, "DROP TABLE Z_TEST")
 
-    @testing.only_on("oracle>=23.4")
+    @testing.requires.oracle_vector
     def test_vector_dim(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -973,7 +973,7 @@ class TypesTest(fixtures.TestBase):
         t1.create(connection)
         eq_(t1.c.c1.type.dim, 3)
 
-    @testing.only_on("oracle>=23.4")
+    @testing.requires.oracle_vector
     def test_vector_insert(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -998,7 +998,7 @@ class TypesTest(fixtures.TestBase):
             (1, [6, 7]),
         )
 
-    @testing.only_on("oracle>=23.4")
+    @testing.requires.oracle_vector
     def test_vector_insert_array(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -1027,7 +1027,7 @@ class TypesTest(fixtures.TestBase):
             (1, [6, 7]),
         )
 
-    @testing.only_on("oracle>=23.4")
+    @testing.requires.oracle_vector
     def test_vector_multiformat_insert(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -1052,7 +1052,7 @@ class TypesTest(fixtures.TestBase):
             (1, [6, 7]),
         )
 
-    @testing.only_on("oracle>=23.4")
+    @testing.requires.oracle_vector
     def test_vector_format(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -1065,7 +1065,12 @@ class TypesTest(fixtures.TestBase):
         t1.create(connection)
         eq_(t1.c.c1.type.storage_format, VectorStorageFormat.FLOAT32)
 
-    @testing.only_on("oracle>=23.4")
+    @testing.requires.oracle_vector
+    @testing.skip_if(
+        lambda: True,
+        "Does not work on free versions of Oracle 23.  "
+        "No testing platform available",
+    )
     def test_vector_hnsw_index(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -1090,7 +1095,7 @@ class TypesTest(fixtures.TestBase):
             (1, [6.0, 7.0, 8.0]),
         )
 
-    @testing.only_on("oracle>=23.4")
+    @testing.requires.oracle_vector
     def test_vector_ivf_index(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -1121,7 +1126,7 @@ class TypesTest(fixtures.TestBase):
             (1, [6.0, 7.0, 8.0]),
         )
 
-    @testing.only_on("oracle>=23.4")
+    @testing.requires.oracle_vector
     def test_vector_l2_distance(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -1148,7 +1153,7 @@ class TypesTest(fixtures.TestBase):
         ).first()
         eq_(res.embedding, [1, 2, 3])
 
-    @testing.only_on("oracle>=23.7")
+    @testing.requires.oracle_sparse_vector
     def test_sparse_vector(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -1166,7 +1171,7 @@ class TypesTest(fixtures.TestBase):
         t1.create(connection)
         eq_(t1.c.embedding.type.storage_type, VectorStorageType.SPARSE)
 
-    @testing.only_on("oracle>=23.7")
+    @testing.requires.oracle_sparse_vector
     def test_sparse_vector_insert(self, metadata, connection):
         t1 = Table(
             "t1",

@@ -252,7 +252,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
 class NamedTypeTest(
     AssertsCompiledSQL, fixtures.TestBase, AssertsExecutionResults
 ):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     __only_on__ = "postgresql > 8.3"
 
@@ -1482,7 +1482,7 @@ class NamedTypeTest(
 class DomainTest(
     AssertsCompiledSQL, fixtures.TestBase, AssertsExecutionResults
 ):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __only_on__ = "postgresql > 8.3"
 
     @testing.requires.postgresql_working_nullable_domains
@@ -1640,7 +1640,7 @@ class DomainTest(
 
 
 class DomainDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     __only_on__ = "postgresql > 8.3"
 
@@ -1667,7 +1667,7 @@ class DomainDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
 
 
 class EnumDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     __only_on__ = "postgresql > 8.3"
 
@@ -1715,7 +1715,7 @@ class NativeEnumDDLEventTest(EnumDDLEventTest):
 
 class OIDTest(fixtures.TestBase):
     __only_on__ = "postgresql"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_reflection(self, connection, metadata):
         Table(
@@ -1736,7 +1736,7 @@ class OIDTest(fixtures.TestBase):
 
 class RegClassTest(fixtures.TestBase):
     __only_on__ = "postgresql"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture()
     def scalar(self, connection):
@@ -3824,7 +3824,7 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
     """test DDL and reflection of PG-specific types"""
 
     __only_on__ = ("postgresql >= 8.3.0",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.metadata_fixture()
     def special_types_table(self, metadata):
@@ -5444,7 +5444,7 @@ class _RangeComparisonFixtures(_RangeTests):
 
 class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
     __requires__ = ("range_types",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -5986,7 +5986,7 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
 
 class _MultiRangeTypeRoundTrip(fixtures.TablesTest, _RangeTests):
     __requires__ = ("multirange_types",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture(params=(True, False), ids=["multirange", "plain_list"])
     def data_obj(self, request):

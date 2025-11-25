@@ -1639,7 +1639,7 @@ class UpdateFromCompileTest(
 
 
 class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.requires.update_from
     def test_exec_two_table(self, connection):
@@ -1793,7 +1793,7 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
 class UpdateFromMultiTableUpdateDefaultsTest(
     _UpdateFromTestBase, fixtures.TablesTest
 ):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

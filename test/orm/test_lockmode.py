@@ -64,7 +64,7 @@ class ForUpdateTest(_fixtures.FixtureTest):
 
 
 class BackendTest(_fixtures.FixtureTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     # test against the major backends.   We are naming specific databases
     # here rather than using requirements rules since the behavior of
