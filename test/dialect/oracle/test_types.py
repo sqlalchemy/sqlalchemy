@@ -1066,11 +1066,6 @@ class TypesTest(fixtures.TestBase):
         eq_(t1.c.c1.type.storage_format, VectorStorageFormat.FLOAT32)
 
     @testing.requires.oracle_vector
-    @testing.skip_if(
-        lambda: True,
-        "Does not work on free versions of Oracle 23.  "
-        "No testing platform available",
-    )
     def test_vector_hnsw_index(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -1078,7 +1073,10 @@ class TypesTest(fixtures.TestBase):
             Column("id", Integer),
             Column(
                 "embedding",
-                VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+                # can't specify dementions in the free version of oracle
+                # since otherwise it complains that has no spece for the index
+                VECTOR(),
+                # VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
             ),
         )
 
