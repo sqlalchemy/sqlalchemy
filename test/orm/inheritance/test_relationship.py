@@ -438,7 +438,9 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
                 primary_key=True,
             ),
             Column(
-                "reports_to_id", Integer, ForeignKey("engineers.person_id")
+                "reports_to_id",
+                Integer,
+                ForeignKey("engineers.person_id"),
             ),
         )
 

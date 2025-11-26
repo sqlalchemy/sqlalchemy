@@ -29,7 +29,7 @@ from ... import UniqueConstraint
 
 
 class TableDDLTest(fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _simple_fixture(self, schema=None):
         return Table(
@@ -233,7 +233,7 @@ class LongNameBlowoutTest(fixtures.TestBase):
 
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def fk(self, metadata, connection):
         convention = {

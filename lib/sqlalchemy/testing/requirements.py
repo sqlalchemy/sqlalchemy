@@ -1553,14 +1553,12 @@ class SuiteRequirements(Requirements):
     def ad_hoc_engines(self):
         """Test environment must allow ad-hoc engine/connection creation.
 
-        DBs that scale poorly for many connections, even when closed, i.e.
-        Oracle, may use the "--low-connections" option which flags this
-        requirement as not present.
+        This is now a no-op since we reconfigured ``options.low_connections``
+        to cause the ``testing_engine()`` to close off other open connections
+        when its invoked.
 
         """
-        return exclusions.skip_if(
-            lambda config: config.options.low_connections
-        )
+        return exclusions.open()
 
     @property
     def no_windows(self):

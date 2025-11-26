@@ -73,7 +73,9 @@ class OneConnectionTablesTest(fixtures.TablesTest):
 
 
 class HasTableTest(OneConnectionTablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
+
+    run_deletes = None
 
     @classmethod
     def define_tables(cls, metadata):
@@ -222,7 +224,7 @@ class HasTableTest(OneConnectionTablesTest):
 
 
 class HasIndexTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("index_reflection",)
 
     @classmethod
@@ -300,7 +302,7 @@ class HasIndexTest(fixtures.TablesTest):
 
 class BizarroCharacterTest(fixtures.TestBase):
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def column_names():
         return testing.combinations(
@@ -403,7 +405,7 @@ class BizarroCharacterTest(fixtures.TestBase):
 
 class TempTableElementsTest(fixtures.TestBase):
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     __requires__ = ("temp_table_reflection",)
 
@@ -441,7 +443,7 @@ class TempTableElementsTest(fixtures.TestBase):
 
 class QuotedNameArgumentTest(fixtures.TablesTest):
     run_create_tables = "once"
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -623,7 +625,7 @@ def _multi_combination(fn):
 class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
     run_inserts = run_deletes = None
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2656,7 +2658,7 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
 
 class TableNoColumnsTest(fixtures.TestBase):
     __requires__ = ("reflect_tables_no_columns",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture
     def table_no_columns(self, connection, metadata):
@@ -2708,7 +2710,7 @@ class TableNoColumnsTest(fixtures.TestBase):
 
 
 class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fixture(params=[True, False])
     def use_schema_fixture(self, request):
@@ -3211,7 +3213,7 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
 
 class NormalizedNameTest(fixtures.TablesTest):
     __requires__ = ("denormalized_names",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3352,7 +3354,7 @@ class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
 class IdentityReflectionTest(fixtures.TablesTest):
     run_inserts = run_deletes = None
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("identity_columns", "table_reflection")
 
     @classmethod
@@ -3491,7 +3493,7 @@ class IdentityReflectionTest(fixtures.TablesTest):
 
 
 class CompositeKeyReflectionTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

@@ -239,8 +239,9 @@ def _tests(
     elif backendonly:
         # with "-m backendonly", only tests with the backend pytest mark
         # (or pytestplugin equivalent, like __backend__) will be selected
-        # by pytest
-        includes_excludes["m"].append("backend")
+        # by pytest.
+        # memory intensive is deselected to prevent these from running
+        includes_excludes["m"].extend(["backend", "not memory_intensive"])
     else:
         includes_excludes["m"].append("not memory_intensive")
 
@@ -294,10 +295,13 @@ def _tests(
         coverage=coverage,
     )
 
+    if database in ["oracle", "mssql"]:
+        cmd.extend(["--low-connections"])
+
     if database in ["oracle", "mssql", "sqlite_file"]:
         # use equals sign so that we avoid
         # https://github.com/pytest-dev/pytest/issues/13913
-        cmd.extend(["--write-idents=db_idents.txt", "--low-connections"])
+        cmd.extend(["--write-idents=db_idents.txt"])
 
     cmd.extend(posargs)
 

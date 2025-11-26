@@ -20,7 +20,7 @@ from ... import values
 
 
 class CTETest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("ctes",)
 
     run_inserts = "each"
