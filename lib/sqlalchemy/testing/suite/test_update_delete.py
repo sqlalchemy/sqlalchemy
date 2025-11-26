@@ -18,7 +18,7 @@ from ... import testing
 class SimpleUpdateDeleteTest(fixtures.TablesTest):
     run_deletes = "each"
     __requires__ = ("sane_rowcount",)
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

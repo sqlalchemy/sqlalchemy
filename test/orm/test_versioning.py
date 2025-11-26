@@ -1107,6 +1107,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
             session.commit()
 
     @testing.requires.sane_rowcount
+    @provision.allow_stale_updates
     def test_child_row_switch_two(self):
         P = self.classes.P
 
@@ -1675,6 +1676,7 @@ class ServerVersioningTest(fixtures.MappedTest):
             self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     @testing.requires.independent_connections
+    @provision.allow_stale_updates
     def test_concurrent_mod_err_expire_on_commit(self):
         sess = self._fixture()
 

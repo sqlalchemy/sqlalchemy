@@ -18,6 +18,7 @@ from . import util
 from .. import exc
 from .. import inspect
 from ..engine import url as sa_url
+from ..schema import sort_tables_and_constraints
 from ..sql import ddl
 from ..sql import schema
 from ..util import decorator
@@ -50,6 +51,9 @@ class register:
             return self
 
         return decorate
+
+    def call_original(self, cfg, *arg, **kw):
+        return self.fns["*"](cfg, *arg, **kw)
 
     def __call__(self, cfg, *arg, **kw):
         if isinstance(cfg, str):
@@ -522,3 +526,36 @@ def allow_stale_updates(fn, *arg, **kw):
     """
     with allow_stale_update_impl(config._current):
         return fn(*arg, **kw)
+
+
+@register.init
+def delete_from_all_tables(cfg, connection, metadata):
+    """an absolutely foolproof delete from all tables routine.
+
+    dialects should override this to add special instructions like
+    disable constraints etc.
+
+    """
+    savepoints = getattr(cfg.requirements, "savepoints", False)
+    if savepoints:
+        savepoints = savepoints.enabled
+
+    inspector = inspect(connection)
+
+    for table in reversed(
+        [
+            t
+            for (t, fks) in sort_tables_and_constraints(
+                metadata.tables.values()
+            )
+            if t is not None
+            # remember that inspector.get_table_names() is cached,
+            # so this emits SQL once per unique schema name
+            and t.name in inspector.get_table_names(schema=t.schema)
+        ]
+    ):
+        if savepoints:
+            with connection.begin_nested():
+                connection.execute(table.delete())
+        else:
+            connection.execute(table.delete())

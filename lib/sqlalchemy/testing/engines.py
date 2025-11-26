@@ -115,7 +115,16 @@ class ConnectionKiller:
                 await_only(rec.dispose())
             else:
                 rec.dispose()
+
         eng.clear()
+
+    def _dispose_testing_engines(self, scope):
+        eng = self.testing_engines[scope]
+        for rec in list(eng):
+            if hasattr(rec, "sync_engine"):
+                await_only(rec.dispose())
+            else:
+                rec.dispose()
 
     def after_test(self):
         self._drop_testing_engines("function")
@@ -155,6 +164,10 @@ class ConnectionKiller:
                 assert (
                     False
                 ), "%d connection recs not cleared after test suite" % (ln)
+        if config.options and config.options.low_connections:
+            # for suites running with --low-connections, dispose the "global"
+            # engines to disconnect everything before making a testing engine
+            self._dispose_testing_engines("global")
 
     def final_cleanup(self):
         self.checkin_all()
@@ -309,6 +322,7 @@ def testing_engine(
     share_pool=False,
     _sqlite_savepoint=False,
 ):
+
     if asyncio:
         assert not _sqlite_savepoint
         from sqlalchemy.ext.asyncio import (
@@ -361,6 +375,10 @@ def testing_engine(
             engine.pool._transfer_from(config.db.pool)
     elif share_pool:
         engine.pool = config.db.pool
+    elif config.options and config.options.low_connections:
+        # for suites running with --low-connections, dispose the "global"
+        # engines to disconnect everything before making a testing engine
+        testing_reaper._dispose_testing_engines("global")
 
     if scope == "global":
         if asyncio:
