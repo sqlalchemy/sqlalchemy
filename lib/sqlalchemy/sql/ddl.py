@@ -33,8 +33,10 @@ from . import coercions
 from . import roles
 from . import util as sql_util
 from .base import _generative
+from .base import _NoArg
 from .base import DialectKWArgs
 from .base import Executable
+from .base import NO_ARG
 from .base import SchemaVisitor
 from .elements import ClauseElement
 from .selectable import SelectBase
@@ -175,7 +177,9 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
         event.listen(
             users,
             "after_create",
-            AddConstraint(constraint).execute_if(dialect="postgresql"),
+            AddConstraint(constraint, isolate_from_table=True).execute_if(
+                dialect="postgresql"
+            ),
         )
 
     .. seealso::
@@ -1126,19 +1130,22 @@ class AddConstraint(_CreateBase["Constraint"]):
     __visit_name__ = "add_constraint"
 
     def __init__(
-        self,
-        element: Constraint,
-        *,
-        isolate_from_table: bool = True,
+        self, element: Constraint, *, isolate_from_table: bool = True
     ) -> None:
         """Construct a new :class:`.AddConstraint` construct.
 
         :param element: a :class:`.Constraint` object
 
-        :param isolate_from_table: optional boolean, defaults to True.  Has
-         the effect of the incoming constraint being isolated from being
-         included in a CREATE TABLE sequence when associated with a
-         :class:`.Table`.
+        :param isolate_from_table: optional boolean.  Prevents the target
+         :class:`.Constraint` from being rendered inline in a "CONSTRAINT"
+         clause within a CREATE TABLE statement, in the case that the
+         constraint is associated with a :class:`.Table` which is later
+         created using :meth:`.Table.create` or :meth:`.MetaData.create_all`.
+         This occurs by modifying the state of the :class:`.Constraint`
+         object itself such that the CREATE TABLE DDL process will skip it.
+         Used for the case when a separate `ALTER TABLE...ADD CONSTRAINT`
+         call will be emitted after the `CREATE TABLE` has already occurred.
+         ``True`` by default.
 
          .. versionadded:: 2.0.39 - added
             :paramref:`.AddConstraint.isolate_from_table`, defaulting
@@ -1163,32 +1170,48 @@ class DropConstraint(_DropBase["Constraint"]):
         *,
         cascade: bool = False,
         if_exists: bool = False,
-        isolate_from_table: bool = True,
+        isolate_from_table: bool | _NoArg = NO_ARG,
         **kw: Any,
     ) -> None:
         """Construct a new :class:`.DropConstraint` construct.
 
         :param element: a :class:`.Constraint` object
+
         :param cascade: optional boolean, indicates backend-specific
          "CASCADE CONSTRAINT" directive should be rendered if available
+
         :param if_exists: optional boolean, indicates backend-specific
          "IF EXISTS" directive should be rendered if available
-        :param isolate_from_table: optional boolean, defaults to True.  Has
-         the effect of the incoming constraint being isolated from being
-         included in a CREATE TABLE sequence when associated with a
-         :class:`.Table`.
+
+        :param isolate_from_table: optional boolean. This is a deprecated
+         setting that when ``True``, does the same thing that
+         :paramref:`.AddConstraint.isolate_from_table` does, which is prevents
+         the constraint from being associated with an inline ``CREATE TABLE``
+         statement. It does not have any effect on the DROP process for a
+         table and is an artifact of older SQLAlchemy versions,
+         and will be removed in a future release.
 
          .. versionadded:: 2.0.39 - added
             :paramref:`.DropConstraint.isolate_from_table`, defaulting
             to True.  Previously, the behavior of this parameter was implicitly
             turned on in all cases.
 
+         .. versionchanged:: 2.1 - This parameter has been deprecated and
+            the default value of the flag was changed to ``False``.
+
         """
         self.cascade = cascade
         super().__init__(element, if_exists=if_exists, **kw)
 
-        if isolate_from_table:
-            element._create_rule = self._create_rule_disable
+        if isolate_from_table is not NO_ARG:
+            util.warn_deprecated(
+                "The ``isolate_from_table`` is deprecated and it be removed "
+                "in a future release.",
+                "2.1",
+            )
+
+            if isolate_from_table:
+                element._create_rule = self._create_rule_disable
 
 
 class SetTableComment(_CreateDropBase["Table"]):
@@ -1480,7 +1503,9 @@ class SchemaGenerator(InvokeCreateDDLBase):
             return
 
         with self.with_ddl_events(constraint):
-            AddConstraint(constraint)._invoke_with(self.connection)
+            AddConstraint(constraint, isolate_from_table=True)._invoke_with(
+                self.connection
+            )
 
     def visit_sequence(self, sequence, create_ok=False):
         if not create_ok and not self._can_create_sequence(sequence):

@@ -5813,7 +5813,8 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(const[0].name, None)
 
         self.assert_compile(
-            AddConstraint(const[0]), "ALTER TABLE foo ADD UNIQUE (id)"
+            AddConstraint(const[0]),
+            "ALTER TABLE foo ADD UNIQUE (id)",
         )
 
     @testing.combinations(
