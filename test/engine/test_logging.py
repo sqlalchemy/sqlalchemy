@@ -29,7 +29,6 @@ def exec_sql(engine, sql, *args, **kwargs):
 
 class LogParamsTest(fixtures.TestBase):
     __only_on__ = "sqlite+pysqlite"
-    __requires__ = ("ad_hoc_engines",)
 
     def setup_test(self):
         self.eng = engines.testing_engine(
@@ -611,7 +610,6 @@ class PoolLoggingTest(fixtures.TestBase):
 
 
 class LoggingNameTest(fixtures.TestBase):
-    __requires__ = ("ad_hoc_engines",)
 
     def _assert_names_in_execute(self, eng, eng_name, pool_name):
         with eng.connect() as conn:
@@ -1059,7 +1057,6 @@ class LoggingTokenTest(fixtures.TestBase):
 
 
 class EchoTest(fixtures.TestBase):
-    __requires__ = ("ad_hoc_engines",)
 
     def setup_test(self):
         self.level = logging.getLogger("sqlalchemy.engine").level

@@ -167,10 +167,7 @@ class TestBase:
         def gen_testing_engine(
             url=None,
             options=None,
-            future=None,
             asyncio=False,
-            transfer_staticpool=False,
-            share_pool=False,
         ):
             if options is None:
                 options = {}
@@ -179,8 +176,6 @@ class TestBase:
                 url=url,
                 options=options,
                 asyncio=asyncio,
-                transfer_staticpool=transfer_staticpool,
-                share_pool=share_pool,
             )
 
         yield gen_testing_engine

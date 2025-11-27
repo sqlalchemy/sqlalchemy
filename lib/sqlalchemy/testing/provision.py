@@ -89,7 +89,9 @@ def setup_config(db_url, options, file_config, follower_ident):
     update_db_opts(db_url, db_opts, options)
     db_opts["scope"] = "global"
     eng = engines.testing_engine(db_url, db_opts)
+
     post_configure_engine(db_url, eng, follower_ident)
+
     eng.connect().close()
 
     cfg = config.Config.register(eng, db_opts, options, file_config)
@@ -203,6 +205,23 @@ def _generate_driver_urls(url, extra_drivers):
             extra_drivers.remove(drv)
 
             yield new_url
+
+
+@register.init
+def is_preferred_driver(cfg, engine):
+    """Return True if the engine's URL is on the "default" driver, or
+    more generally the "preferred" driver to use for tests.
+
+    Backends can override this to make a different driver the "prefeferred"
+    driver that's not the default.
+
+    """
+    return (
+        engine.url._get_entrypoint()
+        is engine.url.set(
+            drivername=engine.url.get_backend_name()
+        )._get_entrypoint()
+    )
 
 
 @register.init
@@ -371,9 +390,22 @@ def update_db_opts(db_url, db_opts, options):
 
 @register.init
 def post_configure_engine(url, engine, follower_ident):
-    """Perform extra steps after configuring an engine for testing.
+    """Perform extra steps after configuring the main engine for testing.
 
     (For the internal dialects, currently only used by sqlite, oracle, mssql)
+    """
+
+
+@register.init
+def post_configure_testing_engine(url, engine, options, scope):
+    """perform extra steps after configuring any engine within the
+    testing_engine() function.
+
+    this includes the main engine as well as most ad-hoc testing engines.
+
+    steps here should not get in the way of test cases that are looking
+    for events, etc.
+
     """
 
 

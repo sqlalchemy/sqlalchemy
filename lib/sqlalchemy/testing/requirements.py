@@ -1553,9 +1553,7 @@ class SuiteRequirements(Requirements):
     def ad_hoc_engines(self):
         """Test environment must allow ad-hoc engine/connection creation.
 
-        This is now a no-op since we reconfigured ``options.low_connections``
-        to cause the ``testing_engine()`` to close off other open connections
-        when its invoked.
+        No longer used in any tests; is a no-op
 
         """
         return exclusions.open()

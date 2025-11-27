@@ -61,13 +61,15 @@ class AsyncFixture(_AsyncFixture, _fixtures.FixtureTest):
 
     @testing.fixture
     def async_engine(self):
-        return engines.testing_engine(asyncio=True, transfer_staticpool=True)
+        return engines.testing_engine(
+            asyncio=True, options={"sqlite_share_pool": True}
+        )
 
     # TODO: this seems to cause deadlocks in
     # OverrideSyncSession for some reason
     # @testing.fixture
     # def async_engine(self, async_testing_engine):
-    # return async_testing_engine(transfer_staticpool=True)
+    # return async_testing_engine(options={"sqlite_share_pool": True})
 
     @testing.fixture
     def async_session(self, async_engine):
@@ -1242,7 +1244,7 @@ class AsyncAttrsTest(
 
     @testing.fixture
     def async_engine(self, async_testing_engine):
-        yield async_testing_engine(transfer_staticpool=True)
+        yield async_testing_engine(options={"sqlite_share_pool": True})
 
     @testing.fixture
     def ab_fixture(self, decl_base):

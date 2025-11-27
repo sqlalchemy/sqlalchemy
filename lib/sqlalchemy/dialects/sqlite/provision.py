@@ -9,19 +9,21 @@
 import os
 import re
 
+from ... import event
 from ... import exc
 from ...engine import url as sa_url
+from ...testing import config
 from ...testing.provision import create_db
 from ...testing.provision import drop_db
 from ...testing.provision import follower_url_from_main
 from ...testing.provision import generate_driver_url
 from ...testing.provision import log
 from ...testing.provision import post_configure_engine
+from ...testing.provision import post_configure_testing_engine
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import stop_test_class_outside_fixtures
 from ...testing.provision import temp_table_keyword_args
 from ...testing.provision import upsert
-
 
 # TODO: I can't get this to build dynamically with pytest-xdist procs
 _drivernames = {
@@ -137,6 +139,31 @@ def _sqlite_post_configure_engine(url, engine, follower_ident):
 
         if filename and filename != ":memory:" and os.path.exists(filename):
             os.remove(filename)
+
+
+@post_configure_testing_engine.for_db("sqlite")
+def _sqlite_post_configure_testing_engine(url, engine, options, scope):
+
+    sqlite_savepoint = options.get("sqlite_savepoint", False)
+    sqlite_share_pool = options.get("sqlite_share_pool", False)
+
+    if sqlite_savepoint and engine.name == "sqlite":
+        # apply SQLite savepoint workaround
+        @event.listens_for(engine, "connect")
+        def do_connect(dbapi_connection, connection_record):
+            dbapi_connection.isolation_level = None
+
+        @event.listens_for(engine, "begin")
+        def do_begin(conn):
+            conn.exec_driver_sql("BEGIN")
+
+    if sqlite_share_pool:
+        # SingletonThreadPool, StaticPool both support "transfer"
+        # so a new pool can share the same SQLite connection
+        # (single thread only)
+        if hasattr(engine.pool, "_transfer_from"):
+            options["use_reaper"] = False
+            engine.pool._transfer_from(config.db.pool)
 
 
 @create_db.for_db("sqlite")

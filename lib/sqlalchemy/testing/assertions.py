@@ -207,7 +207,10 @@ def _expect_warnings(
         if raise_on_any_unexpected:
 
             def real_warn(msg, *arg, **kw):
-                raise AssertionError("Got unexpected warning: %r" % msg)
+                if isinstance(msg, sa_exc.SATestSuiteWarning):
+                    warnings.warn(msg, *arg, **kw)
+                else:
+                    raise AssertionError("Got unexpected warning: %r" % msg)
 
         else:
             real_warn = warnings.warn
