@@ -329,15 +329,13 @@ class Config:
         self.test_schema = "test_schema"
         self.test_schema_2 = "test_schema_2"
 
-        self.is_default_dialect = (
-            db.url._get_entrypoint()
-            is db.url.set(
-                drivername=db.url.get_backend_name()
-            )._get_entrypoint()
-        )
         self.is_async = db.dialect.is_async and not util.asbool(
             db.url.query.get("async_fallback", False)
         )
+
+        from . import provision
+
+        self.is_default_dialect = provision.is_preferred_driver(self, db)
 
     _stack = collections.deque()
     _configs = set()

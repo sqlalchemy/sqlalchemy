@@ -1895,7 +1895,7 @@ class LambdaElementTest(
         users, addresses = user_address_fixture
 
         engine = testing_engine(
-            share_pool=True, options={"query_cache_size": 0}
+            options={"query_cache_size": 0, "sqlite_share_pool": True}
         )
         with engine.begin() as conn:
             conn.execute(

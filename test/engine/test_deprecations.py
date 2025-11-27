@@ -359,7 +359,6 @@ class ResetEventTest(fixtures.TestBase):
 
 
 class EngineEventsTest(fixtures.TestBase):
-    __requires__ = ("ad_hoc_engines",)
     __backend__ = True
 
     def teardown_test(self):

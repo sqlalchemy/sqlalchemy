@@ -941,6 +941,7 @@ class DefaultRequirements(SuiteRequirements):
                 no_support(
                     "sqlite", "two-phase xact not supported by database"
                 ),
+                no_support("oracle+cx_oracle", "prefer oracledb"),
                 # in Ia3cbbf56d4882fcc7980f90519412f1711fae74d
                 # we are evaluating which modern MySQL / MariaDB versions
                 # can handle two-phase testing without too many problems
@@ -1748,10 +1749,6 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def mssql_freetds(self):
         return only_on(["mssql+pymssql"])
-
-    @property
-    def ad_hoc_engines(self):
-        return skip_if(self._sqlite_file_db)
 
     @property
     def no_asyncio(self):

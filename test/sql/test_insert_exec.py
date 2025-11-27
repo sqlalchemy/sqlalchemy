@@ -1201,9 +1201,7 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
 
     def test_disabled(self, testing_engine):
         e = testing_engine(
-            options={"use_insertmanyvalues": False},
-            share_pool=True,
-            transfer_staticpool=True,
+            options={"use_insertmanyvalues": False, "sqlite_share_pool": True},
         )
         totalnum = 1275
         data = [{"x": "x%d" % i, "y": "y%d" % i} for i in range(1, totalnum)]

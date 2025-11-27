@@ -845,7 +845,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
         # this test has been reworked to use the compiled cache again,
         # as a real-world scenario.
 
-        eng = testing_engine(share_pool=True)
+        eng = testing_engine(options={"sqlite_share_pool": True})
         sess = Session(eng)
 
         q = sess.query(A).options(

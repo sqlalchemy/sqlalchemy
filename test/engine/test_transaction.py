@@ -565,8 +565,9 @@ class TransactionTest(fixtures.TablesTest):
         # a connection with an XID present
         @event.listens_for(eng, "invalidate")
         def conn_invalidated(dbapi_con, con_record, exception):
-            dbapi_con.close()
-            raise exception
+            if exception is not None:
+                dbapi_con.close()
+                raise exception
 
         with eng.connect() as conn:
             rec = conn.connection._connection_record
@@ -1147,16 +1148,13 @@ class AutoRollbackTest(fixtures.TestBase):
 class IsolationLevelTest(fixtures.TestBase):
     """see also sqlalchemy/testing/suite/test_dialect.py::IsolationLevelTest
 
-    this suite has sparse_backend / ad_hoc_engines so wont take place
+    this suite has sparse_backend so wont take place
     for every dbdriver under a nox run.   the suite test should cover
     that end of it
 
     """
 
-    __requires__ = (
-        "isolation_level",
-        "ad_hoc_engines",
-    )
+    __requires__ = ("isolation_level",)
     __sparse_driver_backend__ = True
 
     def _default_isolation_level(self):
