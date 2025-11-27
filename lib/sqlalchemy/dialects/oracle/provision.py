@@ -106,10 +106,11 @@ def _ora_stop_test_class_outside_fixtures(config, db, cls):
     # clear statement cache on all connections that were used
     # https://github.com/oracle/python-cx_Oracle/issues/519
 
+    all_dbapis = {cfg.db.dialect.dbapi for cfg in config.Config.all_configs()}
     for cx_oracle_conn in _all_conns:
         try:
             sc = cx_oracle_conn.stmtcachesize
-        except db.dialect.dbapi.InterfaceError:
+        except tuple(dbapi.InterfaceError for dbapi in all_dbapis):
             # connection closed
             pass
         else:

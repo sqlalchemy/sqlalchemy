@@ -28,7 +28,7 @@ from ...testing import config
 
 
 class TableViaSelectTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def temp_table_name(cls):

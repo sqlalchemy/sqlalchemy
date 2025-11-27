@@ -26,36 +26,10 @@ table_options = {}
 def Table(*args, **kw) -> schema.Table:
     """A schema.Table wrapper/hook for dialect-specific tweaks."""
 
-    test_opts = {k: kw.pop(k) for k in list(kw) if k.startswith("test_")}
+    # pop out local options; these are not used at the moment
+    _ = {k: kw.pop(k) for k in list(kw) if k.startswith("test_")}
 
     kw.update(table_options)
-
-    if exclusions.against(config._current, "mysql"):
-        if (
-            "mysql_engine" not in kw
-            and "mysql_type" not in kw
-            and "autoload_with" not in kw
-        ):
-            if "test_needs_fk" in test_opts or "test_needs_acid" in test_opts:
-                kw["mysql_engine"] = "InnoDB"
-            else:
-                # there are in fact test fixtures that rely upon MyISAM,
-                # due to MySQL / MariaDB having poor FK behavior under innodb,
-                # such as a self-referential table can't be deleted from at
-                # once without attending to per-row dependencies.  We'd need to
-                # add special steps to some fixtures if we want to not
-                # explicitly state MyISAM here
-                kw["mysql_engine"] = "MyISAM"
-    elif exclusions.against(config._current, "mariadb"):
-        if (
-            "mariadb_engine" not in kw
-            and "mariadb_type" not in kw
-            and "autoload_with" not in kw
-        ):
-            if "test_needs_fk" in test_opts or "test_needs_acid" in test_opts:
-                kw["mariadb_engine"] = "InnoDB"
-            else:
-                kw["mariadb_engine"] = "MyISAM"
 
     return schema.Table(*args, **kw)
 

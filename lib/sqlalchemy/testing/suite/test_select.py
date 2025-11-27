@@ -53,7 +53,7 @@ from ...exc import ProgrammingError
 
 
 class CollateTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -99,7 +99,7 @@ class OrderByLabelTest(fixtures.TablesTest):
 
     """
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -170,7 +170,7 @@ class OrderByLabelTest(fixtures.TablesTest):
 class ValuesExpressionTest(fixtures.TestBase):
     __requires__ = ("table_value_constructor",)
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def test_tuples(self, connection):
         value_expr = values(
@@ -643,7 +643,7 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
 class SameNamedSchemaTableTest(fixtures.TablesTest):
     """tests for #7471"""
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     __requires__ = ("schemas",)
 
@@ -740,7 +740,7 @@ class SameNamedSchemaTableTest(fixtures.TablesTest):
 
 
 class JoinTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     def _assert_result(self, select, result, params=None):
         with config.db.connect() as conn:
@@ -840,7 +840,7 @@ class JoinTest(fixtures.TablesTest):
 
 
 class CompoundSelectTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1501,7 +1501,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
 
 
 class LikeFunctionsTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     run_inserts = "once"
     run_deletes = None
@@ -1646,7 +1646,7 @@ class LikeFunctionsTest(fixtures.TablesTest):
 
 
 class ComputedColumnTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("computed_columns",)
 
     @classmethod
@@ -1794,7 +1794,7 @@ class IdentityAutoincrementTest(fixtures.TablesTest):
 
 
 class ExistsTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1841,7 +1841,7 @@ class ExistsTest(fixtures.TablesTest):
 
 
 class DistinctOnTest(AssertsCompiledSQL, fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @testing.fails_if(testing.requires.supports_distinct_on)
     def test_distinct_on(self):
@@ -1856,7 +1856,7 @@ class DistinctOnTest(AssertsCompiledSQL, fixtures.TablesTest):
 
 
 class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
-    __backend__ = True
+    __sparse_driver_backend__ = True
     __requires__ = ("supports_is_distinct_from",)
 
     @classmethod
@@ -1911,7 +1911,7 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
 class WindowFunctionTest(fixtures.TablesTest):
     __requires__ = ("window_functions",)
 
-    __backend__ = True
+    __sparse_driver_backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):

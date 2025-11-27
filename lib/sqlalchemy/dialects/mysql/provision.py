@@ -12,6 +12,7 @@ from ... import exc
 from ...testing.provision import allow_stale_update_impl
 from ...testing.provision import configure_follower
 from ...testing.provision import create_db
+from ...testing.provision import delete_from_all_tables
 from ...testing.provision import drop_db
 from ...testing.provision import generate_driver_url
 from ...testing.provision import temp_table_keyword_args
@@ -115,6 +116,15 @@ def _upsert(
         *returning, sort_by_parameter_order=sort_by_parameter_order
     )
     return stmt
+
+
+@delete_from_all_tables.for_db("mysql", "mariadb")
+def _delete_from_all_tables(cfg, connection, metadata):
+    connection.exec_driver_sql("SET foreign_key_checks = 0")
+    try:
+        delete_from_all_tables.call_original(cfg, connection, metadata)
+    finally:
+        connection.exec_driver_sql("SET foreign_key_checks = 1")
 
 
 @allow_stale_update_impl.for_db("mariadb")
