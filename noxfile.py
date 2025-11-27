@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import sys
 from typing import Dict
 from typing import List
@@ -353,6 +354,10 @@ def test_mypy(session: nox.Session) -> None:
 @nox.session(name="pep8")
 def test_pep8(session: nox.Session) -> None:
     """Run linting and formatting checks."""
+
+    for pattern in ["*.so", "*.pyd", "*.dylib"]:
+        for filepath in Path("lib/sqlalchemy").rglob(pattern):
+            filepath.unlink()
 
     session.install("-e", ".")
 
