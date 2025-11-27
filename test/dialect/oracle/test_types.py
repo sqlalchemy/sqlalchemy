@@ -24,6 +24,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import NCHAR
 from sqlalchemy import Numeric
 from sqlalchemy import NVARCHAR
+from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import SmallInteger
 from sqlalchemy import String
@@ -247,6 +248,46 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     )
     def test_interval_literal_processor(self, type_, expected):
         self.assert_compile(type_, expected, literal_binds=True)
+
+    def test_compile_boolean_native(self):
+        dialect = oracle.OracleDialect()
+        dialect.supports_native_boolean = True
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", sqltypes.Boolean),
+            Column("y", oracle.BOOLEAN),
+            Column(
+                "z", sqltypes.Boolean().with_variant(oracle.BOOLEAN, "oracle")
+            ),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x BOOLEAN, y BOOLEAN, z BOOLEAN)",
+            dialect=dialect,
+        )
+
+    def test_compile_boolean_emulated(self):
+        dialect = oracle.OracleDialect()
+        dialect.supports_native_boolean = False
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", sqltypes.Boolean),
+            Column("y", oracle.BOOLEAN),
+            Column(
+                "z", sqltypes.Boolean().with_variant(oracle.BOOLEAN, "oracle")
+            ),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x SMALLINT, y BOOLEAN, z BOOLEAN)",
+            dialect=dialect,
+        )
 
 
 class TypesTest(fixtures.TestBase):
@@ -1195,6 +1236,109 @@ class TypesTest(fixtures.TestBase):
         eq_(result[1].num_dimensions, 10)
         eq_(result[1].indices, array.array("I", [1, 2]))
         eq_(result[1].values, array.array("f", [23.25, 221.625]))
+
+    @testing.only_on("oracle>=23.0")
+    def test_boolean_native(self, metadata, connection):
+        """Test native BOOLEAN type on Oracle 23c+"""
+        t = Table(
+            "boolean_test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", sqltypes.Boolean),
+            Column("y", oracle.BOOLEAN),
+            Column(
+                "z", sqltypes.Boolean().with_variant(oracle.BOOLEAN, "oracle")
+            ),
+        )
+        t.create(connection)
+
+        # Insert test data
+        connection.execute(
+            t.insert(),
+            [
+                dict(id=1, x=True, y=True, z=True),
+                dict(id=2, x=False, y=False, z=False),
+                dict(id=3, x=None, y=None, z=None),
+            ],
+        )
+
+        # Test SELECT
+        rows = connection.execute(t.select().order_by(t.c.id)).fetchall()
+
+        eq_(rows[0], (1, True, True, True))
+        eq_(rows[1], (2, False, False, False))
+        eq_(rows[2], (3, None, None, None))
+
+        # Test WHERE clause with boolean
+        result = connection.execute(t.select().where(t.c.x == True)).fetchall()
+        eq_(len(result), 1)
+        eq_(result[0][0], 1)
+
+        result = connection.execute(
+            t.select().where(t.c.x == False)
+        ).fetchall()
+        eq_(len(result), 1)
+        eq_(result[0][0], 2)
+
+    def test_boolean_emulated(self, metadata, connection):
+        """Test emulated BOOLEAN type behavior
+
+        This test forces emulated mode by setting
+        supports_native_boolean=False, even on Oracle 23c+. This verifies
+        that the emulation layer still works correctly when native BOOLEAN
+        is available but not used.
+
+        Note: We only test sqltypes.Boolean here, not oracle.BOOLEAN or
+        with_variant(), because those explicitly request native BOOLEAN type
+        regardless of the supports_native_boolean setting.
+        """
+        # Temporarily force emulated boolean mode
+        original_supports_native = connection.dialect.supports_native_boolean
+        connection.dialect.supports_native_boolean = False
+
+        try:
+            t = Table(
+                "boolean_emulated_test",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("data", sqltypes.Boolean),
+            )
+            t.create(connection)
+
+            # Insert test data
+            connection.execute(
+                t.insert(),
+                [
+                    dict(id=1, data=True),
+                    dict(id=2, data=False),
+                    dict(id=3, data=None),
+                ],
+            )
+
+            # Test SELECT - emulated boolean returns True/False
+            rows = connection.execute(t.select().order_by(t.c.id)).fetchall()
+
+            eq_(rows[0], (1, True))
+            eq_(rows[1], (2, False))
+            eq_(rows[2], (3, None))
+
+            # Test WHERE clause with boolean
+            result = connection.execute(
+                t.select().where(t.c.data == True)
+            ).fetchall()
+            eq_(len(result), 1)
+            eq_(result[0][0], 1)
+
+            result = connection.execute(
+                t.select().where(t.c.data == False)
+            ).fetchall()
+            eq_(len(result), 1)
+            eq_(result[0][0], 2)
+        finally:
+            # Restore original setting
+            connection.dialect.supports_native_boolean = (
+                original_supports_native
+            )
 
 
 class LOBFetchTest(fixtures.TablesTest):
