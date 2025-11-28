@@ -123,6 +123,7 @@ if TYPE_CHECKING:
     from ._typing import _NOT_ENTITY
     from ._typing import _OnClauseArgument
     from ._typing import _SelectStatementForCompoundArgument
+    from ._typing import _DMLColumnArgument
     from ._typing import _T0
     from ._typing import _T1
     from ._typing import _T2
@@ -3367,7 +3368,7 @@ class Values(roles.InElementRole, HasCTE, Generative, LateralFromClause):
 
     def __init__(
         self,
-        *columns: ColumnClause[Any],
+        *columns: _DMLColumnArgument[Any],
         name: Optional[str] = None,
         literal_binds: bool = False,
     ):
@@ -7117,7 +7118,6 @@ class Exists(UnaryExpression[bool]):
         self,
         fn: Callable[[Select[Unpack[TupleAny]]], Select[Unpack[TupleAny]]],
     ) -> ScalarSelect[Any]:
-
         assert isinstance(self.element, ScalarSelect)
         element = self.element.element
         if not isinstance(element, Select):
