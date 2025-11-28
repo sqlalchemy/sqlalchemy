@@ -5,6 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: disable-error-code="misc, no-any-return, no-untyped-def, override"
+# mypy: disable-error-code="untyped-decorator"
 
 from __future__ import annotations
 

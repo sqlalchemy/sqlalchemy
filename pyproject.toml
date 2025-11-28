@@ -45,7 +45,7 @@ Discussions = "https://github.com/sqlalchemy/sqlalchemy/discussions"
 [project.optional-dependencies]
 asyncio = ["greenlet>=1"]
 mypy = [
-    "mypy >= 1.7",
+    "mypy >= 1.19",
     "types-greenlet >= 2",
 ]
 mssql = ["pyodbc"]
@@ -190,7 +190,7 @@ lint = [
 
 mypy = [
     {include-group = "tests-greenlet"},
-    "mypy>=1.16.0",
+    "sqlalchemy[mypy]",
     "nox",  # because we check noxfile.py
     "pytest>8,<10",  # alembic/testing imports pytest
     "types-greenlet",
