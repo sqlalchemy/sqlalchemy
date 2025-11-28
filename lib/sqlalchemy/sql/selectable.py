@@ -116,6 +116,7 @@ and_ = BooleanClauseList.and_
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _DMLColumnArgument
     from ._typing import _FromClauseArgument
     from ._typing import _JoinTargetArgument
     from ._typing import _LimitOffsetType
@@ -123,7 +124,6 @@ if TYPE_CHECKING:
     from ._typing import _NOT_ENTITY
     from ._typing import _OnClauseArgument
     from ._typing import _SelectStatementForCompoundArgument
-    from ._typing import _DMLColumnArgument
     from ._typing import _T0
     from ._typing import _T1
     from ._typing import _T2

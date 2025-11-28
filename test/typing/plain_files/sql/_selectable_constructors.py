@@ -1,7 +1,8 @@
 from sqlalchemy import update
 from sqlalchemy import values
-
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 
 
 class DbBase(DeclarativeBase):
