@@ -4,7 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: disable-error-code="misc"
+# mypy: disable-error-code="misc, untyped-decorator"
 from __future__ import annotations
 
 from datetime import date as date_cls

@@ -4,7 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: disable-error-code="misc, type-arg"
+# mypy: disable-error-code="misc, type-arg, untyped-decorator"
 from __future__ import annotations
 
 from collections.abc import Mapping

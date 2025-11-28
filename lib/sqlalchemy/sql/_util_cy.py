@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+# mypy: disable-error-code="untyped-decorator"
 
 from __future__ import annotations
 
@@ -94,8 +95,8 @@ class anon_map(Dict[_AM_KEY, _AM_VALUE]):
     else:
         _index: int = 0  # type: ignore[no-redef]
 
-    @cython.cfunc  # type:ignore[misc]
-    @cython.inline  # type:ignore[misc]
+    @cython.cfunc
+    @cython.inline
     def _add_missing(self: anon_map, key: _AM_KEY, /) -> int:
         val: int = self._index
         self._index += 1

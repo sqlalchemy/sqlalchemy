@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: disable-error-code="misc,no-redef,valid-type,no-untyped-call"
 # mypy: disable-error-code="index,no-any-return,arg-type,assignment"
+# mypy: disable-error-code="untyped-decorator"
 from __future__ import annotations
 
 from typing import Any

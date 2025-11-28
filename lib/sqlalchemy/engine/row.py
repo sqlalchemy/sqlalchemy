@@ -43,7 +43,7 @@ else:
 _Ts = TypeVarTuple("_Ts")
 
 
-class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
+class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):  # type: ignore[misc]  # noqa: E501
     """Represent a single result row.
 
     The :class:`.Row` object represents a row of a database result.  It is

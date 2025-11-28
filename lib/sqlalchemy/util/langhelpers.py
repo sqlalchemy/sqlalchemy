@@ -75,7 +75,7 @@ if compat.py314:
         return None
 
     # this is ported from py3.13.0a7
-    _BASE_GET_ANNOTATIONS = type.__dict__["__annotations__"].__get__  # type: ignore  # noqa: E501
+    _BASE_GET_ANNOTATIONS = type.__dict__["__annotations__"].__get__
 
     def _get_dunder_annotations(obj):
         if isinstance(obj, type):
