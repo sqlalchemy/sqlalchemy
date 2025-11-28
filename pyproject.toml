@@ -7,7 +7,7 @@ requires = [
 
 [dependency-groups]
 tests = [
-    "pytest>=7.0.0,<8.4",
+    "pytest>=7.0.0,<10",
     "pytest-xdist",
 ]
 
@@ -96,9 +96,9 @@ lint = [
 
 mypy = [
     {include-group = "tests-greenlet"},
-    "mypy>=1.16.0",
+    "mypy>=1.19.0",
     "nox",  # because we check noxfile.py
-    "pytest>8,<8.4",  # alembic/testing imports pytest
+    "pytest>8,<10",  # alembic/testing imports pytest
     "types-greenlet",
 ]
 

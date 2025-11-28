@@ -443,8 +443,8 @@ class KeyFuncDict(Dict[_KT, _VT]):
                 f"parameter on the mapped collection factory."
             )
 
-    @collection.appender  # type: ignore[misc]
-    @collection.internally_instrumented  # type: ignore[misc]
+    @collection.appender  # type: ignore[untyped-decorator]
+    @collection.internally_instrumented  # type: ignore[untyped-decorator]
     def set(
         self,
         value: _KT,
@@ -472,8 +472,8 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
         self.__setitem__(key, value, _sa_initiator)  # type: ignore[call-arg]
 
-    @collection.remover  # type: ignore[misc]
-    @collection.internally_instrumented  # type: ignore[misc]
+    @collection.remover  # type: ignore[untyped-decorator]
+    @collection.internally_instrumented  # type: ignore[untyped-decorator]
     def remove(
         self,
         value: _KT,
