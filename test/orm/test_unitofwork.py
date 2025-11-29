@@ -1096,6 +1096,7 @@ class DefaultTest(fixtures.MappedTest):
                 onupdate="im the update",
             ),
             mysql_engine="MyISAM",
+            mariadb_engine="MyISAM",
         )
 
         st = Table(
@@ -1106,6 +1107,7 @@ class DefaultTest(fixtures.MappedTest):
             ),
             Column("data", String(50)),
             mysql_engine="MyISAM",
+            mariadb_engine="MyISAM",
         )
 
         if testing.against("postgresql", "oracle"):
