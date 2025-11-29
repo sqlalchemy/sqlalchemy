@@ -34,6 +34,7 @@ from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
 if TYPE_CHECKING:
+    from ._typing import _DMLColumnArgument
     from ._typing import _FromClauseArgument
     from ._typing import _OnClauseArgument
     from ._typing import _SelectStatementForCompoundArgument
@@ -684,7 +685,7 @@ def union_all(
 
 
 def values(
-    *columns: ColumnClause[Any],
+    *columns: _DMLColumnArgument[Any],
     name: Optional[str] = None,
     literal_binds: bool = False,
 ) -> Values:

@@ -116,6 +116,7 @@ and_ = BooleanClauseList.and_
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _DMLColumnArgument
     from ._typing import _FromClauseArgument
     from ._typing import _JoinTargetArgument
     from ._typing import _LimitOffsetType
@@ -3367,7 +3368,7 @@ class Values(roles.InElementRole, HasCTE, Generative, LateralFromClause):
 
     def __init__(
         self,
-        *columns: ColumnClause[Any],
+        *columns: _DMLColumnArgument[Any],
         name: Optional[str] = None,
         literal_binds: bool = False,
     ):
@@ -7117,7 +7118,6 @@ class Exists(UnaryExpression[bool]):
         self,
         fn: Callable[[Select[Unpack[TupleAny]]], Select[Unpack[TupleAny]]],
     ) -> ScalarSelect[Any]:
-
         assert isinstance(self.element, ScalarSelect)
         element = self.element.element
         if not isinstance(element, Select):
