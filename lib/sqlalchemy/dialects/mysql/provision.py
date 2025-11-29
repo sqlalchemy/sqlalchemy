@@ -119,10 +119,10 @@ def _upsert(
 
 
 @delete_from_all_tables.for_db("mysql", "mariadb")
-def _delete_from_all_tables(cfg, connection, metadata):
+def _delete_from_all_tables(connection, cfg, metadata):
     connection.exec_driver_sql("SET foreign_key_checks = 0")
     try:
-        delete_from_all_tables.call_original(cfg, connection, metadata)
+        delete_from_all_tables.call_original(connection, cfg, metadata)
     finally:
         connection.exec_driver_sql("SET foreign_key_checks = 1")
 

@@ -74,6 +74,10 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(no_support("sqlite", "not supported by database"))
 
     @property
+    def foreign_key_cycles_w_cascade(self):
+        return skip_if(no_support("mssql", "not supported"))
+
+    @property
     def foreign_keys_reflect_as_index(self):
         return only_on(["mysql", "mariadb"])
 

@@ -17,6 +17,8 @@ from . import engines
 from . import util
 from .. import exc
 from .. import inspect
+from ..engine import Connection
+from ..engine import Engine
 from ..engine import url as sa_url
 from ..schema import sort_tables_and_constraints
 from ..sql import ddl
@@ -60,6 +62,8 @@ class register:
             url = sa_url.make_url(cfg)
         elif isinstance(cfg, sa_url.URL):
             url = cfg
+        elif isinstance(cfg, (Engine, Connection)):
+            url = cfg.engine.url
         else:
             url = cfg.db.url
         backend = url.get_backend_name()
@@ -560,7 +564,7 @@ def allow_stale_updates(fn, *arg, **kw):
 
 
 @register.init
-def delete_from_all_tables(cfg, connection, metadata):
+def delete_from_all_tables(connection, cfg, metadata):
     """an absolutely foolproof delete from all tables routine.
 
     dialects should override this to add special instructions like
