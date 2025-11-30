@@ -54,7 +54,8 @@ mssql-pyodbc = ["pyodbc"]
 mysql = ["mysqlclient>=1.4.0"]
 mysql-connector = ["mysql-connector-python"]
 mariadb-connector = ["mariadb>=1.0.1,!=1.1.2,!=1.1.5,!=1.1.10"]
-oracle = ["cx_oracle>=8"]
+oracle = ["oracledb>=1.0.1"]
+oracle-cxoracle = ["cx_oracle>=8"]
 oracle-oracledb = ["oracledb>=1.0.1"]
 postgresql = ["psycopg2>=2.7"]
 postgresql-pg8000 = ["pg8000>=1.29.3"]
@@ -156,7 +157,7 @@ tests-oracle-asyncio = [
 ]
 tests-oracle = [
     "sqlalchemy[oracle]",
-    "sqlalchemy[oracle-oracledb]",
+    "sqlalchemy[oracle-cxoracle]",
 ]
 
 tests-mssql = [
