@@ -21,8 +21,8 @@ jobs:
         # emulated wheels on linux take too much time, split wheels into multiple runs
         python:
           - "cp310-* cp311-*"
-          - "cp312-* cp313-*"
-          - "cp313t-*"
+          - "cp312-* cp313-* cp314-*"
+          - "cp313t-* cp314t-*"
         wheel_mode:
           - compiled
         os:
@@ -41,7 +41,7 @@ jobs:
           # create pure python build
           - os: ubuntu-22.04
             wheel_mode: pure-python
-            python: "cp-313*"
+            python: "cp-314*"
 
         exclude:
           - os: "windows-2022"
@@ -94,7 +94,7 @@ jobs:
       - name: Set up Python for twine and pure-python wheel
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Build pure-python wheel
         if: ${{ matrix.wheel_mode == 'pure-python' && runner.os == 'Linux' }}
