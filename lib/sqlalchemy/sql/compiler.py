@@ -646,11 +646,14 @@ class InsertmanyvaluesSentinelOpts(FastIntFlag):
     AUTOINCREMENT = 2
     IDENTITY = 4
     SEQUENCE = 8
+    MONOTONIC_FUNCTION = 16
 
-    ANY_AUTOINCREMENT = AUTOINCREMENT | IDENTITY | SEQUENCE
+    ANY_AUTOINCREMENT = (
+        AUTOINCREMENT | IDENTITY | SEQUENCE | MONOTONIC_FUNCTION
+    )
     _SUPPORTED_OR_NOT = NOT_SUPPORTED | ANY_AUTOINCREMENT
 
-    USE_INSERT_FROM_SELECT = 16
+    USE_INSERT_FROM_SELECT = 32
     RENDER_SELECT_COL_CASTS = 64
 
 
@@ -5615,6 +5618,9 @@ class SQLCompiler(Compiled):
             ),
             _SentinelDefaultCharacterization.SEQUENCE: (
                 InsertmanyvaluesSentinelOpts.SEQUENCE
+            ),
+            _SentinelDefaultCharacterization.MONOTONIC_FUNCTION: (
+                InsertmanyvaluesSentinelOpts.MONOTONIC_FUNCTION
             ),
         }
     )
