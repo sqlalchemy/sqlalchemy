@@ -106,7 +106,7 @@ _CrudParamSequence = List[_CrudParamElement]
 
 
 class _CrudParams(NamedTuple):
-    single_params: _CrudParamSequence
+    single_params: List[_CrudParamElementStr]
     all_multi_params: List[Sequence[_CrudParamElementStr]]
     is_default_metavalue_only: bool = False
     use_insertmanyvalues: bool = False
@@ -260,7 +260,7 @@ def _get_crud_params(
         }
 
     # create a list of column assignment clauses as tuples
-    values: List[_CrudParamElement] = []
+    values: List[_CrudParamElementStr] = []
 
     if stmt_parameter_tuples is not None:
         _get_stmt_parameter_tuples_params(

@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13015
+
+    Fixed the structure of the SQL string used for the
+    :ref:`engine_insertmanyvalues` feature when an explicit sequence with
+    ``nextval()`` is used. The SQL function invocation for the sequence has
+    been moved from being rendered inline within each tuple inside of VALUES to
+    being rendered once in the SELECT that reads from VALUES. This change
+    ensures the function is invoked in the correct order as rows are processed,
+    rather than assuming PostgreSQL will execute inline function calls within
+    VALUES in a particular order. While current PostgreSQL versions appear to
+    handle the previous approach correctly, the database does not guarantee
+    this behavior for future versions.
