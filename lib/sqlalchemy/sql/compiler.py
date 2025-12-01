@@ -6074,9 +6074,7 @@ class SQLCompiler(Compiled):
                 self._insertmanyvalues = _InsertManyValues(
                     True,
                     self.dialect.default_metavalue_token,
-                    cast(
-                        "List[crud._CrudParamElementStr]", crud_params_single
-                    ),
+                    crud_params_single,
                     counted_bindparam,
                     sort_by_parameter_order=(
                         insert_stmt._sort_by_parameter_order
@@ -6098,99 +6096,122 @@ class SQLCompiler(Compiled):
                     for crud_param_set in crud_params_struct.all_multi_params
                 ),
             )
-        else:
-            insert_single_values_expr = ", ".join(
-                [
-                    value
-                    for _, _, value, _ in cast(
-                        "List[crud._CrudParamElementStr]",
-                        crud_params_single,
-                    )
-                ]
-            )
+        elif use_insertmanyvalues:
+            if (
+                implicit_sentinel
+                and (
+                    self.dialect.insertmanyvalues_implicit_sentinel
+                    & InsertmanyvaluesSentinelOpts.USE_INSERT_FROM_SELECT
+                )
+                # this is checking if we have
+                # INSERT INTO table (id) VALUES (DEFAULT).
+                and not (crud_params_struct.is_default_metavalue_only)
+            ):
+                # if we have a sentinel column that is server generated,
+                # then for selected backends render the VALUES list as a
+                # subquery.  This is the orderable form supported by
+                # PostgreSQL and in fewer cases SQL Server
+                embed_sentinel_value = True
 
-            if use_insertmanyvalues:
-                if (
-                    implicit_sentinel
-                    and (
-                        self.dialect.insertmanyvalues_implicit_sentinel
-                        & InsertmanyvaluesSentinelOpts.USE_INSERT_FROM_SELECT
-                    )
-                    # this is checking if we have
-                    # INSERT INTO table (id) VALUES (DEFAULT).
-                    and not (crud_params_struct.is_default_metavalue_only)
-                ):
-                    # if we have a sentinel column that is server generated,
-                    # then for selected backends render the VALUES list as a
-                    # subquery.  This is the orderable form supported by
-                    # PostgreSQL and SQL Server.
-                    embed_sentinel_value = True
+                render_bind_casts = (
+                    self.dialect.insertmanyvalues_implicit_sentinel
+                    & InsertmanyvaluesSentinelOpts.RENDER_SELECT_COL_CASTS
+                )
 
-                    render_bind_casts = (
-                        self.dialect.insertmanyvalues_implicit_sentinel
-                        & InsertmanyvaluesSentinelOpts.RENDER_SELECT_COL_CASTS
-                    )
+                add_sentinel_set = add_sentinel_cols or ()
 
-                    colnames = ", ".join(
-                        f"p{i}" for i, _ in enumerate(crud_params_single)
-                    )
+                insert_single_values_expr = ", ".join(
+                    [
+                        value
+                        for col, _, value, _ in crud_params_single
+                        if col not in add_sentinel_set
+                    ]
+                )
 
-                    if render_bind_casts:
-                        # render casts for the SELECT list.  For PG, we are
-                        # already rendering bind casts in the parameter list,
-                        # selectively for the more "tricky" types like ARRAY.
-                        # however, even for the "easy" types, if the parameter
-                        # is NULL for every entry, PG gives up and says
-                        # "it must be TEXT", which fails for other easy types
-                        # like ints.  So we cast on this side too.
-                        colnames_w_cast = ", ".join(
+                colnames = ", ".join(
+                    f"p{i}"
+                    for i, cp in enumerate(crud_params_single)
+                    if cp[0] not in add_sentinel_set
+                )
+
+                if render_bind_casts:
+                    # render casts for the SELECT list.  For PG, we are
+                    # already rendering bind casts in the parameter list,
+                    # selectively for the more "tricky" types like ARRAY.
+                    # however, even for the "easy" types, if the parameter
+                    # is NULL for every entry, PG gives up and says
+                    # "it must be TEXT", which fails for other easy types
+                    # like ints.  So we cast on this side too.
+                    colnames_w_cast = ", ".join(
+                        (
                             self.render_bind_cast(
                                 col.type,
                                 col.type._unwrapped_dialect_impl(self.dialect),
                                 f"p{i}",
                             )
-                            for i, (col, *_) in enumerate(crud_params_single)
+                            if col not in add_sentinel_set
+                            else expr
                         )
-                    else:
-                        colnames_w_cast = colnames
-
-                    text += (
-                        f" SELECT {colnames_w_cast} FROM "
-                        f"(VALUES ({insert_single_values_expr})) "
-                        f"AS imp_sen({colnames}, sen_counter) "
-                        "ORDER BY sen_counter"
+                        for i, (col, _, expr, _) in enumerate(
+                            crud_params_single
+                        )
                     )
                 else:
-                    # otherwise, if no sentinel or backend doesn't support
-                    # orderable subquery form, use a plain VALUES list
-                    embed_sentinel_value = False
-                    text += f" VALUES ({insert_single_values_expr})"
+                    colnames_w_cast = ", ".join(
+                        (f"p{i}" if col not in add_sentinel_set else expr)
+                        for i, (col, _, expr, _) in enumerate(
+                            crud_params_single
+                        )
+                    )
 
-                self._insertmanyvalues = _InsertManyValues(
-                    is_default_expr=False,
-                    single_values_expr=insert_single_values_expr,
-                    insert_crud_params=cast(
-                        "List[crud._CrudParamElementStr]",
-                        crud_params_single,
-                    ),
-                    num_positional_params_counted=counted_bindparam,
-                    sort_by_parameter_order=(
-                        insert_stmt._sort_by_parameter_order
-                    ),
-                    includes_upsert_behaviors=(
-                        insert_stmt._post_values_clause is not None
-                    ),
-                    sentinel_columns=add_sentinel_cols,
-                    num_sentinel_columns=(
-                        len(add_sentinel_cols) if add_sentinel_cols else 0
-                    ),
-                    sentinel_param_keys=named_sentinel_params,
-                    implicit_sentinel=implicit_sentinel,
-                    embed_values_counter=embed_sentinel_value,
+                insert_crud_params = [
+                    elem
+                    for elem in crud_params_single
+                    if elem[0] not in add_sentinel_set
+                ]
+
+                text += (
+                    f" SELECT {colnames_w_cast} FROM "
+                    f"(VALUES ({insert_single_values_expr})) "
+                    f"AS imp_sen({colnames}, sen_counter) "
+                    "ORDER BY sen_counter"
                 )
 
             else:
+                # otherwise, if no sentinel or backend doesn't support
+                # orderable subquery form, use a plain VALUES list
+                embed_sentinel_value = False
+                insert_crud_params = crud_params_single
+                insert_single_values_expr = ", ".join(
+                    [value for _, _, value, _ in crud_params_single]
+                )
+
                 text += f" VALUES ({insert_single_values_expr})"
+
+            self._insertmanyvalues = _InsertManyValues(
+                is_default_expr=False,
+                single_values_expr=insert_single_values_expr,
+                insert_crud_params=insert_crud_params,
+                num_positional_params_counted=counted_bindparam,
+                sort_by_parameter_order=(insert_stmt._sort_by_parameter_order),
+                includes_upsert_behaviors=(
+                    insert_stmt._post_values_clause is not None
+                ),
+                sentinel_columns=add_sentinel_cols,
+                num_sentinel_columns=(
+                    len(add_sentinel_cols) if add_sentinel_cols else 0
+                ),
+                sentinel_param_keys=named_sentinel_params,
+                implicit_sentinel=implicit_sentinel,
+                embed_values_counter=embed_sentinel_value,
+            )
+
+        else:
+            insert_single_values_expr = ", ".join(
+                [value for _, _, value, _ in crud_params_single]
+            )
+
+            text += f" VALUES ({insert_single_values_expr})"
 
         if insert_stmt._post_values_clause is not None:
             post_values_clause = self.process(

@@ -161,6 +161,104 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         metadata.create_all(connection)
         self._assert_data_noautoincrement(connection, table)
 
+    def test_full_cursor_insertmanyvalues_sql(self, metadata, connection):
+        """test compilation/ execution of the subquery form including
+        the fix for #13015
+
+        The specific form in question for #13015 is only supported by the
+        PostgreSQL dialect right now.   MSSQL would also use it for a server
+        side function that produces monotonic values, but we have no support
+        for that outside of sequence next right now, where SQL Server doesn't
+        support invokving the sequence outside of the VALUES tuples.
+
+        """
+
+        my_table = Table(
+            "my_table",
+            metadata,
+            Column("data1", String(50)),
+            Column(
+                "id",
+                Integer,
+                Sequence("foo_id_seq", start=1, data_type=Integer),
+                primary_key=True,
+            ),
+            Column("data2", String(50)),
+        )
+
+        my_table.create(connection)
+        with self.sql_execution_asserter(connection) as assert_:
+            connection.execute(
+                my_table.insert().returning(
+                    my_table.c.data1,
+                    my_table.c.id,
+                    sort_by_parameter_order=True,
+                ),
+                [
+                    {"data1": f"d1 row {i}", "data2": f"d2 row {i}"}
+                    for i in range(10)
+                ],
+            )
+
+        render_bind_casts = (
+            String().dialect_impl(connection.dialect).render_bind_cast
+        )
+
+        if render_bind_casts:
+            varchar_cast = "::VARCHAR"
+        else:
+            varchar_cast = ""
+
+        if connection.dialect.paramstyle == "pyformat":
+            params = ", ".join(
+                f"(%(data1__{i})s{varchar_cast}, %(data2__{i})s"
+                f"{varchar_cast}, {i})"
+                for i in range(0, 10)
+            )
+            parameters = {}
+            for i in range(10):
+                parameters[f"data1__{i}"] = f"d1 row {i}"
+                parameters[f"data2__{i}"] = f"d2 row {i}"
+
+        elif connection.dialect.paramstyle == "numeric_dollar":
+            params = ", ".join(
+                f"(${i * 2 + 1}{varchar_cast}, "
+                f"${i * 2 + 2}{varchar_cast}, {i})"
+                for i in range(0, 10)
+            )
+            parameters = ()
+            for i in range(10):
+                parameters += (f"d1 row {i}", f"d2 row {i}")
+        elif connection.dialect.paramstyle == "format":
+            params = ", ".join(
+                f"(%s{varchar_cast}, %s{varchar_cast}, {i})"
+                for i in range(0, 10)
+            )
+            parameters = ()
+            for i in range(10):
+                parameters += (f"d1 row {i}", f"d2 row {i}")
+        elif connection.dialect.paramstyle == "qmark":
+            params = ", ".join(
+                f"(?{varchar_cast}, ?{varchar_cast}, {i})"
+                for i in range(0, 10)
+            )
+            parameters = ()
+            for i in range(10):
+                parameters += (f"d1 row {i}", f"d2 row {i}")
+        else:
+            assert False
+
+        assert_.assert_(
+            CursorSQL(
+                "INSERT INTO my_table (data1, id, data2) "
+                f"SELECT p0::VARCHAR, nextval('foo_id_seq'), p2::VARCHAR "
+                f"FROM (VALUES {params}) "
+                "AS imp_sen(p0, p2, sen_counter) ORDER BY sen_counter "
+                "RETURNING my_table.data1, my_table.id, my_table.id AS id__1",
+                parameters,
+            )
+        )
+
     def _ints_and_strs_setinputsizes(self, connection):
         return (
             connection.dialect._bind_typing_render_casts
