@@ -87,6 +87,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _HasDialect
     from ._typing import _InfoType
+    from ._typing import _OnlyColumnArgument
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
     from .base import _EntityNamespace
@@ -2459,7 +2460,7 @@ class TextClause(
     @util.preload_module("sqlalchemy.sql.selectable")
     def columns(
         self,
-        *cols: _ColumnExpressionArgument[Any],
+        *cols: _OnlyColumnArgument[Any],
         **types: _TypeEngineArgument[Any],
     ) -> TextualSelect:
         r"""Turn this :class:`_expression.TextClause` object into a

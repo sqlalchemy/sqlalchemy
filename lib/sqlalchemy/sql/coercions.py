@@ -52,6 +52,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _DDLColumnArgument
     from ._typing import _DMLTableArgument
     from ._typing import _FromClauseArgument
+    from ._typing import _OnlyColumnArgument
     from .dml import _DMLTableElement
     from .elements import BindParameter
     from .elements import ClauseElement
@@ -212,7 +213,7 @@ def expect(
 @overload
 def expect(
     role: Type[roles.LabeledColumnExprRole[Any]],
-    element: _ColumnExpressionArgument[_T],
+    element: Union[_ColumnExpressionArgument[_T], _OnlyColumnArgument[_T]],
     **kw: Any,
 ) -> NamedColumn[_T]: ...
 

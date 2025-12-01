@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import update
+from sqlalchemy import values
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -59,4 +60,21 @@ stmt5 = update(User).values({User.id: 123, User.data: "value"})
 
 stmt6 = user_table.update().values(
     {user_table.c.d: 123, user_table.c.data: "value"}
+)
+
+
+update_values = values(
+    User.id,
+    User.name,
+    name="update_values",
+).data([(1, "Alice"), (2, "Bob")])
+
+query = (
+    update(User)
+    .values(
+        {
+            User.name: update_values.c.name,
+        }
+    )
+    .where(User.id == update_values.c.id)
 )

@@ -186,6 +186,19 @@ _T8 = TypeVar("_T8", bound=Any)
 _T9 = TypeVar("_T9", bound=Any)
 
 
+_OnlyColumnArgument = Union[
+    "ColumnElement[_T]",
+    _HasClauseElement[_T],
+    roles.DMLColumnRole,
+]
+"""A narrow type that is looking for a ColumnClause (e.g. table column with a
+name) or an ORM element that produces this.
+
+This is used for constructs that need a named column to represent a
+position in a selectable, like TextClause().columns() or values(...).
+
+"""
+
 _ColumnExpressionArgument = Union[
     "ColumnElement[_T]",
     _HasClauseElement[_T],
