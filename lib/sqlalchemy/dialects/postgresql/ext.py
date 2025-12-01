@@ -13,6 +13,7 @@ from typing import List
 from typing import Optional
 from typing import overload
 from typing import Sequence
+from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
 
@@ -32,6 +33,7 @@ from ...sql.visitors import InternalTraversal
 
 if TYPE_CHECKING:
     from ...sql._typing import _ColumnExpressionArgument
+    from ...sql._typing import _DDLColumnArgument
     from ...sql.elements import ClauseElement
     from ...sql.elements import ColumnElement
     from ...sql.operators import OperatorType
@@ -158,7 +160,9 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         ":class:`.ExcludeConstraint`",
         ":paramref:`.ExcludeConstraint.where`",
     )
-    def __init__(self, *elements, **kw):
+    def __init__(
+        self, *elements: Tuple[_DDLColumnArgument, str], **kw: Any
+    ) -> None:
         r"""
         Create an :class:`.ExcludeConstraint` object.
 
