@@ -22,7 +22,8 @@ jobs:
         python:
           - "cp37-* cp38-* cp39-*"
           - "cp310-* cp311-*"
-          - "cp312-* cp313-*"
+          - "cp312-* cp313-* cp314-*"
+          - "cp313t-* cp314t-*"
         wheel_mode:
           - compiled
         os:
