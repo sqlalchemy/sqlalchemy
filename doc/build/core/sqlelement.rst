@@ -65,6 +65,8 @@ used when building up SQLAlchemy Expression Language constructs.
 
 .. autofunction:: text
 
+.. autofunction:: tstring
+
 .. autofunction:: true
 
 .. autofunction:: try_cast
@@ -221,6 +223,11 @@ The classes here are generated using the constructors listed at
 
 .. autoclass:: TextClause
    :members:
+   :inherited-members: columns
+
+.. autoclass:: TString
+   :members:
+   :inherited-members: columns
 
 .. autoclass:: TryCast
    :members:

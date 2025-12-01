@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from string.templatelib import Template
 from typing import Any
 from typing import assert_type
 from typing import Unpack
@@ -19,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import text
+from sqlalchemy import tstring
 from sqlalchemy import update
 from sqlalchemy.engine import Result
 from sqlalchemy.engine.row import Row
@@ -31,6 +33,7 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.query import RowReturningQuery
 from sqlalchemy.sql.dml import ReturningInsert
 from sqlalchemy.sql.elements import KeyedColumnElement
+from sqlalchemy.sql.elements import TString
 from sqlalchemy.sql.expression import FromClause
 from sqlalchemy.sql.expression import TextClause
 from sqlalchemy.sql.selectable import ScalarSelect
@@ -431,18 +434,22 @@ def t_dml_delete() -> None:
     assert_type(r1, Result[int, str])
 
 
-def t_from_statement() -> None:
+def t_from_statement_text() -> None:
     t = text("select * from user")
 
     assert_type(t, TextClause)
 
     select(User).from_statement(t)
 
+    session.query(User).from_statement(t)
+
     ts = text("select * from user").columns(User.id, User.name)
 
     assert_type(ts, TextualSelect)
 
     select(User).from_statement(ts)
+
+    session.query(User).from_statement(ts)
 
     ts2 = text("select * from user").columns(
         user_table.c.id, user_table.c.name
@@ -451,6 +458,34 @@ def t_from_statement() -> None:
     assert_type(ts2, TextualSelect)
 
     select(User).from_statement(ts2)
+
+    session.query(User).from_statement(ts2)
+
+
+def t_from_statement_tstring(templ: Template) -> None:
+    t = tstring(templ)
+
+    assert_type(t, TString)
+
+    select(User).from_statement(t)
+
+    session.query(User).from_statement(t)
+
+    ts = tstring(templ).columns(User.id, User.name)
+
+    assert_type(ts, TextualSelect)
+
+    select(User).from_statement(ts)
+
+    session.query(User).from_statement(ts)
+
+    ts2 = tstring(templ).columns(user_table.c.id, user_table.c.name)
+
+    assert_type(ts2, TextualSelect)
+
+    select(User).from_statement(ts2)
+
+    session.query(User).from_statement(ts2)
 
 
 def t_aliased_fromclause() -> None:

@@ -105,7 +105,16 @@ class TruncatedLabelRole(StringRole, SQLRole):
     _role_name = "String SQL identifier"
 
 
-class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
+class TStringElementRole(UsesInspection, SQLRole):
+    """Role for elements that can be interpolated into a TString."""
+
+    __slots__ = ()
+    _role_name = "TString interpolatable element"
+
+
+class ColumnsClauseRole(
+    TStringElementRole, AllowsLambdaRole, UsesInspection, ColumnListRole
+):
     __slots__ = ()
     _role_name = (
         "Column expression, FROM clause, or other columns clause element"

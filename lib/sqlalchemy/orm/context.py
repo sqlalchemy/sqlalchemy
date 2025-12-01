@@ -880,10 +880,11 @@ class _ORMFromStatementCompileState(_ORMCompileState):
 
         self.order_by = None
 
-        if isinstance(self.statement, expression.TextClause):
-            # TextClause has no "column" objects at all.  for this case,
-            # we generate columns from our _QueryEntity objects, then
-            # flip on all the "please match no matter what" parameters.
+        if self.statement._is_text_clause:
+            # AbstractTextClause (TextClause, TString) has no "column"
+            # objects at all. for this case, we generate columns from our
+            # _QueryEntity objects, then flip on all the
+            # "please match no matter what" parameters.
             self.extra_criteria_entities = {}
 
             for entity in self._entities:

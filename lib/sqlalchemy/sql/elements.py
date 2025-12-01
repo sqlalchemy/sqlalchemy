@@ -81,6 +81,7 @@ from .. import util
 from ..util import deprecated
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
+from ..util.compat import Template
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
@@ -2323,7 +2324,7 @@ class TypeClause(DQLDMLClauseElement):
         self.type = type_
 
 
-class TextClause(
+class AbstractTextClause(
     roles.DDLConstraintColumnRole,
     roles.DDLExpressionRole,
     roles.StatementOptionRole,
@@ -2336,8 +2337,211 @@ class TextClause(
     ExecutableStatement,
     DQLDMLClauseElement,
     roles.BinaryElementRole[Any],
-    inspection.Inspectable["TextClause"],
 ):
+    """Base class for textual SQL constructs like TextClause and TString."""
+
+    __visit_name__: str
+
+    _is_text_clause = True
+    _is_textual = True
+    _is_implicitly_boolean = False
+    _render_label_in_columns_clause = False
+    _omit_from_statements = False
+    _is_collection_aggregate = False
+
+    @property
+    def _hide_froms(self) -> Iterable[FromClause]:
+        return ()
+
+    def __and__(self, other):
+        # support use in select.where(), query.filter()
+        return and_(self, other)
+
+    @property
+    def _select_iterable(self) -> _SelectIterable:
+        return (self,)
+
+    # help in those cases where text/tstring() is
+    # interpreted in a column expression situation
+    key: Optional[str] = None
+    _label: Optional[str] = None
+
+    _allow_label_resolve = False
+
+    @property
+    def type(self) -> TypeEngine[Any]:
+        return type_api.NULLTYPE
+
+    @property
+    def comparator(self):
+        return self.type.comparator_factory(self)  # type: ignore
+
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[Any]]:
+        if against is operators.in_op:
+            return Grouping(self)
+        else:
+            return self
+
+    def bindparams(
+        self,
+        *binds: BindParameter[Any],
+        **names_to_values: Any,
+    ) -> Self:
+        """Establish the values and/or types of bound parameters within
+        this :class:`_expression.AbstractTextClause` construct.
+
+        This is implemented only for :class:`.TextClause` will raise
+        ``NotImplementedError`` for :class:`.TString`.
+
+        """
+        raise NotImplementedError()
+
+    @util.preload_module("sqlalchemy.sql.selectable")
+    def columns(
+        self,
+        *cols: _ColumnExpressionArgument[Any],
+        **types: _TypeEngineArgument[Any],
+    ) -> TextualSelect:
+        r"""Turn this :class:`_expression.AbstractTextClause` object into a
+        :class:`_expression.TextualSelect`
+        object that serves the same role as a SELECT
+        statement.
+
+        The :class:`_expression.TextualSelect` is part of the
+        :class:`_expression.SelectBase`
+        hierarchy and can be embedded into another statement by using the
+        :meth:`_expression.TextualSelect.subquery` method to produce a
+        :class:`.Subquery`
+        object, which can then be SELECTed from.
+
+        This function essentially bridges the gap between an entirely
+        textual SELECT statement and the SQL expression language concept
+        of a "selectable"::
+
+            from sqlalchemy.sql import column, text
+
+            stmt = text("SELECT id, name FROM some_table")
+            stmt = stmt.columns(column("id"), column("name")).subquery("st")
+
+            stmt = (
+                select(mytable)
+                .select_from(mytable.join(stmt, mytable.c.name == stmt.c.name))
+                .where(stmt.c.id > 5)
+            )
+
+        Above, we pass a series of :func:`_expression.column` elements to the
+        :meth:`_expression.AbstractTextClause.columns` method positionally.
+        These :func:`_expression.column` elements now become first class
+        elements upon the :attr:`_expression.TextualSelect.selected_columns`
+        column collection, which then become part of the :attr:`.Subquery.c`
+        collection after :meth:`_expression.TextualSelect.subquery` is invoked.
+
+        The column expressions we pass to
+        :meth:`_expression.AbstractTextClause.columns` may also be typed; when
+        we do so, these :class:`.TypeEngine` objects become the effective
+        return type of the column, so that SQLAlchemy's result-set-processing
+        systems may be used on the return values. This is often needed for
+        types such as date or boolean types, as well as for unicode processing
+        on some dialect configurations::
+
+            stmt = text("SELECT id, name, timestamp FROM some_table")
+            stmt = stmt.columns(
+                column("id", Integer),
+                column("name", Unicode),
+                column("timestamp", DateTime),
+            )
+
+            for id, name, timestamp in connection.execute(stmt):
+                print(id, name, timestamp)
+
+        As a shortcut to the above syntax, keyword arguments referring to
+        types alone may be used, if only type conversion is needed::
+
+            stmt = text("SELECT id, name, timestamp FROM some_table")
+            stmt = stmt.columns(id=Integer, name=Unicode, timestamp=DateTime)
+
+            for id, name, timestamp in connection.execute(stmt):
+                print(id, name, timestamp)
+
+        The positional form of :meth:`_expression.AbstractTextClause.columns`
+        also provides the unique feature of **positional column targeting**,
+        which is particularly useful when using the ORM with complex textual
+        queries. If we specify the columns from our model to
+        :meth:`_expression.AbstractTextClause.columns`, the result set will
+        match to those columns positionally, meaning the name or origin of the
+        column in the textual SQL doesn't matter::
+
+            stmt = text(
+                "SELECT users.id, addresses.id, users.id, "
+                "users.name, addresses.email_address AS email "
+                "FROM users JOIN addresses ON users.id=addresses.user_id "
+                "WHERE users.id = 1"
+            ).columns(
+                User.id,
+                Address.id,
+                Address.user_id,
+                User.name,
+                Address.email_address,
+            )
+
+            query = (
+                session.query(User)
+                .from_statement(stmt)
+                .options(contains_eager(User.addresses))
+            )
+
+        The :meth:`_expression.AbstractTextClause.columns` method provides a
+        direct route to calling :meth:`_expression.FromClause.subquery` as well
+        as :meth:`_expression.SelectBase.cte` against a textual SELECT
+        statement::
+
+            stmt = stmt.columns(id=Integer, name=String).cte("st")
+
+            stmt = select(sometable).where(sometable.c.id == stmt.c.id)
+
+        :param \*cols: A series of :class:`_expression.ColumnElement` objects,
+         typically
+         :class:`_schema.Column` objects from a :class:`_schema.Table`
+         or ORM level
+         column-mapped attributes, representing a set of columns that this
+         textual string will SELECT from.
+
+        :param \**types: A mapping of string names to :class:`.TypeEngine`
+         type objects indicating the datatypes to use for names that are
+         SELECTed from the textual string.  Prefer to use the ``*cols``
+         argument as it also indicates positional ordering.
+
+        """
+        selectable = util.preloaded.sql_selectable
+
+        input_cols: List[NamedColumn[Any]] = [
+            coercions.expect(roles.LabeledColumnExprRole, col) for col in cols
+        ]
+
+        positional_input_cols = [
+            (
+                ColumnClause(col.key, types.pop(col.key))
+                if col.key in types
+                else col
+            )
+            for col in input_cols
+        ]
+        keyed_input_cols: List[NamedColumn[Any]] = [
+            ColumnClause(key, type_) for key, type_ in types.items()
+        ]
+
+        elem = selectable.TextualSelect.__new__(selectable.TextualSelect)
+        elem._init(
+            self,
+            positional_input_cols + keyed_input_cols,
+            positional=bool(positional_input_cols) and not keyed_input_cols,
+        )
+        return elem
+
+
+class TextClause(AbstractTextClause, inspection.Inspectable["TextClause"]):
     """Represent a literal SQL text fragment.
 
     E.g.::
@@ -2364,40 +2568,10 @@ class TextClause(
         ("text", InternalTraversal.dp_string),
     ] + ExecutableStatement._executable_traverse_internals
 
-    _is_text_clause = True
-
-    _is_textual = True
-
     _bind_params_regex = re.compile(r"(?<![:\w\x5c]):(\w+)(?!:)", re.UNICODE)
-    _is_implicitly_boolean = False
-
-    _render_label_in_columns_clause = False
-
-    _omit_from_statements = False
-
-    _is_collection_aggregate = False
 
     @property
-    def _hide_froms(self) -> Iterable[FromClause]:
-        return ()
-
-    def __and__(self, other):
-        # support use in select.where(), query.filter()
-        return and_(self, other)
-
-    @property
-    def _select_iterable(self) -> _SelectIterable:
-        return (self,)
-
-    # help in those cases where text() is
-    # interpreted in a column expression situation
-    key: Optional[str] = None
-    _label: Optional[str] = None
-
-    _allow_label_resolve = False
-
-    @property
-    def _is_star(self):  # type: ignore[override]
+    def _is_star(self) -> bool:  # type: ignore[override]
         return self.text == "*"
 
     def __init__(self, text: str):
@@ -2542,151 +2716,6 @@ class TextClause(
                 new_params[key] = existing._with_value(value, required=False)
         return self
 
-    @util.preload_module("sqlalchemy.sql.selectable")
-    def columns(
-        self,
-        *cols: _ColumnExpressionArgument[Any],
-        **types: _TypeEngineArgument[Any],
-    ) -> TextualSelect:
-        r"""Turn this :class:`_expression.TextClause` object into a
-        :class:`_expression.TextualSelect`
-        object that serves the same role as a SELECT
-        statement.
-
-        The :class:`_expression.TextualSelect` is part of the
-        :class:`_expression.SelectBase`
-        hierarchy and can be embedded into another statement by using the
-        :meth:`_expression.TextualSelect.subquery` method to produce a
-        :class:`.Subquery`
-        object, which can then be SELECTed from.
-
-        This function essentially bridges the gap between an entirely
-        textual SELECT statement and the SQL expression language concept
-        of a "selectable"::
-
-            from sqlalchemy.sql import column, text
-
-            stmt = text("SELECT id, name FROM some_table")
-            stmt = stmt.columns(column("id"), column("name")).subquery("st")
-
-            stmt = (
-                select(mytable)
-                .select_from(mytable.join(stmt, mytable.c.name == stmt.c.name))
-                .where(stmt.c.id > 5)
-            )
-
-        Above, we pass a series of :func:`_expression.column` elements to the
-        :meth:`_expression.TextClause.columns` method positionally.  These
-        :func:`_expression.column`
-        elements now become first class elements upon the
-        :attr:`_expression.TextualSelect.selected_columns` column collection,
-        which then
-        become part of the :attr:`.Subquery.c` collection after
-        :meth:`_expression.TextualSelect.subquery` is invoked.
-
-        The column expressions we pass to
-        :meth:`_expression.TextClause.columns` may
-        also be typed; when we do so, these :class:`.TypeEngine` objects become
-        the effective return type of the column, so that SQLAlchemy's
-        result-set-processing systems may be used on the return values.
-        This is often needed for types such as date or boolean types, as well
-        as for unicode processing on some dialect configurations::
-
-            stmt = text("SELECT id, name, timestamp FROM some_table")
-            stmt = stmt.columns(
-                column("id", Integer),
-                column("name", Unicode),
-                column("timestamp", DateTime),
-            )
-
-            for id, name, timestamp in connection.execute(stmt):
-                print(id, name, timestamp)
-
-        As a shortcut to the above syntax, keyword arguments referring to
-        types alone may be used, if only type conversion is needed::
-
-            stmt = text("SELECT id, name, timestamp FROM some_table")
-            stmt = stmt.columns(id=Integer, name=Unicode, timestamp=DateTime)
-
-            for id, name, timestamp in connection.execute(stmt):
-                print(id, name, timestamp)
-
-        The positional form of :meth:`_expression.TextClause.columns`
-        also provides the
-        unique feature of **positional column targeting**, which is
-        particularly useful when using the ORM with complex textual queries. If
-        we specify the columns from our model to
-        :meth:`_expression.TextClause.columns`,
-        the result set will match to those columns positionally, meaning the
-        name or origin of the column in the textual SQL doesn't matter::
-
-            stmt = text(
-                "SELECT users.id, addresses.id, users.id, "
-                "users.name, addresses.email_address AS email "
-                "FROM users JOIN addresses ON users.id=addresses.user_id "
-                "WHERE users.id = 1"
-            ).columns(
-                User.id,
-                Address.id,
-                Address.user_id,
-                User.name,
-                Address.email_address,
-            )
-
-            query = (
-                session.query(User)
-                .from_statement(stmt)
-                .options(contains_eager(User.addresses))
-            )
-
-        The :meth:`_expression.TextClause.columns` method provides a direct
-        route to calling :meth:`_expression.FromClause.subquery` as well as
-        :meth:`_expression.SelectBase.cte`
-        against a textual SELECT statement::
-
-            stmt = stmt.columns(id=Integer, name=String).cte("st")
-
-            stmt = select(sometable).where(sometable.c.id == stmt.c.id)
-
-        :param \*cols: A series of :class:`_expression.ColumnElement` objects,
-         typically
-         :class:`_schema.Column` objects from a :class:`_schema.Table`
-         or ORM level
-         column-mapped attributes, representing a set of columns that this
-         textual string will SELECT from.
-
-        :param \**types: A mapping of string names to :class:`.TypeEngine`
-         type objects indicating the datatypes to use for names that are
-         SELECTed from the textual string.  Prefer to use the ``*cols``
-         argument as it also indicates positional ordering.
-
-        """
-        selectable = util.preloaded.sql_selectable
-
-        input_cols: List[NamedColumn[Any]] = [
-            coercions.expect(roles.LabeledColumnExprRole, col) for col in cols
-        ]
-
-        positional_input_cols = [
-            (
-                ColumnClause(col.key, types.pop(col.key))
-                if col.key in types
-                else col
-            )
-            for col in input_cols
-        ]
-        keyed_input_cols: List[NamedColumn[Any]] = [
-            ColumnClause(key, type_) for key, type_ in types.items()
-        ]
-
-        elem = selectable.TextualSelect.__new__(selectable.TextualSelect)
-        elem._init(
-            self,
-            positional_input_cols + keyed_input_cols,
-            positional=bool(positional_input_cols) and not keyed_input_cols,
-        )
-        return elem
-
     @property
     def type(self) -> TypeEngine[Any]:
         return type_api.NULLTYPE
@@ -2704,6 +2733,84 @@ class TextClause(
             return Grouping(self)
         else:
             return self
+
+
+class TString(AbstractTextClause, inspection.Inspectable["TString"]):
+    """Represent a SQL template string using Python 3.14+ t-strings.
+
+    E.g.::
+
+        from sqlalchemy import tstring, column
+
+        a = 5
+        b = 10
+        stmt = tstring(t"select {a}, {b}")
+        result = connection.execute(stmt)
+
+    The :class:`_expression.TString` construct is produced using the
+    :func:`_expression.tstring` function; see that function for full
+    documentation.
+
+    .. versionadded:: 2.1
+
+    .. seealso::
+
+        :func:`_expression.tstring`
+
+    """
+
+    __visit_name__ = "tstring"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("parts", InternalTraversal.dp_clauseelement_list)
+    ] + ExecutableStatement._executable_traverse_internals
+
+    @property
+    def _is_star(self) -> bool:  # type: ignore[override]
+        return (
+            len(self.parts) == 1
+            and isinstance(self.parts[0], TextClause)
+            and self.parts[0]._is_star
+        )
+
+    def __init__(self, template: Template):
+        """Construct a :class:`_expression.TString` from a Python 3.14+
+        template string.
+
+        :param template: a Python 3.14+ template string (t-string) that
+         contains SQL fragments and Python expressions to be interpolated.
+
+        """
+        self.parts: List[ClauseElement] = []
+
+        if not isinstance(template, Template):
+            raise exc.ArgumentError("pep-750 Tstring (e.g. t'...') expected")
+
+        for part in template:
+            if isinstance(part, str):
+                self.parts.append(TextClause(part))
+            else:
+                assert hasattr(part, "value")
+                self.parts.append(
+                    coercions.expect(roles.TStringElementRole, part.value)
+                )
+
+    def bindparams(
+        self,
+        *binds: BindParameter[Any],
+        **names_to_values: Any,
+    ) -> Self:
+        """Not supported for TString constructs.
+
+        TString constructs do not support .bindparams(). Bind parameters
+        are automatically created from interpolated values.
+
+        """
+        raise NotImplementedError(
+            "TString constructs do not support .bindparams(). "
+            "Bind parameters are automatically created "
+            "from interpolated values."
+        )
 
 
 class Null(SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]):
@@ -4282,13 +4389,19 @@ class Grouping(GroupedElement, ColumnElement[_T]):
     ]
 
     element: Union[
-        TextClause, ClauseList, ColumnElement[_T], CompilerColumnElement
+        AbstractTextClause,
+        ClauseList,
+        ColumnElement[_T],
+        CompilerColumnElement,
     ]
 
     def __init__(
         self,
         element: Union[
-            TextClause, ClauseList, ColumnElement[_T], CompilerColumnElement
+            AbstractTextClause,
+            ClauseList,
+            ColumnElement[_T],
+            CompilerColumnElement,
         ],
     ):
         self.element = element

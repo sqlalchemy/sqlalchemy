@@ -2754,7 +2754,7 @@ class Query(
 
     @_generative
     @_assertions(_no_clauseelement_condition)
-    def from_statement(self, statement: ExecutableReturnsRows) -> Self:
+    def from_statement(self, statement: roles.SelectStatementRole) -> Self:
         """Execute the given SELECT statement and return results.
 
         This method bypasses all internal statement compilation, and the
@@ -2771,10 +2771,10 @@ class Query(
             :meth:`_sql.Select.from_statement` - v2 comparable method.
 
         """
-        statement = coercions.expect(
+        _statement = coercions.expect(
             roles.SelectStatementRole, statement, apply_propagate_attrs=self
         )
-        self._statement = statement
+        self._statement = _statement
         return self
 
     def first(self) -> Optional[_T]:

@@ -142,7 +142,7 @@ class TablesTest(TestBase):
         ):
             with self.bind.begin() as conn:
                 provision.delete_from_all_tables(
-                    config, conn, self._tables_metadata
+                    conn, config, self._tables_metadata
                 )
 
     @classmethod

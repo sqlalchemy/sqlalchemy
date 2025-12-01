@@ -98,9 +98,12 @@ from .expression import TableClause as TableClause
 from .expression import TableSample as TableSample
 from .expression import tablesample as tablesample
 from .expression import text as text
+from .expression import TextClause as TextClause
 from .expression import true as true
 from .expression import True_ as True_
 from .expression import try_cast as try_cast
+from .expression import TString as TString
+from .expression import tstring as tstring
 from .expression import tuple_ as tuple_
 from .expression import type_coerce as type_coerce
 from .expression import union as union

@@ -182,7 +182,9 @@ class EngineFixture(AsyncFixture, fixtures.TablesTest):
 
     @testing.fixture
     def async_engine(self):
-        return engines.testing_engine(asyncio=True, transfer_staticpool=True)
+        return engines.testing_engine(
+            asyncio=True, options={"sqlite_share_pool": True}
+        )
 
     @testing.fixture
     def async_connection(self, async_engine):
@@ -262,7 +264,7 @@ class AsyncEngineTest(EngineFixture):
     @async_test
     async def test_engine_eq_ne(self, async_engine):
         e2 = _async_engine.AsyncEngine(async_engine.sync_engine)
-        e3 = engines.testing_engine(asyncio=True, transfer_staticpool=True)
+        e3 = engines.testing_engine(asyncio=True)
 
         eq_(async_engine, e2)
         ne_(async_engine, e3)
@@ -298,9 +300,7 @@ class AsyncEngineTest(EngineFixture):
                     result.all()
 
             try:
-                engine = engines.testing_engine(
-                    asyncio=True, transfer_staticpool=False
-                )
+                engine = engines.testing_engine(asyncio=True)
 
                 asyncio.run(main())
             except Exception as err:
@@ -743,12 +743,16 @@ class AsyncEngineTest(EngineFixture):
 
     @testing.requires.queue_pool
     @async_test
-    async def test_pool_exhausted_some_timeout(self, async_engine):
-        engine = create_async_engine(
-            testing.db.url,
-            pool_size=1,
-            max_overflow=0,
-            pool_timeout=0.1,
+    async def test_pool_exhausted_some_timeout(
+        self, testing_engine, async_engine
+    ):
+        engine = testing_engine(
+            asyncio=True,
+            options=dict(
+                pool_size=1,
+                max_overflow=0,
+                pool_timeout=0.1,
+            ),
         )
         async with engine.connect():
             with expect_raises(exc.TimeoutError):
@@ -767,12 +771,16 @@ class AsyncEngineTest(EngineFixture):
 
     @testing.requires.queue_pool
     @async_test
-    async def test_pool_exhausted_no_timeout(self, async_engine):
-        engine = create_async_engine(
-            testing.db.url,
-            pool_size=1,
-            max_overflow=0,
-            pool_timeout=0,
+    async def test_pool_exhausted_no_timeout(
+        self, testing_engine, async_engine
+    ):
+        engine = testing_engine(
+            asyncio=True,
+            options=dict(
+                pool_size=1,
+                max_overflow=0,
+                pool_timeout=0,
+            ),
         )
         async with engine.connect():
             with expect_raises(exc.TimeoutError):

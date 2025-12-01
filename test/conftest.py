@@ -16,6 +16,10 @@ os.environ["SQLALCHEMY_WARN_20"] = "true"
 
 collect_ignore_glob = []
 
+# omit py314.py test files on earlier versions of python
+if sys.version_info < (3, 14):
+    collect_ignore_glob.append("*_py314.py")
+
 # this requires that sqlalchemy.testing was not already
 # imported in order to work
 pytest.register_assert_rewrite("sqlalchemy.testing.assertions")

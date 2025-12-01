@@ -332,7 +332,7 @@ def test_pep484(session: nox.Session) -> None:
     )
 
 
-@nox.session(name="mypy")
+@nox.session(name="mypy", python="3.14")
 def test_mypy(session: nox.Session) -> None:
     """run the typing integration test suite"""
 
@@ -351,7 +351,7 @@ def test_mypy(session: nox.Session) -> None:
     session.run(*cmd, *posargs)
 
 
-@nox.session(name="pep8")
+@nox.session(name="pep8", python="3.14")
 def test_pep8(session: nox.Session) -> None:
     """Run linting and formatting checks."""
 

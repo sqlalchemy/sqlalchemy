@@ -29,6 +29,8 @@ def _combinations():
     *list(_combinations()), argnames="name,parent,child,direction", id_="saaa"
 )
 class ABCTest(fixtures.MappedTest):
+    __requires__ = ("foreign_key_cycles_w_cascade",)
+
     @classmethod
     def define_tables(cls, metadata):
         parent, child, direction = cls.parent, cls.child, cls.direction
@@ -48,7 +50,12 @@ class ABCTest(fixtures.MappedTest):
                 Column(
                     "child_id",
                     Integer,
-                    ForeignKey("%s.id" % child, use_alter=True, name="foo"),
+                    ForeignKey(
+                        "%s.id" % child,
+                        use_alter=True,
+                        name="foo",
+                        ondelete="cascade",
+                    ),
                 )
             )
         elif "a" == child and direction == ONETOMANY:
@@ -56,7 +63,12 @@ class ABCTest(fixtures.MappedTest):
                 Column(
                     "parent_id",
                     Integer,
-                    ForeignKey("%s.id" % parent, use_alter=True, name="foo"),
+                    ForeignKey(
+                        "%s.id" % parent,
+                        use_alter=True,
+                        name="foo",
+                        ondelete="cascade",
+                    ),
                 )
             )
         ta = Table(*ta)
@@ -71,7 +83,12 @@ class ABCTest(fixtures.MappedTest):
                 Column(
                     "child_id",
                     Integer,
-                    ForeignKey("%s.id" % child, use_alter=True, name="foo"),
+                    ForeignKey(
+                        "%s.id" % child,
+                        use_alter=True,
+                        name="foo",
+                        ondelete="cascade",
+                    ),
                 )
             )
         elif "b" == child and direction == ONETOMANY:
@@ -79,7 +96,12 @@ class ABCTest(fixtures.MappedTest):
                 Column(
                     "parent_id",
                     Integer,
-                    ForeignKey("%s.id" % parent, use_alter=True, name="foo"),
+                    ForeignKey(
+                        "%s.id" % parent,
+                        use_alter=True,
+                        name="foo",
+                        ondelete="cascade",
+                    ),
                 )
             )
         tb = Table(*tb)
@@ -94,7 +116,12 @@ class ABCTest(fixtures.MappedTest):
                 Column(
                     "child_id",
                     Integer,
-                    ForeignKey("%s.id" % child, use_alter=True, name="foo"),
+                    ForeignKey(
+                        "%s.id" % child,
+                        use_alter=True,
+                        name="foo",
+                        ondelete="cascade",
+                    ),
                 )
             )
         elif "c" == child and direction == ONETOMANY:
@@ -102,7 +129,12 @@ class ABCTest(fixtures.MappedTest):
                 Column(
                     "parent_id",
                     Integer,
-                    ForeignKey("%s.id" % parent, use_alter=True, name="foo"),
+                    ForeignKey(
+                        "%s.id" % parent,
+                        use_alter=True,
+                        name="foo",
+                        ondelete="cascade",
+                    ),
                 )
             )
         tc = Table(*tc)

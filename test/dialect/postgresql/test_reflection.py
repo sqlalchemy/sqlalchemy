@@ -56,16 +56,14 @@ from sqlalchemy.types import NullType
 class ReflectionFixtures:
     @testing.fixture(
         params=[
-            ("engine", True),
-            ("connection", True),
-            ("engine", False),
-            ("connection", False),
+            "engine",
+            "connection",
         ]
     )
     def inspect_fixture(self, request, metadata, testing_engine):
-        engine, future = request.param
+        engine = request.param
 
-        eng = testing_engine(future=future)
+        eng = testing_engine()
 
         conn = eng.connect()
 

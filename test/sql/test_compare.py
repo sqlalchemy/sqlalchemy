@@ -66,6 +66,7 @@ from sqlalchemy.sql.elements import Immutable
 from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.elements import OrderByList
 from sqlalchemy.sql.elements import Slice
+from sqlalchemy.sql.elements import TString
 from sqlalchemy.sql.elements import TypeClause
 from sqlalchemy.sql.elements import UnaryExpression
 from sqlalchemy.sql.functions import FunctionElement
@@ -1752,6 +1753,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
                 SyntaxExtension,
                 DialectKWArgs,
                 Executable,
+                TString,
             ]
         )
     )
@@ -1794,7 +1796,12 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
         need = set(
             cls
             for cls in all_hascachekey_subclasses(
-                ignore_subclasses=[Annotated, NoInit, SingletonConstant]
+                ignore_subclasses=[
+                    Annotated,
+                    NoInit,
+                    SingletonConstant,
+                    TString,
+                ]
             )
             if "orm" not in cls.__module__
             and "compiler" not in cls.__module__

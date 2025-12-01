@@ -2597,8 +2597,15 @@ class SQLCompiler(Compiled):
         within_columns_clause=False,
         render_label_as_label=None,
         result_map_targets=(),
+        within_tstring=False,
         **kw,
     ):
+        if within_tstring:
+            raise exc.CompileError(
+                "Using label() directly inside tstring is not supported "
+                "as it is ambiguous how the label expression should be "
+                "rendered without knowledge of how it's being used in SQL"
+            )
         # only render labels within the columns clause
         # or ORDER BY clause of a select.  dialect-specific compilers
         # can modify this behavior.
@@ -2759,6 +2766,23 @@ class SQLCompiler(Compiled):
                 do_bindparam, self.post_process_text(textclause.text)
             ),
         )
+
+    def visit_tstring(self, tstring, add_to_result_map=None, **kw):
+        if self._collect_params:
+            self._add_to_params(tstring)
+
+        if not self.stack:
+            self.isplaintext = True
+
+        if add_to_result_map:
+            # tstring() object is present in the columns clause of a
+            # select().   Add a no-name entry to the result map so that
+            # row[tstring()] produces a result
+            add_to_result_map(None, None, (tstring,), sqltypes.NULLTYPE)
+
+        # Process each part and concatenate
+        kw["within_tstring"] = True
+        return "".join(self.process(part, **kw) for part in tstring.parts)
 
     def visit_textual_select(
         self, taf, compound_index=None, asfrom=False, **kw
@@ -4394,6 +4418,7 @@ class SQLCompiler(Compiled):
         lateral=False,
         enclosing_alias=None,
         from_linter=None,
+        within_tstring=False,
         **kwargs,
     ):
         if lateral:
@@ -4430,7 +4455,7 @@ class SQLCompiler(Compiled):
         else:
             kwargs["enclosing_alias"] = alias
 
-        if asfrom or ashint:
+        if asfrom or ashint or within_tstring:
             if isinstance(alias.name, elements._truncated_label):
                 alias_name = self._truncated_identifier("alias", alias.name)
             else:
@@ -4438,7 +4463,7 @@ class SQLCompiler(Compiled):
 
         if ashint:
             return self.preparer.format_alias(alias, alias_name)
-        elif asfrom:
+        elif asfrom or within_tstring:
             if from_linter:
                 from_linter.froms[alias._de_clone()] = alias_name
 
@@ -4825,6 +4850,7 @@ class SQLCompiler(Compiled):
             within_columns_clause=within_columns_clause,
             add_to_result_map=add_to_result_map,
             include_table=include_table,
+            within_tstring=False,
         )
         return result_expr._compiler_dispatch(self, **column_clause_args)
 
@@ -5483,12 +5509,13 @@ class SQLCompiler(Compiled):
         from_linter=None,
         ambiguous_table_name_map=None,
         enclosing_alias=None,
+        within_tstring=False,
         **kwargs,
     ):
         if from_linter:
             from_linter.froms[table] = table.fullname
 
-        if asfrom or ashint:
+        if asfrom or ashint or within_tstring:
             effective_schema = self.preparer.schema_for_object(table)
 
             if use_schema and effective_schema:

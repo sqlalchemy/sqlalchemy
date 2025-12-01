@@ -339,12 +339,9 @@ class Config:
 
         self.is_async = db.dialect.is_async
 
-        self.is_default_dialect = (
-            db.url._get_entrypoint()
-            is db.url.set(
-                drivername=db.url.get_backend_name()
-            )._get_entrypoint()
-        )
+        from . import provision
+
+        self.is_default_dialect = provision.is_preferred_driver(self, db)
 
     _stack = collections.deque()
     _configs = set()

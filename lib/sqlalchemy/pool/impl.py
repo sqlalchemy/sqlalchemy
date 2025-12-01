@@ -378,6 +378,15 @@ class SingletonThreadPool(Pool):
             dialect=self._dialect,
         )
 
+    def _transfer_from(
+        self, other_singleton_pool: SingletonThreadPool
+    ) -> None:
+        # used by the test suite to make a new engine / pool without
+        # losing the state of an existing SQLite :memory: connection
+        assert not hasattr(other_singleton_pool._fairy, "current")
+        self._conn = other_singleton_pool._conn
+        self._all_conns = other_singleton_pool._all_conns
+
     def dispose(self) -> None:
         """Dispose of this pool."""
 
