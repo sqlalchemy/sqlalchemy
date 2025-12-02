@@ -485,6 +485,7 @@ from ...engine import interfaces
 from ...engine import processors
 from ...sql import sqltypes
 from ...sql._typing import is_sql_compiler
+from ...sql.sqltypes import Boolean
 
 # source:
 # https://github.com/oracle/python-cx_Oracle/issues/596#issuecomment-999243649
@@ -881,7 +882,17 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                                 decimal.Decimal,
                                 arraysize=len_params,
                             )
-
+                        elif isinstance(type_impl, Boolean):
+                            if self.dialect.supports_native_boolean:
+                                out_parameters[name] = self.cursor.var(
+                                    cx_Oracle.BOOLEAN, arraysize=len_params
+                                )
+                            else:
+                                out_parameters[name] = self.cursor.var(
+                                    cx_Oracle.NUMBER,
+                                    arraysize=len_params,
+                                    outconverter=bool,
+                                )
                         else:
                             out_parameters[name] = self.cursor.var(
                                 dbtype, arraysize=len_params

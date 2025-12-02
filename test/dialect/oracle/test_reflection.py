@@ -722,6 +722,21 @@ class TableReflectionTest(fixtures.TestBase):
         tb1 = Table("test_vector", m2, autoload_with=connection)
         assert tb1.columns.keys() == ["id", "name", "embedding"]
 
+    @testing.only_on("oracle>=23")
+    def test_reflection_w_boolean_column(self, connection, metadata):
+        tb1 = Table(
+            "test_boolean",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("flag", oracle.BOOLEAN),
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+
+        tb1 = Table("test_boolean", m2, autoload_with=connection)
+        assert isinstance(tb1.c.flag.type, oracle.BOOLEAN)
+
 
 class ViewReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
