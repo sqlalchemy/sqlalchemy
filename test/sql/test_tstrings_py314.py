@@ -9,6 +9,7 @@ from sqlalchemy import JSON
 from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy import tstring
 from sqlalchemy.engine.interfaces import CacheStats
 from sqlalchemy.sql import table
@@ -260,6 +261,7 @@ class ExecutionTest(fixtures.TestBase):
         result = connection.execute(tstring(t"select {a + 7}, {b}"))
         eq_(result.all(), [(8, 2)])
 
+    @testing.requires.json_type
     def test_json_literal_execution(self, connection):
         some_json = {"foo": "bar"}
         stmt = tstring(t"select {literal(some_json, JSON)}").columns(
@@ -269,6 +271,7 @@ class ExecutionTest(fixtures.TestBase):
         row = result.scalar()
         eq_(row, {"foo": "bar"})
 
+    @testing.requires.json_type
     def test_statement_caching(self, connection):
         """Test that tstring statements are properly cached."""
         some_json = {"foo": "bar"}
