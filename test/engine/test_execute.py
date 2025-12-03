@@ -912,6 +912,38 @@ class ExecuteDriverTest(fixtures.TablesTest):
                 eq_(conn.scalar(select(1)), 1)
             eng.dispose()
 
+    @testing.requires.insertmanyvalues
+    def test_cursor_execute_insertmanyvalues(self, connection, metadata):
+        """test #13018, that before_cursor_execute and after_cursor_execute
+        get the inner INSERT statements / params for an insertmanyvalues
+
+        """
+        canary = Mock()
+
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50)),
+        )
+        t.create(connection)
+
+        event.listen(connection, "before_cursor_execute", canary.bce)
+        event.listen(connection, "after_cursor_execute", canary.ace)
+
+        result = connection.execute(
+            t.insert().returning(
+                t.c.id, t.c.data, sort_by_parameter_order=True
+            ),
+            [{"data": f"d{i}"} for i in range(10)],
+        )
+        eq_(result.all(), [(i + 1, f"d{i}") for i in range(10)])
+
+        eq_(
+            [(c1.args[2], c1.args[3]) for c1 in canary.bce.mock_calls],
+            [(c1.args[2], c1.args[3]) for c1 in canary.ace.mock_calls],
+        )
+
 
 class CompiledCacheTest(fixtures.TestBase):
     __sparse_driver_backend__ = True

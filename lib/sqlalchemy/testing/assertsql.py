@@ -484,7 +484,6 @@ def assert_engine(engine):
     def connection_execute(
         conn, clauseelement, multiparams, params, execution_options
     ):
-        conn._WORKAROUND_ISSUE_13018 = True
         # grab the original statement + params before any cursor
         # execution
         orig[:] = clauseelement, multiparams, params

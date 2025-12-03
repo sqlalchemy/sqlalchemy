@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 13018
+
+    Fixed issue in the :meth:`.ConnectionEvents.after_cursor_execute` method
+    where the SQL statement and parameter list for an "insertmanyvalues"
+    operation sent to the event would not be the actual SQL / parameters just
+    emitted on the cursor, instead being the non-batched form of the statement
+    that's used as a template to generate the batched statements.
