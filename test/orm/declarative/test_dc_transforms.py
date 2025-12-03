@@ -1690,6 +1690,54 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
         n1 = Novel("the description")
         eq_(n1.description, "the description")
 
+    def test_cpython_142214(self, dc_decl_base):
+        """test for the cpython issue shown in issue #13021"""
+
+        class User(dc_decl_base):
+            __tablename__ = "user_account"
+
+            id: Mapped[int] = mapped_column(init=False, primary_key=True)
+            name: Mapped[str]
+
+        class CreatedByMixin(MappedAsDataclass, kw_only=True):
+            created_by_fk: Mapped[int] = mapped_column(
+                ForeignKey("user_account.id"), init=False
+            )
+
+            @declared_attr
+            @classmethod
+            def created_by(cls) -> Mapped[User]:
+                return relationship(foreign_keys=[cls.created_by_fk])
+
+        class Item(CreatedByMixin, dc_decl_base, kw_only=True):
+            __tablename__ = "item"
+
+            id: Mapped[int] = mapped_column(init=False, primary_key=True)
+            description: Mapped[str]
+
+        class SpecialItem(Item, kw_only=True):
+            __tablename__ = "special_item"
+
+            id: Mapped[int] = mapped_column(
+                ForeignKey("item.id"), init=False, primary_key=True
+            )
+            special_description: Mapped[str]
+
+        special_item = SpecialItem(
+            special_description="sd1",
+            description="d1",
+            created_by=User(name="u1"),
+        )
+
+        eq_(
+            special_item,
+            SpecialItem(
+                special_description="sd1",
+                description="d1",
+                created_by=User(name="u1"),
+            ),
+        )
+
 
 class DataclassArgsTest(fixtures.TestBase):
     dc_arg_names = (
