@@ -123,6 +123,7 @@ if TYPE_CHECKING:
     from ._typing import _MAYBE_ENTITY
     from ._typing import _NOT_ENTITY
     from ._typing import _OnClauseArgument
+    from ._typing import _OnlyColumnArgument
     from ._typing import _SelectStatementForCompoundArgument
     from ._typing import _T0
     from ._typing import _T1
@@ -3355,6 +3356,7 @@ class Values(roles.InElementRole, HasCTE, Generative, LateralFromClause):
     __visit_name__ = "values"
 
     _data: Tuple[Sequence[Tuple[Any, ...]], ...] = ()
+    _column_args: Tuple[NamedColumn[Any], ...]
 
     _unnamed: bool
     _traverse_internals: _TraverseInternalsType = [
@@ -3368,12 +3370,15 @@ class Values(roles.InElementRole, HasCTE, Generative, LateralFromClause):
 
     def __init__(
         self,
-        *columns: ColumnClause[Any],
+        *columns: _OnlyColumnArgument[Any],
         name: Optional[str] = None,
         literal_binds: bool = False,
     ):
         super().__init__()
-        self._column_args = columns
+        self._column_args = tuple(
+            coercions.expect(roles.LabeledColumnExprRole, col)
+            for col in columns
+        )
 
         if name is None:
             self._unnamed = True
@@ -3517,7 +3522,7 @@ class ScalarValues(roles.InElementRole, GroupedElement, ColumnElement[Any]):
 
     def __init__(
         self,
-        columns: Sequence[ColumnClause[Any]],
+        columns: Sequence[NamedColumn[Any]],
         data: Tuple[Sequence[Tuple[Any, ...]], ...],
         literal_binds: bool,
     ):

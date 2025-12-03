@@ -36,6 +36,7 @@ from ..util.typing import Unpack
 if TYPE_CHECKING:
     from ._typing import _FromClauseArgument
     from ._typing import _OnClauseArgument
+    from ._typing import _OnlyColumnArgument
     from ._typing import _SelectStatementForCompoundArgument
     from ._typing import _T0
     from ._typing import _T1
@@ -684,13 +685,12 @@ def union_all(
 
 
 def values(
-    *columns: ColumnClause[Any],
+    *columns: _OnlyColumnArgument[Any],
     name: Optional[str] = None,
     literal_binds: bool = False,
 ) -> Values:
     r"""Construct a :class:`_expression.Values` construct representing the
     SQL ``VALUES`` clause.
-
 
     The column expressions and the actual data for :class:`_expression.Values`
     are given in two separate steps.  The constructor receives the column

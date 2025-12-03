@@ -91,9 +91,9 @@ if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
-    from ._typing import _DMLOnlyColumnArgument
     from ._typing import _HasDialect
     from ._typing import _InfoType
+    from ._typing import _OnlyColumnArgument
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
     from .base import _EntityNamespace
@@ -2002,7 +2002,7 @@ class DMLTargetCopy(roles.InElementRole, KeyedColumnElement[_T]):
 
     """
 
-    def __init__(self, column: _DMLOnlyColumnArgument[_T]):
+    def __init__(self, column: _OnlyColumnArgument[_T]):
         self.column = coercions.expect(roles.ColumnArgumentRole, column)
         self.type = self.column.type
 
@@ -2401,7 +2401,7 @@ class AbstractTextClause(
     @util.preload_module("sqlalchemy.sql.selectable")
     def columns(
         self,
-        *cols: _ColumnExpressionArgument[Any],
+        *cols: _OnlyColumnArgument[Any],
         **types: _TypeEngineArgument[Any],
     ) -> TextualSelect:
         r"""Turn this :class:`_expression.AbstractTextClause` object into a

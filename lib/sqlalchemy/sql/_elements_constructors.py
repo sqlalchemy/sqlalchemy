@@ -59,7 +59,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
-    from ._typing import _DMLOnlyColumnArgument
+    from ._typing import _OnlyColumnArgument
     from ._typing import _TypeEngineArgument
     from .elements import _FrameIntTuple
     from .elements import BinaryExpression
@@ -490,7 +490,7 @@ def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
     return coercions.expect(roles.ExpressionElementRole, clause).__invert__()
 
 
-def from_dml_column(column: _DMLOnlyColumnArgument[_T]) -> DMLTargetCopy[_T]:
+def from_dml_column(column: _OnlyColumnArgument[_T]) -> DMLTargetCopy[_T]:
     r"""A placeholder that may be used in compiled INSERT or UPDATE expressions
     to refer to the SQL expression or value being applied to another column.
 
