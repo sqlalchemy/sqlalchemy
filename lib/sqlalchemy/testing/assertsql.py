@@ -275,7 +275,9 @@ class DialectSQL(CompiledSQL):
 
         # TODO: why do we need this part?
         for real_stmt in execute_observed.statements:
-            if self._compare_no_space(real_stmt.statement, received_stmt):
+            if self._compare_no_space(
+                real_stmt.context.statement, received_stmt
+            ):
                 break
         else:
             raise AssertionError(
@@ -482,6 +484,7 @@ def assert_engine(engine):
     def connection_execute(
         conn, clauseelement, multiparams, params, execution_options
     ):
+        conn._WORKAROUND_ISSUE_13018 = True
         # grab the original statement + params before any cursor
         # execution
         orig[:] = clauseelement, multiparams, params
@@ -502,6 +505,7 @@ def assert_engine(engine):
         else:
             obs = SQLExecuteObserved(context, orig[0], orig[1], orig[2])
             asserter.accumulated.append(obs)
+
         obs.statements.append(
             SQLCursorExecuteObserved(
                 statement, parameters, context, executemany
