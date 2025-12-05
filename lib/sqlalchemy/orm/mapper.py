@@ -2100,6 +2100,10 @@ class Mapper(
                 # to be addressable in subqueries
                 col.key = col._tq_key_label = key
 
+            # In the rare case of adding a ColumnProperty before the mapper is fully configured (e.g. deferring a reflected column)
+            if not hasattr(self, "columns") or not hasattr(self, "_props"):
+                return prop
+            
             self.columns.add(col, key)
 
             for col in prop.columns:
@@ -2299,7 +2303,7 @@ class Mapper(
 
         descriptor_props = util.preloaded.orm_descriptor_props
 
-        prop = self._props.get(key)
+        prop = self._props.get(key) if hasattr(self, "_props") else None
 
         if isinstance(prop, properties.ColumnProperty):
             return self._reconcile_prop_with_incoming_columns(
