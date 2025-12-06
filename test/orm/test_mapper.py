@@ -1030,9 +1030,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User()
         assert hasattr(User, "addresses")
         assert "addresses" in [p.key for p in m1._polymorphic_properties]
-    
+
     @testing.variation("property_type", ["Column", "ColumnProperty"])
-    def test_add_property_before_mapping_is_complete(self, property_type, connection):
+    def test_add_property_before_mapping_is_complete(
+        self, property_type, connection
+    ):
         m = MetaData()
         users = Table(
             "deferred_users",
@@ -1042,18 +1044,25 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             Column("new_column", String),
         )
         User = self.classes.User
+
         class UserWithDeferred(User):
             pass
-        
+
         from sqlalchemy import event
-        # Listen for the event to be able to retrieve the mapper before completing the mapping process
-        @event.listens_for(UserWithDeferred, "instrument_class", propagate=True)
+
+        # Listen for the event to be able to retrieve the mapper
+        # before completing the mapping process
+        @event.listens_for(
+            UserWithDeferred, "instrument_class", propagate=True
+        )
         def before_mapper_configured(mapper, class_):
             assert mapper.configured is False
 
             col = mapper.local_table.c.new_column
             if property_type.ColumnProperty:
-                mapper.add_property(col.key, deferred(col, group="deferred_group"))
+                mapper.add_property(
+                    col.key, deferred(col, group="deferred_group")
+                )
             else:
                 mapper.add_property(col.key, col)
 
@@ -1064,7 +1073,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 users,
                 properties={
                     "name": deferred(users.c.name, group="deferred_group")
-                }
+                },
             )
         else:
             self.mapper(UserWithDeferred, users)
@@ -1090,9 +1099,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             eq_(user.new_column, "test_value")
 
             assert "new_column" in user.__dict__
-            assert "name" in user.__dict__ 
+            assert "name" in user.__dict__
             eq_(user.name, "testuser")
-
 
         else:
             assert "id" in user.__dict__
@@ -1102,7 +1110,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             eq_(user.name, "testuser")
 
         sess.close()
-        event.remove(UserWithDeferred, "instrument_class", before_mapper_configured)
+        event.remove(
+            UserWithDeferred, "instrument_class", before_mapper_configured
+        )
 
     def test_replace_col_prop_w_syn(self):
         users, User = self.tables.users, self.classes.User

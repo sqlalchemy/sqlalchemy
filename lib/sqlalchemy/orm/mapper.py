@@ -2100,10 +2100,11 @@ class Mapper(
                 # to be addressable in subqueries
                 col.key = col._tq_key_label = key
 
-            # In the rare case of adding a ColumnProperty before the mapper is fully configured (e.g. deferring a reflected column)
+            # In the rare case of adding a ColumnProperty before the mapper
+            # is fully configured (e.g. deferring a reflected column)
             if not hasattr(self, "columns") or not hasattr(self, "_props"):
                 return prop
-            
+
             self.columns.add(col, key)
 
             for col in prop.columns:
