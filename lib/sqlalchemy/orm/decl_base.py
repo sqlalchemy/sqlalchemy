@@ -569,60 +569,35 @@ class _ClassScanAbstractConfig(_ORMClassConfigurator):
                     code="dcmx",
                 )
 
-        if revert:
-            # the "revert" case is used only by an unmapped mixin class
-            # that is nonetheless using Mapped construct and needs to
-            # itself be a dataclass
-            revert_dict = {
-                name: self.cls.__dict__[name]
-                for name in (item[0] for item in field_list)
-                if name in self.cls.__dict__
-            }
-        else:
-            revert_dict = None
-
-        anno = util.get_annotations(self.cls)
-
-        # ensure the class has attributes for only those keys
-        # where an annotation is present.
+        annotations = {}
+        defaults = {}
         for item in field_list:
-            name = item[0]
-            if name not in anno and name in self.cls.__dict__:
-                delattr(self.cls, name)
-            elif name in self.cls.__dict__ and len(item) == 3:
-                setattr(self.cls, name, item[2])
+            if len(item) == 2:
+                name, tp = item
+            elif len(item) == 3:
+                name, tp, spec = item
+                defaults[name] = spec
+            else:
+                assert False
+            annotations[name] = tp
 
-        self._assert_dc_arguments(dataclass_setup_arguments)
+        revert_dict = {}
 
-        dataclass_callable = dataclass_setup_arguments["dataclass_callable"]
-        if dataclass_callable is _NoArg.NO_ARG:
-            dataclass_callable = dataclasses.dataclass
+        for k, v in defaults.items():
+            if k in self.cls.__dict__:
+                revert_dict[k] = self.cls.__dict__[k]
+            setattr(self.cls, k, v)
 
-        try:
-            dataclass_callable(  # type: ignore[call-overload]
-                self.cls,
-                **{  # type: ignore[call-overload,unused-ignore]
-                    k: v
-                    for k, v in dataclass_setup_arguments.items()
-                    if v is not _NoArg.NO_ARG
-                    and k not in ("dataclass_callable",)
-                },
-            )
-        except (TypeError, ValueError) as ex:
-            raise exc.InvalidRequestError(
-                f"Python dataclasses error encountered when creating "
-                f"dataclass for {self.cls.__name__!r}: "
-                f"{ex!r}. Please refer to Python dataclasses "
-                "documentation for additional information.",
-                code="dcte",
-            ) from ex
-        finally:
-            if revert and revert_dict:
-                # used for mixin dataclasses; we have to restore the
-                # mapped_column(), relationship() etc. to the class so these
-                # take place for a mapped class scan
-                for k, v in revert_dict.items():
-                    setattr(self.cls, k, v)
+        self._apply_dataclasses_to_any_class(
+            dataclass_setup_arguments, self.cls, annotations
+        )
+
+        if revert:
+            # used for mixin dataclasses; we have to restore the
+            # mapped_column(), relationship() etc. to the class so these
+            # take place for a mapped class scan
+            for k, v in revert_dict.items():
+                setattr(self.cls, k, v)
 
     def _collect_annotation(
         self,
@@ -695,6 +670,60 @@ class _ClassScanAbstractConfig(_ORMClassConfigurator):
             originating_class,
         )
         return ca
+
+    @classmethod
+    def _apply_dataclasses_to_any_class(
+        cls,
+        dataclass_setup_arguments: _DataclassArguments,
+        klass: Type[_O],
+        use_annotations: Mapping[str, _AnnotationScanType],
+    ) -> None:
+        cls._assert_dc_arguments(dataclass_setup_arguments)
+
+        dataclass_callable = dataclass_setup_arguments["dataclass_callable"]
+        if dataclass_callable is _NoArg.NO_ARG:
+            dataclass_callable = dataclasses.dataclass
+
+        restored: Optional[Any]
+
+        if use_annotations:
+            # apply constructed annotations that should look "normal" to a
+            # dataclasses callable, based on the fields present.  This
+            # means remove the Mapped[] container and ensure all Field
+            # entries have an annotation
+            restored = util.get_annotations(klass)
+            klass.__annotations__ = cast("Dict[str, Any]", use_annotations)
+        else:
+            restored = None
+
+        try:
+            dataclass_callable(  # type: ignore[call-overload]
+                klass,
+                **{  # type: ignore[call-overload,unused-ignore]
+                    k: v
+                    for k, v in dataclass_setup_arguments.items()
+                    if v is not _NoArg.NO_ARG
+                    and k not in ("dataclass_callable",)
+                },
+            )
+        except (TypeError, ValueError) as ex:
+            raise exc.InvalidRequestError(
+                f"Python dataclasses error encountered when creating "
+                f"dataclass for {klass.__name__!r}: "
+                f"{ex!r}. Please refer to Python dataclasses "
+                "documentation for additional information.",
+                code="dcte",
+            ) from ex
+        finally:
+            # restore original annotations outside of the dataclasses
+            # process; for mixins and __abstract__ superclasses, SQLAlchemy
+            # Declarative will need to see the Mapped[] container inside the
+            # annotations in order to map subclasses
+            if use_annotations:
+                if restored is None:
+                    del klass.__annotations__
+                else:
+                    klass.__annotations__ = restored  # type: ignore[assignment]  # noqa: E501
 
     @classmethod
     def _assert_dc_arguments(cls, arguments: _DataclassArguments) -> None:
