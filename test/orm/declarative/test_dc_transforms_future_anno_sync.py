@@ -157,49 +157,6 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             ),
         )
 
-        use_future_mode = False
-        use_future_mode = True
-
-        # new docstrings change as of #12168 (adds DONT_SET as default value)
-        # and #13021 (maintains Mapped[type] as the type when dataclass is
-        # created)
-        if use_future_mode:
-            eq_regex(
-                A.__doc__,
-                r"A\(data: 'Mapped\[str\]', "
-                r"x: 'Mapped"
-                r"\[(?:Optional\[int\]|int \| None)\]' = "
-                r"<LoaderCallableStatus.DONT_SET: 5>, "
-                r"bs: \"Mapped"
-                r"\[List\['B'\]\]\" = "
-                r"<LoaderCallableStatus.DONT_SET: 5>\)",
-            )
-            eq_regex(
-                B.__doc__,
-                r"B\(data: 'Mapped\[str\]', "
-                r"x: 'Mapped"
-                r"\[(?:Optional\[int\]|int \| None)\]' = "
-                r"<LoaderCallableStatus.DONT_SET: 5>\)",
-            )
-        else:
-            eq_regex(
-                A.__doc__,
-                r"A\(data: sqlalchemy.orm.base.Mapped\[str\], "
-                r"x: sqlalchemy.orm.base.Mapped"
-                r"\[(?:typing.Optional\[int\]|int \| None)\] = "
-                r"<LoaderCallableStatus.DONT_SET: 5>, "
-                r"bs: sqlalchemy.orm.base.Mapped"
-                r"\[typing.List\[ForwardRef\('B'\)\]\] = "
-                r"<LoaderCallableStatus.DONT_SET: 5>\)",
-            )
-            eq_regex(
-                B.__doc__,
-                r"B\(data: sqlalchemy.orm.base.Mapped\[str\], "
-                r"x: sqlalchemy.orm.base.Mapped"
-                r"\[(?:typing.Optional\[int\]|int \| None)\] = "
-                r"<LoaderCallableStatus.DONT_SET: 5>\)",
-            )
-
         a2 = A("10", x=5, bs=[B("data1"), B("data2", x=12)])
         eq_(
             repr(a2),
@@ -383,10 +340,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 name: Mapped[str]
 
-            eq_(
-                annotations,
-                {MappedClass: {"id": Mapped[int], "name": Mapped[str]}},
-            )
+            eq_(annotations, {MappedClass: {"id": int, "name": str}})
 
         elif dc_type.decorator:
             reg = registry()
@@ -398,10 +352,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 name: Mapped[str]
 
-            eq_(
-                annotations,
-                {MappedClass: {"id": Mapped[int], "name": Mapped[str]}},
-            )
+            eq_(annotations, {MappedClass: {"id": int, "name": str}})
 
         elif dc_type.superclass:
 
@@ -417,10 +368,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
 
             eq_(
                 annotations,
-                {
-                    Mixin: {"id": Mapped[int]},
-                    MappedClass: {"name": Mapped[str]},
-                },
+                {Mixin: {"id": int}, MappedClass: {"id": int, "name": str}},
             )
         else:
             dc_type.fail()
@@ -1409,10 +1357,7 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             __tablename__ = "child"
             c: Mapped[int] = mapped_column(primary_key=True)
 
-        eq_(
-            collected_annotations,
-            {Mixin: {"b": int}, Child: {"c": Mapped[int]}},
-        )
+        eq_(collected_annotations, {Mixin: {"b": int}, Child: {"c": int}})
         eq_regex(repr(Child(6, 7)), r".*\.Child\(b=6, c=7\)")
 
     # TODO: get this test to work with future anno mode as well
@@ -1450,7 +1395,7 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             # dataclasses collection.
             eq_(
                 collected_annotations,
-                {Mixin: {"b": Mapped[int]}, Child: {"c": Mapped[int]}},
+                {Mixin: {"b": int}, Child: {"b": int, "c": int}},
             )
         eq_regex(repr(Child(6, 7)), r".*\.Child\(b=6, c=7\)")
 
@@ -1659,13 +1604,7 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
                 )
 
         if MappedAsDataclass in Book.__mro__:
-            if dataclass_scope.on_mixin:
-                expected_annotations[Book] = {"id": Mapped[int]}
-            else:
-                expected_annotations[Book] = {
-                    "id": Mapped[int],
-                    "polymorphic_type": Mapped[str],
-                }
+            expected_annotations[Book] = {"id": int, "polymorphic_type": str}
 
         class Novel(Book):
             id: Mapped[int] = mapped_column(
@@ -1675,10 +1614,7 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             )
             description: Mapped[Optional[str]]
 
-        expected_annotations[Novel] = {
-            "id": Mapped[int],
-            "description": Mapped[Optional[str]],
-        }
+        expected_annotations[Novel] = {"id": int, "description": Optional[str]}
 
         if test_alternative_callable:
             eq_(collected_annotations, expected_annotations)
@@ -1757,14 +1693,8 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             )
             description: Mapped[Optional[str]]
 
-        expected_annotations[Book] = {
-            "id": Mapped[int],
-            "polymorphic_type": Mapped[str],
-        }
-        expected_annotations[Novel] = {
-            "id": Mapped[int],
-            "description": Mapped[Optional[str]],
-        }
+        expected_annotations[Book] = {"id": int, "polymorphic_type": str}
+        expected_annotations[Novel] = {"id": int, "description": Optional[str]}
         expected_annotations[Mixin] = {}
 
         if test_alternative_callable:
