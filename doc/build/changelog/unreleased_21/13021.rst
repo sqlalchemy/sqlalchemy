@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13021
+
+    A change in the mechanics of how Python dataclasses are applied to classes
+    that use :class:`.MappedAsDataclass` or
+    :meth:`.registry.mapped_as_dataclass`, to no longer modify the
+    `__annotations__` collection that's on the class, instead manipulating
+    regular class-bound attributes in order to satisfy the class requirements
+    for the dataclass creation function.  This works around an issue that has
+    appeared in Python 3.14.1, provides for a much simpler implementation, and
+    also maintains accurate typing information about the attributes as the
+    dataclass is built.
