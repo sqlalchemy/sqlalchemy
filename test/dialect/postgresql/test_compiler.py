@@ -2673,26 +2673,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             m,
             Column("id", Integer),
             Column("data", Integer),
-            PrimaryKeyConstraint("id", postgresql_include=["data"])
+            PrimaryKeyConstraint("id", postgresql_include=["data"]),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (id SERIAL NOT NULL, data INTEGER, "
-            "PRIMARY KEY (id) INCLUDE (data))"
+            "PRIMARY KEY (id) INCLUDE (data))",
         )
-    
+
     def test_primary_key_constraint_with_deferrable(self):
         m = MetaData()
         tbl = Table(
             "test",
             m,
             Column("id", Integer),
-            PrimaryKeyConstraint("id", deferrable=True)
+            PrimaryKeyConstraint("id", deferrable=True),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (id SERIAL NOT NULL, "
-            "PRIMARY KEY (id) DEFERRABLE)"
+            "PRIMARY KEY (id) DEFERRABLE)",
         )
 
     def test_primary_key_constraint_with_deferrable_and_include(self):
@@ -2706,14 +2706,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "id",
                 deferrable=True,
                 initially="IMMEDIATE",
-                postgresql_include=["created_at"]
-            )
+                postgresql_include=["created_at"],
+            ),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (id SERIAL NOT NULL, created_at INTEGER, "
             "PRIMARY KEY (id) INCLUDE (created_at) "
-            "DEFERRABLE INITIALLY IMMEDIATE)"
+            "DEFERRABLE INITIALLY IMMEDIATE)",
         )
 
     def test_foreign_key_constraint_with_deferrable(self):
@@ -2723,12 +2723,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "t2",
             m,
             Column("t1_id", Integer),
-            ForeignKeyConstraint(["t1_id"], ["t1.id"], deferrable=True)
+            ForeignKeyConstraint(["t1_id"], ["t1.id"], deferrable=True),
         )
         self.assert_compile(
             schema.CreateTable(t2),
             "CREATE TABLE t2 (t1_id INTEGER, "
-            "FOREIGN KEY(t1_id) REFERENCES t1 (id) DEFERRABLE)"
+            "FOREIGN KEY(t1_id) REFERENCES t1 (id) DEFERRABLE)",
         )
 
     def test_foreign_key_constraint_with_not_valid(self):
@@ -2739,16 +2739,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             m,
             Column("t1_id", Integer),
             ForeignKeyConstraint(
-                ["t1_id"],
-                ["t1.id"],
-                name="fk_t1",
-                postgresql_not_valid=True
-            )
+                ["t1_id"], ["t1.id"], name="fk_t1", postgresql_not_valid=True
+            ),
         )
         self.assert_compile(
             schema.CreateTable(t2),
             "CREATE TABLE t2 (t1_id INTEGER, "
-            "CONSTRAINT fk_t1 FOREIGN KEY(t1_id) REFERENCES t1 (id) NOT VALID)"
+            "CONSTRAINT fk_t1 FOREIGN KEY(t1_id) REFERENCES "
+            "t1 (id) NOT VALID)",
         )
 
     def test_foreign_key_constraint_with_cascades_and_not_valid(self):
@@ -2761,14 +2759,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             name="fk_t1",
             ondelete="CASCADE",
             onupdate="SET NULL",
-            postgresql_not_valid=True
+            postgresql_not_valid=True,
         )
         t2.append_constraint(constraint)
 
         self.assert_compile(
             schema.AddConstraint(constraint),
             "ALTER TABLE t2 ADD CONSTRAINT fk_t1 FOREIGN KEY(t1_id) "
-            "REFERENCES t1 (id) ON DELETE CASCADE ON UPDATE SET NULL NOT VALID"
+            "REFERENCES t1 (id) ON DELETE CASCADE "
+            "ON UPDATE SET NULL NOT VALID",
         )
 
     def test_unique_constraint_with_deferrable(self):
@@ -2777,12 +2776,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "test",
             m,
             Column("id", Integer),
-            UniqueConstraint("id", name="uq_id", deferrable=True)
+            UniqueConstraint("id", name="uq_id", deferrable=True),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (id INTEGER, "
-            "CONSTRAINT uq_id UNIQUE (id) DEFERRABLE)"
+            "CONSTRAINT uq_id UNIQUE (id) DEFERRABLE)",
         )
 
     def test_unique_constraint_with_include(self):
@@ -2794,17 +2793,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("data", Integer),
             Column("created_at", Integer),
             UniqueConstraint(
-                "id",
-                name="uq_id",
-                postgresql_include=["data", "created_at"]
-            )
+                "id", name="uq_id", postgresql_include=["data", "created_at"]
+            ),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (id INTEGER, data INTEGER, created_at INTEGER, "
-            "CONSTRAINT uq_id UNIQUE (id) INCLUDE (data, created_at))"
+            "CONSTRAINT uq_id UNIQUE (id) INCLUDE (data, created_at))",
         )
-    
+
     def test_unique_constraint_with_deferrable_and_include(self):
         m = MetaData()
         tbl = Table(
@@ -2817,14 +2814,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 name="uq_id",
                 deferrable=True,
                 initially="DEFERRED",
-                postgresql_include=["data"]
-            )
+                postgresql_include=["data"],
+            ),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (id INTEGER, data INTEGER, "
             "CONSTRAINT uq_id UNIQUE (id) INCLUDE (data) "
-            "DEFERRABLE INITIALLY DEFERRED)"
+            "DEFERRABLE INITIALLY DEFERRED)",
         )
 
     def test_check_constraint_with_not_valid(self):
@@ -2833,12 +2830,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "test",
             m,
             Column("data", Integer),
-            CheckConstraint("data > 0", name="ck_data", postgresql_not_valid=True)
+            CheckConstraint(
+                "data > 0", name="ck_data", postgresql_not_valid=True
+            ),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (data INTEGER, "
-            "CONSTRAINT ck_data CHECK (data > 0) NOT VALID)"
+            "CONSTRAINT ck_data CHECK (data > 0) NOT VALID)",
         )
 
     def test_check_constraint_with_deferrable_and_not_valid(self):
@@ -2849,14 +2848,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             name="ck_data",
             deferrable=True,
             initially="DEFERRED",
-            postgresql_not_valid=True
+            postgresql_not_valid=True,
         )
         tbl.append_constraint(constraint)
 
         self.assert_compile(
             schema.AddConstraint(constraint),
             "ALTER TABLE test ADD CONSTRAINT ck_data CHECK (data > 0) "
-            "DEFERRABLE INITIALLY DEFERRED NOT VALID"
+            "DEFERRABLE INITIALLY DEFERRED NOT VALID",
         )
 
     def test_check_constraint_with_deferrable(self):
@@ -2865,12 +2864,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "test",
             m,
             Column("data", Integer),
-            CheckConstraint("data > 0", name="ck_data", deferrable=True)
+            CheckConstraint("data > 0", name="ck_data", deferrable=True),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (data INTEGER, "
-            "CONSTRAINT ck_data CHECK (data > 0) DEFERRABLE)"
+            "CONSTRAINT ck_data CHECK (data > 0) DEFERRABLE)",
         )
 
     @testing.fixture

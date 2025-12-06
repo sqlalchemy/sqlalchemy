@@ -7333,7 +7333,7 @@ class DDLCompiler(Compiled):
         text += self.define_primary_key_body(constraint, **kw)
         text += self.define_constraint_deferrability(constraint)
         return text
-    
+
     def visit_foreign_key_constraint(self, constraint, **kw):
         text = self.define_constraint_preamble(constraint, **kw)
         text += self.define_foreign_key_body(constraint, **kw)
@@ -7356,7 +7356,7 @@ class DDLCompiler(Compiled):
         text += self.define_unique_body(constraint, **kw)
         text += self.define_constraint_deferrability(constraint)
         return text
-    
+
     def define_constraint_preamble(self, constraint: Constraint, **kw: Any):
         text = ""
         if constraint.name is not None:
@@ -7364,8 +7364,10 @@ class DDLCompiler(Compiled):
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
         return text
-    
-    def define_primary_key_body(self, constraint: PrimaryKeyConstraint, **kw: Any):
+
+    def define_primary_key_body(
+        self, constraint: PrimaryKeyConstraint, **kw: Any
+    ):
         text = ""
         text += "PRIMARY KEY "
         text += "(%s)" % ", ".join(
@@ -7378,7 +7380,9 @@ class DDLCompiler(Compiled):
         )
         return text
 
-    def define_foreign_key_body(self, constraint: ForeignKeyConstraint, **kw: Any):
+    def define_foreign_key_body(
+        self, constraint: ForeignKeyConstraint, **kw: Any
+    ):
         preparer = self.preparer
         remote_table = list(constraint.elements)[0].column.table
         text = "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
