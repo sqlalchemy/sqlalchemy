@@ -12,6 +12,7 @@ import dataclasses
 from dataclasses import InitVar
 import inspect as pyinspect
 from itertools import product
+import sys
 from typing import Annotated
 from typing import Any
 from typing import ClassVar
@@ -36,6 +37,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
@@ -156,6 +158,49 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 annotations={},
             ),
         )
+
+        use_future_mode = False
+        use_future_mode = True
+
+        # new docstrings change as of #12168 (adds DONT_SET as default value)
+        # and #13021 (maintains Mapped[type] as the type when dataclass is
+        # created)
+        if use_future_mode:
+            eq_regex(
+                A.__doc__,
+                r"A\(data: 'Mapped\[str\]', "
+                r"x: 'Mapped"
+                r"\[(?:Optional\[int\]|int \| None)\]' = "
+                r"<LoaderCallableStatus.DONT_SET: 5>, "
+                r"bs: \"Mapped"
+                r"\[List\['B'\]\]\" = "
+                r"<LoaderCallableStatus.DONT_SET: 5>\)",
+            )
+            eq_regex(
+                B.__doc__,
+                r"B\(data: 'Mapped\[str\]', "
+                r"x: 'Mapped"
+                r"\[(?:Optional\[int\]|int \| None)\]' = "
+                r"<LoaderCallableStatus.DONT_SET: 5>\)",
+            )
+        else:
+            eq_regex(
+                A.__doc__,
+                r"A\(data: sqlalchemy.orm.base.Mapped\[str\], "
+                r"x: sqlalchemy.orm.base.Mapped"
+                r"\[(?:typing.Optional\[int\]|int \| None)\] = "
+                r"<LoaderCallableStatus.DONT_SET: 5>, "
+                r"bs: sqlalchemy.orm.base.Mapped"
+                r"\[typing.List\[ForwardRef\('B'\)\]\] = "
+                r"<LoaderCallableStatus.DONT_SET: 5>\)",
+            )
+            eq_regex(
+                B.__doc__,
+                r"B\(data: sqlalchemy.orm.base.Mapped\[str\], "
+                r"x: sqlalchemy.orm.base.Mapped"
+                r"\[(?:typing.Optional\[int\]|int \| None)\] = "
+                r"<LoaderCallableStatus.DONT_SET: 5>\)",
+            )
 
         a2 = A("10", x=5, bs=[B("data1"), B("data2", x=12)])
         eq_(
@@ -340,7 +385,10 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 name: Mapped[str]
 
-            eq_(annotations, {MappedClass: {"id": int, "name": str}})
+            eq_(
+                annotations,
+                {MappedClass: {"id": Mapped[int], "name": Mapped[str]}},
+            )
 
         elif dc_type.decorator:
             reg = registry()
@@ -352,7 +400,10 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 name: Mapped[str]
 
-            eq_(annotations, {MappedClass: {"id": int, "name": str}})
+            eq_(
+                annotations,
+                {MappedClass: {"id": Mapped[int], "name": Mapped[str]}},
+            )
 
         elif dc_type.superclass:
 
@@ -368,7 +419,10 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
 
             eq_(
                 annotations,
-                {Mixin: {"id": int}, MappedClass: {"id": int, "name": str}},
+                {
+                    Mixin: {"id": Mapped[int]},
+                    MappedClass: {"id": Mapped[int], "name": Mapped[str]},
+                },
             )
         else:
             dc_type.fail()
@@ -938,6 +992,73 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(fields["value"].metadata, {"meta_key": "meta_value"})
 
     @testing.requires.python314
+    def test_restore_annotations_langhelper(self):
+        """robust tests for the annotation replace/restore feature under
+        all pep-649 modes (absent, disabled, enabled)
+
+        """
+
+        class Thing:
+            data: Mapped[int]
+            x: str
+
+        import annotationlib
+
+        is_pep649 = (
+            hasattr(Thing, "__annotate__") and Thing.__annotate__ is not None
+        )
+
+        def assert_pristine_annotations():
+            if is_pep649:
+                eq_(
+                    annotationlib.get_annotations(Thing),
+                    {"data": Mapped[int], "x": str},
+                )
+                eq_(
+                    annotationlib.get_annotations(
+                        Thing, format=annotationlib.Format.VALUE
+                    ),
+                    {"data": Mapped[int], "x": str},
+                )
+            else:
+                # from __future__ import annotations is in effect
+                eq_(
+                    annotationlib.get_annotations(Thing),
+                    {"data": "Mapped[int]", "x": "str"},
+                )
+                # in __future__ annotations (which means, *past* annotations
+                # mode), Format.VALUE is not effective; you're getting your
+                # strings back
+                eq_(
+                    annotationlib.get_annotations(
+                        Thing, format=annotationlib.Format.VALUE
+                    ),
+                    {"data": "Mapped[int]", "x": "str"},
+                )
+
+            eq_(
+                annotationlib.get_annotations(
+                    Thing, format=annotationlib.Format.STRING
+                ),
+                {"data": "Mapped[int]", "x": "str"},
+            )
+
+        assert_pristine_annotations()
+
+        restore = util.restore_annotations(
+            Thing, {"data": float, "x": str, "y": int}
+        )
+
+        eq_(
+            annotationlib.get_annotations(Thing),
+            {"data": float, "x": str, "y": int},
+        )
+
+        restore()
+
+        assert_pristine_annotations()
+
+    @testing.requires.python314
     def test_apply_dc_deferred_annotations(self, dc_decl_base):
         """test for #12952"""
 
@@ -967,6 +1088,28 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         is_true("content" in sig.parameters)
         is_true("user_id" in sig.parameters)
         is_true("user" in sig.parameters)
+
+        expect_fail = True
+        expect_fail = False
+
+        # annotations are restored exactly
+        if expect_fail:
+            # so in in pure pep649 mode the NameError raises again
+            with expect_raises_message(
+                NameError, "'UnavailableUser' is not defined"
+            ):
+                Message.__annotations__
+        else:
+            # in __future__ annotations mode, we get strings
+            eq_(
+                Message.__annotations__,
+                {
+                    "id": "Mapped[int]",
+                    "content": "Mapped[str]",
+                    "user_id": "Mapped[int]",
+                    "user": "Mapped[UnavailableUser]",
+                },
+            )
 
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
@@ -1358,7 +1501,10 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             __tablename__ = "child"
             c: Mapped[int] = mapped_column(primary_key=True)
 
-        eq_(collected_annotations, {Mixin: {"b": int}, Child: {"c": int}})
+        eq_(
+            collected_annotations,
+            {Mixin: {"b": int}, Child: {"c": Mapped[int]}},
+        )
         eq_regex(repr(Child(6, 7)), r".*\.Child\(b=6, c=7\)")
 
     # TODO: get this test to work with future anno mode as well
@@ -1396,7 +1542,10 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             # dataclasses collection.
             eq_(
                 collected_annotations,
-                {Mixin: {"b": int}, Child: {"b": int, "c": int}},
+                {
+                    Mixin: {"b": Mapped[int]},
+                    Child: {"b": Mapped[int], "c": Mapped[int]},
+                },
             )
         eq_regex(repr(Child(6, 7)), r".*\.Child\(b=6, c=7\)")
 
@@ -1605,7 +1754,10 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
                 )
 
         if MappedAsDataclass in Book.__mro__:
-            expected_annotations[Book] = {"id": int, "polymorphic_type": str}
+            expected_annotations[Book] = {
+                "id": Mapped[int],
+                "polymorphic_type": Mapped[str],
+            }
 
         class Novel(Book):
             id: Mapped[int] = mapped_column(
@@ -1615,7 +1767,10 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             )
             description: Mapped[Optional[str]]
 
-        expected_annotations[Novel] = {"id": int, "description": Optional[str]}
+        expected_annotations[Novel] = {
+            "id": Mapped[int],
+            "description": Mapped[Optional[str]],
+        }
 
         if test_alternative_callable:
             eq_(collected_annotations, expected_annotations)
@@ -1694,8 +1849,14 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             )
             description: Mapped[Optional[str]]
 
-        expected_annotations[Book] = {"id": int, "polymorphic_type": str}
-        expected_annotations[Novel] = {"id": int, "description": Optional[str]}
+        expected_annotations[Book] = {
+            "id": Mapped[int],
+            "polymorphic_type": Mapped[str],
+        }
+        expected_annotations[Novel] = {
+            "id": Mapped[int],
+            "description": Mapped[Optional[str]],
+        }
         expected_annotations[Mixin] = {}
 
         if test_alternative_callable:
@@ -1708,6 +1869,10 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
         n1 = Novel("the description")
         eq_(n1.description, "the description")
 
+    @testing.fails_if(
+        lambda: sys.version_info[0:3] == (3, 14, 1),
+        reason="See cpython issue 142214",
+    )
     def test_cpython_142214(self, dc_decl_base):
         """test for the cpython issue shown in issue #13021"""
 
@@ -1755,6 +1920,144 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
                 created_by=User(name="u1"),
             ),
         )
+
+    @testing.variation(
+        "levels",
+        [
+            "one",
+            (
+                "two",
+                testing.fails_if(
+                    lambda: sys.version_info[0:3] == (3, 14, 1),
+                    reason="See cpython issue 142214",
+                ),
+            ),
+        ],
+    )
+    @testing.variation("type_", ["mixin", "abstract"])
+    @testing.variation("kwonly", [True, False])
+    def test_declared_attr_relationships(
+        self,
+        dc_decl_base,
+        kwonly: testing.Variation,
+        levels: testing.Variation,
+        type_: testing.Variation,
+    ):
+        """further tests related to #13021 where we need to support
+        declared_attr on mixins"""
+
+        if kwonly:
+            dc_kwargs = {"kw_only": True}
+        else:
+            dc_kwargs = {}
+
+        class User(dc_decl_base):
+            __tablename__ = "user_account"
+
+            id: Mapped[int] = mapped_column(init=False, primary_key=True)
+            name: Mapped[str]
+
+        if type_.abstract:
+
+            class CreatedByMixin(dc_decl_base, **dc_kwargs):
+                __abstract__ = True
+
+                created_by_fk: Mapped[int] = mapped_column(
+                    ForeignKey("user_account.id"), init=False
+                )
+
+                @declared_attr
+                @classmethod
+                def created_by(cls) -> Mapped[User]:
+                    return relationship(foreign_keys=[cls.created_by_fk])
+
+            bases = (CreatedByMixin,)
+        elif type_.mixin:
+
+            class CreatedByMixin(MappedAsDataclass, **dc_kwargs):
+                created_by_fk: Mapped[int] = mapped_column(
+                    ForeignKey("user_account.id"), init=False
+                )
+
+                @declared_attr
+                @classmethod
+                def created_by(cls) -> Mapped[User]:
+                    return relationship(foreign_keys=[cls.created_by_fk])
+
+            bases = (CreatedByMixin, dc_decl_base)
+
+        else:
+            type_.fail()
+
+        class Item(*bases, **dc_kwargs):
+            __tablename__: ClassVar[str] = "item"
+
+            id: Mapped[int] = mapped_column(init=False, primary_key=True)
+            description: Mapped[str]
+
+        if levels.one:
+            item = Item(
+                description="d1",
+                created_by=User(name="u1"),
+            )
+            eq_(
+                item,
+                Item(
+                    description="d1",
+                    created_by=User(name="u1"),
+                ),
+            )
+
+            # check if annotations were restored in acceptable-enough order,
+            # but also including the descriptor field we got from
+            # CreatedByMixin.   this allows python issue #142214 to work
+            eq_(
+                list(Item.__annotations__),
+                [
+                    "__tablename__",
+                    # created_by_fk came from the superclass, and while we
+                    # added this to local annotations, we restored the old
+                    # ones, so that is also gone
+                    # "created_by_fk",
+                    "id",
+                    "description",
+                    # created_by was added by us, and we are restoring the
+                    # old annotations so it's gone
+                    # "created_by",
+                ],
+            )
+
+        if levels.two:
+
+            class SpecialItem(Item, **dc_kwargs):
+
+                id: Mapped[int] = mapped_column(
+                    ForeignKey("item.id"), init=False, primary_key=True
+                )
+                special_description: Mapped[str]
+
+                __tablename__: ClassVar[str] = "special_item"
+
+            special_item = SpecialItem(
+                special_description="sd1",
+                description="d1",
+                created_by=User(name="u1"),
+            )
+
+            eq_(
+                special_item,
+                SpecialItem(
+                    special_description="sd1",
+                    description="d1",
+                    created_by=User(name="u1"),
+                ),
+            )
+
+            # check if annotations were restored in acceptable-enough order
+            eq_(
+                list(SpecialItem.__annotations__),
+                ["id", "special_description", "__tablename__"],
+            )
 
 
 class DataclassArgsTest(fixtures.TestBase):
