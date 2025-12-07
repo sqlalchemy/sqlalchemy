@@ -1636,6 +1636,7 @@ class _SentinelDefaultCharacterization(Enum):
     SERVERSIDE = "serverside"
     IDENTITY = "identity"
     SEQUENCE = "sequence"
+    MONOTONIC_FUNCTION = "monotonic"
 
 
 class _SentinelColumnCharacterization(NamedTuple):

@@ -114,6 +114,46 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
            PRIMARY KEY (id)
        )
 
+.. _postgresql_monotonic_functions:
+
+PostgreSQL 18 and above UUID with uuidv7 as a server default
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PostgreSQL 18's ``uuidv7`` SQL function is available as any other
+SQL function using the :data:`_sql.func` namespace::
+
+    >>> from sqlalchemy import select, func
+    >>> print(select(func.uuidv7()))
+    SELECT uuidv7() AS uuidv7_1
+
+When using ``func.uuidv7()`` as a default on a :class:`.Column` using either
+Core or ORM, an extra directive ``monotonic=True`` may be passed which
+indicates this function produces monotonically increasing values; this in turn
+allows Core and ORM to use a more efficient batched form of INSERT for large
+insert operations::
+
+    import uuid
+
+
+    class MyClass(Base):
+        __tablename__ = "my_table"
+
+        id: Mapped[uuid.UUID] = mapped_column(
+            server_default=func.uuidv7(monotonic=True)
+        )
+
+With the above mapping, the ORM will be able to efficiently batch rows when
+running bulk insert operations using the :ref:`engine_insertmanyvalues`
+feature.
+
+.. versionadded:: 2.1 Added ``monotonic=True`` to allow functions like PostgreSQL's
+   ``uuidv7()`` to work with batched "insertmanyvalues"
+
+.. seealso::
+
+    :ref:`engine_insertmanyvalues_monotonic_functions`
+
+
 .. _postgresql_ss_cursors:
 
 Server Side Cursors

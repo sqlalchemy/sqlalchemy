@@ -146,6 +146,8 @@ class FunctionElement(
 
     packagenames: Tuple[str, ...] = ()
 
+    monotonic: bool = False
+
     _has_args = False
     _with_ordinality = False
     _table_value_type: Optional[TableValueType] = None
@@ -1400,6 +1402,7 @@ class Function(FunctionElement[_T]):
         *clauses: _ColumnExpressionOrLiteralArgument[_T],
         type_: None = ...,
         packagenames: Optional[Tuple[str, ...]] = ...,
+        monotonic: bool = ...,
     ) -> None: ...
 
     @overload
@@ -1409,6 +1412,7 @@ class Function(FunctionElement[_T]):
         *clauses: _ColumnExpressionOrLiteralArgument[Any],
         type_: _TypeEngineArgument[_T] = ...,
         packagenames: Optional[Tuple[str, ...]] = ...,
+        monotonic: bool = ...,
     ) -> None: ...
 
     def __init__(
@@ -1417,6 +1421,7 @@ class Function(FunctionElement[_T]):
         *clauses: _ColumnExpressionOrLiteralArgument[Any],
         type_: Optional[_TypeEngineArgument[_T]] = None,
         packagenames: Optional[Tuple[str, ...]] = None,
+        monotonic: bool = False,
     ) -> None:
         """Construct a :class:`.Function`.
 
@@ -1426,6 +1431,7 @@ class Function(FunctionElement[_T]):
         """
         self.packagenames = packagenames or ()
         self.name = name
+        self.monotonic = monotonic
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly

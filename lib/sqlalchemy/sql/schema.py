@@ -1147,6 +1147,10 @@ class Table(
                     default_characterization = (
                         _SentinelDefaultCharacterization.SENTINEL_DEFAULT
                     )
+                elif the_sentinel_zero.default._is_monotonic_fn:
+                    default_characterization = (
+                        _SentinelDefaultCharacterization.MONOTONIC_FUNCTION
+                    )
                 elif default_is_sequence(the_sentinel_zero.default):
                     if the_sentinel_zero.default._increment_is_negative:
                         if sentinel_is_explicit:
@@ -1169,15 +1173,21 @@ class Table(
                     )
             elif the_sentinel_zero.server_default is not None:
                 if sentinel_is_explicit:
-                    raise exc.InvalidRequestError(
-                        f"Column {the_sentinel[0]} can't be a sentinel column "
-                        "because it uses an explicit server side default "
-                        "that's not the Identity() default."
+                    if not the_sentinel_zero.server_default._is_monotonic_fn:
+                        raise exc.InvalidRequestError(
+                            f"Column {the_sentinel[0]} can't be a sentinel "
+                            "column "
+                            "because it uses an explicit server side default "
+                            "that's not the Identity() default."
+                        )
+                    else:
+                        default_characterization = (
+                            _SentinelDefaultCharacterization.MONOTONIC_FUNCTION
+                        )
+                else:
+                    default_characterization = (
+                        _SentinelDefaultCharacterization.SERVERSIDE
                     )
-
-                default_characterization = (
-                    _SentinelDefaultCharacterization.SERVERSIDE
-                )
 
         if the_sentinel is None and self.primary_key:
             assert autoinc_col is None
@@ -1185,8 +1195,16 @@ class Table(
             # determine for non-autoincrement pk if all elements are
             # client side
             for _pkc in self.primary_key:
-                if _pkc.server_default is not None or (
-                    _pkc.default and not _pkc.default.is_callable
+                if (
+                    _pkc.server_default is not None
+                    and not _pkc.server_default._is_monotonic_fn
+                ):
+                    break
+
+                if (
+                    _pkc.default
+                    and not _pkc.default.is_callable
+                    and not _pkc.default._is_monotonic_fn
                 ):
                     break
             else:
@@ -3512,6 +3530,7 @@ class DefaultGenerator(Executable, SchemaItem):
     is_scalar = False
     has_arg = False
     is_sentinel = False
+    _is_monotonic_fn = False
     column: Optional[Column[Any]]
 
     def __init__(self, for_update: bool = False) -> None:
@@ -3578,6 +3597,8 @@ class ColumnDefault(DefaultGenerator, ABC):
     """
 
     arg: Any
+
+    _is_monotonic_fn = False
 
     @overload
     def __new__(
@@ -3724,6 +3745,15 @@ class ColumnElementColumnDefault(ColumnDefault):
     def _copy(self) -> ColumnElementColumnDefault:
         return ColumnElementColumnDefault(
             arg=self.arg, for_update=self.for_update
+        )
+
+    @util.memoized_property
+    @util.preload_module("sqlalchemy.sql.functions")
+    def _is_monotonic_fn(self) -> bool:
+        functions = util.preloaded.sql_functions
+        return (
+            isinstance(self.arg, functions.FunctionElement)
+            and self.arg.monotonic
         )
 
     @util.memoized_property
@@ -4207,6 +4237,7 @@ class FetchedValue(SchemaEventTarget):
     has_argument = False
     is_clause_element = False
     is_identity = False
+    _is_monotonic_fn = False
 
     column: Optional[Column[Any]]
 
@@ -4276,6 +4307,15 @@ class DefaultClause(FetchedValue):
         super().__init__(for_update)
         self.arg = arg
         self.reflected = _reflected
+
+    @util.memoized_property
+    @util.preload_module("sqlalchemy.sql.functions")
+    def _is_monotonic_fn(self) -> bool:
+        functions = util.preloaded.sql_functions
+        return (
+            isinstance(self.arg, functions.FunctionElement)
+            and self.arg.monotonic
+        )
 
     def _copy(self) -> DefaultClause:
         return DefaultClause(

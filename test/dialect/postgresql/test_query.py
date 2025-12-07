@@ -1,4 +1,5 @@
 import datetime
+from typing import Any
 
 from sqlalchemy import and_
 from sqlalchemy import cast
@@ -40,6 +41,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CursorSQL
 from sqlalchemy.testing.assertsql import DialectSQL
 
@@ -162,7 +164,22 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         metadata.create_all(connection)
         self._assert_data_noautoincrement(connection, table)
 
-    def test_full_cursor_insertmanyvalues_sql(self, metadata, connection):
+    @testing.variation(
+        "default_type",
+        [
+            "ss_sequence",
+            ("sd_uuidv7", testing.only_on("postgresql>=18")),
+            ("cd_uuidv7", testing.only_on("postgresql>=18")),
+        ],
+    )
+    @testing.variation("set_sentinel", [True, False])
+    def test_full_cursor_insertmanyvalues_sql(
+        self,
+        metadata,
+        connection,
+        default_type: testing.Variation,
+        set_sentinel: testing.Variation,
+    ):
         """test compilation/ execution of the subquery form including
         the fix for #13015
 
@@ -174,22 +191,49 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
         """
 
-        my_table = Table(
-            "my_table",
-            metadata,
-            Column("data1", String(50)),
-            Column(
+        if set_sentinel:
+            col_kw: dict[str, Any] = {"insert_sentinel": True}
+        else:
+            col_kw = {}
+
+        if default_type.ss_sequence:
+            col = Column(
                 "id",
                 Integer,
                 Sequence("foo_id_seq", start=1, data_type=Integer),
                 primary_key=True,
-            ),
+                **col_kw,
+            )
+        elif default_type.sd_uuidv7:
+            col = Column(
+                "id",
+                Uuid(),
+                server_default=func.uuidv7(monotonic=True),
+                primary_key=True,
+                **col_kw,
+            )
+        elif default_type.cd_uuidv7:
+            col = Column(
+                "id",
+                Uuid(),
+                default=func.uuidv7(monotonic=True),
+                primary_key=True,
+                **col_kw,
+            )
+        else:
+            default_type.fail()
+
+        my_table = Table(
+            "my_table",
+            metadata,
+            Column("data1", String(50)),
+            col,
             Column("data2", String(50)),
         )
 
         my_table.create(connection)
         with self.sql_execution_asserter(connection) as assert_:
-            connection.execute(
+            result = connection.execute(
                 my_table.insert().returning(
                     my_table.c.data1,
                     my_table.c.id,
@@ -199,6 +243,16 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     {"data1": f"d1 row {i}", "data2": f"d2 row {i}"}
                     for i in range(10)
                 ],
+            )
+
+        rows = result.all()
+        if default_type.ss_sequence:
+            eq_(rows, [(f"d1 row {i}", i + 1) for i in range(10)])
+        else:
+            # monotonic UUIDs are sorted
+            eq_(
+                list(sorted(rows, key=lambda row: row.id)),
+                [(f"d1 row {i}", mock.ANY) for i in range(10)],
             )
 
         render_bind_casts = (
@@ -249,12 +303,27 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         else:
             assert False
 
+        if default_type.ss_sequence:
+            sqlfunc_sql = "nextval('foo_id_seq'), "
+            ins_cols = "id, "
+            p2 = "p2"
+        elif default_type.sd_uuidv7:
+            sqlfunc_sql = ""
+            ins_cols = ""
+            p2 = "p1"
+        elif default_type.cd_uuidv7:
+            sqlfunc_sql = "uuidv7(), "
+            ins_cols = "id, "
+            p2 = "p2"
+        else:
+            default_type.fail()
+
         assert_.assert_(
             CursorSQL(
-                "INSERT INTO my_table (data1, id, data2) "
-                f"SELECT p0::VARCHAR, nextval('foo_id_seq'), p2::VARCHAR "
+                f"INSERT INTO my_table (data1, {ins_cols}data2) "
+                f"SELECT p0::VARCHAR, {sqlfunc_sql}{p2}::VARCHAR "
                 f"FROM (VALUES {params}) "
-                "AS imp_sen(p0, p2, sen_counter) ORDER BY sen_counter "
+                f"AS imp_sen(p0, {p2}, sen_counter) ORDER BY sen_counter "
                 "RETURNING my_table.data1, my_table.id, my_table.id AS id__1",
                 parameters,
             )

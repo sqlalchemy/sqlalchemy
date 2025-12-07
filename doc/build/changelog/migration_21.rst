@@ -1385,6 +1385,61 @@ To update an existing index:
 
 :ticket:`12948`
 
+.. _change_13014_postgresql:
+
+Support for Server-Side Monotonic Functions such as uuidv7() in Batched INSERT Operations
+------------------------------------------------------------------------------------------
+
+SQLAlchemy 2.1 adds support for using monotonic server-side functions, such as
+PostgreSQL 18's ``uuidv7()`` function, as sentinels in the
+:ref:`engine_insertmanyvalues` feature. This allows these functions to work
+efficiently with batched INSERT operations while maintaining deterministic row
+ordering.
+
+When using a monotonic function as a default value, the ``monotonic=True``
+parameter must be passed to the function to indicate that it produces
+monotonically increasing values. This enables SQLAlchemy to use the function's
+values to correlate RETURNING results with input parameter sets::
+
+    from sqlalchemy import Table, Column, MetaData, UUID, Integer, func
+
+    metadata = MetaData()
+
+    t = Table(
+        "t",
+        metadata,
+        Column("id", UUID, server_default=func.uuidv7(monotonic=True), primary_key=True),
+        Column("x", Integer),
+    )
+
+With the above configuration, when performing a batched INSERT with RETURNING
+on PostgreSQL, SQLAlchemy will generate SQL that properly orders the rows
+while allowing the server to generate the UUID values:
+
+.. sourcecode:: sql
+
+    INSERT INTO t (x) SELECT p0::INTEGER FROM
+    (VALUES (%(x__0)s, 0), (%(x__1)s, 1), (%(x__2)s, 2), ...)
+    AS imp_sen(p0, sen_counter) ORDER BY sen_counter
+    RETURNING t.id, t.id AS id__1
+
+The returned rows are then sorted by the monotonically increasing UUID values
+to match the order of the input parameters, ensuring that ORM objects and
+returned values are properly correlated.
+
+This feature works with both :paramref:`_schema.Column.server_default` (for
+DDL-level defaults) and :paramref:`_schema.Column.default` (for ad-hoc
+server-side function calls).
+
+.. seealso::
+
+    :ref:`engine_insertmanyvalues_monotonic_functions` - Complete documentation
+    on using monotonic functions
+
+    :ref:`postgresql_monotonic_functions` - PostgreSQL-specific examples
+
+:ticket:`13014`
+
 
 Microsoft SQL Server
 ====================
