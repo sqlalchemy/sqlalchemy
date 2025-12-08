@@ -3,6 +3,6 @@
     :tickets: 12964
 
     Added support for MySQL 8.0.1 + ``FOR SHARE`` to be emitted for the
-    :meth:`.Select.with_for_uddate` method, which offers compatibility with
+    :meth:`.Select.with_for_update` method, which offers compatibility with
     ``NOWAIT`` and ``SKIP LOCKED``.  The new syntax is used only for MySQL when
     version 8.0.1 or higher is detected. Pull request courtesy JetDrag.
