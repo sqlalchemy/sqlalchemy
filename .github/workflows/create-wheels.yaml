@@ -81,10 +81,11 @@ jobs:
 
       - name: Build compiled wheels
         if: ${{ matrix.wheel_mode == 'compiled' }}
-        uses: pypa/cibuildwheel@v2.22.0
+        uses: pypa/cibuildwheel@v3.3.0
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
+          CIBW_ENABLE: ${{ matrix.python == 'cp313t-*' && 'cpython-freethreading' || '' }}
           # setting it here does not work on linux
           # PYTHONNOUSERSITE: "1"
 
@@ -92,7 +93,7 @@ jobs:
       - name: Set up Python for twine and pure-python wheel
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Build pure-python wheel
         if: ${{ matrix.wheel_mode == 'pure-python' && runner.os == 'Linux' }}
