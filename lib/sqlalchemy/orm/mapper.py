@@ -2037,12 +2037,20 @@ class Mapper(
             "_configure_property(%s, %s)", key, prop_arg.__class__.__name__
         )
 
+        # early setup mode - don't assign any props, only
+        # ensure a Column is turned into a ColumnProperty.
+        # see #12858
+        early_setup = not hasattr(self, "_props")
+
         if not isinstance(prop_arg, MapperProperty):
             prop: MapperProperty[Any] = self._property_from_column(
-                key, prop_arg
+                key, prop_arg, early_setup
             )
         else:
             prop = prop_arg
+
+        if early_setup:
+            return prop
 
         if isinstance(prop, properties.ColumnProperty):
             col = self.persist_selectable.corresponding_column(prop.columns[0])
@@ -2290,16 +2298,17 @@ class Mapper(
 
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def _property_from_column(
-        self,
-        key: str,
-        column: KeyedColumnElement[Any],
+        self, key: str, column: KeyedColumnElement[Any], early_setup: bool
     ) -> ColumnProperty[Any]:
         """generate/update a :class:`.ColumnProperty` given a
         :class:`_schema.Column` or other SQL expression object."""
 
         descriptor_props = util.preloaded.orm_descriptor_props
 
-        prop = self._props.get(key)
+        if early_setup:
+            prop = None
+        else:
+            prop = self._props.get(key)
 
         if isinstance(prop, properties.ColumnProperty):
             return self._reconcile_prop_with_incoming_columns(

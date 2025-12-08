@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12858
+
+    Fixed issue where calling :meth:`.Mapper.add_property` within mapper event
+    hooks such as :meth:`.MapperEvents.instrument_class`,
+    :meth:`.MapperEvents.after_mapper_constructed`, or
+    :meth:`.MapperEvents.before_mapper_configured` would raise an
+    ``AttributeError`` because the mapper's internal property collections were
+    not yet initialized. The :meth:`.Mapper.add_property` method now handles
+    early-stage property additions correctly, allowing properties including
+    column properties, deferred columns, and relationships to be added during
+    mapper initialization events.  Pull request courtesy G Allajmi.

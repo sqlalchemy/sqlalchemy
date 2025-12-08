@@ -4,6 +4,7 @@ import re
 
 import sqlalchemy as sa
 from sqlalchemy import column
+from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -1030,6 +1031,129 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User()
         assert hasattr(User, "addresses")
         assert "addresses" in [p.key for p in m1._polymorphic_properties]
+
+    @testing.variation(
+        "property_type", ["Column", "ColumnProperty", "Relationship"]
+    )
+    @testing.variation(
+        "event_name",
+        [
+            "instrument_class",
+            "after_mapper_constructed",
+            "mapper_configured",
+            "before_mapper_configured",
+        ],
+    )
+    def test_add_property_in_mapper_event(
+        self, property_type, connection, metadata, event_name
+    ):
+        """test #12858, ability to add properties of all types within
+        event hooks where the mapper is not necessarily set up with property
+        collections.
+
+        """
+
+        Address = self.classes.Address
+
+        users = Table(
+            "deferred_users",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String),
+        )
+
+        # use an ad-hoc User class.   Assigning an event holder to a
+        # class right now means that class permanently has that mapper
+        # event associated with it, whenever a new mapper is created.
+        # if you call event.remove(User), it removes the event from the mapper,
+        # but not the "event hold" that associates it again on a new mapper.
+        # this is probably a bug but not the one we came here today to fix
+        class User:
+            pass
+
+        def setup_props(mapper, class_):
+            if property_type.ColumnProperty:
+                col = Column("new_column", String)
+                mapper.local_table.append_column(col)
+                mapper.add_property(
+                    col.key, deferred(col, group="deferred_group")
+                )
+            elif property_type.Column:
+                col = Column("new_column", String)
+                mapper.local_table.append_column(col)
+                mapper.add_property(col.key, col)
+            elif property_type.Relationship:
+                mapper.add_property("addresses", relationship(Address))
+            else:
+                property_type.fail()
+
+        event.listen(User, event_name.name, setup_props)
+
+        if property_type.ColumnProperty:
+            self.mapper(
+                User,
+                users,
+                properties={
+                    "name": deferred(users.c.name, group="deferred_group")
+                },
+            )
+        else:
+            self.mapper(User, users)
+
+        if property_type.Relationship:
+            addresses_table = Table(
+                "deferred_addresses",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("user_id", ForeignKey("deferred_users.id")),
+            )
+            self.mapper(Address, addresses_table)
+        configure_mappers()
+
+        if property_type.Relationship:
+            assert hasattr(User, "addresses")
+        else:
+            assert hasattr(User, "new_column")
+
+        metadata.create_all(connection)
+        sess = fixture_session(bind=connection)
+
+        if property_type.Relationship:
+            u = User(
+                id=1,
+                name="testuser",
+                addresses=[Address()],
+            )
+        else:
+            u = User(id=1, name="testuser", new_column="test_value")
+        sess.add(u)
+        sess.commit()
+
+        sess = Session(connection)
+        user = sess.query(User).filter_by(id=1).first()
+        if property_type.ColumnProperty:
+            assert "id" in user.__dict__
+
+            # check that the column is deferred
+            assert "new_column" not in user.__dict__
+            assert "name" not in user.__dict__
+
+            eq_(user.new_column, "test_value")
+
+            assert "new_column" in user.__dict__
+            assert "name" in user.__dict__
+            eq_(user.name, "testuser")
+
+        elif property_type.Column:
+            assert "id" in user.__dict__
+            assert "new_column" in user.__dict__
+            assert "name" in user.__dict__
+            eq_(user.new_column, "test_value")
+            eq_(user.name, "testuser")
+        elif property_type.Relationship:
+            eq_(user.addresses[0].user_id, 1)
+        else:
+            property_type.fail()
 
     def test_replace_col_prop_w_syn(self):
         users, User = self.tables.users, self.classes.User
