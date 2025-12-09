@@ -117,6 +117,7 @@ if typing.TYPE_CHECKING:
     from .elements import Null
     from .elements import True_
     from .functions import Function
+    from .schema import CheckConstraint
     from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
@@ -7366,26 +7367,14 @@ class DDLCompiler(Compiled):
             return self.visit_check_constraint(constraint)
 
     def visit_check_constraint(self, constraint, **kw):
-        text = ""
-        if constraint.name is not None:
-            formatted_name = self.preparer.format_constraint(constraint)
-            if formatted_name is not None:
-                text += "CONSTRAINT %s " % formatted_name
-        text += "CHECK (%s)" % self.sql_compiler.process(
-            constraint.sqltext, include_table=False, literal_binds=True
-        )
+        text = self.define_constraint_preamble(constraint, **kw)
+        text += self.define_check_body(constraint, **kw)
         text += self.define_constraint_deferrability(constraint)
         return text
 
     def visit_column_check_constraint(self, constraint, **kw):
-        text = ""
-        if constraint.name is not None:
-            formatted_name = self.preparer.format_constraint(constraint)
-            if formatted_name is not None:
-                text += "CONSTRAINT %s " % formatted_name
-        text += "CHECK (%s)" % self.sql_compiler.process(
-            constraint.sqltext, include_table=False, literal_binds=True
-        )
+        text = self.define_constraint_preamble(constraint, **kw)
+        text += self.define_check_body(constraint, **kw)
         text += self.define_constraint_deferrability(constraint)
         return text
 
@@ -7394,42 +7383,16 @@ class DDLCompiler(Compiled):
     ) -> str:
         if len(constraint) == 0:
             return ""
-        text = ""
-        if constraint.name is not None:
-            formatted_name = self.preparer.format_constraint(constraint)
-            if formatted_name is not None:
-                text += "CONSTRAINT %s " % formatted_name
-        text += "PRIMARY KEY "
-        text += "(%s)" % ", ".join(
-            self.preparer.quote(c.name)
-            for c in (
-                constraint.columns_autoinc_first
-                if constraint._implicit_generated
-                else constraint.columns
-            )
-        )
+        text = self.define_constraint_preamble(constraint, **kw)
+        text += self.define_primary_key_body(constraint, **kw)
         text += self.define_constraint_deferrability(constraint)
         return text
 
-    def visit_foreign_key_constraint(self, constraint, **kw):
-        preparer = self.preparer
-        text = ""
-        if constraint.name is not None:
-            formatted_name = self.preparer.format_constraint(constraint)
-            if formatted_name is not None:
-                text += "CONSTRAINT %s " % formatted_name
-        remote_table = list(constraint.elements)[0].column.table
-        text += "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
-            ", ".join(
-                preparer.quote(f.parent.name) for f in constraint.elements
-            ),
-            self.define_constraint_remote_table(
-                constraint, remote_table, preparer
-            ),
-            ", ".join(
-                preparer.quote(f.column.name) for f in constraint.elements
-            ),
-        )
+    def visit_foreign_key_constraint(
+        self, constraint: ForeignKeyConstraint, **kw: Any
+    ) -> str:
+        text = self.define_constraint_preamble(constraint, **kw)
+        text += self.define_foreign_key_body(constraint, **kw)
         text += self.define_constraint_match(constraint)
         text += self.define_constraint_cascades(constraint)
         text += self.define_constraint_deferrability(constraint)
@@ -7445,16 +7408,67 @@ class DDLCompiler(Compiled):
     ) -> str:
         if len(constraint) == 0:
             return ""
+        text = self.define_constraint_preamble(constraint, **kw)
+        text += self.define_unique_body(constraint, **kw)
+        text += self.define_constraint_deferrability(constraint)
+        return text
+
+    def define_constraint_preamble(
+        self, constraint: Constraint, **kw: Any
+    ) -> str:
         text = ""
         if constraint.name is not None:
             formatted_name = self.preparer.format_constraint(constraint)
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
-        text += "UNIQUE %s(%s)" % (
+        return text
+
+    def define_primary_key_body(
+        self, constraint: PrimaryKeyConstraint, **kw: Any
+    ) -> str:
+        text = ""
+        text += "PRIMARY KEY "
+        text += "(%s)" % ", ".join(
+            self.preparer.quote(c.name)
+            for c in (
+                constraint.columns_autoinc_first
+                if constraint._implicit_generated
+                else constraint.columns
+            )
+        )
+        return text
+
+    def define_foreign_key_body(
+        self, constraint: ForeignKeyConstraint, **kw: Any
+    ) -> str:
+        preparer = self.preparer
+        remote_table = list(constraint.elements)[0].column.table
+        text = "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
+            ", ".join(
+                preparer.quote(f.parent.name) for f in constraint.elements
+            ),
+            self.define_constraint_remote_table(
+                constraint, remote_table, preparer
+            ),
+            ", ".join(
+                preparer.quote(f.column.name) for f in constraint.elements
+            ),
+        )
+        return text
+
+    def define_unique_body(
+        self, constraint: UniqueConstraint, **kw: Any
+    ) -> str:
+        text = "UNIQUE %s(%s)" % (
             self.define_unique_constraint_distinct(constraint, **kw),
             ", ".join(self.preparer.quote(c.name) for c in constraint),
         )
-        text += self.define_constraint_deferrability(constraint)
+        return text
+
+    def define_check_body(self, constraint: CheckConstraint, **kw: Any) -> str:
+        text = "CHECK (%s)" % self.sql_compiler.process(
+            constraint.sqltext, include_table=False, literal_binds=True
+        )
         return text
 
     def define_unique_constraint_distinct(
@@ -7500,7 +7514,7 @@ class DDLCompiler(Compiled):
             )
         return text
 
-    def define_constraint_match(self, constraint):
+    def define_constraint_match(self, constraint: ForeignKeyConstraint) -> str:
         text = ""
         if constraint.match is not None:
             text += " MATCH %s" % constraint.match

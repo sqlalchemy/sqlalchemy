@@ -1380,3 +1380,154 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(constraint), "CREATE INDEX name ON tbl (a + 5)"
         )
+
+
+class ConstraintCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def _constraint_create_fixture(self):
+        m = MetaData()
+        t = Table("tbl", m, Column("a", Integer), Column("b", Integer))
+        t2 = Table("t2", m, Column("a", Integer), Column("b", Integer))
+        return t, t2
+
+    def test_define_check_body(self):
+        t, _ = self._constraint_create_fixture()
+        constraint = CheckConstraint("a > 5", table=t)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CHECK (a > 5)",
+        )
+
+    def test_define_check_body_column_level(self):
+        m = MetaData()
+        t = Table(
+            "tbl",
+            m,
+            Column("a", Integer, CheckConstraint("a > 5", name="ck_a")),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl (a INTEGER CONSTRAINT ck_a CHECK (a > 5))",
+        )
+
+    def test_define_foreign_key_body_single_column(self):
+        t, _ = self._constraint_create_fixture()
+        constraint = ForeignKeyConstraint(["b"], ["t2.a"])
+        t.append_constraint(constraint)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD FOREIGN KEY(b) REFERENCES t2 (a)",
+        )
+
+    def test_define_foreign_key_body_multi_column(self):
+        m = MetaData()
+        Table(
+            "t1",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("id2", Integer, primary_key=True),
+        )
+        t2 = Table("t2", m, Column("a", Integer), Column("b", Integer))
+
+        constraint = ForeignKeyConstraint(["a", "b"], ["t1.id", "t1.id2"])
+        t2.append_constraint(constraint)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE t2 ADD FOREIGN KEY(a, b) REFERENCES t1 (id, id2)",
+        )
+
+    def test_define_unique_body_single_column(self):
+        t, _ = self._constraint_create_fixture()
+        constraint = UniqueConstraint("a", name="uq_a")
+        t.append_constraint(constraint)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CONSTRAINT uq_a UNIQUE (a)",
+        )
+
+    def test_define_unique_body_multi_column(self):
+        t, _ = self._constraint_create_fixture()
+        constraint = UniqueConstraint("a", "b", name="uq_ab")
+        t.append_constraint(constraint)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CONSTRAINT uq_ab UNIQUE (a, b)",
+        )
+
+    def test_define_constraint_preamble_named(self):
+        t, _ = self._constraint_create_fixture()
+        constraint = CheckConstraint("a > 5", name="ck_test", table=t)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CONSTRAINT ck_test CHECK (a > 5)",
+        )
+
+    def test_define_constraint_preamble_unnamed(self):
+        t, _ = self._constraint_create_fixture()
+        constraint = CheckConstraint("a > 5", table=t)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CHECK (a > 5)",
+        )
+
+    def test_visit_check_constraint_composition(self):
+        t, _ = self._constraint_create_fixture()
+        constraint = CheckConstraint(
+            "a < b",
+            name="ck_test",
+            deferrable=True,
+            initially="DEFERRED",
+            table=t,
+        )
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CONSTRAINT ck_test CHECK (a < b) "
+            "DEFERRABLE INITIALLY DEFERRED",
+        )
+
+    def test_visit_foreign_key_constraint_composition(self):
+        m = MetaData()
+        Table("t1", m, Column("a", Integer, primary_key=True))
+        t2 = Table("t2", m, Column("b", Integer))
+
+        constraint = ForeignKeyConstraint(
+            ["b"],
+            ["t1.a"],
+            name="fk_test",
+            ondelete="CASCADE",
+            onupdate="SET NULL",
+            match="FULL",
+            deferrable=True,
+            initially="IMMEDIATE",
+        )
+        t2.append_constraint(constraint)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE t2 ADD CONSTRAINT fk_test FOREIGN KEY(b) "
+            "REFERENCES t1 (a) MATCH FULL ON DELETE CASCADE "
+            "ON UPDATE SET NULL DEFERRABLE INITIALLY IMMEDIATE",
+        )
+
+    def test_visit_unique_constraint_composition(self):
+        t, _ = self._constraint_create_fixture()
+        constraint = UniqueConstraint(
+            "a", "b", name="uq_test", deferrable=True, initially="DEFERRED"
+        )
+        t.append_constraint(constraint)
+
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CONSTRAINT uq_test UNIQUE (a, b) "
+            "DEFERRABLE INITIALLY DEFERRED",
+        )

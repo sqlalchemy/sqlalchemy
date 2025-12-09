@@ -2580,13 +2580,19 @@ class PGDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_primary_key_constraint(self, constraint, **kw):
-        text = super().visit_primary_key_constraint(constraint)
+        text = self.define_constraint_preamble(constraint, **kw)
+        text += self.define_primary_key_body(constraint, **kw)
         text += self._define_include(constraint)
+        text += self.define_constraint_deferrability(constraint)
         return text
 
     def visit_unique_constraint(self, constraint, **kw):
-        text = super().visit_unique_constraint(constraint)
+        if len(constraint) == 0:
+            return ""
+        text = self.define_constraint_preamble(constraint, **kw)
+        text += self.define_unique_body(constraint, **kw)
         text += self._define_include(constraint)
+        text += self.define_constraint_deferrability(constraint)
         return text
 
     @util.memoized_property
