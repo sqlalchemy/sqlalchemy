@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12867
+
+    Fixed issue where PostgreSQL dialect options such as ``postgresql_include``
+    on :class:`.PrimaryKeyConstraint` and :class:`.UniqueConstraint` were
+    rendered in the wrong position when combined with constraint deferrability
+    options like ``deferrable=True``. Pull request courtesy G Allajmi.
