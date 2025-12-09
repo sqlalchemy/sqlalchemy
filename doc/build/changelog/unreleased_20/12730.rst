@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 12730
-
-    Fixed typing issue where :meth:`.Select.with_for_update` would not support
-    lists of ORM entities or other FROM clauses in the
-    :paramref:`.Select.with_for_update.of` parameter. Pull request courtesy
-    Shamil.
