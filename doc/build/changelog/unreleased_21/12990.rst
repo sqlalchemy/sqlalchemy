@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12990
+
+    Fixed issue where anonymous label generation for :class:`.CTE` constructs
+    could produce name collisions when Python's garbage collector reused memory
+    addresses during complex query compilation. The anonymous name generation
+    for :class:`.CTE` and other aliased constructs like :class:`.Alias`,
+    :class:`.Subquery` and others now use :func:`os.urandom` to generate unique
+    identifiers instead of relying on object ``id()``, ensuring uniqueness even
+    in cases of aggressive garbage collection and memory reuse.

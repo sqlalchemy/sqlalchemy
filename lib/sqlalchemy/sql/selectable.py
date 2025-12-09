@@ -16,6 +16,7 @@ from __future__ import annotations
 import collections
 from enum import Enum
 import itertools
+import os
 from typing import AbstractSet
 from typing import Any as TODO_Any
 from typing import Any
@@ -1744,7 +1745,9 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
                 name = getattr(selectable, "name", None)
                 if isinstance(name, _anonymous_label):
                     name = None
-            name = _anonymous_label.safe_construct(id(self), name or "anon")
+            name = _anonymous_label.safe_construct(
+                os.urandom(10).hex(), name or "anon"
+            )
         self.name = name
 
     def _refresh_for_new_column(self, column: ColumnElement[Any]) -> None:

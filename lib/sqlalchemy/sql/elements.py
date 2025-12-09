@@ -5953,7 +5953,7 @@ class _anonymous_label(_truncated_label):
 
     @classmethod
     def safe_construct_with_key(
-        cls, seed: int, body: str, sanitize_key: bool = False
+        cls, seed: int | str, body: str, sanitize_key: bool = False
     ) -> typing_Tuple[_anonymous_label, str]:
         # need to escape chars that interfere with format
         # strings in any case, issue #8724
@@ -5969,7 +5969,7 @@ class _anonymous_label(_truncated_label):
 
     @classmethod
     def safe_construct(
-        cls, seed: int, body: str, sanitize_key: bool = False
+        cls, seed: int | str, body: str, sanitize_key: bool = False
     ) -> _anonymous_label:
         # need to escape chars that interfere with format
         # strings in any case, issue #8724

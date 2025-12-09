@@ -73,6 +73,7 @@ from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import assert_warns_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import eq_regex
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import expect_warnings
@@ -2175,7 +2176,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         eq_(a1.name, "foo1")
         eq_(a2.name, "foo2")
-        eq_(a3.name, "%%(%d anon)s" % id(a3))
+        eq_regex(a3.name, r"%\([0-9a-z]+ anon\)s")
 
     def test_labeled_subquery(self):
         User = self.classes.User
