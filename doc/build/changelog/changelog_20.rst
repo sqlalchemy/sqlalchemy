@@ -10,7 +10,155 @@
 
 .. changelog::
     :version: 2.0.45
-    :include_notes_from: unreleased_20
+    :released: December 9, 2025
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 12730
+
+        Fixed typing issue where :meth:`.Select.with_for_update` would not support
+        lists of ORM entities or other FROM clauses in the
+        :paramref:`.Select.with_for_update.of` parameter. Pull request courtesy
+        Shamil.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12858
+
+        Fixed issue where calling :meth:`.Mapper.add_property` within mapper event
+        hooks such as :meth:`.MapperEvents.instrument_class`,
+        :meth:`.MapperEvents.after_mapper_constructed`, or
+        :meth:`.MapperEvents.before_mapper_configured` would raise an
+        ``AttributeError`` because the mapper's internal property collections were
+        not yet initialized. The :meth:`.Mapper.add_property` method now handles
+        early-stage property additions correctly, allowing properties including
+        column properties, deferred columns, and relationships to be added during
+        mapper initialization events.  Pull request courtesy G Allajmi.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12867
+
+        Fixed issue where PostgreSQL dialect options such as ``postgresql_include``
+        on :class:`.PrimaryKeyConstraint` and :class:`.UniqueConstraint` were
+        rendered in the wrong position when combined with constraint deferrability
+        options like ``deferrable=True``. Pull request courtesy G Allajmi.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12915
+
+        Some improvements to the :meth:`_sql.ClauseElement.params` method to
+        replace bound parameters in a query were made, however the ultimate issue
+        in :ticket:`12915` involving ORM :func:`_orm.aliased` cannot be fixed fully
+        until 2.1, where the method is being rewritten to work without relying on
+        Core cloned traversal.
+
+    .. change::
+        :tags: bug, sqlite, reflection
+        :tickets: 12924
+
+        A series of improvements have been made for reflection of CHECK constraints
+        on SQLite. The reflection logic now correctly handles table names
+        containing the strings "CHECK" or "CONSTRAINT", properly supports all four
+        SQLite identifier quoting styles (double quotes, single quotes, brackets,
+        and backticks) for constraint names, and accurately parses CHECK constraint
+        expressions containing parentheses within string literals using balanced
+        parenthesis matching with string context tracking.    Big thanks to
+        GruzdevAV for new test cases and implementation ideas.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12952
+
+        Fixed issue in Python 3.14 where dataclass transformation would fail when
+        a mapped class using :class:`.MappedAsDataclass` included a
+        :func:`.relationship` referencing a class that was not available at
+        runtime (e.g., within a ``TYPE_CHECKING`` block). This occurred when using
+        Python 3.14's :pep:`649` deferred annotations feature, which is the
+        default behavior without a ``from __future__ import annotations``
+        directive.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 12954
+
+        Fixed issue where SQLite dialect would fail to reflect constraint names
+        that contained uppercase letters or other characters requiring quoting. The
+        regular expressions used to parse primary key, foreign key, and unique
+        constraint names from the ``CREATE TABLE`` statement have been updated to
+        properly handle both quoted and unquoted constraint names.
+
+    .. change::
+        :tags: bug, typing
+
+        Fixed typing issue where :class:`.coalesce` would not return the correct
+        return type when a nullable form of that argument were passed, even though
+        this function is meant to select the non-null entry among possibly null
+        arguments.  Pull request courtesy Yannick PÉROUX.
+
+
+    .. change::
+        :tags: usecase, mysql
+        :tickets: 12964
+
+        Added support for MySQL 8.0.1 + ``FOR SHARE`` to be emitted for the
+        :meth:`.Select.with_for_update` method, which offers compatibility with
+        ``NOWAIT`` and ``SKIP LOCKED``.  The new syntax is used only for MySQL when
+        version 8.0.1 or higher is detected. Pull request courtesy JetDrag.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12987
+
+        Fixed issue where using the :meth:`.ColumnOperators.in_` operator with a
+        nested :class:`.CompoundSelect` statement (e.g. an ``INTERSECT`` of
+        ``UNION`` queries) would raise a :class:`NotImplementedError` when the
+        nested compound select was the first argument to the outer compound select.
+        The ``_scalar_type()`` internal method now properly handles nested compound
+        selects.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13015
+
+        Fixed the structure of the SQL string used for the
+        :ref:`engine_insertmanyvalues` feature when an explicit sequence with
+        ``nextval()`` is used. The SQL function invocation for the sequence has
+        been moved from being rendered inline within each tuple inside of VALUES to
+        being rendered once in the SELECT that reads from VALUES. This change
+        ensures the function is invoked in the correct order as rows are processed,
+        rather than assuming PostgreSQL will execute inline function calls within
+        VALUES in a particular order. While current PostgreSQL versions appear to
+        handle the previous approach correctly, the database does not guarantee
+        this behavior for future versions.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 6511
+
+        Added support for reflection of collation in types for PostgreSQL.
+        The ``collation`` will be set only if different from the default
+        one for the type.
+        Pull request courtesy Denis Laxalde.
+
+    .. change::
+        :tags: bug, examples
+
+        Fixed the "short_selects" performance example where the cache was being
+        used in all the examples, making it impossible to compare performance with
+        and without the cache.   Less important comparisons like "lambdas" and
+        "baked queries" have been removed.
+
+
+    .. change::
+        :tags: change, tests
+
+        A noxfile.py has been added to allow testing with nox.  This is a direct
+        port of 2.1's move to nox, however leaves the tox.ini file in place and
+        retains all test documentation in terms of tox.   Version 2.1 will move to
+        nox fully, including deprecation warnings for tox and new testing
+        documentation.
 
 .. changelog::
     :version: 2.0.44

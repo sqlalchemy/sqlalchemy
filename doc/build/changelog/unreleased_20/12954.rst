@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sqlite
-    :tickets: 12954
-
-    Fixed issue where SQLite dialect would fail to reflect constraint names
-    that contained uppercase letters or other characters requiring quoting. The
-    regular expressions used to parse primary key, foreign key, and unique
-    constraint names from the ``CREATE TABLE`` statement have been updated to
-    properly handle both quoted and unquoted constraint names.
