@@ -20,7 +20,8 @@ jobs:
       matrix:
         # emulated wheels on linux take too much time, split wheels into multiple runs
         python:
-          - "cp37-* cp38-* cp39-*"
+          - "cp37-*"
+          - "cp38-* cp39-*"
           - "cp310-* cp311-*"
           - "cp312-* cp313-* cp314-*"
           - "cp313t-* cp314t-*"
@@ -28,8 +29,7 @@ jobs:
           - compiled
         os:
           - "windows-2022"
-          # TODO: macos-14 uses arm macs (only python 3.10+) - make arm wheel on it
-          - "macos-13"
+          - "macos-15"
           - "ubuntu-22.04"
           - "ubuntu-22.04-arm"
         linux_archs:
@@ -41,13 +41,15 @@ jobs:
           # create pure python build
           - os: ubuntu-22.04
             wheel_mode: pure-python
-            python: "cp-312*"
+            python: "cp-313*"
 
         exclude:
           - os: "windows-2022"
             linux_archs: "aarch64"
-          - os: "macos-13"
-            linux_archs: "aarch64"
+          - os: "macos-15"
+            python: "cp37-*"
+          - os: "macos-15"
+            linux_archs: "x86_64"
           - os: "ubuntu-22.04"
             linux_archs: "aarch64"
           - os: "ubuntu-22.04-arm"
@@ -80,12 +82,21 @@ jobs:
       #     platforms: all
 
       - name: Build compiled wheels
-        if: ${{ matrix.wheel_mode == 'compiled' }}
+        if: ${{ matrix.wheel_mode == 'compiled' && matrix.python != 'cp37-*' }}
         uses: pypa/cibuildwheel@v3.3.0
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
-          CIBW_ENABLE: ${{ matrix.python == 'cp313t-*' && 'cpython-freethreading' || '' }}
+          CIBW_ENABLE: ${{ matrix.python == 'cp313t-* cp314t-*' && 'cpython-freethreading' || '' }}
+          # setting it here does not work on linux
+          # PYTHONNOUSERSITE: "1"
+
+      - name: Build compiled wheels 3.7
+        if: ${{ matrix.wheel_mode == 'compiled' && matrix.python == 'cp37-*' }}
+        uses: pypa/cibuildwheel@v2.23.3
+        env:
+          CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
+          CIBW_BUILD: ${{ matrix.python }}
           # setting it here does not work on linux
           # PYTHONNOUSERSITE: "1"
 
