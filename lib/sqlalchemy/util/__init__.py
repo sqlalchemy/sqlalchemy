@@ -136,6 +136,7 @@ from .langhelpers import (
 )
 from .langhelpers import PluginLoader as PluginLoader
 from .langhelpers import quoted_token_parser as quoted_token_parser
+from .langhelpers import restore_annotations as restore_annotations
 from .langhelpers import ro_memoized_property as ro_memoized_property
 from .langhelpers import ro_non_memoized_property as ro_non_memoized_property
 from .langhelpers import rw_hybridproperty as rw_hybridproperty

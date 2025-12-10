@@ -59,87 +59,60 @@ _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
 _M = TypeVar("_M", bound=ModuleType)
 
 if compat.py314:
-    # vendor a minimal form of get_annotations per
-    # https://github.com/python/cpython/issues/133684#issuecomment-2863841891
 
-    from annotationlib import call_annotate_function  # type: ignore[import-not-found,unused-ignore]  # noqa: E501
-    from annotationlib import Format
-
-    def _get_and_call_annotate(obj, format):  # noqa: A002
-        annotate = getattr(obj, "__annotate__", None)
-        if annotate is not None:
-            ann = call_annotate_function(annotate, format, owner=obj)
-            if not isinstance(ann, dict):
-                raise ValueError(f"{obj!r}.__annotate__ returned a non-dict")
-            return ann
-        return None
-
-    # this is ported from py3.13.0a7
-    _BASE_GET_ANNOTATIONS = type.__dict__["__annotations__"].__get__
-
-    def _get_dunder_annotations(obj):
-        if isinstance(obj, type):
-            try:
-                ann = _BASE_GET_ANNOTATIONS(obj)
-            except AttributeError:
-                # For static types, the descriptor raises AttributeError.
-                return {}
-        else:
-            ann = getattr(obj, "__annotations__", None)
-            if ann is None:
-                return {}
-
-        if not isinstance(ann, dict):
-            raise ValueError(
-                f"{obj!r}.__annotations__ is neither a dict nor None"
-            )
-        return dict(ann)
-
-    def _vendored_get_annotations(
-        obj: Any, *, format: Format  # noqa: A002
-    ) -> Mapping[str, Any]:
-        """A sparse implementation of annotationlib.get_annotations()"""
-
-        try:
-            ann = _get_dunder_annotations(obj)
-        except Exception:
-            pass
-        else:
-            if ann is not None:
-                return dict(ann)
-
-        # But if __annotations__ threw a NameError, we try calling __annotate__
-        ann = _get_and_call_annotate(obj, format)
-        if ann is None:
-            # If that didn't work either, we have a very weird object:
-            # evaluating
-            # __annotations__ threw NameError and there is no __annotate__.
-            # In that case,
-            # we fall back to trying __annotations__ again.
-            ann = _get_dunder_annotations(obj)
-
-        if ann is None:
-            if isinstance(obj, type) or callable(obj):
-                return {}
-            raise TypeError(f"{obj!r} does not have annotations")
-
-        if not ann:
-            return {}
-
-        return dict(ann)
+    import annotationlib
 
     def get_annotations(obj: Any) -> Mapping[str, Any]:
-        # FORWARDREF has the effect of giving us ForwardRefs and not
-        # actually trying to evaluate the annotations.  We need this so
-        # that the annotations act as much like
-        # "from __future__ import annotations" as possible, which is going
-        # away in future python as a separate mode
-        return _vendored_get_annotations(obj, format=Format.FORWARDREF)
+        return annotationlib.get_annotations(
+            obj, format=annotationlib.Format.FORWARDREF
+        )
 
 else:
 
     def get_annotations(obj: Any) -> Mapping[str, Any]:
         return inspect.get_annotations(obj)
+
+
+def restore_annotations(
+    cls: type, new_annotations: dict[str, Any]
+) -> Callable[[], None]:
+    """apply alternate annotations to a class, with a callable to restore
+    the pristine state of the former.
+    This is used strictly to provide dataclasses on a mapped class, where
+    in some cases where are making dataclass fields based on an attribute
+    that is actually a python descriptor on a superclass which we called
+    to get a value.
+    if dataclasses were to give us a way to achieve this without swapping
+    __annotations__, that would be much better.
+    """
+    delattr_ = object()
+
+    # pep-649 means classes have "__annotate__", and it's a callable. if it's
+    # there and is None, we're in "legacy future mode", where it's python 3.14
+    # or higher and "from __future__ import annotations" is set. in "legacy
+    # future mode" we have to do the same steps we do for older pythons,
+    # __annotate__ can be ignored
+    is_pep649 = hasattr(cls, "__annotate__") and cls.__annotate__ is not None
+
+    if is_pep649:
+        memoized = {
+            "__annotate__": getattr(cls, "__annotate__", delattr_),
+        }
+    else:
+        memoized = {
+            "__annotations__": getattr(cls, "__annotations__", delattr_)
+        }
+
+    cls.__annotations__ = new_annotations
+
+    def restore():
+        for k, v in memoized.items():
+            if v is delattr_:
+                delattr(cls, k)
+            else:
+                setattr(cls, k, v)
+
+    return restore
 
 
 def md5_hex(x: Any) -> str:

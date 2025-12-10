@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13021
+
+    A change in the mechanics of how Python dataclasses are applied to classes
+    that use :class:`.MappedAsDataclass` or
+    :meth:`.registry.mapped_as_dataclass` to apply ``__annotations__`` that are
+    as identical as is possible to the original ``__annotations__`` given,
+    while also adding attributes that SQLAlchemy considers to be part of
+    dataclass ``__annotations__``, then restoring the previous annotations in
+    exactly the same format as they were, using patterns that work with
+    :pep:`649` as closely as possible.
