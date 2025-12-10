@@ -1059,7 +1059,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "deferred_users",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("name", String),
+            Column("name", String(50)),
         )
 
         # use an ad-hoc User class.   Assigning an event holder to a
