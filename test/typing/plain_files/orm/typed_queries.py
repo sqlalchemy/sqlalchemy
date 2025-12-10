@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import assert_type
+from typing import Optional
 from typing import Tuple
 
 from sqlalchemy import Column
@@ -132,6 +134,8 @@ def t_legacy_query_single_entity() -> None:
 
     # EXPECTED_TYPE: User
     reveal_type(q1.one())
+
+    assert_type(q1.get(5), Optional[User])
 
     # EXPECTED_TYPE: List[User]
     reveal_type(q1.all())
