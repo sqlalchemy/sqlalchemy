@@ -1073,13 +1073,13 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         def setup_props(mapper, class_):
             if property_type.ColumnProperty:
-                col = Column("new_column", String)
+                col = Column("new_column", String(50))
                 mapper.local_table.append_column(col)
                 mapper.add_property(
                     col.key, deferred(col, group="deferred_group")
                 )
             elif property_type.Column:
-                col = Column("new_column", String)
+                col = Column("new_column", String(50))
                 mapper.local_table.append_column(col)
                 mapper.add_property(col.key, col)
             elif property_type.Relationship:
