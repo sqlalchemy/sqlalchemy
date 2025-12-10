@@ -135,6 +135,8 @@ def t_legacy_query_single_entity() -> None:
 
     assert_type(q1, Query[User])
 
+    assert_type(q1.get(5), Optional[User])
+
     assert_type(q1.one(), User)
 
     assert_type(q1.all(), list[User])
