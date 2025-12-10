@@ -31,7 +31,6 @@ jobs:
           - "windows-latest"
           - "windows-11-arm"
           - "macos-latest"
-          - "macos-13"
         python-version:
           - "3.10"
           - "3.11"
@@ -39,7 +38,7 @@ jobs:
           - "3.13"
           - "3.14"
           - "3.14t"
-          - "pypy-3.10"
+          - "pypy-3.11"
         build-type:
           # builds greenlet, runs asyncio tests.  includes aiosqlite driver
           - "cext-greenlet"
@@ -55,7 +54,7 @@ jobs:
 
         include:
           # autocommit tests fail on the ci for some reason
-          - python-version: "pypy-3.10"
+          - python-version: "pypy-3.11"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
 
         exclude:
@@ -66,8 +65,6 @@ jobs:
             os: "windows-11-arm"
           - build-type: "cext-greenlet"
             os: "macos-latest"
-          - build-type: "cext-greenlet"
-            os: "macos-13"
 
           # the threaded pythons are not stable under greenlet. Even
           # though we can run individual tests, when you run the whole suite
@@ -97,22 +94,17 @@ jobs:
             architecture: x86
           - os: "macos-latest"
             architecture: x64
-          # macos 13: uses intel macs. no arm64, x86
-          - os: "macos-13"
-            architecture: arm64
-          - os: "macos-13"
-            architecture: x86
           # pypy does not have cext or x86 or arm on linux
-          - python-version: "pypy-3.10"
+          - python-version: "pypy-3.11"
             build-type: "cext"
           - os: "ubuntu-22.04-arm"
-            python-version: "pypy-3.10"
+            python-version: "pypy-3.11"
           - os: "windows-latest"
-            python-version: "pypy-3.10"
+            python-version: "pypy-3.11"
             architecture: x86
           # Setup-python does not support any versions before 3.11 for arm64 windows
           - os: "windows-11-arm"
-            python-version: "pypy-3.10"
+            python-version: "pypy-3.11"
           - os: "windows-11-arm"
             python-version: "3.10"
           - os: "windows-11-arm"
@@ -141,7 +133,7 @@ jobs:
 
       - name: Run tests
         run: nox -v -s github-${{ matrix.build-type }} -- ${{ matrix.pytest-args }}
-        continue-on-error: ${{ matrix.python-version == 'pypy-3.10' }}
+        continue-on-error: ${{ matrix.python-version == 'pypy-3.11' }}
 
   run-nox:
     name: ${{ matrix.nox-env }}-${{ matrix.python-version }}

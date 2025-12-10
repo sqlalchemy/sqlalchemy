@@ -355,14 +355,9 @@ test-requires = "pytest pytest-xdist"
 test-command = "python -s -m pytest -c {project}/pyproject.toml -n4 -q --nomemory --notimingintensive --nomypy {project}/test"
 
 build = "*"
-# python 3.6, 3.7 are no longer supported by sqlalchemy
-# pypy uses the universal wheel fallback, since it does not use any compiled extension
-skip = "cp36-* cp37-* pp*"
-# TODO: remove this skip once action support arm macs
-test-skip = "*-macosx_arm64"
 
 [tool.cibuildwheel.macos]
-archs = ["x86_64", "arm64"]
+archs = ["arm64"]
 
 # On an Linux Intel runner with qemu installed, build Intel and ARM wheels
 # NOTE: this is overriden in the pipeline using the CIBW_ARCHS_LINUX env variable to speed up the build
