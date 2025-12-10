@@ -935,6 +935,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         is_true("id" in sig.parameters)
         is_true("content" in sig.parameters)
         is_true("user_id" in sig.parameters)
+        is_true("user" in sig.parameters)
 
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
