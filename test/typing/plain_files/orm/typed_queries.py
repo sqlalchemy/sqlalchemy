@@ -3,6 +3,7 @@ from __future__ import annotations
 from string.templatelib import Template
 from typing import Any
 from typing import assert_type
+from typing import Optional
 from typing import Unpack
 
 from sqlalchemy import Column
@@ -134,6 +135,8 @@ def t_legacy_query_single_entity() -> None:
     q1 = session.query(User).filter(User.id == 5)
 
     assert_type(q1, Query[User])
+
+    assert_type(q1.get(5), Optional[User])
 
     assert_type(q1.one(), User)
 

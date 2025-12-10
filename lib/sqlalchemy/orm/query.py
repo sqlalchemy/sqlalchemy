@@ -1060,7 +1060,7 @@ class Query(
         ":meth:`_orm.Query.get`",
         alternative="The method is now available as :meth:`_orm.Session.get`",
     )
-    def get(self, ident: _PKIdentityArgument) -> Optional[Any]:
+    def get(self, ident: _PKIdentityArgument) -> Optional[_T]:
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
