@@ -45,10 +45,13 @@ def run_file(cmd: code_writer_cmd, file: Path):
 
     content = section_re.sub(repl_fn, content)
     if count == 0:
-        raise ValueError(
-            "Expected to find comment '# START GENERATED CYTHON IMPORT' "
-            f"in cython file {file}, but none found"
-        )
+        if content:
+            raise ValueError(
+                "Expected to find comment '# START GENERATED CYTHON IMPORT' "
+                f"in cython file {file}, but none found and the file is not "
+                "empty"
+            )
+        content = code
     if count > 1:
         raise ValueError(
             "Expected to find a single comment '# START GENERATED CYTHON "

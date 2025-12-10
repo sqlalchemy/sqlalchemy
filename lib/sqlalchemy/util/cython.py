@@ -22,6 +22,7 @@ compiled = False
 
 # types
 int = int  # noqa: A001
+char = int
 bint = bool
 longlong = int
 ulonglong = int

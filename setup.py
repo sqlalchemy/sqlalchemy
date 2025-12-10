@@ -37,6 +37,7 @@ if DISABLE_EXTENSION and REQUIRE_EXTENSION:
 CYTHON_MODULES = (
     "engine._processors_cy",
     "engine._row_cy",
+    "engine._result_cy",
     "engine._util_cy",
     "sql._util_cy",
     "util._collections_cy",

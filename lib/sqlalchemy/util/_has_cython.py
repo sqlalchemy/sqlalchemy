@@ -16,6 +16,7 @@ def _all_cython_modules():
     from . import _collections_cy
     from . import _immutabledict_cy
     from ..engine import _processors_cy
+    from ..engine import _result_cy
     from ..engine import _row_cy
     from ..engine import _util_cy as engine_util
     from ..sql import _util_cy as sql_util
@@ -24,6 +25,7 @@ def _all_cython_modules():
         _collections_cy,
         _immutabledict_cy,
         _processors_cy,
+        _result_cy,
         _row_cy,
         engine_util,
         sql_util,

@@ -1,5 +1,4 @@
 from collections import defaultdict
-import math
 import re
 from timeit import timeit
 
@@ -60,16 +59,11 @@ class Case:
     @classmethod
     def _divide_results(cls, results, num, div, name):
         "utility method to create ratios of two implementation"
-        avg_str = "> mean of values"
         if div in results and num in results:
             num_dict = results[num]
             div_dict = results[div]
-            assert avg_str not in num_dict and avg_str not in div_dict
             assert num_dict.keys() == div_dict.keys()
             results[name] = {m: num_dict[m] / div_dict[m] for m in div_dict}
-            not_na = [v for v in results[name].values() if not math.isnan(v)]
-            avg = sum(not_na) / len(not_na)
-            results[name][avg_str] = avg
 
     @classmethod
     def update_results(cls, results):
@@ -110,7 +104,7 @@ class Case:
                     value = timeit(call, number=t_num)
                     print(".", end="", flush=True)
                 except Exception as e:
-                    fails.append(f"{name}::{m} error: {e}")
+                    fails.append(f"{name}::{m} error: {e!r}")
                     print("x", end="", flush=True)
                     value = float("nan")
 
@@ -119,5 +113,7 @@ class Case:
             for f in fails:
                 print("\t", f)
 
+        before = set(results)
         cls.update_results(results)
-        return results, [name for name, _ in objects]
+        after = set(results)
+        return results, [name for name, _ in objects], after - before
