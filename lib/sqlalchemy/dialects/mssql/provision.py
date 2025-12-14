@@ -137,11 +137,28 @@ def drop_all_schema_objects_pre_tables(cfg, eng):
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         inspector = inspect(conn)
 
-        conn.exec_driver_sql(
-            "IF EXISTS (SELECT 1 FROM sys.fulltext_catalogs "
-            "WHERE name = 'Catalog') "
-            "DROP FULLTEXT CATALOG Catalog"
-        )
+        # Drop all full-text indexes before dropping catalogs
+        fulltext_indexes = conn.exec_driver_sql(
+            "SELECT OBJECT_SCHEMA_NAME(object_id) AS schema_name, "
+            "OBJECT_NAME(object_id) AS table_name "
+            "FROM sys.fulltext_indexes"
+        ).fetchall()
+
+        for schema_name, table_name in fulltext_indexes:
+            if schema_name:
+                qualified_name = f"[{schema_name}].[{table_name}]"
+            else:
+                qualified_name = f"[{table_name}]"
+            conn.exec_driver_sql(f"DROP FULLTEXT INDEX ON {qualified_name}")
+
+        # Now drop all full-text catalogs
+        fulltext_catalogs = conn.exec_driver_sql(
+            "SELECT name FROM sys.fulltext_catalogs"
+        ).fetchall()
+
+        for (catalog_name,) in fulltext_catalogs:
+            conn.exec_driver_sql(f"DROP FULLTEXT CATALOG [{catalog_name}]")
+
         for schema in (None, "dbo", cfg.test_schema, cfg.test_schema_2):
             for tname in inspector.get_table_names(schema=schema):
                 tb = Table(
