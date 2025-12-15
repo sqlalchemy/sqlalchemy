@@ -87,6 +87,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_compile(self):
         for dialect in all_dialects():
             bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
+            if dialect.driver == "psycopg":
+                bindtemplate += "::VARCHAR"
             self.assert_compile(
                 func.current_timestamp(), "CURRENT_TIMESTAMP", dialect=dialect
             )
@@ -785,8 +787,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         num = column("q")
         self.assert_compile(
             func.array_agg(num).filter(num % 2 == 0)[1],
-            "(array_agg(q) FILTER (WHERE q %% %(q_1)s = "
-            "%(param_1)s))[%(param_2)s]",
+            "(array_agg(q) FILTER (WHERE q %% %(q_1)s::INTEGER = "
+            "%(param_1)s::INTEGER))[%(param_2)s::INTEGER]",
             dialect="postgresql",
         )
 

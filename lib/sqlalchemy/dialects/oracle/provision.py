@@ -19,7 +19,6 @@ from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
 from ...testing.provision import follower_url_from_main
 from ...testing.provision import generate_driver_url
-from ...testing.provision import is_preferred_driver
 from ...testing.provision import log
 from ...testing.provision import post_configure_engine
 from ...testing.provision import post_configure_testing_engine
@@ -157,14 +156,6 @@ def _purge_recyclebin(eng, schema=None):
                 {"schema": conn.dialect.denormalize_name(schema)},
             ).all():
                 conn.exec_driver_sql(f'purge {type_} {owner}."{object_name}"')
-
-
-@is_preferred_driver.for_db("oracle")
-def _oracle_is_preferred_driver(cfg, engine):
-    """establish oracledb as the preferred driver to use for tests, even
-    though cx_Oracle is still the "default" driver"""
-
-    return engine.dialect.driver == "oracledb" and not engine.dialect.is_async
 
 
 def _connect_with_retry(dialect, conn_rec, cargs, cparams):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import multiprocessing
 import os
 from pathlib import Path
 import sys
@@ -255,7 +256,8 @@ def _tests(
 
     cmd = ["python", "-m", "pytest"]
 
-    cmd.extend(os.environ.get("TOX_WORKERS", "-n4").split())
+    default_workers = f"-n{int(multiprocessing.cpu_count() * 0.8)}"
+    cmd.extend(os.environ.get("TOX_WORKERS", default_workers).split())
 
     if coverage:
         assert not platform_intensive

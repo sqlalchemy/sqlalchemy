@@ -366,15 +366,15 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
         if eager and testing.db.dialect.update_returning:
             asserter.assert_(
                 CompiledSQL(
-                    "UPDATE test SET foo=%(foo)s "
-                    "WHERE test.id = %(test_id)s "
+                    "UPDATE test SET foo=%(foo)s::INTEGER "
+                    "WHERE test.id = %(test_id)s::INTEGER "
                     "RETURNING test.bar",
                     [{"foo": 5, "test_id": 1}],
                     dialect="postgresql",
                 ),
                 CompiledSQL(
-                    "UPDATE test SET foo=%(foo)s "
-                    "WHERE test.id = %(test_id)s "
+                    "UPDATE test SET foo=%(foo)s::INTEGER "
+                    "WHERE test.id = %(test_id)s::INTEGER "
                     "RETURNING test.bar",
                     [{"foo": 6, "test_id": 2}],
                     dialect="postgresql",

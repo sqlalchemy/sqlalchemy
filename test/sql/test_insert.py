@@ -446,9 +446,9 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
         self.assert_compile(
             ins,
-            "INSERT INTO myothertable (otherid, othername) "
-            "SELECT mytable.myid, mytable.name FROM mytable "
-            "WHERE mytable.name = %(name_1)s RETURNING myothertable.otherid",
+            "INSERT INTO myothertable (otherid, othername) SELECT"
+            " mytable.myid, mytable.name FROM mytable WHERE mytable.name ="
+            " %(name_1)s::VARCHAR RETURNING myothertable.otherid",
             checkparams={"name_1": "foo"},
             dialect="postgresql",
         )
@@ -516,9 +516,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "INSERT INTO t (id, data) VALUES (nextval('id_seq'), "
-            "%(data_m0)s), (nextval('id_seq'), %(data_m1)s), "
-            "(nextval('id_seq'), %(data_m2)s)",
+            "INSERT INTO t (id, data) VALUES (nextval('id_seq'),"
+            " %(data_m0)s::VARCHAR), (nextval('id_seq'),"
+            " %(data_m1)s::VARCHAR), (nextval('id_seq'),"
+            " %(data_m2)s::VARCHAR)",
             dialect=postgresql.dialect(),
         )
 
@@ -543,9 +544,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "INSERT INTO t (counter, data) VALUES (nextval('counter_seq'), "
-            "%(data_m0)s), (nextval('counter_seq'), %(data_m1)s), "
-            "(nextval('counter_seq'), %(data_m2)s)",
+            "INSERT INTO t (counter, data) VALUES (nextval('counter_seq'),"
+            " %(data_m0)s::VARCHAR), (nextval('counter_seq'),"
+            " %(data_m1)s::VARCHAR), (nextval('counter_seq'),"
+            " %(data_m2)s::VARCHAR)",
             dialect=postgresql.dialect(),
         )
 
@@ -604,10 +606,12 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         if paramstyle.pg:
             self.assert_compile(
                 stmt,
-                "INSERT INTO t (x, y, z) VALUES "
-                "(%(x_m0)s, sum(%(sum_1)s, %(sum_2)s), %(z_m0)s), "
-                "(sum(%(sum_3)s, %(sum_4)s), %(y_m1)s, %(z_m1)s), "
-                "(sum(%(sum_5)s, %(sum_6)s), %(y_m2)s, foo(%(foo_1)s))",
+                "INSERT INTO t (x, y, z) VALUES (%(x_m0)s::INTEGER,"
+                " sum(%(sum_1)s::INTEGER, %(sum_2)s::INTEGER),"
+                " %(z_m0)s::INTEGER), (sum(%(sum_3)s::INTEGER,"
+                " %(sum_4)s::INTEGER), %(y_m1)s::INTEGER, %(z_m1)s::INTEGER),"
+                " (sum(%(sum_5)s::INTEGER, %(sum_6)s::INTEGER),"
+                " %(y_m2)s::INTEGER, foo(%(foo_1)s::INTEGER))",
                 checkparams={
                     "x_m0": 1,
                     "sum_1": 1,
@@ -1088,7 +1092,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ):
             self.assert_compile(
                 t.insert(),
-                "INSERT INTO t (x) VALUES (%(x)s)",
+                "INSERT INTO t (x) VALUES (%(x)s::INTEGER)",
                 params={"x": 5},
                 dialect=d,
             )
@@ -1108,7 +1112,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ):
             self.assert_compile(
                 t.insert(),
-                "INSERT INTO t (x) VALUES (%(x)s)",
+                "INSERT INTO t (x) VALUES (%(x)s::INTEGER)",
                 params={"x": 5},
                 dialect=d,
             )
@@ -1152,7 +1156,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ):
             self.assert_compile(
                 t.insert(),
-                "INSERT INTO t (q) VALUES (%(q)s)",
+                "INSERT INTO t (q) VALUES (%(q)s::INTEGER)",
                 params={"q": 5},
                 dialect=d,
             )
@@ -1172,7 +1176,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ):
             self.assert_compile(
                 t.insert(),
-                "INSERT INTO t (q) VALUES (%(q)s)",
+                "INSERT INTO t (q) VALUES (%(q)s::INTEGER)",
                 params={"q": 5},
                 dialect=d,
             )
@@ -1342,9 +1346,9 @@ class InsertImplicitReturningTest(
         )
         self.assert_compile(
             ins,
-            "INSERT INTO myothertable (otherid, othername) "
-            "SELECT mytable.myid, mytable.name FROM mytable "
-            "WHERE mytable.name = %(name_1)s",
+            "INSERT INTO myothertable (otherid, othername) SELECT"
+            " mytable.myid, mytable.name FROM mytable WHERE mytable.name ="
+            " %(name_1)s::VARCHAR",
             checkparams={"name_1": "foo"},
         )
 
@@ -1360,9 +1364,9 @@ class InsertImplicitReturningTest(
         )
         self.assert_compile(
             ins,
-            "INSERT INTO myothertable (otherid, othername) "
-            "SELECT mytable.myid, mytable.name FROM mytable "
-            "WHERE mytable.name = %(name_1)s",
+            "INSERT INTO myothertable (otherid, othername) SELECT"
+            " mytable.myid, mytable.name FROM mytable WHERE mytable.name ="
+            " %(name_1)s::VARCHAR",
             checkparams={"name_1": "foo"},
         )
 
@@ -1391,10 +1395,14 @@ class InsertImplicitReturningTest(
             stmt = t.insert().values(x=None, q=5)
             if insert_null_still_autoincrements:
                 expected = (
-                    "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s) RETURNING t.x"
+                    "INSERT INTO t (x, q) VALUES (%(x)s::INTEGER,"
+                    " %(q)s::INTEGER) RETURNING t.x"
                 )
             else:
-                expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+                expected = (
+                    "INSERT INTO t (x, q) VALUES (%(x)s::INTEGER,"
+                    " %(q)s::INTEGER)"
+                )
             params = None
         elif paramtype == "params":
             # for params, compiler doesnt have the value available to look
@@ -1402,17 +1410,23 @@ class InsertImplicitReturningTest(
             stmt = t.insert()
             if insert_null_still_autoincrements:
                 expected = (
-                    "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s) RETURNING t.x"
+                    "INSERT INTO t (x, q) VALUES (%(x)s::INTEGER,"
+                    " %(q)s::INTEGER) RETURNING t.x"
                 )
             else:
-                expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+                expected = (
+                    "INSERT INTO t (x, q) VALUES (%(x)s::INTEGER,"
+                    " %(q)s::INTEGER)"
+                )
             params = {"x": None, "q": 5}
         elif paramtype == "nothing":
             # no params, we assume full INSERT.  this kind of compilation
             # doesn't actually happen during execution since there are always
             # parameters or values
             stmt = t.insert()
-            expected = "INSERT INTO t (x, q) VALUES (%(x)s, %(q)s)"
+            expected = (
+                "INSERT INTO t (x, q) VALUES (%(x)s::INTEGER, %(q)s::INTEGER)"
+            )
             params = None
 
         self.assert_compile(stmt, expected, params=params, dialect=dialect)
@@ -1423,9 +1437,8 @@ class InsertImplicitReturningTest(
         )
         self.assert_compile(
             ins,
-            "INSERT INTO myothertable (othername) "
-            "VALUES (%(othername_m0)s), "
-            "(%(othername_m1)s)",
+            "INSERT INTO myothertable (othername) VALUES"
+            " (%(othername_m0)s::VARCHAR), (%(othername_m1)s::VARCHAR)",
             checkparams={"othername_m1": "bar", "othername_m0": "foo"},
         )
 
@@ -1450,9 +1463,8 @@ class InsertImplicitReturningTest(
         )
         self.assert_compile(
             ins,
-            "INSERT INTO myothertable (othername) "
-            "VALUES (%(othername_m0)s), "
-            "(%(othername_m1)s)",
+            "INSERT INTO myothertable (othername) VALUES"
+            " (%(othername_m0)s::VARCHAR), (%(othername_m1)s::VARCHAR)",
             checkparams={"othername_m1": "bar", "othername_m0": "foo"},
         )
 
@@ -1460,8 +1472,8 @@ class InsertImplicitReturningTest(
         ins = self.tables.myothertable.insert().values([{"othername": "foo"}])
         self.assert_compile(
             ins,
-            "INSERT INTO myothertable (othername) "
-            "VALUES (%(othername_m0)s)",
+            "INSERT INTO myothertable (othername) VALUES"
+            " (%(othername_m0)s::VARCHAR)",
             checkparams={"othername_m0": "foo"},
         )
 
@@ -1469,8 +1481,8 @@ class InsertImplicitReturningTest(
         ins = self.tables.myothertable.insert().values({"othername": "foo"})
         self.assert_compile(
             ins,
-            "INSERT INTO myothertable (othername) "
-            "VALUES (%(othername)s) RETURNING myothertable.otherid",
+            "INSERT INTO myothertable (othername) VALUES"
+            " (%(othername)s::VARCHAR) RETURNING myothertable.otherid",
             checkparams={"othername": "foo"},
         )
 
@@ -1755,9 +1767,10 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "INSERT INTO mytable (myid, name) VALUES (%(myid_m0)s, "
-            "%(name_m0)s), (%(myid_m1)s, %(name_m1)s), (%(myid_m2)s, "
-            "%(name_m2)s)",
+            "INSERT INTO mytable (myid, name) VALUES (%(myid_m0)s::INTEGER,"
+            " %(name_m0)s::VARCHAR), (%(myid_m1)s::INTEGER,"
+            " %(name_m1)s::VARCHAR), (%(myid_m2)s::INTEGER,"
+            " %(name_m2)s::VARCHAR)",
             checkparams={
                 "myid_m0": 1,
                 "name_m0": "d1",
@@ -1797,10 +1810,10 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             table.insert().values(values),
-            "INSERT INTO sometable (id, data, foo) VALUES "
-            "(%(id_m0)s, %(data_m0)s, foobar()), "
-            "(%(id_m1)s, %(data_m1)s, %(foo_m1)s), "
-            "(%(id_m2)s, %(data_m2)s, foobar())",
+            "INSERT INTO sometable (id, data, foo) VALUES (%(id_m0)s::INTEGER,"
+            " %(data_m0)s::VARCHAR, foobar()), (%(id_m1)s::INTEGER,"
+            " %(data_m1)s::VARCHAR, %(foo_m1)s::INTEGER), (%(id_m2)s::INTEGER,"
+            " %(data_m2)s::VARCHAR, foobar())",
             checkparams=checkparams,
             dialect=postgresql.dialect(),
         )
@@ -1871,10 +1884,10 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "INSERT INTO sometable (id, data, foo) VALUES "
-            "(%(id_m0)s, %(data_m0)s, %(foo)s), "
-            "(%(id_m1)s, %(data_m1)s, %(foo_m1)s), "
-            "(%(id_m2)s, %(data_m2)s, %(foo_m2)s)",
+            "INSERT INTO sometable (id, data, foo) VALUES (%(id_m0)s::INTEGER,"
+            " %(data_m0)s::VARCHAR, %(foo)s::INTEGER), (%(id_m1)s::INTEGER,"
+            " %(data_m1)s::VARCHAR, %(foo_m1)s::INTEGER), (%(id_m2)s::INTEGER,"
+            " %(data_m2)s::VARCHAR, %(foo_m2)s::INTEGER)",
             checkparams=checkparams,
             dialect=postgresql.dialect(),
         )
@@ -1929,8 +1942,8 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "INSERT INTO sometable (id, data) VALUES "
-            "(foobar(), %(data)s) RETURNING sometable.id",
+            "INSERT INTO sometable (id, data) VALUES (foobar(),"
+            " %(data)s::VARCHAR) RETURNING sometable.id",
             checkparams={"data": "foo"},
             params={"data": "foo"},
             dialect=returning_dialect,
@@ -1959,8 +1972,8 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "INSERT INTO sometable (id, data) VALUES "
-            "(foobar(), %(data)s) RETURNING sometable.id",
+            "INSERT INTO sometable (id, data) VALUES (foobar(),"
+            " %(data)s::VARCHAR) RETURNING sometable.id",
             checkparams={"data": "foo"},
             params={"data": "foo"},
             dialect=returning_dialect,
@@ -2017,10 +2030,10 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "INSERT INTO sometable (id, data, foo) VALUES "
-            "(%(id_m0)s, %(data_m0)s, %(foo)s), "
-            "(%(id_m1)s, %(data_m1)s, %(foo_m1)s), "
-            "(%(id_m2)s, %(data_m2)s, %(foo_m2)s)",
+            "INSERT INTO sometable (id, data, foo) VALUES (%(id_m0)s::INTEGER,"
+            " %(data_m0)s::VARCHAR, %(foo)s::INTEGER), (%(id_m1)s::INTEGER,"
+            " %(data_m1)s::VARCHAR, %(foo_m1)s::INTEGER), (%(id_m2)s::INTEGER,"
+            " %(data_m2)s::VARCHAR, %(foo_m2)s::INTEGER)",
             checkparams=checkparams,
             dialect=postgresql.dialect(),
         )
@@ -2058,12 +2071,12 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             table.insert().values(values),
-            "INSERT INTO sometable (id, data, foo) VALUES "
-            "(%(id_m0)s, %(data_m0)s, foob()), "
-            "(%(id_m1)s, %(data_m1)s, foob()), "
-            "(%(id_m2)s, %(data_m2)s, bar()), "
-            "(%(id_m3)s, %(data_m3)s, %(foo_m3)s), "
-            "(%(id_m4)s, %(data_m4)s, foob())",
+            "INSERT INTO sometable (id, data, foo) VALUES (%(id_m0)s::INTEGER,"
+            " %(data_m0)s::VARCHAR, foob()), (%(id_m1)s::INTEGER,"
+            " %(data_m1)s::VARCHAR, foob()), (%(id_m2)s::INTEGER,"
+            " %(data_m2)s::VARCHAR, bar()), (%(id_m3)s::INTEGER,"
+            " %(data_m3)s::VARCHAR, %(foo_m3)s::INTEGER), (%(id_m4)s::INTEGER,"
+            " %(data_m4)s::VARCHAR, foob())",
             checkparams=checkparams,
             dialect=postgresql.dialect(),
         )
@@ -2095,10 +2108,10 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         self.assert_compile(
             table.insert().values(values),
-            "INSERT INTO sometable (id, data) VALUES "
-            "(%(id_m0)s, %(data_m0)s), "
-            "(%(id_m1)s, %(data_m1)s), "
-            "(%(id_m2)s, %(data_m2)s)",
+            "INSERT INTO sometable (id, data) VALUES (%(id_m0)s::INTEGER,"
+            " %(data_m0)s::VARCHAR), (%(id_m1)s::INTEGER,"
+            " %(data_m1)s::VARCHAR), (%(id_m2)s::INTEGER,"
+            " %(data_m2)s::VARCHAR)",
             checkparams=checkparams,
             dialect=postgresql.dialect(),
         )

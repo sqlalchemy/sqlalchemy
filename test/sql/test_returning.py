@@ -52,10 +52,18 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (
             insert,
-            "INSERT INTO foo (id, q, x, y) "
-            "VALUES (%(id)s, %(q)s, %(x)s, %(y)s)",
+            (
+                "INSERT INTO foo (id, q, x, y) VALUES (%(id)s::INTEGER,"
+                " %(q)s::INTEGER, %(x)s::INTEGER, %(y)s::INTEGER)"
+            ),
         ),
-        (update, "UPDATE foo SET id=%(id)s, q=%(q)s, x=%(x)s, y=%(y)s"),
+        (
+            update,
+            (
+                "UPDATE foo SET id=%(id)s::INTEGER, q=%(q)s::INTEGER,"
+                " x=%(x)s::INTEGER, y=%(y)s::INTEGER"
+            ),
+        ),
         (delete, "DELETE FROM foo"),
         argnames="dml_fn, sql_frag",
         id_="na",
@@ -223,8 +231,7 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
-            "RETURNING t.x, t.y, t.z",
+            "UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s RETURNING t.x, t.y, t.z",
         )
         cte = stmt.cte("c")
 

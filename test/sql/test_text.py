@@ -403,7 +403,8 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             text(
                 "select * from foo where lala=:bar and hoho=:whee"
             ).bindparams(bar=4, whee=7),
-            "select * from foo where lala=%(bar)s and hoho=%(whee)s",
+            "select * from foo where lala=%(bar)s::INTEGER "
+            "and hoho=%(whee)s::INTEGER",
             checkparams={"bar": 4, "whee": 7},
             dialect="postgresql",
         )
