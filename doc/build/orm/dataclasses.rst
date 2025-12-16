@@ -407,7 +407,7 @@ not itself mapped, but serves as part of the base for a mapped class::
 .. tip::
 
     When using :class:`_orm.MappedAsDataclass` without a declarative base in
-    the hiearchy, the target class is still turned into a real Python dataclass,
+    the hierarchy, the target class is still turned into a real Python dataclass,
     so that it may properly serve as a base for a mapped dataclass.   Using
     :class:`_orm.MappedAsDataclass` (or the :func:`_orm.unmapped_dataclass` decorator
     described later in this section) is required in order for the class to be correctly

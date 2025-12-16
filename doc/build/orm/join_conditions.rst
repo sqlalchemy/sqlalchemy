@@ -426,8 +426,8 @@ composite key to ``Writer``.
 
 When objects are added to an ORM :class:`.Session` using :meth:`.Session.add`,
 the ORM :term:`flush` process takes on the task of reconciling object
-refereneces that correspond to :func:`_orm.relationship` configurations and
-delivering this state to the databse using INSERT/UPDATE/DELETE statements.  In
+references that correspond to :func:`_orm.relationship` configurations and
+delivering this state to the database using INSERT/UPDATE/DELETE statements.  In
 this specific example, if we associate an ``Article`` with a particular
 ``Magazine``, but then associate the ``Article`` with a ``Writer`` that's
 associated  with a *different* ``Magazine``, this flush process will overwrite
