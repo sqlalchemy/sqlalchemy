@@ -146,7 +146,7 @@ condition is copied to the new :func:`_orm.relationship` as well::
     "user".id = address.user_id AND address.email LIKE :email_1 || '%%'
     >>>
 
-Other arguments that are transferrable include the
+Other arguments that are transferable include the
 :paramref:`_orm.relationship.secondary` parameter that refers to a
 many-to-many association table, as well as the "join" arguments
 :paramref:`_orm.relationship.primaryjoin` and
