@@ -1727,7 +1727,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     )
     def test_order_by_labels_enabled(self, operator, expected):
         """test positive cases with order_by_labels enabled.  this is
-        multipled out to all the ORDER BY modifier operators
+        multiplied out to all the ORDER BY modifier operators
         (see #11592)
 
 
@@ -3132,13 +3132,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         # this tests that _from_objects
-        # concantenates OK
+        # concatenates OK
         self.assert_compile(
             select(column("x") + over(func.foo())),
             "SELECT x + foo() OVER () AS anon_1",
         )
 
-        # test a reference to a label that in the referecned selectable;
+        # test a reference to a label that in the referenced selectable;
         # this resolves
         expr = (table1.c.myid + 5).label("sum")
         stmt = select(expr).alias()

@@ -7,8 +7,8 @@
     on a common base :class:`.EmulatedDBAPIException`, which is now what's
     available from the :attr:`.StatementException.orig` attribute on a
     SQLAlchemy :class:`.DBAPIError` object.   Within :class:`.EmulatedDBAPIException`
-    and the subclasses in its hiearchy, the original driver-level exception is
-    also now avaliable via the :attr:`.EmulatedDBAPIException.orig` attribute,
+    and the subclasses in its hierarchy, the original driver-level exception is
+    also now available via the :attr:`.EmulatedDBAPIException.orig` attribute,
     and is also available from :class:`.DBAPIError` directly using the
     :attr:`.DBAPIError.driver_exception` attribute.
 

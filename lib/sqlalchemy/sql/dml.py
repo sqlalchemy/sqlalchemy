@@ -497,7 +497,7 @@ class UpdateBase(
 
             The :meth:`.UpdateBase.return_defaults` method is used by the ORM
             for its internal work in fetching newly generated primary key
-            and server default values, in particular to provide the underyling
+            and server default values, in particular to provide the underlying
             implementation of the :paramref:`_orm.Mapper.eager_defaults`
             ORM feature as well as to allow RETURNING support with bulk
             ORM inserts.  Its behavior is fairly idiosyncratic

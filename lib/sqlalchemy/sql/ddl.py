@@ -758,7 +758,7 @@ class CreateView(DialectKWArgs, _TableViaSelect):
     of the view is based on the columns of the SELECT statement, and the data
     present in the view is derived from the rows represented by the
     SELECT.  A non-materialized view will evaluate the SELECT statement
-    dynamicaly as it is queried, whereas a materialized view represents a
+    dynamically as it is queried, whereas a materialized view represents a
     snapshot of the SELECT statement at a particular point in time and
     typically needs to be refreshed manually using database-specific commands.
 

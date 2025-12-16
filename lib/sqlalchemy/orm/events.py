@@ -3235,7 +3235,7 @@ class RegistryEvents(event.Events["registry"]):
     :meth:`_orm.RegistryEvents.after_configured`.`.   These events may be
     applied to a :class:`_orm.registry` object as shown in the preceding
     example, as well as to a declarative base class directly, which will
-    automtically locate the registry for the event to be applied::
+    automatically locate the registry for the event to be applied::
 
         from typing import Any
 

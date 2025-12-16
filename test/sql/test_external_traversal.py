@@ -2827,7 +2827,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = "default"
 
-    # fixme: consolidate converage from elsewhere here and expand
+    # fixme: consolidate converge from elsewhere here and expand
 
     @classmethod
     def setup_test_class(cls):

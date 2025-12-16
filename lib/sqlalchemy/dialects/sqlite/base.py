@@ -194,7 +194,7 @@ The implications of legacy transaction mode include:
   of the transaction will not rollback elements that were part of a released
   savepoint.
 
-Legacy transaction mode first existed in order to faciliate working around
+Legacy transaction mode first existed in order to facilitate working around
 SQLite's file locks.  Because SQLite relies upon whole-file locks, it is easy to
 get "database is locked" errors, particularly when newer features like "write
 ahead logging" are disabled.   This is a key reason why ``sqlite3``'s legacy

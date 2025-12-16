@@ -6,7 +6,7 @@
     similar statements, via a new statement-only
     :meth:`.ExecutableStatement.params` method which works more efficiently and
     correctly than the previous implementations available from
-    :class:`.ClauseElement`, by assocating the given parameter dictionary with
+    :class:`.ClauseElement`, by associating the given parameter dictionary with
     the statement overall rather than cloning the statement and rewriting its
     bound parameters.  The :meth:`_sql.ClauseElement.params` and
     :meth:`_sql.ClauseElement.unique_params` methods, when called on an object

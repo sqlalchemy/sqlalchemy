@@ -7,5 +7,5 @@
     type are now deprecated for removal; these two methods along with
     :func:`_postgresql.Any` and :func:`_postgresql.All` have been legacy for
     some time as they are superseded by the :func:`_sql.any_` and
-    :func:`_sql.all_` functions, which feature more intutive use.
+    :func:`_sql.all_` functions, which feature more intuitive use.
 

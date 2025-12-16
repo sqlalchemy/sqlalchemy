@@ -1127,7 +1127,7 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
         def all_(self) -> CollectionAggregate[Any]: ...
 
         # numeric overloads.  These need more tweaking
-        # in particular they all need to have a variant for Optiona[_T]
+        # in particular they all need to have a variant for Optional[_T]
         # because Optional only applies to the data side, not the expression
         # side
 

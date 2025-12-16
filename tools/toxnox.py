@@ -2,7 +2,7 @@
 sections for nox tests, which include tags that indicate various combinations
 of those parameters in such a way that it's somewhat similar to how
 we were using the tox project; where individual dash-separated tags could
-be added to add more specificity to the suite configuation, or omitting them
+be added to add more specificity to the suite configuration, or omitting them
 would fall back to defaults.
 
 

@@ -644,7 +644,7 @@ class Issue11292Test(fixtures.DeclarativeMappedTest):
         session = fixture_session()
 
         # here, we want the defaultload() to go away on subsequent loads,
-        # becuase Parent.extension is propagate_to_loaders=False
+        # because Parent.extension is propagate_to_loaders=False
         query = (
             select(Parent)
             .join(Extension)
@@ -684,7 +684,7 @@ class Issue11292Test(fixtures.DeclarativeMappedTest):
         session = fixture_session()
 
         # here, we want the defaultload() to go away on subsequent loads,
-        # becuase Parent.extension is propagate_to_loaders=False
+        # because Parent.extension is propagate_to_loaders=False
         query = select(Parent).options(
             (
                 defaultload(Parent.extension).options(

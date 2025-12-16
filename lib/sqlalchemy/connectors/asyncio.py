@@ -296,7 +296,7 @@ class AsyncAdapt_dbapi_cursor:
             self._rows = collections.deque(await_(self._cursor.fetchall()))
 
     def setinputsizes(self, *inputsizes: Any) -> None:
-        # NOTE: this is overrridden in aioodbc due to
+        # NOTE: this is overridden in aioodbc due to
         # see https://github.com/aio-libs/aioodbc/issues/451
         # right now
 

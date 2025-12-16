@@ -12,7 +12,7 @@
     (so-called NewSQL) or other novel styles of database that introduce new
     clauses to these statements.   A new example suite is included which
     illustrates the ``QUALIFY`` SQL construct used by several NewSQL databases
-    which includes a cachable implementation as well as a test suite.
+    which includes a cacheable implementation as well as a test suite.
 
     .. seealso::
 

@@ -1057,7 +1057,7 @@ class SynonymProperty(DescriptorProperty[_T]):
             if isinstance(attr, attributes.QueryableAttribute):
                 return attr.comparator
             elif isinstance(attr, SQLORMOperations):
-                # assocaition proxy comes here
+                # association proxy comes here
                 return attr
 
             raise sa_exc.InvalidRequestError(

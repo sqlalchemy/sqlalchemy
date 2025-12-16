@@ -144,7 +144,7 @@ class EngineThreadSafetyTest(_ThreadTest, fixtures.TablesTest):
             table_key = thread_name
             assert table_key in metadata.tables, f"{table_key} does not exist"
             with num_threads_engine.connect() as conn:
-                # Will raise if it cannot connect so erros will be populated
+                # Will raise if it cannot connect so errors will be populated
                 conn.execute(sa.select(metadata.tables[table_key]))
 
         _, errors = self.run_threaded(worker)

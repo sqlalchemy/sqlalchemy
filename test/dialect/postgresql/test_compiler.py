@@ -4307,7 +4307,7 @@ class DistinctOnTest(
             "Can't resolve label reference for.* expression 'not a"
             " label' should be explicitly",
         ):
-            self.assert_compile(stmt, "ingored")
+            self.assert_compile(stmt, "ignored")
 
     def test_distinct_on_ext_with_legacy_distinct(self):
         with (

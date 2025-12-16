@@ -110,7 +110,7 @@ def setup_options(make_option):
     make_option(
         "--disable-asyncio",
         action="store_true",
-        help="disable test / fixtures / provisoning running in asyncio",
+        help="disable test / fixtures / provisioning running in asyncio",
     )
     make_option(
         "--backend-only",

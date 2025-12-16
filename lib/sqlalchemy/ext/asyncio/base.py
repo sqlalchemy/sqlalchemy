@@ -193,7 +193,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
                 # (see PEP 479 for sync generators; async generators also
                 # have this behavior). But do this only if the exception
                 # wrapped
-                # by the RuntimeError is actully Stop(Async)Iteration (see
+                # by the RuntimeError is actually Stop(Async)Iteration (see
                 # issue29692).
                 if (
                     isinstance(value, (StopIteration, StopAsyncIteration))
