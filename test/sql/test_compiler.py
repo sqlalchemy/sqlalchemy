@@ -2961,7 +2961,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         check_results(
             postgresql.dialect(),
             ["NUMERIC", "NUMERIC(12, 9)", "DATE", "TEXT", "VARCHAR(20)"],
-            "%(param_1)s",
+            "%(param_1)s::VARCHAR",
         )
 
         # then the Oracle engine

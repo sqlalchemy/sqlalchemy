@@ -1187,6 +1187,53 @@ raise an error, directing users to use :class:`_sql.FrameClause` instead.
 PostgreSQL
 ==========
 
+.. _change_13010_postgresql:
+
+Default PostgreSQL driver changed to psycopg (psycopg 3)
+---------------------------------------------------------
+
+The default DBAPI driver for the PostgreSQL dialect has been changed from
+``psycopg2`` to ``psycopg`` (psycopg version 3). When using a connection URL
+of the form ``postgresql://user:pass@host/dbname``, SQLAlchemy will now
+attempt to use the ``psycopg`` driver by default.
+
+The ``psycopg`` (version 3) driver is the modernized successor to
+``psycopg2``, featuring improved performance when built with C extensions,
+better support for modern PostgreSQL features, and native async support via
+the ``psycopg_async`` dialect. The performance characteristics of ``psycopg``
+with C extensions are comparable to ``psycopg2``.
+
+The ``psycopg2`` driver remains fully supported and can be used by explicitly
+specifying it in the connection URL.
+
+Examples to summarize the change are as follows::
+
+    # omit the driver portion, will use the psycopg dialect
+    engine = create_engine("postgresql://user:pass@host/dbname")
+
+    # indicate the psycopg driver/dialect explcitly (preferred)
+    engine = create_engine("postgresql+psycopg://user:pass@host/dbname")
+
+    # use the legacy psycopg2 driver/dialect
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname")
+
+The ``psycopg`` DBAPI driver itself can be installed either directly
+or via the ``sqlalchemy[postgresql]`` extra::
+
+.. sourcecode:: txt
+
+    # install psycopg directly
+    pip install "psycopg[binary]"
+
+    # or use SQLAlchemy's postgresql extra (now installs psycopg)
+    pip install sqlalchemy[postgresql]
+
+.. seealso::
+
+    :ref:`postgresql_psycopg` - Documentation for the psycopg 3 dialect
+
+:ticket:`13010`
+
 .. _change_10594_postgresql:
 
 Changes to Named Type Handling in PostgreSQL
@@ -1470,6 +1517,53 @@ required if using the connection string directly with ``pyodbc.connect()``).
 
 Oracle Database
 ===============
+
+.. _change_13010_oracle:
+
+Default Oracle driver changed to python-oracledb
+-------------------------------------------------
+
+The default DBAPI driver for the Oracle dialect has been changed from
+``cx_oracle`` to ``oracledb`` (python-oracledb). When using a connection URL
+of the form ``oracle://user:pass@host/dbname``, SQLAlchemy will now attempt
+to use the ``oracledb`` driver by default.
+
+The ``oracledb`` driver is the modernized successor to ``cx_oracle``,
+actively maintained by Oracle with improved performance characteristics and
+ongoing feature development. The documentation for ``cx_oracle`` has been
+largely replaced with references to ``oracledb`` at
+https://cx-oracle.readthedocs.io/.
+
+The ``cx_oracle`` driver remains fully supported and can be used by
+explicitly specifying it in the connection URL.
+
+Examples to summarize the change are as follows::
+
+    # omit the driver portion, will use the oracledb dialect
+    engine = create_engine("oracle://user:pass@host/dbname")
+
+    # indicate the oracledb driver/dialect explcitly (preferred)
+    engine = create_engine("oracle+oracledb://user:pass@host/dbname")
+
+    # use the legacy cx_oracle driver/dialect
+    engine = create_engine("oracle+cx_oracle://user:pass@host/dbname")
+
+The ``oracledb`` DBAPI driver itself can be installed either directly
+or via the ``sqlalchemy[oracle]`` extra:
+
+.. sourcecode:: txt
+
+    # install oracledb directly
+    pip install oracledb
+
+    # or use SQLAlchemy's oracle extra (now installs oracledb)
+    pip install sqlalchemy[oracle]
+
+.. seealso::
+
+    :ref:`oracledb` - Documentation for the python-oracledb dialect
+
+:ticket:`13010`
 
 .. _change_11633:
 

@@ -201,9 +201,10 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         elif synchronize_session in ("fetch", "fetch_w_hint"):
             asserter.assert_(
                 CompiledSQL(
-                    "UPDATE engineer SET engineer_name=%(engineer_name)s "
-                    "FROM person WHERE engineer.id = person.id "
-                    "AND person.name = %(name_1)s RETURNING engineer.id",
+                    "UPDATE engineer SET"
+                    " engineer_name=%(engineer_name)s::VARCHAR FROM person"
+                    " WHERE engineer.id = person.id AND person.name ="
+                    " %(name_1)s::VARCHAR RETURNING engineer.id",
                     [{"engineer_name": "e5", "name_1": "e2"}],
                     dialect="postgresql",
                 ),
@@ -211,9 +212,10 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         else:
             asserter.assert_(
                 CompiledSQL(
-                    "UPDATE engineer SET engineer_name=%(engineer_name)s "
-                    "FROM person WHERE engineer.id = person.id "
-                    "AND person.name = %(name_1)s",
+                    "UPDATE engineer SET"
+                    " engineer_name=%(engineer_name)s::VARCHAR FROM person"
+                    " WHERE engineer.id = person.id AND person.name ="
+                    " %(name_1)s::VARCHAR",
                     [{"engineer_name": "e5", "name_1": "e2"}],
                     dialect="postgresql",
                 ),
@@ -299,7 +301,8 @@ class InheritTest(fixtures.DeclarativeMappedTest):
             asserter.assert_(
                 CompiledSQL(
                     "DELETE FROM engineer USING person WHERE "
-                    "engineer.id = person.id AND person.name = %(name_1)s "
+                    "engineer.id = person.id "
+                    "AND person.name = %(name_1)s::VARCHAR "
                     "RETURNING engineer.id",
                     [{"name_1": "e2"}],
                     dialect="postgresql",
@@ -309,7 +312,8 @@ class InheritTest(fixtures.DeclarativeMappedTest):
             asserter.assert_(
                 CompiledSQL(
                     "DELETE FROM engineer USING person WHERE "
-                    "engineer.id = person.id AND person.name = %(name_1)s",
+                    "engineer.id = person.id "
+                    "AND person.name = %(name_1)s::VARCHAR",
                     [{"name_1": "e2"}],
                     dialect="postgresql",
                 ),

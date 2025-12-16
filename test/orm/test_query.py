@@ -5243,7 +5243,7 @@ class DistinctOnTest(
             "addresses.email_address AS addresses_email_address "
             "FROM users JOIN addresses ON users.id = addresses.user_id "
             "ORDER BY addresses.email_address DESC  "
-            "LIMIT %(param_1)s) AS anon_1 "
+            "LIMIT %(param_1)s::INTEGER) AS anon_1 "
             "LEFT OUTER JOIN addresses AS addresses_1 "
             "ON anon_1.users_id = addresses_1.user_id "
             "ORDER BY anon_1.addresses_email_address DESC, addresses_1.id",

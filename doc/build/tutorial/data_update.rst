@@ -190,7 +190,10 @@ multiple rows at once against the named form of VALUES::
   >>> print(update_stmt.compile(dialect=postgresql.dialect()))
   {printsql}UPDATE user_account
   SET name=my_values.name
-  FROM (VALUES (%(param_1)s, %(param_2)s), (%(param_3)s, %(param_4)s), (%(param_5)s, %(param_6)s)) AS my_values (id, name)
+  FROM (VALUES
+  (%(param_1)s::INTEGER, %(param_2)s::VARCHAR),
+  (%(param_3)s::INTEGER, %(param_4)s::VARCHAR),
+  (%(param_5)s::INTEGER, %(param_6)s::VARCHAR)) AS my_values (id, name)
   WHERE user_account.id = my_values.id
 
 .. _tutorial_parameter_ordered_updates:

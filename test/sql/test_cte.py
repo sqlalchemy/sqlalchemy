@@ -2933,7 +2933,7 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             qry,
             "WITH delete_cte AS "
             "(WITH generator AS "
-            "(SELECT %(param_1)s AS id) "
+            "(SELECT %(param_1)s::INTEGER AS id) "
             "DELETE FROM table_1 USING generator "
             "WHERE table_1.id = generator.id RETURNING table_1.id, "
             "table_1.price) SELECT delete_cte.id, delete_cte.price "

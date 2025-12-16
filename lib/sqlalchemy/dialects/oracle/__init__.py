@@ -46,7 +46,7 @@ oracledb_async = type(
     "oracledb_async", (ModuleType,), {"dialect": oracledb.dialect_async}
 )
 
-base.dialect = dialect = cx_oracle.dialect
+base.dialect = dialect = oracledb.dialect
 
 __all__ = (
     "VARCHAR",

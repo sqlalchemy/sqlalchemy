@@ -1032,12 +1032,14 @@ class TypeDecoratorSpecialCasesTest(AssertsCompiledSQL, fixtures.TestBase):
 
         self.assert_compile(
             7 < column("q", ArrayDec).any_(),
-            "%(param_1)s < ANY (q)",
+            "%(param_1)s::INTEGER < ANY (q)",
             dialect="postgresql",
         )
 
         self.assert_compile(
-            column("q", ArrayDec)[5], "q[%(q_1)s]", dialect="postgresql"
+            column("q", ArrayDec)[5],
+            "q[%(q_1)s::INTEGER]",
+            dialect="postgresql",
         )
 
     def test_typedec_of_json_ops(self):
@@ -1047,12 +1049,14 @@ class TypeDecoratorSpecialCasesTest(AssertsCompiledSQL, fixtures.TestBase):
             cache_ok = True
 
         self.assert_compile(
-            column("q", JsonDec)["q"], "q -> %(q_1)s", dialect="postgresql"
+            column("q", JsonDec)["q"],
+            "q -> %(q_1)s::TEXT",
+            dialect="postgresql",
         )
 
         self.assert_compile(
             column("q", JsonDec)["q"].as_integer(),
-            "CAST(q ->> %(q_1)s AS INTEGER)",
+            "CAST(q ->> %(q_1)s::TEXT AS INTEGER)",
             dialect="postgresql",
         )
 

@@ -882,7 +882,7 @@ class CreateEngineTest(fixtures.TestBase):
 
         sp = SecurePassword("secured_password")
         u = url.URL.create(
-            "postgresql", username="x", password=sp, host="localhost"
+            "mysql+pymysql", username="x", password=sp, host="localhost"
         )
         if not creator:
             dbapi = MockDBAPI(
@@ -912,8 +912,8 @@ class CreateEngineTest(fixtures.TestBase):
             ("mariadb://", "mysqldb"),
             ("mssql://", "pyodbc"),
             ("mysql://", "mysqldb"),
-            ("oracle://", "cx_oracle"),
-            ("postgresql://", "psycopg2"),
+            ("oracle://", "oracledb"),
+            ("postgresql://", "psycopg"),
             ("sqlite://", "pysqlite"),
         ]:
             try:

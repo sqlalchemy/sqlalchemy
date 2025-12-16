@@ -1,0 +1,34 @@
+.. change::
+    :tags: usecase, oracle
+    :tickets: 13010
+
+    The default DBAPI driver for the Oracle Database dialect has been changed
+    to ``oracledb`` instead of ``cx_oracle``. The ``cx_oracle`` driver remains
+    fully supported and can be explicitly specified in the connection URL
+    using ``oracle+cx_oracle://``.
+
+    The ``oracledb`` driver is a modernized version of ``cx_oracle`` with
+    better performance characteristics and ongoing active development from
+    Oracle.
+
+    .. seealso::
+
+        :ref:`change_13010_oracle`
+
+
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 13010
+
+    The default DBAPI driver for the PostgreSQL dialect has been changed to
+    ``psycopg`` (psycopg version 3) instead of ``psycopg2``. The ``psycopg2``
+    driver remains fully supported and can be explicitly specified in the
+    connection URL using ``postgresql+psycopg2://``.
+
+    The ``psycopg`` (version 3) driver includes improvements over ``psycopg2``
+    including better performance when using C extensions and native support
+    for async operations.
+
+    .. seealso::
+
+        :ref:`change_13010_postgresql`
