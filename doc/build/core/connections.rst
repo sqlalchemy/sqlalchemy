@@ -545,7 +545,7 @@ wide using the :paramref:`.create_engine.isolation_level` so that pooled
 connections are permanently set in autocommit mode.   The SQLAlchemy connection
 pool as well as the :class:`.Connection` will still seek to invoke the DBAPI
 ``.rollback()`` method upon connection :term:`release`, as their behavior
-remains agonstic of the isolation level that's configured on the connection.
+remains agnostic of the isolation level that's configured on the connection.
 As this rollback still incurs a network round trip under most if not all
 DBAPI drivers, this additional network trip may be disabled using the
 :paramref:`.create_engine.skip_autocommit_rollback` parameter, which will
@@ -769,7 +769,7 @@ for further background on using
 .. versionadded:: 1.4.40 Added
    :paramref:`_engine.Connection.execution_options.yield_per`
    as a Core level execution option to conveniently set streaming results,
-   buffer size, and partition size all at once in a manner that is transferrable
+   buffer size, and partition size all at once in a manner that is transferable
    to that of the ORM's similar use case.
 
 .. _engine_stream_results_sr:

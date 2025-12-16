@@ -596,7 +596,7 @@ using the
 :paramref:`_sa.create_engine.pool_logging_name` parameters with
 :func:`sqlalchemy.create_engine`; the name will be appended to existing
 class-qualified logging name.   This use is recommended for applications that
-make use of multiple global :class:`.Engine` instances simultaenously, so
+make use of multiple global :class:`.Engine` instances simultaneously, so
 that they may be distinguished in logging::
 
     >>> import logging

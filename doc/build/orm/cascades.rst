@@ -221,7 +221,7 @@ that it's now pending within a :class:`_orm.Session`, and there would
 frequently be subsequent issues where autoflush would prematurely flush the
 object and cause errors, in those cases where the given object was still being
 constructed and wasn't in a ready state to be flushed. The option to select between
-uni-directional and bi-directional behvaiors was also removed, as this option
+uni-directional and bi-directional behaviors was also removed, as this option
 created two slightly different ways of working, adding to the overall learning
 curve of the ORM as well as to the documentation and user support burden.
 
