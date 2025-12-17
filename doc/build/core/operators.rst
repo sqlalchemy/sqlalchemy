@@ -427,7 +427,7 @@ behaviors and results on different databases:
 
     >>> from sqlalchemy.dialects import postgresql
     >>> print(column("x").regexp_match("word").compile(dialect=postgresql.dialect()))
-    {printsql}x ~ %(x_1)s
+    {printsql}x ~ %(x_1)s::VARCHAR
 
   Or MySQL::
 
@@ -471,7 +471,7 @@ String Alteration
   REPLACE equivalent for the backends which support it::
 
     >>> print(column("x").regexp_replace("foo", "bar").compile(dialect=postgresql.dialect()))
-    {printsql}REGEXP_REPLACE(x, %(x_1)s, %(x_2)s)
+    {printsql}REGEXP_REPLACE(x, %(x_1)s::VARCHAR, %(x_2)s::VARCHAR)
 
   ..
 
@@ -638,7 +638,7 @@ boolean operators.
 
     >>> from sqlalchemy.dialects import postgresql
     >>> print(column("x").bitwise_xor(5).compile(dialect=postgresql.dialect()))
-    x # %(x_1)s
+    x # %(x_1)s::INTEGER
 
   ..
 

@@ -2112,7 +2112,7 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 testing.db.dialect.insert_executemany_returning,
                 [
                     CompiledSQL(
-                        f"INSERT INTO t (data) VALUES (:data) "
+                        "INSERT INTO t (data) VALUES (:data) "
                         f"RETURNING t.id{tdef_col}",
                         [{"data": "t1"}, {"data": "t2"}],
                     ),
@@ -2127,7 +2127,7 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 ],
             ),
             CompiledSQL(
-                f"INSERT INTO t (id, data) "
+                "INSERT INTO t (id, data) "
                 f"VALUES (:id, :data){tdef_returning}",
                 [
                     {"data": "t3", "id": 3},
@@ -2136,12 +2136,12 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 ],
             ),
             CompiledSQL(
-                f"INSERT INTO t (id, data) "
+                "INSERT INTO t (id, data) "
                 f"VALUES (:id, lower(:lower_1)){tdef_returning}",
                 {"lower_1": "t6", "id": 6},
             ),
             CompiledSQL(
-                f"INSERT INTO t (id, data) "
+                "INSERT INTO t (id, data) "
                 f"VALUES (:id, :data){tdef_returning}",
                 [{"data": "t7", "id": 7}, {"data": "t8", "id": 8}],
             ),
@@ -2153,7 +2153,7 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
                 ],
             ),
             CompiledSQL(
-                f"INSERT INTO t (id, data) "
+                "INSERT INTO t (id, data) "
                 f"VALUES (:id, :data){tdef_returning}",
                 {"data": "t11", "id": 11},
             ),
@@ -2467,14 +2467,14 @@ class EagerDefaultsTest(fixtures.MappedTest):
                 s.flush,
                 CompiledSQL(
                     "INSERT INTO test (id, foo) "
-                    "VALUES (%(id)s, 2 + 5) "
+                    "VALUES (%(id)s::INTEGER, 2 + 5) "
                     "RETURNING test.foo",
                     [{"id": 1}],
                     dialect="postgresql",
                 ),
                 CompiledSQL(
                     "INSERT INTO test (id, foo) "
-                    "VALUES (%(id)s, 5 + 5) "
+                    "VALUES (%(id)s::INTEGER, 5 + 5) "
                     "RETURNING test.foo",
                     [{"id": 2}],
                     dialect="postgresql",
@@ -2626,13 +2626,11 @@ class EagerDefaultsTest(fixtures.MappedTest):
                         ],
                     ),
                     CompiledSQL(
-                        "SELECT test3.foo "
-                        "FROM test3 WHERE test3.id = :pk_1",
+                        "SELECT test3.foo FROM test3 WHERE test3.id = :pk_1",
                         [{"pk_1": 1}],
                     ),
                     CompiledSQL(
-                        "SELECT test3.foo "
-                        "FROM test3 WHERE test3.id = :pk_1",
+                        "SELECT test3.foo FROM test3 WHERE test3.id = :pk_1",
                         [{"pk_1": 2}],
                     ),
                 ],
@@ -2667,28 +2665,30 @@ class EagerDefaultsTest(fixtures.MappedTest):
                 testing.db.dialect.update_returning,
                 [
                     CompiledSQL(
-                        "UPDATE test2 SET foo=%(foo)s "
-                        "WHERE test2.id = %(test2_id)s "
+                        "UPDATE test2 SET foo=%(foo)s::INTEGER "
+                        "WHERE test2.id = %(test2_id)s::INTEGER "
                         "RETURNING test2.bar",
                         [{"foo": 5, "test2_id": 1}],
                         dialect="postgresql",
                     ),
                     CompiledSQL(
-                        "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
-                        "WHERE test2.id = %(test2_id)s",
+                        "UPDATE test2 SET foo=%(foo)s::INTEGER,"
+                        " bar=%(bar)s::INTEGER WHERE test2.id ="
+                        " %(test2_id)s::INTEGER",
                         [{"foo": 6, "bar": 10, "test2_id": 2}],
                         dialect="postgresql",
                     ),
                     CompiledSQL(
-                        "UPDATE test2 SET foo=%(foo)s "
-                        "WHERE test2.id = %(test2_id)s "
+                        "UPDATE test2 SET foo=%(foo)s::INTEGER "
+                        "WHERE test2.id = %(test2_id)s::INTEGER "
                         "RETURNING test2.bar",
                         [{"foo": 7, "test2_id": 3}],
                         dialect="postgresql",
                     ),
                     CompiledSQL(
-                        "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
-                        "WHERE test2.id = %(test2_id)s",
+                        "UPDATE test2 SET foo=%(foo)s::INTEGER,"
+                        " bar=%(bar)s::INTEGER WHERE test2.id ="
+                        " %(test2_id)s::INTEGER",
                         [{"foo": 8, "bar": 12, "test2_id": 4}],
                         dialect="postgresql",
                     ),
@@ -2717,13 +2717,11 @@ class EagerDefaultsTest(fixtures.MappedTest):
                         enable_returning=False,
                     ),
                     CompiledSQL(
-                        "SELECT test2.bar FROM test2 "
-                        "WHERE test2.id = :pk_1",
+                        "SELECT test2.bar FROM test2 WHERE test2.id = :pk_1",
                         [{"pk_1": 1}],
                     ),
                     CompiledSQL(
-                        "SELECT test2.bar FROM test2 "
-                        "WHERE test2.id = :pk_1",
+                        "SELECT test2.bar FROM test2 WHERE test2.id = :pk_1",
                         [{"pk_1": 3}],
                     ),
                 ],
@@ -2766,26 +2764,30 @@ class EagerDefaultsTest(fixtures.MappedTest):
                 testing.db.dialect.update_returning,
                 [
                     CompiledSQL(
-                        "UPDATE test4 SET foo=%(foo)s, bar=5 + 3 "
-                        "WHERE test4.id = %(test4_id)s RETURNING test4.bar",
+                        "UPDATE test4 SET foo=%(foo)s::INTEGER, bar=5 + 3"
+                        " WHERE test4.id = %(test4_id)s::INTEGER RETURNING"
+                        " test4.bar",
                         [{"foo": 5, "test4_id": 1}],
                         dialect="postgresql",
                     ),
                     CompiledSQL(
-                        "UPDATE test4 SET foo=%(foo)s, bar=%(bar)s "
-                        "WHERE test4.id = %(test4_id)s",
+                        "UPDATE test4 SET foo=%(foo)s::INTEGER,"
+                        " bar=%(bar)s::INTEGER WHERE test4.id ="
+                        " %(test4_id)s::INTEGER",
                         [{"foo": 6, "bar": 10, "test4_id": 2}],
                         dialect="postgresql",
                     ),
                     CompiledSQL(
-                        "UPDATE test4 SET foo=%(foo)s, bar=5 + 3 WHERE "
-                        "test4.id = %(test4_id)s RETURNING test4.bar",
+                        "UPDATE test4 SET foo=%(foo)s::INTEGER, bar=5 + 3"
+                        " WHERE test4.id = %(test4_id)s::INTEGER RETURNING"
+                        " test4.bar",
                         [{"foo": 7, "test4_id": 3}],
                         dialect="postgresql",
                     ),
                     CompiledSQL(
-                        "UPDATE test4 SET foo=%(foo)s, bar=%(bar)s WHERE "
-                        "test4.id = %(test4_id)s",
+                        "UPDATE test4 SET foo=%(foo)s::INTEGER,"
+                        " bar=%(bar)s::INTEGER WHERE test4.id ="
+                        " %(test4_id)s::INTEGER",
                         [{"foo": 8, "bar": 12, "test4_id": 4}],
                         dialect="postgresql",
                     ),
@@ -2816,14 +2818,12 @@ class EagerDefaultsTest(fixtures.MappedTest):
                         enable_returning=False,
                     ),
                     CompiledSQL(
-                        "SELECT test4.bar FROM test4 "
-                        "WHERE test4.id = :pk_1",
+                        "SELECT test4.bar FROM test4 WHERE test4.id = :pk_1",
                         [{"pk_1": 1}],
                         enable_returning=False,
                     ),
                     CompiledSQL(
-                        "SELECT test4.bar FROM test4 "
-                        "WHERE test4.id = :pk_1",
+                        "SELECT test4.bar FROM test4 WHERE test4.id = :pk_1",
                         [{"pk_1": 3}],
                         enable_returning=False,
                     ),
@@ -2866,28 +2866,29 @@ class EagerDefaultsTest(fixtures.MappedTest):
                 testing.db,
                 s.flush,
                 CompiledSQL(
-                    "UPDATE test2 SET foo=%(foo)s, bar=1 + 1 "
-                    "WHERE test2.id = %(test2_id)s "
+                    "UPDATE test2 SET foo=%(foo)s::INTEGER, bar=1 + 1 "
+                    "WHERE test2.id = %(test2_id)s::INTEGER "
                     "RETURNING test2.bar",
                     [{"foo": 5, "test2_id": 1}],
                     dialect="postgresql",
                 ),
                 CompiledSQL(
-                    "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
-                    "WHERE test2.id = %(test2_id)s",
+                    "UPDATE test2 SET foo=%(foo)s::INTEGER,"
+                    " bar=%(bar)s::INTEGER WHERE test2.id ="
+                    " %(test2_id)s::INTEGER",
                     [{"foo": 6, "bar": 10, "test2_id": 2}],
                     dialect="postgresql",
                 ),
                 CompiledSQL(
-                    "UPDATE test2 SET foo=%(foo)s "
-                    "WHERE test2.id = %(test2_id)s "
+                    "UPDATE test2 SET foo=%(foo)s::INTEGER "
+                    "WHERE test2.id = %(test2_id)s::INTEGER "
                     "RETURNING test2.bar",
                     [{"foo": 7, "test2_id": 3}],
                     dialect="postgresql",
                 ),
                 CompiledSQL(
-                    "UPDATE test2 SET foo=%(foo)s, bar=5 + 7 "
-                    "WHERE test2.id = %(test2_id)s RETURNING test2.bar",
+                    "UPDATE test2 SET foo=%(foo)s::INTEGER, bar=5 + 7 WHERE"
+                    " test2.id = %(test2_id)s::INTEGER RETURNING test2.bar",
                     [{"foo": 8, "test2_id": 4}],
                     dialect="postgresql",
                 ),
@@ -3010,7 +3011,8 @@ class EagerDefaultsTest(fixtures.MappedTest):
             testing.db,
             s.commit,
             CompiledSQL(
-                "UPDATE test2 SET bar=%(bar)s WHERE test2.id = %(test2_id)s",
+                "UPDATE test2 SET bar=%(bar)s::INTEGER WHERE test2.id ="
+                " %(test2_id)s::INTEGER",
                 [{"bar": 5, "test2_id": 1}, {"bar": 10, "test2_id": 2}],
                 dialect="postgresql",
             ),

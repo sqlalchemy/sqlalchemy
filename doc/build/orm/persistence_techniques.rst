@@ -415,7 +415,7 @@ against MySQL (not MariaDB) results in SQL like this upon flush:
     FROM my_table WHERE my_table.id = %s
 
 A future release of SQLAlchemy may seek to improve the efficiency of
-eager defaults in the abcense of RETURNING to batch many rows within a
+eager defaults in the absence of RETURNING to batch many rows within a
 single SELECT statement.
 
 Case 4: primary key, RETURNING or equivalent is supported

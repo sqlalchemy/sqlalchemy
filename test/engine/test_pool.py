@@ -2038,7 +2038,7 @@ class ResetOnReturnTest(PoolTestBase):
         dbapi = Mock()
 
         return dbapi, create_engine(
-            "postgresql://",
+            "mysql://",
             module=dbapi,
             creator=lambda: dbapi.connect("foo.db"),
             _initialize=False,

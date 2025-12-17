@@ -771,14 +771,13 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         if update_is_orm:
             self.assert_compile(
                 stmt,
-                "WITH pd AS (SELECT orders.id AS id, "
-                "orders.user_id AS user_id, "
-                "orders.address_id AS address_id, "
-                "orders.description AS description, orders.isopen AS isopen "
-                "FROM orders WHERE orders.description != %(description_1)s) "
-                "UPDATE orders SET description=%(description)s "
-                "FROM pd WHERE orders.id = pd.id "
-                "AND orders.description != %(description_2)s",
+                "WITH pd AS (SELECT orders.id AS id, orders.user_id AS"
+                " user_id, orders.address_id AS address_id, orders.description"
+                " AS description, orders.isopen AS isopen FROM orders WHERE"
+                " orders.description != %(description_1)s::VARCHAR) UPDATE"
+                " orders SET description=%(description)s::VARCHAR FROM pd"
+                " WHERE orders.id = pd.id AND orders.description !="
+                " %(description_2)s::VARCHAR",
                 dialect="postgresql",
                 checkparams={
                     "description": "newname",
@@ -791,13 +790,12 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             # inside the SELECT
             self.assert_compile(
                 stmt,
-                "WITH pd AS (SELECT orders.id AS id, "
-                "orders.user_id AS user_id, "
-                "orders.address_id AS address_id, "
-                "orders.description AS description, orders.isopen AS isopen "
-                "FROM orders WHERE orders.description != %(description_1)s) "
-                "UPDATE orders SET description=%(description)s "
-                "FROM pd WHERE orders.id = pd.id",
+                "WITH pd AS (SELECT orders.id AS id, orders.user_id AS"
+                " user_id, orders.address_id AS address_id, orders.description"
+                " AS description, orders.isopen AS isopen FROM orders WHERE"
+                " orders.description != %(description_1)s::VARCHAR) UPDATE"
+                " orders SET description=%(description)s::VARCHAR FROM pd"
+                " WHERE orders.id = pd.id",
                 dialect="postgresql",
                 checkparams={
                     "description": "newname",
@@ -832,12 +830,12 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         if delete_is_orm:
             self.assert_compile(
                 stmt,
-                "WITH pd AS (SELECT orders.id AS id, orders.user_id AS "
-                "user_id, orders.address_id AS address_id, "
-                "orders.description AS description, orders.isopen AS isopen "
-                "FROM orders WHERE orders.description != %(description_1)s) "
-                "DELETE FROM orders USING pd WHERE orders.id = pd.id "
-                "AND orders.description != %(description_2)s",
+                "WITH pd AS (SELECT orders.id AS id, orders.user_id AS"
+                " user_id, orders.address_id AS address_id, orders.description"
+                " AS description, orders.isopen AS isopen FROM orders WHERE"
+                " orders.description != %(description_1)s::VARCHAR) DELETE"
+                " FROM orders USING pd WHERE orders.id = pd.id AND"
+                " orders.description != %(description_2)s::VARCHAR",
                 dialect="postgresql",
                 checkparams={"description_1": "name", "description_2": "name"},
             )
@@ -846,11 +844,11 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             # inside the SELECT
             self.assert_compile(
                 stmt,
-                "WITH pd AS (SELECT orders.id AS id, orders.user_id AS "
-                "user_id, orders.address_id AS address_id, "
-                "orders.description AS description, orders.isopen AS isopen "
-                "FROM orders WHERE orders.description != %(description_1)s) "
-                "DELETE FROM orders USING pd WHERE orders.id = pd.id",
+                "WITH pd AS (SELECT orders.id AS id, orders.user_id AS"
+                " user_id, orders.address_id AS address_id, orders.description"
+                " AS description, orders.isopen AS isopen FROM orders WHERE"
+                " orders.description != %(description_1)s::VARCHAR) DELETE"
+                " FROM orders USING pd WHERE orders.id = pd.id",
                 dialect="postgresql",
                 checkparams={"description_1": "name"},
             )

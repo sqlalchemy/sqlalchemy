@@ -786,7 +786,7 @@ from ``type_annotation_map`` to :class:`_orm.Mapped`, however is significant
 as an indicator for nullability of the :class:`_schema.Column`. When ``None`` is present in the
 union either as it is placed in the :class:`_orm.Mapped` construct.  When
 present in :class:`_orm.Mapped`, it indicates the :class:`_schema.Column`
-would be nullable, in the absense of more specific indicators.  This logic works
+would be nullable, in the absence of more specific indicators.  This logic works
 in the same way as indicating an ``Optional`` type as described at
 :ref:`orm_declarative_mapped_column_nullability`.
 

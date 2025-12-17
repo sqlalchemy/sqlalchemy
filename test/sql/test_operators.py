@@ -436,8 +436,10 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.combinations(
         (
             lambda p, q: (1 - p) * (2 - q) + 10 * (3 - p) * (4 - q),
-            "(:p_1 - t.p) * (:q_1 - t.q) + "
-            ":param_1 * (:p_2 - t.p) * (:q_2 - t.q)",
+            (
+                "(:p_1 - t.p) * (:q_1 - t.q) + "
+                ":param_1 * (:p_2 - t.p) * (:q_2 - t.q)"
+            ),
         ),
         (
             lambda p, q: (1 - p) * (2 - q) * (3 - p) * (4 - q),
@@ -450,10 +452,12 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 * (q + (p - 3) + (q - 5) + (p - 9))
                 * (4 + q + 9)
             ),
-            "(:p_1 + t.p + :param_1) * "
-            "t.p * (t.q - :q_1) * (t.p + :p_2) * "
-            "(t.q + (t.p - :p_3) + (t.q - :q_2) + (t.p - :p_4)) * "
-            "(:q_3 + t.q + :param_2)",
+            (
+                "(:p_1 + t.p + :param_1) * "
+                "t.p * (t.q - :q_1) * (t.p + :p_2) * "
+                "(t.q + (t.p - :p_3) + (t.q - :q_2) + (t.p - :p_4)) * "
+                "(:q_3 + t.q + :param_2)"
+            ),
         ),
         (
             lambda p, q: (1 // p) - (2 // q) - (3 // p) - (4 // q),
@@ -465,8 +469,10 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ),
         (
             lambda p, q: (1 + p) * 3 * (2 + q) * 4 * (3 + p) - (4 + q),
-            "(:p_1 + t.p) * :param_1 * (:q_1 + t.q) * "
-            ":param_2 * (:p_2 + t.p) - (:q_2 + t.q)",
+            (
+                "(:p_1 + t.p) * :param_1 * (:q_1 + t.q) * "
+                ":param_2 * (:p_2 + t.p) - (:q_2 + t.q)"
+            ),
         ),
         argnames="expr, expected",
     )
@@ -509,8 +515,10 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     f"SELECT NOT (t.q{opstring}t.p{opstring}{exprs}) "
                     "AS anon_1 FROM t"
                     if not reverse
-                    else f"SELECT NOT ({exprs}{opstring}t.q{opstring}t.p) "
-                    "AS anon_1 FROM t"
+                    else (
+                        f"SELECT NOT ({exprs}{opstring}t.q{opstring}t.p) "
+                        "AS anon_1 FROM t"
+                    )
                 ),
             )
         else:
@@ -520,8 +528,10 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     f"SELECT t.q{opstring}t.p{opstring}{exprs} "
                     "AS anon_1 FROM t"
                     if not reverse
-                    else f"SELECT {exprs}{opstring}t.q{opstring}t.p "
-                    "AS anon_1 FROM t"
+                    else (
+                        f"SELECT {exprs}{opstring}t.q{opstring}t.p "
+                        "AS anon_1 FROM t"
+                    )
                 ),
             )
 
@@ -2216,7 +2226,7 @@ class IsDistinctFromTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_is_distinct_from_postgresql(self):
         self.assert_compile(
             self.table1.c.myid.is_distinct_from(1),
-            "mytable.myid IS DISTINCT FROM %(myid_1)s",
+            "mytable.myid IS DISTINCT FROM %(myid_1)s::INTEGER",
             dialect=postgresql.dialect(),
         )
 
@@ -2229,7 +2239,7 @@ class IsDistinctFromTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_not_is_distinct_from_postgresql(self):
         self.assert_compile(
             ~self.table1.c.myid.is_distinct_from(1),
-            "mytable.myid IS NOT DISTINCT FROM %(myid_1)s",
+            "mytable.myid IS NOT DISTINCT FROM %(myid_1)s::INTEGER",
             dialect=postgresql.dialect(),
         )
 
@@ -2249,7 +2259,7 @@ class IsDistinctFromTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_is_not_distinct_from_postgresql(self):
         self.assert_compile(
             self.table1.c.myid.is_not_distinct_from(1),
-            "mytable.myid IS NOT DISTINCT FROM %(myid_1)s",
+            "mytable.myid IS NOT DISTINCT FROM %(myid_1)s::INTEGER",
             dialect=postgresql.dialect(),
         )
 
@@ -2262,7 +2272,7 @@ class IsDistinctFromTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_not_is_not_distinct_from_postgresql(self):
         self.assert_compile(
             ~self.table1.c.myid.is_not_distinct_from(1),
-            "mytable.myid IS DISTINCT FROM %(myid_1)s",
+            "mytable.myid IS DISTINCT FROM %(myid_1)s::INTEGER",
             dialect=postgresql.dialect(),
         )
 
@@ -2425,8 +2435,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.table1.c.myid.in_(
                 text("SELECT myothertable.otherid FROM myothertable")
             ),
-            "mytable.myid IN (SELECT myothertable.otherid "
-            "FROM myothertable)",
+            "mytable.myid IN (SELECT myothertable.otherid FROM myothertable)",
         )
 
     def test_in_24(self):
@@ -3210,14 +3219,14 @@ class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_like_7(self):
         self.assert_compile(
             self.table1.c.myid.ilike("somstr", escape="\\"),
-            "mytable.myid ILIKE %(myid_1)s ESCAPE '\\\\'",
+            "mytable.myid ILIKE %(myid_1)s::VARCHAR ESCAPE '\\\\'",
             dialect=postgresql.dialect(),
         )
 
     def test_like_8(self):
         self.assert_compile(
             ~self.table1.c.myid.ilike("somstr", escape="\\"),
-            "mytable.myid NOT ILIKE %(myid_1)s ESCAPE '\\\\'",
+            "mytable.myid NOT ILIKE %(myid_1)s::VARCHAR ESCAPE '\\\\'",
             dialect=postgresql.dialect(),
         )
 
@@ -3230,7 +3239,7 @@ class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_like_10(self):
         self.assert_compile(
             self.table1.c.name.ilike("%something%"),
-            "mytable.name ILIKE %(name_1)s",
+            "mytable.name ILIKE %(name_1)s::VARCHAR",
             dialect=postgresql.dialect(),
         )
 
@@ -3243,7 +3252,7 @@ class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_like_12(self):
         self.assert_compile(
             ~self.table1.c.name.ilike("%something%"),
-            "mytable.name NOT ILIKE %(name_1)s",
+            "mytable.name NOT ILIKE %(name_1)s::VARCHAR",
             dialect=postgresql.dialect(),
         )
 
@@ -3319,7 +3328,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_match_4(self):
         self.assert_compile(
             self.table1.c.myid.match("somstr"),
-            "mytable.myid @@ plainto_tsquery(%(myid_1)s)",
+            "mytable.myid @@ plainto_tsquery(%(myid_1)s::VARCHAR)",
             dialect=postgresql.dialect(),
         )
 
@@ -3338,7 +3347,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_boolean_inversion_postgresql(self):
         self.assert_compile(
             ~self.table1.c.myid.match("somstr"),
-            "NOT mytable.myid @@ plainto_tsquery(%(myid_1)s)",
+            "NOT mytable.myid @@ plainto_tsquery(%(myid_1)s::VARCHAR)",
             dialect=postgresql.dialect(),
         )
 
@@ -3509,8 +3518,7 @@ class RegexpTestStrCompiler(fixtures.TestBase, testing.AssertsCompiledSQL):
                 self.table.c.myid.match("foo"),
                 ~self.table.c.myid.regexp_match("xx"),
             ),
-            "mytable.myid MATCH :myid_1 AND "
-            "mytable.myid <not regexp> :myid_2",
+            "mytable.myid MATCH :myid_1 AND mytable.myid <not regexp> :myid_2",
         )
         self.assert_compile(
             and_(
@@ -3573,7 +3581,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_contains_pg(self):
         self.assert_compile(
             column("x").contains("y"),
-            "x LIKE '%%' || %(x_1)s || '%%'",
+            "x LIKE '%%' || %(x_1)s::VARCHAR || '%%'",
             checkparams={"x_1": "y"},
             dialect="postgresql",
         )
@@ -3713,7 +3721,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """
         self.assert_compile(
             column("x").icontains("y"),
-            "x ILIKE '%%' || %(x_1)s || '%%'",
+            "x ILIKE '%%' || %(x_1)s::VARCHAR || '%%'",
             checkparams={"x_1": "y"},
             dialect="postgresql",
         )
@@ -3764,7 +3772,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """
         self.assert_compile(
             ~column("x").icontains("y"),
-            "x NOT ILIKE '%%' || %(x_1)s || '%%'",
+            "x NOT ILIKE '%%' || %(x_1)s::VARCHAR || '%%'",
             checkparams={"x_1": "y"},
             dialect="postgresql",
         )
@@ -4091,7 +4099,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """
         self.assert_compile(
             column("x").istartswith("y"),
-            "x ILIKE %(x_1)s || '%%'",
+            "x ILIKE %(x_1)s::VARCHAR || '%%'",
             checkparams={"x_1": "y"},
             dialect="postgresql",
         )
@@ -4112,7 +4120,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """
         self.assert_compile(
             ~column("x").istartswith("y"),
-            "x NOT ILIKE %(x_1)s || '%%'",
+            "x NOT ILIKE %(x_1)s::VARCHAR || '%%'",
             checkparams={"x_1": "y"},
             dialect="postgresql",
         )
@@ -4317,7 +4325,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_not_endswith_pg(self):
         self.assert_compile(
             ~column("x").endswith("y"),
-            "x NOT LIKE '%%' || %(x_1)s",
+            "x NOT LIKE '%%' || %(x_1)s::VARCHAR",
             checkparams={"x_1": "y"},
             dialect="postgresql",
         )
@@ -4396,7 +4404,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """
         self.assert_compile(
             column("x").iendswith("y"),
-            "x ILIKE '%%' || %(x_1)s",
+            "x ILIKE '%%' || %(x_1)s::VARCHAR",
             checkparams={"x_1": "y"},
             dialect="postgresql",
         )
@@ -4417,7 +4425,7 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """
         self.assert_compile(
             ~column("x").iendswith("y"),
-            "x NOT ILIKE '%%' || %(x_1)s",
+            "x NOT ILIKE '%%' || %(x_1)s::VARCHAR",
             checkparams={"x_1": "y"},
             dialect="postgresql",
         )
@@ -4860,8 +4868,7 @@ class InSelectableTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             column("q").in_(stmt.select()),
-            "q IN (SELECT anon_1.x FROM "
-            "(SELECT t.x AS x FROM t) AS anon_1)",
+            "q IN (SELECT anon_1.x FROM (SELECT t.x AS x FROM t) AS anon_1)",
         )
 
     def test_in_subquery_alias_implicit(self):
@@ -5136,8 +5143,9 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             5 == fn(t.c.arrval[5:6] + postgresql.array([3, 4])),
-            f"%(param_1)s = {op} (tab1.arrval[%(arrval_1)s:%(arrval_2)s] || "
-            "ARRAY[%(param_2)s, %(param_3)s])",
+            f"%(param_1)s::INTEGER = {op}"
+            " (tab1.arrval[%(arrval_1)s::INTEGER:%(arrval_2)s::INTEGER] ||"
+            " ARRAY[%(param_2)s::INTEGER, %(param_3)s::INTEGER])",
             checkparams={
                 "arrval_2": 6,
                 "param_1": 5,
@@ -5262,7 +5270,7 @@ class DeprecatedAnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         with self._array_any_deprecation():
             expr = fn(t.c.arrval, bindparam("param"))
-        expected = f"%(param)s = {op} (tab1.arrval)"
+        expected = f"%(param)s::INTEGER = {op} (tab1.arrval)"
         is_(expr.left.type._type_affinity, Integer)
 
         self.assert_compile(expr, expected, dialect="postgresql")

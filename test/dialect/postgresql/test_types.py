@@ -871,9 +871,11 @@ class NamedTypeTest(
             go,
             [
                 (
-                    "CREATE TABLE foo (\tbar "
-                    "VARCHAR(5), \tCONSTRAINT myenum CHECK "
-                    "(bar IN ('one', 'two', 'three')))",
+                    (
+                        "CREATE TABLE foo (\tbar "
+                        "VARCHAR(5), \tCONSTRAINT myenum CHECK "
+                        "(bar IN ('one', 'two', 'three')))"
+                    ),
                     {},
                 )
             ],
@@ -906,9 +908,11 @@ class NamedTypeTest(
             go,
             [
                 (
-                    "CREATE TABLE foo (\tbar "
-                    "VARCHAR(1), \tCONSTRAINT myenum CHECK "
-                    "(bar IN ('B', 'Ü')))",
+                    (
+                        "CREATE TABLE foo (\tbar "
+                        "VARCHAR(1), \tCONSTRAINT myenum CHECK "
+                        "(bar IN ('B', 'Ü')))"
+                    ),
                     {},
                 )
             ],
@@ -1237,9 +1241,11 @@ class NamedTypeTest(
             go,
             [
                 (
-                    "CREATE TABLE foo (bar "
-                    "VARCHAR(5), CONSTRAINT myenum CHECK "
-                    "(bar IN ('one', 'two', 'three')))",
+                    (
+                        "CREATE TABLE foo (bar "
+                        "VARCHAR(5), CONSTRAINT myenum CHECK "
+                        "(bar IN ('one', 'two', 'three')))"
+                    ),
                     {},
                 )
             ],
@@ -1993,8 +1999,9 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
 
         self.assert_compile(
             obj,
-            "ARRAY[%(param_1)s, %(param_2)s] || "
-            "ARRAY[%(param_3)s, %(param_4)s, %(param_5)s]",
+            "ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER] ||"
+            " ARRAY[%(param_3)s::INTEGER, %(param_4)s::INTEGER,"
+            " %(param_5)s::INTEGER]",
             params={
                 "param_1": 1,
                 "param_2": 2,
@@ -2005,8 +2012,9 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         self.assert_compile(
             obj[1],
-            "(ARRAY[%(param_1)s, %(param_2)s] || ARRAY[%(param_3)s, "
-            "%(param_4)s, %(param_5)s])[%(param_6)s]",
+            "(ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER] ||"
+            " ARRAY[%(param_3)s::INTEGER, %(param_4)s::INTEGER,"
+            " %(param_5)s::INTEGER])[%(param_6)s::INTEGER]",
             params={
                 "param_1": 1,
                 "param_2": 2,
@@ -2023,18 +2031,21 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
 
         self.assert_compile(
             obj,
-            "ARRAY[ARRAY[%(param_1)s, %(param_2)s], "
-            "ARRAY[%(param_3)s, %(param_4)s]]",
+            "ARRAY[ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER],"
+            " ARRAY[%(param_3)s::INTEGER, %(param_4)s::INTEGER]]",
         )
         self.assert_compile(
             obj[1],
-            "(ARRAY[ARRAY[%(param_1)s, %(param_2)s], "
-            "ARRAY[%(param_3)s, %(param_4)s]])[%(param_5)s]",
+            "(ARRAY[ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER],"
+            " ARRAY[%(param_3)s::INTEGER,"
+            " %(param_4)s::INTEGER]])[%(param_5)s::INTEGER]",
         )
         self.assert_compile(
             obj[1][0],
-            "(ARRAY[ARRAY[%(param_1)s, %(param_2)s], "
-            "ARRAY[%(param_3)s, %(param_4)s]])[%(param_5)s][%(param_6)s]",
+            "(ARRAY[ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER],"
+            " ARRAY[%(param_3)s::INTEGER,"
+            " %(param_4)s::INTEGER]])[%(param_5)s::INTEGER]"
+            "[%(param_6)s::INTEGER]",
         )
 
     def test_array_type_render_str(self):
@@ -2127,7 +2138,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col[3]),
-            "SELECT x[%(x_1)s] AS anon_1",
+            "SELECT x[%(x_1)s::INTEGER] AS anon_1",
             checkparams={"x_1": 3},
         )
 
@@ -2137,7 +2148,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         with _array_any_deprecation():
             self.assert_compile(
                 select(col.any(7, operator=operators.lt)),
-                "SELECT %(x_1)s < ANY (x) AS anon_1",
+                "SELECT %(x_1)s::INTEGER < ANY (x) AS anon_1",
                 checkparams={"x_1": 7},
             )
 
@@ -2147,7 +2158,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         with _array_any_deprecation():
             self.assert_compile(
                 select(col.all(7, operator=operators.lt)),
-                "SELECT %(x_1)s < ALL (x) AS anon_1",
+                "SELECT %(x_1)s::INTEGER < ALL (x) AS anon_1",
                 checkparams={"x_1": 7},
             )
 
@@ -2155,8 +2166,8 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col.contains(array([4, 5, 6]))),
-            "SELECT x @> ARRAY[%(param_1)s, %(param_2)s, %(param_3)s] "
-            "AS anon_1",
+            "SELECT x @> ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER,"
+            " %(param_3)s::INTEGER] AS anon_1",
             checkparams={"param_1": 4, "param_3": 6, "param_2": 5},
         )
 
@@ -2173,8 +2184,8 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col.contained_by(array([4, 5, 6]))),
-            "SELECT x <@ ARRAY[%(param_1)s, %(param_2)s, %(param_3)s] "
-            "AS anon_1",
+            "SELECT x <@ ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER,"
+            " %(param_3)s::INTEGER] AS anon_1",
             checkparams={"param_1": 4, "param_3": 6, "param_2": 5},
         )
 
@@ -2182,8 +2193,8 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col.overlap(array([4, 5, 6]))),
-            "SELECT x && ARRAY[%(param_1)s, %(param_2)s, %(param_3)s] "
-            "AS anon_1",
+            "SELECT x && ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER,"
+            " %(param_3)s::INTEGER] AS anon_1",
             checkparams={"param_1": 4, "param_3": 6, "param_2": 5},
         )
 
@@ -2191,8 +2202,8 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col.overlap(any_(array([4, 5, 6])))),
-            "SELECT x && ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s]) "
-            "AS anon_1",
+            "SELECT x && ANY (ARRAY[%(param_1)s::INTEGER,"
+            " %(param_2)s::INTEGER, %(param_3)s::INTEGER]) AS anon_1",
             checkparams={"param_1": 4, "param_3": 6, "param_2": 5},
         )
 
@@ -2200,8 +2211,8 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col.contains(any_(array([4, 5, 6])))),
-            "SELECT x @> ANY (ARRAY[%(param_1)s, %(param_2)s, %(param_3)s]) "
-            "AS anon_1",
+            "SELECT x @> ANY (ARRAY[%(param_1)s::INTEGER,"
+            " %(param_2)s::INTEGER, %(param_3)s::INTEGER]) AS anon_1",
             checkparams={"param_1": 4, "param_3": 6, "param_2": 5},
         )
 
@@ -2209,7 +2220,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
             select(col[5:10]),
-            "SELECT x[%(x_1)s:%(x_2)s] AS anon_1",
+            "SELECT x[%(x_1)s::INTEGER:%(x_2)s::INTEGER] AS anon_1",
             checkparams={"x_2": 10, "x_1": 5},
         )
 
@@ -2217,7 +2228,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         col = column("x", postgresql.ARRAY(Integer, dimensions=2))
         self.assert_compile(
             select(col[3][5]),
-            "SELECT x[%(x_1)s][%(param_1)s] AS anon_1",
+            "SELECT x[%(x_1)s::INTEGER][%(param_1)s::INTEGER] AS anon_1",
             checkparams={"x_1": 3, "param_1": 5},
         )
 
@@ -2227,7 +2238,8 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
 
         self.assert_compile(
             select(col + literal),
-            "SELECT x || ARRAY[%(param_1)s, %(param_2)s] AS anon_1",
+            "SELECT x || ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER] AS"
+            " anon_1",
             checkparams={"param_1": 4, "param_2": 5},
         )
 
@@ -2283,9 +2295,12 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         self.assert_compile(
             stmt,
-            "SELECT (array_cat(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s], "
-            "ARRAY[%(param_4)s, %(param_5)s, %(param_6)s]))"
-            "[%(param_7)s:%(param_8)s] AS anon_1",
+            "SELECT (array_cat(ARRAY[%(param_1)s::INTEGER,"
+            " %(param_2)s::INTEGER, %(param_3)s::INTEGER],"
+            " ARRAY[%(param_4)s::INTEGER, %(param_5)s::INTEGER,"
+            " %(param_6)s::INTEGER]))"
+            "[%(param_7)s::INTEGER:%(param_8)s::INTEGER]"
+            " AS anon_1",
         )
 
         self.assert_compile(
@@ -2294,8 +2309,10 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
                 array([4, 5, 6]),
                 type_=postgresql.ARRAY(Integer),
             )[3],
-            "(array_cat(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s], "
-            "ARRAY[%(param_4)s, %(param_5)s, %(param_6)s]))[%(array_cat_1)s]",
+            "(array_cat(ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER,"
+            " %(param_3)s::INTEGER], ARRAY[%(param_4)s::INTEGER,"
+            " %(param_5)s::INTEGER,"
+            " %(param_6)s::INTEGER]))[%(array_cat_1)s::INTEGER]",
         )
 
     def test_array_agg_generic(self):
@@ -3751,13 +3768,13 @@ class TimestampTest(
             text("select :parameter").bindparams(
                 parameter=datetime.timedelta(days=2)
             ),
-            ("select make_interval(secs=>172800.0)"),
+            "select make_interval(secs=>172800.0)",
         ),
         (
             text("select :parameter").bindparams(
                 parameter=datetime.timedelta(days=730, seconds=2323213392),
             ),
-            ("select make_interval(secs=>2386285392.0)"),
+            "select make_interval(secs=>2386285392.0)",
         ),
     )
     def test_interval_literal_processor_compiled(self, type_, expected):
@@ -4087,8 +4104,8 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         stmt = select(self.test_table).where(whereclause)
         self.assert_compile(
             stmt,
-            "SELECT test_table.id, test_table.hash FROM test_table "
-            "WHERE %s" % expected,
+            "SELECT test_table.id, test_table.hash FROM test_table WHERE %s"
+            % expected,
         )
 
     def test_bind_serialize_default(self):
@@ -4187,25 +4204,27 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_has_key(self):
         self._test_where(
             self.hashcol.has_key("foo"),
-            "test_table.hash ? %(hash_1)s",
+            "test_table.hash ? %(hash_1)s::VARCHAR",
         )
 
     def test_where_has_all(self):
         self._test_where(
             self.hashcol.has_all(postgresql.array(["1", "2"])),
-            "test_table.hash ?& ARRAY[%(param_1)s, %(param_2)s]",
+            "test_table.hash ?& ARRAY[%(param_1)s::VARCHAR,"
+            " %(param_2)s::VARCHAR]",
         )
 
     def test_where_has_any(self):
         self._test_where(
             self.hashcol.has_any(postgresql.array(["1", "2"])),
-            "test_table.hash ?| ARRAY[%(param_1)s, %(param_2)s]",
+            "test_table.hash ?| ARRAY[%(param_1)s::VARCHAR,"
+            " %(param_2)s::VARCHAR]",
         )
 
     def test_where_defined(self):
         self._test_where(
             self.hashcol.defined("foo"),
-            "defined(test_table.hash, %(defined_1)s)",
+            "defined(test_table.hash, %(defined_1)s::VARCHAR)",
         )
 
     def test_where_contains(self):
@@ -4223,73 +4242,76 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_has_key_any(self):
         self._test_where(
             self.hashcol.has_key(any_(array(["foo"]))),
-            "test_table.hash ? ANY (ARRAY[%(param_1)s])",
+            "test_table.hash ? ANY (ARRAY[%(param_1)s::VARCHAR])",
         )
 
     def test_where_has_all_any(self):
         self._test_where(
             self.hashcol.has_all(any_(postgresql.array(["1", "2"]))),
-            "test_table.hash ?& ANY (ARRAY[%(param_1)s, %(param_2)s])",
+            "test_table.hash ?& ANY (ARRAY[%(param_1)s::VARCHAR,"
+            " %(param_2)s::VARCHAR])",
         )
 
     def test_where_has_any_any(self):
         self._test_where(
             self.hashcol.has_any(any_(postgresql.array(["1", "2"]))),
-            "test_table.hash ?| ANY (ARRAY[%(param_1)s, %(param_2)s])",
+            "test_table.hash ?| ANY (ARRAY[%(param_1)s::VARCHAR,"
+            " %(param_2)s::VARCHAR])",
         )
 
     def test_where_contains_any(self):
         self._test_where(
             self.hashcol.contains(any_(array(["foo"]))),
-            "test_table.hash @> ANY (ARRAY[%(param_1)s])",
+            "test_table.hash @> ANY (ARRAY[%(param_1)s::VARCHAR])",
         )
 
     def test_where_contained_by_any(self):
         self._test_where(
             self.hashcol.contained_by(any_(array(["foo"]))),
-            "test_table.hash <@ ANY (ARRAY[%(param_1)s])",
+            "test_table.hash <@ ANY (ARRAY[%(param_1)s::VARCHAR])",
         )
 
     def test_where_getitem(self):
         self._test_where(
             self.hashcol["bar"] == None,  # noqa
-            "test_table.hash[%(hash_1)s] IS NULL",
+            "test_table.hash[%(hash_1)s::VARCHAR] IS NULL",
         )
 
     def test_where_getitem_any(self):
         self._test_where(
             self.hashcol["bar"] == any_(array(["foo"])),  # noqa
-            "test_table.hash[%(hash_1)s] = ANY (ARRAY[%(param_1)s])",
+            "test_table.hash[%(hash_1)s::VARCHAR] = ANY"
+            " (ARRAY[%(param_1)s::VARCHAR])",
         )
 
     # Test combinations that don't use subscript operator
     @testing.combinations(
         (
             lambda self: self.hashcol.delete("foo"),
-            "delete(test_table.hash, %(delete_2)s) AS delete_1",
+            "delete(test_table.hash, %(delete_2)s::VARCHAR) AS delete_1",
             True,
         ),
         (
             lambda self: self.hashcol.delete(postgresql.array(["foo", "bar"])),
             (
-                "delete(test_table.hash, ARRAY[%(param_1)s, %(param_2)s]) "
-                "AS delete_1"
+                "delete(test_table.hash, ARRAY[%(param_1)s::VARCHAR,"
+                " %(param_2)s::VARCHAR]) AS delete_1"
             ),
             True,
         ),
         (
             lambda self: self.hashcol.delete(hstore("1", "2")),
             (
-                "delete(test_table.hash, hstore(%(hstore_1)s, %(hstore_2)s)) "
-                "AS delete_1"
+                "delete(test_table.hash, hstore(%(hstore_1)s::VARCHAR,"
+                " %(hstore_2)s::VARCHAR)) AS delete_1"
             ),
             True,
         ),
         (
             lambda self: self.hashcol.slice(postgresql.array(["1", "2"])),
             (
-                "slice(test_table.hash, ARRAY[%(param_1)s, %(param_2)s]) "
-                "AS slice_1"
+                "slice(test_table.hash, ARRAY[%(param_1)s::VARCHAR,"
+                " %(param_2)s::VARCHAR]) AS slice_1"
             ),
             True,
         ),
@@ -4299,13 +4321,16 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
             ),
             (
                 "test_table.hash || hstore(CAST(test_table.id AS TEXT), "
-                "%(hstore_1)s) AS anon_1"
+                "%(hstore_1)s::VARCHAR) AS anon_1"
             ),
             True,
         ),
         (
             lambda self: hstore("foo", "bar") + self.hashcol,
-            "hstore(%(hstore_1)s, %(hstore_2)s) || test_table.hash AS anon_1",
+            (
+                "hstore(%(hstore_1)s::VARCHAR, %(hstore_2)s::VARCHAR) ||"
+                " test_table.hash AS anon_1"
+            ),
             True,
         ),
         (
@@ -4342,12 +4367,15 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     @testing.combinations(
         (
             lambda self: self.hashcol["foo"],
-            "test_table.hash[%(hash_1)s] AS anon_1",
+            "test_table.hash[%(hash_1)s::VARCHAR] AS anon_1",
             True,
         ),
         (
             lambda self: hstore("foo", "3")["foo"],
-            "(hstore(%(hstore_1)s, %(hstore_2)s))[%(hstore_3)s] AS anon_1",
+            (
+                "(hstore(%(hstore_1)s::VARCHAR,"
+                " %(hstore_2)s::VARCHAR))[%(hstore_3)s::VARCHAR] AS anon_1"
+            ),
             False,
         ),
         (
@@ -4355,27 +4383,32 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
                 postgresql.array(["1", "2"]), postgresql.array(["3", None])
             )["1"],
             (
-                "(hstore(ARRAY[%(param_1)s, %(param_2)s], "
-                "ARRAY[%(param_3)s, NULL]))[%(hstore_1)s] AS anon_1"
+                "(hstore(ARRAY[%(param_1)s::VARCHAR, %(param_2)s::VARCHAR],"
+                " ARRAY[%(param_3)s::VARCHAR, NULL]))[%(hstore_1)s::VARCHAR]"
+                " AS anon_1"
             ),
             False,
         ),
         (
             lambda self: hstore(postgresql.array(["1", "2", "3", None]))["3"],
             (
-                "(hstore(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s, NULL]))"
-                "[%(hstore_1)s] AS anon_1"
+                "(hstore(ARRAY[%(param_1)s::VARCHAR, %(param_2)s::VARCHAR,"
+                " %(param_3)s::VARCHAR, NULL]))[%(hstore_1)s::VARCHAR] AS"
+                " anon_1"
             ),
             False,
         ),
         (
             lambda self: (self.hashcol + self.hashcol)["foo"],
-            "(test_table.hash || test_table.hash)[%(param_1)s] AS anon_1",
+            (
+                "(test_table.hash || test_table.hash)[%(param_1)s::VARCHAR] AS"
+                " anon_1"
+            ),
             True,
         ),
         (
             lambda self: self.hashcol["foo"] != None,  # noqa
-            "test_table.hash[%(hash_1)s] IS NOT NULL AS anon_1",
+            "test_table.hash[%(hash_1)s::VARCHAR] IS NOT NULL AS anon_1",
             True,
         ),
     )
@@ -4785,7 +4818,7 @@ class _RangeTypeCompilation(
     def test_data_str(self, fn, op):
         self._test_clause(
             fn(self.col, self._data_str()),
-            f"data_table.range {op} %(range_1)s",
+            f"data_table.range {op} %(range_1)s::VARCHAR",
             (
                 self.col.type
                 if op in self._not_compare_op
@@ -4809,7 +4842,7 @@ class _RangeTypeCompilation(
     def test_data_str_any(self, fn, op):
         self._test_clause(
             fn(self.col, any_(array([self._data_str()]))),
-            f"data_table.range {op} ANY (ARRAY[%(param_1)s])",
+            f"data_table.range {op} ANY (ARRAY[%(param_1)s::VARCHAR])",
             (
                 self.col.type
                 if op in self._not_compare_op
@@ -5048,8 +5081,7 @@ class _RangeComparisonFixtures(_RangeTests):
         eq_(
             py_contains,
             pg_contains,
-            f"{r1}.contains({r2}): got {py_contains},"
-            f" expected {pg_contains}",
+            f"{r1}.contains({r2}): got {py_contains}, expected {pg_contains}",
         )
         r2_in_r1 = r2 in r1
         eq_(
@@ -5815,7 +5847,7 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_equal(self):
         self._test_clause(
             self.col == self._data_str(),
-            "data_table.multirange = %(multirange_1)s",
+            "data_table.multirange = %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
@@ -5829,7 +5861,7 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_not_equal(self):
         self._test_clause(
             self.col != self._data_str(),
-            "data_table.multirange != %(multirange_1)s",
+            "data_table.multirange != %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
@@ -5857,42 +5889,42 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
     def test_where_less_than(self):
         self._test_clause(
             self.col < self._data_str(),
-            "data_table.multirange < %(multirange_1)s",
+            "data_table.multirange < %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_where_greater_than(self):
         self._test_clause(
             self.col > self._data_str(),
-            "data_table.multirange > %(multirange_1)s",
+            "data_table.multirange > %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_where_less_than_or_equal(self):
         self._test_clause(
             self.col <= self._data_str(),
-            "data_table.multirange <= %(multirange_1)s",
+            "data_table.multirange <= %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_where_greater_than_or_equal(self):
         self._test_clause(
             self.col >= self._data_str(),
-            "data_table.multirange >= %(multirange_1)s",
+            "data_table.multirange >= %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_contains(self):
         self._test_clause(
             self.col.contains(self._data_str()),
-            "data_table.multirange @> %(multirange_1)s",
+            "data_table.multirange @> %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_contained_by(self):
         self._test_clause(
             self.col.contained_by(self._data_str()),
-            "data_table.multirange <@ %(multirange_1)s",
+            "data_table.multirange <@ %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
@@ -5906,52 +5938,52 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
     def test_overlaps(self):
         self._test_clause(
             self.col.overlaps(self._data_str()),
-            "data_table.multirange && %(multirange_1)s",
+            "data_table.multirange && %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_strictly_left_of(self):
         self._test_clause(
             self.col << self._data_str(),
-            "data_table.multirange << %(multirange_1)s",
+            "data_table.multirange << %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
         self._test_clause(
             self.col.strictly_left_of(self._data_str()),
-            "data_table.multirange << %(multirange_1)s",
+            "data_table.multirange << %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_strictly_right_of(self):
         self._test_clause(
             self.col >> self._data_str(),
-            "data_table.multirange >> %(multirange_1)s",
+            "data_table.multirange >> %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
         self._test_clause(
             self.col.strictly_right_of(self._data_str()),
-            "data_table.multirange >> %(multirange_1)s",
+            "data_table.multirange >> %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_not_extend_right_of(self):
         self._test_clause(
             self.col.not_extend_right_of(self._data_str()),
-            "data_table.multirange &< %(multirange_1)s",
+            "data_table.multirange &< %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_not_extend_left_of(self):
         self._test_clause(
             self.col.not_extend_left_of(self._data_str()),
-            "data_table.multirange &> %(multirange_1)s",
+            "data_table.multirange &> %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_adjacent_to(self):
         self._test_clause(
             self.col.adjacent_to(self._data_str()),
-            "data_table.multirange -|- %(multirange_1)s",
+            "data_table.multirange -|- %(multirange_1)s::VARCHAR",
             sqltypes.BOOLEANTYPE,
         )
 
@@ -6372,12 +6404,14 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
         ),
         (
             lambda self: self.jsoncol["bar"].astext == None,  # noqa
-            "(test_table.test_column ->> %(test_column_1)s) IS NULL",
+            "(test_table.test_column ->> %(test_column_1)s::TEXT) IS NULL",
         ),
         (
             lambda self: self.jsoncol["bar"].astext.cast(Integer) == 5,
-            "CAST((test_table.test_column ->> %(test_column_1)s) AS INTEGER) "
-            "= %(param_1)s",
+            (
+                "CAST((test_table.test_column ->> %(test_column_1)s::TEXT) AS"
+                " INTEGER) = %(param_1)s::INTEGER"
+            ),
         ),
         (
             lambda self: self.jsoncol[("foo", 1)].astext == None,  # noqa
@@ -6385,23 +6419,31 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
         ),
         (
             lambda self: self.jsoncol["bar"].astext == self.any_,
-            "(test_table.test_column ->> %(test_column_1)s) = "
-            "ANY (ARRAY[%(param_1)s])",
+            (
+                "(test_table.test_column ->> %(test_column_1)s::TEXT) = "
+                "ANY (ARRAY[%(param_1)s::INTEGER])"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"].astext != self.any_,
-            "(test_table.test_column ->> %(test_column_1)s) != "
-            "ANY (ARRAY[%(param_1)s])",
+            (
+                "(test_table.test_column ->> %(test_column_1)s::TEXT) != "
+                "ANY (ARRAY[%(param_1)s::INTEGER])"
+            ),
         ),
         (
             lambda self: self.jsoncol[("foo", 1)] == self.any_,
-            "(test_table.test_column #> %(test_column_1)s) = "
-            "ANY (ARRAY[%(param_1)s])",
+            (
+                "(test_table.test_column #> %(test_column_1)s) = "
+                "ANY (ARRAY[%(param_1)s::INTEGER])"
+            ),
         ),
         (
             lambda self: self.jsoncol[("foo", 1)] != self.any_,
-            "(test_table.test_column #> %(test_column_1)s) != "
-            "ANY (ARRAY[%(param_1)s])",
+            (
+                "(test_table.test_column #> %(test_column_1)s) != "
+                "ANY (ARRAY[%(param_1)s::INTEGER])"
+            ),
         ),
         id_="as",
     )
@@ -6419,34 +6461,46 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     @testing.combinations(
         (
             lambda self: self.jsoncol["bar"] == None,  # noqa
-            "(test_table.test_column -> %(test_column_1)s) IS NULL",
+            "(test_table.test_column -> %(test_column_1)s::TEXT) IS NULL",
         ),
         (
             lambda self: self.jsoncol["bar"] != None,  # noqa
-            "(test_table.test_column -> %(test_column_1)s) IS NOT NULL",
+            "(test_table.test_column -> %(test_column_1)s::TEXT) IS NOT NULL",
         ),
         (
             lambda self: self.jsoncol["bar"].cast(Integer) == 5,
-            "CAST((test_table.test_column -> %(test_column_1)s) AS INTEGER) "
-            "= %(param_1)s",
+            (
+                "CAST((test_table.test_column -> %(test_column_1)s::TEXT) AS"
+                " INTEGER) = %(param_1)s::INTEGER"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"] == 42,
-            "(test_table.test_column -> %(test_column_1)s) = %(param_1)s",
+            (
+                "(test_table.test_column -> %(test_column_1)s::TEXT) ="
+                " %(param_1)s::INTEGER"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"] != 42,
-            "(test_table.test_column -> %(test_column_1)s) != %(param_1)s",
+            (
+                "(test_table.test_column -> %(test_column_1)s::TEXT) !="
+                " %(param_1)s::INTEGER"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"] == self.any_,
-            "(test_table.test_column -> %(test_column_1)s) = "
-            "ANY (ARRAY[%(param_1)s])",
+            (
+                "(test_table.test_column -> %(test_column_1)s::TEXT) = "
+                "ANY (ARRAY[%(param_1)s::INTEGER])"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"] != self.any_,
-            "(test_table.test_column -> %(test_column_1)s) != "
-            "ANY (ARRAY[%(param_1)s])",
+            (
+                "(test_table.test_column -> %(test_column_1)s::TEXT) != "
+                "ANY (ARRAY[%(param_1)s::INTEGER])"
+            ),
         ),
         id_="as",
     )
@@ -6483,7 +6537,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     @testing.combinations(
         (
             lambda self: self.jsoncol["foo"],
-            "test_table.test_column -> %(test_column_1)s AS anon_1",
+            "test_table.test_column -> %(test_column_1)s::TEXT AS anon_1",
             True,
         )
     )
@@ -6776,11 +6830,11 @@ class JSONBTest(JSONTest):
     @testing.combinations(
         (
             lambda self: self.jsoncol.has_key("data"),
-            "test_table.test_column ? %(test_column_1)s",
+            "test_table.test_column ? %(test_column_1)s::VARCHAR",
         ),
         (
             lambda self: self.jsoncol.has_key(self.any_),
-            "test_table.test_column ? ANY (ARRAY[%(param_1)s])",
+            "test_table.test_column ? ANY (ARRAY[%(param_1)s::INTEGER])",
         ),
         (
             lambda self: self.jsoncol.has_all(
@@ -6790,17 +6844,20 @@ class JSONBTest(JSONTest):
         ),
         (
             lambda self: self.jsoncol.has_all(self.any_),
-            "test_table.test_column ?& ANY (ARRAY[%(param_1)s])",
+            "test_table.test_column ?& ANY (ARRAY[%(param_1)s::INTEGER])",
         ),
         (
             lambda self: self.jsoncol.has_any(
                 postgresql.array(["name", "data"])
             ),
-            "test_table.test_column ?| ARRAY[%(param_1)s, %(param_2)s]",
+            (
+                "test_table.test_column ?| ARRAY[%(param_1)s::VARCHAR,"
+                " %(param_2)s::VARCHAR]"
+            ),
         ),
         (
             lambda self: self.jsoncol.has_any(self.any_),
-            "test_table.test_column ?| ANY (ARRAY[%(param_1)s])",
+            "test_table.test_column ?| ANY (ARRAY[%(param_1)s::INTEGER])",
         ),
         (
             lambda self: self.jsoncol.contains({"k1": "r1v1"}),
@@ -6808,7 +6865,7 @@ class JSONBTest(JSONTest):
         ),
         (
             lambda self: self.jsoncol.contains(self.any_),
-            "test_table.test_column @> ANY (ARRAY[%(param_1)s])",
+            "test_table.test_column @> ANY (ARRAY[%(param_1)s::INTEGER])",
         ),
         (
             lambda self: self.jsoncol.contained_by({"foo": "1", "bar": None}),
@@ -6816,33 +6873,37 @@ class JSONBTest(JSONTest):
         ),
         (
             lambda self: self.jsoncol.contained_by(self.any_),
-            "test_table.test_column <@ ANY (ARRAY[%(param_1)s])",
+            "test_table.test_column <@ ANY (ARRAY[%(param_1)s::INTEGER])",
         ),
         (
             lambda self: self.jsoncol.delete_path(["a", "b"]),
-            "test_table.test_column #- CAST(ARRAY[%(param_1)s, "
-            "%(param_2)s] AS TEXT[])",
+            (
+                "test_table.test_column #- CAST(ARRAY[%(param_1)s::VARCHAR, "
+                "%(param_2)s::VARCHAR] AS TEXT[])"
+            ),
         ),
         (
             lambda self: self.jsoncol.delete_path(array(["a", "b"])),
-            "test_table.test_column #- CAST(ARRAY[%(param_1)s, "
-            "%(param_2)s] AS TEXT[])",
+            (
+                "test_table.test_column #- CAST(ARRAY[%(param_1)s::VARCHAR, "
+                "%(param_2)s::VARCHAR] AS TEXT[])"
+            ),
         ),
         (
             lambda self: self.jsoncol.path_exists("$.k1"),
-            "test_table.test_column @? %(test_column_1)s",
+            "test_table.test_column @? %(test_column_1)s::VARCHAR",
         ),
         (
             lambda self: self.jsoncol.path_exists(self.any_),
-            "test_table.test_column @? ANY (ARRAY[%(param_1)s])",
+            "test_table.test_column @? ANY (ARRAY[%(param_1)s::INTEGER])",
         ),
         (
             lambda self: self.jsoncol.path_match("$.k1[0] > 2"),
-            "test_table.test_column @@ %(test_column_1)s",
+            "test_table.test_column @@ %(test_column_1)s::VARCHAR",
         ),
         (
             lambda self: self.jsoncol.path_match(self.any_),
-            "test_table.test_column @@ ANY (ARRAY[%(param_1)s])",
+            "test_table.test_column @@ ANY (ARRAY[%(param_1)s::INTEGER])",
         ),
         id_="as",
     )
@@ -6854,34 +6915,46 @@ class JSONBTest(JSONTest):
     @testing.combinations(
         (
             lambda self: self.jsoncol["bar"] == None,  # noqa
-            "test_table.test_column[%(test_column_1)s] IS NULL",
+            "test_table.test_column[%(test_column_1)s::TEXT] IS NULL",
         ),
         (
             lambda self: self.jsoncol["bar"] != None,  # noqa
-            "test_table.test_column[%(test_column_1)s] IS NOT NULL",
+            "test_table.test_column[%(test_column_1)s::TEXT] IS NOT NULL",
         ),
         (
             lambda self: self.jsoncol["bar"].cast(Integer) == 5,
-            "CAST(test_table.test_column[%(test_column_1)s] AS INTEGER) "
-            "= %(param_1)s",
+            (
+                "CAST(test_table.test_column[%(test_column_1)s::TEXT] AS"
+                " INTEGER) = %(param_1)s::INTEGER"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"] == 42,
-            "test_table.test_column[%(test_column_1)s] = %(param_1)s",
+            (
+                "test_table.test_column[%(test_column_1)s::TEXT] ="
+                " %(param_1)s::INTEGER"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"] != 42,
-            "test_table.test_column[%(test_column_1)s] != %(param_1)s",
+            (
+                "test_table.test_column[%(test_column_1)s::TEXT] !="
+                " %(param_1)s::INTEGER"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"] == self.any_,
-            "test_table.test_column[%(test_column_1)s] = "
-            "ANY (ARRAY[%(param_1)s])",
+            (
+                "test_table.test_column[%(test_column_1)s::TEXT] = "
+                "ANY (ARRAY[%(param_1)s::INTEGER])"
+            ),
         ),
         (
             lambda self: self.jsoncol["bar"] != self.any_,
-            "test_table.test_column[%(test_column_1)s] != "
-            "ANY (ARRAY[%(param_1)s])",
+            (
+                "test_table.test_column[%(test_column_1)s::TEXT] != "
+                "ANY (ARRAY[%(param_1)s::INTEGER])"
+            ),
         ),
         id_="as",
     )
@@ -6899,7 +6972,7 @@ class JSONBTest(JSONTest):
     @testing.combinations(
         (
             lambda self: self.jsoncol["foo"],
-            "test_table.test_column[%(test_column_1)s] AS anon_1",
+            "test_table.test_column[%(test_column_1)s::TEXT] AS anon_1",
             True,
         )
     )

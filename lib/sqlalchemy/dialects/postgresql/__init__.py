@@ -97,7 +97,7 @@ psycopg_async = type(
     "psycopg_async", (ModuleType,), {"dialect": psycopg.dialect_async}
 )
 
-base.dialect = dialect = psycopg2.dialect
+base.dialect = dialect = psycopg.dialect
 
 
 __all__ = (

@@ -644,19 +644,27 @@ PostgreSQL DML Constructs
 .. autoclass:: sqlalchemy.dialects.postgresql.Insert
   :members:
 
-.. _postgresql_psycopg2:
-
-psycopg2
---------
-
-.. automodule:: sqlalchemy.dialects.postgresql.psycopg2
-
 .. _postgresql_psycopg:
 
 psycopg
 --------
 
+.. versionchanged:: 2.1
+    ``psycopg`` (psycopg 3) is now the default PostgreSQL dialect when no
+    specific dialect is specified in the URL (e.g. ``postgresql://...``).
+
 .. automodule:: sqlalchemy.dialects.postgresql.psycopg
+
+.. _postgresql_psycopg2:
+
+psycopg2
+--------
+
+.. versionchanged:: 2.1
+    ``psycopg2`` is no longer the default PostgreSQL dialect. To explicitly
+    use ``psycopg2``, specify ``postgresql+psycopg2://...`` in the URL.
+
+.. automodule:: sqlalchemy.dialects.postgresql.psycopg2
 
 .. _postgresql_pg8000:
 

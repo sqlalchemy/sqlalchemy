@@ -110,11 +110,19 @@ construction arguments, are as follows:
 python-oracledb
 ---------------
 
+.. versionchanged:: 2.1
+    ``oracledb`` is now the default Oracle dialect when no specific dialect
+    is specified in the URL (e.g. ``oracle://...``).
+
 .. automodule:: sqlalchemy.dialects.oracle.oracledb
 
 .. _cx_oracle:
 
 cx_Oracle
 ---------
+
+.. versionchanged:: 2.1
+    ``cx_oracle`` is no longer the default Oracle dialect. To explicitly use
+    ``cx_oracle``, specify ``oracle+cx_oracle://...`` in the URL.
 
 .. automodule:: sqlalchemy.dialects.oracle.cx_oracle
