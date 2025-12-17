@@ -151,7 +151,7 @@ class immutabledict(Dict[_KT, _VT]):
             return self
 
         if not self and type(other) == immutabledict:
-            return self
+            return other
 
         # new + update is faster than immutabledict(self)
         result: immutabledict = immutabledict()  # type: ignore[type-arg]
