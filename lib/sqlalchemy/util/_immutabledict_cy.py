@@ -146,11 +146,13 @@ class immutabledict(Dict[_KT, _VT]):
         return f"immutabledict({dict.__repr__(self)})"
 
     @cython.annotation_typing(False)  # avoid cython crash from generic return
-    def union(
-        self, other: Optional[Mapping[_KT, _VT]] = None, /
-    ) -> immutabledict[_KT, _VT]:
+    def union(self, other: Mapping[_KT, _VT], /) -> immutabledict[_KT, _VT]:
         if not other:
             return self
+
+        if not self and type(other) == immutabledict:
+            return self
+
         # new + update is faster than immutabledict(self)
         result: immutabledict = immutabledict()  # type: ignore[type-arg]
         PyDict_Update(result, self)
@@ -163,25 +165,46 @@ class immutabledict(Dict[_KT, _VT]):
 
     @cython.annotation_typing(False)  # avoid cython crash from generic return
     def merge_with(
-        self, *dicts: Optional[Mapping[_KT, _VT]]
+        self,
+        *dicts: Mapping[_KT, _VT],
     ) -> immutabledict[_KT, _VT]:
-        result: Optional[immutabledict] = None  # type: ignore[type-arg]
-        d: object
-        if not dicts:
-            return self
-        for d in dicts:
-            if d is not None and len(d) > 0:
-                if result is None:
-                    # new + update is faster than immutabledict(self)
-                    result = immutabledict()
-                    PyDict_Update(result, self)
-                if isinstance(d, dict):
-                    # c version of PyDict_Update supports only dicts
-                    PyDict_Update(result, d)
-                else:
-                    dict.update(result, d)
+        only_one: Optional[immutabledict[_KT, _VT]] = None
+        klass = type(self)
 
-        return self if result is None else result
+        if self and klass == immutabledict:
+            only_one = self
+
+        for i, d in enumerate(dicts):
+            if not d:
+                continue
+
+            if type(d) == immutabledict:
+                if only_one is None:
+                    only_one = d
+                else:
+                    only_one = None
+                    break
+            else:
+                only_one = None
+                break
+
+        if only_one is not None:
+            return only_one
+
+        result: immutabledict[_KT, _VT] = klass()
+        PyDict_Update(result, self)
+
+        for d in dicts:
+            if d is None:
+                continue
+
+            if isinstance(d, dict):
+                # c version of PyDict_Update supports only dicts
+                PyDict_Update(result, d)
+            else:
+                dict.update(result, d)
+
+        return result
 
     def copy(self) -> Self:
         return self
