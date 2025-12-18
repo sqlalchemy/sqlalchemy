@@ -338,6 +338,17 @@ class _ExpressionColumnLoader(_ColumnLoader):
 
         memoized_populators[self.parent_property] = fetch
 
+        # if the column being loaded is the polymorphic discriminator,
+        # and we have a with_expression() providing the actual column,
+        # update the query_entity to use the actual column instead of
+        # the default expression
+        if (
+            query_entity._polymorphic_discriminator is self.columns[0]
+            and loadopt
+            and loadopt._extra_criteria
+        ):
+            query_entity._polymorphic_discriminator = columns[0]
+
     def create_row_processor(
         self,
         context,
