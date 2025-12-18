@@ -2696,7 +2696,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         )
         table_name = self.preparer.format_table(drop.element.table)
         if_exists = " IF EXISTS" if drop.if_exists else ""
-        return f"\nDROP INDEX {index_name}{if_exists} ON {table_name}"
+        return f"\nDROP INDEX{if_exists} {index_name} ON {table_name}"
 
     def visit_create_table_as(self, element, **kw):
         prep = self.preparer
