@@ -504,7 +504,7 @@ def from_dml_column(column: _OnlyColumnArgument[_T]) -> DMLTargetCopy[_T]:
         )
 
     The :func:`_sql.from_dml_column` construct allows automatic copying
-    of an expression assigned to a different column to be re-used::
+    of an expression assigned to a different column to be reused::
 
         >>> stmt = t.insert().values(x=func.foobar(3), y=from_dml_column(t.c.x) + 5)
         >>> print(stmt)

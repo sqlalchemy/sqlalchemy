@@ -201,7 +201,7 @@ class StateMachineTest(fixtures.TestBase):
         eq_(m._state, _NO_CHANGE)
         with expect_raises_message(
             sa_exc.IllegalStateChangeError,
-            r"Cant run operation '_inner_move_to_c\(\)' here; will move "
+            r"Can't run operation '_inner_move_to_c\(\)' here; will move "
             r"to state <StateTestChange.c: 3> where we are "
             "expecting <StateTestChange.b: 2>",
         ):

@@ -65,7 +65,7 @@ familiar with.
   does not necessarily establish a new connection to the database at the
   moment the connection object is acquired; it instead consults the
   connection pool for a connection, which will often retrieve an existing
-  connection from the pool to be re-used.  If no connections are available,
+  connection from the pool to be reused.  If no connections are available,
   the pool will create a new database connection, but only if the
   pool has not surpassed a configured capacity.
 

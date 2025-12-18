@@ -1667,7 +1667,7 @@ class WriteOnlyBulkTest(
         u1 = User(name="x")
         sess.add(u1)
 
-        # ha ha!  u1 is not persistent yet.  autoflush wont happen
+        # ha ha!  u1 is not persistent yet.  autoflush won't happen
         # until sess.scalars() actually runs.  statement has to be
         # created with a pending parameter, not actual parameter
         assert inspect(u1).pending
@@ -1738,7 +1738,7 @@ class WriteOnlyBulkTest(
         )
         sess.add(u1)
 
-        # ha ha!  u1 is not persistent yet.  autoflush wont happen
+        # ha ha!  u1 is not persistent yet.  autoflush won't happen
         # until sess.scalars() actually runs.  statement has to be
         # created with a pending parameter, not actual parameter
         assert inspect(u1).pending
@@ -1831,7 +1831,7 @@ class WriteOnlyBulkTest(
         )
         sess.add(u1)
 
-        # ha ha!  u1 is not persistent yet.  autoflush wont happen
+        # ha ha!  u1 is not persistent yet.  autoflush won't happen
         # until sess.scalars() actually runs.  statement has to be
         # created with a pending parameter, not actual parameter
         assert inspect(u1).pending

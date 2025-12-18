@@ -211,7 +211,7 @@ def _oracle_post_configure_engine(url, engine, follower_ident):
         # https://github.com/oracle/python-cx_Oracle/issues/519
         # TODO: oracledb claims to have this feature built in somehow,
         # see if that's in use and/or if it needs to be enabled
-        # (or if this doesnt even apply to the newer oracle's we're using)
+        # (or if this doesn't even apply to the newer oracle's we're using)
         try:
             sc = dbapi_connection.stmtcachesize
         except:

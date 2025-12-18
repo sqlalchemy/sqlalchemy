@@ -235,7 +235,7 @@ Above, a custom execution option is passed to
 :meth:`_sql.Select.execution_options` in order to establish a "cache key" that
 will then be intercepted by the :meth:`_orm.SessionEvents.do_orm_execute` hook.  This
 cache key is then matched to a :class:`_engine.FrozenResult` object that may be
-present in the cache, and if present, the object is re-used.  The recipe makes
+present in the cache, and if present, the object is reused.  The recipe makes
 use of the :meth:`_engine.Result.freeze` method to "freeze" a
 :class:`_engine.Result` object, which above will contain ORM results, such that
 it can be stored in a cache and used multiple times. In order to return a live

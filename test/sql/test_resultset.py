@@ -2856,7 +2856,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         This copies the _keymap from one to the other in terms of the
         selected columns of a target selectable.
 
-        This is used by the statement caching process to re-use the
+        This is used by the statement caching process to reuse the
         CursorResultMetadata from the cached statement against the same
         statement sent separately.
 

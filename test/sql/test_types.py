@@ -2401,7 +2401,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             ),
         )
 
-        # the base String() didnt create a constraint or even do any
+        # the base String() didn't create a constraint or even do any
         # events.  But Column looked for SchemaType in _variant_mapping
         # and found our type anyway.
         eq_(

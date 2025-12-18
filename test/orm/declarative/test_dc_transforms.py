@@ -593,7 +593,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         class B(A):
             b_data: Mapped[str] = mapped_column(default="bd")
 
-        # ensure we didnt break dataclasses contract of removing Field
+        # ensure we didn't break dataclasses contract of removing Field
         # issue #8880
         eq_(A.__dict__["some_field"], 5)
         assert "ctrl_one" not in A.__dict__

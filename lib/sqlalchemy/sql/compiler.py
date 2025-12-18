@@ -3051,9 +3051,9 @@ class SQLCompiler(Compiled):
         literal_exec["literal_execute"] = True
 
         # break up the function into its components so we can apply
-        # literal_execute to the second argument (the delimeter)
+        # literal_execute to the second argument (the delimiter)
         cl = list(fn.clauses)
-        expr, delimeter = cl[0:2]
+        expr, delimiter = cl[0:2]
         if (
             order_by is not None
             and self.dialect.aggregate_order_by_style
@@ -3061,13 +3061,13 @@ class SQLCompiler(Compiled):
         ):
             return (
                 f"{use_function_name}({expr._compiler_dispatch(self, **kw)}, "
-                f"{delimeter._compiler_dispatch(self, **literal_exec)} "
+                f"{delimiter._compiler_dispatch(self, **literal_exec)} "
                 f"ORDER BY {order_by._compiler_dispatch(self, **kw)})"
             )
         else:
             return (
                 f"{use_function_name}({expr._compiler_dispatch(self, **kw)}, "
-                f"{delimeter._compiler_dispatch(self, **literal_exec)})"
+                f"{delimiter._compiler_dispatch(self, **literal_exec)})"
             )
 
     def visit_extract(self, extract, **kwargs):
@@ -6084,7 +6084,7 @@ class SQLCompiler(Compiled):
         # likely the least amount of callcounts, though looks clumsy
         if self.positional and visiting_cte is None:
             # if we are inside a CTE, don't count parameters
-            # here since they wont be for insertmanyvalues. keep
+            # here since they won't be for insertmanyvalues. keep
             # visited_bindparam at None so no counting happens.
             # see #9173
             visited_bindparam = []

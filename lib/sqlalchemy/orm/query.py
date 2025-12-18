@@ -2901,7 +2901,7 @@ class Query(
         try:
             yield from result  # type: ignore
         except GeneratorExit:
-            # issue #8710 - direct iteration is not re-usable after
+            # issue #8710 - direct iteration is not reusable after
             # an iterable block is broken, so close the result
             result._soft_close()
             raise

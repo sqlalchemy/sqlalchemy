@@ -176,7 +176,7 @@ Rationale
 The "lambda" approach above is a superset of what would be a more
 traditional "parameterized" approach.   Suppose we wished to build
 a simple system where we build a :class:`~.query.Query` just once, then
-store it in a dictionary for re-use.   This is possible right now by
+store it in a dictionary for reuse.   This is possible right now by
 just building up the query, and removing its :class:`.Session` by calling
 ``my_cached_query = query.with_session(None)``::
 
@@ -193,7 +193,7 @@ just building up the query, and removing its :class:`.Session` by calling
         return query.params(id=id_argument).all()
 
 The above approach gets us a very minimal performance benefit.
-By re-using a :class:`~.query.Query`, we save on the Python work within
+By reusing a :class:`~.query.Query`, we save on the Python work within
 the ``session.query(Model)`` constructor as well as calling upon
 ``filter(Model.id == bindparam('id'))``, which will skip for us the building
 up of the Core expression as well as sending it to :meth:`_query.Query.filter`.

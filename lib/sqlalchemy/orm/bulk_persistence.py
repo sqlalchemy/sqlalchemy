@@ -1236,7 +1236,7 @@ class _BulkORMInsert(_ORMDMLState, InsertDMLState):
             # for ORM object loading, like ORMContext, we have to disable
             # result set adapt_to_context, because we will be generating a
             # new statement with specific columns that's cached inside of
-            # an ORMFromStatementCompileState, which we will re-use for
+            # an ORMFromStatementCompileState, which we will reuse for
             # each result.
             if not execution_options:
                 execution_options = context._orm_load_exec_options

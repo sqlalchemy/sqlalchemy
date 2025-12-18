@@ -369,7 +369,7 @@ when dealing with ORM-enabled :func:`_dml.insert` or :func:`_dml.update`::
 
 Additionally, a new helper :func:`_sql.from_dml_column` is added, which may be
 used with the :meth:`.hybrid_property.update_expression` hook to indicate
-re-use of a column expression from elsewhere in the UPDATE statement's SET
+reuse of a column expression from elsewhere in the UPDATE statement's SET
 clause::
 
     from sqlalchemy import from_dml_column
@@ -1211,7 +1211,7 @@ Examples to summarize the change are as follows::
     # omit the driver portion, will use the psycopg dialect
     engine = create_engine("postgresql://user:pass@host/dbname")
 
-    # indicate the psycopg driver/dialect explcitly (preferred)
+    # indicate the psycopg driver/dialect explicitly (preferred)
     engine = create_engine("postgresql+psycopg://user:pass@host/dbname")
 
     # use the legacy psycopg2 driver/dialect
@@ -1542,7 +1542,7 @@ Examples to summarize the change are as follows::
     # omit the driver portion, will use the oracledb dialect
     engine = create_engine("oracle://user:pass@host/dbname")
 
-    # indicate the oracledb driver/dialect explcitly (preferred)
+    # indicate the oracledb driver/dialect explicitly (preferred)
     engine = create_engine("oracle+oracledb://user:pass@host/dbname")
 
     # use the legacy cx_oracle driver/dialect

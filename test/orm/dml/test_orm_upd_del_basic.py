@@ -484,7 +484,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     ):
         """test #5664.
 
-        approach is revised in SQLAlchemy 2.0 to not pre-emptively
+        approach is revised in SQLAlchemy 2.0 to not preemptively
         unexpire the involved attributes
 
         """

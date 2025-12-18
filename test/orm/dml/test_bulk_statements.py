@@ -2772,7 +2772,7 @@ class DMLCompileScenariosTest(testing.AssertsCompiledSQL, fixtures.TestBase):
         # e.g. insert(A).  In the update() case, the WHERE clause can also
         # pull in the ORM entity, which is how we found the issue here, but
         # for INSERT there's no current method that does this; returning()
-        # could do this in theory but currently doesnt.  So for now, cheat,
+        # could do this in theory but currently doesn't.  So for now, cheat,
         # and pretend there's some conversion that's going to propagate
         # from an ORM expression
         coercions.expect(

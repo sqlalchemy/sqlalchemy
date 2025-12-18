@@ -825,7 +825,7 @@ few changes there:
   subclasses NUMERIC, FLOAT, DECIMAL don't generate any
   length or scale unless specified.   This also continues to
   include the controversial ``String`` and ``VARCHAR`` types
-  (although MySQL dialect will pre-emptively raise when
+  (although MySQL dialect will preemptively raise when
   asked to render VARCHAR with no length).   No defaults are
   assumed, and if they are used in a CREATE TABLE statement,
   an error will be raised if the underlying database does

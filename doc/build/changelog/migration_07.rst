@@ -163,7 +163,7 @@ scenarios. Highlights of this release include:
   ``cursor.execute``   for a large bulk insert of joined-
   table objects can be cut in half, allowing   native DBAPI
   optimizations to take place for those statements passed
-  to ``cursor.executemany()`` (such as re-using a prepared
+  to ``cursor.executemany()`` (such as reusing a prepared
   statement).
 
 * The codepath invoked when accessing a many-to-one
@@ -199,7 +199,7 @@ scenarios. Highlights of this release include:
 * The collection of "bind processors" for a particular
   ``Compiled`` instance of   a statement is also cached on
   the ``Compiled`` object, taking further   advantage of the
-  "compiled cache" used by the flush process to re-use the
+  "compiled cache" used by the flush process to reuse the
   same   compiled form of INSERT, UPDATE, DELETE statements.
 
 A demonstration of callcount reduction including a sample
