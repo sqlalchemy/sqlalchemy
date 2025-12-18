@@ -2691,20 +2691,12 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_drop_index(self, drop: DropIndex, **kw: Any) -> str:
-        index = drop.element
-
-        text = "\nDROP INDEX "
-
-        if (
-            # only supported in 2016+
-            self.dialect.server_version_info < MS_2016_VERSION
-            and drop.if_exists
-        ):
-            text += "IF EXISTS "
-
-        text += self._prepared_index_name(index, include_schema=False)
-        text += " ON " + self.preparer.format_table(index.table)
-        return text
+        index_name = self._prepared_index_name(
+            drop.element, include_schema=False
+        )
+        table_name = self.preparer.format_table(drop.element.table)
+        if_exists = " IF EXISTS" if drop.if_exists else ""
+        return f"\nDROP INDEX {index_name}{if_exists} ON {table_name}"
 
     def visit_create_table_as(self, element, **kw):
         prep = self.preparer
