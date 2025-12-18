@@ -365,7 +365,7 @@ Selecting Entities from Subqueries
 The :func:`_orm.aliased` construct discussed in the previous section
 can be used with any :class:`_sql.Subquery` construct that comes from a
 method such as :meth:`_sql.Select.subquery` to link ORM entities to the
-columns returned by that subquery; there must be a **column correspondence**
+columns returned by that subquery; by default, there must be a **column correspondence**
 relationship between the columns delivered by the subquery and the columns
 to which the entity is mapped, meaning, the subquery needs to be ultimately
 derived from those entities, such as in the example below::
@@ -386,6 +386,25 @@ derived from those entities, such as in the example below::
     User(id=3, name='patrick', fullname='Patrick Star')
     User(id=4, name='squidward', fullname='Squidward Tentacles')
     User(id=5, name='ehkrabs', fullname='Eugene H. Krabs')
+
+Alternatively, an aliased subquery can be matched to the entity based on name
+by applying the :paramref:`_orm.aliased.adapt_on_names` parameter::
+
+    >>> from sqlalchemy import literal
+    >>> inner_stmt = select(
+    ...     literal(14).label("id"),
+    ...     literal("made up name").label("name"),
+    ...     literal("made up fullname").label("fullname"),
+    ... )
+    >>> subq = inner_stmt.subquery()
+    >>> aliased_user = aliased(User, subq, adapt_on_names=True)
+    >>> stmt = select(aliased_user)
+    >>> for user_obj in session.execute(stmt).scalars():
+    ...     print(user_obj)
+    {execsql}SELECT anon_1.id, anon_1.name, anon_1.fullname
+    FROM (SELECT ? AS id, ? AS name, ? AS fullname) AS anon_1
+    [generated in ...] (14, 'made up name', 'made up fullname')
+    {stop}User(id=14, name='made up name', fullname='made up fullname')
 
 .. seealso::
 
