@@ -804,10 +804,10 @@ and ``Child.parent_associations -> Association.parent``::
         )
         extra_data: Mapped[Optional[str]]
 
-        # association between Assocation -> Child
+        # association between Association -> Child
         child: Mapped["Child"] = relationship(back_populates="parent_associations")
 
-        # association between Assocation -> Parent
+        # association between Association -> Parent
         parent: Mapped["Parent"] = relationship(back_populates="child_associations")
 
 

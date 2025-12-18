@@ -76,7 +76,7 @@
         Fixed bug where when using extended attribute instrumentation system,
         the correct exception would not be raised when :func:`.class_mapper`
         were called with an invalid input that also happened to not
-        be weak referencable, such as an integer.
+        be weak referenceable, such as an integer.
 
     .. change::
         :tags: bug, tests, pypy

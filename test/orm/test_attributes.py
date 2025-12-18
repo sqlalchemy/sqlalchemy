@@ -312,7 +312,7 @@ class AttributesTest(fixtures.ORMTest):
         o4 = pickle.loads(pk_o3)
 
         # and lastly make sure we still have our data after all that.
-        # identical serialzation is great, *if* it's complete :)
+        # identical serialization is great, *if* it's complete :)
         self.assert_(o4.user_id == 7)
         self.assert_(o4.user_name is None)
         self.assert_(o4.email_address is None)

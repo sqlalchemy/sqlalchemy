@@ -1755,7 +1755,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             ``SERIAL``, MySQL ``AUTO_INCREMENT``, or ``IDENTITY`` on SQL Server
             should also be rendered.  Not every database backend has an
             "implied" default generator available; for example the Oracle Database
-            backends alway needs an explicit construct such as
+            backends always needs an explicit construct such as
             :class:`.Identity` to be included with a :class:`.Column` in order
             for the DDL rendered to include auto-generating constructs to also
             be produced in the database.
@@ -3875,7 +3875,7 @@ class IdentityOptions(DialectKWArgs):
             if "oracle_order" in dialect_kw:
                 raise exc.ArgumentError(
                     "Cannot specify both 'order' and 'oracle_order'. "
-                    "Plese use only 'oracle_order'."
+                    "Please use only 'oracle_order'."
                 )
             dialect_kw["oracle_order"] = order
         self._validate_dialect_kwargs(dialect_kw)
@@ -6485,7 +6485,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
             if "oracle_on_null" in dialect_kw:
                 raise exc.ArgumentError(
                     "Cannot specify both 'on_null' and 'oracle_on_null'. "
-                    "Plese use only 'oracle_on_null'."
+                    "Please use only 'oracle_on_null'."
                 )
             dialect_kw["oracle_on_null"] = on_null
 

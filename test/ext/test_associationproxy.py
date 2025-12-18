@@ -3618,7 +3618,7 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         with expect_raises_message(
             exc.InvalidRequestError,
             "Association proxy received an unexpected error when trying to "
-            'retreive attribute "B.fails_on_class_access" from '
+            'retrieve attribute "B.fails_on_class_access" from '
             r'class "B": .* no len\(\)',
         ):
             a1.fails_on_class_access

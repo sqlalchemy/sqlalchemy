@@ -16,7 +16,7 @@ the source distribution.
 .. deepalchemy:: The horizontal sharding extension is an advanced feature,
    involving a complex statement -> database interaction as well as
    use of semi-public APIs for non-trivial cases.   Simpler approaches to
-   refering to multiple database "shards", most commonly using a distinct
+   referring to multiple database "shards", most commonly using a distinct
    :class:`_orm.Session` per "shard", should always be considered first
    before using this more complex and less-production-tested system.
 

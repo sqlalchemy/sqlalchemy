@@ -319,7 +319,7 @@ class ROWID(sqltypes.TypeEngine):
 class _OracleBoolean(sqltypes.Boolean):
 
     def get_dbapi_type(self, dbapi):
-        # this can probably be dbapi.BOOLEAN (including for older verisons),
+        # this can probably be dbapi.BOOLEAN (including for older versions),
         # however sticking with NUMBER to avoid any surprises with older
         # versions or non-bool values
         return dbapi.NUMBER

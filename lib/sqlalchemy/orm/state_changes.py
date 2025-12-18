@@ -80,7 +80,7 @@ class _StateChange:
          indicate state should not change at the end of the method.
 
         """
-        assert prerequisite_states, "no prequisite states sent"
+        assert prerequisite_states, "no prerequisite states sent"
         has_prerequisite_states = (
             prerequisite_states is not _StateChangeStates.ANY
         )

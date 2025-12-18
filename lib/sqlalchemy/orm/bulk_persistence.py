@@ -1125,7 +1125,7 @@ class _BulkUDCompileState(_ORMDMLState):
         # call can_use_returning() before invoking the statement and get
         # answer?, why does this go through the whole execute phase using an
         # event?  Answer: because we are integrating with extensions such
-        # as the horizontal sharding extention that "multiplexes" an individual
+        # as the horizontal sharding extension that "multiplexes" an individual
         # statement run through multiple engines, and it uses
         # do_orm_execute() to do that.
 

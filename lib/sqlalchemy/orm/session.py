@@ -835,7 +835,7 @@ class SessionTransactionOrigin(Enum):
     """transaction were started by calling :meth:`_orm.Session.begin`"""
 
     BEGIN_NESTED = 2
-    """tranaction were started by :meth:`_orm.Session.begin_nested`"""
+    """transaction were started by :meth:`_orm.Session.begin_nested`"""
 
     SUBTRANSACTION = 3
     """transaction is an internal "subtransaction" """

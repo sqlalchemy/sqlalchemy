@@ -526,7 +526,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
     def test_indirect_name_relationship_arg_override(self, decl_base):
         """test #8759
 
-        in this test we assume a case where the type for the Mapped annnotation
+        in this test we assume a case where the type for the Mapped annotation
         a. has to be a different name than the actual class name and
         b. cannot be imported outside of TYPE CHECKING.  user will then put
         the real name inside of relationship().  we have to succeed even though

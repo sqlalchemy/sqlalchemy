@@ -135,7 +135,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             if sort_by_parameter_order:
                 with expect_raises_message(
                     exc.CompileError,
-                    "RETURNING cannot be determinstically sorted "
+                    "RETURNING cannot be deterministically sorted "
                     "when using an INSERT",
                 ):
                     stmt.compile()

@@ -546,7 +546,7 @@ in-Python getter/setter methods can treat ``accounts`` as a Python
 list available on ``self``.
 
 .. tip:: The ``User.balance`` getter in the above example accesses the
-   ``self.acccounts`` collection, which will normally be loaded via the
+   ``self.accounts`` collection, which will normally be loaded via the
    :func:`.selectinload` loader strategy configured on the ``User.balance``
    :func:`_orm.relationship`. The default loader strategy when not otherwise
    stated on :func:`_orm.relationship` is :func:`.lazyload`, which emits SQL on

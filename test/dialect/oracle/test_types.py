@@ -1115,7 +1115,7 @@ class TypesTest(fixtures.TestBase):
             Column(
                 "embedding",
                 # can't specify dementions in the free version of oracle
-                # since otherwise it complains that has no spece for the index
+                # since otherwise it complains that has no space for the index
                 VECTOR(),
                 # VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
             ),

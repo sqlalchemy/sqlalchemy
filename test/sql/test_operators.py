@@ -1058,7 +1058,7 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         (operators.getitem, OperatorClass.INDEXABLE),
     )
     def test_not_implemented_operators(self, op, operator_class):
-        """test operators that are availble but not implemented by default.
+        """test operators that are available but not implemented by default.
 
         this might be semantically different from the operator not being
         present in the operator class though the effect is the same (that is,

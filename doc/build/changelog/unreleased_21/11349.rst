@@ -6,6 +6,6 @@
     interface to correctly raise ``TypeError`` for invalid use of the ``|``,
     ``&``, ``^``, and ``-`` operators, as well as the in-place mutation
     versions of these methods, to match the behavior of standard Python
-    ``set()`` as well as SQLAlchemy ORM's "intstrumented" set implementation.
+    ``set()`` as well as SQLAlchemy ORM's "instrumented" set implementation.
 
 
