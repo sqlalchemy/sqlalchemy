@@ -163,7 +163,7 @@ def association_proxy(
       the proxied value to ``None`` should **create** the source object
       if it does not exist, using the creator.  Only applies to scalar
       attributes.  This is mutually exclusive
-      vs. the :paramref:`.assocation_proxy.cascade_scalar_deletes`.
+      vs. the :paramref:`.association_proxy.cascade_scalar_deletes`.
 
       .. versionadded:: 2.0.18
 
@@ -672,7 +672,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         except Exception as err:
             raise exc.InvalidRequestError(
                 f"Association proxy received an unexpected error when "
-                f"trying to retreive attribute "
+                f"trying to retrieve attribute "
                 f'"{target_class.__name__}.{parent.value_attr}" from '
                 f'class "{target_class.__name__}": {err}'
             ) from err

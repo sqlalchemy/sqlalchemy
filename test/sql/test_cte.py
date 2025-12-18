@@ -505,7 +505,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
                 c2 = c2.union(select(2))
         elif clone_type.annotated:
             # this does not seem to trigger the issue that was fixed in
-            # #12364 howver is still a worthy test
+            # #12364 however is still a worthy test
             c2 = c1._annotate({"foo": "bar"})
             if not identical:
                 c2 = c2.union(select(2))

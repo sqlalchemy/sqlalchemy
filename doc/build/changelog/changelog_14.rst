@@ -6690,7 +6690,7 @@ This document details individual issue-level changes made throughout
         :tickets: 5735
 
         Improved the unit of work topological sorting system such that the
-        toplogical sort is now deterministic based on the sorting of the input set,
+        topological sort is now deterministic based on the sorting of the input set,
         which itself is now sorted at the level of mappers, so that the same inputs
         of affected mappers should produce the same output every time, among
         mappers / tables that don't have any dependency on each other. This further
@@ -7945,7 +7945,7 @@ This document details individual issue-level changes made throughout
         The bulk update and delete methods :meth:`.Query.update` and
         :meth:`.Query.delete`, as well as their 2.0-style counterparts, now make
         use of RETURNING when the "fetch" strategy is used in order to fetch the
-        list of affected primary key identites, rather than emitting a separate
+        list of affected primary key identities, rather than emitting a separate
         SELECT, when the backend in use supports RETURNING.  Additionally, the
         "fetch" strategy will in ordinary cases not expire the attributes that have
         been updated, and will instead apply the updated values directly in the

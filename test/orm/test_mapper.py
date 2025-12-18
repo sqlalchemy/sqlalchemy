@@ -1248,7 +1248,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         """test ultimately from #2316 revised for #8064.
 
         previously column_property() would deannotate the given expression,
-        however this interfered with some compilation sceanrios.
+        however this interfered with some compilation scenarios.
 
 
         """
@@ -2118,7 +2118,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_synonym_nonexistent_attr(self):
         # test [ticket:4767].
-        # synonym points to non-existent attrbute that hasn't been mapped yet.
+        # synonym points to non-existent attribute that hasn't been mapped yet.
         users = self.tables.users
 
         class User:

@@ -175,7 +175,7 @@ class _IntrospectsAnnotations:
         extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
     ) -> None:
-        """Perform class-specific initializaton at early declarative scanning
+        """Perform class-specific initialization at early declarative scanning
         time.
 
         .. versionadded:: 2.0

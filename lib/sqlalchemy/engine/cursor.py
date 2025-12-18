@@ -328,7 +328,7 @@ class CursorResultMetaData(ResultMetaData):
         keymap_by_position = self._keymap_by_result_column_idx
 
         if keymap_by_position is None:
-            # first retrival from cache, this map will not be set up yet,
+            # first retrieval from cache, this map will not be set up yet,
             # initialize lazily
             keymap_by_position = self._keymap_by_result_column_idx = {
                 metadata_entry[MD_RESULT_MAP_INDEX]: metadata_entry

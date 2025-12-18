@@ -4644,7 +4644,7 @@ class SQLCompiler(Compiled):
                 )
             elif (
                 # general class of expressions that don't have a SQL-column
-                # addressible name.  includes scalar selects, bind parameters,
+                # addressable name.  includes scalar selects, bind parameters,
                 # SQL functions, others
                 not isinstance(column, elements.NamedColumn)
                 # deeper check that indicates there's no natural "name" to
@@ -5936,7 +5936,7 @@ class SQLCompiler(Compiled):
                 self.implicit_returning or insert_stmt._returning
             ) and insert_stmt._sort_by_parameter_order:
                 raise exc.CompileError(
-                    "RETURNING cannot be determinstically sorted when "
+                    "RETURNING cannot be deterministically sorted when "
                     "using an INSERT which includes multi-row values()."
                 )
             crud_params_single = crud_params_struct.single_params

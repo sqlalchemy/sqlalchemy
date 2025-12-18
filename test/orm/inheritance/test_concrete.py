@@ -1680,7 +1680,7 @@ class AdaptOnNamesTest(
                 # tip: whether or not there is "id_2" and "id_3" here,
                 # or just "id_2", is based on whether or not the two
                 # queries had polymorphic adaption proceed, so that the
-                # two filter criterias are different vs. the same object.  see
+                # two filter criteria are different vs. the same object.  see
                 # mapper._should_select_with_poly_adapter added in #8456.
                 [{"param_1": "a", "id_2": 3, "param_2": "b", "id_3": 3}],
             )

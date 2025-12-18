@@ -169,7 +169,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         PostgreSQL dialect right now.   MSSQL would also use it for a server
         side function that produces monotonic values, but we have no support
         for that outside of sequence next right now, where SQL Server doesn't
-        support invokving the sequence outside of the VALUES tuples.
+        support invoking the sequence outside of the VALUES tuples.
 
         """
 

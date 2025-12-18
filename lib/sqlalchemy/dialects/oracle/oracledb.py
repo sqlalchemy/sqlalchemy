@@ -112,7 +112,7 @@ python-oracledb documentation `Oracle Net Services Connection Strings
 For example to use an `Easy Connect string
 <https://download.oracle.com/ocomdocs/global/Oracle-Net-Easy-Connect-Plus.pdf>`_
 with a timeout to prevent connection establishment from hanging if the network
-transport to the database cannot be establishd in 30 seconds, and also setting
+transport to the database cannot be established in 30 seconds, and also setting
 a keep-alive time of 60 seconds to stop idle network connections from being
 terminated by a firewall::
 

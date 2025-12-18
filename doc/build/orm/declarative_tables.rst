@@ -681,7 +681,7 @@ first on the Microsoft SQL Server backend, illustrating the ``NVARCHAR`` datatyp
       PRIMARY KEY (id)
     )
 
-On MySQL, we get a VARCHAR column with an explcit length (required by
+On MySQL, we get a VARCHAR column with an explicit length (required by
 MySQL):
 
 .. sourcecode:: pycon+sql

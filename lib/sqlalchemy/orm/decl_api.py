@@ -249,7 +249,7 @@ class _declared_attr_common:
         cascading: bool = False,
         quiet: bool = False,
     ):
-        # suppport
+        # support
         # @declared_attr
         # @classmethod
         # def foo(cls) -> Mapped[thing]:
@@ -686,7 +686,7 @@ class DeclarativeBase(
     :param metadata: optional :class:`_schema.MetaData` collection.
      If a :class:`_orm.registry` is constructed automatically, this
      :class:`_schema.MetaData` collection will be used to construct it.
-     Otherwise, the local :class:`_schema.MetaData` collection will supercede
+     Otherwise, the local :class:`_schema.MetaData` collection will supersede
      that used by an existing :class:`_orm.registry` passed using the
      :paramref:`_orm.DeclarativeBase.registry` parameter.
     :param type_annotation_map: optional type annotation map that will be

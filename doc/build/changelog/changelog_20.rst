@@ -577,7 +577,7 @@
         :tags: bug, postgresql
         :tickets: 12728
 
-        Re-raise catched ``CancelledError`` in the terminate method of the
+        Re-raise caught ``CancelledError`` in the terminate method of the
         asyncpg dialect to avoid possible hangs of the code execution.
 
 
@@ -738,7 +738,7 @@
         into a SQL expression in a boolean context, for programs where future
         annotations mode was not enabled.  This case is now handled explicitly and
         a new error message has also been tailored for this case.  In addition, as
-        there are at least half a dozen distinct error scenarios for intepretation
+        there are at least half a dozen distinct error scenarios for interpretation
         of the :class:`.Mapped` construct, these scenarios have all been unified
         under a new subclass of :class:`.ArgumentError` called
         :class:`.MappedAnnotationError`, to provide some continuity between these
@@ -978,7 +978,7 @@
         ``connection.transaction()`` call sent to asyncpg sends ``None`` for
         ``isolation_level`` if not otherwise set in the SQLAlchemy dialect/wrapper,
         thereby allowing asyncpg to make use of the server level setting for
-        ``isolation_level`` in the absense of a client-level setting. Previously,
+        ``isolation_level`` in the absence of a client-level setting. Previously,
         this behavior of asyncpg was blocked by a hardcoded ``read_committed``.
 
     .. change::
@@ -1581,7 +1581,7 @@
         versioned table needs to default to the most recent version number in the
         history table on INSERT, to suit the use case of a table where rows are
         deleted, and can then be replaced by new rows that re-use the same primary
-        key identity.  This fix adds an additonal SELECT query per INSERT in the
+        key identity.  This fix adds an additional SELECT query per INSERT in the
         main table, which may be inefficient; for cases where primary keys are not
         re-used, the default function may be omitted.  Patch courtesy  Philipp H.
         v. Loewenfeld.
@@ -1761,7 +1761,7 @@
 
         Fixed internal typing issues to establish compatibility with mypy 1.11.0.
         Note that this does not include issues which have arisen with the
-        deprecated mypy plugin used by SQLAlchemy 1.4-style code; see the addiional
+        deprecated mypy plugin used by SQLAlchemy 1.4-style code; see the additional
         change note for this plugin indicating revised compatibility.
 
 .. changelog::
@@ -1943,8 +1943,8 @@
         :tickets: 11306
 
         Fixed issue in cursor handling which affected handling of duplicate
-        :class:`_sql.Column` or similar objcts in the columns clause of
-        :func:`_sql.select`, both in combination with arbitary :func:`_sql.text()`
+        :class:`_sql.Column` or similar objects in the columns clause of
+        :func:`_sql.select`, both in combination with arbitrary :func:`_sql.text()`
         clauses in the SELECT list, as well as when attempting to retrieve
         :meth:`_engine.Result.mappings` for the object, which would lead to an
         internal error.
@@ -2055,7 +2055,7 @@
 
         Fixed issue in :ref:`engine_insertmanyvalues` feature where using a primary
         key column with an "inline execute" default generator such as an explicit
-        :class:`.Sequence` with an explcit schema name, while at the same time
+        :class:`.Sequence` with an explicit schema name, while at the same time
         using the
         :paramref:`_engine.Connection.execution_options.schema_translate_map`
         feature would fail to render the sequence or the parameters properly,
@@ -2078,7 +2078,7 @@
         "Can't match sentinel values in result set to parameter sets".  Rather than
         attempt to further explain and document this implementation detail of the
         "insertmanyvalues" feature including a public version of the new
-        method, the approach is intead revised to no longer need this extra
+        method, the approach is instead revised to no longer need this extra
         conversion step, and the logic that does the comparison now works on the
         pre-converted bound parameter value compared to the post-result-processed
         value, which should always be of a matching datatype.  In the unusual case
@@ -2094,7 +2094,7 @@
 
         Fixed regression from version 2.0.28 caused by the fix for :ticket:`11085`
         where the newer method of adjusting post-cache bound parameter values would
-        interefere with the implementation for the :func:`_orm.subqueryload` loader
+        interfere with the implementation for the :func:`_orm.subqueryload` loader
         option, which has some more legacy patterns in use internally, when
         the additional loader criteria feature were used with this loader option.
 
@@ -2674,7 +2674,7 @@
         parameter for new style bulk ORM inserts, allowing ``render_nulls=True`` as
         an execution option.   This allows for bulk ORM inserts with a mixture of
         ``None`` values in the parameter dictionaries to use a single batch of rows
-        for a given set of dicationary keys, rather than breaking up into batches
+        for a given set of dictionary keys, rather than breaking up into batches
         that omit the NULL columns from each INSERT.
 
         .. seealso::
@@ -2857,7 +2857,7 @@
         However, mariadb-connector does not support invoking ``cursor.rowcount``
         after the cursor itself is closed, raising an error instead.  Generic test
         support has been added to ensure all backends support the allowing
-        :attr:`.Result.rowcount` to succceed (that is, returning an integer
+        :attr:`.Result.rowcount` to succeed (that is, returning an integer
         value with -1 for "not available") after the result is closed.
 
 
@@ -3006,7 +3006,7 @@
         :class:`.Update` and :class:`.Delete` to not interfere with the target
         "from" object passed to the statement, such as when passing an ORM-mapped
         :class:`_orm.aliased` construct that should be maintained within a phrase
-        like "UPDATE FROM".  Cases like ORM session synchonize using "SELECT"
+        like "UPDATE FROM".  Cases like ORM session synchronize using "SELECT"
         statements such as with MySQL/ MariaDB will still have issues with
         UPDATE/DELETE of this form so it's best to disable synchonize_session when
         using DML statements of this type.
@@ -3360,7 +3360,7 @@
         Fixed regression caused by improvements to PostgreSQL URL parsing in
         :ticket:`10004` where "host" query string arguments that had colons in
         them, to support various third party proxy servers and/or dialects, would
-        not parse correctly as these were evaluted as ``host:port`` combinations.
+        not parse correctly as these were evaluated as ``host:port`` combinations.
         Parsing has been updated to consider a colon as indicating a ``host:port``
         value only if the hostname contains only alphanumeric characters with dots
         or dashes only (e.g. no slashes), followed by exactly one colon followed by
@@ -3735,13 +3735,13 @@
         Fixed issue where the :paramref:`.ColumnOperators.like.escape` and similar
         parameters did not allow an empty string as an argument that would be
         passed through as the "escape" character; this is a supported syntax by
-        PostgreSQL.  Pull requset courtesy Martin Caslavsky.
+        PostgreSQL.  Pull request courtesy Martin Caslavsky.
 
     .. change::
         :tags: bug, orm
         :tickets: 9869
 
-        Improved the argument chacking on the
+        Improved the argument checking on the
         :paramref:`_orm.registry.map_imperatively.local_table` parameter of the
         :meth:`_orm.registry.map_imperatively` method, ensuring only a
         :class:`.Table` or other :class:`.FromClause` is passed, and not an
@@ -5209,7 +5209,7 @@
         :paramref:`_orm.Mapper.primary_key` parameter to be specified within
         ``__mapper_args__`` when using :func:`_orm.mapped_column`. Despite this
         usage being directly in the 2.0 documentation, the :class:`_orm.Mapper` was
-        not accepting the :func:`_orm.mapped_column` construct in this context. Ths
+        not accepting the :func:`_orm.mapped_column` construct in this context. This
         feature was already working for the :paramref:`_orm.Mapper.version_id_col`
         and :paramref:`_orm.Mapper.polymorphic_on` parameters.
 
@@ -6439,7 +6439,7 @@
         Improved the typing for :class:`.sessionmaker` and
         :class:`.async_sessionmaker`, so that the default type of their return value
         will be :class:`.Session` or :class:`.AsyncSession`, without the need to
-        type this explicitly. Previously, Mypy would not automaticaly infer these
+        type this explicitly. Previously, Mypy would not automatically infer these
         return types from its generic base.
 
         As part of this change, arguments for :class:`.Session`,
@@ -6590,7 +6590,7 @@
         :tickets: 8718
 
         Fixed issue in new dataclass mapping feature where a column declared on the
-        decalrative base / abstract base / mixin would leak into the constructor
+        declarative base / abstract base / mixin would leak into the constructor
         for an inheriting subclass under some circumstances.
 
     .. change::
@@ -6746,7 +6746,7 @@
         being mentioned in other parts of the query. If other elements of the
         :class:`_sql.Select` also generate FROM clauses, such as the columns clause
         or WHERE clause, these will render after the clauses delivered by
-        :meth:`_sql.Select.select_from` assuming they were not explictly passed to
+        :meth:`_sql.Select.select_from` assuming they were not explicitly passed to
         :meth:`_sql.Select.select_from` also. This improvement is useful in those
         cases where a particular database generates a desirable query plan based on
         a particular ordering of FROM clauses and allows full control over the
@@ -7233,7 +7233,7 @@
         visible in messaging as well as typing, have been changed to more succinct
         names which also match the name of their constructing function (with
         different casing), in all cases maintaining aliases to the old names for
-        the forseeable future:
+        the foreseeable future:
 
         * :class:`_orm.RelationshipProperty` becomes an alias for the primary name
           :class:`_orm.Relationship`, which is constructed as always from the

@@ -4377,7 +4377,7 @@ def validates(
      :func:`.validates` usage where only one validator should emit per
      attribute operation.
 
-     .. versionchanged:: 2.0.16 This paramter inadvertently defaulted to
+     .. versionchanged:: 2.0.16 This parameter inadvertently defaulted to
         ``False`` for releases 2.0.0 through 2.0.15.  Its correct default
         of ``True`` is restored in 2.0.16.
 

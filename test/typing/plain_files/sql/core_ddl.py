@@ -58,7 +58,7 @@ t4 = Table(
 
 # cols w/ no name or type, used by declarative
 c1: Column[int] = Column(ForeignKey(t3.c.x))
-# more colum args
+# more column args
 Column("name", Integer, index=True)
 Column(None, name="name")
 Column(Integer, name="name", index=True)

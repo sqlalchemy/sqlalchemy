@@ -156,7 +156,7 @@ class DialectTest(fixtures.TestBase):
         eq_(groups, expected)
 
     def test_range_constructor(self):
-        """test kwonly argments in the range constructor, as we had
+        """test kwonly arguments in the range constructor, as we had
         to do dataclasses backwards compat operations"""
 
         r1 = Range(None, 5)

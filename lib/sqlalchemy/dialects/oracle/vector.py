@@ -132,13 +132,13 @@ class VectorIndexConfig:
     :param distance: Enum value from :class:`.VectorDistanceType`
      specifies the metric for calculating distance between VECTORS.
 
-    :param accuracy: interger. Should be in the range 0 to 100
+    :param accuracy: integer. Should be in the range 0 to 100
      Specifies the accuracy of the nearest neighbor search during
      query execution.
 
     :param parallel: integer. Specifies degree of parallelism.
 
-    :param hnsw_neighbors: interger. Should be in the range 0 to
+    :param hnsw_neighbors: integer. Should be in the range 0 to
      2048. Specifies the number of nearest neighbors considered
      during the search. The attribute :attr:`.VectorIndexConfig.hnsw_neighbors`
      is HNSW index specific.
@@ -269,7 +269,7 @@ class VECTOR(types.TypeEngine):
         """
 
         if dim is not None and not isinstance(dim, int):
-            raise TypeError("dim must be an interger")
+            raise TypeError("dim must be an integer")
         if storage_format is not None and not isinstance(
             storage_format, VectorStorageFormat
         ):

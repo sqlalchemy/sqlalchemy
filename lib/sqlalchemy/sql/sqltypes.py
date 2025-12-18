@@ -1705,7 +1705,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     def _object_value_for_elem(self, elem: str) -> Union[str, enum.Enum]:
         try:
-            # Value will not be None beacuse key is not None
+            # Value will not be None because key is not None
             return self._object_lookup[elem]  # type: ignore[return-value]
         except KeyError as err:
             raise LookupError(

@@ -52,7 +52,7 @@ class MappedColumnTest(
         "construct", ["Mapped", "WriteOnlyMapped", "DynamicMapped"]
     )
     def test_fully_qualified_writeonly_mapped_name(self, decl_base, construct):
-        """futher variation in issue #10412"""
+        """further variation in issue #10412"""
 
         class Foo(decl_base):
             __tablename__ = "foo"

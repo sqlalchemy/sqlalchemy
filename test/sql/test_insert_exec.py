@@ -926,7 +926,7 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
 
     @testing.requires.provisioned_upsert
     def test_upsert_w_returning(self, connection):
-        """test cases that will execise SQL similar to that of
+        """test cases that will exercise SQL similar to that of
         test/orm/dml/test_bulk_statements.py
 
         """

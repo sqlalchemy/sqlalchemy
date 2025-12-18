@@ -2192,7 +2192,7 @@ Therefore the best strategy for migrating from "dynamic" is to **wait until
 the application is fully running on 2.0**, then migrate directly from
 :class:`.AppenderQuery`, which is the collection type used by the "dynamic"
 strategy, to :class:`.WriteOnlyCollection`, which is the collection type
-used by hte "write_only" strategy.
+used by the "write_only" strategy.
 
 Some techniques are available to use ``lazy="dynamic"`` under 1.4 in a more
 "2.0" style however. There are two ways to achieve 2.0 style querying that's in

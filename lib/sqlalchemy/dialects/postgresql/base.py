@@ -3028,8 +3028,8 @@ class PGInspector(reflection.Inspector):
             * nullable - Indicates if this domain can be ``NULL``.
             * default - The default value of the domain or ``None`` if the
               domain has no default.
-            * constraints - A list of dict wit the constraint defined by this
-              domain. Each element constaints two keys: ``name`` of the
+            * constraints - A list of dict with the constraint defined by this
+              domain. Each element contains two keys: ``name`` of the
               constraint and ``check`` with the constraint text.
 
         :param schema: schema name.  If None, the default schema
@@ -4287,7 +4287,7 @@ class PGDialect(default.DefaultDialect):
                 # a sequential scan of pg_attribute.
                 # The condition in the con_sq subquery is not actually needed
                 # in pg15, but it may be needed in older versions. Keeping it
-                # does not seems to have any inpact in any case.
+                # does not seems to have any impact in any case.
                 con_sq.c.conrelid.in_(bindparam("oids"))
             )
             .subquery("attr")
@@ -4964,7 +4964,7 @@ class PGDialect(default.DefaultDialect):
         default = ReflectionDefaults.unique_constraints
         for table_name, cols, con_name, comment, options in result:
             # ensure a list is created for each table. leave it empty if
-            # the table has no unique cosntraint
+            # the table has no unique constraint
             if con_name is None:
                 uniques[(schema, table_name)] = default()
                 continue

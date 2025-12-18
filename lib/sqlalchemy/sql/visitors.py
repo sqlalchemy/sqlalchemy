@@ -440,7 +440,7 @@ class HasTraverseInternals:
     which defines all kinds of ways of traversing the elements of an object.
 
     Compared to :class:`.Visitable`, which relies upon an external visitor to
-    define how the object is travered (i.e. the :class:`.SQLCompiler`), the
+    define how the object is traversed (i.e. the :class:`.SQLCompiler`), the
     :class:`.HasTraverseInternals` interface allows classes to define their own
     traversal, that is, what attributes are accessed and in what order.
 

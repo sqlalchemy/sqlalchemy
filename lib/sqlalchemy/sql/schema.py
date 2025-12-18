@@ -1622,7 +1622,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             ``SERIAL``, MySQL ``AUTO_INCREMENT``, or ``IDENTITY`` on SQL Server
             should also be rendered.  Not every database backend has an
             "implied" default generator available; for example the Oracle Database
-            backends alway needs an explicit construct such as
+            backends always needs an explicit construct such as
             :class:`.Identity` to be included with a :class:`.Column` in order
             for the DDL rendered to include auto-generating constructs to also
             be produced in the database.
