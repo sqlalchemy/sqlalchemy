@@ -963,6 +963,7 @@ import codecs
 import datetime
 import operator
 import re
+from typing import Any
 from typing import Literal
 from typing import overload
 from typing import TYPE_CHECKING
@@ -1014,6 +1015,7 @@ from ...types import VARCHAR
 from ...util import update_wrapper
 
 if TYPE_CHECKING:
+    from ...sql.ddl import DropIndex
     from ...sql.dml import DMLState
     from ...sql.selectable import TableClause
 
@@ -2688,11 +2690,21 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_drop_index(self, drop, **kw):
-        return "\nDROP INDEX %s ON %s" % (
-            self._prepared_index_name(drop.element, include_schema=False),
-            self.preparer.format_table(drop.element.table),
-        )
+    def visit_drop_index(self, drop: DropIndex, **kw: Any) -> str:
+        index = drop.element
+
+        text = "\nDROP INDEX "
+
+        if (
+            # only supported in 2016+
+            self.dialect.server_version_info < MS_2016_VERSION
+            and drop.if_exists
+        ):
+            text += "IF EXISTS "
+
+        text += self._prepared_index_name(index, include_schema=False)
+        text += " ON " + self.preparer.format_table(index.table)
+        return text
 
     def visit_create_table_as(self, element, **kw):
         prep = self.preparer
