@@ -4134,7 +4134,7 @@ class PGDialect(default.DefaultDialect):
             if isinstance(coltype, DOMAIN):
                 if not default:
                     # domain can override the default value but
-                    # cant set it to None
+                    # can't set it to None
                     if coltype.default is not None:
                         default = coltype.default
 

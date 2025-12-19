@@ -650,7 +650,7 @@ class NamedTypeTest(
 
     def test_enum_doesnt_construct_ENUM(self):
         """in 2.0 we made ENUM name required.   check that Enum adapt to
-        ENUM doesnt call this constructor."""
+        ENUM doesn't call this constructor."""
 
         e1 = Enum("x", "y")
         eq_(e1.name, None)

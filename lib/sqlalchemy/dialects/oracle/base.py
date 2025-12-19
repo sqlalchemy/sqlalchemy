@@ -2618,7 +2618,7 @@ class OracleDialect(default.DefaultDialect):
             and ObjectKind.TABLE in kind
             and ObjectKind.MATERIALIZED_VIEW not in kind
         ):
-            # cant use EXCEPT ALL / MINUS here because we don't have an
+            # can't use EXCEPT ALL / MINUS here because we don't have an
             # excludable row vs. the query above
             # outerjoin + where null works better on oracle 21 but 11 does
             # not like it at all. this is the next best thing

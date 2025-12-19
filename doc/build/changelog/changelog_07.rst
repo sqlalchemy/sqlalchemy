@@ -1862,7 +1862,7 @@
       There's probably no real-world
       performance hit here; select() objects are
       almost always made ad-hoc, and systems that
-      wish to optimize the re-use of a select()
+      wish to optimize the reuse of a select()
       would be using the "compiled_cache" feature.
       A hit which would occur when calling select.bind
       has been reduced, but the vast majority

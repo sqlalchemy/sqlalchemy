@@ -1102,7 +1102,7 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
         multiple parameter sets, i.e. "INSERT INTO table (anycol) VALUES
         (DEFAULT) (DEFAULT) (DEFAULT) ... RETURNING col"
 
-        if the database doesnt support this (like SQLite, mssql), it
+        if the database doesn't support this (like SQLite, mssql), it
         actually runs the statement that many times on the cursor.
         This is much less efficient, but is still more efficient than
         how it worked previously where we'd run the statement that many

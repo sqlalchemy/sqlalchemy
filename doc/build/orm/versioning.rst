@@ -21,9 +21,9 @@ the value held in memory matches the database value.
 
 The purpose of this feature is to detect when two concurrent transactions
 are modifying the same row at roughly the same time, or alternatively to provide
-a guard against the usage of a "stale" row in a system that might be re-using
+a guard against the usage of a "stale" row in a system that might be reusing
 data from a previous transaction without refreshing (e.g. if one sets ``expire_on_commit=False``
-with a :class:`.Session`, it is possible to re-use the data from a previous
+with a :class:`.Session`, it is possible to reuse the data from a previous
 transaction).
 
 .. topic:: Concurrent transaction updates

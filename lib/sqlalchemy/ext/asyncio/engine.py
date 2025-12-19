@@ -577,7 +577,7 @@ class AsyncConnection(  # type:ignore[misc]
         """
         if not self.dialect.supports_server_side_cursors:
             raise exc.InvalidRequestError(
-                "Cant use `stream` or `stream_scalars` with the current "
+                "Can't use `stream` or `stream_scalars` with the current "
                 "dialect since it does not support server side cursors."
             )
 

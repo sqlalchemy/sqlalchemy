@@ -69,7 +69,7 @@ When the :class:`_engine.Connection` is closed at the end of the ``with:`` block
 referenced DBAPI connection is :term:`released` to the connection pool.   From
 the perspective of the database itself, the connection pool will not actually
 "close" the connection assuming the pool has room to store this connection  for
-the next use.  When the connection is returned to the pool for re-use, the
+the next use.  When the connection is returned to the pool for reuse, the
 pooling mechanism issues a ``rollback()`` call on the DBAPI connection so that
 any transactional state or locks are removed (this is known as
 :ref:`pool_reset_on_return`), and the connection is ready for its next use.
@@ -1264,7 +1264,7 @@ strings that are safe to reuse for many statement invocations, given
 a particular cache key that is keyed to that SQL string.  This means
 that any literal values in a statement, such as the LIMIT/OFFSET values for
 a SELECT, can not be hardcoded in the dialect's compilation scheme, as
-the compiled string will not be re-usable.   SQLAlchemy supports rendered
+the compiled string will not be reusable.   SQLAlchemy supports rendered
 bound parameters using the :meth:`_sql.BindParameter.render_literal_execute`
 method which can be applied to the existing ``Select._limit_clause`` and
 ``Select._offset_clause`` attributes by a custom compiler, which

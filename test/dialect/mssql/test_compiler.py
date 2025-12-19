@@ -528,7 +528,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         crit = q.c.myid == table1.c.myid
 
         if style.plain:
-            # the "plain" style of fetch doesnt use TOP right now, so
+            # the "plain" style of fetch doesn't use TOP right now, so
             # there's an order_by implicit in the row_number part of it
             self.assert_compile(
                 select("*").where(crit),

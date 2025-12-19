@@ -6,7 +6,7 @@ Connection Pooling
 .. module:: sqlalchemy.pool
 
 A connection pool is a standard technique used to maintain
-long running connections in memory for efficient re-use,
+long running connections in memory for efficient reuse,
 as well as to provide
 management for the total number of connections an application
 might use simultaneously.

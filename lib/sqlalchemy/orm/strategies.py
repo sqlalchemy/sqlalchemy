@@ -1735,7 +1735,7 @@ class SubqueryLoader(PostLoader):
         loadopt,
     ):
         # note that because the subqueryload object
-        # does not re-use the cached query, instead always making
+        # does not reuse the cached query, instead always making
         # use of the current invoked query, while we have two queries
         # here (orig and context.query), they are both non-cached
         # queries and we can transfer the options as is without

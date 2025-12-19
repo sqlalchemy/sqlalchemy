@@ -253,7 +253,7 @@ is not available to SQLAlchemy under :pep:`484` compliance.
 
 In order to produce a reasonable syntax while remaining typing compliant,
 the :attr:`.hybrid_property.inplace` decorator allows the same
-decorator to be re-used with different method names, while still producing
+decorator to be reused with different method names, while still producing
 a single decorator under one name::
 
     # correct use which is also accepted by pep-484 tooling
@@ -1246,7 +1246,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         """Return the inplace mutator for this :class:`.hybrid_property`.
 
         This is to allow in-place mutation of the hybrid, allowing the first
-        hybrid method of a certain name to be re-used in order to add
+        hybrid method of a certain name to be reused in order to add
         more methods without having to name those methods the same, e.g.::
 
             class Interval(Base):

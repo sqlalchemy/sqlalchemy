@@ -2380,7 +2380,7 @@ class TextClause(
 
         The :meth:`_expression.TextClause.bindparams`
         method can be called repeatedly,
-        where it will re-use existing :class:`.BindParameter` objects to add
+        where it will reuse existing :class:`.BindParameter` objects to add
         new information.  For example, we can call
         :meth:`_expression.TextClause.bindparams`
         first with typing information, and a

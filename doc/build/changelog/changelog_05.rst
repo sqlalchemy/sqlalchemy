@@ -1254,7 +1254,7 @@
         :tags: postgresql
         :tickets: 1327
 
-      Refection of unknown PG types won't crash when those
+      Reflection of unknown PG types won't crash when those
       types are specified within a domain.
 
     .. change::
@@ -2348,7 +2348,7 @@
         :tags: general
         :tickets: 
 
-      global "propigate"->"propagate" change.
+      global "propagate"->"propagate" change.
 
     .. change::
         :tags: orm
@@ -3666,7 +3666,7 @@
         :tags: general
         :tickets: 
 
-      global "propigate"->"propagate" change.
+      global "propagate"->"propagate" change.
 
     .. change::
         :tags: orm

@@ -548,7 +548,7 @@ class scoped_session(Generic[_S]):
             :meth:`_orm.Session.close` and :meth:`_orm.Session.reset`.
 
             :meth:`_orm.Session.close` - a similar method will additionally
-            prevent re-use of the Session when the parameter
+            prevent reuse of the Session when the parameter
             :paramref:`_orm.Session.close_resets_only` is set to ``False``.
 
         """  # noqa: E501

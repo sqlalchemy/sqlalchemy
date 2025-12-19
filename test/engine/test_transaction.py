@@ -1148,7 +1148,7 @@ class AutoRollbackTest(fixtures.TestBase):
 class IsolationLevelTest(fixtures.TestBase):
     """see also sqlalchemy/testing/suite/test_dialect.py::IsolationLevelTest
 
-    this suite has sparse_backend so wont take place
+    this suite has sparse_backend so won't take place
     for every dbdriver under a nox run.   the suite test should cover
     that end of it
 

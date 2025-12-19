@@ -891,7 +891,7 @@ class AsyncEngineTest(EngineFixture):
             async with async_engine.connect() as c:
                 with expect_raises_message(
                     exc.InvalidRequestError,
-                    "Cant use `stream` or `stream_scalars` with the current "
+                    "Can't use `stream` or `stream_scalars` with the current "
                     "dialect since it does not support server side cursors.",
                 ):
                     if method == "stream":

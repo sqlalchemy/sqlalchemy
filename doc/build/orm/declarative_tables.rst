@@ -1068,7 +1068,7 @@ key style that is common to all mapped classes.   There also may be
 common column configurations such as timestamps with defaults and other fields of
 pre-established sizes and configurations.   We can compose these configurations
 into :func:`_orm.mapped_column` instances that we then bundle directly into
-instances of ``Annotated``, which are then re-used in any number of class
+instances of ``Annotated``, which are then reused in any number of class
 declarations.  Declarative will unpack an ``Annotated`` object
 when provided in this manner, skipping over any other directives that don't
 apply to SQLAlchemy and searching only for SQLAlchemy ORM constructs.

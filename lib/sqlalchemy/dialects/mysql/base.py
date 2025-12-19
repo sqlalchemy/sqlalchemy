@@ -1358,10 +1358,10 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_aggregate_strings_func(
         self, fn: aggregate_strings, **kw: Any
     ) -> str:
-        expr, delimeter = (
+        expr, delimiter = (
             elem._compiler_dispatch(self, **kw) for elem in fn.clauses
         )
-        return f"group_concat({expr} SEPARATOR {delimeter})"
+        return f"group_concat({expr} SEPARATOR {delimiter})"
 
     def visit_sequence(self, sequence: sa_schema.Sequence, **kw: Any) -> str:
         return "nextval(%s)" % self.preparer.format_sequence(sequence)

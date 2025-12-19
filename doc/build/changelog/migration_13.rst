@@ -468,7 +468,7 @@ descriptor would raise an error.  Additionally, it would  assume that the first
 class to be seen by ``__get__()`` would be  the only parent class it needed to
 know about.  This is despite the fact that if a particular class has inheriting
 subclasses, the association proxy is really working on behalf of more than one
-parent class even though it was not explicitly re-used.  While even with this
+parent class even though it was not explicitly reused.  While even with this
 shortcoming, the association proxy would still get pretty far with its current
 behavior, it still leaves shortcomings in some cases as well as the complex
 problem of determining the best "owner" class.
@@ -1326,7 +1326,7 @@ built-in ``Queue`` class in order to store database connections waiting
 to be used.   The ``Queue`` features first-in-first-out behavior, which is
 intended to provide a round-robin use of the database connections that are
 persistently in the pool.   However, a potential downside of this is that
-when the utilization of the pool is low, the re-use of each connection in series
+when the utilization of the pool is low, the reuse of each connection in series
 means that a server-side timeout strategy that attempts to reduce unused
 connections is prevented from shutting down these connections.   To suit
 this use case, a new flag :paramref:`_sa.create_engine.pool_use_lifo` is added

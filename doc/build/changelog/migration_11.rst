@@ -1115,7 +1115,7 @@ Note that upon invalidation, the immediate DBAPI connection used by
 being used subsequent to the exception raise, will use a new
 DBAPI connection for subsequent operations upon next use; however, the state of
 any transaction in progress is lost and the appropriate ``.rollback()`` method
-must be called if applicable before this re-use can proceed.
+must be called if applicable before this reuse can proceed.
 
 In order to identify this change, it was straightforward to demonstrate a pymysql or
 mysqlclient / MySQL-Python connection moving into a corrupted state when

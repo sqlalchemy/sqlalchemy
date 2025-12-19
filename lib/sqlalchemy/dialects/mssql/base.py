@@ -2064,8 +2064,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def visit_aggregate_strings_func(self, fn, **kw):
         expr = fn.clauses.clauses[0]._compiler_dispatch(self, **kw)
         kw["literal_execute"] = True
-        delimeter = fn.clauses.clauses[1]._compiler_dispatch(self, **kw)
-        return f"string_agg({expr}, {delimeter})"
+        delimiter = fn.clauses.clauses[1]._compiler_dispatch(self, **kw)
+        return f"string_agg({expr}, {delimiter})"
 
     def visit_concat_op_expression_clauselist(
         self, clauselist, operator, **kw

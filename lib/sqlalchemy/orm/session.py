@@ -1726,7 +1726,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         :param close_resets_only: Defaults to ``True``. Determines if
           the session should reset itself after calling ``.close()``
-          or should pass in a no longer usable state, disabling re-use.
+          or should pass in a no longer usable state, disabling reuse.
 
           .. versionadded:: 2.0.22 added flag ``close_resets_only``.
             A future SQLAlchemy version may change the default value of
@@ -2526,7 +2526,7 @@ class Session(_SessionClassMethods, EventTarget):
             :meth:`_orm.Session.close` and :meth:`_orm.Session.reset`.
 
             :meth:`_orm.Session.close` - a similar method will additionally
-            prevent re-use of the Session when the parameter
+            prevent reuse of the Session when the parameter
             :paramref:`_orm.Session.close_resets_only` is set to ``False``.
         """
         self._close_impl(invalidate=False, is_reset=True)

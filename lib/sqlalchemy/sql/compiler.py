@@ -5889,7 +5889,7 @@ class SQLCompiler(Compiled):
         # likely the least amount of callcounts, though looks clumsy
         if self.positional and visiting_cte is None:
             # if we are inside a CTE, don't count parameters
-            # here since they wont be for insertmanyvalues. keep
+            # here since they won't be for insertmanyvalues. keep
             # visited_bindparam at None so no counting happens.
             # see #9173
             visited_bindparam = []

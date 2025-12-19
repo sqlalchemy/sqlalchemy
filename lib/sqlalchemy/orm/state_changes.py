@@ -125,7 +125,7 @@ class _StateChange:
                     )
                 else:
                     raise sa_exc.IllegalStateChangeError(
-                        f"Cant run operation '{fn.__name__}()' here; "
+                        f"Can't run operation '{fn.__name__}()' here; "
                         f"will move to state {moves_to!r} where we are "
                         f"expecting {next_state!r}",
                         code="isce",

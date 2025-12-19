@@ -235,6 +235,6 @@ skip = "cp36-* pp*"
 archs = ["arm64"]
 
 # On an Linux Intel runner with qemu installed, build Intel and ARM wheels
-# NOTE: this is overriden in the pipeline using the CIBW_ARCHS_LINUX env variable to speed up the build
+# NOTE: this is overridden in the pipeline using the CIBW_ARCHS_LINUX env variable to speed up the build
 [tool.cibuildwheel.linux]
 archs = ["x86_64", "aarch64"]

@@ -2007,7 +2007,7 @@ class TableValuedAlias(LateralFromClause, Alias):
         """  # noqa: E501
 
         # note: don't use the @_generative system here, keep a reference
-        # to the original object.  otherwise you can have re-use of the
+        # to the original object.  otherwise you can have reuse of the
         # python id() of the original which can cause name conflicts if
         # a new anon-name grabs the same identifier as the local anon-name
         # (just saw it happen on CI)

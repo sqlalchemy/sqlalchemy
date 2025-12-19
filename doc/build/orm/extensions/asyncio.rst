@@ -988,7 +988,7 @@ default pool implementation.
 
 If an :class:`_asyncio.AsyncEngine` is be passed from one event loop to another,
 the method :meth:`_asyncio.AsyncEngine.dispose()` should be called before it's
-re-used on a new event loop. Failing to do so may lead to a ``RuntimeError``
+reused on a new event loop. Failing to do so may lead to a ``RuntimeError``
 along the lines of
 ``Task <Task pending ...> got Future attached to a different loop``
 
