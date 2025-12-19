@@ -50,7 +50,7 @@ class User(Base):
     name: Mapped[str] = mapped_column()
     group_id = mapped_column(ForeignKey("group.id"))
 
-    # this currently doesnt generate an error.  not sure how to get the
+    # this currently doesn't generate an error.  not sure how to get the
     # overloads to hit this one, nor am i sure i really want to do that
     # anyway
     name_this_works_atm: Mapped[str] = mapped_column(nullable=True)

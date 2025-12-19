@@ -1363,7 +1363,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         order_by = getattr(fn.clauses, "aggregate_order_by", None)
 
         cl = list(fn.clauses)
-        expr, delimeter = cl[0:2]
+        expr, delimiter = cl[0:2]
 
         literal_exec = dict(kw)
         literal_exec["literal_execute"] = True
@@ -1373,13 +1373,13 @@ class MySQLCompiler(compiler.SQLCompiler):
                 f"group_concat({expr._compiler_dispatch(self, **kw)} "
                 f"ORDER BY {order_by._compiler_dispatch(self, **kw)} "
                 f"SEPARATOR "
-                f"{delimeter._compiler_dispatch(self, **literal_exec)})"
+                f"{delimiter._compiler_dispatch(self, **literal_exec)})"
             )
         else:
             return (
                 f"group_concat({expr._compiler_dispatch(self, **kw)} "
                 f"SEPARATOR "
-                f"{delimeter._compiler_dispatch(self, **literal_exec)})"
+                f"{delimiter._compiler_dispatch(self, **literal_exec)})"
             )
 
     def visit_sequence(self, sequence: sa_schema.Sequence, **kw: Any) -> str:

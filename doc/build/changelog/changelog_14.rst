@@ -5045,7 +5045,7 @@ This document details individual issue-level changes made throughout
         Fixed issue where using a :class:`_sql.Select` as a subquery in an ORM
         context would modify the :class:`_sql.Select` in place to disable
         eagerloads on that object, which would then cause that same
-        :class:`_sql.Select` to not eagerload if it were then re-used in a
+        :class:`_sql.Select` to not eagerload if it were then reused in a
         top-level execution context.
 
 
@@ -5380,7 +5380,7 @@ This document details individual issue-level changes made throughout
         :tags: usecase, orm
         :tickets: 6267
 
-        Established support for :func:`_orm.synoynm` in conjunction with
+        Established support for :func:`_orm.synonym` in conjunction with
         hybrid property, assocaitionproxy is set up completely, including that
         synonyms can be established linking to these constructs which work
         fully.   This is a behavior that was semi-explicitly disallowed previously,

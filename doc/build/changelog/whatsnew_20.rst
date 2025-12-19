@@ -682,7 +682,7 @@ example below adds additional ``Annotated`` types in addition to our
 Above, columns that are mapped with ``Mapped[str50]``, ``Mapped[intpk]``,
 or ``Mapped[user_fk]`` draw from both the
 :paramref:`_orm.registry.type_annotation_map` as well as the
-``Annotated`` construct directly in order to re-use pre-established typing
+``Annotated`` construct directly in order to reuse pre-established typing
 and column configurations.
 
 Optional step - turn mapped classes into dataclasses_

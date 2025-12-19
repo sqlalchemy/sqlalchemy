@@ -1685,7 +1685,7 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
     implicit_returning = (
         # statement itself can veto it
         need_pks
-        # the dialect can veto it if it just doesnt support RETURNING
+        # the dialect can veto it if it just doesn't support RETURNING
         # with INSERT
         and dialect.insert_returning
         # user-defined implicit_returning on Table can veto it
@@ -1697,7 +1697,7 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
         and (
             # since we support MariaDB and SQLite which also support lastrowid,
             # decide if we should use lastrowid or RETURNING.  for insert
-            # that didnt call return_defaults() and has just one set of
+            # that didn't call return_defaults() and has just one set of
             # parameters, we can use lastrowid.   this is more "traditional"
             # and a lot of weird use cases are supported by it.
             # SQLite lastrowid times 3x faster than returning,

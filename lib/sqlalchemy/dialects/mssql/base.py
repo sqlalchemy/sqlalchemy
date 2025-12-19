@@ -2037,14 +2037,14 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
     def visit_aggregate_strings_func(self, fn, **kw):
         cl = list(fn.clauses)
-        expr, delimeter = cl[0:2]
+        expr, delimiter = cl[0:2]
 
         literal_exec = dict(kw)
         literal_exec["literal_execute"] = True
 
         return (
             f"string_agg({expr._compiler_dispatch(self, **kw)}, "
-            f"{delimeter._compiler_dispatch(self, **literal_exec)})"
+            f"{delimiter._compiler_dispatch(self, **literal_exec)})"
         )
 
     def visit_pow_func(self, fn, **kw):

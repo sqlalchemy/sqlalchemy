@@ -1580,10 +1580,10 @@
         Fixed issue in history_meta example where the "version" column in the
         versioned table needs to default to the most recent version number in the
         history table on INSERT, to suit the use case of a table where rows are
-        deleted, and can then be replaced by new rows that re-use the same primary
+        deleted, and can then be replaced by new rows that reuse the same primary
         key identity.  This fix adds an additional SELECT query per INSERT in the
         main table, which may be inefficient; for cases where primary keys are not
-        re-used, the default function may be omitted.  Patch courtesy  Philipp H.
+        reused, the default function may be omitted.  Patch courtesy  Philipp H.
         v. Loewenfeld.
 
     .. change::

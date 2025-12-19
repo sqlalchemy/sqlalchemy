@@ -306,7 +306,7 @@ Integration with Annotated
 
 The approach introduced at :ref:`orm_declarative_mapped_column_pep593`
 illustrates how to use :pep:`593` ``Annotated`` objects to package whole
-:func:`_orm.mapped_column` constructs for re-use.  While ``Annotated`` objects
+:func:`_orm.mapped_column` constructs for reuse.  While ``Annotated`` objects
 can be combined with the use of dataclasses, **dataclass-specific keyword
 arguments unfortunately cannot be used within the Annotated construct**.  This
 includes :pep:`681`-specific arguments ``init``, ``default``, ``repr``, and
@@ -572,7 +572,7 @@ In the example below, the ``User``
 class is declared using ``id``, ``name`` and ``password_hash`` as mapped features,
 but makes use of init-only ``password`` and ``repeat_password`` fields to
 represent the user creation process (note: to run this example, replace
-the function ``your_crypt_function_here()`` with a third party crypt
+the function ``your_hash_function_here()`` with a third party hash
 function, such as `bcrypt <https://pypi.org/project/bcrypt/>`_ or
 `argon2-cffi <https://pypi.org/project/argon2-cffi/>`_)::
 
@@ -603,7 +603,7 @@ function, such as `bcrypt <https://pypi.org/project/bcrypt/>`_ or
             if password != repeat_password:
                 raise ValueError("passwords do not match")
 
-            self.password_hash = your_crypt_function_here(password)
+            self.password_hash = your_hash_function_here(password)
 
 The above object is created with parameters ``password`` and
 ``repeat_password``, which are consumed up front so that the ``password_hash``
@@ -611,7 +611,7 @@ variable may be generated::
 
     >>> u1 = User(name="some_user", password="xyz", repeat_password="xyz")
     >>> u1.password_hash
-    '$6$9ppc... (example crypted string....)'
+    '$6$9ppc... (example hashed string....)'
 
 .. versionchanged:: 2.0.0rc1  When using :meth:`_orm.registry.mapped_as_dataclass`
    or :class:`.MappedAsDataclass`, fields that do not include the

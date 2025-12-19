@@ -269,7 +269,7 @@ class MiscTest(fixtures.TestBase):
 
         decl_base.registry.configure()
 
-        # the event hook itself doesnt do anything for repeated calls
+        # the event hook itself doesn't do anything for repeated calls
         # already, so there's really nothing else to assert other than there's
         # only one "set" event listener
 

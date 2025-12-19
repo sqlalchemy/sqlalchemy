@@ -179,7 +179,7 @@ def _history_mapper(local_mapper):
                 "version",
                 Integer,
                 # if rows are not being deleted from the main table with
-                # subsequent re-use of primary key, this default can be
+                # subsequent reuse of primary key, this default can be
                 # "1" instead of running a query per INSERT
                 default=default_version_from_history,
                 nullable=False,

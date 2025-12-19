@@ -1892,7 +1892,7 @@ Firebird ``fdb`` and ``kinterbasdb`` set ``retaining=False`` by default
 Both the ``fdb`` and ``kinterbasdb`` DBAPIs support a flag ``retaining=True``
 which can be passed to the ``commit()`` and ``rollback()`` methods of its
 connection.  The documented rationale for this flag is so that the DBAPI
-can re-use internal transaction state for subsequent transactions, for the
+can reuse internal transaction state for subsequent transactions, for the
 purposes of improving performance.   However, newer documentation refers
 to analyses of Firebird's "garbage collection" which expresses that this flag
 can have a negative effect on the database's ability to process cleanup

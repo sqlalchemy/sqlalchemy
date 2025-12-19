@@ -1405,7 +1405,7 @@ class InsertImplicitReturningTest(
                 )
             params = None
         elif paramtype == "params":
-            # for params, compiler doesnt have the value available to look
+            # for params, compiler doesn't have the value available to look
             # at.  we assume non-NULL
             stmt = t.insert()
             if insert_null_still_autoincrements:

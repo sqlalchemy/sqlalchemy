@@ -2117,7 +2117,7 @@ for additional positions:
     [SQL: u'INSERT INTO my_table (id, data) VALUES (?, ?), (?, ?), (?, ?)']
     [parameters: (1, 'd1', 'd2', 'd3')]
 
-And with a "named" dialect, the same value for "id" would be re-used in
+And with a "named" dialect, the same value for "id" would be reused in
 each row (hence this change is backwards-incompatible with a system that
 relied on this):
 

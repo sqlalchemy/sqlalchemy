@@ -1245,7 +1245,7 @@ class Load(_AbstractLoad):
             )
 
         elif path_is_property(self.path):
-            # re-use the lookup which will raise a nicely formatted
+            # reuse the lookup which will raise a nicely formatted
             # LoaderStrategyException
             if strategy:
                 self.path.prop._strategy_lookup(self.path.prop, strategy[0])
