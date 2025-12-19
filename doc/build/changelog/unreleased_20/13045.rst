@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, mssql
+    :tickets: 13045
+
+    Added support for the ``IF EXISTS`` clause when dropping indexes on SQL
+    Server 2016 (13.x) and later versions. The :paramref:`.DropIndex.if_exists`
+    parameter is now honored by the SQL Server dialect, allowing conditional
+    index drops that will not raise an error if the index does not exist.
+    Pull request courtesy Edgar Ramírez Mondragón.
