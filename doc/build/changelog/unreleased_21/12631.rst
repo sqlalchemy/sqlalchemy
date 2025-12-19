@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 12631
+
+    Added support for using :func:`_orm.with_expression` to populate a
+    :func:`_orm.query_expression` attribute that is also configured as the
+    ``polymorphic_on`` discriminator column. The ORM now detects when a query
+    expression column is serving as the polymorphic discriminator and updates
+    it to use the column provided via :func:`_orm.with_expression`, enabling
+    polymorphic loading to work correctly in this scenario. This allows for
+    patterns such as where the discriminator value is computed from a related
+    table.
