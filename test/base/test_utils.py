@@ -5,6 +5,8 @@ from pathlib import Path
 import pickle
 import sys
 
+import pytest
+
 from sqlalchemy import exc
 from sqlalchemy import sql
 from sqlalchemy import testing
@@ -360,10 +362,19 @@ class OrderedSetTest(fixtures.TestBase):
 
 
 class ImmutableDictTest(fixtures.TestBase):
+    @pytest.fixture
+    def d(self):
+        return util.immutabledict({1: 2, 3: 4})
+
     def test_union_no_change(self):
         d = util.immutabledict({1: 2, 3: 4})
 
         d2 = d.union({})
+
+        is_(d2, d)
+
+    def test_union_no_change_self_empty(self, d):
+        d2 = util.EMPTY_DICT.union(d)
 
         is_(d2, d)
 
@@ -375,10 +386,16 @@ class ImmutableDictTest(fixtures.TestBase):
         eq_(d2, {1: 2, 3: 4})
         is_(d2, d)
 
+    def test_merge_with_no_change_self_empty(self, d):
+        d2 = util.EMPTY_DICT.merge_with({}, None, d)
+
+        eq_(d2, d)
+        is_(d2, d)
+
     def test_merge_with_dicts(self):
         d = util.immutabledict({1: 2, 3: 4})
 
-        d2 = d.merge_with({3: 5, 7: 12}, {9: 18, 15: 25})
+        d2 = d.merge_with({3: 5, 7: 12}, {9: 18, 15: 25}, None)
 
         eq_(d, {1: 2, 3: 4})
         eq_(d2, {1: 2, 3: 5, 7: 12, 9: 18, 15: 25})
@@ -387,6 +404,12 @@ class ImmutableDictTest(fixtures.TestBase):
         d3 = d.merge_with({17: 42})
 
         eq_(d3, {1: 2, 3: 4, 17: 42})
+
+    def test_merge_with_immutabledict(self, d):
+        d2 = d.merge_with(util.immutabledict({3: 5, 7: 12}))
+
+        eq_(d2, {1: 2, 3: 5, 7: 12})
+        assert isinstance(d2, util.immutabledict)
 
     def test_merge_with_tuples(self):
         d = util.immutabledict({1: 2, 3: 4})

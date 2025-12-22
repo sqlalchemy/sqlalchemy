@@ -1457,7 +1457,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     ) -> Any:
         """Execute a schema.ColumnDefault object."""
 
-        exec_opts = self._execution_options.merge_with(execution_options)
+        exec_opts = self._execution_options.union(execution_options)
 
         event_multiparams: Optional[_CoreMultiExecuteParams]
         event_params: Optional[_CoreAnyExecuteParams]
@@ -1735,7 +1735,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         distilled_parameters = _distill_raw_params(parameters)
 
-        exec_opts = self._execution_options.merge_with(execution_options)
+        exec_opts = self._execution_options.union(execution_options)
 
         dialect = self.dialect
         ret = self._execute_context(

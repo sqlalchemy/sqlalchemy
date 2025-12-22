@@ -686,7 +686,8 @@ def _load_on_pk_identity(
         load_options += {"_autoflush": False}
 
     execution_options = util.EMPTY_DICT.merge_with(
-        execution_options, {"_sa_orm_load_options": load_options}
+        execution_options,
+        util.immutabledict(_sa_orm_load_options=load_options),
     )
     result = (
         session.execute(

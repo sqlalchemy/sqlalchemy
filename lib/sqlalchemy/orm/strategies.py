@@ -1128,9 +1128,7 @@ class _LazyLoader(
         if execution_options:
             execution_options = util.EMPTY_DICT.merge_with(
                 execution_options,
-                {
-                    "_sa_orm_load_options": load_options,
-                },
+                util.immutabledict(_sa_orm_load_options=load_options),
             )
         else:
             execution_options = {

@@ -979,7 +979,7 @@ class Options(metaclass=_MetaOptions):
                     result[local] = statement_exec_options[argname]
 
             new_options = existing_options + result
-            exec_options = util.immutabledict().merge_with(
+            exec_options = util.EMPTY_DICT.merge_with(
                 exec_options, {key: new_options}
             )
             return new_options, exec_options
