@@ -166,7 +166,7 @@ class immutabledict(Dict[_KT, _VT]):
     @cython.annotation_typing(False)  # avoid cython crash from generic return
     def merge_with(
         self,
-        *dicts: Mapping[_KT, _VT],
+        *dicts: Optional[Mapping[_KT, _VT]],
     ) -> immutabledict[_KT, _VT]:
         only_one: Optional[immutabledict[_KT, _VT]] = None
         klass = type(self)
