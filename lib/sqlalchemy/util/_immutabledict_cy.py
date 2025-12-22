@@ -174,7 +174,7 @@ class immutabledict(Dict[_KT, _VT]):
         if self and klass == immutabledict:
             only_one = self
 
-        for i, d in enumerate(dicts):
+        for d in dicts:
             if not d:
                 continue
 
