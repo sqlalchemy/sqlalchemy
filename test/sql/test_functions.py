@@ -552,7 +552,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises(TypeError, func.char_length)
 
     def test_return_type_detection(self):
-        for fn in [func.coalesce, func.max, func.min, func.sum]:
+        for fn in [func.abs, func.coalesce, func.max, func.min, func.sum]:
             for args, type_ in [
                 (
                     (datetime.date(2007, 10, 5), datetime.date(2005, 10, 15)),
