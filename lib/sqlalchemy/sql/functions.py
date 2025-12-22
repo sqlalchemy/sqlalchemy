@@ -1018,6 +1018,42 @@ class _FunctionGenerator:
         # code within this block is **programmatically,
         # statically generated** by tools/generate_sql_functions.py
 
+        # set ColumnElement[_T] as a separate overload, to appease
+        # mypy which seems to not want to accept _T from
+        # _ColumnExpressionArgument. Seems somewhat related to the covariant
+        # _HasClauseElement as of mypy 1.15
+
+        @overload
+        def abs(  # noqa: A001
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> abs[_T]: ...
+
+        @overload
+        def abs(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> abs[_T]: ...
+
+        @overload
+        def abs(  # noqa: A001
+            self,
+            col: _T,
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> abs[_T]: ...
+
+        def abs(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> abs[_T]: ...
+
         @property
         def aggregate_strings(self) -> Type[aggregate_strings]: ...
 
@@ -1059,6 +1095,9 @@ class _FunctionGenerator:
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> array_agg[_T]: ...
+
+        @property
+        def avg(self) -> Type[avg]: ...
 
         @property
         def cast(self) -> Type[Cast[Any]]: ...
@@ -1770,6 +1809,13 @@ class coalesce(ReturnTypeFromOptionalArgs[_T]):
     inherit_cache = True
 
 
+class avg(GenericFunction[decimal.Decimal]):
+    """The SQL AVG() aggregate function."""
+
+    type: sqltypes.Numeric[decimal.Decimal] = sqltypes.Numeric()
+    inherit_cache = True
+
+
 class max(ReturnTypeFromArgs[_T]):  # noqa:  A001
     """The SQL MAX() aggregate function."""
 
@@ -1784,6 +1830,12 @@ class min(ReturnTypeFromArgs[_T]):  # noqa: A001
 
 class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
     """The SQL SUM() aggregate function."""
+
+    inherit_cache = True
+
+
+class abs(ReturnTypeFromArgs[_T]):  # noqa: A001
+    """The SQL ABS() aggregate function."""
 
     inherit_cache = True
 
