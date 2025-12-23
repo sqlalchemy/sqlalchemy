@@ -22,6 +22,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_instance_of
 from sqlalchemy.testing import is_none
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
@@ -360,50 +361,150 @@ class OrderedSetTest(fixtures.TestBase):
 
 
 class ImmutableDictTest(fixtures.TestBase):
-    def test_union_no_change(self):
+    methods = combinations(
+        util.immutabledict.union,
+        util.immutabledict.merge_with,
+        argnames="method",
+    )
+
+    @methods
+    def test_no_change(self, method):
         d = util.immutabledict({1: 2, 3: 4})
 
-        d2 = d.union({})
-
+        d2 = method(d)
+        is_(d2, d)
+        d2 = method(d, {})
+        is_(d2, d)
+        d2 = method(d, None)
+        is_(d2, d)
+        d2 = method(d, {}, {}, {}, None)
         is_(d2, d)
 
-    def test_merge_with_no_change(self):
+    @methods
+    def test_no_change_self_empty(self, method):
         d = util.immutabledict({1: 2, 3: 4})
+        e = util.immutabledict()
+        d2 = method(e, d)
 
-        d2 = d.merge_with({}, None)
-
-        eq_(d2, {1: 2, 3: 4})
+        eq_(e, {})
         is_(d2, d)
 
-    def test_merge_with_dicts(self):
-        d = util.immutabledict({1: 2, 3: 4})
+        d2 = method(e, {}, d)
+        is_(d2, d)
+        d2 = method(e, None, d, {}, {})
+        is_(d2, d)
 
-        d2 = d.merge_with({3: 5, 7: 12}, {9: 18, 15: 25})
+        d2 = method(e, {1: 2, 3: 4})
 
-        eq_(d, {1: 2, 3: 4})
-        eq_(d2, {1: 2, 3: 5, 7: 12, 9: 18, 15: 25})
+        eq_(d2, d)
         assert isinstance(d2, util.immutabledict)
 
-        d3 = d.merge_with({17: 42})
+        d2 = method(e, {1: 2, 3: 4}, {3: 5, 4: 7})
 
-        eq_(d3, {1: 2, 3: 4, 17: 42})
-
-    def test_merge_with_tuples(self):
-        d = util.immutabledict({1: 2, 3: 4})
-
-        d2 = d.merge_with([(3, 5), (7, 12)], [(9, 18), (15, 25)])
-
-        eq_(d, {1: 2, 3: 4})
-        eq_(d2, {1: 2, 3: 5, 7: 12, 9: 18, 15: 25})
-
-    def test_union_dictionary(self):
-        d = util.immutabledict({1: 2, 3: 4})
-
-        d2 = d.union({3: 5, 7: 12})
+        eq_(d2, {1: 2, 3: 5, 4: 7})
         assert isinstance(d2, util.immutabledict)
 
+    @methods
+    def test_start_empty_but_then_populate(self, method):
+        d = util.immutabledict()
+
+        d2 = method(d, {1: 2})
+        eq_(d2, {1: 2})
+        is_not(d2, d)
+
+        d3 = method(d, util.immutabledict(), {1: 2})
+        eq_(d3, {1: 2})
+
+        d4 = method(
+            d, util.immutabledict(), util.immutabledict({1: 2}), {3: 4}
+        )
+        eq_(d4, {1: 2, 3: 4})
+
+    @methods
+    def test_no_change_everyone_empty(self, method):
+        d = util.immutabledict()
+        e = util.immutabledict()
+        d2 = method(e, d)
+
+        eq_(e, {})
+        is_(d2, e)
+
+        f = {}
+
+        d3 = method(e, d, f)
+        eq_(e, {})
+        is_(d3, e)
+
+        g = util.immutabledict()
+        d4 = method(e, d, f, g)
+        eq_(e, {})
+        is_(d4, e)
+
+    @methods
+    def test_no_change_against_self(self, method):
+        d = util.immutabledict()
+        e = d
+        d2 = method(e, d)
+
+        eq_(e, {})
+        is_(d2, e)
+
+        f = d
+
+        d3 = method(e, d, f)
+        eq_(e, {})
+        is_(d3, e)
+
+    @methods
+    def test_multiple_dicts(self, method):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        d2 = method(d, {17: 42})
+
         eq_(d, {1: 2, 3: 4})
+        eq_(d2, {1: 2, 3: 4, 17: 42})
+
+        d3 = method(d, {3: 5, 7: 12}, {9: 18, 15: 25}, None)
+
+        eq_(d3, {1: 2, 3: 5, 7: 12, 9: 18, 15: 25})
+        assert isinstance(d3, util.immutabledict)
+
+    @methods
+    def test_multiple_immutabledict(self, method):
+        d = util.immutabledict({1: 2, 3: 4})
+        d2 = method(d, util.immutabledict({3: 5, 7: 12}))
+
         eq_(d2, {1: 2, 3: 5, 7: 12})
+        assert isinstance(d2, util.immutabledict)
+        d2 = method(
+            d,
+            util.immutabledict({3: 5, 7: 12}),
+            util.immutabledict({7: 6, 11: 12}),
+        )
+
+        eq_(d2, {1: 2, 3: 5, 7: 6, 11: 12})
+        assert isinstance(d2, util.immutabledict)
+
+        e = util.immutabledict()
+        d2 = method(
+            e,
+            util.immutabledict({3: 5, 7: 12}),
+            util.immutabledict({7: 6, 11: 12}),
+        )
+
+        eq_(d2, {3: 5, 7: 6, 11: 12})
+        assert isinstance(d2, util.immutabledict)
+
+    @methods
+    def test_with_tuples(self, method):
+        # this is not really supported, but it's useful to test the non-dict
+        # case
+        d = util.immutabledict({1: 2, 3: 4})
+
+        d2 = method(d, [(3, 5), (7, 12)], [(9, 18), (15, 25)])
+
+        eq_(d, {1: 2, 3: 4})
+        eq_(d2, {1: 2, 3: 5, 7: 12, 9: 18, 15: 25})
 
     def _dont_test_union_kw(self):
         d = util.immutabledict({"a": "b", "c": "d"})
@@ -413,14 +514,6 @@ class ImmutableDictTest(fixtures.TestBase):
 
         eq_(d, {"a": "b", "c": "d"})
         eq_(d2, {"a": "b", "c": "d", "e": "f", "g": "h"})
-
-    def test_union_tuples(self):
-        d = util.immutabledict({1: 2, 3: 4})
-
-        d2 = d.union([(3, 5), (7, 12)])
-
-        eq_(d, {1: 2, 3: 4})
-        eq_(d2, {1: 2, 3: 5, 7: 12})
 
     def test_keys(self):
         d = util.immutabledict({1: 2, 3: 4})
@@ -453,6 +546,10 @@ class ImmutableDictTest(fixtures.TestBase):
         ne_(d, d3)
         ne_(d, d4)
         eq_(d3, d4)
+
+    def test_copy(self):
+        d = util.immutabledict({1: 2, 3: 4})
+        is_(d.copy(), d)
 
     def test_serialize(self):
         d = util.immutabledict({1: 2, 3: 4})

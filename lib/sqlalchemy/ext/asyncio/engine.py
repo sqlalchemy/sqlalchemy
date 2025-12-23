@@ -41,6 +41,7 @@ from ...engine import Engine
 from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
 from ...exc import ArgumentError
+from ...util import immutabledict
 from ...util.concurrency import greenlet_spawn
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
@@ -68,6 +69,7 @@ if TYPE_CHECKING:
 _P = ParamSpec("_P")
 _T = TypeVar("_T", bound=Any)
 _Ts = TypeVarTuple("_Ts")
+_stream_results = immutabledict(stream_results=True)
 
 
 def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
@@ -590,7 +592,7 @@ class AsyncConnection(  # type:ignore[misc]
             statement,
             parameters,
             execution_options=util.EMPTY_DICT.merge_with(
-                execution_options, {"stream_results": True}
+                execution_options, _stream_results
             ),
             _require_await=True,
         )

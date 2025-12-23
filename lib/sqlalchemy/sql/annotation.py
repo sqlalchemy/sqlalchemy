@@ -240,7 +240,7 @@ class SupportsCloneAnnotations(SupportsWrappingAnnotations):
             # clone is used when we are also copying
             # the expression for a deep deannotation
             new = self._clone()
-            new._annotations = util.immutabledict()
+            new._annotations = util.EMPTY_DICT
             new.__dict__.pop("_annotations_cache_key", None)
             return new
         else:
