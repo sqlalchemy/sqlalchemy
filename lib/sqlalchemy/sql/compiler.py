@@ -2671,6 +2671,13 @@ class SQLCompiler(Compiled):
         if name is None:
             name = self._fallback_column_name(column)
 
+        if getattr(column, "deprecated", False):
+            if isinstance(column.deprecated, str):
+                msg = column.deprecated
+            else:
+                msg = f"The column '{column.name}' is deprecated."
+            util.warn_deprecated(msg, "2.1")
+
         is_literal = column.is_literal
         if not is_literal and isinstance(name, elements._truncated_label):
             name = self._truncated_identifier("colident", name)

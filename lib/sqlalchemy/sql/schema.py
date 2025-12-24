@@ -1666,6 +1666,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         system: bool = False,
         comment: Optional[str] = None,
         insert_sentinel: bool = False,
+        deprecated: Optional[Union[bool, str]] = None,
         _omit_from_statements: bool = False,
         _proxies: Optional[Any] = None,
         **dialect_kwargs: Any,
@@ -2177,6 +2178,14 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             :ref:`engine_insertmanyvalues_sentinel_columns`
 
 
+        :param deprecated: Optional bool or string. If True or a string, indicates
+             that this column is deprecated. Usage of the column in SQL
+             statements will emit a :class:`DeprecationWarning`. String values
+             will be used as the warning message. Additionally, the string
+             representation of this column will be rendered with a
+             strikethrough effect.
+
+             .. versionadded:: 2.1
         """  # noqa: E501, RST201, RST202
 
         l_args = [__name_pos, __type_pos] + list(args)
@@ -2239,6 +2248,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         self.comment = comment
         self.computed = None
         self.identity = None
+        self.deprecated = deprecated
 
         # check if this Column is proxying another column
 
@@ -2391,14 +2401,18 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
     def __str__(self) -> str:
         if self.name is None:
-            return "(no name)"
+            name = "(no name)"
         elif self.table is not None:
             if self.table.named_with_column:
-                return self.table.description + "." + self.description
+                name = self.table.description + "." + self.description
             else:
-                return self.description
+                name = self.description
         else:
-            return self.description
+            name = self.description
+        
+        if getattr(self, "deprecated", False):
+            return "".join(char + "\u0336" for char in name)
+        return name
 
     def references(self, column: Column[Any]) -> bool:
         """Return True if this Column references the given column via foreign
@@ -2652,6 +2666,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             server_onupdate=server_onupdate,
             doc=self.doc,
             comment=self.comment,
+            deprecated=self.deprecated,
             _omit_from_statements=self._omit_from_statements,
             insert_sentinel=self._insert_sentinel,
             *args,
