@@ -82,6 +82,7 @@ from __future__ import annotations
 import asyncio
 from collections import deque
 from functools import partial
+from threading import Thread
 from types import ModuleType
 from typing import Any
 from typing import cast
@@ -98,6 +99,7 @@ from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
 from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_module
+from ...connectors.asyncio import AsyncAdapt_terminate
 from ...engine import AdaptedConnection
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
@@ -251,7 +253,7 @@ class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
         return self.await_(self._cursor.fetchall())
 
 
-class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
+class AsyncAdapt_aiosqlite_connection(AsyncAdapt_terminate, AdaptedConnection):
     await_ = staticmethod(await_only)
     __slots__ = ("dbapi",)
 
@@ -339,6 +341,24 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
         else:
             raise error
 
+    async def _terminate_graceful_close(self) -> None:
+        """Try to close connection gracefully"""
+        await self._connection.close()
+
+    def _terminate_force_close(self) -> None:
+        """Terminate the connection"""
+
+        # this was added in aiosqlite 0.22.1.  if stop() is not present,
+        # the dialect should indicate has_terminate=False
+        try:
+            meth = self._connection.stop
+        except AttributeError as ae:
+            raise NotImplementedError(
+                "terminate_force_close() not implemented by this DBAPI shim"
+            ) from ae
+        else:
+            meth()
+
 
 class AsyncAdaptFallback_aiosqlite_connection(AsyncAdapt_aiosqlite_connection):
     __slots__ = ()
@@ -351,6 +371,7 @@ class AsyncAdapt_aiosqlite_dbapi(AsyncAdapt_dbapi_module):
         self.aiosqlite = aiosqlite
         self.sqlite = sqlite
         self.paramstyle = "qmark"
+        self.has_stop = hasattr(aiosqlite.Connection, "stop")
         self._init_dbapi_attributes()
 
     def _init_dbapi_attributes(self) -> None:
@@ -380,8 +401,14 @@ class AsyncAdapt_aiosqlite_dbapi(AsyncAdapt_dbapi_module):
             connection = creator_fn(*arg, **kw)
         else:
             connection = self.aiosqlite.connect(*arg, **kw)
-            # it's a Thread.   you'll thank us later
-            connection.daemon = True
+
+            # aiosqlite uses a Thread.   you'll thank us later
+            if isinstance(connection, Thread):
+                # Connection itself was a thread in version prior to 0.22
+                connection.daemon = True
+            else:
+                # in 0.22+ instead it contains a thread.
+                connection._thread.daemon = True
 
         if util.asbool(async_fallback):
             return AsyncAdaptFallback_aiosqlite_connection(
@@ -405,10 +432,16 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
     supports_statement_cache = True
 
     is_async = True
+    has_terminate = True
 
     supports_server_side_cursors = True
 
     execution_ctx_cls = SQLiteExecutionContext_aiosqlite
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+        if self.dbapi and not self.dbapi.has_stop:
+            self.has_terminate = False
 
     @classmethod
     def import_dbapi(cls) -> AsyncAdapt_aiosqlite_dbapi:
@@ -441,6 +474,9 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
         self, connection: DBAPIConnection
     ) -> AsyncIODBAPIConnection:
         return connection._connection  # type: ignore[no-any-return]
+
+    def do_terminate(self, dbapi_connection: DBAPIConnection) -> None:
+        dbapi_connection.terminate()
 
 
 dialect = SQLiteDialect_aiosqlite
