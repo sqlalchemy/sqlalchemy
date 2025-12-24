@@ -187,6 +187,10 @@ class EngineFixture(AsyncFixture, fixtures.TablesTest):
         )
 
     @testing.fixture
+    def adhoc_async_engine(self):
+        return engines.testing_engine(asyncio=True)
+
+    @testing.fixture
     def async_connection(self, async_engine):
         with async_engine.sync_engine.connect() as conn:
             yield AsyncConnection(async_engine, conn)
@@ -349,13 +353,13 @@ class AsyncEngineTest(EngineFixture):
 
     @testing.variation("simulate_gc", [True, False])
     def test_appropriate_warning_for_gced_connection(
-        self, async_engine, simulate_gc
+        self, adhoc_async_engine, simulate_gc
     ):
         """test #9237 which builds upon a not really complete solution
         added for #8419."""
 
         async def go():
-            conn = await async_engine.connect()
+            conn = await adhoc_async_engine.connect()
             await conn.begin()
             await conn.execute(select(1))
             pool_connection = await conn.get_raw_connection()
@@ -388,7 +392,7 @@ class AsyncEngineTest(EngineFixture):
                     None, rec, pool, ref, echo, transaction_was_reset=False
                 )
 
-            if async_engine.dialect.has_terminate:
+            if adhoc_async_engine.dialect.has_terminate:
                 expected_msg = (
                     "The garbage collector is trying to clean up.*which will "
                     "be terminated."
@@ -410,6 +414,15 @@ class AsyncEngineTest(EngineFixture):
                 pool_connection.close()
 
             eq_(m.mock_calls, [])
+
+    @async_test
+    @testing.skip_if(lambda config: not config.db.dialect.has_terminate)
+    async def test_dbapi_terminate(self, adhoc_async_engine):
+
+        conn = await adhoc_async_engine.raw_connection()
+        dbapi_conn = conn.dbapi_connection
+        dbapi_conn.terminate()
+        conn.invalidate()
 
     @async_test
     async def test_statement_compile(self, async_engine):
