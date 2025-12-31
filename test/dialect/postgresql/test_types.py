@@ -6891,7 +6891,7 @@ class JSONBTest(JSONTest):
         ),
         (
             lambda self: self.jsoncol.path_exists("$.k1"),
-            "test_table.test_column @? %(test_column_1)s::VARCHAR",
+            "test_table.test_column @? %(test_column_1)s",
         ),
         (
             lambda self: self.jsoncol.path_exists(self.any_),
@@ -6899,7 +6899,7 @@ class JSONBTest(JSONTest):
         ),
         (
             lambda self: self.jsoncol.path_match("$.k1[0] > 2"),
-            "test_table.test_column @@ %(test_column_1)s::VARCHAR",
+            "test_table.test_column @@ %(test_column_1)s",
         ),
         (
             lambda self: self.jsoncol.path_match(self.any_),
@@ -7021,6 +7021,50 @@ class JSONBRoundTripTest(JSONRoundTripTest):
         )
         res = connection.scalar(q)
         eq_(res, {"k1": {"r6v1": {"subr": [1, 3]}}})
+
+    @testing.only_on("postgresql >= 12")
+    def test_path_exists(self, connection):
+        self._fixture_data(connection)
+
+        q = select(self.data_table.c.name).where(
+            self.data_table.c.data.path_exists("$.k1")
+        )
+        res = connection.scalars(q).all()
+        eq_(set(res), {"r1", "r2", "r3", "r4", "r5", "r6"})
+
+        q = select(self.data_table.c.name).where(
+            self.data_table.c.data.path_exists("$.k3")
+        )
+        res = connection.scalars(q).all()
+        eq_(res, ["r5"])
+
+        q = select(self.data_table.c.name).where(
+            self.data_table.c.data.path_exists("$.k1.r6v1")
+        )
+        res = connection.scalars(q).all()
+        eq_(res, ["r6"])
+
+    @testing.only_on("postgresql >= 12")
+    def test_path_match(self, connection):
+        self._fixture_data(connection)
+
+        q = select(self.data_table.c.name).where(
+            self.data_table.c.data.path_match("$.k3 > 0")
+        )
+        res = connection.scalars(q).all()
+        eq_(res, ["r5"])
+
+        q = select(self.data_table.c.name).where(
+            self.data_table.c.data.path_match("$.k3 == 5")
+        )
+        res = connection.scalars(q).all()
+        eq_(res, ["r5"])
+
+        q = select(self.data_table.c.name).where(
+            self.data_table.c.data.path_match('$.k1 == "r1v1"')
+        )
+        res = connection.scalars(q).all()
+        eq_(res, ["r1"])
 
 
 class JSONBSuiteTest(suite.JSONTest):
