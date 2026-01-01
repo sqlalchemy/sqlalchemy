@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 13039
+
+    Fixed issue in the aiosqlite driver where SQLAlchemy's setting of
+    aiosqlite's worker thread to "daemon" stopped working because the aiosqlite
+    architecture moved the location of the worker thread in version 0.22.0.
+    This "daemon" flag is necessary so that a program is able to exit if the
+    SQLite connection itself was not explicitly closed, which is particularly
+    likely with SQLAlchemy as it maintains SQLite connections in a connection
+    pool.  While it's perfectly fine to call :meth:`.AsyncEngine.dispose`
+    before program exit, this is not historically or technically necessary for
+    any driver of any known backend, since a primary feature of relational
+    databases is durability.  The change also implements support for
+    "terminate" with aiosqlite when using version version 0.22.1 or greater,
+    which implements a sync ``.stop()`` method.
