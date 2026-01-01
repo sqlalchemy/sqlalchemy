@@ -3846,17 +3846,16 @@ class Mapper(
             )
 
             in_expr = entity._adapter.traverse(in_expr)
-            primary_key = [entity._adapter.traverse(k) for k in primary_key]
             q = q.where(
                 in_expr.in_(sql.bindparam("primary_keys", expanding=True))
-            ).order_by(*primary_key)
+            )
         else:
             q = sql.select(self).set_label_style(
                 LABEL_STYLE_TABLENAME_PLUS_COL
             )
             q = q.where(
                 in_expr.in_(sql.bindparam("primary_keys", expanding=True))
-            ).order_by(*primary_key)
+            )
 
         return q, enable_opt, disable_opt
 

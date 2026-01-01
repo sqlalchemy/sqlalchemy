@@ -151,12 +151,12 @@ load columns local to both the ``Manager`` and ``Engineer`` subclasses::
     SELECT manager.id AS manager_id, employee.id AS employee_id,
     employee.type AS employee_type, manager.manager_name AS manager_manager_name
     FROM employee JOIN manager ON employee.id = manager.id
-    WHERE employee.id IN (?) ORDER BY employee.id
+    WHERE employee.id IN (?)
     [...] (1,)
     SELECT engineer.id AS engineer_id, employee.id AS employee_id,
     employee.type AS employee_type, engineer.engineer_info AS engineer_engineer_info
     FROM employee JOIN engineer ON employee.id = engineer.id
-    WHERE employee.id IN (?, ?) ORDER BY employee.id
+    WHERE employee.id IN (?, ?)
     [...] (2, 3)
     {stop}>>> print(objects)
     [Manager('Mr. Krabs'), Engineer('SpongeBob'), Engineer('Squidward')]
@@ -219,13 +219,13 @@ we only indicate the additional target subclasses we wish to load::
     employee.type AS employee_type,
     manager.manager_name AS manager_manager_name
     FROM employee JOIN manager ON employee.id = manager.id
-    WHERE employee.id IN (?) ORDER BY employee.id
+    WHERE employee.id IN (?)
     [...] (1,)
     SELECT engineer.id AS engineer_id, employee.id AS employee_id,
     employee.type AS employee_type,
     engineer.engineer_info AS engineer_engineer_info
     FROM employee JOIN engineer ON employee.id = engineer.id
-    WHERE employee.id IN (?, ?) ORDER BY employee.id
+    WHERE employee.id IN (?, ?)
     [...] (2, 3)
     {stop}company: Krusty Krab
     employees: [Manager('Mr. Krabs'), Engineer('SpongeBob'), Engineer('Squidward')]
@@ -270,7 +270,7 @@ this collection on all ``Manager`` objects, where the sub-attributes of
     [...] ()
     SELECT manager.id AS manager_id, employee.id AS employee_id, employee.type AS employee_type, manager.manager_name AS manager_manager_name
     FROM employee JOIN manager ON employee.id = manager.id
-    WHERE employee.id IN (?) ORDER BY employee.id
+    WHERE employee.id IN (?)
     [...] (1,)
     SELECT paperwork.manager_id, paperwork.id, paperwork.document_name
     FROM paperwork
@@ -278,7 +278,7 @@ this collection on all ``Manager`` objects, where the sub-attributes of
     [...] (1,)
     SELECT engineer.id AS engineer_id, employee.id AS employee_id, employee.type AS employee_type, engineer.engineer_info AS engineer_engineer_info
     FROM employee JOIN engineer ON employee.id = engineer.id
-    WHERE employee.id IN (?, ?) ORDER BY employee.id
+    WHERE employee.id IN (?, ?)
     [...] (2, 3)
     {stop}>>> print(objects[0])
     Manager('Mr. Krabs')
@@ -332,7 +332,7 @@ examples to load ``Company.employees``, also loading the attributes for the
     [...] (1,)
     SELECT manager.id AS manager_id, employee.id AS employee_id, employee.type AS employee_type, manager.manager_name AS manager_manager_name
     FROM employee JOIN manager ON employee.id = manager.id
-    WHERE employee.id IN (?) ORDER BY employee.id
+    WHERE employee.id IN (?)
     [...] (1,)
     SELECT paperwork.manager_id, paperwork.id, paperwork.document_name
     FROM paperwork
@@ -340,7 +340,7 @@ examples to load ``Company.employees``, also loading the attributes for the
     [...] (1,)
     SELECT engineer.id AS engineer_id, employee.id AS employee_id, employee.type AS employee_type, engineer.engineer_info AS engineer_engineer_info
     FROM employee JOIN engineer ON employee.id = engineer.id
-    WHERE employee.id IN (?, ?) ORDER BY employee.id
+    WHERE employee.id IN (?, ?)
     [...] (2, 3)
     {stop}company: Krusty Krab
     manager: Mr. Krabs paperwork: [Paperwork('Secret Recipes'), Paperwork('Krabby Patty Orders')]
