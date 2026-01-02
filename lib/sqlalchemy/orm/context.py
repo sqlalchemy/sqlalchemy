@@ -98,9 +98,6 @@ _T = TypeVar("_T", bound=Any)
 _Ts = TypeVarTuple("_Ts")
 _path_registry = PathRegistry.root
 
-_EMPTY_DICT = util.immutabledict()
-
-
 LABEL_STYLE_LEGACY_ORM = SelectLabelStyle.LABEL_STYLE_LEGACY_ORM
 
 
@@ -173,8 +170,8 @@ class QueryContext:
         bind_arguments: Optional[_BindArguments] = None,
     ):
         self.load_options = load_options
-        self.execution_options = execution_options or _EMPTY_DICT
-        self.bind_arguments = bind_arguments or _EMPTY_DICT
+        self.execution_options = execution_options or util.EMPTY_DICT
+        self.bind_arguments = bind_arguments or util.EMPTY_DICT
         self.compile_state = compile_state
         self.query = statement
 
@@ -783,8 +780,8 @@ class _ORMFromStatementCompileState(_ORMCompileState):
     eager_adding_joins = False
     compound_eager_adapter = None
 
-    extra_criteria_entities = _EMPTY_DICT
-    eager_joins = _EMPTY_DICT
+    extra_criteria_entities = util.EMPTY_DICT
+    eager_joins = util.EMPTY_DICT
 
     @classmethod
     def _create_orm_context(
@@ -1088,7 +1085,7 @@ class _CompoundSelectCompileState(
 class _ORMSelectCompileState(_ORMCompileState, SelectState):
     _already_joined_edges = ()
 
-    _memoized_entities = _EMPTY_DICT
+    _memoized_entities = util.EMPTY_DICT
 
     _from_obj_alias = None
     _has_mapper_entities = False
@@ -1128,7 +1125,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             # query, and at the moment subqueryloader is putting some things
             # in here that we explicitly don't want stuck in a cache.
             self.select_statement = select_statement._clone()
-            self.select_statement._execution_options = util.immutabledict()
+            self.select_statement._execution_options = util.EMPTY_DICT
         else:
             self.select_statement = select_statement
 

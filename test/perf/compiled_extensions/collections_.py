@@ -30,6 +30,7 @@ class ImmutableDict(Case):
     def init_objects(self):
         self.small = {"a": 5, "b": 4}
         self.large = {f"k{i}": f"v{i}" for i in range(50)}
+        self.empty = self.impl()
         self.d1 = self.impl({"x": 5, "y": 4})
         self.d2 = self.impl({f"key{i}": f"value{i}" for i in range(50)})
 
@@ -42,6 +43,10 @@ class ImmutableDict(Case):
     @test_case
     def init_empty(self):
         self.impl()
+
+    @test_case
+    def init_kw(self):
+        self.impl(a=1, b=2)
 
     @test_case
     def init(self):
@@ -70,6 +75,12 @@ class ImmutableDict(Case):
         self.d2.union(self.large)
 
     @test_case
+    def union_imm(self):
+        self.empty.union(self.d1)
+        self.d1.union(self.d2)
+        self.d1.union(self.empty)
+
+    @test_case
     def merge_with(self):
         self.d1.merge_with(self.small)
         self.d1.merge_with(self.small.items())
@@ -77,6 +88,21 @@ class ImmutableDict(Case):
     @test_case
     def merge_with_large(self):
         self.d2.merge_with(self.large)
+
+    @test_case
+    def merge_with_imm(self):
+        self.d1.merge_with(self.d2)
+        self.empty.merge_with(self.d1)
+        self.empty.merge_with(self.d1, self.d2)
+
+    @test_case
+    def merge_with_only_one(self):
+        self.d1.merge_with(self.empty, None, self.empty)
+        self.empty.merge_with(self.empty, self.d1, self.empty)
+
+    @test_case
+    def merge_with_many(self):
+        self.d1.merge_with(self.d2, self.small, None, self.small, self.large)
 
     @test_case
     def get(self):
