@@ -202,7 +202,7 @@ are loaded with additional SELECT statements:
         employee.type AS employee_type,
         engineer.engineer_name AS engineer_engineer_name
     FROM employee JOIN engineer ON employee.id = engineer.id
-    WHERE employee.id IN (?, ?) ORDER BY employee.id
+    WHERE employee.id IN (?, ?)
     (1, 2)
 
     SELECT
@@ -211,7 +211,7 @@ are loaded with additional SELECT statements:
         employee.type AS employee_type,
         manager.manager_name AS manager_manager_name
     FROM employee JOIN manager ON employee.id = manager.id
-    WHERE employee.id IN (?) ORDER BY employee.id
+    WHERE employee.id IN (?)
     (3,)
 
 .. seealso::
