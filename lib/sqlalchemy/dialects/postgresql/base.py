@@ -147,7 +147,7 @@ running bulk insert operations using the :ref:`engine_insertmanyvalues`
 feature.
 
 .. versionadded:: 2.1
-    Added ``monotonic=True`` to allow functions like PostgreSQL's
+   Added ``monotonic=True`` to allow functions like PostgreSQL's
    ``uuidv7()`` to work with batched "insertmanyvalues"
 
 .. seealso::
