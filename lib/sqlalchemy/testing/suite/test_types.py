@@ -1318,7 +1318,9 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         Table(
             "data_table",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("name", String(30), nullable=False),
             Column("data", cls.datatype, nullable=False),
             Column("nulldata", cls.datatype(none_as_null=True)),
@@ -1936,7 +1938,9 @@ class JSONLegacyStringCastIndexTest(
         Table(
             "data_table",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("name", String(30), nullable=False),
             Column("data", cls.datatype),
             Column("nulldata", cls.datatype(none_as_null=True)),

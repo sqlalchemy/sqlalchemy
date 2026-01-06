@@ -1000,8 +1000,14 @@ from dataclasses import fields
 from functools import lru_cache
 from functools import wraps
 import re
+from typing import Any
+from typing import Callable
+from typing import Optional
 
 from . import dictionary
+from .json import JSON
+from .json import JSONIndexType
+from .json import JSONPathType
 from .types import _OracleBoolean
 from .types import _OracleDate
 from .types import BFILE
@@ -1036,6 +1042,7 @@ from ...engine.reflection import ReflectionDefaults
 from ...sql import and_
 from ...sql import bindparam
 from ...sql import compiler
+from ...sql import elements
 from ...sql import expression
 from ...sql import func
 from ...sql import null
@@ -1079,6 +1086,9 @@ colspecs = {
     sqltypes.Interval: INTERVAL,
     sqltypes.DateTime: DATE,
     sqltypes.Date: _OracleDate,
+    sqltypes.JSON: JSON,
+    sqltypes.JSON.JSONIndexType: JSONIndexType,
+    sqltypes.JSON.JSONPathType: JSONPathType,
 }
 
 ischema_names = {
@@ -1106,6 +1116,7 @@ ischema_names = {
     "ROWID": ROWID,
     "BOOLEAN": BOOLEAN,
     "VECTOR": VECTOR,
+    "JSON": JSON,
 }
 
 
@@ -1277,6 +1288,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
             type_.storage_type.value if type_.storage_type is not None else "*"
         )
         return f"VECTOR({dim},{storage_format},{storage_type})"
+
+    def visit_JSON(self, type_: JSON, **kw: Any) -> str:
+        return "JSON"
 
 
 class OracleCompiler(compiler.SQLCompiler):
@@ -1790,6 +1804,80 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_bitwise_not_op_unary_operator(self, element, operator, **kw):
         raise exc.CompileError("Cannot compile bitwise_not in oracle")
 
+    def _render_json_extract_from_binary(self, binary, operator, **kw):
+        literal_kw = kw.copy()
+        literal_kw['literal_binds'] = True
+
+        if binary.type._type_affinity is sqltypes.JSON:
+            return "JSON_QUERY(%s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **literal_kw),
+            )
+
+        case_expression = "CASE JSON_VALUE(%s, %s) WHEN NULL THEN NULL" % (
+            self.process(binary.left, **kw),
+            self.process(binary.right, **literal_kw),
+        )
+
+        if binary.type._type_affinity is sqltypes.Integer:
+            type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS INTEGER)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **literal_kw),
+            )
+
+        elif binary.type._type_affinity in (sqltypes.Numeric, sqltypes.Float):
+            if isinstance(binary.type, sqltypes.Float):
+                type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS FLOAT)" % (
+                    self.process(binary.left, **kw),
+                    self.process(binary.right, **literal_kw),
+                )
+            else:
+                type_expression = (
+                    "ELSE CAST(JSON_VALUE(%s, %s) AS NUMBER(%s, %s))"
+                    % (
+                        self.process(binary.left, **kw),
+                        self.process(binary.right, **literal_kw),
+                        binary.type.precision,
+                        binary.type.scale,
+                    )
+                )
+
+        elif binary.type._type_affinity is sqltypes.Boolean:
+            type_expression = (
+                "WHEN 'true' THEN 1 "
+                "WHEN 'false' THEN 0 "
+                "ELSE CAST(JSON_VALUE(%s, %s) AS NUMBER(1))"
+                % (
+                    self.process(binary.left, **kw),
+                    self.process(binary.right, **literal_kw),
+                )
+            )
+
+        elif binary.type._type_affinity is sqltypes.String:
+            type_expression = "ELSE JSON_VALUE(%s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **literal_kw),
+            )
+
+        else:
+            # Fallback: preserve JSON structure
+            type_expression = "ELSE JSON_QUERY(%s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **literal_kw),
+            )
+
+        return case_expression + " " + type_expression + " END"
+
+    def visit_json_getitem_op_binary(
+        self, binary: elements.BinaryExpression[Any], operator: Any, **kw: Any
+    ) -> str:
+        return self._render_json_extract_from_binary(binary, operator, **kw)
+
+    def visit_json_path_getitem_op_binary(
+        self, binary: elements.BinaryExpression[Any], operator: Any, **kw: Any
+    ) -> str:
+        return self._render_json_extract_from_binary(binary, operator, **kw)
+
 
 class OracleDDLCompiler(compiler.DDLCompiler):
 
@@ -2077,6 +2165,8 @@ class OracleDialect(default.DefaultDialect):
         use_nchar_for_unicode=False,
         exclude_tablespaces=("SYSTEM", "SYSAUX"),
         enable_offset_fetch=True,
+        json_serializer: Optional[Callable[..., Any]] = None,
+        json_deserializer: Optional[Callable[..., Any]] = None,
         **kwargs,
     ):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -2087,6 +2177,8 @@ class OracleDialect(default.DefaultDialect):
         self.enable_offset_fetch = self._supports_offset_fetch = (
             enable_offset_fetch
         )
+        self._json_serializer = json_serializer
+        self._json_deserializer = json_deserializer
 
     def initialize(self, connection):
         super().initialize(connection)
@@ -2124,7 +2216,7 @@ class OracleDialect(default.DefaultDialect):
         if compat:
             try:
                 return tuple(int(x) for x in compat.split("."))
-            except:
+            except Exception:
                 return self.server_version_info
         else:
             return self.server_version_info
@@ -2177,7 +2269,7 @@ class OracleDialect(default.DefaultDialect):
             return self.get_isolation_level(dbapi_conn)
         except NotImplementedError:
             raise
-        except:
+        except Exception:
             return "READ COMMITTED"
 
     def _execute_reflection(
