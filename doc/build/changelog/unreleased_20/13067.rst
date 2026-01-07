@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13067
+
+    Fixed regression in PostgreSQL dialect where JSONB subscription syntax
+    would generate incorrect SQL for :func:`.cast` expressions returning JSONB,
+    causing syntax errors. The dialect now properly wraps cast expressions in
+    parentheses when using the ``[]`` subscription syntax, generating
+    ``(CAST(...))[index]`` instead of ``CAST(...)[index]`` to comply with
+    PostgreSQL syntax requirements. This extends the fix from :ticket:`12778`
+    which addressed the same issue for function calls.

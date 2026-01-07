@@ -1967,7 +1967,7 @@ class TableValuedRoundTripTest(fixtures.TestBase):
         eq_(connection.execute(stmt).all(), [(1, "foo"), (2, "bar")])
 
 
-class JSONUpdateTest(fixtures.TablesTest):
+class JSONQueryTest(fixtures.TablesTest):
     """round trip tests related to using JSON and JSONB in UPDATE statements
     with PG-specific features
 
@@ -2169,6 +2169,54 @@ class JSONUpdateTest(fixtures.TablesTest):
             row.jb,
             {"tags": ["python", "postgresql", "postgres"], "priority": "high"},
         )
+
+    @testing.combinations(
+        (lambda: cast({"foo": "bar"}, JSONB)["foo"], "bar"),
+        (
+            cast({"user": {"name": "Alice", "age": 30}}, JSONB)["user"][
+                "name"
+            ],
+            "Alice",
+        ),
+        (cast({"x": 1, "y": 2}, JSONB)["x"], 1),
+        (
+            func.jsonb_build_object("key", "value", type_=JSONB)["key"],
+            "value",
+        ),
+        (
+            func.jsonb_array_elements(
+                cast([{"name": "Bob"}, {"name": "Carol"}], JSONB), type_=JSONB
+            )["name"],
+            "Bob",
+        ),
+        (
+            cast(func.jsonb_build_object("key1", "val1", type_=JSONB), JSONB)[
+                "key1"
+            ],
+            "val1",
+        ),
+        (
+            func.jsonb_build_array(
+                cast({"item": "first"}, JSONB),
+                cast({"item": "second"}, JSONB),
+                type_=JSONB,
+            )[0]["item"],
+            "first",
+        ),
+        argnames="expr, expected",
+    )
+    def test_jsonb_cast_and_function_with_subscript(
+        self, connection, expr, expected
+    ):
+        """Test JSONB cast/function expressions with newer subscript [] syntax
+        that occurs on pg14+
+
+        these tests cover round trips for #12778 and #13067 (so far)
+
+        """
+        stmt = select(expr)
+        result = connection.scalar(stmt)
+        eq_(result, expected)
 
 
 class HstoreUpdateTest(fixtures.TablesTest):
