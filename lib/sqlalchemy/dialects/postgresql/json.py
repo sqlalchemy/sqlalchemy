@@ -34,6 +34,7 @@ from ...sql.operators import OperatorClass
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
     from ...sql.elements import ColumnElement
+    from ...sql.operators import OperatorType
     from ...sql.type_api import _BindProcessorType
     from ...sql.type_api import _LiteralProcessorType
     from ...sql.type_api import TypeEngine
@@ -313,6 +314,14 @@ class JSONB(JSON):
     __visit_name__ = "JSONB"
 
     operator_classes = OperatorClass.JSON | OperatorClass.CONCATENABLE
+
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        if op in (PATH_MATCH, PATH_EXISTS):
+            return JSON.JSONPathType()
+        else:
+            return super().coerce_compared_value(op, value)
 
     class Comparator(JSON.Comparator[_T]):
         """Define comparison operations for :class:`_types.JSON`."""
