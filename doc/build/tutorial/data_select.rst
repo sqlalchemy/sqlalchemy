@@ -1476,7 +1476,7 @@ elements::
 
     >>> stmt = select(function_expr["def"])
     >>> print(stmt)
-    {printsql}SELECT (json_object(:json_object_1))[:json_object_2] AS anon_1
+    {printsql}SELECT json_object(:json_object_1)[:json_object_2] AS anon_1
 
 Built-in Functions Have Pre-Configured Return Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

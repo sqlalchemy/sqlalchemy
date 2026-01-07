@@ -1672,6 +1672,7 @@ from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
 from ...sql import expression
+from ...sql import functions
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
@@ -1946,10 +1947,14 @@ class PGCompiler(compiler.SQLCompiler):
             and isinstance(binary.left.type, _json.JSONB)
             and self.dialect._supports_jsonb_subscripting
         ):
+            left = binary.left
+            if isinstance(left, (functions.FunctionElement, elements.Cast)):
+                left = elements.Grouping(left)
+
             # for pg14+JSONB use subscript notation: col['key'] instead
             # of col -> 'key'
             return "%s[%s]" % (
-                self.process(binary.left, **kw),
+                self.process(left, **kw),
                 self.process(binary.right, **kw),
             )
         else:

@@ -2984,6 +2984,31 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "[%(jsonb_array_elements_1)s] AS anon_1 FROM data",
         )
 
+    def test_jsonb_cast_use_parentheses_with_subscripting(self):
+        """test #13067 - JSONB cast expressions parenthesized with [] syntax"""
+
+        # Test that JSONB cast expressions are properly parenthesized with []
+        # syntax. This ensures correct PostgreSQL syntax: (CAST(...))[index]
+        # instead of the invalid: CAST(...)[index]
+
+        stmt = select(cast({"foo": "bar"}, JSONB)["foo"])
+        self.assert_compile(
+            stmt,
+            "SELECT (CAST(%(param_1)s::JSONB AS JSONB))[%(param_2)s::TEXT] "
+            "AS anon_1",
+            dialect="postgresql+psycopg",
+        )
+
+        # Test with nested cast within subscripts
+        data = table("data", column("id", Integer), column("x", JSONB))
+        stmt = select(data.c.x[cast("key", String)])
+        self.assert_compile(
+            stmt,
+            "SELECT data.x[CAST(%(param_1)s::VARCHAR AS VARCHAR)] AS anon_1 "
+            "FROM data",
+            dialect="postgresql+psycopg",
+        )
+
     def test_range_custom_object_hook(self):
         # See issue #8884
         from datetime import date
