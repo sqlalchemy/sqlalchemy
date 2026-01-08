@@ -146,7 +146,8 @@ With the above mapping, the ORM will be able to efficiently batch rows when
 running bulk insert operations using the :ref:`engine_insertmanyvalues`
 feature.
 
-.. versionadded:: 2.1 Added ``monotonic=True`` to allow functions like PostgreSQL's
+.. versionadded:: 2.1
+   Added ``monotonic=True`` to allow functions like PostgreSQL's
    ``uuidv7()`` to work with batched "insertmanyvalues"
 
 .. seealso::
@@ -267,7 +268,8 @@ passing the ``"SERIALIZABLE"`` isolation level at the same time as setting
 Note that some DBAPIs such as asyncpg only support "readonly" with
 SERIALIZABLE isolation.
 
-.. versionadded:: 1.4 added support for the ``postgresql_readonly``
+.. versionadded:: 1.4
+   Added support for the ``postgresql_readonly``
    and ``postgresql_deferrable`` execution options.
 
 .. _postgresql_reset_on_return:
@@ -1042,8 +1044,8 @@ Note that this feature requires PostgreSQL 11 or later.
   :ref:`postgresql_constraint_options_include` - the same feature implemented
   for :class:`.UniqueConstraint`
 
-.. versionadded:: 1.4 - support for covering indexes with :class:`.Index`.
-   support for :class:`.UniqueConstraint` was in 2.0.41
+.. versionadded:: 1.4
+   Support for covering indexes with :class:`.Index`.
 
 .. _postgresql_partial_indexes:
 
@@ -1441,9 +1443,9 @@ would produce the DDL statement
 
 Note that this feature requires PostgreSQL 11 or later.
 
-.. versionadded:: 2.0.41 - added support for ``postgresql_include`` to
-   :class:`.UniqueConstraint`, to complement the existing feature in
-   :class:`.Index`.
+.. versionadded:: 2.0.41
+   Added support for ``postgresql_include`` to :class:`.UniqueConstraint`,
+   to complement the existing feature in :class:`.Index`.
 
 .. seealso::
 
