@@ -846,9 +846,11 @@ class RelationshipProperty(
                         where_criteria = single_crit & where_criteria
                     else:
                         where_criteria = single_crit
+                dest_entity = info
             else:
                 is_aliased_class = False
                 to_selectable = None
+                dest_entity = self.mapper
 
             if self.adapter:
                 source_selectable = self._source_selectable()
@@ -903,6 +905,18 @@ class RelationshipProperty(
 
             crit = j & sql.True_._ifnone(where_criteria)
 
+            # ensure the exists query gets picked up by the ORM
+            # compiler and that it has what we expect as parententity so that
+            # _adjust_for_extra_criteria() gets set up
+            dest = dest._annotate(
+                {
+                    "parentmapper": dest_entity.mapper,
+                    "entity_namespace": dest_entity,
+                    "parententity": dest_entity,
+                }
+            )._set_propagate_attrs(
+                {"compile_state_plugin": "orm", "plugin_subject": dest_entity}
+            )
             if secondary is not None:
                 ex = (
                     sql.exists(1)

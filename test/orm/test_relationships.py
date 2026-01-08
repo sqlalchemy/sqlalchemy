@@ -6756,9 +6756,12 @@ class AnnotationsMaintainedTest(AssertsCompiledSQL, fixtures.TestBase):
             )
         else:
             # will not render "type IN <types>"
+            # note due to #13070 we had to also change the reference
+            # to Engineer.company_id which also would pull in ORM
+            # handling for the entity
             subq = (
                 select(Engineer.__table__)
-                .where(foreign(Engineer.company_id) == Company.id)
+                .where(foreign(Engineer.__table__.c.company_id) == Company.id)
                 .correlate(Company)
             )
 

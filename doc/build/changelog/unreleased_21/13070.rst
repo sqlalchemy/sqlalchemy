@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13070
+
+    A significant change to the ORM mechanics involved with both
+    :func:`.orm.with_loader_criteria` as well as single table inheritance, to
+    more aggressively locate WHERE criteria which should be augmented by either
+    the custom criteria or single-table inheritance criteria; SELECT statements
+    that do not include the entity within the columns clause or as an explicit
+    FROM, but still reference the entity within the WHERE clause, are now
+    covered, in particular this will allow subqueries using ``EXISTS (SELECT
+    1)`` such as those rendered by :meth:`.RelationshipProperty.Comparator.any`
+    and :meth:`.RelationshipProperty.Comparator.has`.

@@ -10,6 +10,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
+from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import insert
@@ -262,6 +263,158 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
     """
 
     __dialect__ = "default"
+
+    @testing.combinations(
+        (
+            "one",
+            lambda Address: select(Address.user_id)
+            .where(Address.user_id == 5)
+            .options(
+                with_loader_criteria(Address, Address.email_address != "foo")
+            ),
+            (
+                "SELECT addresses.user_id FROM addresses WHERE"
+                " addresses.user_id = :user_id_1 AND addresses.email_address"
+                " != :email_address_1"
+            ),
+        ),
+        (
+            "two",
+            lambda aliased_address: select(aliased_address.user_id)
+            .where(aliased_address.user_id == 5)
+            .options(
+                with_loader_criteria(
+                    aliased_address, aliased_address.email_address != "foo"
+                )
+            ),
+            (
+                "SELECT addresses_1.user_id FROM addresses AS addresses_1"
+                " WHERE addresses_1.user_id = :user_id_1 AND"
+                " addresses_1.email_address != :email_address_1"
+            ),
+        ),
+        (
+            "three",
+            lambda Address: select(1)
+            .where(Address.user_id == 5)
+            .options(
+                with_loader_criteria(Address, Address.email_address != "foo")
+            ),
+            (
+                "SELECT 1 FROM addresses WHERE addresses.user_id = :user_id_1"
+                " AND addresses.email_address != :email_address_1"
+            ),
+        ),
+        (
+            "four",
+            lambda aliased_address: select(1)
+            .where(aliased_address.user_id == 5)
+            .options(
+                with_loader_criteria(
+                    aliased_address, aliased_address.email_address != "foo"
+                )
+            ),
+            (
+                "SELECT 1 FROM addresses AS addresses_1 WHERE"
+                " addresses_1.user_id = :user_id_1 AND"
+                " addresses_1.email_address != :email_address_1"
+            ),
+        ),
+        (
+            "five",
+            lambda User, Address: select(User)
+            .where(User.addresses.any())
+            .options(
+                with_loader_criteria(Address, Address.email_address != "foo")
+            ),
+            (
+                "SELECT users.id, users.name FROM users WHERE EXISTS (SELECT 1"
+                " FROM addresses WHERE users.id = addresses.user_id AND"
+                " addresses.email_address != :email_address_1)"
+            ),
+        ),
+        (
+            "six",
+            lambda User, aliased_address: select(User)
+            .where(User.addresses.of_type(aliased_address).any())
+            .options(
+                with_loader_criteria(
+                    aliased_address, aliased_address.email_address != "foo"
+                )
+            ),
+            (
+                "SELECT users.id, users.name FROM users WHERE EXISTS (SELECT 1"
+                " FROM addresses AS addresses_1 WHERE users.id ="
+                " addresses_1.user_id AND addresses_1.email_address !="
+                " :email_address_1)"
+            ),
+        ),
+        (
+            "seven",
+            # note plugin_subject on this one is User, not Address.
+            lambda User, Address: select(User)
+            .where(exists(1).where(User.id == Address.user_id))
+            .options(
+                with_loader_criteria(Address, Address.email_address != "foo")
+            ),
+            (
+                "SELECT users.id, users.name FROM users WHERE EXISTS (SELECT 1"
+                " FROM addresses WHERE users.id = addresses.user_id AND"
+                " addresses.email_address != :email_address_1)"
+            ),
+        ),
+        (
+            "eight",
+            lambda User, aliased_address: select(User)
+            .where(exists(1).where(User.id == aliased_address.user_id))
+            .options(
+                with_loader_criteria(
+                    aliased_address, aliased_address.email_address != "foo"
+                )
+            ),
+            (
+                "SELECT users.id, users.name FROM users WHERE EXISTS (SELECT 1"
+                " FROM addresses AS addresses_1 WHERE users.id ="
+                " addresses_1.user_id AND addresses_1.email_address !="
+                " :email_address_1)"
+            ),
+        ),
+        (
+            "nine",
+            lambda User, Address: select(User)
+            .where(exists(Address.user_id).where(User.id == Address.user_id))
+            .options(
+                with_loader_criteria(Address, Address.email_address != "foo")
+            ),
+            (
+                "SELECT users.id, users.name FROM users WHERE EXISTS (SELECT"
+                " addresses.user_id FROM addresses WHERE users.id ="
+                " addresses.user_id AND addresses.email_address !="
+                " :email_address_1)"
+            ),
+        ),
+        argnames="statement, expected",
+        id_="iaa",
+    )
+    def test_search_harder_for_criteria(
+        self, user_address_fixture, statement, expected
+    ):
+        """test #13070
+
+        loader_criteria taking effect for SELECT(1) statements with only
+        WHERE criteria, has()/any() calls, exists(1) calls
+
+        """
+        User, Address = user_address_fixture
+
+        stmt = testing.resolve_lambda(
+            statement,
+            User=User,
+            Address=Address,
+            aliased_address=aliased(Address),
+        )
+
+        self.assert_compile(stmt, expected)
 
     def test_select_mapper_mapper_criteria(self, user_address_fixture):
         User, Address = user_address_fixture

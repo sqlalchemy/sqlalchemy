@@ -468,6 +468,15 @@ def tables_from_leftmost(clause: FromClause) -> Iterator[FromClause]:
         yield clause
 
 
+def surface_expressions(clause):
+    stack = [clause]
+    while stack:
+        elem = stack.pop()
+        yield elem
+        if isinstance(elem, ColumnElement):
+            stack.extend(elem.get_children())
+
+
 def surface_selectables(clause):
     stack = [clause]
     while stack:

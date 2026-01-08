@@ -26,6 +26,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -1734,7 +1735,8 @@ class RelationshipToSingleTest(
                 "WHERE employees.type IN (__[POSTCOMPILE_type_2])",
             )
 
-    def test_relationship_to_subclass(self):
+    @testing.fixture
+    def rel_to_subclass_fixture(self):
         (
             JuniorEngineer,
             Company,
@@ -1791,10 +1793,14 @@ class RelationshipToSingleTest(
         sess.add_all([c1, c2, m1, m2, e1, e2])
         sess.commit()
 
-        eq_(c1.engineers, [e2])
-        eq_(c2.engineers, [e1])
+    def test_relationship_to_subclass_one(self, rel_to_subclass_fixture):
+        Company = self.classes.Company
+        JuniorEngineer = self.classes.JuniorEngineer
+        Engineer = self.classes.Engineer
+        Employee = self.classes.Employee
 
-        sess.expunge_all()
+        sess = fixture_session()
+
         eq_(
             sess.query(Company).order_by(Company.name).all(),
             [
@@ -1854,26 +1860,70 @@ class RelationshipToSingleTest(
             [Company(name="c2")],
         )
 
-        # this however fails as it does not limit the subtypes to just
-        # "Engineer". with joins constructed by filter(), we seem to be
-        # following a policy where we don't try to make decisions on how to
-        # join to the target class, whereas when using join() we seem to have
-        # a lot more capabilities. we might want to document
-        # "advantages of join() vs. straight filtering", or add a large
-        # section to "inheritance" laying out all the various behaviors Query
-        # has.
-        @testing.fails_on_everything_except()
-        def go():
-            sess.expunge_all()
-            eq_(
-                sess.query(Company)
-                .filter(Company.company_id == Engineer.company_id)
-                .filter(Engineer.name.in_(["Tom", "Kurt"]))
-                .all(),
-                [Company(name="c2")],
-            )
+    def test_relationship_to_subclass_implicit_from(
+        self, rel_to_subclass_fixture
+    ):
+        """additional tests related to #13070"""
 
-        go()
+        Company = self.classes.Company
+        Engineer = self.classes.Engineer
+
+        sess = fixture_session()
+        eq_(
+            sess.query(Company)
+            .filter(Company.company_id == Engineer.company_id)
+            .filter(Engineer.name.in_(["Tom", "Kurt"]))
+            .all(),
+            [Company(name="c2")],
+        )
+
+    def test_relationship_to_subclass_any(self, rel_to_subclass_fixture):
+        """additional tests related to #13070.
+
+        this test is using any() with single-inh criteria, however this
+        doesnt seem to actually need anything from the #13070 change
+        as the `Engineer.name` criteria itself already includes the
+        single-inh criteria with no need for _adjust_for_extra_criteria.
+        apparently.
+
+        """
+
+        Company = self.classes.Company
+        Engineer = self.classes.Engineer
+
+        sess = fixture_session()
+        eq_(
+            sess.query(Company)
+            .filter(Company.engineers.any(Engineer.name.in_(["Tom", "Kurt"])))
+            .all(),
+            [Company(name="c2")],
+        )
+
+    def test_relationship_to_subclass_any_loader_criteria(
+        self, rel_to_subclass_fixture
+    ):
+        """additional tests related to #13070.
+
+        in this version, we put the criteria in with_loader_criteria, now
+        we need the #13070 fix for this to work.
+
+        """
+
+        Company = self.classes.Company
+        Engineer = self.classes.Engineer
+
+        sess = fixture_session()
+        eq_(
+            sess.query(Company)
+            .filter(Company.engineers.any())
+            .options(
+                with_loader_criteria(
+                    Engineer, Engineer.name.in_(["Tom", "Kurt"])
+                )
+            )
+            .all(),
+            [Company(name="c2")],
+        )
 
 
 class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):

@@ -2528,9 +2528,16 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         associated with the global context.
 
         """
+        ext_infos = [
+            fromclause._annotations.get("parententity", None)
+            for fromclause in self.from_clauses
+        ] + [
+            elem._annotations.get("parententity", None)
+            for where_crit in self.select_statement._where_criteria
+            for elem in sql_util.surface_expressions(where_crit)
+        ]
 
-        for fromclause in self.from_clauses:
-            ext_info = fromclause._annotations.get("parententity", None)
+        for ext_info in ext_infos:
 
             if (
                 ext_info
