@@ -414,17 +414,6 @@ explicitly passed.  Using this parameter is **mutually exclusive** against the
 :paramref:`_schema.Column.insert_default` parameter, meaning that both cannot
 be used at the same time.
 
-The :paramref:`_orm.mapped_column.default` and
-:paramref:`_orm.mapped_column.insert_default` parameters may also be used
-(one or the other, not both)
-for a SQLAlchemy-mapped dataclass field, or for a dataclass overall,
-that indicates ``init=False``.
-In this usage, if :paramref:`_orm.mapped_column.default` is used, the default
-value will be available on the constructed object immediately as well as
-used within the INSERT statement.  If :paramref:`_orm.mapped_column.insert_default`
-is used, the constructed object will return ``None`` for the attribute value,
-but the default value will still be used for the INSERT statement.
-
 For the specific case of using a callable to generate defaults, the situation
 changes a bit; the :paramref:`_orm.mapped_column.default_factory` parameter is
 a **dataclass only** parameter that may be used to generate new default values
