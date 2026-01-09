@@ -428,9 +428,18 @@ used within the INSERT statement.  If :paramref:`_orm.mapped_column.insert_defau
 is used, the constructed object will return ``None`` for the attribute value,
 but the default value will still be used for the INSERT statement.
 
-To use a callable to generate defaults for the dataclass, which would be
-applied to the object when constructed by populating it into ``__dict__``,
-:paramref:`_orm.mapped_column.default_factory` may be used instead.
+For the specific case of using a callable to generate defaults, the situation
+changes a bit; the :paramref:`_orm.mapped_column.default_factory` parameter is
+a **dataclass only** parameter that may be used to generate new default values
+for instances of the class, but **only takes place when the object is
+constructed**.   That is, it is **not** equivalent to
+:paramref:`_orm.mapped_column.insert_default` with a callable as it **will not
+take effect** for a plain ``insert()`` statement that does not actually
+construct the object; it only is useful for objects that are inserted using
+:term:`unit of work` patterns, i.e. using :meth:`_orm.Session.add` with
+:meth:`_orm.Session.flush` / :meth:`_orm.Session.commit`. For defaults that
+should apply to INSERT statements regardless of how they are invoked, use
+:paramref:`_orm.mapped_column.insert_default` instead.
 
 .. list-table:: Summary Chart
    :header-rows: 1
@@ -441,21 +450,25 @@ applied to the object when constructed by populating it into ``__dict__``,
      - Accepts scalar?
      - Accepts callable?
      - Available on object immediately?
+     - Used in INSERT statements?
    * - :paramref:`_orm.mapped_column.default`
      - ✔
      - ✔
      - ✔
      - Only if no dataclasses
      - Only if dataclasses
+     - ✔
    * - :paramref:`_orm.mapped_column.insert_default`
      - ✔ (only if no ``default``)
      - ✔
      - ✔
      - ✔
      - ✖
+     - ✔
    * - :paramref:`_orm.mapped_column.default_factory`
      - ✔
      - ✖
      - ✖
      - ✔
      - Only if dataclasses
+     - ✖ (unit of work only)
