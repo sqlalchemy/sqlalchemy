@@ -406,12 +406,37 @@ on the object. If you instead want to use a callable for your dataclass,
 which will be applied to the object when constructed, you would use
 :paramref:`_orm.mapped_column.default_factory`.
 
-To get access to the ``INSERT``-only behavior of :paramref:`_orm.mapped_column.default`
-that is described in part one above, you would use the
-:paramref:`_orm.mapped_column.insert_default` parameter instead.
-:paramref:`_orm.mapped_column.insert_default` when dataclasses are used continues
-to be a direct route to the Core-level "default" process where the parameter can
-be a static value or callable.
+The value used for :paramref:`_orm.mapped_column.default` is also applied to the
+:paramref:`_schema.Column.default` parameter of :class:`_schema.Column`.
+This is so that the value used as the dataclass default is also applied in
+an ORM INSERT statement for a mapped object where the value was not
+explicitly passed.  Using this parameter is **mutually exclusive** against the
+:paramref:`_schema.Column.insert_default` parameter, meaning that both cannot
+be used at the same time.
+
+The :paramref:`_orm.mapped_column.default` and
+:paramref:`_orm.mapped_column.insert_default` parameters may also be used
+(one or the other, not both)
+for a SQLAlchemy-mapped dataclass field, or for a dataclass overall,
+that indicates ``init=False``.
+In this usage, if :paramref:`_orm.mapped_column.default` is used, the default
+value will be available on the constructed object immediately as well as
+used within the INSERT statement.  If :paramref:`_orm.mapped_column.insert_default`
+is used, the constructed object will return ``None`` for the attribute value,
+but the default value will still be used for the INSERT statement.
+
+For the specific case of using a callable to generate defaults, the situation
+changes a bit; the :paramref:`_orm.mapped_column.default_factory` parameter is
+a **dataclass only** parameter that may be used to generate new default values
+for instances of the class, but **only takes place when the object is
+constructed**.   That is, it is **not** equivalent to
+:paramref:`_orm.mapped_column.insert_default` with a callable as it **will not
+take effect** for a plain ``insert()`` statement that does not actually
+construct the object; it only is useful for objects that are inserted using
+:term:`unit of work` patterns, i.e. using :meth:`_orm.Session.add` with
+:meth:`_orm.Session.flush` / :meth:`_orm.Session.commit`. For defaults that
+should apply to INSERT statements regardless of how they are invoked, use
+:paramref:`_orm.mapped_column.insert_default` instead.
 
 .. list-table:: Summary Chart
    :header-rows: 1
@@ -421,22 +446,26 @@ be a static value or callable.
      - Works without dataclasses?
      - Accepts scalar?
      - Accepts callable?
-     - Populates object immediately?
+     - Available on object immediately?
+     - Used in INSERT statements?
    * - :paramref:`_orm.mapped_column.default`
      - ✔
      - ✔
      - ✔
      - Only if no dataclasses
      - Only if dataclasses
+     - ✔
    * - :paramref:`_orm.mapped_column.insert_default`
      - ✔
      - ✔
      - ✔
      - ✔
      - ✖
+     - ✔
    * - :paramref:`_orm.mapped_column.default_factory`
      - ✔
      - ✖
      - ✖
      - ✔
      - Only if dataclasses
+     - ✖ (unit of work only)
