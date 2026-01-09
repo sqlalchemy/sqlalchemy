@@ -20,129 +20,139 @@ from sqlalchemy import String
 # code within this block is **programmatically,
 # statically generated** by tools/generate_sql_functions.py
 
-stmt1 = select(func.aggregate_strings(column("x", String), ","))
+stmt1 = select(func.abs(column("x", Integer)))
 
-assert_type(stmt1, Select[str])
-
-
-stmt2 = select(func.array_agg(column("x", Integer)))
-
-assert_type(stmt2, Select[Sequence[int]])
+assert_type(stmt1, Select[int])
 
 
-stmt3 = select(func.char_length(column("x")))
+stmt2 = select(func.aggregate_strings(column("x", String), ","))
 
-assert_type(stmt3, Select[int])
-
-
-stmt4 = select(func.coalesce(column("x", Integer)))
-
-assert_type(stmt4, Select[int])
+assert_type(stmt2, Select[str])
 
 
-stmt5 = select(func.concat())
+stmt3 = select(func.array_agg(column("x", Integer)))
 
-assert_type(stmt5, Select[str])
+assert_type(stmt3, Select[Sequence[int]])
 
 
-stmt6 = select(func.count(column("x")))
+stmt4 = select(func.avg())
+
+assert_type(stmt4, Select[Decimal])
+
+
+stmt5 = select(func.char_length(column("x")))
+
+assert_type(stmt5, Select[int])
+
+
+stmt6 = select(func.coalesce(column("x", Integer)))
 
 assert_type(stmt6, Select[int])
 
 
-stmt7 = select(func.cume_dist())
+stmt7 = select(func.concat())
 
-assert_type(stmt7, Select[Decimal])
-
-
-stmt8 = select(func.current_date())
-
-assert_type(stmt8, Select[date])
+assert_type(stmt7, Select[str])
 
 
-stmt9 = select(func.current_time())
+stmt8 = select(func.count(column("x")))
 
-assert_type(stmt9, Select[time])
-
-
-stmt10 = select(func.current_timestamp())
-
-assert_type(stmt10, Select[datetime])
+assert_type(stmt8, Select[int])
 
 
-stmt11 = select(func.current_user())
+stmt9 = select(func.cume_dist())
 
-assert_type(stmt11, Select[str])
-
-
-stmt12 = select(func.dense_rank())
-
-assert_type(stmt12, Select[int])
+assert_type(stmt9, Select[Decimal])
 
 
-stmt13 = select(func.localtime())
+stmt10 = select(func.current_date())
 
-assert_type(stmt13, Select[datetime])
-
-
-stmt14 = select(func.localtimestamp())
-
-assert_type(stmt14, Select[datetime])
+assert_type(stmt10, Select[date])
 
 
-stmt15 = select(func.max(column("x", Integer)))
+stmt11 = select(func.current_time())
 
-assert_type(stmt15, Select[int])
-
-
-stmt16 = select(func.min(column("x", Integer)))
-
-assert_type(stmt16, Select[int])
+assert_type(stmt11, Select[time])
 
 
-stmt17 = select(func.next_value(SqlAlchemySequence("x_seq")))
+stmt12 = select(func.current_timestamp())
+
+assert_type(stmt12, Select[datetime])
+
+
+stmt13 = select(func.current_user())
+
+assert_type(stmt13, Select[str])
+
+
+stmt14 = select(func.dense_rank())
+
+assert_type(stmt14, Select[int])
+
+
+stmt15 = select(func.localtime())
+
+assert_type(stmt15, Select[datetime])
+
+
+stmt16 = select(func.localtimestamp())
+
+assert_type(stmt16, Select[datetime])
+
+
+stmt17 = select(func.max(column("x", Integer)))
 
 assert_type(stmt17, Select[int])
 
 
-stmt18 = select(func.now())
+stmt18 = select(func.min(column("x", Integer)))
 
-assert_type(stmt18, Select[datetime])
-
-
-stmt19 = select(func.percent_rank())
-
-assert_type(stmt19, Select[Decimal])
+assert_type(stmt18, Select[int])
 
 
-stmt20 = select(func.pow(column("x", Integer)))
+stmt19 = select(func.next_value(SqlAlchemySequence("x_seq")))
 
-assert_type(stmt20, Select[int])
-
-
-stmt21 = select(func.rank())
-
-assert_type(stmt21, Select[int])
+assert_type(stmt19, Select[int])
 
 
-stmt22 = select(func.session_user())
+stmt20 = select(func.now())
 
-assert_type(stmt22, Select[str])
+assert_type(stmt20, Select[datetime])
 
 
-stmt23 = select(func.sum(column("x", Integer)))
+stmt21 = select(func.percent_rank())
+
+assert_type(stmt21, Select[Decimal])
+
+
+stmt22 = select(func.pow(column("x", Integer)))
+
+assert_type(stmt22, Select[int])
+
+
+stmt23 = select(func.rank())
 
 assert_type(stmt23, Select[int])
 
 
-stmt24 = select(func.sysdate())
+stmt24 = select(func.session_user())
 
-assert_type(stmt24, Select[datetime])
+assert_type(stmt24, Select[str])
 
 
-stmt25 = select(func.user())
+stmt25 = select(func.sum(column("x", Integer)))
 
-assert_type(stmt25, Select[str])
+assert_type(stmt25, Select[int])
+
+
+stmt26 = select(func.sysdate())
+
+assert_type(stmt26, Select[datetime])
+
+
+stmt27 = select(func.user())
+
+assert_type(stmt27, Select[str])
 
 # END GENERATED FUNCTION TYPING TESTS
 
