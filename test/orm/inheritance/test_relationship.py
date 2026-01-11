@@ -22,6 +22,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -476,8 +477,10 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
     def _two_obj_fixture(self):
         e1 = Engineer(name="wally")
         e2 = Engineer(name="dilbert", reports_to=e1)
+        e3 = Engineer(name="not wally")
+        e4 = Engineer(name="not dilbert", reports_to=e3)
         sess = fixture_session()
-        sess.add_all([e1, e2])
+        sess.add_all([e1, e2, e3, e4])
         sess.commit()
         return sess
 
@@ -492,10 +495,45 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
 
     def test_has(self):
         sess = self._two_obj_fixture()
+
         eq_(
             sess.query(Engineer)
             .filter(Engineer.reports_to.has(Engineer.name == "wally"))
-            .first(),
+            .one(),
+            Engineer(name="dilbert"),
+        )
+
+    def test_has_w_aliased(self):
+        sess = self._two_obj_fixture()
+
+        managing_engineer = aliased(Engineer)
+
+        eq_(
+            sess.query(Engineer)
+            .filter(
+                Engineer.reports_to.of_type(managing_engineer).has(
+                    managing_engineer.name == "wally"
+                )
+            )
+            .one(),
+            Engineer(name="dilbert"),
+        )
+
+    def test_has_w_aliased_w_loader_criteria(self):
+        """test for #13070"""
+        sess = self._two_obj_fixture()
+
+        managing_engineer = aliased(Engineer)
+
+        eq_(
+            sess.query(Engineer)
+            .filter(Engineer.reports_to.of_type(managing_engineer).has())
+            .options(
+                with_loader_criteria(
+                    managing_engineer, managing_engineer.name == "wally"
+                )
+            )
+            .one(),
             Engineer(name="dilbert"),
         )
 
