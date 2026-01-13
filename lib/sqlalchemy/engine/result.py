@@ -53,10 +53,22 @@ from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
+    from typing import Type
+
+    from .. import inspection
+    from ..sql import roles
+    from ..sql._typing import _HasClauseElement
     from ..sql.elements import SQLCoreOperations
     from ..sql.type_api import _ResultProcessorType
 
-_KeyType = Union[str, "SQLCoreOperations[Any]"]
+_KeyType = Union[
+    str,
+    "SQLCoreOperations[Any]",
+    "roles.TypedColumnsClauseRole[Any]",
+    "roles.ColumnsClauseRole",
+    "Type[Any]",
+    "inspection.Inspectable[_HasClauseElement[Any]]",
+]
 _KeyIndexType = Union[_KeyType, int]
 
 # is overridden in cursor using _CursorKeyMapRecType

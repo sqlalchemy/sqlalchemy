@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 13075
+
+    Fixed typing issues where ORM mapped classes and aliased entities could not
+    be used as keys in result row mappings or as join targets in select
+    statements. Patterns such as ``row._mapping[User]``,
+    ``row._mapping[aliased(User)]``, ``row._mapping[with_polymorphic(...)]``
+    (rejected by both mypy and Pylance), and ``.join(aliased(User))``
+    (rejected by Pylance) are documented and fully supported at runtime but
+    were previously rejected by type checkers. The type definitions for
+    :class:`._KeyType` and :class:`._FromClauseArgument` have been updated to
+    accept these ORM entity types.

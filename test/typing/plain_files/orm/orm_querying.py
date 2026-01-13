@@ -149,3 +149,26 @@ def test_10937() -> None:
 def test_bundles() -> None:
     b1 = orm.Bundle("b1", A.id, A.data)
     orm.Bundle("b2", A.id, A.data, b1)
+
+
+def test_row_mapping_with_orm_entities() -> None:
+    """Test row._mapping access with ORM entities and aliased entities."""
+    from sqlalchemy import create_engine
+
+    engine = create_engine("sqlite://")
+
+    # Test with regular mapped class
+    stmt1 = select(A, B)
+    with orm.Session(engine) as session:
+        for row in session.execute(stmt1):
+            _ = row._mapping[A]
+            _ = row._mapping[B]
+
+    # Test with aliased class
+    a_alias = aliased(A)
+    b_alias = aliased(B)
+    stmt2 = select(a_alias, b_alias)
+    with orm.Session(engine) as session:
+        for row in session.execute(stmt2):
+            _ = row._mapping[a_alias]
+            _ = row._mapping[b_alias]

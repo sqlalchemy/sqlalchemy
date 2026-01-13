@@ -26,7 +26,7 @@ def row_one(row: Row[int, str, bool]) -> None:
     assert_type(rm["foo"], Any)
     assert_type(rm[column("bar")], Any)
 
-    # EXPECTED_MYPY_RE: Invalid index type "int" for "RowMapping"; expected type "(str \| SQLCoreOperations\[Any\]|Union\[str, SQLCoreOperations\[Any\]\])"  # noqa: E501
+    # EXPECTED_MYPY_RE: Invalid index type "int" for "RowMapping"; expected type ".*"  # noqa: E501
     rm[3]
 
 
