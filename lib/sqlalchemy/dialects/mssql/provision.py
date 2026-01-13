@@ -173,7 +173,7 @@ def drop_all_schema_objects_pre_tables(cfg, eng):
                         DropConstraint(
                             ForeignKeyConstraint(
                                 [tb.c.x], [tb.c.y], name=fk["name"]
-                            )
+                            ),
                         )
                     )
 

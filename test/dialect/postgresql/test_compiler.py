@@ -797,7 +797,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     tbl.c.data,
                     name="uq_data1",
                     postgresql_nulls_not_distinct=True,
-                )
+                ),
             ),
             (
                 "ALTER TABLE test_tbl ADD CONSTRAINT uq_data1 UNIQUE "
@@ -810,7 +810,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     tbl.c.data2,
                     name="uq_data2",
                     postgresql_nulls_not_distinct=False,
-                )
+                ),
             ),
             (
                 "ALTER TABLE test_tbl ADD CONSTRAINT uq_data2 UNIQUE "
@@ -819,10 +819,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ),
         (
             lambda tbl: schema.AddConstraint(
-                schema.UniqueConstraint(
-                    tbl.c.data3,
-                    name="uq_data3",
-                )
+                schema.UniqueConstraint(tbl.c.data3, name="uq_data3"),
             ),
             "ALTER TABLE test_tbl ADD CONSTRAINT uq_data3 UNIQUE (data3)",
         ),
@@ -844,7 +841,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (
             lambda tbl: schema.AddConstraint(
-                UniqueConstraint(tbl.c.id, postgresql_include=[tbl.c.value])
+                UniqueConstraint(tbl.c.id, postgresql_include=[tbl.c.value]),
             ),
             "ALTER TABLE foo ADD UNIQUE (id) INCLUDE (value)",
         ),
@@ -852,7 +849,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             lambda tbl: schema.AddConstraint(
                 PrimaryKeyConstraint(
                     tbl.c.id, postgresql_include=[tbl.c.value, "misc"]
-                )
+                ),
             ),
             "ALTER TABLE foo ADD PRIMARY KEY (id) INCLUDE (value, misc)",
         ),

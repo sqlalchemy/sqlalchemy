@@ -445,7 +445,7 @@ def drop_all_tables(
                     conn.execute(
                         DropConstraint(
                             ForeignKeyConstraint([tb.c.x], [tb.c.y], name=fkc)
-                        )
+                        ),
                     )
 
 

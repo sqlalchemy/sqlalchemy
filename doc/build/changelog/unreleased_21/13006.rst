@@ -1,0 +1,7 @@
+.. change::
+    :tags: schema, usecase
+    :tickets: 13006
+
+    The the parameter :paramref:`_schema.DropConstraint.isolate_from_table`
+    was deprecated since it has no effect on the drop table behavior.
+    Its default values was also changed to ``False``.
