@@ -241,6 +241,7 @@ _InfoType = Dict[Any, Any]
 
 _FromClauseArgument = Union[
     roles.FromClauseRole,
+    roles.TypedColumnsClauseRole[Any],
     Type[Any],
     Inspectable[_HasClauseElement[Any]],
     _HasClauseElement[Any],
