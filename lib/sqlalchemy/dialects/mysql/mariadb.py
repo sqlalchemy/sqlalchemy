@@ -13,6 +13,7 @@ from typing import Optional
 from typing import TYPE_CHECKING
 
 from .base import MariaDBIdentifierPreparer
+from .base import MySQLDDLCompiler
 from .base import MySQLDialect
 from .base import MySQLIdentifierPreparer
 from .base import MySQLTypeCompiler
@@ -71,6 +72,13 @@ class _MariaDBUUID(UUID[_UUID_RETURN]):
             return None
 
 
+class MariaDBDDLCompiler(MySQLDDLCompiler):
+    def get_identity_options(self, identity_options):
+        text = super().get_identity_options(identity_options)
+        text = text.replace("NO CYCLE", "NOCYCLE")
+        return text
+
+
 class MariaDBTypeCompiler(MySQLTypeCompiler):
     def visit_INET4(self, type_: INET4, **kwargs: Any) -> str:
         return "INET4"
@@ -88,6 +96,7 @@ class MariaDBDialect(MySQLDialect):
 
     name = "mariadb"
     preparer: type[MySQLIdentifierPreparer] = MariaDBIdentifierPreparer
+    ddl_compiler = MariaDBDDLCompiler
     type_compiler_cls = MariaDBTypeCompiler
 
     colspecs = util.update_copy(MySQLDialect.colspecs, {Uuid: _MariaDBUUID})
@@ -100,8 +109,7 @@ class MariaDBDialect(MySQLDialect):
             and self.server_version_info >= (10, 7)
         )
 
-
-def loader(driver: str) -> Callable[[], type[MariaDBDialect]]:
+def loader(driver: str) -> type[MariaDBDialect]:
     dialect_mod = __import__(
         "sqlalchemy.dialects.mysql.%s" % driver
     ).dialects.mysql

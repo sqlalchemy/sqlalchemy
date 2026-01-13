@@ -772,3 +772,45 @@ class SequenceAsServerDefaultTest(
                 ),
             )
         )
+
+
+class MariaDBSequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "mariadb"
+
+    def test_create_sequence_nonecycle(self):
+        """Test that MariaDB doesn't use NOCYCLE When not set"""
+        self.assert_compile(
+            CreateSequence(Sequence("foo_seq")),
+            "CREATE SEQUENCE foo_seq",
+        )
+    def test_create_sequence_nocycle(self):
+        """Test that MariaDB uses NOCYCLE (one word) instead of NO CYCLE"""
+        self.assert_compile(
+            CreateSequence(Sequence("foo_seq", cycle=False)),
+            "CREATE SEQUENCE foo_seq NOCYCLE",
+        )
+
+    def test_create_sequence_cycle(self):
+        """Test that MariaDB uses CYCLE for cycle=True"""
+        self.assert_compile(
+            CreateSequence(Sequence("foo_seq", cycle=True)),
+            "CREATE SEQUENCE foo_seq CYCLE",
+        )
+
+    def test_create_sequence_complex(self):
+        """Test complex sequence with multiple options"""
+        self.assert_compile(
+            CreateSequence(
+                Sequence(
+                    "foo_seq",
+                    start=1,
+                    increment=2,
+                    nominvalue=True,
+                    nomaxvalue=True,
+                    cycle=False,
+                    cache=100,
+                )
+            ),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1 "
+            "NO MINVALUE NO MAXVALUE CACHE 100 NOCYCLE",
+        )
