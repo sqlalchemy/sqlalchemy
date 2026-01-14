@@ -1394,3 +1394,122 @@ def colspec(c):
     return testing.db.dialect.ddl_compiler(
         testing.db.dialect, None
     ).get_column_specification(c)
+
+
+class MariaDBSequenceIntegrationTest(fixtures.TestBase):
+    """Integration tests for MariaDB sequences with mysql:// prefix.
+    
+    These tests verify that _set_mariadb() properly configures MariaDBDDLCompiler
+    so that sequences work correctly when connecting to MariaDB using mysql:// prefix.
+    MariaDB uses NOCYCLE (one word) instead of NO CYCLE (two words).
+    
+    These tests create their own engine with mysql:// prefix to explicitly test
+    runtime detection, regardless of what --dburi is provided.
+    """
+    __only_on__ = "mariadb"
+    __backend__ = True
+    __requires__ = ("sequences",)
+    
+    def _mysql_engine(self):
+        """Create an engine with mysql:// prefix for runtime detection testing."""
+        from sqlalchemy import create_engine
+        from sqlalchemy.testing import config
+        
+        # Get the current database URL and replace mariadb:// with mysql://
+        url = config.db.url
+        mysql_url = str(url).replace("mariadb://", "mysql://").replace("mariadb+", "mysql+")
+        
+        return create_engine(mysql_url)
+    
+    def test_dialect_is_mysql_with_runtime_detection(self):
+        """Verify we're using MySQLDialect with runtime MariaDB detection.
+        
+        This test creates its own engine with mysql:// prefix to ensure
+        we're testing the _set_mariadb() runtime detection path.
+        """
+        engine = self._mysql_engine()
+        
+        with engine.connect() as conn:
+            dialect = conn.dialect
+            
+            # Verify we're using mysql:// prefix (dialect.name should be 'mysql')
+            eq_(dialect.name, "mysql")
+            
+            # Verify that runtime detection set is_mariadb flag
+            is_(dialect.is_mariadb, True)
+        
+        engine.dispose()
+    
+    def test_sequence_nocycle_mysql_prefix(self):
+        """Test that sequences with NOCYCLE work when using mysql:// prefix.
+        
+        This verifies that _set_mariadb() sets MariaDBDDLCompiler correctly.
+        MariaDB uses NOCYCLE (one word) instead of NO CYCLE (two words).
+        Requires MariaDB 10.3+ for sequence support.
+        """
+        from sqlalchemy import Sequence
+        from sqlalchemy.schema import CreateSequence, DropSequence
+        
+        engine = self._mysql_engine()
+        
+        # Verify we're testing with MariaDB 10.3+ (sequences were added in 10.3)
+        with engine.connect() as conn:
+            if not conn.dialect.server_version_info or conn.dialect.server_version_info < (10, 3):
+                testing.skip_test("MariaDB 10.3+ required for sequence support")
+        
+        # Create a sequence with cycle=False (should generate NOCYCLE, not NO CYCLE)
+        test_seq = Sequence("test_nocycle_seq", cycle=False)
+        
+        try:
+            with engine.begin() as connection:
+                # Create the sequence
+                connection.execute(CreateSequence(test_seq))
+                
+                # Verify the sequence was created by fetching next value
+                next_val = connection.scalar(test_seq.next_value())
+                eq_(next_val, 1)
+                
+                # Fetch another value to verify it works
+                next_val = connection.scalar(test_seq.next_value())
+                eq_(next_val, 2)
+        finally:
+            # Clean up the sequence
+            with engine.begin() as connection:
+                connection.execute(DropSequence(test_seq, if_exists=True))
+            engine.dispose()
+    
+    def test_sequence_cycle_mysql_prefix(self):
+        """Test that sequences with CYCLE work when using mysql:// prefix.
+        
+        This verifies that _set_mariadb() sets MariaDBDDLCompiler correctly.
+        Requires MariaDB 10.3+ for sequence support.
+        """
+        from sqlalchemy import Sequence
+        from sqlalchemy.schema import CreateSequence, DropSequence
+        
+        engine = self._mysql_engine()
+        
+        # Verify we're testing with MariaDB 10.3+
+        with engine.connect() as conn:
+            if not conn.dialect.server_version_info or conn.dialect.server_version_info < (10, 3):
+                testing.skip_test("MariaDB 10.3+ required for sequence support")
+        
+        # Create a sequence with cycle=True
+        test_seq = Sequence("test_cycle_seq", start=1, maxvalue=3, cycle=True)
+        
+        try:
+            with engine.begin() as connection:
+                # Create the sequence
+                connection.execute(CreateSequence(test_seq))
+                
+                # Verify the sequence was created and cycles
+                eq_(connection.scalar(test_seq.next_value()), 1)
+                eq_(connection.scalar(test_seq.next_value()), 2)
+                eq_(connection.scalar(test_seq.next_value()), 3)
+                # After reaching maxvalue, it should cycle back to start
+                eq_(connection.scalar(test_seq.next_value()), 1)
+        finally:
+            # Clean up the sequence
+            with engine.begin() as connection:
+                connection.execute(DropSequence(test_seq, if_exists=True))
+            engine.dispose()

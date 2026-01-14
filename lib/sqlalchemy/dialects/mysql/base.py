@@ -2939,6 +2939,7 @@ class MySQLDialect(default.DefaultDialect):
                 % (".".join(map(str, server_version_info)),)
             )
         if is_mariadb:
+            from .mariadb import MariaDBDDLCompiler
 
             if not issubclass(self.preparer, MariaDBIdentifierPreparer):
                 self.preparer = MariaDBIdentifierPreparer
@@ -2946,6 +2947,7 @@ class MySQLDialect(default.DefaultDialect):
                 # so set it again
                 self.identifier_preparer = self.preparer(self)
 
+            self.ddl_compiler = MariaDBDDLCompiler
             # this will be updated on first connect in initialize()
             # if using older mariadb version
             self.delete_returning = True
