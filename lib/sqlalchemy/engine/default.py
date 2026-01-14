@@ -72,8 +72,6 @@ from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
-    from types import ModuleType
-
     from .base import Engine
     from .cursor import ResultFetchStrategy
     from .interfaces import _CoreMultiExecuteParams
@@ -302,7 +300,7 @@ class DefaultDialect(Dialect):
         self,
         paramstyle: Optional[_ParamStyle] = None,
         isolation_level: Optional[IsolationLevel] = None,
-        dbapi: Optional[ModuleType] = None,
+        dbapi: Optional[DBAPIModule] = None,
         implicit_returning: Literal[True] = True,
         supports_native_boolean: Optional[bool] = None,
         max_identifier_length: Optional[int] = None,

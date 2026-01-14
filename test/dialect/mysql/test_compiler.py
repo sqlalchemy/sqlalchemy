@@ -433,6 +433,11 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
     ):
         dialect = mysql.dialect(is_mariadb=is_mariadb)
         dialect.server_version_info = version
+        if is_mariadb:
+            with testing.expect_warnings(".*"):
+                dialect._initialize_mariadb(None)
+        else:
+            dialect._initialize_mysql(None)
 
         m = MetaData()
         tbl = Table(
@@ -1143,8 +1148,10 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL, CacheKeyFixture):
         if maria_db:
             dialect.is_mariadb = maria_db
             dialect.server_version_info = (10, 4, 5)
+            dialect._initialize_mariadb(None)
         else:
             dialect.server_version_info = (8, 0, 17)
+            dialect._initialize_mysql(None)
         t = sql.table("t", sql.column("col"))
         self.assert_compile(cast(t.c.col, type_), expected, dialect=dialect)
 

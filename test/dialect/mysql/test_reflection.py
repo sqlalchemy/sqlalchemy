@@ -872,7 +872,11 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             else:
                 default = er["default"]
 
-            if default is not None and connection.dialect._is_mariadb_102:
+            if (
+                default is not None
+                and connection.dialect.is_mariadb
+                and connection.dialect.server_version_info > (10, 2)
+            ):
                 default = default.replace(
                     "CURRENT_TIMESTAMP", "current_timestamp()"
                 )

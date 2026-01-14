@@ -55,7 +55,6 @@ from typing import Sequence
 from typing import TYPE_CHECKING
 from typing import Union
 
-from .base import MariaDBIdentifierPreparer
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
@@ -119,12 +118,6 @@ class IdentifierPreparerCommon_mysqlconnector:
 
 class MySQLIdentifierPreparer_mysqlconnector(
     IdentifierPreparerCommon_mysqlconnector, MySQLIdentifierPreparer
-):
-    pass
-
-
-class MariaDBIdentifierPreparer_mysqlconnector(
-    IdentifierPreparerCommon_mysqlconnector, MariaDBIdentifierPreparer
 ):
     pass
 
@@ -296,7 +289,7 @@ class MariaDBDialect_mysqlconnector(
 ):
     supports_statement_cache = True
     _allows_uuid_binds = False
-    preparer = MariaDBIdentifierPreparer_mysqlconnector
+    preparer = MySQLIdentifierPreparer_mysqlconnector
 
 
 dialect = MySQLDialect_mysqlconnector

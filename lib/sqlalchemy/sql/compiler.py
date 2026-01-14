@@ -7314,7 +7314,9 @@ class DDLCompiler(Compiled):
             " CASCADE" if drop.cascade else "",
         )
 
-    def get_column_specification(self, column, **kwargs):
+    def get_column_specification(
+        self, column: Column[Any], **kwargs: Any
+    ) -> str:
         colspec = (
             self.preparer.format_column(column)
             + " "
@@ -7341,10 +7343,10 @@ class DDLCompiler(Compiled):
             colspec += " NOT NULL"
         return colspec
 
-    def create_table_suffix(self, table):
+    def create_table_suffix(self, table: Table) -> str:
         return ""
 
-    def post_create_table(self, table):
+    def post_create_table(self, table: Table) -> str:
         return ""
 
     def get_column_default_string(self, column: Column[Any]) -> Optional[str]:

@@ -796,8 +796,7 @@ class DefaultRequirements(SuiteRequirements):
                 and (
                     (
                         config.db.dialect._is_mariadb
-                        and config.db.dialect._mariadb_normalized_version_info
-                        >= (10, 2)
+                        and config.db.dialect.server_version_info >= (10, 2)
                     )
                 ),
                 "mariadb>10.2",
@@ -1238,10 +1237,7 @@ class DefaultRequirements(SuiteRequirements):
                         not config.db.dialect._is_mariadb
                         and against(config, "mysql >= 5.7")
                     )
-                    or (
-                        config.db.dialect._mariadb_normalized_version_info
-                        >= (10, 2, 7)
-                    )
+                    or (config.db.dialect.server_version_info >= (10, 2, 7))
                 ),
                 "mariadb>=10.2.7",
                 "postgresql >= 9.3",
@@ -1915,14 +1911,14 @@ class DefaultRequirements(SuiteRequirements):
         return (
             against(config, ["mysql", "mariadb"])
             and config.db.dialect._is_mariadb
-            and config.db.dialect._mariadb_normalized_version_info >= (10, 2)
+            and config.db.dialect.server_version_info >= (10, 2)
         )
 
     def _mariadb_105(self, config):
         return (
             against(config, ["mysql", "mariadb"])
             and config.db.dialect._is_mariadb
-            and config.db.dialect._mariadb_normalized_version_info >= (10, 5)
+            and config.db.dialect.server_version_info >= (10, 5)
         )
 
     def _mysql_and_check_constraints_exist(self, config):
@@ -1930,9 +1926,7 @@ class DefaultRequirements(SuiteRequirements):
         # 2. it enforces check constraints
         if exclusions.against(config, ["mysql", "mariadb"]):
             if config.db.dialect._is_mariadb:
-                norm_version_info = (
-                    config.db.dialect._mariadb_normalized_version_info
-                )
+                norm_version_info = config.db.dialect.server_version_info
                 return norm_version_info >= (10, 2)
             else:
                 norm_version_info = config.db.dialect.server_version_info

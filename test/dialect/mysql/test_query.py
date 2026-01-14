@@ -14,7 +14,6 @@ from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
-from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import schema
 from sqlalchemy import select
@@ -408,7 +407,10 @@ class ComputedTest(fixtures.TestBase):
         ("unset"),
         argnames="nullable",
     )
-    def test_column_computed_for_nullable(self, connection, nullable):
+    @testing.variation("setnull", ["constructor", "assign"])
+    def test_column_computed_for_nullable(
+        self, metadata, connection, nullable, setnull: testing.Variation
+    ):
         """test #10056
 
         we want to make sure that nullable is always set to True for computed
@@ -416,29 +418,42 @@ class ComputedTest(fixtures.TestBase):
         ref: https://mariadb.com/kb/en/generated-columns/#statement-support
 
         """
-        m = MetaData()
-        kwargs = {"nullable": nullable} if nullable != "unset" else {}
+
+        if setnull.assign:
+            kwargs = {}
+        elif setnull.constructor:
+            kwargs = {"nullable": nullable} if nullable != "unset" else {}
+        else:
+            setnull.fail()
+
         t = Table(
             "t",
-            m,
+            metadata,
             Column("x", Integer),
             Column("y", Integer, Computed("x + 2"), **kwargs),
         )
-        if connection.engine.dialect.name == "mariadb" and nullable in (
-            False,
-            None,
+
+        # the "assign" path here is to exercise the actual bug shown at
+        # #10056; user defined nullable is not passed, but MappedColumn
+        # sets it after the fact.   Previously this path was not exercised
+        if setnull.assign and nullable != "unset":
+            t.c.y.nullable = nullable
+
+        if (
+            connection.engine.dialect.name == "mariadb"
+            and setnull.constructor
+            and nullable in (False, None)
         ):
+            # if nullable was passed explicitly as False or None,
+            # then we dont touch .nullable
             assert_raises(
                 exc.ProgrammingError,
                 connection.execute,
                 schema.CreateTable(t),
             )
-            # If assertion happens table won't be created so
-            #  return from test
-            return
-        # Create and then drop table
-        connection.execute(schema.CreateTable(t))
-        connection.execute(schema.DropTable(t))
+        else:
+            # assert table can be created
+            connection.execute(schema.CreateTable(t))
 
 
 class LimitORMTest(fixtures.MappedTest):

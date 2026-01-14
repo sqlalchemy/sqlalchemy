@@ -428,37 +428,33 @@ class ParseVersionTest(fixtures.TestBase):
         )
 
     @testing.combinations(
-        ((10, 2, 7), "10.2.7-MariaDB", (10, 2, 7), True),
+        ((10, 2, 7), "10.2.7-MariaDB", True),
         (
             (10, 2, 7),
             "5.6.15.10.2.7-MariaDB",
-            (5, 6, 15, 10, 2, 7),
             True,
         ),
-        ((5, 0, 51, 24), "5.0.51a.24+lenny5", (5, 0, 51, 24), False),
-        ((10, 2, 10), "10.2.10-MariaDB", (10, 2, 10), True),
-        ((5, 7, 20), "5.7.20", (5, 7, 20), False),
-        ((5, 6, 15), "5.6.15", (5, 6, 15), False),
+        ((5, 0, 51, 24), "5.0.51a.24+lenny5", False),
+        ((10, 2, 10), "10.2.10-MariaDB", True),
+        ((5, 7, 20), "5.7.20", False),
+        ((5, 6, 15), "5.6.15", False),
         (
             (10, 2, 6),
             "10.2.6.MariaDB.10.2.6+maria~stretch-log",
-            (10, 2, 6, 10, 2, 6),
             True,
         ),
         (
             (10, 1, 9),
             "10.1.9-MariaDBV1.0R050D002-20170809-1522",
-            (10, 1, 9, 20170809, 1522),
             True,
         ),
     )
     def test_mariadb_normalized_version(
-        self, expected, raw_version, version, is_mariadb
+        self, expected, raw_version, is_mariadb
     ):
         dialect = mysql.dialect()
-        eq_(dialect._parse_server_version(raw_version), version)
-        dialect.server_version_info = version
-        eq_(dialect._mariadb_normalized_version_info, expected)
+        eq_(dialect._parse_server_version(raw_version), expected)
+        eq_(dialect.server_version_info, expected)
         assert dialect._is_mariadb is is_mariadb
 
     @testing.combinations(
