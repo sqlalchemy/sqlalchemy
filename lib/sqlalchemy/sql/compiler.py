@@ -113,6 +113,7 @@ if typing.TYPE_CHECKING:
     from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
+    from .schema import IdentityOptions
     from .schema import Index
     from .schema import PrimaryKeyConstraint
     from .schema import Table
@@ -6983,7 +6984,7 @@ class DDLCompiler(Compiled):
     def visit_drop_constraint_comment(self, drop, **kw):
         raise exc.UnsupportedCompilationError(self, type(drop))
 
-    def get_identity_options(self, identity_options):
+    def get_identity_options(self, identity_options: IdentityOptions) -> str:
         text = []
         if identity_options.increment is not None:
             text.append("INCREMENT BY %d" % identity_options.increment)

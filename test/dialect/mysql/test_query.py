@@ -10,24 +10,31 @@ from sqlalchemy import exc
 from sqlalchemy import false
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import schema
 from sqlalchemy import select
+from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy.dialects.mysql import TIMESTAMP
+from sqlalchemy.sql.ddl import CreateSequence
+from sqlalchemy.sql.ddl import DropSequence
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 
 
 class IdiosyncrasyTest(fixtures.TestBase):
@@ -108,6 +115,68 @@ class ServerDefaultCreateTest(fixtures.TestBase):
             Column("thecol", datatype, server_default=default),
         )
         t.create(connection)
+
+
+class MariaDBSequenceTest(fixtures.TestBase):
+    __only_on__ = "mariadb"
+    __backend__ = True
+
+    __requires__ = ("sequences",)
+
+    @testing.fixture
+    def create_seq(self, connection):
+        seqs = set()
+
+        def go(seq):
+            seqs.add(seq)
+            connection.execute(CreateSequence(seq))
+
+        yield go
+
+        for seq in seqs:
+            connection.execute(DropSequence(seq, if_exists=True))
+
+    def test_has_sequence_and_exists_flag(self, connection, create_seq):
+        seq = Sequence("has_seq_test")
+        is_false(inspect(connection).has_sequence("has_seq_test"))
+
+        create_seq(seq)
+        is_true(inspect(connection).has_sequence("has_seq_test"))
+
+        connection.execute(CreateSequence(seq, if_not_exists=True))
+
+        connection.execute(DropSequence(seq))
+        is_false(inspect(connection).has_sequence("has_seq_test"))
+        connection.execute(DropSequence(seq, if_exists=True))
+
+    @testing.combinations(
+        (Sequence("foo_seq"), (1, 2, 3, 4, 5, 6, 7), False),
+        (
+            Sequence("foo_seq", maxvalue=3, cycle=True),
+            (1, 2, 3, 1, 2, 3, 1),
+            False,
+        ),
+        (Sequence("foo_seq", maxvalue=3, cycle=False), (1, 2, 3), True),
+        argnames="seq, expected, runout",
+    )
+    def test_sequence_roundtrip(
+        self, connection, create_seq, seq, expected, runout
+    ):
+        """tests related to #13073"""
+
+        create_seq(seq)
+
+        eq_(
+            [
+                connection.scalar(seq.next_value())
+                for i in range(len(expected))
+            ],
+            list(expected),
+        )
+
+        if runout:
+            with expect_raises_message(exc.DBAPIError, ".*has run out"):
+                connection.scalar(seq.next_value())
 
 
 class MatchTest(fixtures.TablesTest):

@@ -36,6 +36,7 @@ from sqlalchemy import NVARCHAR
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
 from sqlalchemy import select
+from sqlalchemy import Sequence
 from sqlalchemy import SmallInteger
 from sqlalchemy import sql
 from sqlalchemy import String
@@ -61,6 +62,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import delete
 from sqlalchemy.sql import table
 from sqlalchemy.sql import update
+from sqlalchemy.sql.ddl import CreateSequence
 from sqlalchemy.sql.expression import bindparam
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.testing import assert_raises_message
@@ -1076,6 +1078,36 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "`order` INTEGER NOT NULL AUTO_INCREMENT, "
             "PRIMARY KEY (`order`, id)"
             ")ENGINE=InnoDB",
+        )
+
+    @testing.combinations(
+        (Sequence("foo_seq"), "CREATE SEQUENCE foo_seq"),
+        (Sequence("foo_seq", cycle=True), "CREATE SEQUENCE foo_seq CYCLE"),
+        (Sequence("foo_seq", cycle=False), "CREATE SEQUENCE foo_seq NOCYCLE"),
+        (
+            Sequence(
+                "foo_seq",
+                start=1,
+                increment=2,
+                nominvalue=True,
+                nomaxvalue=True,
+                cycle=False,
+                cache=100,
+            ),
+            (
+                "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1 NO"
+                " MINVALUE NO MAXVALUE CACHE 100 NOCYCLE"
+            ),
+        ),
+        argnames="seq, expected",
+    )
+    @testing.variation("use_mariadb", [True, False])
+    def test_mariadb_sequence_behaviors(self, seq, expected, use_mariadb):
+        """test #13073"""
+        self.assert_compile(
+            CreateSequence(seq),
+            expected,
+            dialect="mariadb" if use_mariadb else "mysql",
         )
 
     def test_create_table_with_partition(self):
