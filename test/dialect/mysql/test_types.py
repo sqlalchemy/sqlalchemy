@@ -530,6 +530,169 @@ class INETMariadbTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(type_, res)
 
 
+class MariaDBINETIntegrationTest(fixtures.TablesTest):
+    """Integration tests for INET4/INET6 types with mysql:// prefix.
+    
+    These tests verify that _set_mariadb() properly configures MariaDBTypeCompiler
+    so that INET4/INET6 types work when connecting to MariaDB using mysql:// prefix.
+    
+    These tests create their own engine with mysql:// prefix to explicitly test
+    runtime detection, regardless of what --dburi is provided.
+    """
+    __only_on__ = "mariadb"
+    __backend__ = True
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "inet_test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("ipv4_addr", mariadb.INET4()),
+            Column("ipv6_addr", mariadb.INET6()),
+        )
+    
+    def _mysql_engine(self):
+        """Create an engine with mysql:// prefix for runtime detection testing."""
+        from sqlalchemy import create_engine
+        from sqlalchemy.testing import config
+        
+        # Get the current database URL and replace mariadb:// with mysql://
+        url = config.db.url
+        mysql_url = str(url).replace("mariadb://", "mysql://").replace("mariadb+", "mysql+")
+        
+        return create_engine(mysql_url)
+    
+    def test_dialect_is_mysql_with_runtime_detection(self):
+        """Verify we're using MySQLDialect with runtime MariaDB detection.
+        
+        This test creates its own engine with mysql:// prefix to ensure
+        we're testing the _set_mariadb() runtime detection path.
+        """
+        engine = self._mysql_engine()
+        
+        with engine.connect() as conn:
+            dialect = conn.dialect
+            
+            # Verify we're using mysql:// prefix (dialect.name should be 'mysql')
+            eq_(dialect.name, "mysql")
+            
+            # Verify that runtime detection set is_mariadb flag
+            is_(dialect.is_mariadb, True)
+        
+        engine.dispose()
+    
+    def test_inet4_create_table_mysql_prefix(self):
+        """Test that INET4 table can be created when using mysql:// prefix.
+        
+        This verifies that _set_mariadb() sets MariaDBTypeCompiler correctly.
+        Before the fix, this would fail with UnsupportedCompilationError.
+        """
+        engine = self._mysql_engine()
+        
+        # Create the table using mysql:// prefix
+        self.tables.inet_test.create(engine, checkfirst=True)
+        
+        try:
+            with engine.connect() as connection:
+                # Verify the table was created successfully
+                result = connection.execute(
+                    sql.text("SHOW CREATE TABLE inet_test")
+                ).fetchone()
+                
+                # Verify INET4 and INET6 types are used for columns (not fallback types)
+                # Check for patterns like: `ipv4_addr` inet4 and `ipv6_addr` inet6
+                create_ddl = result[1]
+                assert "`ipv4_addr` inet4" in create_ddl.lower(), \
+                    f"INET4 type not found in column definition. DDL: {create_ddl}"
+                assert "`ipv6_addr` inet6" in create_ddl.lower(), \
+                    f"INET6 type not found in column definition. DDL: {create_ddl}"
+        finally:
+            self.tables.inet_test.drop(engine, checkfirst=True)
+            engine.dispose()
+    
+    def test_inet4_insert_select_mysql_prefix(self):
+        """Test INET4/INET6 insert and select operations with mysql:// prefix."""
+        engine = self._mysql_engine()
+        inet_test = self.tables.inet_test
+        
+        # Create the table
+        inet_test.create(engine, checkfirst=True)
+        
+        try:
+            with engine.connect() as connection:
+                # Insert test data
+                connection.execute(
+                    inet_test.insert(),
+                    [
+                        {"id": 1, "ipv4_addr": "192.168.1.1", "ipv6_addr": "::1"},
+                        {"id": 2, "ipv4_addr": "10.0.0.1", "ipv6_addr": "2001:db8::1"},
+                    ],
+                )
+                connection.commit()
+                
+                # Select and verify data
+                result = connection.execute(
+                    select(inet_test).order_by(inet_test.c.id)
+                ).fetchall()
+                
+                eq_(len(result), 2)
+                eq_(result[0].ipv4_addr, "192.168.1.1")
+                eq_(result[0].ipv6_addr, "::1")
+                eq_(result[1].ipv4_addr, "10.0.0.1")
+                eq_(result[1].ipv6_addr, "2001:db8::1")
+        finally:
+            inet_test.drop(engine, checkfirst=True)
+            engine.dispose()
+    
+    def test_uuid_create_table_mysql_prefix(self):
+        """Test that UUID table can be created when using mysql:// prefix.
+        
+        This verifies that _set_mariadb() sets supports_native_uuid and UUID colspec.
+        Requires MariaDB 10.7+ for native UUID support.
+        """
+        import uuid as uuid_module
+        from sqlalchemy.sql.sqltypes import Uuid
+        
+        engine = self._mysql_engine()
+        
+        # Verify we're testing with MariaDB 10.7+
+        with engine.connect() as conn:
+            if not conn.dialect.server_version_info or conn.dialect.server_version_info < (10, 7):
+                testing.skip_test("MariaDB 10.7+ required for native UUID support")
+        
+        # Create a table with UUID column
+        metadata = MetaData()
+        uuid_test = Table(
+            "uuid_test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("uuid_col", Uuid()),
+        )
+        
+        uuid_test.create(engine, checkfirst=True)
+        
+        try:
+            with engine.connect() as connection:
+                # Verify the table was created successfully
+                result = connection.execute(
+                    sql.text("SHOW CREATE TABLE uuid_test")
+                ).fetchone()
+                
+                # Verify UUID type is used for the column (not CHAR(32) fallback)
+                # The DDL should contain something like: `uuid_col` uuid
+                create_ddl = result[1]
+                # Check that the column definition has "uuid" as the type, not just in the name
+                # Look for pattern like: `uuid_col` uuid (with space after column name)
+                assert "`uuid_col` uuid" in create_ddl.lower(), \
+                    f"UUID type not found in column definition. DDL: {create_ddl}"
+        finally:
+            with engine.connect() as conn:
+                conn.execute(sql.text("DROP TABLE IF EXISTS uuid_test"))
+                conn.commit()
+            engine.dispose()
+
+
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
     __dialect__ = mysql.dialect()
     __only_on__ = "mysql", "mariadb"

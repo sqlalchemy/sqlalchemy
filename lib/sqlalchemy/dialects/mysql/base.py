@@ -1135,6 +1135,7 @@ from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql import visitors
+from ...sql.sqltypes import Uuid
 from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...sql.compiler import SQLCompiler
 from ...sql.schema import SchemaConst
@@ -2939,12 +2940,24 @@ class MySQLDialect(default.DefaultDialect):
                 % (".".join(map(str, server_version_info)),)
             )
         if is_mariadb:
+            from .mariadb import _MariaDBUUID
+            from .mariadb import MariaDBTypeCompiler
 
             if not issubclass(self.preparer, MariaDBIdentifierPreparer):
                 self.preparer = MariaDBIdentifierPreparer
                 # this would have been set by the default dialect already,
                 # so set it again
                 self.identifier_preparer = self.preparer(self)
+
+            self.type_compiler_instance = self.type_compiler = MariaDBTypeCompiler(self)
+            self.supports_statement_cache = True
+            self.supports_native_uuid = bool(
+                server_version_info and server_version_info >= (10, 7)
+            )
+            self._allows_uuid_binds = True
+            self.colspecs = util.update_copy(
+                self.colspecs, {Uuid: _MariaDBUUID}  # type: ignore[dict-item]
+            )
 
             # this will be updated on first connect in initialize()
             # if using older mariadb version

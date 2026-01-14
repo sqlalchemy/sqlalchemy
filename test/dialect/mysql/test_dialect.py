@@ -481,6 +481,72 @@ class ParseVersionTest(fixtures.TestBase):
         else:
             dialect._warn_for_known_db_issues()
 
+    def test_set_mariadb_configures_type_compiler(self):
+        """Test that _set_mariadb() sets MariaDBTypeCompiler for INET4/INET6 support"""
+        from sqlalchemy.dialects.mysql.mariadb import MariaDBTypeCompiler
+        
+        dialect = mysql.dialect()
+        dialect._parse_server_version("10.7.0-MariaDB")
+        
+        # Verify MariaDBTypeCompiler is set
+        is_(type(dialect.type_compiler_instance), MariaDBTypeCompiler)
+        is_(type(dialect.type_compiler), MariaDBTypeCompiler)
+
+    def test_set_mariadb_inet4_type_compilation(self):
+        """Test that INET4 type compiles correctly after _set_mariadb()"""
+        from sqlalchemy.dialects.mysql.mariadb import INET4
+        
+        dialect = mysql.dialect()
+        dialect._parse_server_version("10.7.0-MariaDB")
+        
+        inet4_type = INET4()
+        compiled = dialect.type_compiler_instance.process(inet4_type)
+        eq_(compiled, "INET4")
+
+    def test_set_mariadb_inet6_type_compilation(self):
+        """Test that INET6 type compiles correctly after _set_mariadb()"""
+        from sqlalchemy.dialects.mysql.mariadb import INET6
+        
+        dialect = mysql.dialect()
+        dialect._parse_server_version("10.7.0-MariaDB")
+        
+        inet6_type = INET6()
+        compiled = dialect.type_compiler_instance.process(inet6_type)
+        eq_(compiled, "INET6")
+
+    def test_set_mariadb_supports_native_uuid_10_7_plus(self):
+        """Test that supports_native_uuid is True for MariaDB 10.7+"""
+        dialect = mysql.dialect()
+        dialect._parse_server_version("10.7.0-MariaDB")
+        
+        is_(dialect.supports_native_uuid, True)
+        is_(dialect._allows_uuid_binds, True)
+
+    def test_set_mariadb_supports_native_uuid_10_6(self):
+        """Test that supports_native_uuid is False for MariaDB < 10.7"""
+        dialect = mysql.dialect()
+        dialect._parse_server_version("10.6.0-MariaDB")
+        
+        is_(dialect.supports_native_uuid, False)
+        is_(dialect._allows_uuid_binds, True)
+
+    def test_set_mariadb_uuid_colspec(self):
+        """Test that UUID colspec is set to _MariaDBUUID"""
+        from sqlalchemy.dialects.mysql.mariadb import _MariaDBUUID
+        from sqlalchemy.sql.sqltypes import Uuid
+        
+        dialect = mysql.dialect()
+        dialect._parse_server_version("10.7.0-MariaDB")
+        
+        in_(Uuid, dialect.colspecs)
+        is_(dialect.colspecs[Uuid], _MariaDBUUID)
+
+    def test_set_mariadb_statement_cache(self):
+        """Test that supports_statement_cache is enabled for MariaDB"""
+        dialect = mysql.dialect()
+        dialect._parse_server_version("10.7.0-MariaDB")
+        
+        is_(dialect.supports_statement_cache, True)
 
 class RemoveUTCTimestampTest(fixtures.TablesTest):
     """This test exists because we removed the MySQL dialect's
