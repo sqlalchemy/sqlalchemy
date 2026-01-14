@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from typing import Any
-from typing import Callable
 from typing import Optional
 from typing import TYPE_CHECKING
 
@@ -101,7 +100,7 @@ class MariaDBDialect(MySQLDialect):
         )
 
 
-def loader(driver: str) -> Callable[[], type[MariaDBDialect]]:
+def loader(driver: str) -> type[MariaDBDialect]:
     dialect_mod = __import__(
         "sqlalchemy.dialects.mysql.%s" % driver
     ).dialects.mysql

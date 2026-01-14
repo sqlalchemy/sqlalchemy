@@ -1180,6 +1180,7 @@ if TYPE_CHECKING:
     from ...sql.functions import random
     from ...sql.functions import rollup
     from ...sql.functions import sysdate
+    from ...sql.schema import IdentityOptions
     from ...sql.schema import Sequence as Sequence_SchemaItem
     from ...sql.type_api import TypeEngine
     from ...sql.visitors import ExternallyTraversible
@@ -2363,6 +2364,15 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             self.preparer.format_column(create.element),
             self.get_column_specification(create.element),
         )
+
+    def get_identity_options(self, identity_options: IdentityOptions) -> str:
+        """mariadb-specific sequence option; this will move to a
+        mariadb-specific module in 2.1
+
+        """
+        text = super().get_identity_options(identity_options)
+        text = text.replace("NO CYCLE", "NOCYCLE")
+        return text
 
 
 class MySQLTypeCompiler(compiler.GenericTypeCompiler):
