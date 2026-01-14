@@ -1,5 +1,5 @@
 # dialects/postgresql/types.py
-# Copyright (C) 2013-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2013-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
