@@ -1,4 +1,4 @@
-.. _whatsnew_21_toplevel:
+.. _migration_21_toplevel:
 
 =============================
 What's New in SQLAlchemy 2.1?
@@ -1551,7 +1551,7 @@ Examples to summarize the change are as follows::
 The ``oracledb`` DBAPI driver itself can be installed either directly
 or via the ``sqlalchemy[oracle]`` extra:
 
-.. sourcecode:: txt
+.. sourcecode:: text
 
     # install oracledb directly
     pip install oracledb

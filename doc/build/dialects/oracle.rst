@@ -51,6 +51,7 @@ construction arguments, are as follows:
 
 .. autoclass:: BOOLEAN
    :members: __init__
+   :noindex:
 
 .. autoclass:: DATE
    :members: __init__

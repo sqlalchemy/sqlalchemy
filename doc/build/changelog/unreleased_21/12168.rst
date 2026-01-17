@@ -17,7 +17,7 @@
     overriding a default that was actually set elsewhere, such as in
     relationship / foreign key assignment patterns as well as in
     :meth:`_orm.Session.merge` scenarios.   See the full writeup in the
-    :ref:`whatsnew_21_toplevel` document which includes guidance on how to
+    :ref:`migration_21_toplevel` document which includes guidance on how to
     re-enable the 2.0 version of the behavior if needed.
 
     .. seealso::

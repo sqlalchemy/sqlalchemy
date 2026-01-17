@@ -2,8 +2,6 @@
     :tags: usecase, postgresql
     :tickets: 12948
 
-    .. _change_12948_changelog:
-
     Added support for PostgreSQL 14+ HSTORE subscripting syntax. When connected
     to PostgreSQL 14 or later, HSTORE columns now automatically use the native
     subscript notation ``hstore_col['key']`` instead of the arrow operator
@@ -17,6 +15,7 @@
 
     .. seealso::
 
-        :ref:`change_12948` - in the :ref:`migration guide <whatsnew_21_toplevel>`
+        :ref:`change_12948` - in the :ref:`migration guide
+        <migration_21_toplevel>`
 
 
