@@ -111,6 +111,9 @@ jobs:
             architecture: x86
           - os: "windows-11-arm"
             architecture: x64
+          # 3.14t is not yet supported on windows-11-arm
+          - os: "windows-11-arm"
+            python-version: "3.14t"
 
       fail-fast: false
 
