@@ -18,6 +18,12 @@ or "table_per_association" instead of this approach.
 
 """
 
+from __future__ import annotations
+
+from typing import Any
+from typing import cast
+from typing import TYPE_CHECKING
+
 from sqlalchemy import and_
 from sqlalchemy import create_engine
 from sqlalchemy import event
@@ -27,6 +33,7 @@ from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
@@ -37,8 +44,8 @@ class Base(DeclarativeBase):
     and surrogate primary key column.
     """
 
-    @declared_attr
-    def __tablename__(cls):
+    @declared_attr.directive
+    def __tablename__(cls) -> str:
         return cls.__name__.lower()
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -65,13 +72,15 @@ class Address(Base):
     """
 
     @property
-    def parent(self):
+    def parent(self) -> HasAddresses:
         """Provides in-Python access to the "parent" by choosing
         the appropriate relationship.
         """
-        return getattr(self, f"parent_{self.discriminator}")
+        return cast(
+            HasAddresses, getattr(self, f"parent_{self.discriminator}")
+        )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(street=%r, city=%r, zip=%r)" % (
             self.__class__.__name__,
             self.street,
@@ -86,9 +95,12 @@ class HasAddresses:
 
     """
 
+    if TYPE_CHECKING:
+        addresses: Mapped[list[Address]]
+
 
 @event.listens_for(HasAddresses, "mapper_configured", propagate=True)
-def setup_listener(mapper, class_):
+def setup_listener(mapper: Mapper[Any], class_: type[Any]) -> None:
     name = class_.__name__
     discriminator = name.lower()
     class_.addresses = relationship(
@@ -106,7 +118,9 @@ def setup_listener(mapper, class_):
     )
 
     @event.listens_for(class_.addresses, "append")
-    def append_address(target, value, initiator):
+    def append_address(
+        target: HasAddresses, value: Address, initiator: Any
+    ) -> None:
         value.discriminator = discriminator
 
 
