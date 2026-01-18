@@ -1247,8 +1247,9 @@ class DefaultRequirements(SuiteRequirements):
                 "postgresql >= 9.3",
                 self._sqlite_json,
                 "mssql",
+                "oracle>=21",
             ]
-        )
+        ) + skip_if("oracle+cx_oracle")
 
     @property
     def json_index_supplementary_unicode_element(self):
@@ -1339,6 +1340,7 @@ class DefaultRequirements(SuiteRequirements):
                 and not config.db.dialect._is_mariadb,
                 "postgresql >= 9.3",
                 "sqlite >= 3.9",
+                "oracle>=21",
             ]
         )
 
@@ -2179,6 +2181,16 @@ class DefaultRequirements(SuiteRequirements):
     def json_deserializer_binary(self):
         "indicates if the json_deserializer function is called with bytes"
         return only_on(["postgresql+psycopg"])
+
+    @property
+    def json_deserializer_is_used(self):
+        """Indicates if custom json_deserializer is called for JSON columns.
+        
+        Some database drivers (e.g., Oracle's oracledb) automatically
+        deserialize JSON at the DBAPI level, returning native Python objects
+        directly, which means custom json_deserializer cannot be invoked.
+        """
+        return skip_if(["oracle"])
 
     @property
     def mssql_filestream(self):
