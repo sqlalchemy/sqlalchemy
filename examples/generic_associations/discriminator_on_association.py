@@ -16,9 +16,15 @@ objects, but is also slightly more complex.
 
 """
 
+from __future__ import annotations
+
+from typing import Any
+from typing import TYPE_CHECKING
+
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
@@ -33,8 +39,8 @@ class Base(DeclarativeBase):
     and surrogate primary key column.
     """
 
-    @declared_attr
-    def __tablename__(cls):
+    @declared_attr.directive
+    def __tablename__(cls) -> str:
         return cls.__name__.lower()
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -49,7 +55,7 @@ class AddressAssociation(Base):
 
     discriminator: Mapped[str] = mapped_column()
     """Refers to the type of parent."""
-    addresses: Mapped[list["Address"]] = relationship(
+    addresses: Mapped[list[Address]] = relationship(
         back_populates="association"
     )
 
@@ -69,13 +75,15 @@ class Address(Base):
     street: Mapped[str]
     city: Mapped[str]
     zip: Mapped[str]
-    association: Mapped["AddressAssociation"] = relationship(
+    association: Mapped[AddressAssociation] = relationship(
         back_populates="addresses"
     )
 
-    parent = association_proxy("association", "parent")
+    parent: AssociationProxy[HasAddresses] = association_proxy(
+        "association", "parent"
+    )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(street=%r, city=%r, zip=%r)" % (
             self.__class__.__name__,
             self.street,
@@ -89,12 +97,15 @@ class HasAddresses:
     the address_association table for each parent.
     """
 
+    if TYPE_CHECKING:
+        addresses: AssociationProxy[list[Address]]
+
     @declared_attr
-    def address_association_id(cls) -> Mapped[int]:
+    def address_association_id(cls: type[Any]) -> Mapped[int]:
         return mapped_column(ForeignKey("address_association.id"))
 
     @declared_attr
-    def address_association(cls):
+    def address_association(cls: type[Any]) -> Mapped[AddressAssociation]:
         name = cls.__name__
         discriminator = name.lower()
 
