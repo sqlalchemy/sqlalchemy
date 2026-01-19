@@ -980,6 +980,36 @@ class ReflectionTest(
             )
         )
 
+    @testing.combinations(
+        "FOREIGN KEY (tid) REFERENCES some_table(id)",
+        'FOREIGN KEY ("tid") REFERENCES some_table(id)',
+        'FOREIGN KEY (tid) REFERENCES "some_table"(id)',
+        'FOREIGN KEY ("測試") REFERENCES unitable1("méil")',
+        "FOREIGN KEY (測試) REFERENCES unitable1(méil)",
+        'FOREIGN KEY ("col_名前") REFERENCES "table_テーブル"("ref_參考")',
+        "FOREIGN KEY (普通_column) REFERENCES 普通_table(普通_ref)",
+        (
+            'FOREIGN KEY ("tid1", tid2) '
+            'REFERENCES some_schema.some_table("id1", id2)'
+        ),
+        (
+            'FOREIGN KEY ("測試1", 測試2) '
+            'REFERENCES "schema_スキーマ"."table_表"("ref1_參考", ref2_参考)'
+        ),
+    )
+    def test_fk_regex_unicode_patterns(self, condef):
+        """Test that FK regex pattern handles unicode identifiers.
+
+        This specifically tests the improved qtoken regex pattern to
+        support PostgreSQL variants such as CockroachDB that deliver
+        unquoted unicode identifiers in FK constraint definitions, whereas
+        PostgreSQL itself delivers the same identifiers with quotes.
+
+        """
+        FK_REGEX = postgresql.dialect()._fk_regex_pattern
+        match = re.search(FK_REGEX, condef)
+        self.assert_(match is not None, f"Expected regex to match: {condef}")
+
     def test_reflect_default_over_128_chars(self, metadata, connection):
         Table(
             "t",
