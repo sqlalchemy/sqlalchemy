@@ -12,6 +12,8 @@ has no dependency on the system.
 
 """
 
+from __future__ import annotations
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
@@ -29,8 +31,8 @@ class Base(DeclarativeBase):
     and surrogate primary key column.
     """
 
-    @declared_attr
-    def __tablename__(cls):
+    @declared_attr.directive
+    def __tablename__(cls) -> str:
         return cls.__name__.lower()
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -47,7 +49,7 @@ class Address(Base):
     city: Mapped[str]
     zip: Mapped[str]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(street=%r, city=%r, zip=%r)" % (
             self.__class__.__name__,
             self.street,
@@ -63,7 +65,7 @@ class HasAddresses:
     """
 
     @declared_attr
-    def addresses(cls):
+    def addresses(cls: type[DeclarativeBase]) -> Mapped[list[Address]]:
         address_association = Table(
             "%s_addresses" % cls.__tablename__,
             cls.metadata,
