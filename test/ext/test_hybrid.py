@@ -1879,7 +1879,7 @@ class DMLTest(
                 }
             ),
             "INSERT INTO a (amount, rate) VALUES "
-            "((:param_1 / CAST(:rate AS FLOAT)), :rate)",
+            "((:param_1 / CAST(:rate AS DOUBLE)), :rate)",
             checkparams={"param_1": 25, "rate": 1.5},
         )
 
@@ -1904,7 +1904,7 @@ class DMLTest(
                         ): 25,
                     }
                 ),
-                "UPDATE a SET amount=(:param_1 / CAST(:rate AS FLOAT)), "
+                "UPDATE a SET amount=(:param_1 / CAST(:rate AS DOUBLE)), "
                 "rate=:rate",
                 checkparams={"param_1": 25, "rate": 1.5},
             )
@@ -1921,7 +1921,7 @@ class DMLTest(
                         ): 25
                     }
                 ),
-                "UPDATE a SET amount=(:param_1 / CAST(a.rate AS FLOAT))",
+                "UPDATE a SET amount=(:param_1 / CAST(a.rate AS DOUBLE))",
                 checkparams={"param_1": 25},
             )
 

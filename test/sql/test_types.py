@@ -3699,7 +3699,7 @@ class ExpressionTest(
 
     @testing.combinations(
         (5, Integer),
-        (2.65, Float),
+        (2.65, Double),
         (True, Boolean),
         (decimal.Decimal("2.65"), Numeric),
         (datetime.date(2015, 7, 20), Date),
