@@ -599,7 +599,7 @@ that database.
 .. tip::  There is no requirement that reflection must be used in order to
    use SQLAlchemy with a pre-existing database.  It is entirely typical that
    the SQLAlchemy application declares all metadata explicitly in Python,
-   such that its structure corresponds to that the existing database.
+   such that its structure corresponds to the existing database.
    The metadata structure also need not include tables, columns, or other
    constraints and constructs in the pre-existing database that are not needed
    for the local application to function.
