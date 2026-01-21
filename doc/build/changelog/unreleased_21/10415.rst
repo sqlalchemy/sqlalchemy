@@ -1,8 +1,0 @@
-.. change::
-    :tags: change, asyncio
-    :tickets: 10415
-
-    Adapted all asyncio dialects, including aiosqlite, aiomysql, asyncmy,
-    psycopg, asyncpg to use the generic asyncio connection adapter first added
-    in :ticket:`6521` for the aioodbc DBAPI, allowing these dialects to take
-    advantage of a common framework.

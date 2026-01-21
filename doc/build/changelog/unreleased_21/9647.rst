@@ -1,8 +1,0 @@
-.. change::
-    :tags: change, engine
-    :tickets: 9647
-
-    An empty sequence passed to any ``execute()`` method now
-    raised a deprecation warning, since such an executemany
-    is invalid.
-    Pull request courtesy of Carlos Sousa.

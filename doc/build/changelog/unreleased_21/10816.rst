@@ -1,6 +1,0 @@
-.. change::
-    :tags: usecase, orm
-    :tickets: 10816
-
-    The :paramref:`_orm.Session.flush.objects` parameter is now
-    deprecated.

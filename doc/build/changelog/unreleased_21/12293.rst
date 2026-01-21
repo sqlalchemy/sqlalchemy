@@ -1,7 +1,0 @@
-.. change::
-    :tags: typing, orm
-    :tickets: 12293
-
-    Removed the deprecated mypy plugin.
-    The plugin was non-functional with newer version of mypy and it's no
-    longer needed with modern SQLAlchemy declarative style.

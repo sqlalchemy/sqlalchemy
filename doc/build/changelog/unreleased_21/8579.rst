@@ -1,9 +1,0 @@
-.. change::
-    :tags: usecase, sql
-    :tickets: 8579
-
-    Added support for the pow operator (``**``), with a default SQL
-    implementation of the ``POW()`` function.   On Oracle Database, PostgreSQL
-    and MSSQL it renders as ``POWER()``.   As part of this change, the operator
-    routes through a new first class ``func`` member :class:`_functions.pow`,
-    which renders on Oracle Database, PostgreSQL and MSSQL as ``POWER()``.

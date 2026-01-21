@@ -1,9 +1,0 @@
-.. change::
-    :tags: typing
-    :tickets: 10646
-
-    The default implementation of :attr:`_sql.TypeEngine.python_type` now
-    returns ``object`` instead of ``NotImplementedError``, since that's the
-    base for all types in Python3.
-    The ``python_type`` of :class:`_sql.JSON` no longer returns ``dict``,
-    but instead fallbacks to the generic implementation.

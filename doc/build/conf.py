@@ -239,7 +239,7 @@ version = "2.1"
 # The full version, including alpha/beta/rc tags.
 release = "2.1.0b1"
 
-release_date = None
+release_date = "January 21, 2026"
 
 site_base = os.environ.get("RTD_SITE_BASE", "https://www.sqlalchemy.org")
 site_adapter_template = "docs_adapter.mako"

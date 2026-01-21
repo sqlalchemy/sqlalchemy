@@ -1,7 +1,0 @@
-.. change::
-    :tags: orm, usecase
-    :tickets: 11776
-
-    Added the utility method :meth:`_orm.Session.merge_all` and
-    :meth:`_orm.Session.delete_all` that operate on a collection
-    of instances.
