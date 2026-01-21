@@ -3992,7 +3992,7 @@ _UNICODE = Unicode()
 
 _type_map: Dict[Type[Any], TypeEngine[Any]] = {
     int: Integer(),
-    float: Float(),
+    float: Double(),
     bool: BOOLEANTYPE,
     _python_UUID: Uuid(),
     decimal.Decimal: Numeric(),

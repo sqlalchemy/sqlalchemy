@@ -1183,6 +1183,61 @@ raise an error, directing users to use :class:`_sql.FrameClause` instead.
 
 :ticket:`12596`
 
+.. _change_10300:
+
+Python float literals now render as DOUBLE in CAST expressions
+---------------------------------------------------------------
+
+When Python ``float`` values are used as literal bound parameters in SQL
+expressions, in the absence of an explicit type being passed to the bound
+parameter expression, they now use the :class:`.Double` type instead of
+:class:`.Float`. This change affects the SQL keyword that is rendered when
+these values appear in CAST expressions.
+
+The :class:`.Double` and :class:`.Float` types have identical implementations
+and behavior at runtime. The only difference is in DDL and CAST rendering:
+:class:`.Double` renders as ``DOUBLE`` or ``DOUBLE PRECISION``, while
+:class:`.Float` renders as ``FLOAT``. The ``DOUBLE`` keyword better matches
+Python's ``float`` datatype, which uses 8-byte double-precision storage.
+
+This change is most visible in division operations, where a float divisor is
+automatically cast to ensure proper floating-point division::
+
+    from sqlalchemy import table, column, Integer, select
+
+    t = table("t", column("x", Integer))
+
+    stmt = select(t.c.x / 5.0)
+
+The above statement will now render with a DOUBLE CAST on most backends:
+
+.. sourcecode:: sql
+
+    SELECT t.x / CAST(:x_1 AS DOUBLE) AS anon_1 FROM t
+
+Previously, this would have rendered as ``CAST(:x_1 AS FLOAT)``.
+
+Notes for Third-Party Dialects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Third-party dialect implementations that don't support the ``DOUBLE`` keyword
+will need to ensure they have a ``visit_double()`` method in their type compiler
+to render an appropriate alternative keyword for the target database.
+
+For example, a dialect for a database that doesn't support ``DOUBLE`` might
+map it to ``FLOAT``::
+
+    class MyDialectTypeCompiler(GenericTypeCompiler):
+        def visit_double(self, type_, **kw):
+            # Map double to FLOAT for databases that don't support DOUBLE
+            return "FLOAT"
+
+The built-in SQLAlchemy dialects (PostgreSQL, MySQL, Oracle, SQL Server,
+SQLite) all handle ``visit_double()`` by rendering either ``DOUBLE`` or
+``DOUBLE PRECISION``.
+
+:ticket:`10300`
+
 
 PostgreSQL
 ==========
