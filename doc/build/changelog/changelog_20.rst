@@ -10,7 +10,94 @@
 
 .. changelog::
     :version: 2.0.46
-    :include_notes_from: unreleased_20
+    :released: January 21, 2026
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 13039
+
+        Fixed issue in the aiosqlite driver where SQLAlchemy's setting of
+        aiosqlite's worker thread to "daemon" stopped working because the aiosqlite
+        architecture moved the location of the worker thread in version 0.22.0.
+        This "daemon" flag is necessary so that a program is able to exit if the
+        SQLite connection itself was not explicitly closed, which is particularly
+        likely with SQLAlchemy as it maintains SQLite connections in a connection
+        pool.  While it's perfectly fine to call :meth:`.AsyncEngine.dispose`
+        before program exit, this is not historically or technically necessary for
+        any driver of any known backend, since a primary feature of relational
+        databases is durability.  The change also implements support for
+        "terminate" with aiosqlite when using version version 0.22.1 or greater,
+        which implements a sync ``.stop()`` method.
+
+    .. change::
+        :tags: usecase, mssql
+        :tickets: 13045
+
+        Added support for the ``IF EXISTS`` clause when dropping indexes on SQL
+        Server 2016 (13.x) and later versions. The :paramref:`.DropIndex.if_exists`
+        parameter is now honored by the SQL Server dialect, allowing conditional
+        index drops that will not raise an error if the index does not exist.
+        Pull request courtesy Edgar Ramírez Mondragón.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13059
+
+        Fixed issue where PostgreSQL JSONB operators
+        :meth:`_postgresql.JSONB.Comparator.path_match` and
+        :meth:`_postgresql.JSONB.Comparator.path_exists` were applying incorrect
+        ``VARCHAR`` casts to the right-hand side operand when used with newer
+        PostgreSQL drivers such as psycopg. The operators now indicate the
+        right-hand type as ``JSONPATH``, which currently results in no casting
+        taking place, but is also compatible with explicit casts if the
+        implementation were require it at a later point.
+
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13067
+
+        Fixed regression in PostgreSQL dialect where JSONB subscription syntax
+        would generate incorrect SQL for :func:`.cast` expressions returning JSONB,
+        causing syntax errors. The dialect now properly wraps cast expressions in
+        parentheses when using the ``[]`` subscription syntax, generating
+        ``(CAST(...))[index]`` instead of ``CAST(...)[index]`` to comply with
+        PostgreSQL syntax requirements. This extends the fix from :ticket:`12778`
+        which addressed the same issue for function calls.
+
+    .. change::
+        :tags: bug, mariadb
+        :tickets: 13070
+
+        Fixed the SQL compilation for the mariadb sequence "NOCYCLE" keyword that
+        is to be emitted when the :paramref:`.Sequence.cycle` parameter is set to
+        False on a :class:`.Sequence`.  Pull request courtesy Diego Dupin.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 13075
+
+        Fixed typing issues where ORM mapped classes and aliased entities could not
+        be used as keys in result row mappings or as join targets in select
+        statements. Patterns such as ``row._mapping[User]``,
+        ``row._mapping[aliased(User)]``, ``row._mapping[with_polymorphic(...)]``
+        (rejected by both mypy and Pylance), and ``.join(aliased(User))``
+        (rejected by Pylance) are documented and fully supported at runtime but
+        were previously rejected by type checkers. The type definitions for
+        :class:`._KeyType` and :class:`._FromClauseArgument` have been updated to
+        accept these ORM entity types.
+
+    .. change::
+        :tags: bug, postgresql
+
+        Improved the foreign key reflection regular expression pattern used by the
+        PostgreSQL dialect to be more permissive in matching identifier characters,
+        allowing it to correctly handle unicode characters in table and column
+        names. This change improves compatibility with PostgreSQL variants such as
+        CockroachDB that may use different quoting patterns in combination with
+        unicode characters in their identifiers.  Pull request courtesy Gord
+        Thompson.
 
 .. changelog::
     :version: 2.0.45

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, mariadb
-    :tickets: 13070
-
-    Fixed the SQL compilation for the mariadb sequence "NOCYCLE" keyword that
-    is to be emitted when the :paramref:`.Sequence.cycle` parameter is set to
-    False on a :class:`.Sequence`.  Pull request courtesy Diego Dupin.
