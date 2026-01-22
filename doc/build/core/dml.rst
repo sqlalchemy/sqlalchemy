@@ -36,6 +36,10 @@ Class documentation for the constructors listed at
 
    .. automethod:: Delete.returning
 
+   .. automethod:: Delete.ext
+
+   .. automethod:: Delete.apply_syntax_extension_point
+
 .. autoclass:: Insert
    :members:
 
@@ -44,6 +48,10 @@ Class documentation for the constructors listed at
    .. automethod:: Insert.values
 
    .. automethod:: Insert.returning
+
+   .. automethod:: Insert.ext
+
+   .. automethod:: Insert.apply_syntax_extension_point
 
 .. autoclass:: Update
    :members:
@@ -55,6 +63,10 @@ Class documentation for the constructors listed at
    .. automethod:: Update.with_dialect_options
 
    .. automethod:: Update.values
+
+   .. automethod:: Update.ext
+
+   .. automethod:: Update.apply_syntax_extension_point
 
 .. autoclass:: sqlalchemy.sql.expression.UpdateBase
    :members:

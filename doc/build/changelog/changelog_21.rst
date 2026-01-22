@@ -521,6 +521,8 @@
 
             :ref:`examples_syntax_extensions`
 
+            :ref:`change_new_syntax_ext`
+
 
     .. change::
         :tags: sql
