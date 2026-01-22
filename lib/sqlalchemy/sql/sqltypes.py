@@ -1851,7 +1851,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                 ("schema", None),
             ],
             to_inspect=[Enum, SchemaType],
-            omit_kwarg=["schema", "inherit_schema"],
+            omit_kwarg=["schema", "inherit_schema", "metadata"],
         )
 
     def as_generic(self, allow_nulltype=False):
