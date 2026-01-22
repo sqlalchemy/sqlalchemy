@@ -86,7 +86,7 @@ jobs:
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
-          CIBW_ENABLE: ${{ matrix.python == 'cp313t-*' && 'cpython-freethreading' || '' }}
+          CIBW_ENABLE: ${{ matrix.python == 'cp313t-* cp314t-*' && 'cpython-freethreading' || '' }}
           # setting it here does not work on linux
           # PYTHONNOUSERSITE: "1"
 
