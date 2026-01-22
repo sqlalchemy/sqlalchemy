@@ -1537,7 +1537,7 @@ class DMLWhereBase:
         return self
 
     def filter(self, *criteria: roles.ExpressionElementRole[Any]) -> Self:
-        """A synonym for the :meth:`_dml.DMLWhereBase.where` method.
+        """A synonym for the :meth:`.where` method.
 
         .. versionadded:: 1.4
 
@@ -1569,7 +1569,7 @@ class DMLWhereBase:
 
         .. seealso::
 
-            :meth:`.DMLWhereBase.where` - filter on SQL expressions.
+            :meth:`.where` - filter on SQL expressions.
 
             :meth:`_sql.Select.filter_by`
 

@@ -222,10 +222,10 @@
         :tags: typing
         :tickets: 10646
 
-        The default implementation of :attr:`_sql.TypeEngine.python_type` now
+        The default implementation of :attr:`_types.TypeEngine.python_type` now
         returns ``object`` instead of ``NotImplementedError``, since that's the
         base for all types in Python3.
-        The ``python_type`` of :class:`_sql.JSON` no longer returns ``dict``,
+        The ``python_type`` of :class:`_types.JSON` no longer returns ``dict``,
         but instead fallbacks to the generic implementation.
 
     .. change::
@@ -734,8 +734,8 @@
         Added support for per-session execution options that are merged into all
         queries executed within that session. The :class:`_orm.Session`,
         :class:`_orm.sessionmaker`, :class:`_orm.scoped_session`,
-        :class:`_ext.asyncio.AsyncSession`, and
-        :class:`_ext.asyncio.async_sessionmaker` constructors now accept an
+        :class:`_asyncio.AsyncSession`, and
+        :class:`_asyncio.async_sessionmaker` constructors now accept an
         :paramref:`_orm.Session.execution_options` parameter that will be applied
         to all explicit query executions (e.g. using :meth:`_orm.Session.execute`,
         :meth:`_orm.Session.get`, :meth:`_orm.Session.scalars`) for that session
@@ -1243,8 +1243,8 @@
         :tags: usecase, sql, orm
         :tickets: 8601
 
-        The :meth:`_sql.Select.filter_by`, :meth:`_sql.Update.filter_by` and
-        :meth:`_sql.Delete.filter_by` methods now search across all entities
+        The :meth:`_sql.Select.filter_by`, :meth:`.Update.filter_by` and
+        :meth:`.Delete.filter_by` methods now search across all entities
         present in the statement, rather than limiting their search to only the
         last joined entity or the first FROM entity. This allows these methods
         to locate attributes unambiguously across multiple joined tables,
