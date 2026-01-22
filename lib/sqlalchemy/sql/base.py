@@ -1933,12 +1933,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
     @overload
     def __getitem__(
-        self, key: Tuple[Union[str, int], ...]
-    ) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]: ...
-
-    @overload
-    def __getitem__(
-        self, key: slice
+        self, key: Union[Tuple[Union[str, int], ...], slice]
     ) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]: ...
 
     def __getitem__(

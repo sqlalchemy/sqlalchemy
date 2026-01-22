@@ -39,6 +39,7 @@ from .base import ColumnCollection
 from .base import ExecutableStatement
 from .base import Generative
 from .base import HasMemoized
+from .base import ReadOnlyColumnCollection
 from .base import WriteableColumnCollection
 from .elements import _type_from_args
 from .elements import AggregateOrderBy
@@ -393,7 +394,9 @@ class FunctionElement(
         return self.alias(name=name, joins_implicitly=joins_implicitly).column
 
     @util.ro_non_memoized_property
-    def columns(self) -> ColumnCollection[str, KeyedColumnElement[Any]]:  # type: ignore[override]  # noqa: E501
+    def columns(
+        self,
+    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         r"""The set of columns exported by this :class:`.FunctionElement`.
 
         This is a placeholder collection that allows the function to be
@@ -419,12 +422,12 @@ class FunctionElement(
         return self.c
 
     @util.ro_memoized_property
-    def c(self) -> ColumnCollection[str, KeyedColumnElement[Any]]:  # type: ignore[override]  # noqa: E501
+    def c(self) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         """synonym for :attr:`.FunctionElement.columns`."""
 
         return WriteableColumnCollection(
             columns=[(col.key, col) for col in self._all_selected_columns]
-        )
+        ).as_readonly()
 
     @property
     def _all_selected_columns(self) -> Sequence[KeyedColumnElement[Any]]:

@@ -1020,7 +1020,10 @@ class AliasedInsp(
             if name:
                 return element.alias(name=name, flat=flat)
             else:
-                return coercions.expect(
+                # see selectable.py->Alias._factory() for similar
+                # mypy issue.   Cannot get the overload to see this
+                # in mypy (works fine in pyright)
+                return coercions.expect(  # type: ignore[no-any-return]
                     roles.AnonymizedFromClauseRole, element, flat=flat
                 )
         else:

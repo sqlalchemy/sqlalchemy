@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from .sql._annotated_cols import Named as Named
+from .sql._annotated_cols import TypedColumns as TypedColumns
 from .sql.base import SchemaVisitor as SchemaVisitor
 from .sql.ddl import _CreateDropBase as _CreateDropBase
 from .sql.ddl import AddConstraint as AddConstraint

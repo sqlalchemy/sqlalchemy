@@ -78,9 +78,11 @@ from .schema import Identity as Identity
 from .schema import Index as Index
 from .schema import insert_sentinel as insert_sentinel
 from .schema import MetaData as MetaData
+from .schema import Named as Named
 from .schema import PrimaryKeyConstraint as PrimaryKeyConstraint
 from .schema import Sequence as Sequence
 from .schema import Table as Table
+from .schema import TypedColumns as TypedColumns
 from .schema import UniqueConstraint as UniqueConstraint
 from .sql import ColumnExpressionArgument as ColumnExpressionArgument
 from .sql import NotNullable as NotNullable

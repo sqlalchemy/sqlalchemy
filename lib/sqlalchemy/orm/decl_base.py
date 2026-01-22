@@ -64,6 +64,7 @@ from .. import event
 from .. import exc
 from .. import util
 from ..sql import expression
+from ..sql._annotated_cols import TypedColumns
 from ..sql.base import _NoArg
 from ..sql.schema import Column
 from ..sql.schema import Table
@@ -276,7 +277,11 @@ class _ORMClassConfigurator:
                 f"Class {cls_!r} already has been instrumented declaratively"
             )
 
-        if cls_.__dict__.get("__abstract__", False):
+        # allow subclassing an orm class with typed columns without
+        # generating an orm class
+        if cls_.__dict__.get("__abstract__", False) or issubclass(
+            cls_, TypedColumns
+        ):
             return None
 
         defer_map = _get_immediate_cls_attr(

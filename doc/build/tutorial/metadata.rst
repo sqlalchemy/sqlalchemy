@@ -197,7 +197,39 @@ parameter.
    related column, in the above example the :class:`_types.Integer` datatype
    of the ``user_account.id`` column.
 
-In the next section we will emit the completed DDL for the ``user`` and
+Using :class:`.TypedColumns` to get a better typing experience
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A SQLAlchemy :class:`_schema.Table` can also be defined using a
+:class:`_schema.TypedColumns` to offers better integration with type checker and IDEs.
+The tables defined above could be declared as follows::
+
+    >>> from sqlalchemy import Named, TypedColumns, Table
+    >>> other_meta = MetaData()
+    >>> class user_cols(TypedColumns):
+    ...     id: Named[int] = Column(primary_key=True)
+    ...     name: Named[str | None] = Column(String(30))
+    ...     fullname: Named[str | None]
+
+    >>> typed_user_table = Table("user_account", other_meta, user_cols)
+
+    >>> class address_cols(TypedColumns):
+    ...     id: Named[int] = Column(primary_key=True)
+    ...     user_id: Named[int] = Column(ForeignKey("user_account.id"))
+    ...     email_address: Named[str]
+    ...     __row_pos__: tuple[int, int, str]
+
+    >>> typed_address_table = Table("address", other_meta, address_cols)
+
+The columns are defined by subclassing :class:`.TypedColumns`, so that
+static type checkers can understand what columns are present in the
+:attr:`_schema.Table.c` collection. Functionally the two methods of defining
+the metadata objects are equivalent.
+The optional ``__row_pos__`` annotation is an aid to type checker so that
+they can correctly suggest the type to apply when selecting from the complete
+table, without specifying the single columns.
+
+In the next section we will emit the completed DDL for the ``user_account`` and
 ``address`` table to see the completed result.
 
 .. _tutorial_emitting_ddl:
@@ -576,7 +608,7 @@ are found to be present already:
 .. _tutorial_table_reflection:
 
 Table Reflection
--------------------------------
+----------------
 
 .. topic:: Optional Section
 

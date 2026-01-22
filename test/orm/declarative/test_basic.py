@@ -19,6 +19,7 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import Uuid
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import as_declarative
+from sqlalchemy.orm import as_typed_table
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
@@ -44,6 +45,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import synonym_for
+from sqlalchemy.orm.base import opt_manager_of_class
 from sqlalchemy.orm.decl_api import add_mapped_attribute
 from sqlalchemy.orm.decl_api import DeclarativeBaseNoMeta
 from sqlalchemy.orm.decl_api import DeclarativeMeta
@@ -51,6 +53,7 @@ from sqlalchemy.orm.decl_base import _DeferredDeclarativeConfig
 from sqlalchemy.orm.events import InstrumentationEvents
 from sqlalchemy.orm.events import MapperEvents
 from sqlalchemy.schema import PrimaryKeyConstraint
+from sqlalchemy.schema import TypedColumns
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
@@ -3458,3 +3461,183 @@ class NamedAttrOrderingTest(fixtures.TestBase):
             "for argument 'local_table'; got",
         ):
             registry().map_imperatively(ImpModel, DecModel)
+
+
+class TypedColumnInteropTest(fixtures.TestBase):
+    @testing.variation(
+        "mapping_style",
+        [
+            "decl_base_fn",
+            "decl_base_base",
+            "decl_base_no_meta",
+            "map_declaratively",
+            "decorator",
+            "mapped_as_dataclass",
+        ],
+    )
+    def test_define_typed_columns(self, mapping_style):
+        if mapping_style.decl_base_fn:
+            Base = declarative_base()
+
+            class DecModel(Base):
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+            r = Base.registry
+        elif mapping_style.decl_base_base:
+
+            class Base(DeclarativeBase):
+                pass
+
+            class DecModel(Base):
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+            r = Base.registry
+        elif mapping_style.decl_base_no_meta:
+
+            class Base(DeclarativeBaseNoMeta):
+                pass
+
+            class DecModel(Base):
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+            r = Base.registry
+        elif mapping_style.decorator:
+            r = registry()
+
+            @r.mapped
+            class DecModel:
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        elif mapping_style.map_declaratively:
+            r = registry()
+
+            class DecModel:
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+            r.map_declaratively(DecModel)
+        elif mapping_style.decorator:
+            r = registry()
+
+            @r.mapped
+            class DecModel:
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        elif mapping_style.mapped_as_dataclass:
+            r = registry()
+
+            @r.mapped_as_dataclass
+            class DecModel:
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        else:
+            assert False
+
+        class the_cols(DecModel, TypedColumns):
+            pass
+
+        class the_cols2(TypedColumns, DecModel):
+            pass
+
+        for cls in (the_cols, the_cols2):
+            assertions.not_in(cls, r._class_registry)
+            is_(opt_manager_of_class(cls), None)
+            is_(cls.__mapper__.class_, DecModel)
+
+    def test_define_table_orm(self):
+
+        class Base(DeclarativeBase):
+            pass
+
+        class DecModel(Base):
+            __tablename__ = "foo"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "The ``typed_columns_cls`` argument requires a "
+            "TypedColumns subclass",
+        ):
+            Table("bar", Base.metadata, DecModel)
+
+    @testing.combinations("foo", "bar", argnames="tablename")
+    def test_define_new_table_with_cols(self, tablename):
+
+        class Base(DeclarativeBase):
+            pass
+
+        class DecModel(Base):
+            __tablename__ = "foo"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+
+        class the_cols(DecModel, TypedColumns):
+            pass
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "To get a typed table from an ORM class, use the "
+            r"`as_typed_table\(\)` function instead",
+        ):
+            Table(tablename, Base.metadata, the_cols)
+
+    @testing.variation("assign", [True, False])
+    def test_define___typed_cols__(self, assign):
+
+        class Base(DeclarativeBase):
+            pass
+
+        class DecModel(Base):
+            __tablename__ = "foo"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+            __typed_cols__: "cols"
+
+        class cols(DecModel, TypedColumns):
+            pass
+
+        if assign:
+            DecModel.__typed_cols__ = cols
+
+        assertions.not_in("__typed_cols__", DecModel.__mapper__.attrs)
+
+    def test_as_typed_table(self):
+        class Base(DeclarativeBase):
+            pass
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+
+        class a_cols(A, TypedColumns):
+            pass
+
+        t = as_typed_table(A, a_cols)
+        is_(t, A.__table__)
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+            __typed_cols__: "b_cols"
+
+        class b_cols(A, TypedColumns):
+            pass
+
+        t2 = as_typed_table(B)
+        is_(t2, B.__table__)

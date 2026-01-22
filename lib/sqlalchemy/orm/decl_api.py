@@ -23,6 +23,7 @@ from typing import Literal
 from typing import Mapping
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -52,6 +53,7 @@ from .decl_base import _DeclarativeMapperConfig
 from .decl_base import _DeferredDeclarativeConfig
 from .decl_base import _del_attribute
 from .decl_base import _ORMClassConfigurator
+from .decl_base import MappedClassProtocol
 from .descriptor_props import Composite
 from .descriptor_props import Synonym
 from .descriptor_props import Synonym as _orm_synonym
@@ -65,6 +67,7 @@ from .. import util
 from ..event import dispatcher
 from ..event import EventTarget
 from ..sql import sqltypes
+from ..sql._annotated_cols import _TC
 from ..sql.base import _NoArg
 from ..sql.elements import SQLCoreOperations
 from ..sql.schema import MetaData
@@ -751,6 +754,100 @@ class _DeclarativeTyping(TypingOnly):
         """
 
         def __init__(self, **kw: Any): ...
+
+
+class MappedClassWithTypedColumnsProtocol(Protocol[_TC]):
+    """An ORM mapped class that also defines in the ``__typed_cols__``
+    attribute its .
+    """
+
+    __typed_cols__: _TC
+    """The :class:`_schema.TypedColumns` of this ORM mapped class."""
+
+    __name__: ClassVar[str]
+    __mapper__: ClassVar[Mapper[Any]]
+    __table__: ClassVar[FromClause]
+
+
+@overload
+def as_typed_table(
+    cls: type[MappedClassWithTypedColumnsProtocol[_TC]], /
+) -> FromClause[_TC]: ...
+
+
+@overload
+def as_typed_table(
+    cls: MappedClassProtocol[Any], typed_columns_cls: type[_TC], /
+) -> FromClause[_TC]: ...
+
+
+def as_typed_table(
+    cls: (
+        MappedClassProtocol[Any]
+        | type[MappedClassWithTypedColumnsProtocol[Any]]
+    ),
+    typed_columns_cls: Any = None,
+    /,
+) -> FromClause[Any]:
+    """Return a typed :class:`_sql.FromClause` from the give ORM model.
+
+    This function is just a typing help, at runtime it just returns the
+    ``__table__`` attribute of the provided ORM model.
+
+    It's usually called providing both the ORM model and the
+    :class:`_schema.TypedColumns` class. Single argument calls are supported
+    if the ORM model class provides an annotation pointing to its
+    :class:`_schema.TypedColumns` in the ``__typed_cols__`` attribute.
+
+
+    Example usage::
+
+        from sqlalchemy import TypedColumns
+        from sqlalchemy.orm import DeclarativeBase, mapped_column
+        from sqlalchemy.orm import MappedColumn, as_typed_table
+
+
+        class Base(DeclarativeBase):
+            pass
+
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id: MappedColumn[int] = mapped_column(primary_key=True)
+            data: MappedColumn[str]
+
+
+        class a_cols(A, TypedColumns):
+            pass
+
+
+        # table_a is annotated as FromClause[a_cols]
+        table_a = as_typed_table(A, a_cols)
+
+
+        class B(Base):
+            __tablename__ = "b"
+            __typed_cols__: "b_cols"
+
+            a: Mapped[int] = mapped_column(primary_key=True)
+            b: Mapped[str]
+
+
+        class b_cols(B, TypedColumns):
+            pass
+
+
+        # table_b is a FromClause[b_cols], can call with just B since it
+        # provides the __typed_cols__ annotation
+        table_b = as_typed_table(B)
+
+    For proper typing integration :class:`_orm.MappedColumn` should be used
+    to annotate the single columns, since it's a more specific annotation than
+    the usual :class:`_orm.Mapped` used for ORM attributes.
+
+    """
+    return cls.__table__
 
 
 class DeclarativeBase(
