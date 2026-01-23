@@ -754,7 +754,7 @@ IN, which currently includes SQL Server.
 :paramref:`_orm.relationship.lazy` or by using the :func:`.selectinload` loader
 option.   This style of loading emits a SELECT that refers to the primary key
 values of the parent object, or in the case of a many-to-one
-relationship to the those of the child objects, inside of an IN clause, in
+relationship to those of the child objects, inside of an IN clause, in
 order to load related associations:
 
 .. sourcecode:: pycon+sql
