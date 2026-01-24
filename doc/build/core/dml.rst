@@ -32,6 +32,10 @@ Class documentation for the constructors listed at
 
    .. automethod:: Delete.where
 
+   .. automethod:: Delete.filter
+
+   .. automethod:: Delete.filter_by
+
    .. automethod:: Delete.with_dialect_options
 
    .. automethod:: Delete.returning
@@ -51,6 +55,10 @@ Class documentation for the constructors listed at
    .. automethod:: Update.returning
 
    .. automethod:: Update.where
+
+   .. automethod:: Update.filter
+
+   .. automethod:: Update.filter_by
 
    .. automethod:: Update.with_dialect_options
 

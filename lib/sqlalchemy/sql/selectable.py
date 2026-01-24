@@ -3216,11 +3216,18 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         self._columns.add(c, index=index)
         c.table = self
 
-    def append_column(self, c: ColumnClause[Any]) -> None:
-        self._insert_col_impl(c)
+    def append_column(self, column: ColumnClause[Any]) -> None:
+        """Append a :class:`.ColumnClause` to this :class:`.TableClause`."""
+        self._insert_col_impl(column)
 
-    def insert_column(self, c: ColumnClause[Any], index: int) -> None:
-        self._insert_col_impl(c, index=index)
+    def insert_column(self, column: ColumnClause[Any], index: int) -> None:
+        """Insert a :class:`.ColumnClause` to this :class:`.TableClause` at
+        a specific position.
+
+        .. versionadded:: 2.1
+
+        """
+        self._insert_col_impl(column, index=index)
 
     @util.preload_module("sqlalchemy.sql.dml")
     def insert(self) -> util.preloaded.sql_dml.Insert:
