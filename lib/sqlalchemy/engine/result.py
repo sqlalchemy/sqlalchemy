@@ -47,6 +47,7 @@ from ..sql.base import _generative
 from ..sql.base import InPlaceGenerative
 from ..util import deprecated
 from ..util import NONE_SET
+from ..util.typing import Never
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
@@ -1063,6 +1064,16 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         return self._only_one_row(
             raise_for_second_row=True, raise_for_none=True, scalar=False
         )
+
+    # special case to handle mypy issue:
+    # https://github.com/python/mypy/issues/20651
+    @overload
+    def scalar(self: Result[Never, Unpack[TupleAny]]) -> Optional[Any]:
+        pass
+
+    @overload
+    def scalar(self: Result[_T, Unpack[TupleAny]]) -> Optional[_T]:
+        pass
 
     def scalar(self: Result[_T, Unpack[TupleAny]]) -> Optional[_T]:
         """Fetch the first column of the first row, and close the result set.
