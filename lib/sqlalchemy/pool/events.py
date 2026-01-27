@@ -31,27 +31,30 @@ class PoolEvents(event.Events[Pool]):
     as the names of members that are passed to listener
     functions.
 
-    e.g.::
+    When using an :class:`.Engine` object created via :func:`_sa.create_engine`
+    (or indirectly via :func:`.create_async_engine`), :class:`.PoolEvents`
+    listeners are expected to be registered in terms of the :class:`.Engine`,
+    which will direct the listeners to the :class:`.Pool` contained within::
 
+        from sqlalchemy import create_engine
         from sqlalchemy import event
-
-
-        def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
-            "handle an on checkout event"
-
-
-        event.listen(Pool, "checkout", my_on_checkout)
-
-    In addition to accepting the :class:`_pool.Pool` class and
-    :class:`_pool.Pool` instances, :class:`_events.PoolEvents` also accepts
-    :class:`_engine.Engine` objects and the :class:`_engine.Engine` class as
-    targets, which will be resolved to the ``.pool`` attribute of the
-    given engine or the :class:`_pool.Pool` class::
 
         engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
-        # will associate with engine.pool
-        event.listen(engine, "checkout", my_on_checkout)
+
+        @event.listens_for(engine, "checkout")
+        def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
+            "handle an on checkout event"
+
+    :class:`.PoolEvents` may also be registered with the :class:`_pool.Pool`
+    class, with the :class:`.Engine` class, as well as with instances of
+    :class:`_pool.Pool`.
+
+    .. tip::
+
+        Registering :class:`.PoolEvents` with the :class:`.Engine`, if present,
+        is recommended since the :meth:`.Engine.dispose` method will carry
+        along event listeners from the old pool to the new pool.
 
     """  # noqa: E501
 
