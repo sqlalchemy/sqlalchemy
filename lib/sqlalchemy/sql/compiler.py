@@ -7614,7 +7614,10 @@ class GenericTypeCompiler(TypeCompiler):
         if length:
             text += f"({length})"
         if collation:
-            text += f' COLLATE "{collation}"'
+            collation_str = self.dialect.identifier_preparer.format_collation(
+                collation
+            )
+            text += f" COLLATE {collation_str}"
         return text
 
     def visit_CHAR(self, type_: sqltypes.CHAR, **kw: Any) -> str:

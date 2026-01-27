@@ -3148,6 +3148,22 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             name = f"{self.quote_schema(effective_schema)}.{name}"
         return name
 
+    def format_collation(self, collation_name):
+        """Format a collation name for PostgreSQL.
+
+        For schema-qualified collations (e.g., 'my_schema.my_collation'),
+        splits the name and formats each part separately to produce
+        'schema.collation' rather than '"schema.collation"' which PostgreSQL
+        interprets as a single identifier name.
+
+        .. versionadded:: 2.1
+        """
+        if "." in collation_name:
+            schema, name = collation_name.split(".", 1)
+            return f"{self.quote(schema)}.{self.quote(name)}"
+        else:
+            return super().format_collation(collation_name)
+
 
 class ReflectedNamedType(TypedDict):
     """Represents a reflected named type."""
