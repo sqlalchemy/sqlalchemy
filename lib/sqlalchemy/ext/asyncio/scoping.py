@@ -31,6 +31,7 @@ from ...util import create_proxy_methods
 from ...util import ScopedRegistry
 from ...util import warn
 from ...util import warn_deprecated
+from ...util.typing import Never
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
@@ -1037,6 +1038,17 @@ class async_scoped_session(Generic[_AS]):
         """  # noqa: E501
 
         return await self._proxied.rollback()
+
+    @overload
+    async def scalar(
+        self,
+        statement: TypedReturnsRows[Never],
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Optional[Any]: ...
 
     @overload
     async def scalar(

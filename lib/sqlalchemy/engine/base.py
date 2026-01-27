@@ -41,6 +41,7 @@ from .. import log
 from .. import util
 from ..sql import compiler
 from ..sql import util as sql_util
+from ..util.typing import Never
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
@@ -1278,6 +1279,17 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             # it will be non-None here and in a "closed" state.
             self._dbapi_connection = None
         self.__can_reconnect = False
+
+    # special case to handle mypy issue:
+    # https://github.com/python/mypy/issues/20651
+    @overload
+    def scalar(
+        self,
+        statement: TypedReturnsRows[Never],
+        parameters: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+    ) -> Optional[Any]: ...
 
     @overload
     def scalar(

@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 13091
+
+    Fixed issue in new :pep:`646` support for result sets where an issue in the
+    mypy type checker prevented "scalar" methods including
+    :meth:`.Connection.scalar`, :meth:`.Result.scalar`,
+    :meth:`_orm.Session.scalar`, as well as async versions of these methods
+    from applying the correct type to the scalar result value, when the columns
+    in the originating :func:`_sql.select` were typed as ``Any``.  Pull request
+    courtesy Yurii Karabas.
+

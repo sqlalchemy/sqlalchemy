@@ -91,6 +91,7 @@ from ..sql.schema import Table
 from ..sql.selectable import ForUpdateArg
 from ..util import deprecated_params
 from ..util import IdentitySet
+from ..util.typing import Never
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
@@ -2409,6 +2410,19 @@ class Session(_SessionClassMethods, EventTarget):
             _parent_execute_state=_parent_execute_state,
             _add_event=_add_event,
         )
+
+    # special case to handle mypy issue:
+    # https://github.com/python/mypy/issues/20651
+    @overload
+    def scalar(
+        self,
+        statement: TypedReturnsRows[Never],
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Optional[Any]: ...
 
     @overload
     def scalar(
