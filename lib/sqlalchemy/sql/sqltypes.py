@@ -196,6 +196,7 @@ class String(Concatenable, TypeEngine[str]):
         self,
         length: Optional[int] = None,
         collation: Optional[str] = None,
+        collation_schema: Optional[str] = None,
     ):
         """
         Create a string-holding type.
@@ -219,17 +220,25 @@ class String(Concatenable, TypeEngine[str]):
             >>> print(select(cast("some string", String(collation="utf8"))))
             {printsql}SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
-          .. note::
+        :param collation_schema: Optional, the name of the schema in which the
+          collation is defined.
 
-            In most cases, the :class:`.Unicode` or :class:`.UnicodeText`
-            datatypes should be used for a :class:`_schema.Column` that expects
-            to store non-ascii data. These datatypes will ensure that the
-            correct types are used on the database.
+        .. note::
+
+          In most cases, the :class:`.Unicode` or :class:`.UnicodeText`
+          datatypes should be used for a :class:`_schema.Column` that expects
+          to store non-ascii data. These datatypes will ensure that the
+          correct types are used on the database.
 
         """
 
         self.length = length
         self.collation = collation
+        if collation_schema is not None and collation is None:
+            raise TypeError(
+                "The collation argument is required for using collation_schema"
+            )
+        self.collation_schema = collation_schema
 
     def _with_collation(self, collation):
         new_type = self.copy()
@@ -3789,6 +3798,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
     length: Optional[int] = None
     collation: Optional[str] = None
+    collation_schema: Optional[str] = None
 
     @overload
     def __init__(
