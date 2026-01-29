@@ -68,6 +68,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Amazon Aurora DSQL                             | aurora-dsql-sqlalchemy_               |
 +------------------------------------------------+---------------------------------------+
+| Amazon DynamoDB                                | pydynamodb_                           |
++------------------------------------------------+---------------------------------------+
 | Amazon Redshift (via psycopg2)                 | sqlalchemy-redshift_                  |
 +------------------------------------------------+---------------------------------------+
 | Apache Drill                                   | sqlalchemy-drill_                     |
@@ -123,6 +125,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 | Mimer SQL                                      | sqlalchemy-mimer_                     |
 +------------------------------------------------+---------------------------------------+
 | MonetDB                                        | sqlalchemy-monetdb_                   |
++------------------------------------------------+---------------------------------------+
+| MongoDB                                        | pymongosql_                           |
 +------------------------------------------------+---------------------------------------+
 | OceanBase                                      | oceanbase-sqlalchemy_                 |
 +------------------------------------------------+---------------------------------------+
@@ -191,3 +195,5 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _ydb-sqlalchemy: https://github.com/ydb-platform/ydb-sqlalchemy/
 .. _denodo-sqlalchemy: https://pypi.org/project/denodo-sqlalchemy/
 .. _aurora-dsql-sqlalchemy: https://pypi.org/project/aurora-dsql-sqlalchemy/
+.. _pydynamodb: https://pypi.org/project/pydynamodb/
+.. _pymongosql: https://pypi.org/project/pymongosql/
