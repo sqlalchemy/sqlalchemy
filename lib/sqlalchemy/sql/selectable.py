@@ -85,6 +85,7 @@ from .base import HasMemoized
 from .base import HasSyntaxExtensions
 from .base import Immutable
 from .base import SyntaxExtension
+from .base import WriteableColumnCollection
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
 from .elements import BindParameter
@@ -260,7 +261,7 @@ class ReturnsRows(roles.ReturnsRowsRole, DQLDMLClauseElement):
     def _generate_fromclause_column_proxies(
         self,
         fromclause: FromClause,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
@@ -644,7 +645,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     _is_clone_of: Optional[FromClause]
 
-    _columns: ColumnCollection[Any, Any]
+    _columns: WriteableColumnCollection[Any, Any]
 
     schema: Optional[str] = None
     """Define the 'schema' attribute for this :class:`_expression.FromClause`.
@@ -857,7 +858,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     def _generate_fromclause_column_proxies(
         self,
         fromclause: FromClause,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
@@ -930,7 +931,9 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
                 assert "foreign_keys" in self.__dict__
                 return
 
-            _columns: ColumnCollection[Any, Any] = ColumnCollection()
+            _columns: WriteableColumnCollection[Any, Any] = (
+                WriteableColumnCollection()
+            )
             primary_key = ColumnSet()
             foreign_keys: Set[KeyedColumnElement[Any]] = set()
 
@@ -1019,7 +1022,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     def _populate_column_collection(
         self,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
@@ -1351,7 +1354,7 @@ class Join(roles.DMLTableRole, FromClause):
     @util.preload_module("sqlalchemy.sql.util")
     def _populate_column_collection(
         self,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
@@ -1756,7 +1759,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
 
     def _populate_column_collection(
         self,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
@@ -2212,7 +2215,7 @@ class CTE(
 
     def _populate_column_collection(
         self,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
@@ -3487,7 +3490,7 @@ class Values(roles.InElementRole, HasCTE, Generative, LateralFromClause):
 
     def _populate_column_collection(
         self,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
@@ -3619,7 +3622,7 @@ class SelectBase(
     def _generate_fromclause_column_proxies(
         self,
         subquery: FromClause,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
         *,
@@ -3669,7 +3672,7 @@ class SelectBase(
 
 
         """
-        return self.selected_columns.as_readonly()
+        return self.selected_columns._as_readonly()
 
     def get_label_style(self) -> SelectLabelStyle:
         """
@@ -3988,7 +3991,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
     def _generate_fromclause_column_proxies(
         self,
         subquery: FromClause,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
         *,
@@ -4710,7 +4713,7 @@ class CompoundSelect(
     def _generate_fromclause_column_proxies(
         self,
         subquery: FromClause,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
         *,
@@ -6778,12 +6781,14 @@ class Select(
             SelectState._column_naming_convention(self._label_style),
         )
 
-        cc: ColumnCollection[str, ColumnElement[Any]] = ColumnCollection(
-            [
-                (conv(c), c)
-                for c in self._all_selected_columns
-                if is_column_element(c)
-            ]
+        cc: WriteableColumnCollection[str, ColumnElement[Any]] = (
+            WriteableColumnCollection(
+                [
+                    (conv(c), c)
+                    for c in self._all_selected_columns
+                    if is_column_element(c)
+                ]
+            )
         )
         return cc.as_readonly()
 
@@ -6800,7 +6805,7 @@ class Select(
     def _generate_fromclause_column_proxies(
         self,
         subquery: FromClause,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
         *,
@@ -7392,7 +7397,7 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
         .. versionadded:: 1.4
 
         """
-        return ColumnCollection(
+        return WriteableColumnCollection(
             (c.key, c) for c in self.column_args
         ).as_readonly()
 
@@ -7418,7 +7423,7 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
     def _generate_fromclause_column_proxies(
         self,
         fromclause: FromClause,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
         *,
