@@ -840,8 +840,8 @@ directly.
 
 Custom extension can be created by subclassing the class
 :class:`sqlalchemy.sql.SyntaxExtension`.
-For example, to create render the ``INTO OUTFILE`` clause of select
-supported by MariaDB and MySQL, can be implimented using syntax extensions
+For example, support for the ``INTO OUTFILE`` clause of a select
+supported by MariaDB and MySQL, can be implemented using syntax extensions
 as follows::
 
     from sqlalchemy.ext.compiler import compiles
