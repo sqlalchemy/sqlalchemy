@@ -6,11 +6,13 @@ from typing import assert_type
 from typing import cast
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 from typing import Type
 from typing import Unpack
 
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import Connection
 from sqlalchemy import create_engine
 from sqlalchemy import func
 from sqlalchemy import insert
@@ -623,3 +625,36 @@ def test_outerjoin_10173() -> None:
         print(stmt4)
 
     print(stmt, stmt2, stmt3)
+
+
+def test_13091() -> None:
+    with e.connect() as conn:
+        stmt = select(t_user.c.id)
+        assert_type(stmt, Select[Unpack[Tuple[Any, ...]]])
+        result = conn.execute(stmt)
+
+        assert_type(result, CursorResult[Unpack[Tuple[Any, ...]]])
+        data = result.scalar()
+        assert_type(data, Any | None)
+
+
+def test_13091_2(
+    conn: Connection, table: Table, c: Column[int], c2: Column[str]
+) -> None:
+    assert_type(table.select(), Select[Unpack[Tuple[Any, ...]]])
+    r1 = conn.execute(table.select())
+    assert_type(r1, CursorResult[Unpack[Tuple[Any, ...]]])
+    d1 = r1.scalar()
+    assert_type(d1, Any | None)
+    r2 = conn.execute(select(table))
+    assert_type(r2, CursorResult[Unpack[Tuple[Any, ...]]])
+    d2 = r2.scalar()
+    assert_type(d2, Any | None)
+    r3 = conn.execute(select(c))
+    assert_type(r3, CursorResult[int])
+    d3 = r3.scalar()
+    assert_type(d3, int | None)
+    r4 = conn.execute(select(c, c2))
+    assert_type(r4, CursorResult[int, str])
+    d4 = r3.scalar()
+    assert_type(d4, int | None)
