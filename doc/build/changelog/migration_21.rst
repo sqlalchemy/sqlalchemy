@@ -827,6 +827,85 @@ It's hoped that in most cases, this change will make
 
 :ticket:`8601`
 
+.. _change_new_syntax_ext:
+
+New Syntax Extension Feature for Core
+-------------------------------------
+
+Added the ability to create custom SQL constructs that can define new
+clauses within SELECT, INSERT, UPDATE, and DELETE statements without
+needing to modify the construction or compilation code of
+:class:`.Select`, :class:`_dml.Insert`, :class:`.Update`, or :class:`.Delete`
+directly.
+
+Custom extension can be created by subclassing the class
+:class:`sqlalchemy.sql.SyntaxExtension`.
+For example, to create render the ``INTO OUTFILE`` clause of select
+supported by MariaDB and MySQL, can be implimented using syntax extensions
+as follows::
+
+    from sqlalchemy.ext.compiler import compiles
+    from sqlalchemy.sql import ClauseElement, Select, SyntaxExtension, visitors
+
+
+    def into_outfile(name: str) -> "IntoOutFile":
+        """Return a INTO OUTFILE construct"""
+        return IntoOutFile(name)
+
+
+    class IntoOutFile(SyntaxExtension, ClauseElement):
+        """Define the INTO OUTFILE class."""
+
+        _traverse_internals = [("name", visitors.InternalTraversal.dp_string)]
+        """Structure that defines how SQLAlchemy can cache this element.
+        Specify ``inherit_cache=False`` to turn off caching.
+        """
+        name: str
+
+        def __init__(self, name: str):
+            self.name = name
+
+        def apply_to_select(self, select_stmt: Select) -> None:
+            """Called when the :meth:`.Select.ext` method is called."""
+            select_stmt.apply_syntax_extension_point(
+                self.append_replacing_same_type, "post_body"
+            )
+
+
+    @compiles(IntoOutFile)
+    def _compile_into_outfile(element: IntoOutFile, compiler, **kw):
+        """a compiles extension that compiles to SQL IntoOutFile"""
+        name = element.name.replace("'", "''")
+        return f"INTO OUTFILE '{name}'"
+
+This can then be used in a select using the :meth:`.Select.ext` method:
+
+.. sourcecode:: pycon+sql
+
+    >>> import sqlalchemy as sa
+
+    >>> stmt = (
+    ...     sa.select(sa.column("a"))
+    ...     .select_from(sa.table("tbl"))
+    ...     .ext(into_outfile("myfile.txt"))
+    ... )
+    >>> print(sql)
+    {printsql}SELECT a
+    FROM tbl INTO OUTFILE 'myfile.txt'{stop}
+
+Several SQLAlchemy features custom to a single backend have been
+re-implemented using this new system, including PostgreSQL
+:func:`_postgresql.distinct_on` and MySQL :func:`_mysql.limit` functions
+that supersede the previous implementations.
+
+.. seealso::
+
+    :ref:`examples_syntax_extensions` - A fully documented example of a
+    ``QUALIFY`` clause implemented using this new feature.
+
+:ticket:`12195`
+:ticket:`12342`
+
 
 .. _change_11234:
 
@@ -1392,6 +1471,33 @@ to set :paramref:`_types.Enum.schema` directly as desired when the schema
 used by the :class:`.MetaData` is not what's desired.
 
 :ticket:`10594`
+
+Support for ``VIRTUAL`` computed columns
+----------------------------------------
+
+The behaviour of :paramref:`.Computed.persisted` has change in SQLAlchemy 2.1
+to no longer indicate ``STORED`` computed columns by default in PostgreSQL..
+
+This change aligns SQLAlchemy with PostgreSQL 18+, which has introduced
+support for ``VIRTUAL`` computed columns, and has made them the default
+type if no qualifier is specified.
+
+Migration Path
+^^^^^^^^^^^^^^
+
+To maintain the previous behaviour of ``STORED`` computed columns,
+:paramref:`.Computed.persisted` should be set to ``True`` explicitly::
+
+    from sqlalchemy import Table, Column, MetaData, Computed, Integer
+
+    metadata = MetaData()
+
+    t = Table(
+        "t",
+        metadata,
+        Column("x", Integer),
+        Column("x^2", Integer, Computed("x * x", persisted=True)),
+    )
 
 .. _change_10556:
 

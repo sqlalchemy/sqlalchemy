@@ -1132,6 +1132,8 @@ class HasSyntaxExtensions(Generic[_L]):
 
             :ref:`examples_syntax_extensions`
 
+            :meth:`.ext`
+
 
         """  # noqa: E501
 
@@ -1194,13 +1196,13 @@ class SyntaxExtension(roles.SyntaxExtensionRole):
         self, existing: Sequence[ClauseElement]
     ) -> Sequence[ClauseElement]:
         """Utility function that can be used as
-        :paramref:`_sql.HasSyntaxExtensions.apply_extension_point.apply_fn`
+        :paramref:`_sql.Select.apply_syntax_extension_point.apply_fn`
         to remove any other element of the same type in existing and appending
         ``self`` to the list.
 
         This is equivalent to::
 
-            stmt.apply_extension_point(
+            stmt.apply_syntax_extension_point(
                 lambda existing: [
                     *(e for e in existing if not isinstance(e, ReplaceOfTypeExt)),
                     self,
@@ -1212,7 +1214,8 @@ class SyntaxExtension(roles.SyntaxExtensionRole):
 
             :ref:`examples_syntax_extensions`
 
-            :meth:`_sql.HasSyntaxExtensions.apply_syntax_extension_point`
+            :meth:`_sql.Select.apply_syntax_extension_point` and equivalents
+            in :class:`_dml.Insert`, :class:`_dml.Delete`, :class:`_dml.Update`
 
         """  # noqa: E501
         cls = type(self)

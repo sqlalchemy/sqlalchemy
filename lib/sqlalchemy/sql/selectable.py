@@ -6531,7 +6531,7 @@ class Select(
 
             :func:`_postgresql.distinct_on`
 
-            :meth:`_sql.HasSyntaxExtensions.ext`
+            :meth:`.ext`
         """
         self._distinct = True
         if expr:
