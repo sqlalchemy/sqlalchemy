@@ -58,13 +58,6 @@ jobs:
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
 
         exclude:
-          # cext-greenlet only runs on ubuntu x64 and arm64
-          - build-type: "cext-greenlet"
-            os: "windows-latest"
-          - build-type: "cext-greenlet"
-            os: "windows-11-arm"
-          - build-type: "cext-greenlet"
-            os: "macos-latest"
 
           # the threaded pythons are not stable under greenlet. Even
           # though we can run individual tests, when you run the whole suite
