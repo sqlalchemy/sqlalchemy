@@ -32,6 +32,7 @@ from ..util import ScopedRegistry
 from ..util import ThreadLocalRegistry
 from ..util import warn
 from ..util import warn_deprecated
+from ..util.typing import Never
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
@@ -1851,6 +1852,17 @@ class scoped_session(Generic[_S]):
         """  # noqa: E501
 
         return self._proxied.rollback()
+
+    @overload
+    def scalar(
+        self,
+        statement: TypedReturnsRows[Never],
+        params: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Optional[Any]: ...
 
     @overload
     def scalar(

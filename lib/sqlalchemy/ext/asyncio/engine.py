@@ -43,6 +43,7 @@ from ...engine.base import Transaction
 from ...exc import ArgumentError
 from ...util import immutabledict
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import Never
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
@@ -670,6 +671,17 @@ class AsyncConnection(  # type:ignore[misc]
             _require_await=True,
         )
         return await _ensure_sync_result(result, self.execute)
+
+    # special case to handle mypy issue:
+    # https://github.com/python/mypy/issues/20651
+    @overload
+    async def scalar(
+        self,
+        statement: TypedReturnsRows[Never],
+        parameters: Optional[_CoreSingleExecuteParams] = None,
+        *,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+    ) -> Optional[Any]: ...
 
     @overload
     async def scalar(

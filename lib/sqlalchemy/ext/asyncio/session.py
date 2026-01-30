@@ -40,6 +40,7 @@ from ...orm import Session
 from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import Never
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
@@ -460,6 +461,19 @@ class AsyncSession(ReversibleProxy[Session]):
             **kw,
         )
         return await _ensure_sync_result(result, self.execute)
+
+    # special case to handle mypy issue:
+    # https://github.com/python/mypy/issues/20651
+    @overload
+    async def scalar(
+        self,
+        statement: TypedReturnsRows[Never],
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        **kw: Any,
+    ) -> Optional[Any]: ...
 
     @overload
     async def scalar(

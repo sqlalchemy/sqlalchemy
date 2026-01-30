@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 from typing import assert_type
 from typing import List
+from typing import Tuple
+from typing import Unpack
 
+from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Result
+from sqlalchemy import Select
+from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy.engine.row import Row
 from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -41,6 +52,14 @@ class Address(Base):
     email: Mapped[str]
 
     user: Mapped[User] = relationship(back_populates="addresses")
+
+
+user_table = Table(
+    "user",
+    MetaData(),
+    Column("id", Integer, primary_key=True),
+    Column("name", String, primary_key=True),
+)
 
 
 e = create_engine("sqlite://")
@@ -172,3 +191,31 @@ async def async_test_exec_options() -> None:
     await scoped.connection(
         execution_options={"isolation_level": "REPEATABLE READ"}
     )
+
+
+def test_13091() -> None:
+    session = Session()
+    stmt = select(user_table.c.id)
+    assert_type(stmt, Select[Unpack[Tuple[Any, ...]]])
+    result = session.execute(stmt)
+
+    assert_type(result, Result[Unpack[Tuple[Any, ...]]])
+    data1 = result.scalar()
+    assert_type(data1, Any | None)
+
+    data2 = session.scalar(stmt)
+    assert_type(data2, Any | None)
+
+
+async def async_test_13091() -> None:
+    session = AsyncSession()
+    stmt = select(user_table.c.id)
+    assert_type(stmt, Select[Unpack[Tuple[Any, ...]]])
+    result = await session.execute(stmt)
+
+    assert_type(result, Result[Unpack[Tuple[Any, ...]]])
+    data1 = result.scalar()
+    assert_type(data1, Any | None)
+
+    data2 = await session.scalar(stmt)
+    assert_type(data2, Any | None)
