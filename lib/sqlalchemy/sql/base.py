@@ -1702,9 +1702,8 @@ class _ColumnMetrics(Generic[_COL_co]):
 
 
 class ColumnCollection(Generic[_COLKEY, _COL_co]):
-    """Collection of :class:`_expression.ColumnElement` instances,
-    typically for
-    :class:`_sql.FromClause` objects.
+    """Base class for collection of :class:`_expression.ColumnElement`
+    instances, typically for :class:`_sql.FromClause` objects.
 
     The :class:`_sql.ColumnCollection` object is most commonly available
     as the :attr:`_schema.Table.c` or :attr:`_schema.Table.columns` collection
@@ -1771,34 +1770,16 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         [Column('x', Integer(), table=None),
          Column('y', Integer(), table=None)]
 
-    The base :class:`_expression.ColumnCollection` object can store
-    duplicates, which can
-    mean either two columns with the same key, in which case the column
-    returned by key  access is **arbitrary**::
-
-        >>> x1, x2 = Column("x", Integer), Column("x", Integer)
-        >>> cc = ColumnCollection(columns=[(x1.name, x1), (x2.name, x2)])
-        >>> list(cc)
-        [Column('x', Integer(), table=None),
-         Column('x', Integer(), table=None)]
-        >>> cc["x"] is x1
-        False
-        >>> cc["x"] is x2
-        True
-
-    Or it can also mean the same column multiple times.   These cases are
-    supported as :class:`_expression.ColumnCollection`
-    is used to represent the columns in
-    a SELECT statement which may include duplicates.
-
-    A special subclass :class:`.DedupeColumnCollection` exists which instead
+    The :class:`_expression.ColumnCollection` base class is read-only.
+    For mutation operations, the :class:`.WriteableColumnCollection` subclass
+    provides methods such as :meth:`.WriteableColumnCollection.add`.
+    A special subclass :class:`.DedupeColumnCollection` exists which
     maintains SQLAlchemy's older behavior of not allowing duplicates; this
     collection is used for schema level objects like :class:`_schema.Table`
-    and
-    :class:`.PrimaryKeyConstraint` where this deduping is helpful.  The
-    :class:`.DedupeColumnCollection` class also has additional mutation methods
-    as the schema constructs have more use cases that require removal and
-    replacement of columns.
+    and :class:`.PrimaryKeyConstraint` where this deduping is helpful.
+    The :class:`.DedupeColumnCollection` class also has additional mutation
+    methods as the schema constructs have more use cases that require removal
+    and replacement of columns.
 
     .. versionchanged:: 1.4 :class:`_expression.ColumnCollection`
        now stores duplicate
@@ -1807,6 +1788,11 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
        former behavior in those cases where deduplication as well as
        additional replace/remove operations are needed.
 
+    .. versionchanged:: 2.1 :class:`_expression.ColumnCollection` is now
+       a read-only base class. Mutation operations are available through
+       :class:`.WriteableColumnCollection` and :class:`.DedupeColumnCollection`
+       subclasses.
+
 
     """
 
@@ -1814,20 +1800,15 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 
     _collection: List[Tuple[_COLKEY, _COL_co, _ColumnMetrics[_COL_co]]]
     _index: Dict[Union[None, str, int], Tuple[_COLKEY, _COL_co]]
-    _proxy_index: Dict[ColumnElement[Any], Set[_ColumnMetrics[_COL_co]]]
     _colset: Set[_COL_co]
+    _proxy_index: Dict[ColumnElement[Any], Set[_ColumnMetrics[_COL_co]]]
 
-    def __init__(
-        self, columns: Optional[Iterable[Tuple[_COLKEY, _COL_co]]] = None
-    ):
-        object.__setattr__(self, "_colset", set())
-        object.__setattr__(self, "_index", {})
-        object.__setattr__(
-            self, "_proxy_index", collections.defaultdict(util.OrderedSet)
+    def __init__(self) -> None:
+        raise TypeError(
+            "ColumnCollection is an abstract base class and cannot be "
+            "instantiated directly. Use WriteableColumnCollection or "
+            "DedupeColumnCollection instead."
         )
-        object.__setattr__(self, "_collection", [])
-        if columns:
-            self._initial_populate(columns)
 
     @util.preload_module("sqlalchemy.sql.elements")
     def __clause_element__(self) -> ClauseList:
@@ -1838,11 +1819,6 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
             group=False,
             *self._all_columns,
         )
-
-    def _initial_populate(
-        self, iter_: Iterable[Tuple[_COLKEY, _COL_co]]
-    ) -> None:
-        self._populate_separate_keys(iter_)
 
     @property
     def _all_columns(self) -> List[_COL_co]:
@@ -1904,7 +1880,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
                 else:
                     cols = (self._index[sub_key] for sub_key in key)
 
-                return ColumnCollection(cols).as_readonly()
+                return WriteableColumnCollection(cols).as_readonly()
             else:
                 return self._index[key][1]
         except KeyError as err:
@@ -1966,30 +1942,93 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
             ", ".join(str(c) for c in self),
         )
 
-    def __setitem__(self, key: str, value: Any) -> NoReturn:
-        raise NotImplementedError()
-
-    def __delitem__(self, key: str) -> NoReturn:
-        raise NotImplementedError()
-
-    def __setattr__(self, key: str, obj: Any) -> NoReturn:
-        raise NotImplementedError()
-
-    def clear(self) -> NoReturn:
-        """Dictionary clear() is not implemented for
-        :class:`_sql.ColumnCollection`."""
-        raise NotImplementedError()
-
-    def remove(self, column: Any) -> NoReturn:
-        raise NotImplementedError()
-
-    def update(self, iter_: Any) -> NoReturn:
-        """Dictionary update() is not implemented for
-        :class:`_sql.ColumnCollection`."""
-        raise NotImplementedError()
-
     # https://github.com/python/mypy/issues/4266
     __hash__: Optional[int] = None  # type: ignore
+
+    def contains_column(self, col: ColumnElement[Any]) -> bool:
+        """Checks if a column object exists in this collection"""
+        if col not in self._colset:
+            if isinstance(col, str):
+                raise exc.ArgumentError(
+                    "contains_column cannot be used with string arguments. "
+                    "Use ``col_name in table.c`` instead."
+                )
+            return False
+        else:
+            return True
+
+    def _as_readonly(self) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]:
+        raise NotImplementedError()
+
+    def corresponding_column(
+        self, column: _COL, require_embedded: bool = False
+    ) -> Optional[Union[_COL, _COL_co]]:
+        """Given a :class:`_expression.ColumnElement`, return the exported
+        :class:`_expression.ColumnElement` object from this
+        :class:`_expression.ColumnCollection`
+        which corresponds to that original :class:`_expression.ColumnElement`
+        via a common
+        ancestor column.
+
+        :param column: the target :class:`_expression.ColumnElement`
+                      to be matched.
+
+        :param require_embedded: only return corresponding columns for
+         the given :class:`_expression.ColumnElement`, if the given
+         :class:`_expression.ColumnElement`
+         is actually present within a sub-element
+         of this :class:`_expression.Selectable`.
+         Normally the column will match if
+         it merely shares a common ancestor with one of the exported
+         columns of this :class:`_expression.Selectable`.
+
+        .. seealso::
+
+            :meth:`_expression.Selectable.corresponding_column`
+            - invokes this method
+            against the collection returned by
+            :attr:`_expression.Selectable.exported_columns`.
+
+        .. versionchanged:: 1.4 the implementation for ``corresponding_column``
+           was moved onto the :class:`_expression.ColumnCollection` itself.
+
+        """
+        raise NotImplementedError()
+
+
+class WriteableColumnCollection(ColumnCollection[_COLKEY, _COL_co]):
+    """A :class:`_sql.ColumnCollection` that allows mutation operations.
+
+    This is the writable form of :class:`_sql.ColumnCollection` that
+    implements methods such as :meth:`.add`, :meth:`.remove`, :meth:`.update`,
+    and :meth:`.clear`.
+
+    This class is used internally for building column collections during
+    construction of SQL constructs. For schema-level objects that require
+    deduplication behavior, use :class:`.DedupeColumnCollection`.
+
+    .. versionadded:: 2.1
+
+    """
+
+    __slots__ = ()
+
+    def __init__(
+        self, columns: Optional[Iterable[Tuple[_COLKEY, _COL_co]]] = None
+    ):
+        object.__setattr__(self, "_colset", set())
+        object.__setattr__(self, "_index", {})
+        object.__setattr__(
+            self, "_proxy_index", collections.defaultdict(util.OrderedSet)
+        )
+        object.__setattr__(self, "_collection", [])
+        if columns:
+            self._initial_populate(columns)
+
+    def _initial_populate(
+        self, iter_: Iterable[Tuple[_COLKEY, _COL_co]]
+    ) -> None:
+        self._populate_separate_keys(iter_)
 
     def _populate_separate_keys(
         self, iter_: Iterable[Tuple[_COLKEY, _COL_co]]
@@ -2005,18 +2044,41 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         )
         self._index.update({k: (k, col) for k, col, _ in reversed(collection)})
 
+    def __getstate__(self) -> Dict[str, Any]:
+        return {
+            "_collection": [(k, c) for k, c, _ in self._collection],
+            "_index": self._index,
+        }
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        object.__setattr__(self, "_index", state["_index"])
+        object.__setattr__(
+            self, "_proxy_index", collections.defaultdict(util.OrderedSet)
+        )
+        object.__setattr__(
+            self,
+            "_collection",
+            [
+                (k, c, _ColumnMetrics(self, c))
+                for (k, c) in state["_collection"]
+            ],
+        )
+        object.__setattr__(
+            self, "_colset", {col for k, col, _ in self._collection}
+        )
+
     def add(
         self,
         column: ColumnElement[Any],
         key: Optional[_COLKEY] = None,
     ) -> None:
-        """Add a column to this :class:`_sql.ColumnCollection`.
+        """Add a column to this :class:`_sql.WriteableColumnCollection`.
 
         .. note::
 
             This method is **not normally used by user-facing code**, as the
-            :class:`_sql.ColumnCollection` is usually part of an existing
-            object such as a :class:`_schema.Table`. To add a
+            :class:`_sql.WriteableColumnCollection` is usually part of an
+            existing object such as a :class:`_schema.Table`. To add a
             :class:`_schema.Column` to an existing :class:`_schema.Table`
             object, use the :meth:`_schema.Table.append_column` method.
 
@@ -2044,46 +2106,14 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         if colkey not in self._index:
             self._index[colkey] = (colkey, _column)
 
-    def __getstate__(self) -> Dict[str, Any]:
-        return {
-            "_collection": [(k, c) for k, c, _ in self._collection],
-            "_index": self._index,
-        }
-
-    def __setstate__(self, state: Dict[str, Any]) -> None:
-        object.__setattr__(self, "_index", state["_index"])
-        object.__setattr__(
-            self, "_proxy_index", collections.defaultdict(util.OrderedSet)
-        )
-        object.__setattr__(
-            self,
-            "_collection",
-            [
-                (k, c, _ColumnMetrics(self, c))
-                for (k, c) in state["_collection"]
-            ],
-        )
-        object.__setattr__(
-            self, "_colset", {col for k, col, _ in self._collection}
-        )
-
-    def contains_column(self, col: ColumnElement[Any]) -> bool:
-        """Checks if a column object exists in this collection"""
-        if col not in self._colset:
-            if isinstance(col, str):
-                raise exc.ArgumentError(
-                    "contains_column cannot be used with string arguments. "
-                    "Use ``col_name in table.c`` instead."
-                )
-            return False
-        else:
-            return True
+    def _as_readonly(self) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]:
+        return ReadOnlyColumnCollection(self)
 
     def as_readonly(self) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]:
         """Return a "read only" form of this
-        :class:`_sql.ColumnCollection`."""
+        :class:`_sql.WriteableColumnCollection`."""
 
-        return ReadOnlyColumnCollection(self)
+        return self._as_readonly()
 
     def _init_proxy_index(self) -> None:
         """populate the "proxy index", if empty.
@@ -2121,27 +2151,8 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         via a common
         ancestor column.
 
-        :param column: the target :class:`_expression.ColumnElement`
-                      to be matched.
-
-        :param require_embedded: only return corresponding columns for
-         the given :class:`_expression.ColumnElement`, if the given
-         :class:`_expression.ColumnElement`
-         is actually present within a sub-element
-         of this :class:`_expression.Selectable`.
-         Normally the column will match if
-         it merely shares a common ancestor with one of the exported
-         columns of this :class:`_expression.Selectable`.
-
-        .. seealso::
-
-            :meth:`_expression.Selectable.corresponding_column`
-            - invokes this method
-            against the collection returned by
-            :attr:`_expression.Selectable.exported_columns`.
-
-        .. versionchanged:: 1.4 the implementation for ``corresponding_column``
-           was moved onto the :class:`_expression.ColumnCollection` itself.
+        See :meth:`.ColumnCollection.corresponding_column` for parameter
+        information.
 
         """
         # TODO: cython candidate
@@ -2221,7 +2232,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
 _NAMEDCOL = TypeVar("_NAMEDCOL", bound="NamedColumn[Any]")
 
 
-class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
+class DedupeColumnCollection(WriteableColumnCollection[str, _NAMEDCOL]):
     """A :class:`_expression.ColumnCollection`
     that maintains deduplicating behavior.
 
@@ -2329,7 +2340,7 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
     def extend(self, iter_: Iterable[_NAMEDCOL]) -> None:
         self._populate_separate_keys((col.key, col) for col in iter_)
 
-    def remove(self, column: _NAMEDCOL) -> None:  # type: ignore[override]
+    def remove(self, column: _NAMEDCOL) -> None:
         if column not in self._colset:
             raise ValueError(
                 "Can't remove column %r; column is not in this collection"
@@ -2447,28 +2458,42 @@ class ReadOnlyColumnCollection(
 ):
     __slots__ = ("_parent",)
 
-    def __init__(self, collection: ColumnCollection[_COLKEY, _COL_co]):
+    _parent: WriteableColumnCollection[_COLKEY, _COL_co]
+
+    def __init__(
+        self, collection: WriteableColumnCollection[_COLKEY, _COL_co]
+    ):
         object.__setattr__(self, "_parent", collection)
-        object.__setattr__(self, "_colset", collection._colset)
         object.__setattr__(self, "_index", collection._index)
         object.__setattr__(self, "_collection", collection._collection)
+        object.__setattr__(self, "_colset", collection._colset)
         object.__setattr__(self, "_proxy_index", collection._proxy_index)
 
-    def __getstate__(self) -> Dict[str, _COL_co]:
+    def _as_readonly(self) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]:
+        return self
+
+    def __getstate__(self) -> Dict[str, ColumnCollection[_COLKEY, _COL_co]]:
         return {"_parent": self._parent}
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         parent = state["_parent"]
         self.__init__(parent)  # type: ignore
 
-    def add(self, column: Any, key: Any = ...) -> Any:
-        self._readonly()
+    def corresponding_column(
+        self, column: _COL, require_embedded: bool = False
+    ) -> Optional[Union[_COL, _COL_co]]:
+        """Given a :class:`_expression.ColumnElement`, return the exported
+        :class:`_expression.ColumnElement` object from this
+        :class:`_expression.ColumnCollection`
+        which corresponds to that original :class:`_expression.ColumnElement`
+        via a common
+        ancestor column.
 
-    def extend(self, elements: Any) -> NoReturn:
-        self._readonly()
+        See :meth:`.ColumnCollection.corresponding_column` for parameter
+        information.
 
-    def remove(self, item: Any) -> NoReturn:
-        self._readonly()
+        """
+        return self._parent.corresponding_column(column, require_embedded)
 
 
 class ColumnSet(util.OrderedSet["ColumnClause[Any]"]):

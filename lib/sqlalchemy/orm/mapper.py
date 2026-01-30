@@ -1133,25 +1133,7 @@ class Mapper(
 
     """
 
-    columns: ReadOnlyColumnCollection[str, Column[Any]]
-    """A collection of :class:`_schema.Column` or other scalar expression
-    objects maintained by this :class:`_orm.Mapper`.
-
-    The collection behaves the same as that of the ``c`` attribute on
-    any :class:`_schema.Table` object,
-    except that only those columns included in
-    this mapping are present, and are keyed based on the attribute name
-    defined in the mapping, not necessarily the ``key`` attribute of the
-    :class:`_schema.Column` itself.   Additionally, scalar expressions mapped
-    by :func:`.column_property` are also present here.
-
-    This is a *read only* attribute determined during mapper construction.
-    Behavior is undefined if directly modified.
-
-    """
-
-    c: ReadOnlyColumnCollection[str, Column[Any]]
-    """A synonym for :attr:`_orm.Mapper.columns`."""
+    _columns: sql_base.WriteableColumnCollection[str, Column[Any]]
 
     @util.memoized_property
     def _path_registry(self) -> _CachingEntityRegistry:
@@ -1654,7 +1636,7 @@ class Mapper(
         }
 
     def _configure_properties(self) -> None:
-        self.columns = self.c = sql_base.ColumnCollection()  # type: ignore
+        self._columns = sql_base.WriteableColumnCollection()
 
         # object attribute names mapped to MapperProperty objects
         self._props = util.OrderedDict()
@@ -2108,7 +2090,7 @@ class Mapper(
                 # to be addressable in subqueries
                 col.key = col._tq_key_label = key
 
-            self.columns.add(col, key)
+            self._columns.add(col, key)
 
             for col in prop.columns:
                 for proxy_col in col.proxy_set:
@@ -2476,6 +2458,29 @@ class Mapper(
         :class:`.MapperProperty` which maps this column."""
 
         return self._columntoproperty[column]
+
+    @HasMemoized.memoized_attribute
+    def columns(self) -> ReadOnlyColumnCollection[str, Column[Any]]:
+        """A collection of :class:`_schema.Column` or other scalar expression
+        objects maintained by this :class:`_orm.Mapper`.
+
+        The collection behaves the same as that of the ``c`` attribute on any
+        :class:`_schema.Table` object, except that only those columns included
+        in this mapping are present, and are keyed based on the attribute name
+        defined in the mapping, not necessarily the ``key`` attribute of the
+        :class:`_schema.Column` itself.   Additionally, scalar expressions
+        mapped by :func:`.column_property` are also present here.
+
+        This is a *read only* attribute determined during mapper construction.
+        Behavior is undefined if directly modified.
+
+        """
+        return self._columns.as_readonly()
+
+    @HasMemoized.memoized_attribute
+    def c(self) -> ReadOnlyColumnCollection[str, Column[Any]]:
+        """A synonym for :attr:`_orm.Mapper.columns`."""
+        return self._columns.as_readonly()
 
     @property
     def iterate_properties(self):

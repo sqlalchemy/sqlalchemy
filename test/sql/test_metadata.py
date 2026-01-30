@@ -1971,10 +1971,28 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             {fk1.constraint, fk2.constraint, fk3},
         )
 
+    def test_c_mutator_names_ok(self):
+        m = MetaData()
+        t1 = Table(
+            "t",
+            m,
+            Column("add", Integer),
+            Column("remove", Integer),
+            Column("clear", Integer),
+            Column("extend", Integer),
+        )
+        self.assert_compile(
+            select(t1.c.add, t1.c.remove, t1.c.clear, t1.c.extend),
+            'SELECT t."add", t.remove, t.clear, t.extend FROM t',
+        )
+
     def test_c_immutable(self):
         m = MetaData()
         t1 = Table("t", m, Column("x", Integer), Column("y", Integer))
-        assert_raises(TypeError, t1.c.extend, [Column("z", Integer)])
+
+        # extend() method doesn't exist on readonly collections
+        # to allow columns named 'extend'
+        assert_raises(AttributeError, lambda: t1.c.extend)
 
         def assign():
             t1.c["z"] = Column("z", Integer)

@@ -43,7 +43,6 @@ from .base import _exclusive_against
 from .base import _from_objects
 from .base import _generative
 from .base import _select_iterables
-from .base import ColumnCollection
 from .base import ColumnSet
 from .base import CompileState
 from .base import DialectKWArgs
@@ -53,6 +52,7 @@ from .base import Generative
 from .base import HasCompileState
 from .base import HasSyntaxExtensions
 from .base import SyntaxExtension
+from .base import WriteableColumnCollection
 from .elements import BooleanClauseList
 from .elements import ClauseElement
 from .elements import ColumnClause
@@ -427,7 +427,7 @@ class UpdateBase(
     def _generate_fromclause_column_proxies(
         self,
         fromclause: FromClause,
-        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        columns: WriteableColumnCollection[str, KeyedColumnElement[Any]],
         primary_key: ColumnSet,
         foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
@@ -857,7 +857,7 @@ class UpdateBase(
         .. versionadded:: 1.4
 
         """
-        return ColumnCollection(
+        return WriteableColumnCollection(
             (c.key, c)
             for c in self._all_selected_columns
             if is_column_element(c)

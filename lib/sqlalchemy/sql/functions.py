@@ -39,6 +39,7 @@ from .base import ColumnCollection
 from .base import ExecutableStatement
 from .base import Generative
 from .base import HasMemoized
+from .base import WriteableColumnCollection
 from .elements import _type_from_args
 from .elements import AggregateOrderBy
 from .elements import BinaryExpression
@@ -421,7 +422,7 @@ class FunctionElement(
     def c(self) -> ColumnCollection[str, KeyedColumnElement[Any]]:  # type: ignore[override]  # noqa: E501
         """synonym for :attr:`.FunctionElement.columns`."""
 
-        return ColumnCollection(
+        return WriteableColumnCollection(
             columns=[(col.key, col) for col in self._all_selected_columns]
         )
 

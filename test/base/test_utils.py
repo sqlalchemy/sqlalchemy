@@ -962,7 +962,7 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
 
 class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
     def _column_collection(self, columns=None):
-        return sql.ColumnCollection(columns=columns)
+        return sql.WriteableColumnCollection(columns=columns)
 
     def test_separate_key_all_cols(self):
         c1, c2 = sql.column("col1"), sql.column("col2")
@@ -994,7 +994,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
             column("c2"),
         )
 
-        cc = sql.ColumnCollection()
+        cc = sql.WriteableColumnCollection()
 
         cc.add(c1)
         cc.add(c2a, "c2")
@@ -1027,7 +1027,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
             column("c2"),
         )
 
-        cc = sql.ColumnCollection(
+        cc = sql.WriteableColumnCollection(
             columns=[("c1", c1), ("c2", c2a), ("c3", c3), ("c2", c2b)]
         )
 
@@ -1052,7 +1052,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
     def test_identical_dupe_construct(self):
         c1, c2, c3 = (column("c1"), column("c2"), column("c3"))
 
-        cc = sql.ColumnCollection(
+        cc = sql.WriteableColumnCollection(
             columns=[("c1", c1), ("c2", c2), ("c3", c3), ("c2", c2)]
         )
 

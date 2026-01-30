@@ -81,7 +81,7 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql._typing import is_selectable
 from ..sql.annotation import SupportsCloneAnnotations
-from ..sql.base import ColumnCollection
+from ..sql.base import WriteableColumnCollection
 from ..sql.cache_key import HasCacheKey
 from ..sql.cache_key import MemoizedHasCacheKey
 from ..sql.elements import ColumnElement
@@ -1263,7 +1263,7 @@ class AliasedInsp(
             (key, self._adapt_element(col)) for key, col in cols_plus_keys
         ]
 
-        return ColumnCollection(cols_plus_keys)
+        return WriteableColumnCollection(cols_plus_keys)
 
     def _memo(self, key, callable_, *args, **kw):
         if key in self._memoized_values:
@@ -1608,7 +1608,7 @@ class Bundle(
         ]
         self.exprs = coerced_exprs
 
-        self.c = self.columns = ColumnCollection(
+        self.c = self.columns = WriteableColumnCollection(
             (getattr(col, "key", col._label), col)
             for col in [e._annotations.get("bundle", e) for e in coerced_exprs]
         ).as_readonly()
