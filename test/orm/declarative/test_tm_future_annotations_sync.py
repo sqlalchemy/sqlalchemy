@@ -4580,6 +4580,31 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             inh_type.fail()
 
+    @requires.pep649
+    def test_pep649_init(self, decl_base):
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(
+                BigInteger, Identity(always=True), primary_key=True
+            )
+
+            bs: Mapped[list[B]] = relationship(back_populates="a")
+
+            def __init__(self, bs: list[B], *args, **kwargs):
+                super().__init__(*args, bs=bs, **kwargs)
+
+        class B(decl_base):
+            __tablename__ = "b"
+
+            id: Mapped[int] = mapped_column(
+                BigInteger, Identity(always=True), primary_key=True
+            )
+
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            a: Mapped[A] = relationship(back_populates="bs")
+
 
 class WriteOnlyRelationshipTest(fixtures.TestBase):
     def _assertions(self, A, B, lazy):
