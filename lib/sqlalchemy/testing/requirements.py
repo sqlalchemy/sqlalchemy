@@ -1689,6 +1689,11 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def pep649(self):
+        """pep649 deferred evaluation of annotations without future mode"""
+        return self.python314
+
+    @property
     def cpython(self):
         return exclusions.only_if(
             lambda: util.cpython, "cPython interpreter needed"

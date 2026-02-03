@@ -35,7 +35,6 @@ from typing import Generic
 from typing import Iterator
 from typing import List
 from typing import Literal
-from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -57,20 +56,6 @@ _T_co = TypeVar("_T_co", covariant=True)
 _F = TypeVar("_F", bound=Callable[..., Any])
 _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
 _M = TypeVar("_M", bound=ModuleType)
-
-if compat.py314:
-
-    import annotationlib
-
-    def get_annotations(obj: Any) -> Mapping[str, Any]:
-        return annotationlib.get_annotations(
-            obj, format=annotationlib.Format.FORWARDREF
-        )
-
-else:
-
-    def get_annotations(obj: Any) -> Mapping[str, Any]:
-        return inspect.get_annotations(obj)
 
 
 def restore_annotations(

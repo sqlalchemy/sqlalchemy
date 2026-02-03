@@ -8,6 +8,7 @@ from typing import cast
 import typing_extensions
 
 from sqlalchemy import Column
+from sqlalchemy import util
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -646,3 +647,24 @@ class TestTyping(fixtures.TestBase):
                     types.add(lt)
                     is_(lt in ti, True)
             eq_(len(ti), len(types), k)
+
+    @requires.pep649
+    def test_pep649_getfullargspec(self):
+        """test for #13104"""
+
+        def foo(x: Frobnizzle):  # type: ignore  # noqa: F821
+            pass
+
+        anno = util.get_annotations(foo)
+        eq_(
+            util.inspect_getfullargspec(foo),
+            util.compat.FullArgSpec(
+                args=["x"],
+                varargs=None,
+                varkw=None,
+                defaults=None,
+                kwonlyargs=[],
+                kwonlydefaults=None,
+                annotations=anno,
+            ),
+        )

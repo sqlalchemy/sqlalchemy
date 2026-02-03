@@ -73,6 +73,21 @@ else:
             return iter(self._parts)
 
 
+if py314:
+
+    import annotationlib
+
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        return annotationlib.get_annotations(
+            obj, format=annotationlib.Format.FORWARDREF
+        )
+
+else:
+
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        return inspect.get_annotations(obj)
+
+
 class FullArgSpec(typing.NamedTuple):
     args: List[str]
     varargs: Optional[str]
@@ -80,7 +95,7 @@ class FullArgSpec(typing.NamedTuple):
     defaults: Optional[Tuple[Any, ...]]
     kwonlyargs: List[str]
     kwonlydefaults: Optional[Dict[str, Any]]
-    annotations: Dict[str, Any]
+    annotations: Mapping[str, Any]
 
 
 def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
@@ -117,7 +132,7 @@ def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
         func.__defaults__,
         kwonlyargs,
         func.__kwdefaults__,
-        func.__annotations__,
+        get_annotations(func),
     )
 
 

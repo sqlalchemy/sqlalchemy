@@ -56,6 +56,7 @@ from .compat import dataclass_fields as dataclass_fields
 from .compat import decode_backslashreplace as decode_backslashreplace
 from .compat import dottedgetter as dottedgetter
 from .compat import freethreading as freethreading
+from .compat import get_annotations as get_annotations
 from .compat import has_refcount_gc as has_refcount_gc
 from .compat import inspect_getfullargspec as inspect_getfullargspec
 from .compat import is64bit as is64bit
@@ -105,7 +106,6 @@ from .langhelpers import format_argspec_init as format_argspec_init
 from .langhelpers import format_argspec_plus as format_argspec_plus
 from .langhelpers import generic_fn_descriptor as generic_fn_descriptor
 from .langhelpers import generic_repr as generic_repr
-from .langhelpers import get_annotations as get_annotations
 from .langhelpers import get_callable_argspec as get_callable_argspec
 from .langhelpers import get_cls_kwargs as get_cls_kwargs
 from .langhelpers import get_func_kwargs as get_func_kwargs
