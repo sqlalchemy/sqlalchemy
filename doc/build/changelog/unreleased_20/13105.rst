@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13105
+
+    Fixed an issue in the PostgreSQL dialect where foreign key constraint
+    reflection would incorrectly swap or fail to capture ``onupdate`` and
+    ``ondelete`` values when these clauses appeared in a different order than
+    expected in the constraint definition. This issue primarily affected
+    PostgreSQL-compatible databases such as CockroachDB, which may return ``ON
+    DELETE`` before ``ON UPDATE`` in the constraint definition string. The
+    reflection logic now correctly parses both clauses regardless of their
+    ordering.

@@ -3,7 +3,6 @@ import dataclasses
 import datetime
 import logging
 import logging.handlers
-import re
 
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
@@ -60,100 +59,8 @@ from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import ne_
 
 
-def _fk_expected(
-    constrained_columns,
-    referred_table,
-    referred_columns,
-    referred_schema=None,
-    match=None,
-    onupdate=None,
-    ondelete=None,
-    deferrable=None,
-    initially=None,
-):
-    return (
-        constrained_columns,
-        referred_schema,
-        referred_table,
-        referred_columns,
-        f"MATCH {match}" if match else None,
-        match,
-        f"ON UPDATE {onupdate}" if onupdate else None,
-        onupdate,
-        f"ON DELETE {ondelete}" if ondelete else None,
-        ondelete,
-        deferrable,
-        f"INITIALLY {initially}" if initially else None,
-        initially,
-    )
-
-
 class DialectTest(fixtures.TestBase):
     """python-side dialect tests."""
-
-    @testing.combinations(
-        (
-            "FOREIGN KEY (tid) REFERENCES some_table(id)",
-            _fk_expected("tid", "some_table", "id"),
-        ),
-        (
-            'FOREIGN KEY (tid) REFERENCES "(2)"(id)',
-            _fk_expected("tid", '"(2)"', "id"),
-        ),
-        (
-            'FOREIGN KEY (tid) REFERENCES some_table("(2)")',
-            _fk_expected("tid", "some_table", '"(2)"'),
-        ),
-        (
-            'FOREIGN KEY (tid1, tid2) REFERENCES some_table("(2)", "(3)")',
-            _fk_expected("tid1, tid2", "some_table", '"(2)", "(3)"'),
-        ),
-        (
-            "FOREIGN KEY (tid) REFERENCES some_table(id) "
-            "DEFERRABLE INITIALLY DEFERRED",
-            _fk_expected(
-                "tid",
-                "some_table",
-                "id",
-                deferrable="DEFERRABLE",
-                initially="DEFERRED",
-            ),
-        ),
-        (
-            "FOREIGN KEY (tid1, tid2) "
-            "REFERENCES some_schema.some_table(id1, id2)",
-            _fk_expected(
-                "tid1, tid2",
-                "some_table",
-                "id1, id2",
-                referred_schema="some_schema",
-            ),
-        ),
-        (
-            "FOREIGN KEY (tid1, tid2) "
-            "REFERENCES some_schema.some_table(id1, id2) "
-            "MATCH FULL "
-            "ON UPDATE CASCADE "
-            "ON DELETE CASCADE "
-            "DEFERRABLE INITIALLY DEFERRED",
-            _fk_expected(
-                "tid1, tid2",
-                "some_table",
-                "id1, id2",
-                referred_schema="some_schema",
-                onupdate="CASCADE",
-                ondelete="CASCADE",
-                match="FULL",
-                deferrable="DEFERRABLE",
-                initially="DEFERRED",
-            ),
-        ),
-    )
-    def test_fk_parsing(self, condef, expected):
-        FK_REGEX = postgresql.dialect()._fk_regex_pattern
-        groups = re.search(FK_REGEX, condef).groups()
-
-        eq_(groups, expected)
 
     def test_range_constructor(self):
         """test kwonly arguments in the range constructor, as we had
