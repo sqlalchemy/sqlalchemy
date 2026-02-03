@@ -889,6 +889,305 @@ class ArrayReflectionTest(fixtures.TablesTest):
         assert_is_integer_array(table.c.datasss.type)
 
 
+class RegexTest(fixtures.TestBase):
+
+    def _fk_match(
+        constrained_columns,
+        referred_table,
+        referred_columns,
+        referred_schema=None,
+        match=None,
+        onupdate=None,
+        ondelete=None,
+        deferrable=None,
+        initially=None,
+    ):
+        return (
+            constrained_columns,
+            referred_schema,
+            referred_table,
+            referred_columns,
+            match,
+            onupdate,
+            ondelete,
+            deferrable,
+            initially,
+        )
+
+    @testing.combinations(
+        (
+            "FOREIGN KEY (tid) REFERENCES some_table(id)",
+            _fk_match("tid", "some_table", "id"),
+        ),
+        (
+            'FOREIGN KEY (tid) REFERENCES "(2)"(id)',
+            _fk_match("tid", '"(2)"', "id"),
+        ),
+        (
+            'FOREIGN KEY (tid) REFERENCES some_table("(2)")',
+            _fk_match("tid", "some_table", '"(2)"'),
+        ),
+        (
+            'FOREIGN KEY (tid1, tid2) REFERENCES some_table("(2)", "(3)")',
+            _fk_match("tid1, tid2", "some_table", '"(2)", "(3)"'),
+        ),
+        (
+            "FOREIGN KEY (tid) REFERENCES some_table(id) "
+            "DEFERRABLE INITIALLY DEFERRED",
+            _fk_match(
+                "tid",
+                "some_table",
+                "id",
+                deferrable="DEFERRABLE",
+                initially="DEFERRED",
+            ),
+        ),
+        (
+            "FOREIGN KEY (tid1, tid2) "
+            "REFERENCES some_schema.some_table(id1, id2)",
+            _fk_match(
+                "tid1, tid2",
+                "some_table",
+                "id1, id2",
+                referred_schema="some_schema",
+            ),
+        ),
+        (
+            "FOREIGN KEY (tid1, tid2) "
+            "REFERENCES some_schema.some_table(id1, id2) "
+            "MATCH FULL "
+            "ON UPDATE CASCADE "
+            "ON DELETE CASCADE "
+            "DEFERRABLE INITIALLY DEFERRED",
+            _fk_match(
+                "tid1, tid2",
+                "some_table",
+                "id1, id2",
+                referred_schema="some_schema",
+                onupdate="CASCADE",
+                ondelete="CASCADE",
+                match="FULL",
+                deferrable="DEFERRABLE",
+                initially="DEFERRED",
+            ),
+        ),
+        # Test that FK regex correctly parses ON UPDATE/DELETE in any order.
+        #
+        # This addresses an issue where CockroachDB may return ON DELETE before
+        # ON UPDATE in the constraint definition, which was causing the values
+        # to be swapped or missed entirely.
+        #
+        # Relates to issue #13105.
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "ON UPDATE CASCADE ON DELETE RESTRICT",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                onupdate="CASCADE",
+                ondelete="RESTRICT",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "ON DELETE RESTRICT ON UPDATE CASCADE",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                onupdate="CASCADE",
+                ondelete="RESTRICT",
+            ),
+        ),
+        (
+            "FOREIGN KEY (tid, fk_id_del_set_default) "
+            "REFERENCES pktable(tid, id) ON UPDATE CASCADE "
+            "ON DELETE SET DEFAULT (fk_id_del_set_default)",
+            _fk_match(
+                "tid, fk_id_del_set_default",
+                "pktable",
+                "tid, id",
+                onupdate="CASCADE",
+                ondelete="SET DEFAULT (fk_id_del_set_default)",
+            ),
+        ),
+        (
+            "FOREIGN KEY (tid, fk_id_del_set_default) "
+            "REFERENCES pktable(tid, id) "
+            "ON DELETE SET DEFAULT (fk_id_del_set_default) "
+            "ON UPDATE CASCADE",
+            _fk_match(
+                "tid, fk_id_del_set_default",
+                "pktable",
+                "tid, id",
+                onupdate="CASCADE",
+                ondelete="SET DEFAULT (fk_id_del_set_default)",
+            ),
+        ),
+        (
+            "FOREIGN KEY (tid, fk_id_del_set_default) "
+            "REFERENCES pktable(tid, id) "
+            "ON DELETE SET DEFAULT (fk_id_del_set_default)",
+            _fk_match(
+                "tid, fk_id_del_set_default",
+                "pktable",
+                "tid, id",
+                ondelete="SET DEFAULT (fk_id_del_set_default)",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "ON UPDATE SET NULL ON DELETE SET DEFAULT",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                onupdate="SET NULL",
+                ondelete="SET DEFAULT",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "ON DELETE SET DEFAULT ON UPDATE SET NULL",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                onupdate="SET NULL",
+                ondelete="SET DEFAULT",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "ON UPDATE NO ACTION ON DELETE CASCADE",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                onupdate="NO ACTION",
+                ondelete="CASCADE",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "ON DELETE CASCADE ON UPDATE NO ACTION",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                onupdate="NO ACTION",
+                ondelete="CASCADE",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "ON UPDATE CASCADE",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                onupdate="CASCADE",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "ON DELETE RESTRICT",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                ondelete="RESTRICT",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "MATCH FULL ON UPDATE RESTRICT ON DELETE CASCADE "
+            "DEFERRABLE INITIALLY DEFERRED",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                match="FULL",
+                onupdate="RESTRICT",
+                ondelete="CASCADE",
+                deferrable="DEFERRABLE",
+                initially="DEFERRED",
+            ),
+        ),
+        (
+            "FOREIGN KEY (col) REFERENCES ref_table(ref_col) "
+            "MATCH FULL ON DELETE CASCADE ON UPDATE RESTRICT "
+            "DEFERRABLE INITIALLY DEFERRED",
+            _fk_match(
+                "col",
+                "ref_table",
+                "ref_col",
+                match="FULL",
+                onupdate="RESTRICT",
+                ondelete="CASCADE",
+                deferrable="DEFERRABLE",
+                initially="DEFERRED",
+            ),
+        ),
+        # Test cases from test_fk_regex_unicode_patterns
+        # Tests unicode identifier handling
+        # This specifically tests the improved qtoken regex pattern to
+        # support PostgreSQL variants such as CockroachDB that deliver
+        # unquoted unicode identifiers in FK constraint definitions, whereas
+        # PostgreSQL itself delivers the same identifiers with quotes.
+        (
+            'FOREIGN KEY ("tid") REFERENCES some_table(id)',
+            _fk_match('"tid"', "some_table", "id"),
+        ),
+        (
+            'FOREIGN KEY (tid) REFERENCES "some_table"(id)',
+            _fk_match("tid", '"some_table"', "id"),
+        ),
+        (
+            'FOREIGN KEY ("測試") REFERENCES unitable1("méil")',
+            _fk_match('"測試"', "unitable1", '"méil"'),
+        ),
+        (
+            "FOREIGN KEY (測試) REFERENCES unitable1(méil)",
+            _fk_match("測試", "unitable1", "méil"),
+        ),
+        (
+            'FOREIGN KEY ("col_名前") REFERENCES "table_テーブル"("ref_參考")',
+            _fk_match('"col_名前"', '"table_テーブル"', '"ref_參考"'),
+        ),
+        (
+            "FOREIGN KEY (普通_column) REFERENCES 普通_table(普通_ref)",
+            _fk_match("普通_column", "普通_table", "普通_ref"),
+        ),
+        (
+            'FOREIGN KEY ("tid1", tid2) '
+            'REFERENCES some_schema.some_table("id1", id2)',
+            _fk_match(
+                '"tid1", tid2',
+                "some_table",
+                '"id1", id2',
+                referred_schema="some_schema",
+            ),
+        ),
+        (
+            'FOREIGN KEY ("測試1", 測試2) '
+            'REFERENCES "schema_スキーマ"."table_表"("ref1_參考", ref2_参考)',
+            _fk_match(
+                '"測試1", 測試2',
+                '"table_表"',
+                '"ref1_參考", ref2_参考',
+                referred_schema='"schema_スキーマ"',
+            ),
+        ),
+    )
+    def test_fk_parsing(self, condef, expected):
+
+        received = postgresql.dialect()._parse_fk(condef)
+
+        eq_(received, expected)
+
+
 class ReflectionTest(
     ReflectionFixtures, AssertsCompiledSQL, ComparesIndexes, fixtures.TestBase
 ):
@@ -979,36 +1278,6 @@ class ReflectionTest(
                 subject.join(referer).onclause
             )
         )
-
-    @testing.combinations(
-        "FOREIGN KEY (tid) REFERENCES some_table(id)",
-        'FOREIGN KEY ("tid") REFERENCES some_table(id)',
-        'FOREIGN KEY (tid) REFERENCES "some_table"(id)',
-        'FOREIGN KEY ("測試") REFERENCES unitable1("méil")',
-        "FOREIGN KEY (測試) REFERENCES unitable1(méil)",
-        'FOREIGN KEY ("col_名前") REFERENCES "table_テーブル"("ref_參考")',
-        "FOREIGN KEY (普通_column) REFERENCES 普通_table(普通_ref)",
-        (
-            'FOREIGN KEY ("tid1", tid2) '
-            'REFERENCES some_schema.some_table("id1", id2)'
-        ),
-        (
-            'FOREIGN KEY ("測試1", 測試2) '
-            'REFERENCES "schema_スキーマ"."table_表"("ref1_參考", ref2_参考)'
-        ),
-    )
-    def test_fk_regex_unicode_patterns(self, condef):
-        """Test that FK regex pattern handles unicode identifiers.
-
-        This specifically tests the improved qtoken regex pattern to
-        support PostgreSQL variants such as CockroachDB that deliver
-        unquoted unicode identifiers in FK constraint definitions, whereas
-        PostgreSQL itself delivers the same identifiers with quotes.
-
-        """
-        FK_REGEX = postgresql.dialect()._fk_regex_pattern
-        match = re.search(FK_REGEX, condef)
-        self.assert_(match is not None, f"Expected regex to match: {condef}")
 
     def test_reflect_default_over_128_chars(self, metadata, connection):
         Table(
