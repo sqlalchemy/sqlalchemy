@@ -11,10 +11,12 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertsql import CursorSQL
 
 
-class OnConflictTest(fixtures.TablesTest):
+class OnConflictTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = ("postgresql >= 9.5",)
     __backend__ = True
     run_define_tables = "each"
@@ -773,4 +775,134 @@ class OnConflictTest(fixtures.TablesTest):
         eq_(
             connection.scalar(sql.select(bind_targets.c.data)),
             "new updated data processed",
+        )
+
+    def test_on_conflict_do_update_multirow_returning_ordered(
+        self, connection
+    ):
+        """Test that ON CONFLICT works with multiple rows,
+        RETURNING, and sort_by_parameter_order=True.
+
+        This is a regression test for issue #13107 where the
+        insertmanyvalues sentinel counter was not being added
+        to the VALUES clause when on_conflict_do_update was
+        present with sort_by_parameter_order=True and the
+        primary key was autoincrement (not provided in data).
+        """
+        users_xtra = self.tables.users_xtra
+
+        stmt = insert(users_xtra)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["login_email"],
+            set_={
+                "name": stmt.excluded.name,
+            },
+        )
+
+        result = connection.execute(
+            stmt.returning(
+                users_xtra.c.id,
+                users_xtra.c.name,
+                sort_by_parameter_order=True,
+            ),
+            [
+                {
+                    "name": "name1",
+                    "login_email": "user1@example.com",
+                    "lets_index_this": "a",
+                },
+                {
+                    "name": "name2",
+                    "login_email": "user2@example.com",
+                    "lets_index_this": "b",
+                },
+                {
+                    "name": "name3",
+                    "login_email": "user3@example.com",
+                    "lets_index_this": "c",
+                },
+            ],
+        )
+
+        # Verify rows are returned in parameter order (names match)
+        rows = result.all()
+        eq_([row[1] for row in rows], ["name1", "name2", "name3"])
+        # Store IDs for later verification
+        id1, id2, id3 = [row[0] for row in rows]
+
+        # Verify data was inserted
+        all_rows = connection.execute(
+            sql.select(users_xtra.c.id, users_xtra.c.name).order_by(
+                users_xtra.c.id
+            )
+        ).all()
+        eq_(all_rows, [(id1, "name1"), (id2, "name2"), (id3, "name3")])
+
+        # Now update one and insert a new one
+
+        with self.sql_execution_asserter() as asserter:
+            result = connection.execute(
+                stmt.returning(
+                    users_xtra.c.id,
+                    users_xtra.c.name,
+                    sort_by_parameter_order=True,
+                ),
+                [
+                    {
+                        "name": "name2_updated",
+                        "login_email": "user2@example.com",
+                        "lets_index_this": "b",
+                    },
+                    {
+                        "name": "name4",
+                        "login_email": "user4@example.com",
+                        "lets_index_this": "d",
+                    },
+                ],
+            )
+
+        if testing.against("+psycopg"):
+            asserter.assert_(
+                CursorSQL(
+                    "INSERT INTO users_xtra (name, login_email,"
+                    " lets_index_this) SELECT p0::VARCHAR, p1::VARCHAR,"
+                    " p2::VARCHAR FROM (VALUES (%(name__0)s::VARCHAR,"
+                    " %(login_email__0)s::VARCHAR,"
+                    " %(lets_index_this__0)s::VARCHAR, 0),"
+                    " (%(name__1)s::VARCHAR, %(login_email__1)s::VARCHAR,"
+                    " %(lets_index_this__1)s::VARCHAR, 1)) AS imp_sen(p0, p1,"
+                    " p2, sen_counter) ORDER BY sen_counter ON CONFLICT"
+                    " (login_email) DO UPDATE SET name = excluded.name"
+                    " RETURNING users_xtra.id, users_xtra.name, users_xtra.id"
+                    " AS id__1",
+                    {
+                        "name__0": "name2_updated",
+                        "login_email__0": "user2@example.com",
+                        "lets_index_this__0": "b",
+                        "name__1": "name4",
+                        "login_email__1": "user4@example.com",
+                        "lets_index_this__1": "d",
+                    },
+                )
+            )
+        # Verify rows are returned in parameter order
+        rows = result.all()
+        eq_([row[1] for row in rows], ["name2_updated", "name4"])
+        # First should be update (same ID), second is insert (new ID)
+        eq_(rows[0][0], id2)
+        id4 = rows[1][0]
+
+        # Verify final state
+        eq_(
+            connection.execute(
+                sql.select(users_xtra.c.id, users_xtra.c.name).order_by(
+                    users_xtra.c.id
+                )
+            ).all(),
+            [
+                (id1, "name1"),
+                (id2, "name2_updated"),
+                (id3, "name3"),
+                (id4, "name4"),
+            ],
         )

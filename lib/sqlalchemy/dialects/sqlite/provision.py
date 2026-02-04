@@ -206,7 +206,13 @@ def _reap_sqlite_dbs(url, idents):
 
 @upsert.for_db("sqlite")
 def _upsert(
-    cfg, table, returning, *, set_lambda=None, sort_by_parameter_order=False
+    cfg,
+    table,
+    returning,
+    *,
+    set_lambda=None,
+    sort_by_parameter_order=False,
+    index_elements=None,
 ):
     from sqlalchemy.dialects.sqlite import insert
 

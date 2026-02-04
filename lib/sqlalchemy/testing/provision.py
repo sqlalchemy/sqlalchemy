@@ -517,7 +517,13 @@ def set_default_schema_on_connection(cfg, dbapi_connection, schema_name):
 
 @register.init
 def upsert(
-    cfg, table, returning, *, set_lambda=None, sort_by_parameter_order=False
+    cfg,
+    table,
+    returning,
+    *,
+    set_lambda=None,
+    sort_by_parameter_order=False,
+    index_elements=None,
 ):
     """return the backends insert..on conflict / on dupe etc. construct.
 

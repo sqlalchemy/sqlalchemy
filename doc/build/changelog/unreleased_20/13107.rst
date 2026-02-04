@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13107
+
+    Fixed issue in the :ref:`engine_insertmanyvalues` feature where using
+    PostgreSQL's ``ON CONFLICT`` clause with
+    :paramref:`_dml.Insert.returning.sort_by_parameter_order` enabled would
+    generate invalid SQL when the insert used an implicit sentinel (server-side
+    autoincrement primary key). The generated SQL would incorrectly declare a
+    sentinel counter column in the ``imp_sen`` table alias without providing
+    corresponding values in the ``VALUES`` clause, leading to a
+    ``ProgrammingError`` indicating column count mismatch. The fix allows batch
+    execution mode when ``embed_values_counter`` is active, as the embedded
+    counter provides the ordering capability needed even with upsert behaviors,
+    rather than unnecessarily downgrading to row-at-a-time execution.
