@@ -4103,6 +4103,31 @@ class InsertOnConflictTest(
             },
         )
 
+    def test_on_conflict_literal_binds(self):
+        i = insert(self.table_with_metadata).values(myid=1, name="foo")
+        i = i.on_conflict_do_update(
+            index_elements=["myid"],
+            set_=OrderedDict(
+                [("name", "I'm a name"), ("other_param", literal("this too"))]
+            ),
+            where=self.table_with_metadata.c.name == "foo",
+            index_where=self.goofy_index.dialect_options["postgresql"][
+                "where"
+            ],
+        )
+        with expect_warnings(
+            "Additional column names not matching any column keys"
+        ):
+            self.assert_compile(
+                i,
+                "INSERT INTO mytable (myid, name) VALUES (1, 'foo')"
+                " ON CONFLICT (myid) WHERE name > 'm' DO UPDATE"
+                " SET name = 'I''m a name', other_param = 'this too'"
+                " WHERE mytable.name = 'foo'",
+                {},
+                literal_binds=True,
+            )
+
 
 class DistinctOnTest(
     fixtures.MappedTest,
