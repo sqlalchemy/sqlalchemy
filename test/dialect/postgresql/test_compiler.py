@@ -1,3 +1,4 @@
+import contextlib
 import random
 
 from sqlalchemy import and_
@@ -3772,6 +3773,67 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
                 "FancyName": "something new",
             },
         )
+
+    @testing.variation(
+        "path", ["unknown_columns", "whereclause", "indexwhere"]
+    )
+    def test_on_conflict_literal_binds(self, path: testing.Variation):
+        """test for #13110"""
+
+        i = insert(self.table_with_metadata).values(myid=1, name="foo")
+
+        if path.unknown_columns:
+            i = i.on_conflict_do_update(
+                index_elements=["myid"],
+                set_=OrderedDict(
+                    [
+                        ("name", "I'm a name"),
+                        ("other_param", literal("this too")),
+                    ]
+                ),
+            )
+            expected = (
+                "ON CONFLICT (myid) DO UPDATE SET name = "
+                "'I''m a name', other_param = 'this too'"
+            )
+            warnings = expect_warnings(
+                "Additional column names not matching any column keys"
+            )
+        elif path.whereclause:
+            i = i.on_conflict_do_update(
+                index_elements=["myid"],
+                set_={"name": "I'm a name"},
+                where=self.table_with_metadata.c.name == "foo",
+            )
+            expected = (
+                "ON CONFLICT (myid) DO UPDATE SET name = "
+                "'I''m a name' WHERE mytable.name = 'foo'"
+            )
+            warnings = contextlib.nullcontext()
+        elif path.indexwhere:
+            i = i.on_conflict_do_update(
+                index_elements=["myid"],
+                set_={"name": "I'm a name"},
+                index_where=self.goofy_index.dialect_options["postgresql"][
+                    "where"
+                ],
+            )
+            warnings = contextlib.nullcontext()
+            expected = (
+                "ON CONFLICT (myid) WHERE name > 'm' "
+                "DO UPDATE SET name = 'I''m a name'"
+            )
+        else:
+            path.fail()
+
+        with warnings:
+            self.assert_compile(
+                i,
+                "INSERT INTO mytable (myid, name) VALUES (1, 'foo')"
+                f" {expected}",
+                {},
+                literal_binds=True,
+            )
 
 
 class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):

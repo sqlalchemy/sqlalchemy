@@ -2195,10 +2195,11 @@ class PGCompiler(compiler.SQLCompiler):
                 for c in clause.inferred_target_elements
             )
             if clause.inferred_target_whereclause is not None:
+                whereclause_kw = dict(kw)
+                whereclause_kw.update(include_table=False, use_schema=False)
                 target_text += " WHERE %s" % self.process(
                     clause.inferred_target_whereclause,
-                    include_table=False,
-                    use_schema=False,
+                    **whereclause_kw,
                 )
         else:
             target_text = ""
@@ -2225,6 +2226,8 @@ class PGCompiler(compiler.SQLCompiler):
 
         insert_statement = self.stack[-1]["selectable"]
         cols = insert_statement.table.c
+        set_kw = dict(kw)
+        set_kw.update(use_schema=False)
         for c in cols:
             col_key = c.key
 
@@ -2247,7 +2250,7 @@ class PGCompiler(compiler.SQLCompiler):
                 ):
                     value = value._clone()
                     value.type = c.type
-            value_text = self.process(value.self_group(), use_schema=False)
+            value_text = self.process(value.self_group(), **set_kw)
 
             key_text = self.preparer.quote(c.name)
             action_set_ops.append("%s = %s" % (key_text, value_text))
@@ -2270,14 +2273,16 @@ class PGCompiler(compiler.SQLCompiler):
                 )
                 value_text = self.process(
                     coercions.expect(roles.ExpressionElementRole, v),
-                    use_schema=False,
+                    **set_kw,
                 )
                 action_set_ops.append("%s = %s" % (key_text, value_text))
 
         action_text = ", ".join(action_set_ops)
         if clause.update_whereclause is not None:
+            where_kw = dict(kw)
+            where_kw.update(include_table=True, use_schema=False)
             action_text += " WHERE %s" % self.process(
-                clause.update_whereclause, include_table=True, use_schema=False
+                clause.update_whereclause, **where_kw
             )
 
         return "ON CONFLICT %s DO UPDATE SET %s" % (target_text, action_text)

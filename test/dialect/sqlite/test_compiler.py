@@ -1,5 +1,8 @@
 """SQLite-specific tests."""
 
+from collections import OrderedDict
+import contextlib
+
 from sqlalchemy import and_
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
@@ -756,6 +759,78 @@ class OnConflictCompileTest(AssertsCompiledSQL, fixtures.TestBase):
             "DO UPDATE "
             "SET name = excluded.name, login_email = excluded.login_email",
         )
+
+    @testing.variation(
+        "path", ["unknown_columns", "whereclause", "indexwhere"]
+    )
+    def test_on_conflict_literal_binds(self, path: testing.Variation):
+        """test for #13110"""
+
+        metadata = MetaData()
+        table_with_metadata = Table(
+            "mytable",
+            metadata,
+            Column("myid", Integer, primary_key=True),
+            Column("name", String(128)),
+        )
+        goofy_index = Index(
+            "goofy_index",
+            table_with_metadata.c.name,
+            sqlite_where=table_with_metadata.c.name > "m",
+        )
+
+        i = insert(table_with_metadata).values(myid=1, name="foo")
+
+        if path.unknown_columns:
+            i = i.on_conflict_do_update(
+                index_elements=["myid"],
+                set_=OrderedDict(
+                    [
+                        ("name", "I'm a name"),
+                        ("other_param", literal("this too")),
+                    ]
+                ),
+            )
+            expected = (
+                "ON CONFLICT (myid) DO UPDATE SET name = "
+                "'I''m a name', other_param = 'this too'"
+            )
+            warnings = testing.expect_warnings(
+                "Additional column names not matching any column keys"
+            )
+        elif path.whereclause:
+            i = i.on_conflict_do_update(
+                index_elements=["myid"],
+                set_={"name": "I'm a name"},
+                where=table_with_metadata.c.name == "foo",
+            )
+            expected = (
+                "ON CONFLICT (myid) DO UPDATE SET name = "
+                "'I''m a name' WHERE mytable.name = 'foo'"
+            )
+            warnings = contextlib.nullcontext()
+        elif path.indexwhere:
+            i = i.on_conflict_do_update(
+                index_elements=["myid"],
+                set_={"name": "I'm a name"},
+                index_where=goofy_index.dialect_options["sqlite"]["where"],
+            )
+            warnings = contextlib.nullcontext()
+            expected = (
+                "ON CONFLICT (myid) WHERE name > 'm' "
+                "DO UPDATE SET name = 'I''m a name'"
+            )
+        else:
+            path.fail()
+
+        with warnings:
+            self.assert_compile(
+                i,
+                "INSERT INTO mytable (myid, name) VALUES (1, 'foo')"
+                f" {expected}",
+                {},
+                literal_binds=True,
+            )
 
     @testing.fixture
     def users(self):
