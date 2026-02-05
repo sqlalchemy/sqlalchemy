@@ -1983,7 +1983,8 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select(t1.c.add, t1.c.remove, t1.c.clear, t1.c.extend),
-            'SELECT t."add", t.remove, t.clear, t.extend FROM t',
+            "SELECT t.add, t.remove, t.clear, t.extend FROM t",
+            dialect="default",
         )
 
     def test_c_immutable(self):
