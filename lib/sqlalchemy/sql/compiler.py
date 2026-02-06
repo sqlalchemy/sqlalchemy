@@ -5735,11 +5735,19 @@ class SQLCompiler(Compiled):
         elif not self.dialect.supports_multivalues_insert or (
             sort_by_parameter_order
             and self._result_columns
-            and (imv.sentinel_columns is None or imv.includes_upsert_behaviors)
+            and (
+                imv.sentinel_columns is None
+                or (
+                    imv.includes_upsert_behaviors
+                    and not imv.embed_values_counter
+                )
+            )
         ):
             # deterministic order was requested and the compiler could
             # not organize sentinel columns for this dialect/statement.
-            # use row at a time
+            # use row at a time.  Note: if embed_values_counter is True,
+            # the counter itself provides the ordering capability we need,
+            # so we can use batch mode even with upsert behaviors.
             use_row_at_a_time = True
             downgraded = True
         else:

@@ -1233,6 +1233,7 @@ class IMVSentinelTest(fixtures.TestBase):
         client_side_pk=False,
         autoincrement_is_sequence=False,
         connection=None,
+        expect_warnings_override=None,
     ):
         if connection:
             dialect = connection.dialect
@@ -1240,7 +1241,8 @@ class IMVSentinelTest(fixtures.TestBase):
             dialect = testing.db.dialect
 
         if (
-            sort_by_parameter_order
+            expect_warnings_override is not False
+            and sort_by_parameter_order
             and warn_for_downgrades
             and dialect.use_insertmanyvalues
         ):
@@ -1267,6 +1269,7 @@ class IMVSentinelTest(fixtures.TestBase):
                     and not server_autoincrement
                     and not client_side_pk
                 )
+                or (expect_warnings_override is True)
             ):
                 return expect_warnings(
                     "Batches were downgraded",
@@ -2876,6 +2879,122 @@ class IMVSentinelTest(fixtures.TestBase):
             ("d2 new upserted", "some_server_default"),
             ("d3", "some_server_default"),
         ]
+        if sort_by_parameter_order:
+            coll = list
+        else:
+            coll = set
+
+        eq_(coll(result), coll(expected_data))
+
+    @testing.variation(
+        "sentinel_type",
+        [
+            "use_pk",
+            "separate_uuid",
+            "separate_sentinel",
+        ],
+    )
+    @testing.requires.provisioned_upsert
+    def test_upsert_autoincrement_downgrades(
+        self,
+        metadata,
+        connection,
+        sort_by_parameter_order,
+        randomize_returning,
+        sentinel_type,
+        warn_for_downgrades,
+    ):
+        pk_col = Column(
+            "id", Integer, test_needs_autoincrement=True, primary_key=True
+        )
+
+        if sentinel_type.separate_uuid:
+            extra_col = Column(
+                "sent_col",
+                Uuid(),
+                default=uuid.uuid4,
+                insert_sentinel=True,
+                nullable=False,
+            )
+        elif sentinel_type.separate_sentinel:
+            extra_col = insert_sentinel("sent_col")
+        else:
+            extra_col = Column("sent_col", Integer)
+
+        t1 = Table(
+            "upsert_table",
+            metadata,
+            pk_col,
+            Column("otherid", Integer, unique=True),
+            Column("data", String(50)),
+            extra_col,
+            Column(
+                "has_server_default",
+                String(30),
+                server_default="some_server_default",
+            ),
+        )
+        metadata.create_all(connection)
+
+        result = connection.execute(
+            insert(t1).returning(
+                t1.c.id, t1.c.data, sort_by_parameter_order=True
+            ),
+            [{"otherid": 1, "data": "d1"}, {"otherid": 2, "data": "d2"}],
+        )
+
+        upsert_data = [
+            {"otherid": 1, "data": "d1 new"},
+            {"otherid": 3, "data": "d10"},
+            {"otherid": 4, "data": "d15"},
+            {"otherid": 2, "data": "d2 new"},
+            {"otherid": 5, "data": "d3"},
+        ]
+
+        fixtures.insertmanyvalues_fixture(
+            connection,
+            randomize_rows=bool(randomize_returning),
+            warn_on_downgraded=bool(warn_for_downgrades),
+        )
+
+        stmt = provision.upsert(
+            config,
+            t1,
+            (t1.c.data, t1.c.has_server_default),
+            set_lambda=lambda inserted: {
+                "data": inserted.data + " upserted",
+            },
+            sort_by_parameter_order=bool(sort_by_parameter_order),
+            index_elements=["otherid"],
+        )
+
+        with self._expect_downgrade_warnings(
+            warn_for_downgrades=warn_for_downgrades,
+            sort_by_parameter_order=sort_by_parameter_order,
+            expect_warnings_override=(
+                testing.against("mysql", "mariadb", "sqlite")
+                or (testing.against("postgresql") and not sentinel_type.use_pk)
+            ),
+        ):
+            result = connection.execute(stmt, upsert_data)
+
+        if sentinel_type.use_pk and testing.against("postgresql"):
+            expected_data = [
+                ("d1 new upserted", "some_server_default"),
+                ("d2 new upserted", "some_server_default"),
+                ("d10", "some_server_default"),
+                ("d15", "some_server_default"),
+                ("d3", "some_server_default"),
+            ]
+        else:
+            expected_data = [
+                ("d1 new upserted", "some_server_default"),
+                ("d10", "some_server_default"),
+                ("d15", "some_server_default"),
+                ("d2 new upserted", "some_server_default"),
+                ("d3", "some_server_default"),
+            ]
+
         if sort_by_parameter_order:
             coll = list
         else:

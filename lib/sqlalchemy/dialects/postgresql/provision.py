@@ -137,7 +137,13 @@ def prepare_for_drop_tables(config, connection):
 
 @upsert.for_db("postgresql")
 def _upsert(
-    cfg, table, returning, *, set_lambda=None, sort_by_parameter_order=False
+    cfg,
+    table,
+    returning,
+    *,
+    set_lambda=None,
+    sort_by_parameter_order=False,
+    index_elements=None,
 ):
     from sqlalchemy.dialects.postgresql import insert
 
@@ -146,8 +152,10 @@ def _upsert(
     table_pk = inspect(table).selectable
 
     if set_lambda:
+        if index_elements is None:
+            index_elements = table_pk.primary_key
         stmt = stmt.on_conflict_do_update(
-            index_elements=table_pk.primary_key, set_=set_lambda(stmt.excluded)
+            index_elements=index_elements, set_=set_lambda(stmt.excluded)
         )
     else:
         stmt = stmt.on_conflict_do_nothing()

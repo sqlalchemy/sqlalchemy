@@ -100,7 +100,13 @@ def _mysql_temp_table_keyword_args(cfg, eng):
 
 @upsert.for_db("mariadb")
 def _upsert(
-    cfg, table, returning, *, set_lambda=None, sort_by_parameter_order=False
+    cfg,
+    table,
+    returning,
+    *,
+    set_lambda=None,
+    sort_by_parameter_order=False,
+    index_elements=None,
 ):
     from sqlalchemy.dialects.mysql import insert
 
