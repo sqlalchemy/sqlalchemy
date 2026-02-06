@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13110
+
+    Fixed issue where :meth:`_postgresql.Insert.on_conflict_do_update`
+    parameters were not respecting compilation options such as
+    ``literal_binds=True``.  Pull request courtesy Loïc Simon.
