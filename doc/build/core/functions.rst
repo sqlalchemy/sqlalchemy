@@ -52,10 +52,16 @@ unknown to SQLAlchemy, built-in or user defined. The section here only
 describes those functions where SQLAlchemy already knows what argument and
 return types are in use.
 
+.. autoclass:: abs
+    :no-members:
+
 .. autoclass:: aggregate_strings
     :no-members:
 
 .. autoclass:: array_agg
+    :no-members:
+
+.. autoclass:: avg
     :no-members:
 
 .. autoclass:: char_length
