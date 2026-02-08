@@ -97,6 +97,15 @@ class TransactionalContext:
         trans_context = subject._trans_context_manager
         if trans_context:
             if not trans_context._transaction_is_active():
+                transaction = getattr(subject, "transaction", None)
+                if transaction is not None:
+                    if transaction.rollback_exception is not None:
+                        raise exc.InvalidRequestError(
+                            "Can't operate on closed transaction inside context manager. "
+                            f"The transaction was rolled back due to an exception, {transaction.rollback_exception}. "
+                            "Please complete the context manager before emitting further commands."
+                        )
+
                 raise exc.InvalidRequestError(
                     "Can't operate on closed transaction inside context "
                     "manager.  Please complete the context manager "
