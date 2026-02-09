@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, engine
+    :tickets: 13116
+
+    The connection object returned by :meth:`_engine.Engine.raw_connection`
+    now supports the context manager protocol, automatically returning the
+    connection to the pool when exiting the context.
