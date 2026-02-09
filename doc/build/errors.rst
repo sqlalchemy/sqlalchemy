@@ -176,6 +176,27 @@ What causes an application to use up all the connections that it has available?
   * Threading errors, such as mutexes in a mutual deadlock, or calling
     upon an already locked mutex in the same thread
 
+* **The application's worker threads are not yielding control** - In
+  applications that use a fixed thread pool for handling concurrent requests,
+  such as web applications using a threaded server, if individual request
+  threads fail to yield control back to the Python interpreter on a regular
+  basis, other threads that are waiting for a database connection from the
+  pool may time out even though there are no actual issues with connection
+  availability or database performance. This condition is known as "thread
+  starvation" and typically occurs when application code includes CPU-intensive
+  operations, tight loops without I/O operations, or calls to C extensions
+  that do not release the Python Global Interpreter Lock (GIL). In such cases,
+  threads that hold checked-out connections may monopolize CPU time, preventing
+  the connection pool from serving other threads that are blocked waiting for
+  connections to become available. Solutions include:
+
+  * Breaking up long-running CPU-intensive operations into smaller chunks
+  * Ensuring regular I/O operations occur within request handlers
+  * Explicitly yielding control periodically using ``time.sleep(0)`` or
+    ``os.sched_yield()``
+  * Moving CPU-intensive work to separate background processes or workers
+    that do not hold database connections
+
 Keep in mind an alternative to using pooling is to turn off pooling entirely.
 See the section :ref:`pool_switching` for background on this.  However, note
 that when this error message is occurring, it is **always** due to a bigger
