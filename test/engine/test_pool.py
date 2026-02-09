@@ -31,6 +31,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import lazy_gc
@@ -163,6 +164,25 @@ class PoolTest(PoolTestBase):
         is_not(c.dbapi_connection, c2.dbapi_connection)
         assert not c2.info
         assert "foo2" in c.info
+
+    def test_raw_connection_context(self):
+        p = self._queuepool_fixture(pool_size=1, max_overflow=0)
+        e = create_engine("sqlite://", pool=p, _initialize=False)
+
+        eq_(p.checkedout(), 0)
+        conn = e.raw_connection()
+        eq_(p.checkedout(), 1)
+        with conn as wc:
+            eq_(p.checkedout(), 1)
+            is_(conn, wc)
+
+        eq_(p.checkedout(), 0)
+
+        with expect_raises_message(ValueError, "an error"):
+            with e.raw_connection() as wc:
+                eq_(p.checkedout(), 1)
+                raise ValueError("an error")
+        eq_(p.checkedout(), 0)
 
     def test_rec_info(self):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)

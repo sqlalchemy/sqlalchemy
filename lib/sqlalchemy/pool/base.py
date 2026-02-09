@@ -34,6 +34,7 @@ from .. import event
 from .. import exc
 from .. import log
 from .. import util
+from ..util.typing import Self
 
 if TYPE_CHECKING:
     from ..engine.interfaces import DBAPIConnection
@@ -1121,6 +1122,13 @@ class PoolProxiedConnection(ManagesConnection):
 
         """
         raise NotImplementedError()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        self.close()
+        return None
 
 
 class _AdhocProxiedConnection(PoolProxiedConnection):
