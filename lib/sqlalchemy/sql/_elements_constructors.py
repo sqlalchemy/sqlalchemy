@@ -1621,6 +1621,7 @@ def over(
     range_: _FrameIntTuple | FrameClause | None = None,
     rows: _FrameIntTuple | FrameClause | None = None,
     groups: _FrameIntTuple | FrameClause | None = None,
+    exclude: Optional[str] = None,
 ) -> Over[_T]:
     r"""Produce an :class:`.Over` object against a function.
 
@@ -1725,6 +1726,14 @@ def over(
 
      .. versionadded:: 2.0.40
 
+    :param exclude: optional string for the frame exclusion clause.
+     This is a string value which can be one of ``CURRENT ROW``,
+     ``GROUP``, ``TIES``, or ``NO OTHERS`` and will render an
+     EXCLUDE clause within the window frame specification.  Requires
+     that one of ``rows``, ``range_``, or ``groups`` is also specified.
+
+     .. versionadded:: 2.1
+
     This function is also available from the :data:`~.expression.func`
     construct itself via the :meth:`.FunctionElement.over` method.
 
@@ -1737,7 +1746,10 @@ def over(
         :func:`_expression.within_group`
 
     """  # noqa: E501
-    return Over(element, partition_by, order_by, range_, rows, groups)
+    return Over(
+        element, partition_by, order_by,
+        range_, rows, groups, exclude=exclude,
+    )
 
 
 @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")

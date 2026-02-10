@@ -3300,6 +3300,94 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 1, "param_2": 3},
         )
 
+    def test_over_frame_exclude(self):
+        expr = table1.c.myid
+
+        # exclude with rows
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=expr, rows=(None, 0), exclude="current row"
+                )
+            ),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid ROWS BETWEEN UNBOUNDED "
+            "PRECEDING AND CURRENT ROW EXCLUDE CURRENT ROW)"
+            " AS anon_1 FROM mytable",
+        )
+
+        # exclude with range_
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=expr, range_=(None, 0), exclude="group"
+                )
+            ),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid RANGE BETWEEN UNBOUNDED "
+            "PRECEDING AND CURRENT ROW EXCLUDE GROUP)"
+            " AS anon_1 FROM mytable",
+        )
+
+        # exclude with groups
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=expr, groups=(-1, 1), exclude="ties"
+                )
+            ),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            ":param_1 PRECEDING AND :param_2 FOLLOWING EXCLUDE TIES)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 1, "param_2": 1},
+        )
+
+        # exclude NO OTHERS
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=expr, rows=(None, None), exclude="no others"
+                )
+            ),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid ROWS BETWEEN UNBOUNDED "
+            "PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE NO OTHERS)"
+            " AS anon_1 FROM mytable",
+        )
+
+        # case insensitivity - lowercase input is uppercased
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=expr, rows=(None, 0), exclude="ties"
+                )
+            ),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid ROWS BETWEEN UNBOUNDED "
+            "PRECEDING AND CURRENT ROW EXCLUDE TIES)"
+            " AS anon_1 FROM mytable",
+        )
+
+    def test_over_frame_exclude_invalid(self):
+        # invalid exclude value
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Invalid window frame exclusion 'INVALID'",
+        ):
+            func.row_number().over(
+                order_by=table1.c.myid, rows=(None, 0), exclude="INVALID"
+            )
+
+        # exclude without a frame specification
+        with expect_raises_message(
+            exc.ArgumentError,
+            "exclude requires that rows, range_ or groups is specified",
+        ):
+            func.row_number().over(
+                order_by=table1.c.myid, exclude="current row"
+            )
+
     def test_over_invalid_framespecs(self):
         with expect_raises_message(
             exc.ArgumentError,
