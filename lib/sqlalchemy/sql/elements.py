@@ -4551,7 +4551,7 @@ class Over(ColumnElement[_T]):
         range_: _FrameIntTuple | FrameClause | None = None,
         rows: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
-        exclude: Optional[str] = None,
+        exclude: str | None = None,
     ):
         self.element = element
         if order_by is not None:
@@ -4573,21 +4573,6 @@ class Over(ColumnElement[_T]):
             self.rows = FrameClause._parse(rows, coerce_int=True)
             self.groups = FrameClause._parse(groups, coerce_int=True)
 
-        if exclude is not None:
-            exclude = exclude.upper()
-            from .compiler import WINDOW_EXCLUDE
-
-            if not WINDOW_EXCLUDE.match(exclude):
-                raise exc.ArgumentError(
-                    "Invalid window frame exclusion '%s'. Valid values "
-                    "are CURRENT ROW, GROUP, TIES, NO OTHERS" % exclude
-                )
-            if self.range_ is None and self.rows is None \
-                    and self.groups is None:
-                raise exc.ArgumentError(
-                    "exclude requires that rows, range_ or groups "
-                    "is specified"
-                )
         self.exclude = exclude
 
     if not TYPE_CHECKING:
@@ -4824,7 +4809,7 @@ class AggregateOrderBy(WrapsColumnExpression[_T]):
         rows: _FrameIntTuple | FrameClause | None = None,
         range_: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
-        exclude: Optional[str] = None,
+        exclude: str | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
@@ -4970,7 +4955,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
         range_: _FrameIntTuple | FrameClause | None = None,
         rows: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
-        exclude: Optional[str] = None,
+        exclude: str | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this filtered function.
 

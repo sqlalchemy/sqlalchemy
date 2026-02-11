@@ -1621,7 +1621,7 @@ def over(
     range_: _FrameIntTuple | FrameClause | None = None,
     rows: _FrameIntTuple | FrameClause | None = None,
     groups: _FrameIntTuple | FrameClause | None = None,
-    exclude: Optional[str] = None,
+    exclude: str | None = None,
 ) -> Over[_T]:
     r"""Produce an :class:`.Over` object against a function.
 
@@ -1747,8 +1747,13 @@ def over(
 
     """  # noqa: E501
     return Over(
-        element, partition_by, order_by,
-        range_, rows, groups, exclude=exclude,
+        element,
+        partition_by,
+        order_by,
+        range_,
+        rows,
+        groups,
+        exclude,
     )
 
 

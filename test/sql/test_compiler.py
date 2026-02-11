@@ -3307,7 +3307,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(
                 func.row_number().over(
-                    order_by=expr, rows=(None, 0), exclude="current row"
+                    order_by=expr, rows=(None, 0), exclude="CURRENT ROW"
                 )
             ),
             "SELECT row_number() OVER "
@@ -3320,7 +3320,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(
                 func.row_number().over(
-                    order_by=expr, range_=(None, 0), exclude="group"
+                    order_by=expr, range_=(None, 0), exclude="GROUP"
                 )
             ),
             "SELECT row_number() OVER "
@@ -3333,7 +3333,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(
                 func.row_number().over(
-                    order_by=expr, groups=(-1, 1), exclude="ties"
+                    order_by=expr, groups=(-1, 1), exclude="TIES"
                 )
             ),
             "SELECT row_number() OVER "
@@ -3347,7 +3347,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(
                 func.row_number().over(
-                    order_by=expr, rows=(None, None), exclude="no others"
+                    order_by=expr, rows=(None, None), exclude="NO OTHERS"
                 )
             ),
             "SELECT row_number() OVER "
@@ -3356,7 +3356,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             " AS anon_1 FROM mytable",
         )
 
-        # case insensitivity - lowercase input is uppercased
+        # case insensitivity - lowercase is accepted
         self.assert_compile(
             select(
                 func.row_number().over(
@@ -3365,28 +3365,23 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             "SELECT row_number() OVER "
             "(ORDER BY mytable.myid ROWS BETWEEN UNBOUNDED "
-            "PRECEDING AND CURRENT ROW EXCLUDE TIES)"
+            "PRECEDING AND CURRENT ROW EXCLUDE ties)"
             " AS anon_1 FROM mytable",
         )
 
     def test_over_frame_exclude_invalid(self):
-        # invalid exclude value
-        with expect_raises_message(
-            exc.ArgumentError,
-            "Invalid window frame exclusion 'INVALID'",
-        ):
-            func.row_number().over(
-                order_by=table1.c.myid, rows=(None, 0), exclude="INVALID"
-            )
-
-        # exclude without a frame specification
-        with expect_raises_message(
-            exc.ArgumentError,
-            "exclude requires that rows, range_ or groups is specified",
-        ):
-            func.row_number().over(
-                order_by=table1.c.myid, exclude="current row"
-            )
+        # invalid exclude value raises at compile time
+        assert_raises_message(
+            exc.CompileError,
+            "Unexpected SQL phrase: 'INVALID'",
+            select(
+                func.row_number().over(
+                    order_by=table1.c.myid,
+                    rows=(None, 0),
+                    exclude="INVALID",
+                )
+            ).compile,
+        )
 
     def test_over_invalid_framespecs(self):
         with expect_raises_message(
