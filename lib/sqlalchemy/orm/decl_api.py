@@ -72,6 +72,7 @@ from ..sql.selectable import FromClause
 from ..util import hybridmethod
 from ..util import hybridproperty
 from ..util import typing as compat_typing
+from ..util import TypingOnly
 from ..util.typing import CallableReference
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import GenericProtocol
@@ -655,9 +656,107 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
             _ORMClassConfigurator._as_unmapped_dataclass(cls, cls.__dict__)
 
 
+class _DeclarativeTyping(TypingOnly):
+    """Common typing annotations shared by the DeclarativeBase and
+    DeclarativeBaseNoMeta classes.
+    """
+
+    __slots__ = ()
+
+    if typing.TYPE_CHECKING:
+        # protocols for inspection
+        def _sa_inspect_type(self) -> Mapper[Self]: ...
+
+        def _sa_inspect_instance(self) -> InstanceState[Self]: ...
+
+        # internal stuff
+        _sa_registry: ClassVar[_RegistryType]
+
+        # public interface
+        registry: ClassVar[_RegistryType]
+        """Refers to the :class:`_orm.registry` in use where new
+        :class:`_orm.Mapper` objects will be associated."""
+
+        metadata: ClassVar[MetaData]
+        """Refers to the :class:`_schema.MetaData` collection that will be used
+        for new :class:`_schema.Table` objects.
+
+        .. seealso::
+
+            :ref:`orm_declarative_metadata`
+
+        """
+
+        __name__: ClassVar[str]
+
+        # this ideally should be Mapper[Self], but mypy as of 1.4.1 does not
+        # like it, and breaks the declared_attr_one test. Pyright/pylance is
+        # ok with it.
+        __mapper__: ClassVar[Mapper[Any]]
+        """The :class:`_orm.Mapper` object to which a particular class is
+        mapped.
+
+        May also be acquired using :func:`_sa.inspect`, e.g.
+        ``inspect(klass)``.
+
+        """
+
+        __table__: ClassVar[FromClause]
+        """The :class:`_sql.FromClause` to which a particular subclass is
+        mapped.
+
+        This is usually an instance of :class:`_schema.Table` but may also
+        refer to other kinds of :class:`_sql.FromClause` such as
+        :class:`_sql.Subquery`, depending on how the class is mapped.
+
+        .. seealso::
+
+            :ref:`orm_declarative_metadata`
+
+        """
+
+        # pyright/pylance do not consider a classmethod a ClassVar so use Any
+        # https://github.com/microsoft/pylance-release/issues/3484
+        __tablename__: Any
+        """String name to assign to the generated
+        :class:`_schema.Table` object, if not specified directly via
+        :attr:`_orm.DeclarativeBase.__table__`.
+
+        .. seealso::
+
+            :ref:`orm_declarative_table`
+
+        """
+
+        __mapper_args__: Any
+        """Dictionary of arguments which will be passed to the
+        :class:`_orm.Mapper` constructor.
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapper_options`
+
+        """
+
+        __table_args__: Any
+        """A dictionary or tuple of arguments that will be passed to the
+        :class:`_schema.Table` constructor.  See
+        :ref:`orm_declarative_table_configuration`
+        for background on the specific structure of this collection.
+
+        .. seealso::
+
+            :ref:`orm_declarative_table_configuration`
+
+        """
+
+        def __init__(self, **kw: Any): ...
+
+
 class DeclarativeBase(
     # Inspectable is used only by the mypy plugin
     inspection.Inspectable[InstanceState[Any]],
+    _DeclarativeTyping,
     metaclass=DeclarativeAttributeIntercept,
 ):
     """Base class used for declarative class definitions.
@@ -772,93 +871,6 @@ class DeclarativeBase(
 
     """
 
-    if typing.TYPE_CHECKING:
-
-        def _sa_inspect_type(self) -> Mapper[Self]: ...
-
-        def _sa_inspect_instance(self) -> InstanceState[Self]: ...
-
-        _sa_registry: ClassVar[_RegistryType]
-
-        registry: ClassVar[_RegistryType]
-        """Refers to the :class:`_orm.registry` in use where new
-        :class:`_orm.Mapper` objects will be associated."""
-
-        metadata: ClassVar[MetaData]
-        """Refers to the :class:`_schema.MetaData` collection that will be used
-        for new :class:`_schema.Table` objects.
-
-        .. seealso::
-
-            :ref:`orm_declarative_metadata`
-
-        """
-
-        __name__: ClassVar[str]
-
-        # this ideally should be Mapper[Self], but mypy as of 1.4.1 does not
-        # like it, and breaks the declared_attr_one test. Pyright/pylance is
-        # ok with it.
-        __mapper__: ClassVar[Mapper[Any]]
-        """The :class:`_orm.Mapper` object to which a particular class is
-        mapped.
-
-        May also be acquired using :func:`_sa.inspect`, e.g.
-        ``inspect(klass)``.
-
-        """
-
-        __table__: ClassVar[FromClause]
-        """The :class:`_sql.FromClause` to which a particular subclass is
-        mapped.
-
-        This is usually an instance of :class:`_schema.Table` but may also
-        refer to other kinds of :class:`_sql.FromClause` such as
-        :class:`_sql.Subquery`, depending on how the class is mapped.
-
-        .. seealso::
-
-            :ref:`orm_declarative_metadata`
-
-        """
-
-        # pyright/pylance do not consider a classmethod a ClassVar so use Any
-        # https://github.com/microsoft/pylance-release/issues/3484
-        __tablename__: Any
-        """String name to assign to the generated
-        :class:`_schema.Table` object, if not specified directly via
-        :attr:`_orm.DeclarativeBase.__table__`.
-
-        .. seealso::
-
-            :ref:`orm_declarative_table`
-
-        """
-
-        __mapper_args__: Any
-        """Dictionary of arguments which will be passed to the
-        :class:`_orm.Mapper` constructor.
-
-        .. seealso::
-
-            :ref:`orm_declarative_mapper_options`
-
-        """
-
-        __table_args__: Any
-        """A dictionary or tuple of arguments that will be passed to the
-        :class:`_schema.Table` constructor.  See
-        :ref:`orm_declarative_table_configuration`
-        for background on the specific structure of this collection.
-
-        .. seealso::
-
-            :ref:`orm_declarative_table_configuration`
-
-        """
-
-        def __init__(self, **kw: Any): ...
-
     def __init_subclass__(cls, **kw: Any) -> None:
         if DeclarativeBase in cls.__bases__:
             _check_not_declarative(cls, DeclarativeBase)
@@ -887,7 +899,8 @@ def _check_not_declarative(cls: Type[Any], base: Type[Any]) -> None:
 
 class DeclarativeBaseNoMeta(
     # Inspectable is used only by the mypy plugin
-    inspection.Inspectable[InstanceState[Any]]
+    inspection.Inspectable[InstanceState[Any]],
+    _DeclarativeTyping,
 ):
     """Same as :class:`_orm.DeclarativeBase`, but does not use a metaclass
     to intercept new attributes.
@@ -899,89 +912,6 @@ class DeclarativeBaseNoMeta(
 
 
     """
-
-    _sa_registry: ClassVar[_RegistryType]
-
-    registry: ClassVar[_RegistryType]
-    """Refers to the :class:`_orm.registry` in use where new
-    :class:`_orm.Mapper` objects will be associated."""
-
-    metadata: ClassVar[MetaData]
-    """Refers to the :class:`_schema.MetaData` collection that will be used
-    for new :class:`_schema.Table` objects.
-
-    .. seealso::
-
-        :ref:`orm_declarative_metadata`
-
-    """
-
-    # this ideally should be Mapper[Self], but mypy as of 1.4.1 does not
-    # like it, and breaks the declared_attr_one test. Pyright/pylance is
-    # ok with it.
-    __mapper__: ClassVar[Mapper[Any]]
-    """The :class:`_orm.Mapper` object to which a particular class is
-    mapped.
-
-    May also be acquired using :func:`_sa.inspect`, e.g.
-    ``inspect(klass)``.
-
-    """
-
-    __table__: Optional[FromClause]
-    """The :class:`_sql.FromClause` to which a particular subclass is
-    mapped.
-
-    This is usually an instance of :class:`_schema.Table` but may also
-    refer to other kinds of :class:`_sql.FromClause` such as
-    :class:`_sql.Subquery`, depending on how the class is mapped.
-
-    .. seealso::
-
-        :ref:`orm_declarative_metadata`
-
-    """
-
-    if typing.TYPE_CHECKING:
-
-        def _sa_inspect_type(self) -> Mapper[Self]: ...
-
-        def _sa_inspect_instance(self) -> InstanceState[Self]: ...
-
-        __tablename__: Any
-        """String name to assign to the generated
-        :class:`_schema.Table` object, if not specified directly via
-        :attr:`_orm.DeclarativeBase.__table__`.
-
-        .. seealso::
-
-            :ref:`orm_declarative_table`
-
-        """
-
-        __mapper_args__: Any
-        """Dictionary of arguments which will be passed to the
-        :class:`_orm.Mapper` constructor.
-
-        .. seealso::
-
-            :ref:`orm_declarative_mapper_options`
-
-        """
-
-        __table_args__: Any
-        """A dictionary or tuple of arguments that will be passed to the
-        :class:`_schema.Table` constructor.  See
-        :ref:`orm_declarative_table_configuration`
-        for background on the specific structure of this collection.
-
-        .. seealso::
-
-            :ref:`orm_declarative_table_configuration`
-
-        """
-
-        def __init__(self, **kw: Any): ...
 
     def __init_subclass__(cls, **kw: Any) -> None:
         if DeclarativeBaseNoMeta in cls.__bases__:
