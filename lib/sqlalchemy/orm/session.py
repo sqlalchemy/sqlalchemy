@@ -2843,6 +2843,20 @@ class Session(_SessionClassMethods, EventTarget):
         else:
             inspected_mapper = None
 
+        def _generate_unbound_execution_error() -> (
+            sa_exc.UnboundExecutionError
+        ):
+            context = []
+            if inspected_mapper is not None:
+                context.append(f"mapper {inspected_mapper}")
+            if clause is not None:
+                context.append("SQL expression")
+
+            return sa_exc.UnboundExecutionError(
+                f"Could not locate a bind configured on "
+                f'{", ".join(context)} or this Session.'
+            )
+
         # match up the mapper or clause in the __binds
         if self.__binds:
             # matching mappers and selectables to entries in the
@@ -2850,6 +2864,8 @@ class Session(_SessionClassMethods, EventTarget):
             if inspected_mapper:
                 for cls in inspected_mapper.class_.__mro__:
                     if cls in self.__binds:
+                        if self.__binds[cls] is None:
+                            raise _generate_unbound_execution_error()
                         return self.__binds[cls]
                 if clause is None:
                     clause = inspected_mapper.persist_selectable
@@ -2862,12 +2878,16 @@ class Session(_SessionClassMethods, EventTarget):
                 if plugin_subject is not None:
                     for cls in plugin_subject.mapper.class_.__mro__:
                         if cls in self.__binds:
+                            if self.__binds[cls] is None:
+                                raise _generate_unbound_execution_error()
                             return self.__binds[cls]
 
                 for obj in visitors.iterate(clause):
                     if obj in self.__binds:
                         if TYPE_CHECKING:
                             assert isinstance(obj, Table)
+                        if self.__binds[obj] is None:
+                            raise _generate_unbound_execution_error()
                         return self.__binds[obj]
 
         # none of the __binds matched, but we have a fallback bind.
@@ -2875,16 +2895,7 @@ class Session(_SessionClassMethods, EventTarget):
         if self.bind:
             return self.bind
 
-        context = []
-        if inspected_mapper is not None:
-            context.append(f"mapper {inspected_mapper}")
-        if clause is not None:
-            context.append("SQL expression")
-
-        raise sa_exc.UnboundExecutionError(
-            f"Could not locate a bind configured on "
-            f'{", ".join(context)} or this Session.'
-        )
+        raise _generate_unbound_execution_error()
 
     @overload
     def query(self, _entity: _EntityType[_O]) -> Query[_O]: ...
