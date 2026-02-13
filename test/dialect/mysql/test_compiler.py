@@ -683,6 +683,105 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
+class MySQLBasedCustomDialectDDLTest(
+    fixtures.TestBase, AssertsCompiledSQL
+):
+    """Test that a custom dialect subclassing MySQLDialect correctly
+    compiles CREATE INDEX via the inherited MySQLDDLCompiler.
+
+    This simulates third-party dialects (e.g. StarRocks) that inherit
+    from MySQLDialect with a different dialect name but rely on
+    MySQLDDLCompiler.visit_create_index without overrides.
+    """
+
+    @testing.fixture(autouse=True)
+    def _register_custom_dialect(self):
+        from sqlalchemy.dialects import registry
+
+        class _CustomDialect(mysql.MySQLDialect):
+            name = "custom_mysql"
+
+        registry.impls["custom_mysql"] = lambda: _CustomDialect
+        self._custom_dialect = _CustomDialect()
+
+        yield
+
+        registry.deregister("custom_mysql")
+
+    @testing.combinations(
+        (
+            "simple",
+            {},
+            "CREATE INDEX test_idx1 ON testtbl (data)",
+        ),
+        (
+            "with_length",
+            {"mysql_length": {"data": 10}},
+            "CREATE INDEX test_idx1 ON testtbl (data(10))",
+        ),
+        (
+            "with_prefix",
+            {"mysql_prefix": "FULLTEXT"},
+            "CREATE FULLTEXT INDEX test_idx1 ON testtbl (data)",
+        ),
+        (
+            "with_using_bitmap",
+            {"mysql_using": "bitmap"},
+            "CREATE INDEX test_idx1 ON testtbl (data) USING bitmap",
+        ),
+        (
+            "with_parser",
+            {"mysql_prefix": "FULLTEXT", "mysql_with_parser": "ngram"},
+            "CREATE FULLTEXT INDEX test_idx1 ON testtbl (data)"
+            " WITH PARSER ngram",
+        ),
+        (
+            "unique",
+            {"unique": True},
+            "CREATE UNIQUE INDEX test_idx1 ON testtbl (data)",
+        ),
+        id_="iaa",
+        argnames="index_kw,expected_sql",
+    )
+    def test_create_index(self, index_kw, expected_sql):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String(255)))
+        idx = Index("test_idx1", tbl.c.data, **index_kw)
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            expected_sql,
+            dialect=self._custom_dialect,
+        )
+
+    def test_create_composite_index_with_length(self):
+        m = MetaData()
+        tbl = Table(
+            "testtbl", m, Column("a", String(255)), Column("b", String(255))
+        )
+        idx = Index(
+            "test_idx1", tbl.c.a, tbl.c.b,
+            mysql_length={"a": 10, "b": 20},
+        )
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX test_idx1 ON testtbl (a(10), b(20))",
+            dialect=self._custom_dialect,
+        )
+
+    def test_create_index_expr(self):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("x", Integer))
+        idx = Index("test_idx1", tbl.c.x > 5, _table=tbl)
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX test_idx1 ON testtbl ((x > 5))",
+            dialect=self._custom_dialect,
+        )
+
+
 class CustomExtensionTest(
     fixtures.TestBase, AssertsCompiledSQL, fixtures.CacheKeySuite
 ):
