@@ -826,6 +826,24 @@ class GetBindTest(fixtures.MappedTest):
         is_(session.get_bind(self.classes.BaseClass), base_class_bind)
         is_(session.get_bind(self.classes.ConcreteSubClass), concrete_sub_bind)
 
+    def test_bind_base_class_none(self):
+        concrete_sub_bind = Mock(name="concrete")
+
+        session = self._fixture(
+            {
+                self.classes.BaseClass: None,
+                self.classes.ConcreteSubClass: concrete_sub_bind
+            }
+        )
+
+        assert_raises_message(
+            sa.exc.UnboundExecutionError,
+            "Could not locate a bind configured on mapper ",
+            session.get_bind,
+            self.classes.BaseClass
+        )
+        is_(session.get_bind(self.classes.ConcreteSubClass), concrete_sub_bind)
+
     @testing.fixture
     def two_table_fixture(self):
         base_class_bind = Mock(name="base")
