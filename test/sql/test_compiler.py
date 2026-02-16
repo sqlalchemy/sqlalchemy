@@ -3300,73 +3300,69 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 1, "param_2": 3},
         )
 
-    def test_over_frame_exclude(self):
-        expr = table1.c.myid
-
-        # exclude with rows
-        self.assert_compile(
-            select(
-                func.row_number().over(
-                    order_by=expr, rows=(None, 0), exclude="CURRENT ROW"
-                )
-            ),
+    @testing.combinations(
+        (
+            "rows_current_row",
+            {"rows": (None, 0)},
+            "CURRENT ROW",
             "SELECT row_number() OVER "
             "(ORDER BY mytable.myid ROWS BETWEEN UNBOUNDED "
             "PRECEDING AND CURRENT ROW EXCLUDE CURRENT ROW)"
             " AS anon_1 FROM mytable",
-        )
-
-        # exclude with range_
-        self.assert_compile(
-            select(
-                func.row_number().over(
-                    order_by=expr, range_=(None, 0), exclude="GROUP"
-                )
-            ),
+            {},
+        ),
+        (
+            "range_group",
+            {"range_": (None, 0)},
+            "GROUP",
             "SELECT row_number() OVER "
             "(ORDER BY mytable.myid RANGE BETWEEN UNBOUNDED "
             "PRECEDING AND CURRENT ROW EXCLUDE GROUP)"
             " AS anon_1 FROM mytable",
-        )
-
-        # exclude with groups
-        self.assert_compile(
-            select(
-                func.row_number().over(
-                    order_by=expr, groups=(-1, 1), exclude="TIES"
-                )
-            ),
+            {},
+        ),
+        (
+            "groups_ties",
+            {"groups": (-1, 1)},
+            "TIES",
             "SELECT row_number() OVER "
             "(ORDER BY mytable.myid GROUPS BETWEEN "
             ":param_1 PRECEDING AND :param_2 FOLLOWING EXCLUDE TIES)"
             " AS anon_1 FROM mytable",
-            checkparams={"param_1": 1, "param_2": 1},
-        )
-
-        # exclude NO OTHERS
-        self.assert_compile(
-            select(
-                func.row_number().over(
-                    order_by=expr, rows=(None, None), exclude="NO OTHERS"
-                )
-            ),
+            {"param_1": 1, "param_2": 1},
+        ),
+        (
+            "rows_no_others",
+            {"rows": (None, None)},
+            "NO OTHERS",
             "SELECT row_number() OVER "
             "(ORDER BY mytable.myid ROWS BETWEEN UNBOUNDED "
             "PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE NO OTHERS)"
             " AS anon_1 FROM mytable",
-        )
-
-        # case insensitivity - lowercase is accepted
-        self.assert_compile(
-            select(
-                func.row_number().over(
-                    order_by=expr, rows=(None, 0), exclude="ties"
-                )
-            ),
+            {},
+        ),
+        (
+            "rows_lowercase_ties",
+            {"rows": (None, 0)},
+            "ties",
             "SELECT row_number() OVER "
             "(ORDER BY mytable.myid ROWS BETWEEN UNBOUNDED "
             "PRECEDING AND CURRENT ROW EXCLUDE ties)"
             " AS anon_1 FROM mytable",
+            {},
+        ),
+    )
+    def test_over_frame_exclude(
+        self, frame_kwargs, exclude, expected_sql, checkparams
+    ):
+        self.assert_compile(
+            select(
+                func.row_number().over(
+                    order_by=table1.c.myid, exclude=exclude, **frame_kwargs
+                )
+            ),
+            expected_sql,
+            checkparams=checkparams,
         )
 
     def test_over_frame_exclude_invalid(self):
