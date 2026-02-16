@@ -2991,9 +2991,7 @@ class SQLCompiler(Compiled):
             range_ = None
 
         if range_ is not None and over.exclude is not None:
-            range_ += " EXCLUDE %s" % self.preparer.validate_sql_phrase(
-                over.exclude, _WINDOW_EXCLUDE_RE
-            )
+            range_ += f" EXCLUDE {self.preparer.validate_sql_phrase(over.exclude, _WINDOW_EXCLUDE_RE)}"
 
         return "%s OVER (%s)" % (
             text,
