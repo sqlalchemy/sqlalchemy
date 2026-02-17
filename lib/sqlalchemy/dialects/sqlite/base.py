@@ -1650,7 +1650,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
                 ):
                     value = value._clone()
                     value.type = c.type
-            value_text = self.process(value.self_group(), **set_kw)
+            value_text = self.process(
+                value.self_group(), is_upsert_set=True, **set_kw
+            )
 
             key_text = self.preparer.quote(c.name)
             action_set_ops.append("%s = %s" % (key_text, value_text))
@@ -1673,6 +1675,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
                 )
                 value_text = self.process(
                     coercions.expect(roles.ExpressionElementRole, v),
+                    is_upsert_set=True,
                     **set_kw,
                 )
                 action_set_ops.append("%s = %s" % (key_text, value_text))

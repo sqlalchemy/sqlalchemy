@@ -1,5 +1,6 @@
 """SQLite-specific tests."""
 
+from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import schema
@@ -7,6 +8,7 @@ from sqlalchemy import sql
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import types as sqltypes
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
@@ -631,4 +633,142 @@ class OnConflictTest(fixtures.TablesTest):
         eq_(
             conn.scalar(sql.select(bind_targets.c.data)),
             "new updated data processed",
+        )
+
+    @testing.variation("use_returning", [True, False])
+    @testing.variation("bindtype", ["samename", "differentname", "fixed"])
+    def test_on_conflict_do_update_bindparam(
+        self, connection, metadata, use_returning, bindtype
+    ):
+        """Test issue #13130 - ON CONFLICT DO UPDATE with various bindparam
+        patterns.
+
+        Tests insertmanyvalues batching behavior with ON CONFLICT DO UPDATE:
+
+        - samename: bindparam with same name in VALUES and SET
+        - differentname: bindparam with different names in VALUES vs SET
+        - fixed: bindparam with fixed internal value in SET - should batch
+          normally
+
+        Expected insertmanyvalues behavior:
+
+        - samename/differentname + use_returning: row-at-a-time (batch_size=1)
+        - samename/differentname + !use_returning: insertmanyvalues disabled
+        - fixed + use_returning: normal batching
+        - fixed + !use_returning: insertmanyvalues disabled
+        """
+        t = Table(
+            "test_upsert_params",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+            Column("data", String(50)),
+            UniqueConstraint("name", name="uq_test_upsert_params"),
+        )
+        t.create(connection)
+
+        # Build the statement based on bindtype
+        stmt = insert(t).values({"name": bindparam("name")})
+
+        if bindtype.samename:
+            stmt = stmt.on_conflict_do_update(
+                set_={"name": bindparam("name")}, index_elements=["name"]
+            )
+            params_insert = [{"name": "Foo"}, {"name": "Bar"}]
+            params_update = [{"name": "Foo"}, {"name": "Bar"}]
+            expected_initial = [("Bar", None), ("Foo", None)]
+            expected_updated = [("Bar", None), ("Foo", None)]
+        elif bindtype.differentname:
+            stmt = insert(t).values({"name": bindparam("name1")})
+            stmt = stmt.on_conflict_do_update(
+                set_={"name": bindparam("name2")}, index_elements=["name"]
+            )
+            params_insert = [
+                {"name1": "Foo", "name2": "Foo"},
+                {"name1": "Bar", "name2": "Bar"},
+            ]
+            params_update = [
+                {"name1": "Foo", "name2": "Foo_updated"},
+                {"name1": "Bar", "name2": "Bar_updated"},
+            ]
+            expected_initial = [("Bar", None), ("Foo", None)]
+            expected_updated = [("Bar_updated", None), ("Foo_updated", None)]
+        else:  # bindtype.fixed
+            stmt = stmt.on_conflict_do_update(
+                set_={"data": "newdata"}, index_elements=["name"]
+            )
+            params_insert = [{"name": "Foo"}, {"name": "Bar"}]
+            params_update = [{"name": "Foo"}, {"name": "Bar"}]
+            expected_initial = [("Bar", None), ("Foo", None)]
+            expected_updated = [("Bar", "newdata"), ("Foo", "newdata")]
+
+        if use_returning:
+            stmt = stmt.returning(t.c.id, t.c.name, t.c.data)
+
+        # Initial insert
+        result = connection.execute(stmt, params_insert)
+
+        # Verify _insertmanyvalues state
+        compiled = result.context.compiled
+        if use_returning:
+            # With RETURNING, insertmanyvalues should be enabled
+            assert compiled._insertmanyvalues is not None
+            if bindtype.samename or bindtype.differentname:
+                # Parametrized bindparams - flag should be True
+                eq_(
+                    compiled._insertmanyvalues.has_upsert_bound_parameters,
+                    True,
+                )
+            else:  # bindtype.fixed
+                # Fixed value bindparam - flag should be False
+                eq_(
+                    compiled._insertmanyvalues.has_upsert_bound_parameters,
+                    False,
+                )
+        else:
+            # Without RETURNING, insertmanyvalues is disabled for ON CONFLICT
+            eq_(compiled._insertmanyvalues, None)
+
+        if use_returning:
+            rows = result.all()
+            eq_(len(rows), 2)
+            eq_(sorted([(r[1], r[2]) for r in rows]), expected_initial)
+
+        eq_(
+            connection.execute(
+                sql.select(t.c.name, t.c.data).order_by(t.c.name)
+            ).fetchall(),
+            expected_initial,
+        )
+
+        # Test the conflict scenario - update existing rows
+        result = connection.execute(stmt, params_update)
+
+        # Verify _insertmanyvalues state for update scenario
+        compiled = result.context.compiled
+        if use_returning:
+            assert compiled._insertmanyvalues is not None
+            if bindtype.samename or bindtype.differentname:
+                eq_(
+                    compiled._insertmanyvalues.has_upsert_bound_parameters,
+                    True,
+                )
+            else:  # bindtype.fixed
+                eq_(
+                    compiled._insertmanyvalues.has_upsert_bound_parameters,
+                    False,
+                )
+        else:
+            eq_(compiled._insertmanyvalues, None)
+
+        if use_returning:
+            rows = result.all()
+            eq_(len(rows), 2)
+            eq_(sorted([(r[1], r[2]) for r in rows]), expected_updated)
+
+        eq_(
+            connection.execute(
+                sql.select(t.c.name, t.c.data).order_by(t.c.name)
+            ).fetchall(),
+            expected_updated,
         )
