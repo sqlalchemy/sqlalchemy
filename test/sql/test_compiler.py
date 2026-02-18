@@ -3351,6 +3351,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             " AS anon_1 FROM mytable",
             {},
         ),
+        id_="iaaaa",
     )
     def test_over_frame_exclude(
         self, frame_kwargs, exclude, expected_sql, checkparams
