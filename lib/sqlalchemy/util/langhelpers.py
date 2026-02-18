@@ -1968,7 +1968,7 @@ class TypingOnly:
 
     __slots__ = ()
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, **kw: Any) -> None:
         if TypingOnly in cls.__bases__:
             remaining = {
                 name for name in cls.__dict__ if not _dunders.match(name)
@@ -1978,7 +1978,7 @@ class TypingOnly:
                     f"Class {cls} directly inherits TypingOnly but has "
                     f"additional attributes {remaining}."
                 )
-        super().__init_subclass__()
+        super().__init_subclass__(**kw)
 
 
 class EnsureKWArg:
