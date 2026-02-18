@@ -2631,7 +2631,7 @@ class MySQLTypeCompiler(
     def visit_VARBINARY(self, type_: VARBINARY, **kw: Any) -> str:
         return "VARBINARY(%d)" % type_.length  # type: ignore[str-format]
 
-    def visit_JSON(self, type_: JSON, **kw: Any) -> str:
+    def visit_JSON(self, type_: JSON[Any], **kw: Any) -> str:
         return "JSON"
 
     def visit_large_binary(self, type_: LargeBinary, **kw: Any) -> str:

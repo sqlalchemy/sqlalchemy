@@ -4,10 +4,12 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
+from __future__ import annotations
 
 import re
+from typing import Any
+from typing import Optional
 
 from .array import ARRAY
 from .operators import CONTAINED_BY
@@ -20,10 +22,17 @@ from ... import types as sqltypes
 from ...sql import functions as sqlfunc
 from ...types import OperatorClass
 
+
 __all__ = ("HSTORE", "hstore")
 
+_HSTORE_VAL = dict[str, str | None]
 
-class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
+
+class HSTORE(
+    sqltypes.Indexable,
+    sqltypes.Concatenable,
+    sqltypes.TypeEngine[_HSTORE_VAL],
+):
     """Represent the PostgreSQL HSTORE type.
 
     The :class:`.HSTORE` type stores dictionaries containing strings, e.g.::
@@ -112,7 +121,7 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
         | OperatorClass.CONCATENABLE
     )
 
-    def __init__(self, text_type=None):
+    def __init__(self, text_type: Optional[Any] = None) -> None:
         """Construct a new :class:`.HSTORE`.
 
         :param text_type: the type that should be used for indexed values.
@@ -123,25 +132,26 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
             self.text_type = text_type
 
     class Comparator(
-        sqltypes.Indexable.Comparator, sqltypes.Concatenable.Comparator
+        sqltypes.Indexable.Comparator[_HSTORE_VAL],
+        sqltypes.Concatenable.Comparator[_HSTORE_VAL],
     ):
         """Define comparison operations for :class:`.HSTORE`."""
 
-        def has_key(self, other):
+        def has_key(self, other: Any) -> Any:
             """Boolean expression.  Test for presence of a key.  Note that the
             key may be a SQLA expression.
             """
             return self.operate(HAS_KEY, other, result_type=sqltypes.Boolean)
 
-        def has_all(self, other):
+        def has_all(self, other: Any) -> Any:
             """Boolean expression.  Test for presence of all keys in jsonb"""
             return self.operate(HAS_ALL, other, result_type=sqltypes.Boolean)
 
-        def has_any(self, other):
+        def has_any(self, other: Any) -> Any:
             """Boolean expression.  Test for presence of any key in jsonb"""
             return self.operate(HAS_ANY, other, result_type=sqltypes.Boolean)
 
-        def contains(self, other, **kwargs):
+        def contains(self, other: Any, **kwargs: Any) -> Any:
             """Boolean expression.  Test if keys (or array) are a superset
             of/contained the keys of the argument jsonb expression.
 
@@ -150,7 +160,7 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
             """
             return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
 
-        def contained_by(self, other):
+        def contained_by(self, other: Any) -> Any:
             """Boolean expression.  Test if keys are a proper subset of the
             keys of the argument jsonb expression.
             """
@@ -158,16 +168,16 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
                 CONTAINED_BY, other, result_type=sqltypes.Boolean
             )
 
-        def _setup_getitem(self, index):
-            return GETITEM, index, self.type.text_type
+        def _setup_getitem(self, index: Any) -> Any:
+            return GETITEM, index, self.type.text_type  # type: ignore
 
-        def defined(self, key):
+        def defined(self, key: Any) -> Any:
             """Boolean expression.  Test for presence of a non-NULL value for
             the key.  Note that the key may be a SQLA expression.
             """
             return _HStoreDefinedFunction(self.expr, key)
 
-        def delete(self, key):
+        def delete(self, key: Any) -> Any:
             """HStore expression.  Returns the contents of this hstore with the
             given key deleted.  Note that the key may be a SQLA expression.
             """
@@ -175,37 +185,37 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
                 key = _serialize_hstore(key)
             return _HStoreDeleteFunction(self.expr, key)
 
-        def slice(self, array):
+        def slice(self, array: Any) -> Any:
             """HStore expression.  Returns a subset of an hstore defined by
             array of keys.
             """
             return _HStoreSliceFunction(self.expr, array)
 
-        def keys(self):
+        def keys(self) -> Any:
             """Text array expression.  Returns array of keys."""
             return _HStoreKeysFunction(self.expr)
 
-        def vals(self):
+        def vals(self) -> Any:
             """Text array expression.  Returns array of values."""
             return _HStoreValsFunction(self.expr)
 
-        def array(self):
+        def array(self) -> Any:
             """Text array expression.  Returns array of alternating keys and
             values.
             """
             return _HStoreArrayFunction(self.expr)
 
-        def matrix(self):
+        def matrix(self) -> Any:
             """Text array expression.  Returns array of [key, value] pairs."""
             return _HStoreMatrixFunction(self.expr)
 
     comparator_factory = Comparator
 
-    def bind_processor(self, dialect):
+    def bind_processor(self, dialect: Any) -> Any:
         # note that dialect-specific types like that of psycopg and
         # psycopg2 will override this method to allow driver-level conversion
         # instead, see _PsycopgHStore
-        def process(value):
+        def process(value: Any) -> Any:
             if isinstance(value, dict):
                 return _serialize_hstore(value)
             else:
@@ -213,11 +223,11 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
 
         return process
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(self, dialect: Any, coltype: Any) -> Any:
         # note that dialect-specific types like that of psycopg and
         # psycopg2 will override this method to allow driver-level conversion
         # instead, see _PsycopgHStore
-        def process(value):
+        def process(value: Any) -> Any:
             if value is not None:
                 return _parse_hstore(value)
             else:
@@ -226,7 +236,7 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
         return process
 
 
-class hstore(sqlfunc.GenericFunction):
+class hstore(sqlfunc.GenericFunction[_HSTORE_VAL]):
     """Construct an hstore value within a SQL expression using the
     PostgreSQL ``hstore()`` function.
 
@@ -252,48 +262,48 @@ class hstore(sqlfunc.GenericFunction):
 
     """
 
-    type = HSTORE
+    type = HSTORE()
     name = "hstore"
     inherit_cache = True
 
 
-class _HStoreDefinedFunction(sqlfunc.GenericFunction):
-    type = sqltypes.Boolean
+class _HStoreDefinedFunction(sqlfunc.GenericFunction[bool]):
+    type = sqltypes.Boolean()
     name = "defined"
     inherit_cache = True
 
 
-class _HStoreDeleteFunction(sqlfunc.GenericFunction):
-    type = HSTORE
+class _HStoreDeleteFunction(sqlfunc.GenericFunction[_HSTORE_VAL]):
+    type = HSTORE()
     name = "delete"
     inherit_cache = True
 
 
-class _HStoreSliceFunction(sqlfunc.GenericFunction):
-    type = HSTORE
+class _HStoreSliceFunction(sqlfunc.GenericFunction[_HSTORE_VAL]):
+    type = HSTORE()
     name = "slice"
     inherit_cache = True
 
 
-class _HStoreKeysFunction(sqlfunc.GenericFunction):
+class _HStoreKeysFunction(sqlfunc.GenericFunction[Any]):
     type = ARRAY(sqltypes.Text)
     name = "akeys"
     inherit_cache = True
 
 
-class _HStoreValsFunction(sqlfunc.GenericFunction):
+class _HStoreValsFunction(sqlfunc.GenericFunction[Any]):
     type = ARRAY(sqltypes.Text)
     name = "avals"
     inherit_cache = True
 
 
-class _HStoreArrayFunction(sqlfunc.GenericFunction):
+class _HStoreArrayFunction(sqlfunc.GenericFunction[Any]):
     type = ARRAY(sqltypes.Text)
     name = "hstore_to_array"
     inherit_cache = True
 
 
-class _HStoreMatrixFunction(sqlfunc.GenericFunction):
+class _HStoreMatrixFunction(sqlfunc.GenericFunction[Any]):
     type = ARRAY(sqltypes.Text)
     name = "hstore_to_matrix"
     inherit_cache = True
@@ -329,7 +339,7 @@ HSTORE_DELIMITER_RE = re.compile(
 )
 
 
-def _parse_error(hstore_str, pos):
+def _parse_error(hstore_str: str, pos: int) -> str:
     """format an unmarshalling error."""
 
     ctx = 20
@@ -350,7 +360,7 @@ def _parse_error(hstore_str, pos):
     )
 
 
-def _parse_hstore(hstore_str):
+def _parse_hstore(hstore_str: str) -> _HSTORE_VAL:
     """Parse an hstore from its literal string representation.
 
     Attempts to approximate PG's hstore input parsing rules as closely as
@@ -362,7 +372,7 @@ def _parse_hstore(hstore_str):
 
 
     """
-    result = {}
+    result: _HSTORE_VAL = {}
     pos = 0
     pair_match = HSTORE_PAIR_RE.match(hstore_str)
 
@@ -392,13 +402,13 @@ def _parse_hstore(hstore_str):
     return result
 
 
-def _serialize_hstore(val):
+def _serialize_hstore(val: _HSTORE_VAL) -> str:
     """Serialize a dictionary into an hstore literal.  Keys and values must
     both be strings (except None for values).
 
     """
 
-    def esc(s, position):
+    def esc(s: Optional[str], position: str) -> str:
         if position == "value" and s is None:
             return "NULL"
         elif isinstance(s, str):

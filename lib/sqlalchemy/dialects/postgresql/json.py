@@ -28,8 +28,9 @@ from .operators import PATH_EXISTS
 from .operators import PATH_MATCH
 from ... import types as sqltypes
 from ...sql import cast
-from ...sql._typing import _T
 from ...sql.operators import OperatorClass
+from ...sql.sqltypes import _CT_JSON
+from ...sql.sqltypes import _T_JSON
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
@@ -90,7 +91,7 @@ class JSONPATH(JSONPathType):
     __visit_name__ = "JSONPATH"
 
 
-class JSON(sqltypes.JSON):
+class JSON(sqltypes.JSON[_T_JSON]):
     """Represent the PostgreSQL JSON type.
 
     :class:`_postgresql.JSON` is used automatically whenever the base
@@ -200,10 +201,10 @@ class JSON(sqltypes.JSON):
         if astext_type is not None:
             self.astext_type = astext_type
 
-    class Comparator(sqltypes.JSON.Comparator[_T]):
+    class Comparator(sqltypes.JSON.Comparator[_CT_JSON]):
         """Define comparison operations for :class:`_types.JSON`."""
 
-        type: JSON
+        type: JSON[_CT_JSON]
 
         @property
         def astext(self) -> ColumnElement[str]:
@@ -233,7 +234,7 @@ class JSON(sqltypes.JSON):
     comparator_factory = Comparator
 
 
-class JSONB(JSON):
+class JSONB(JSON[_T_JSON]):
     """Represent the PostgreSQL JSONB type.
 
     The :class:`_postgresql.JSONB` type stores arbitrary JSONB format data,
@@ -323,10 +324,10 @@ class JSONB(JSON):
         else:
             return super().coerce_compared_value(op, value)
 
-    class Comparator(JSON.Comparator[_T]):
+    class Comparator(JSON.Comparator[_CT_JSON]):
         """Define comparison operations for :class:`_types.JSON`."""
 
-        type: JSONB
+        type: JSONB[_CT_JSON]
 
         def has_key(self, other: Any) -> ColumnElement[bool]:
             """Boolean expression.  Test for presence of a key (equivalent of
@@ -367,7 +368,7 @@ class JSONB(JSON):
 
         def delete_path(
             self, array: Union[List[str], _pg_array[str]]
-        ) -> ColumnElement[JSONB]:
+        ) -> ColumnElement[_CT_JSON]:
             """JSONB expression. Deletes field or array element specified in
             the argument array (equivalent of the ``#-`` operator).
 

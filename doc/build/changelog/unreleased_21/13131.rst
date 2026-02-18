@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 13131
+
+    Improved typing of :class:`_sqltypes.JSON` as well as dialect specific
+    variants like :class:`_postgresql.JSON` to include generic capabilities, so
+    that the types may be parameterized to indicate any specific type of
+    contents expected, e.g. ``JSONB[list[str]]()``.
+

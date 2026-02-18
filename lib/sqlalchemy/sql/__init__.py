@@ -97,6 +97,8 @@ from .expression import table as table
 from .expression import TableClause as TableClause
 from .expression import TableSample as TableSample
 from .expression import tablesample as tablesample
+from .expression import TableValuedAlias as TableValuedAlias
+from .expression import TableValuedColumn as TableValuedColumn
 from .expression import text as text
 from .expression import TextClause as TextClause
 from .expression import true as true

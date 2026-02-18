@@ -32,7 +32,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
-from typing import TypeVar
+from typing import TypeAlias
 from typing import Union
 from uuid import UUID as _python_UUID
 
@@ -70,6 +70,7 @@ from ..util import warn_deprecated
 from ..util.typing import is_literal
 from ..util.typing import is_pep695
 from ..util.typing import TupleAny
+from ..util.typing import TypeVar
 
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
@@ -85,9 +86,25 @@ if TYPE_CHECKING:
     from ..engine.interfaces import Dialect
     from ..util.typing import _MatchedOnType
 
-_T = TypeVar("_T", bound="Any")
+_T = TypeVar("_T", bound=Any)
+
+_JSON_VALUE: TypeAlias = (
+    str | int | bool | None | dict[str, "_JSON_VALUE"] | list["_JSON_VALUE"]
+)
+
+_T_JSON = TypeVar(
+    "_T_JSON",
+    bound=Any,
+    default=_JSON_VALUE,
+)
+_CT_JSON = TypeVar(
+    "_CT_JSON",
+    bound=Any,
+    default=_JSON_VALUE,
+)
+
 _CT = TypeVar("_CT", bound=Any)
-_TE = TypeVar("_TE", bound="TypeEngine[Any]")
+_TE = TypeVar("_TE", bound=TypeEngine[Any])
 _P = TypeVar("_P")
 
 
@@ -2361,7 +2378,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
         return process
 
 
-class JSON(Indexable, TypeEngine[Any]):
+class JSON(Indexable, TypeEngine[_T_JSON]):
     """Represent a SQL JSON type.
 
     .. note::  :class:`_types.JSON`
@@ -2713,12 +2730,14 @@ class JSON(Indexable, TypeEngine[Any]):
 
         __visit_name__ = "json_path"
 
-    class Comparator(Indexable.Comparator[_T], Concatenable.Comparator[_T]):
+    class Comparator(
+        Indexable.Comparator[_CT_JSON], Concatenable.Comparator[_CT_JSON]
+    ):
         """Define comparison operations for :class:`_types.JSON`."""
 
         __slots__ = ()
 
-        type: JSON
+        type: JSON[_CT_JSON]
 
         def _setup_getitem(self, index):
             if not isinstance(index, str) and isinstance(
