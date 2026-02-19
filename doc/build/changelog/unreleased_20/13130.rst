@@ -1,0 +1,27 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13130
+
+    Fixed issue where :meth:`_postgresql.Insert.on_conflict_do_update`
+    using parametrized bound parameters in the ``set_`` clause would fail
+    when used with executemany batching. For dialects that use the
+    ``use_insertmanyvalues_wo_returning`` optimization (psycopg2),
+    insertmanyvalues is now disabled when there is an ON CONFLICT clause.
+    For cases with RETURNING, row-at-a-time mode is used when the SET
+    clause contains parametrized bindparams (bindparams that receive
+    values from the parameters dict), ensuring each row's parameters are
+    correctly applied. ON CONFLICT statements using expressions like
+    ``excluded.<column>`` continue to batch normally.
+
+
+.. change::
+    :tags: bug, sqlite
+    :tickets: 13130
+
+    Fixed issue where :meth:`_sqlite.Insert.on_conflict_do_update`
+    using parametrized bound parameters in the ``set_`` clause would fail
+    when used with executemany batching. Row-at-a-time mode is now used
+    for ON CONFLICT statements with RETURNING that contain parametrized
+    bindparams, ensuring each row's parameters are correctly applied. ON
+    CONFLICT statements using expressions like ``excluded.<column>``
+    continue to batch normally.
