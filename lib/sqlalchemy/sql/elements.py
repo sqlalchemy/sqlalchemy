@@ -4528,6 +4528,7 @@ class Over(ColumnElement[_T]):
         ("range_", InternalTraversal.dp_clauseelement),
         ("rows", InternalTraversal.dp_clauseelement),
         ("groups", InternalTraversal.dp_clauseelement),
+        ("exclude", InternalTraversal.dp_string),
     ]
 
     order_by: Optional[ClauseList] = None
@@ -4540,6 +4541,7 @@ class Over(ColumnElement[_T]):
     range_: FrameClause | None
     rows: FrameClause | None
     groups: FrameClause | None
+    exclude: str | None
 
     def __init__(
         self,
@@ -4549,6 +4551,7 @@ class Over(ColumnElement[_T]):
         range_: _FrameIntTuple | FrameClause | None = None,
         rows: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
+        exclude: str | None = None,
     ):
         self.element = element
         if order_by is not None:
@@ -4569,6 +4572,8 @@ class Over(ColumnElement[_T]):
             self.range_ = FrameClause._parse(range_, coerce_int=False)
             self.rows = FrameClause._parse(rows, coerce_int=True)
             self.groups = FrameClause._parse(groups, coerce_int=True)
+
+        self.exclude = exclude
 
     if not TYPE_CHECKING:
 
@@ -4804,6 +4809,7 @@ class AggregateOrderBy(WrapsColumnExpression[_T]):
         rows: _FrameIntTuple | FrameClause | None = None,
         range_: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
+        exclude: str | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
@@ -4819,6 +4825,7 @@ class AggregateOrderBy(WrapsColumnExpression[_T]):
             range_=range_,
             rows=rows,
             groups=groups,
+            exclude=exclude,
         )
 
     @overload
@@ -4948,6 +4955,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
         range_: _FrameIntTuple | FrameClause | None = None,
         rows: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
+        exclude: str | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this filtered function.
 
@@ -4974,6 +4982,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
             range_=range_,
             rows=rows,
             groups=groups,
+            exclude=exclude,
         )
 
     def within_group(
