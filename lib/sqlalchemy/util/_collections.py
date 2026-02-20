@@ -297,7 +297,7 @@ class WeakSequence(Sequence[_T]):
     def __getitem__(self, index):
         try:
             obj = self._storage[index]
-        except KeyError:
+        except IndexError:
             raise IndexError("Index %s out of range" % index)
         else:
             return obj()
