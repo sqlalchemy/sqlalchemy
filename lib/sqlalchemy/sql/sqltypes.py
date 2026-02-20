@@ -638,11 +638,7 @@ class Numeric(NumericCommon[_N], TypeEngine[_N]):
                 # we're a "numeric", DBAPI returns floats, convert.
                 return processors.to_decimal_processor_factory(
                     decimal.Decimal,
-                    (
-                        self.scale
-                        if self.scale is not None
-                        else self._default_decimal_return_scale
-                    ),
+                    self._effective_decimal_return_scale,
                 )
         else:
             if dialect.supports_native_decimal:
