@@ -1,3 +1,4 @@
+import contextlib
 import random
 
 from sqlalchemy import BLOB
@@ -72,6 +73,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -186,16 +188,45 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(idx), "CREATE INDEX test_idx1 ON testtbl (data)"
         )
 
-    def test_create_index_with_prefix(self):
+    def test_create_index_delegates_to_dialect_option(
+        self, thirdparty_dialect
+    ):
+        """test the original 3rd party dialect issue in #13134, which is
+        that visit_create_index() doesn't assume kw like "length" are
+        present"""
+
+        @thirdparty_dialect
+        class ThirdPartyDialect(mysql.MySQLDialect):
+            name = "thirdparty"
+            construct_arguments = []
+
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String(255)))
+        idx = Index("test_idx1", tbl.c.data)
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX test_idx1 ON testtbl (data)",
+            dialect=ThirdPartyDialect(),
+        )
+
+    @testing.combinations("mysql", "mariadb", argnames="dialect_name")
+    def test_create_index_with_prefix(self, dialect_name):
         m = MetaData()
         tbl = Table("testtbl", m, Column("data", String(255)))
         idx = Index(
-            "test_idx1", tbl.c.data, mysql_length=10, mysql_prefix="FULLTEXT"
+            "test_idx1",
+            tbl.c.data,
+            **{
+                f"{dialect_name}_length": 10,
+                f"{dialect_name}_prefix": "FULLTEXT",
+            },
         )
 
         self.assert_compile(
             schema.CreateIndex(idx),
             "CREATE FULLTEXT INDEX test_idx1 ON testtbl (data(10))",
+            dialect=dialect_name,
         )
 
     def test_create_index_with_text(self):
@@ -237,36 +268,43 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX test_idx1 ON testtbl (created_at desc)",
         )
 
-    def test_create_index_with_parser(self):
+    @testing.combinations("mysql", "mariadb", argnames="dialect_name")
+    def test_create_index_with_parser(self, dialect_name):
         m = MetaData()
         tbl = Table("testtbl", m, Column("data", String(255)))
         idx = Index(
             "test_idx1",
             tbl.c.data,
-            mysql_length=10,
-            mysql_prefix="FULLTEXT",
-            mysql_with_parser="ngram",
+            **{
+                f"{dialect_name}_length": 10,
+                f"{dialect_name}_prefix": "FULLTEXT",
+                f"{dialect_name}_with_parser": "ngram",
+            },
         )
 
         self.assert_compile(
             schema.CreateIndex(idx),
             "CREATE FULLTEXT INDEX test_idx1 "
             "ON testtbl (data(10)) WITH PARSER ngram",
+            dialect=dialect_name,
         )
 
-    def test_create_index_with_length(self):
+    @testing.combinations("mysql", "mariadb", argnames="dialect_name")
+    def test_create_index_with_length(self, dialect_name):
         m = MetaData()
         tbl = Table("testtbl", m, Column("data", String(255)))
-        idx1 = Index("test_idx1", tbl.c.data, mysql_length=10)
-        idx2 = Index("test_idx2", tbl.c.data, mysql_length=5)
+        idx1 = Index("test_idx1", tbl.c.data, **{f"{dialect_name}_length": 10})
+        idx2 = Index("test_idx2", tbl.c.data, **{f"{dialect_name}_length": 5})
 
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl (data(10))",
+            dialect=dialect_name,
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
             "CREATE INDEX test_idx2 ON testtbl (data(5))",
+            dialect=dialect_name,
         )
 
     def test_drop_constraint_mysql(self):
@@ -374,19 +412,26 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX test_idx3 ON testtbl (a(30), b(30))",
         )
 
-    def test_create_index_with_using(self):
+    @testing.combinations("mysql", "mariadb", argnames="dialect_name")
+    def test_create_index_with_using(self, dialect_name):
         m = MetaData()
         tbl = Table("testtbl", m, Column("data", String(255)))
-        idx1 = Index("test_idx1", tbl.c.data, mysql_using="btree")
-        idx2 = Index("test_idx2", tbl.c.data, mysql_using="hash")
+        idx1 = Index(
+            "test_idx1", tbl.c.data, **{f"{dialect_name}_using": "btree"}
+        )
+        idx2 = Index(
+            "test_idx2", tbl.c.data, **{f"{dialect_name}_using": "hash"}
+        )
 
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl (data) USING btree",
+            dialect=dialect_name,
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
             "CREATE INDEX test_idx2 ON testtbl (data) USING hash",
+            dialect=dialect_name,
         )
 
     def test_create_pk_plain(self):
@@ -404,7 +449,67 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             "PRIMARY KEY (data))",
         )
 
-    def test_create_pk_with_using(self):
+    @testing.combinations("mysql", "mariadb", argnames="dialect_name")
+    def test_create_pk_with_using(self, dialect_name):
+        m = MetaData()
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("data", String(255)),
+            PrimaryKeyConstraint("data", **{f"{dialect_name}_using": "btree"}),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
+            "PRIMARY KEY (data) USING btree)",
+            dialect=dialect_name,
+        )
+
+    @testing.combinations(
+        ("with_parser", "ngram", "WITH PARSER ngram"),
+        ("using", "btree", "USING btree"),
+        argnames="paramname, value, expected",
+    )
+    @testing.variation("use_deprecated", [True, False])
+    def test_create_index_mysql_option_mariadb_deprecated(
+        self, paramname, value, expected, use_deprecated
+    ):
+        """Test that mysql_with_parser emits deprecation with mariadb
+        dialect"""
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String(255)))
+        idx = Index(
+            "test_idx1",
+            tbl.c.data,
+            mariadb_length=10,
+            mariadb_prefix="FULLTEXT",
+            **{
+                f"{'mysql' if use_deprecated else 'mariadb'}"
+                f"_{paramname}": value
+            },
+        )
+
+        if use_deprecated:
+            expect = expect_deprecated(
+                f"Using 'mysql_{paramname}' with the 'mariadb' dialect is "
+                f"deprecated; please additionally specify "
+                f"'mariadb_{paramname}'.",
+            )
+        else:
+            expect = contextlib.nullcontext()
+
+        with expect:
+            self.assert_compile(
+                schema.CreateIndex(idx),
+                "CREATE FULLTEXT INDEX test_idx1 "
+                f"ON testtbl (data(10)) {expected}",
+                dialect="mariadb",
+            )
+
+    def test_create_pk_with_using_mysql_option_mariadb_deprecated(self):
+        """Test that mysql_using for PK emits deprecation with mariadb
+        dialect"""
         m = MetaData()
         tbl = Table(
             "testtbl",
@@ -413,11 +518,16 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             PrimaryKeyConstraint("data", mysql_using="btree"),
         )
 
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
-            "PRIMARY KEY (data) USING btree)",
-        )
+        with expect_deprecated(
+            "Using 'mysql_using' with the 'mariadb' dialect is deprecated; "
+            "please additionally specify 'mariadb_using'."
+        ):
+            self.assert_compile(
+                schema.CreateTable(tbl),
+                "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
+                "PRIMARY KEY (data) USING btree)",
+                dialect="mariadb",
+            )
 
     @testing.combinations(
         (True, True, (10, 2, 2)),

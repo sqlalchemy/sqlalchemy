@@ -60,6 +60,7 @@ from .. import util
 from ..util import EMPTY_DICT
 from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
+from ..util import warn_deprecated
 from ..util.typing import Self
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
@@ -494,6 +495,79 @@ class DialectKWArgs:
     _dialect_kwargs_traverse_internals: List[Tuple[str, Any]] = [
         ("dialect_options", InternalTraversal.dp_dialect_options)
     ]
+
+    def get_dialect_option(
+        self,
+        dialect: Dialect,
+        argument_name: str,
+        *,
+        else_: Any = None,
+        deprecated_fallback: Optional[str] = None,
+    ) -> Any:
+        r"""Return the value of a dialect-specific option, or *else_* if
+        this dialect does not register the given argument.
+
+        This is useful for DDL compilers that may be inherited by
+        third-party dialects whose ``construct_arguments`` do not
+        include the same set of keys as the parent dialect.
+
+        :param dialect: The dialect for which to retrieve the option.
+        :param argument_name: The name of the argument to retrieve.
+        :param else\_: The value to return if the argument is not present.
+        :param deprecated_fallback: Optional dialect name to fall back to
+         if the argument is not present for the current dialect. If the
+         argument is present for the fallback dialect but not the current
+         dialect, a deprecation warning will be emitted.
+
+        """
+
+        registry = DialectKWArgs._kw_registry[dialect.name]
+        if registry is None:
+            return else_
+
+        if argument_name in registry.get(self.__class__, {}):
+            if (
+                deprecated_fallback is None
+                or dialect.name == deprecated_fallback
+            ):
+                return self.dialect_options[dialect.name][argument_name]
+
+            # deprecated_fallback is present; need to look in two places
+
+            # Current dialect has this option registered.
+            # Check if user explicitly set it.
+            if (
+                dialect.name in self.dialect_options
+                and argument_name
+                in self.dialect_options[dialect.name]._non_defaults
+            ):
+                # User explicitly set this dialect's option - use it
+                return self.dialect_options[dialect.name][argument_name]
+
+            # User didn't set current dialect's option.
+            # Check for deprecated fallback.
+            elif (
+                deprecated_fallback in self.dialect_options
+                and argument_name
+                in self.dialect_options[deprecated_fallback]._non_defaults
+            ):
+                # User set fallback option but not current dialect's option
+                warn_deprecated(
+                    f"Using '{deprecated_fallback}_{argument_name}' "
+                    f"with the '{dialect.name}' dialect is deprecated; "
+                    f"please additionally specify "
+                    f"'{dialect.name}_{argument_name}'.",
+                    version="2.1",
+                )
+                return self.dialect_options[deprecated_fallback][argument_name]
+
+            # Return default value
+            return self.dialect_options[dialect.name][argument_name]
+        else:
+            # Current dialect doesn't have the option registered at all.
+            # Don't warn - if a third-party dialect doesn't support an
+            # option, that's their choice, not a deprecation case.
+            return else_
 
     @classmethod
     def argument_for(

@@ -218,6 +218,24 @@ class TestBase:
         else:
             drop_all_tables_from_metadata(metadata, config.db)
 
+    @config.fixture()
+    def thirdparty_dialect(self):
+        from ...dialects import registry
+
+        name = None
+
+        def go(dialect_cls):
+            nonlocal name
+            name = dialect_cls.name
+            assert name, "name is required"
+            registry.impls[name] = dialect_cls
+            return dialect_cls
+
+        yield go
+
+        assert name is not None
+        del registry.impls[name]
+
     @config.fixture(
         params=[
             (rollback, second_operation, begin_nested)
