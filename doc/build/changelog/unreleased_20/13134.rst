@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 13134
+
+    Fixed issue where DDL compilation options were registered to the hard-coded
+    dialect name ``mysql``. This made it awkward for MySQL-derived dialects
+    like MariaDB, StarRocks, etc. to work with such options when different sets
+    of options exist for different platforms. Options are now registered under
+    the actual dialect name, and a fallback was added to help avoid errors when
+    an option does not exist for that dialect.
+
+    To maintain backwards compatibility, when using the MariaDB dialect with
+    the options ``mysql_with_parser`` or ``mysql_using`` without also specifying
+    the corresponding ``mariadb_`` prefixed options, a deprecation warning will
+    be emitted. The ``mysql_`` prefixed options will continue to work during
+    the deprecation period. Users should update their code to additionally
+    specify ``mariadb_with_parser`` and ``mariadb_using`` when using the
+    ``mariadb://`` dialect, or specify both options to support both dialects.
+
+    Pull request courtesy Tiansu Yu.
