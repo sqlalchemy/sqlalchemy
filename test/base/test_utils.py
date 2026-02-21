@@ -15,6 +15,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
@@ -72,6 +73,19 @@ class WeakSequenceTest(fixtures.TestBase):
         gc_collect()
         eq_(len(w), 2)
         eq_(len(w._storage), 2)
+
+    def test_index_error(self):
+        class Foo:
+            pass
+
+        f1, f2, f3 = Foo(), Foo(), Foo()
+
+        w = WeakSequence()
+        w.append(f1)
+        w.append(f2)
+        w.append(f3)
+        with expect_raises(IndexError):
+            w[4]
 
 
 class MergeListsWOrderingTest(fixtures.TestBase):
