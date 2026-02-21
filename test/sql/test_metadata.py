@@ -5724,6 +5724,46 @@ class DialectKWArgTest(fixtures.TestBase):
                 5,
             )
 
+    def test_get_dialect_option_participating(self):
+        with self._fixture():
+            idx = Index("a", "b", "c", participating_x=7)
+            dialect = mock.Mock()
+            dialect.name = "participating"
+            eq_(idx.get_dialect_option(dialect, "x"), 7)
+            eq_(idx.get_dialect_option(dialect, "y"), False)
+
+    def test_get_dialect_option_participating_default(self):
+        with self._fixture():
+            idx = Index("a", "b", "c")
+            dialect = mock.Mock()
+            dialect.name = "participating"
+            eq_(idx.get_dialect_option(dialect, "x"), 5)
+            eq_(idx.get_dialect_option(dialect, "z_one"), None)
+
+    def test_get_dialect_option_participating_unregistered_arg(self):
+        with self._fixture():
+            idx = Index("a", "b", "c", participating_x=7)
+            dialect = mock.Mock()
+            dialect.name = "participating"
+            eq_(idx.get_dialect_option(dialect, "nonexistent"), None)
+            eq_(
+                idx.get_dialect_option(
+                    dialect, "nonexistent", else_="fallback"
+                ),
+                "fallback",
+            )
+
+    def test_get_dialect_option_nonparticipating(self):
+        with self._fixture():
+            idx = Index("a", "b", "c")
+            dialect = mock.Mock()
+            dialect.name = "nonparticipating"
+            eq_(idx.get_dialect_option(dialect, "x"), None)
+            eq_(
+                idx.get_dialect_option(dialect, "x", else_="fallback"),
+                "fallback",
+            )
+
 
 class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"

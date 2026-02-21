@@ -495,6 +495,27 @@ class DialectKWArgs:
         ("dialect_options", InternalTraversal.dp_dialect_options)
     ]
 
+    def get_dialect_option(
+        self, dialect: Dialect, argument_name: str, *, else_: Any = None
+    ) -> Any:
+        """Return the value of a dialect-specific option, or *else_* if
+        this dialect does not register the given argument.
+
+        This is useful for DDL compilers that may be inherited by
+        third-party dialects whose ``construct_arguments`` do not
+        include the same set of keys as the parent dialect.
+
+        """
+
+        registry = DialectKWArgs._kw_registry[dialect.name]
+        if registry is None:
+            return else_
+
+        if argument_name in registry.get(self.__class__, {}):
+            return self.dialect_options[dialect.name][argument_name]
+        else:
+            return else_
+
     @classmethod
     def argument_for(
         cls, dialect_name: str, argument_name: str, default: Any

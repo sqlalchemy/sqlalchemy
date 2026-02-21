@@ -2215,7 +2215,7 @@ class MySQLDDLCompiler(
         if index.unique:
             text += "UNIQUE "
 
-        index_prefix = index.kwargs.get("%s_prefix" % self.dialect.name, None)
+        index_prefix = index.get_dialect_option(self.dialect, "prefix")
         if index_prefix:
             text += index_prefix + " "
 
@@ -2224,7 +2224,7 @@ class MySQLDDLCompiler(
             text += "IF NOT EXISTS "
         text += "%s ON %s " % (name, table)
 
-        length = index.dialect_options[self.dialect.name]["length"]
+        length = index.get_dialect_option(self.dialect, "length")
         if length is not None:
             if isinstance(length, dict):
                 # length value can be a (column_name --> integer value)
@@ -2252,11 +2252,11 @@ class MySQLDDLCompiler(
             columns_str = ", ".join(columns)
         text += "(%s)" % columns_str
 
-        parser = index.dialect_options["mysql"]["with_parser"]
+        parser = index.get_dialect_option(self.dialect, "with_parser")
         if parser is not None:
             text += " WITH PARSER %s" % (parser,)
 
-        using = index.dialect_options["mysql"]["using"]
+        using = index.get_dialect_option(self.dialect, "using")
         if using is not None:
             text += " USING %s" % (preparer.quote(using))
 
@@ -2266,7 +2266,7 @@ class MySQLDDLCompiler(
         self, constraint: sa_schema.PrimaryKeyConstraint, **kw: Any
     ) -> str:
         text = super().visit_primary_key_constraint(constraint)
-        using = constraint.dialect_options["mysql"]["using"]
+        using = constraint.get_dialect_option(self.dialect, "using")
         if using:
             text += " USING %s" % (self.preparer.quote(using))
         return text
