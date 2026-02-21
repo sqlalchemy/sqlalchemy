@@ -269,12 +269,8 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
     def test_create_index_with_length(self, dialect_name):
         m = MetaData()
         tbl = Table("testtbl", m, Column("data", String(255)))
-        idx1 = Index(
-            "test_idx1", tbl.c.data, **{f"{dialect_name}_length": 10}
-        )
-        idx2 = Index(
-            "test_idx2", tbl.c.data, **{f"{dialect_name}_length": 5}
-        )
+        idx1 = Index("test_idx1", tbl.c.data, **{f"{dialect_name}_length": 10})
+        idx2 = Index("test_idx2", tbl.c.data, **{f"{dialect_name}_length": 5})
 
         self.assert_compile(
             schema.CreateIndex(idx1),
