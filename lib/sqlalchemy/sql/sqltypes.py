@@ -1841,8 +1841,8 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                 )
             ) from err
 
-    def __repr__(self):
-        return util.generic_repr(
+    def repr_struct(self):
+        return util.GenericRepr(
             self,
             additional_kw=[
                 ("native_enum", True),

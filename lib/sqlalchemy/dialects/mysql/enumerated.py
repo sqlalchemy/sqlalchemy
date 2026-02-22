@@ -104,8 +104,8 @@ class ENUM(type_api.NativeForEmulated, sqltypes.Enum, _StringType):
         else:
             return super()._object_value_for_elem(elem)
 
-    def __repr__(self) -> str:
-        return util.generic_repr(
+    def repr_struct(self) -> util.GenericRepr:
+        return util.GenericRepr(
             self, to_inspect=[ENUM, _StringType, sqltypes.Enum]
         )
 
@@ -267,8 +267,8 @@ class SET(_StringType):
         kw["retrieve_as_bitwise"] = self.retrieve_as_bitwise
         return util.constructor_copy(self, cls, *self.values, **kw)
 
-    def __repr__(self) -> str:
-        return util.generic_repr(
+    def repr_struct(self) -> util.GenericRepr:
+        return util.GenericRepr(
             self,
             to_inspect=[SET, _StringType],
             additional_kw=[

@@ -103,6 +103,7 @@ from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.types import UserDefinedType
+from sqlalchemy.util import GenericRepr
 
 
 def _all_dialect_modules():
@@ -4648,3 +4649,102 @@ class ResolveForLiteralTest(fixtures.TestBase):
     )
     def test_resolve(self, value, expected):
         is_(literal(value).type, expected)
+
+
+class ReprTest(fixtures.TestBase):
+    """test suite for TypeEngine repr_struct() and GenericRepr"""
+
+    def test_generic_repr_basic(self):
+        """Test GenericRepr basic functionality."""
+        t = String(50)
+        gr = GenericRepr(t)
+        eq_(str(gr), "String(length=50)")
+
+    def test_generic_repr_set_class_name(self):
+        """Test GenericRepr.set_class_name() method."""
+        t = String(50)
+        gr = GenericRepr(t)
+        gr.set_class_name("CustomString")
+        eq_(str(gr), "CustomString(length=50)")
+
+    def test_type_engine_repr_struct(self):
+        """Test TypeEngine.repr_struct() returns GenericRepr."""
+        t = String(50)
+        gr = t.repr_struct()
+        assert isinstance(gr, GenericRepr)
+        eq_(str(gr), "String(length=50)")
+
+    @testing.combinations(
+        (Integer(), "Integer()"),
+        (String(50), "String(length=50)"),
+        (VARCHAR(100), "VARCHAR(length=100)"),
+        (NUMERIC(10, 2), "NUMERIC(precision=10, scale=2)"),
+        (
+            Enum("a", "b", "c", name="myenum"),
+            "Enum('a', 'b', 'c', name='myenum')",
+        ),
+        (
+            mysql.NUMERIC(10, 2, unsigned=True),
+            "NUMERIC(unsigned=True, precision=10, scale=2)",
+        ),
+        (
+            mysql.VARCHAR(50, charset="utf8"),
+            "VARCHAR(charset='utf8', length=50)",
+        ),
+        (mysql.ENUM("a", "b", "c"), "ENUM('a', 'b', 'c')"),
+        (mysql.SET("a", "b", "c"), "SET('a', 'b', 'c')"),
+        argnames="type_,expected",
+    )
+    def test_type_repr(self, type_, expected):
+        """Test repr for various type objects."""
+        eq_(repr(type_), expected)
+
+    @testing.variation("impl_type", ["enum", "boolean", "string"])
+    @testing.variation("has_name", [True, False])
+    def test_type_decorator_repr(self, impl_type, has_name):
+        """Test TypeDecorator wrapping various SchemaType objects."""
+
+        if impl_type.enum:
+
+            class MyType(TypeDecorator):
+                impl = Enum
+                cache_ok = True
+
+            if has_name:
+                t = MyType("a", "b", "c", name="myenum")
+                eq_(repr(t), "MyType('a', 'b', 'c', name='myenum')")
+            else:
+                t = MyType("x", "y", "z")
+                eq_(repr(t), "MyType('x', 'y', 'z')")
+
+        elif impl_type.boolean:
+
+            class MyType(TypeDecorator):
+                impl = Boolean
+                cache_ok = True
+
+            if has_name:
+                t = MyType(create_constraint=True, name="mybool")
+                eq_(
+                    repr(t),
+                    "MyType(create_constraint=True, name='mybool')",
+                )
+            else:
+                t = MyType()
+                eq_(repr(t), "MyType()")
+
+        elif impl_type.string:
+
+            class MyType(TypeDecorator):
+                impl = String
+                cache_ok = True
+
+            if has_name:
+                # String doesn't have a name parameter, use length
+                t = MyType(100)
+                eq_(repr(t), "MyType(length=100)")
+            else:
+                t = MyType()
+                eq_(repr(t), "MyType()")
+        else:
+            impl_type.fail()

@@ -46,8 +46,8 @@ class _NumericType(
     _NumericCommonType, sqltypes.Numeric[Union[decimal.Decimal, float]]
 ):
 
-    def __repr__(self) -> str:
-        return util.generic_repr(
+    def repr_struct(self) -> util.GenericRepr:
+        return util.GenericRepr(
             self,
             to_inspect=[_NumericType, _NumericCommonType, sqltypes.Numeric],
         )
@@ -75,8 +75,8 @@ class _FloatType(
         super().__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 
-    def __repr__(self) -> str:
-        return util.generic_repr(
+    def repr_struct(self) -> util.GenericRepr:
+        return util.GenericRepr(
             self, to_inspect=[_FloatType, _NumericCommonType, sqltypes.Float]
         )
 
@@ -86,8 +86,8 @@ class _IntegerType(_NumericCommonType, sqltypes.Integer):
         self.display_width = display_width
         super().__init__(**kw)
 
-    def __repr__(self) -> str:
-        return util.generic_repr(
+    def repr_struct(self) -> util.GenericRepr:
+        return util.GenericRepr(
             self,
             to_inspect=[_IntegerType, _NumericCommonType, sqltypes.Integer],
         )
@@ -117,8 +117,8 @@ class _StringType(sqltypes.String):
         self.national = national
         super().__init__(**kw)
 
-    def __repr__(self) -> str:
-        return util.generic_repr(
+    def repr_struct(self) -> util.GenericRepr:
+        return util.GenericRepr(
             self, to_inspect=[_StringType, sqltypes.String]
         )
 
