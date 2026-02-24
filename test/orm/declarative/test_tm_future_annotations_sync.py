@@ -4590,9 +4590,11 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 BigInteger, Identity(always=True), primary_key=True
             )
 
-            bs: Mapped[list[B]] = relationship(back_populates="a")
+            bs: Mapped[list[B]] = relationship(  # noqa: F821
+                back_populates="a"
+            )
 
-            def __init__(self, bs: list[B], *args, **kwargs):
+            def __init__(self, bs: list[B], *args, **kwargs):  # noqa: F821
                 super().__init__(*args, bs=bs, **kwargs)
 
         class B(decl_base):
