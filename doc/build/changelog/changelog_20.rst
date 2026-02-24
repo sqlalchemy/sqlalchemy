@@ -10,7 +10,122 @@
 
 .. changelog::
     :version: 2.0.47
-    :include_notes_from: unreleased_20
+    :released: February 24, 2026
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13104
+
+        Fixed issue when using ORM mappings with Python 3.14's :pep:`649` feature
+        that no longer requires "future annotations", where the ORM's introspection
+        of the ``__init__`` method of mapped classes would fail if non-present
+        identifiers in annotations were present.  The vendored ``getfullargspec()``
+        method has been amended to use ``Format.FORWARDREF`` under Python 3.14 to
+        prevent resolution of names that aren't present.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13105
+
+        Fixed an issue in the PostgreSQL dialect where foreign key constraint
+        reflection would incorrectly swap or fail to capture ``onupdate`` and
+        ``ondelete`` values when these clauses appeared in a different order than
+        expected in the constraint definition. This issue primarily affected
+        PostgreSQL-compatible databases such as CockroachDB, which may return ``ON
+        DELETE`` before ``ON UPDATE`` in the constraint definition string. The
+        reflection logic now correctly parses both clauses regardless of their
+        ordering.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13107
+
+        Fixed issue in the :ref:`engine_insertmanyvalues` feature where using
+        PostgreSQL's ``ON CONFLICT`` clause with
+        :paramref:`_dml.Insert.returning.sort_by_parameter_order` enabled would
+        generate invalid SQL when the insert used an implicit sentinel (server-side
+        autoincrement primary key). The generated SQL would incorrectly declare a
+        sentinel counter column in the ``imp_sen`` table alias without providing
+        corresponding values in the ``VALUES`` clause, leading to a
+        ``ProgrammingError`` indicating column count mismatch. The fix allows batch
+        execution mode when ``embed_values_counter`` is active, as the embedded
+        counter provides the ordering capability needed even with upsert behaviors,
+        rather than unnecessarily downgrading to row-at-a-time execution.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13110
+
+        Fixed issue where :meth:`_postgresql.Insert.on_conflict_do_update`
+        parameters were not respecting compilation options such as
+        ``literal_binds=True``.  Pull request courtesy Loïc Simon.
+
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 13110
+
+        Fixed issue where :meth:`_sqlite.Insert.on_conflict_do_update`
+        parameters were not respecting compilation options such as
+        ``literal_binds=True``.  Pull request courtesy Loïc Simon.
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 13116
+
+        The connection object returned by :meth:`_engine.Engine.raw_connection`
+        now supports the context manager protocol, automatically returning the
+        connection to the pool when exiting the context.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13130
+
+        Fixed issue where :meth:`_postgresql.Insert.on_conflict_do_update`
+        using parametrized bound parameters in the ``set_`` clause would fail
+        when used with executemany batching. For dialects that use the
+        ``use_insertmanyvalues_wo_returning`` optimization (psycopg2),
+        insertmanyvalues is now disabled when there is an ON CONFLICT clause.
+        For cases with RETURNING, row-at-a-time mode is used when the SET
+        clause contains parametrized bindparams (bindparams that receive
+        values from the parameters dict), ensuring each row's parameters are
+        correctly applied. ON CONFLICT statements using expressions like
+        ``excluded.<column>`` continue to batch normally.
+
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 13130
+
+        Fixed issue where :meth:`_sqlite.Insert.on_conflict_do_update`
+        using parametrized bound parameters in the ``set_`` clause would fail
+        when used with executemany batching. Row-at-a-time mode is now used
+        for ON CONFLICT statements with RETURNING that contain parametrized
+        bindparams, ensuring each row's parameters are correctly applied. ON
+        CONFLICT statements using expressions like ``excluded.<column>``
+        continue to batch normally.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 13134
+
+        Fixed issue where DDL compilation options were registered to the hard-coded
+        dialect name ``mysql``. This made it awkward for MySQL-derived dialects
+        like MariaDB, StarRocks, etc. to work with such options when different sets
+        of options exist for different platforms. Options are now registered under
+        the actual dialect name, and a fallback was added to help avoid errors when
+        an option does not exist for that dialect.
+
+        To maintain backwards compatibility, when using the MariaDB dialect with
+        the options ``mysql_with_parser`` or ``mysql_using`` without also specifying
+        the corresponding ``mariadb_`` prefixed options, a deprecation warning will
+        be emitted. The ``mysql_`` prefixed options will continue to work during
+        the deprecation period. Users should update their code to additionally
+        specify ``mariadb_with_parser`` and ``mariadb_using`` when using the
+        ``mariadb://`` dialect, or specify both options to support both dialects.
+
+        Pull request courtesy Tiansu Yu.
 
 .. changelog::
     :version: 2.0.46
