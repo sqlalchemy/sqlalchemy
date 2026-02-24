@@ -262,6 +262,9 @@ FK_ON_UPDATE = re.compile(
     r"^(?:RESTRICT|CASCADE|SET NULL|NO ACTION|SET DEFAULT)$", re.I
 )
 FK_INITIALLY = re.compile(r"^(?:DEFERRED|IMMEDIATE)$", re.I)
+_WINDOW_EXCLUDE_RE = re.compile(
+    r"^(?:CURRENT ROW|GROUP|TIES|NO OTHERS)$", re.I
+)
 BIND_PARAMS = re.compile(r"(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])", re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r"\x5c(:[\w\$]*)(?![:\w\$])", re.UNICODE)
 
@@ -2999,6 +3002,11 @@ class SQLCompiler(Compiled):
             range_ = f"GROUPS BETWEEN {self.process(over.groups, **kwargs)}"
         else:
             range_ = None
+
+        if range_ is not None and over.exclude is not None:
+            range_ += " EXCLUDE " + self.preparer.validate_sql_phrase(
+                over.exclude, _WINDOW_EXCLUDE_RE
+            )
 
         return "%s OVER (%s)" % (
             text,
