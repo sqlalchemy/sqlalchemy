@@ -3380,6 +3380,18 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ).compile,
         )
 
+    def test_over_frame_exclude_requires_frame_spec(self):
+        # exclude without rows/range_/groups raises at construction time
+        with expect_raises_message(
+            exc.ArgumentError,
+            "'exclude' requires that one of 'rows', "
+            "'range_', or 'groups' is also specified",
+        ):
+            func.row_number().over(
+                order_by=table1.c.myid,
+                exclude="CURRENT ROW",
+            )
+
     def test_over_invalid_framespecs(self):
         with expect_raises_message(
             exc.ArgumentError,

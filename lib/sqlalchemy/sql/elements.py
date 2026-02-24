@@ -4575,6 +4575,14 @@ class Over(ColumnElement[_T]):
 
         self.exclude = exclude
 
+        if exclude is not None and (
+            range_ is None and rows is None and groups is None
+        ):
+            raise exc.ArgumentError(
+                "'exclude' requires that one of 'rows', "
+                "'range_', or 'groups' is also specified"
+            )
+
     if not TYPE_CHECKING:
 
         @util.memoized_property
