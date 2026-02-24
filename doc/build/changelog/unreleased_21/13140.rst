@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13140
+
+    Improved the ability for :class:`.TypeDecorator` to produce a correct
+    ``repr()`` for "schema" types such as :class:`.Enum` and :class:`.Boolean`.
+    This is mostly to support the Alembic autogenerate use case so that custom
+    types render with relevant arguments present.  Improved the architecture
+    used by :class:`.TypeEngine` to produce ``repr()`` strings to be more
+    modular for compound types like :class:`.TypeDecorator`.

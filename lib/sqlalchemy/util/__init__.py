@@ -106,6 +106,7 @@ from .langhelpers import format_argspec_init as format_argspec_init
 from .langhelpers import format_argspec_plus as format_argspec_plus
 from .langhelpers import generic_fn_descriptor as generic_fn_descriptor
 from .langhelpers import generic_repr as generic_repr
+from .langhelpers import GenericRepr as GenericRepr
 from .langhelpers import get_callable_argspec as get_callable_argspec
 from .langhelpers import get_cls_kwargs as get_cls_kwargs
 from .langhelpers import get_func_kwargs as get_func_kwargs

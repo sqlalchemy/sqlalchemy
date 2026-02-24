@@ -1158,8 +1158,19 @@ class TypeEngine(Visitable, Generic[_T]):
     def __str__(self) -> str:
         return str(self.compile())
 
+    def repr_struct(self) -> util.GenericRepr:
+        """Return a :class:`.GenericRepr` object representing this type.
+
+        This method is used to generate the repr string for the type.
+        Subclasses can override this to customize the repr structure.
+
+        .. versionadded:: 2.1
+
+        """
+        return util.GenericRepr(self)
+
     def __repr__(self) -> str:
-        return util.generic_repr(self)
+        return str(self.repr_struct())
 
 
 class TypeEngineMixin:
@@ -2362,8 +2373,18 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
     def sort_key_function(self) -> Optional[Callable[[Any], Any]]:  # type: ignore # noqa: E501
         return self.impl_instance.sort_key_function
 
-    def __repr__(self) -> str:
-        return util.generic_repr(self, to_inspect=self.impl_instance)
+    def repr_struct(self) -> util.GenericRepr:
+        """Return a :class:`.GenericRepr` object representing this type.
+
+        For TypeDecorator, this returns a repr structure based on the
+        impl instance but with the TypeDecorator's class name.
+
+        .. versionadded:: 2.1
+
+        """
+        return self.impl_instance.repr_struct().set_class_name(
+            self.__class__.__name__
+        )
 
 
 class Variant(TypeDecorator[_T]):
