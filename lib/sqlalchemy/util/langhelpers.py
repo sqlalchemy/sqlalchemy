@@ -767,6 +767,143 @@ def unbound_method_to_callable(func_or_cls):
         return func_or_cls
 
 
+class GenericRepr:
+    """Encapsulates the logic for creating a generic __repr__() string.
+
+    This class allows for the repr structure to be created, then modified
+    (e.g., changing the class name), before being rendered as a string.
+
+    .. versionadded:: 2.1
+    """
+
+    __slots__ = (
+        "_obj",
+        "_additional_kw",
+        "_to_inspect",
+        "_omit_kwarg",
+        "_class_name",
+    )
+
+    _obj: Any
+    _additional_kw: Sequence[Tuple[str, Any]]
+    _to_inspect: List[object]
+    _omit_kwarg: Sequence[str]
+    _class_name: Optional[str]
+
+    def __init__(
+        self,
+        obj: Any,
+        additional_kw: Sequence[Tuple[str, Any]] = (),
+        to_inspect: Optional[Union[object, List[object]]] = None,
+        omit_kwarg: Sequence[str] = (),
+    ):
+        """Create a GenericRepr object.
+
+        :param obj: The object being repr'd
+        :param additional_kw: Additional keyword arguments to check for in
+            the repr, as a sequence of 2-tuples of (name, default_value)
+        :param to_inspect: One or more objects whose __init__ signature
+            should be inspected. If not provided, defaults to [obj].
+        :param omit_kwarg: Sequence of keyword argument names to omit from
+            the repr output
+        """
+        self._obj = obj
+        self._additional_kw = additional_kw
+        self._to_inspect = (
+            [obj] if to_inspect is None else _collections.to_list(to_inspect)
+        )
+        self._omit_kwarg = omit_kwarg
+        self._class_name = None
+
+    def set_class_name(self, class_name: str) -> GenericRepr:
+        """Set the class name to be used in the repr.
+
+        By default, the class name is taken from obj.__class__.__name__.
+        This method allows it to be overridden.
+
+        :param class_name: The class name to use
+        :return: self, for method chaining
+        """
+        self._class_name = class_name
+        return self
+
+    def __str__(self) -> str:
+        """Produce the __repr__() string based on the configured parameters."""
+        obj = self._obj
+        to_inspect = self._to_inspect
+        additional_kw = self._additional_kw
+        omit_kwarg = self._omit_kwarg
+
+        missing = object()
+
+        pos_args = []
+        kw_args: _collections.OrderedDict[str, Any] = (
+            _collections.OrderedDict()
+        )
+        vargs = None
+        for i, insp in enumerate(to_inspect):
+            try:
+                spec = compat.inspect_getfullargspec(insp.__init__)  # type: ignore[misc]  # noqa: E501
+            except TypeError:
+                continue
+            else:
+                default_len = len(spec.defaults) if spec.defaults else 0
+                if i == 0:
+                    if spec.varargs:
+                        vargs = spec.varargs
+                    if default_len:
+                        pos_args.extend(spec.args[1:-default_len])
+                    else:
+                        pos_args.extend(spec.args[1:])
+                else:
+                    kw_args.update(
+                        [(arg, missing) for arg in spec.args[1:-default_len]]
+                    )
+
+                if default_len:
+                    assert spec.defaults
+                    kw_args.update(
+                        [
+                            (arg, default)
+                            for arg, default in zip(
+                                spec.args[-default_len:], spec.defaults
+                            )
+                        ]
+                    )
+        output: List[str] = []
+
+        output.extend(repr(getattr(obj, arg, None)) for arg in pos_args)
+
+        if vargs is not None and hasattr(obj, vargs):
+            output.extend([repr(val) for val in getattr(obj, vargs)])
+
+        for arg, defval in kw_args.items():
+            if arg in omit_kwarg:
+                continue
+            try:
+                val = getattr(obj, arg, missing)
+                if val is not missing and val != defval:
+                    output.append("%s=%r" % (arg, val))
+            except Exception:
+                pass
+
+        if additional_kw:
+            for arg, defval in additional_kw:
+                try:
+                    val = getattr(obj, arg, missing)
+                    if val is not missing and val != defval:
+                        output.append("%s=%r" % (arg, val))
+                except Exception:
+                    pass
+
+        class_name = (
+            self._class_name
+            if self._class_name is not None
+            else obj.__class__.__name__
+        )
+        return "%s(%s)" % (class_name, ", ".join(output))
+
+
 def generic_repr(
     obj: Any,
     additional_kw: Sequence[Tuple[str, Any]] = (),
@@ -777,72 +914,14 @@ def generic_repr(
     specification vs. same-named attributes present.
 
     """
-    if to_inspect is None:
-        to_inspect = [obj]
-    else:
-        to_inspect = _collections.to_list(to_inspect)
-
-    missing = object()
-
-    pos_args = []
-    kw_args: _collections.OrderedDict[str, Any] = _collections.OrderedDict()
-    vargs = None
-    for i, insp in enumerate(to_inspect):
-        try:
-            spec = compat.inspect_getfullargspec(insp.__init__)
-        except TypeError:
-            continue
-        else:
-            default_len = len(spec.defaults) if spec.defaults else 0
-            if i == 0:
-                if spec.varargs:
-                    vargs = spec.varargs
-                if default_len:
-                    pos_args.extend(spec.args[1:-default_len])
-                else:
-                    pos_args.extend(spec.args[1:])
-            else:
-                kw_args.update(
-                    [(arg, missing) for arg in spec.args[1:-default_len]]
-                )
-
-            if default_len:
-                assert spec.defaults
-                kw_args.update(
-                    [
-                        (arg, default)
-                        for arg, default in zip(
-                            spec.args[-default_len:], spec.defaults
-                        )
-                    ]
-                )
-    output: List[str] = []
-
-    output.extend(repr(getattr(obj, arg, None)) for arg in pos_args)
-
-    if vargs is not None and hasattr(obj, vargs):
-        output.extend([repr(val) for val in getattr(obj, vargs)])
-
-    for arg, defval in kw_args.items():
-        if arg in omit_kwarg:
-            continue
-        try:
-            val = getattr(obj, arg, missing)
-            if val is not missing and val != defval:
-                output.append("%s=%r" % (arg, val))
-        except Exception:
-            pass
-
-    if additional_kw:
-        for arg, defval in additional_kw:
-            try:
-                val = getattr(obj, arg, missing)
-                if val is not missing and val != defval:
-                    output.append("%s=%r" % (arg, val))
-            except Exception:
-                pass
-
-    return "%s(%s)" % (obj.__class__.__name__, ", ".join(output))
+    return str(
+        GenericRepr(
+            obj,
+            additional_kw=additional_kw,
+            to_inspect=to_inspect,
+            omit_kwarg=omit_kwarg,
+        )
+    )
 
 
 def class_hierarchy(cls):
