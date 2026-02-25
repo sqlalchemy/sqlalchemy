@@ -1026,6 +1026,10 @@ class SessionTransaction(_StateChange, TransactionalContext):
     def _is_transaction_boundary(self) -> bool:
         return self.nested or not self._parent
 
+    @property
+    def rollback_exception(self):
+        return self._rollback_exception
+
     @_StateChange.declare_states(
         (SessionTransactionState.ACTIVE,), _StateChangeStates.NO_CHANGE
     )
