@@ -29,6 +29,8 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
+from typing import overload
+from typing import SupportsIndex
 
 from . import attributes
 from . import exc as orm_exc
@@ -176,7 +178,15 @@ class _AppenderMixin(_AbstractCollectionWriter[_T]):
 
         def __iter__(self) -> Iterator[_T]: ...
 
-    def __getitem__(self, index: Any) -> Union[_T, List[_T]]:
+    @overload
+    def __getitem__(self, index: SupportsIndex) -> _T:
+        ...
+
+    @overload
+    def __getitem__(self, index: slice) -> List[_T]:
+        ...
+
+    def __getitem__(self, index: Union[SupportsIndex, slice]) -> Union[_T, List[_T]]:
         sess = self.session
         if sess is None:
             return self.attr._get_collection_history(
