@@ -9,6 +9,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import union
 from sqlalchemy.engine import result
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -577,6 +578,87 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
             pa.x.__clause_element__()._annotations["parentmapper"],
             inspect(Point),
         )
+
+    def test_named_select_alias(self):
+        class Point:
+            pass
+
+        self._fixture(Point)
+        with expect_warnings(
+            "Select can't be aliased, coercing to subquery instead."
+        ):
+            q1 = aliased(
+                element=select(Point.x).filter(Point.id == 1),
+                name="point_alias",
+            )
+            eq_(q1.name, "point_alias")
+            self.assert_compile(select(q1),
+                                "SELECT point_alias.x "
+                                "FROM (SELECT point.x AS x "
+                                "FROM point "
+                                "WHERE point.id = :id_1) AS point_alias"
+                                )
+
+    def test_anonymous_select_alias(self):
+        class Point:
+            pass
+
+        self._fixture(Point)
+        with expect_warnings(
+            "Select can't be aliased, coercing to subquery instead."
+        ):
+            q1 = aliased(element=select(Point.x).filter(Point.id == 1))
+            eq_(q1.name, "%%(%d anon)s" % id(q1))
+            self.assert_compile(select(q1),
+                                "SELECT anon_1.x "
+                                "FROM (SELECT point.x AS x "
+                                "FROM point "
+                                "WHERE point.id = :id_1) AS anon_1"
+                                )
+
+    def test_named_union_alias(self):
+        class Point:
+            pass
+
+        self._fixture(Point)
+        q1 = select(Point.x).filter(Point.id == 1)
+        q2 = select(Point.y).filter(Point.id == 2)
+        with expect_warnings(
+            "CompoundSelect can't be aliased, coercing to subquery instead."
+        ):
+            q3 = aliased(element=union(q1, q2), name="point_alias")
+            eq_(q3.name, "point_alias")
+            self.assert_compile(select(q3),
+                                "SELECT point_alias.x "
+                                "FROM (SELECT point.x AS x "
+                                "FROM point "
+                                "WHERE point.id = :id_1 "
+                                "UNION SELECT point.y AS y "
+                                "FROM point "
+                                "WHERE point.id = :id_2) AS point_alias"
+                                )
+
+    def test_anonymous_union_alias(self):
+        class Point:
+            pass
+
+        self._fixture(Point)
+        q1 = select(Point.x).filter(Point.id == 1)
+        q2 = select(Point.y).filter(Point.id == 2)
+        with expect_warnings(
+            "CompoundSelect can't be aliased, coercing to subquery instead."
+        ):
+            q3 = aliased(element=union(q1, q2))
+            eq_(q3.name, "%%(%d anon)s" % id(q3))
+            self.assert_compile(select(q3),
+                                "SELECT anon_1.x "
+                                "FROM (SELECT point.x AS x "
+                                "FROM point "
+                                "WHERE point.id = :id_1 "
+                                "UNION SELECT point.y AS y "
+                                "FROM point "
+                                "WHERE point.id = :id_2) AS anon_1"
+                                )
 
 
 class IdentityKeyTest(_fixtures.FixtureTest):
