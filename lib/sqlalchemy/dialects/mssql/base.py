@@ -1848,57 +1848,78 @@ class MSExecutionContext(default.DefaultExecutionContext):
         if self.compiled and self.compiled.schema_translate_map:
             rst = self.compiled.preparer._render_schema_translates
             statement = rst(statement, self.compiled.schema_translate_map)
-
         return statement
+
+    def _should_enable_identity_insert(self, id_column, tbl):
+        """Determine whether IDENTITY_INSERT should be enabled."""
+        if self.dialect.automatic_identity_insert is False:
+            return False
+
+        if id_column is None or isinstance(id_column.default, Sequence):
+            return False
+
+        compile_state = self.compiled.dml_compile_state
+        return id_column.key in self.compiled_parameters[0] or (
+            compile_state._dict_parameters
+            and id_column.key in compile_state._insert_col_keys
+        )
 
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""
+        if not self.isinsert:
+            return
 
-        if self.isinsert:
-            if TYPE_CHECKING:
-                assert is_sql_compiler(self.compiled)
-                assert isinstance(self.compiled.compile_state, DMLState)
-                assert isinstance(
-                    self.compiled.compile_state.dml_table, TableClause
-                )
-
-            tbl = self.compiled.compile_state.dml_table
-            id_column = tbl._autoincrement_column
-
-            if id_column is not None and (
-                not isinstance(id_column.default, Sequence)
-            ):
-                insert_has_identity = True
-                compile_state = self.compiled.dml_compile_state
-                self._enable_identity_insert = (
-                    id_column.key in self.compiled_parameters[0]
-                ) or (
-                    compile_state._dict_parameters
-                    and (id_column.key in compile_state._insert_col_keys)
-                )
-
-            else:
-                insert_has_identity = False
-                self._enable_identity_insert = False
-
-            self._select_lastrowid = (
-                not self.compiled.inline
-                and insert_has_identity
-                and not self.compiled.effective_returning
-                and not self._enable_identity_insert
-                and not self.executemany
+        if TYPE_CHECKING:
+            assert is_sql_compiler(self.compiled)
+            assert isinstance(self.compiled.compile_state, DMLState)
+            assert isinstance(
+                self.compiled.compile_state.dml_table, TableClause
             )
 
-            if self._enable_identity_insert:
-                self.root_connection._cursor_execute(
-                    self.cursor,
-                    self._opt_encode(
-                        "SET IDENTITY_INSERT %s ON"
-                        % self.identifier_preparer.format_table(tbl)
-                    ),
-                    (),
-                    self,
+        tbl = self.compiled.compile_state.dml_table
+        id_column = tbl._autoincrement_column
+
+        # Determine if identity insert should be enabled
+        self._enable_identity_insert = self._should_enable_identity_insert(
+            id_column, tbl
+        )
+
+        # Determine if we need to select the lastrowid
+        self._select_lastrowid = (
+            not self.compiled.inline
+            and id_column is not None
+            and not isinstance(id_column.default, Sequence)
+            and not self.compiled.effective_returning
+            and not self._enable_identity_insert
+            and not self.executemany
+        )
+
+        # Handle identity insert warnings or errors
+        if self._enable_identity_insert:
+            assert self.dialect.automatic_identity_insert, (
+                "automatic_identity_insert must be set"
+            )
+
+            if self.dialect.automatic_identity_insert == "warn":
+                util.warn_limited(
+"Automatic identity insert is enabled for table %s."
+"In future versions, this behavior may be disabled by default."
+"Consider explicitly managing IDENTITY_INSERT.",
+                    tbl.name,
                 )
+            elif self.dialect.automatic_identity_insert == "silence":
+                pass
+
+            # Enable identity insert
+            self.root_connection._cursor_execute(
+                self.cursor,
+                self._opt_encode(
+                    "SET IDENTITY_INSERT %s ON"
+                    % self.identifier_preparer.format_table(tbl)
+                ),
+                (),
+                self,
+            )
 
     def post_exec(self):
         """Disable IDENTITY_INSERT if enabled."""
@@ -3148,6 +3169,7 @@ class MSDialect(default.DefaultDialect):
         json_deserializer=None,
         legacy_schema_aliasing=None,
         ignore_no_transaction_on_rollback=False,
+        automatic_identity_insert="warn",
         **opts,
     ):
         self.query_timeout = int(query_timeout or 0)
@@ -3174,6 +3196,7 @@ class MSDialect(default.DefaultDialect):
 
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
+        self.automatic_identity_insert = automatic_identity_insert
 
     def do_savepoint(self, connection, name):
         # give the DBAPI a push
