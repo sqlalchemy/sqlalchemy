@@ -673,6 +673,7 @@ class NamedTypeTest(
                             }
                         ],
                         "collation": "default",
+                        "collation_schema": "pg_catalog",
                     }
                 ],
             )
@@ -1491,17 +1492,36 @@ class DomainTest(
     __sparse_driver_backend__ = True
     __only_on__ = "postgresql > 8.3"
 
+    def test_domain_collation_collation_schema(self):
+        with expect_raises_message(
+            TypeError,
+            "The collation argument is required for using collation_schema",
+        ):
+            DOMAIN("my", Text(), collation_schema="s")
+
     @testing.requires.postgresql_working_nullable_domains
     def test_domain_type_reflection(self, metadata, connection):
         positive_int = DOMAIN(
             "positive_int", Integer(), check="value > 0", not_null=True
         )
         my_str = DOMAIN("my_string", Text(), collation="C", default="~~")
+        connection.exec_driver_sql("CREATE SCHEMA IF NOT EXISTS collation_s")
+        connection.exec_driver_sql(
+            "CREATE COLLATION IF NOT EXISTS collation_s.my_collation"
+            " (LOCALE = 'C', PROVIDER = 'builtin')"
+        )
+        schema_collated_str = DOMAIN(
+            "schema_collated_string",
+            Text(),
+            collation="my_collation",
+            collation_schema="collation_s",
+        )
         Table(
             "table",
             metadata,
             Column("value", positive_int),
             Column("str", my_str),
+            Column("coll_str", schema_collated_str),
         )
 
         metadata.create_all(connection)
@@ -1526,9 +1546,22 @@ class DomainTest(
         is_(st.check, None)
         is_true("~~" in st.default)
         eq_(st.collation, "C")
+        eq_(st.collation_schema, "pg_catalog")
         is_(st.constraint_name, None)
         is_false(st.not_null)
         is_false(st.create_type)
+
+        cst = t2.c.coll_str.type
+        is_true(isinstance(cst, DOMAIN))
+        is_true(isinstance(cst.data_type, Text))
+        eq_(cst.name, "schema_collated_string")
+        is_(cst.check, None)
+        is_(cst.default, None)
+        eq_(cst.collation, "my_collation")
+        eq_(cst.collation_schema, "collation_s")
+        is_(cst.constraint_name, None)
+        is_false(cst.not_null)
+        is_false(cst.create_type)
 
     def test_domain_create_table(self, metadata, connection):
         metadata = self.metadata
