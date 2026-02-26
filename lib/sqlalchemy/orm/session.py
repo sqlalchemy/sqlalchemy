@@ -1237,7 +1237,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
                             assert False, join_transaction_mode
                 else:
                     transaction = conn.begin()
-            except:
+            except Exception:
                 # connection will not not be associated with this Session;
                 # close it immediately so that it isn't closed under GC
                 if local_connect:
@@ -1294,7 +1294,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
             try:
                 for t in set(self._connections.values()):
                     cast("TwoPhaseTransaction", t[1]).prepare()
-            except:
+            except Exception:
                 with util.safe_reraise():
                     self.rollback()
 
@@ -1358,7 +1358,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
 
                         transaction._state = SessionTransactionState.DEACTIVE
                         self.session.dispatch.after_rollback(self.session)
-                    except:
+                    except Exception:
                         rollback_err = sys.exc_info()
                     finally:
                         transaction._state = SessionTransactionState.DEACTIVE
@@ -2624,7 +2624,7 @@ class Session(_SessionClassMethods, EventTarget):
             except gevent.Timeout:
                 sess.invalidate()
                 raise
-            except:
+            except Exception:
                 sess.rollback()
                 raise
 
@@ -4587,7 +4587,7 @@ class Session(_SessionClassMethods, EventTarget):
 
             transaction.commit()
 
-        except:
+        except Exception:
             with util.safe_reraise():
                 transaction.rollback(_capture_exception=True)
 
@@ -4862,7 +4862,7 @@ class Session(_SessionClassMethods, EventTarget):
                 )
             transaction.commit()
 
-        except:
+        except Exception:
             with util.safe_reraise():
                 transaction.rollback(_capture_exception=True)
         finally:

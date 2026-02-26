@@ -98,12 +98,12 @@ class TestBase:
         for r in to_consume:
             try:
                 r.all()
-            except:
+            except Exception:
                 pass
         for r in to_close:
             try:
                 r.close()
-            except:
+            except Exception:
                 pass
 
     @config.fixture()

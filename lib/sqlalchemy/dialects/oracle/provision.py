@@ -214,7 +214,7 @@ def _oracle_post_configure_engine(url, engine, follower_ident):
         # (or if this doesn't even apply to the newer oracle's we're using)
         try:
             sc = dbapi_connection.stmtcachesize
-        except:
+        except Exception:
             # connection closed
             pass
         else:

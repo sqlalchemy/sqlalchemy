@@ -53,7 +53,7 @@ def _pg_create_db(cfg, eng, ident):
                         template_db,
                     )
                     time.sleep(0.5)
-            except:
+            except Exception:
                 raise
             else:
                 break

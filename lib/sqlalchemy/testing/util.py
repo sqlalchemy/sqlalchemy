@@ -170,7 +170,7 @@ def run_as_contextmanager(ctx, fn, *arg, **kw):
         result = fn(obj, *arg, **kw)
         ctx.__exit__(None, None, None)
         return result
-    except:
+    except Exception:
         exc_info = sys.exc_info()
         raise_ = ctx.__exit__(*exc_info)
         if not raise_:

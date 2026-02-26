@@ -476,7 +476,7 @@ class MatchTest(AssertsCompiledSQL, fixtures.TablesTest):
         ) as conn:
             try:
                 conn.exec_driver_sql("DROP FULLTEXT CATALOG Catalog")
-            except:
+            except Exception:
                 pass
 
     @classmethod

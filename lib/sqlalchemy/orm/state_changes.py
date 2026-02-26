@@ -135,7 +135,7 @@ class _StateChange:
             self._next_state = _StateChangeStates.CHANGE_IN_PROGRESS
             try:
                 ret_value = fn(self, *arg, **kw)
-            except:
+            except Exception:
                 raise
             else:
                 if self._state is expect_state:
@@ -185,7 +185,7 @@ class _StateChange:
         self._next_state = expected
         try:
             yield
-        except:
+        except Exception:
             raise
         else:
             if self._state is not expected:

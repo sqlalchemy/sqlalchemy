@@ -1313,7 +1313,7 @@ class DefaultRequirements(SuiteRequirements):
                 cursor = connection.cursor()
                 try:
                     cursor.execute("SELECT * FROM pragma_index_info('idx52')")
-                except:
+                except Exception:
                     return False
                 else:
                     return (

@@ -132,7 +132,7 @@ class TransactionalContext:
         if type_ is None and self._transaction_is_active():
             try:
                 self.commit()
-            except:
+            except Exception:
                 with util.safe_reraise():
                     if self._rollback_can_be_called():
                         self.rollback()

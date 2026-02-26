@@ -1165,7 +1165,7 @@ class SuiteRequirements(Requirements):
                 e = create_engine(
                     config.db.url, isolation_level="READ COMMITTED"
                 )
-            except:
+            except Exception:
                 return False
             else:
                 return (

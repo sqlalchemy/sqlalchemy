@@ -148,7 +148,7 @@ def instances(
                 if uncertain:
                     try:
                         return hash(obj)
-                    except:
+                    except Exception:
                         pass
 
                 raise sa_exc.InvalidRequestError(
@@ -172,7 +172,7 @@ def instances(
                 if not _use_id:
                     try:
                         return hash(obj)
-                    except:
+                    except Exception:
                         pass
 
                     # in #10459, we considered using a warning here, however

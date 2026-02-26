@@ -475,7 +475,7 @@ class BaseResultInternal(Generic[_R]):
 
         try:
             row = make_row(row) if make_row is not None else row  # type: ignore[assignment] # noqa: E501
-        except:
+        except Exception:
             self._soft_close(hard=True)
             raise
 
@@ -510,7 +510,7 @@ class BaseResultInternal(Generic[_R]):
                             continue
                         # here, we have a row and it's different
                         break
-                    except:
+                    except Exception:
                         self._soft_close(hard=True)
                         raise
             else:

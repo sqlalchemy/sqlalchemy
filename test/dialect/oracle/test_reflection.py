@@ -1494,7 +1494,7 @@ drop table %(schema)sparent;
                     if stmt.strip():
                         try:
                             conn.exec_driver_sql(stmt)
-                        except:
+                        except Exception:
                             pass
 
     def setup_test(self):
@@ -1764,13 +1764,13 @@ drop table %(schema)sparent;
             connection.exec_driver_sql(
                 f"CREATE PUBLIC SYNONYM {foo_syn} for foobar"
             )
-        except:
+        except Exception:
             # assume the synonym exists is the main problem here.
             # since --dropfirst will not get this synonym, drop it directly
             # for the next run.
             try:
                 connection.exec_driver_sql(f"DROP PUBLIC SYNONYM {foo_syn}")
-            except:
+            except Exception:
                 pass
 
             raise
@@ -1780,11 +1780,11 @@ drop table %(schema)sparent;
         finally:
             try:
                 connection.exec_driver_sql(f"DROP PUBLIC SYNONYM {foo_syn}")
-            except:
+            except Exception:
                 pass
             try:
                 connection.exec_driver_sql("DROP TABLE foobar")
-            except:
+            except Exception:
                 pass
 
     @testing.variation(

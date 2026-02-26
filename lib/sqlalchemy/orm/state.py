@@ -593,7 +593,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
 
         try:
             manager.original_init(*mixed[1:], **kwargs)
-        except:
+        except Exception:
             with util.safe_reraise():
                 manager.dispatch.init_failure(self, args, kwargs)
 

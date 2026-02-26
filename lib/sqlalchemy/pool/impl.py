@@ -171,7 +171,7 @@ class QueuePool(Pool):
         if self._inc_overflow():
             try:
                 return self._create_connection()
-            except:
+            except Exception:
                 with util.safe_reraise():
                     self._dec_overflow()
                 raise

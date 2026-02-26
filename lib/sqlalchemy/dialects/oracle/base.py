@@ -2124,7 +2124,7 @@ class OracleDialect(default.DefaultDialect):
         if compat:
             try:
                 return tuple(int(x) for x in compat.split("."))
-            except:
+            except Exception:
                 return self.server_version_info
         else:
             return self.server_version_info
@@ -2177,7 +2177,7 @@ class OracleDialect(default.DefaultDialect):
             return self.get_isolation_level(dbapi_conn)
         except NotImplementedError:
             raise
-        except:
+        except Exception:
             return "READ COMMITTED"
 
     def _execute_reflection(

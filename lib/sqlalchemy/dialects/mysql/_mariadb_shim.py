@@ -266,7 +266,7 @@ class MariaDBShim(DefaultDialect):
             cursor = conn.cursor()
             cursor.execute("SELECT VERSION() LIKE '%MariaDB%'")
             val = cursor.fetchone()[0]  # type: ignore[index]
-        except:
+        except Exception:
             raise
         else:
             return bool(val)

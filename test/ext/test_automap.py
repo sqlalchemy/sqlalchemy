@@ -694,7 +694,7 @@ class ConcurrentAutomapTest(fixtures.TestBase):
             for i in range(2):
                 try:
                     self._automap(e)
-                except:
+                except Exception:
                     self._success = False
                     raise
                 time.sleep(random.random())

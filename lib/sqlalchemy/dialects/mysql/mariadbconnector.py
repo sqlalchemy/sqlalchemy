@@ -235,7 +235,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
     def _extract_error_code(self, exception: DBAPIModule.Error) -> int:
         try:
             rc: int = exception.errno
-        except:
+        except Exception:
             rc = -1
         return rc
 

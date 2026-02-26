@@ -2337,7 +2337,7 @@ class CorrelateExceptWPolyAdaptTest(
             __tablename__ = "c"
             id = Column(Integer, primary_key=True)
 
-        if use_correlate_except:
+        if use_correlate_except Exception:
             Common.num_superclass = column_property(
                 select(func.count(Superclass.id))
                 .where(Superclass.common_id == Common.id)
@@ -2345,7 +2345,7 @@ class CorrelateExceptWPolyAdaptTest(
                 .scalar_subquery()
             )
 
-        if not use_correlate_except:
+        if not use_correlate_except Exception:
             Common.num_superclass = column_property(
                 select(func.count(Superclass.id))
                 .where(Superclass.common_id == Common.id)

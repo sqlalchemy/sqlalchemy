@@ -452,7 +452,7 @@ class _CompoundListener(_InstanceLevelDispatch[_ET]):
                 try:
                     self(*args, **kw)
                     exception = False
-                except:
+                except Exception:
                     exception = True
                     raise
                 finally:
@@ -497,7 +497,7 @@ class _CompoundListener(_InstanceLevelDispatch[_ET]):
             with self._get_exec_once_mutex():
                 try:
                     self(*args, **kw)
-                except:
+                except Exception:
                     raise
                 else:
                     self._exec_w_sync_once = True

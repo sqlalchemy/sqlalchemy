@@ -64,7 +64,7 @@ class TestAsyncioCompat(fixtures.TestBase):
         def sync_meth():
             try:
                 await_(async_meth_raise())
-            except:
+            except Exception:
                 cleanup.append(True)
                 raise
 

@@ -119,7 +119,7 @@ class safe_reraise:
 
         try:
             sess.commit()
-        except:
+        except Exception:
             with safe_reraise():
                 sess.rollback()
 
@@ -1934,7 +1934,7 @@ def _warnings_warn(
         # being called from less than 3 (or given) stacklevels, weird,
         # but don't crash
         stacklevel = 0
-    except:
+    except Exception:
         # _getframe() doesn't work, weird interpreter issue, weird,
         # ok, but don't crash
         stacklevel = 0
@@ -1989,7 +1989,7 @@ def only_once(
             once_fn = once.pop()
             try:
                 return once_fn(*arg, **kw)
-            except:
+            except Exception:
                 if retry_on_exception:
                     once.insert(0, once_fn)
                 raise

@@ -406,7 +406,7 @@ class AsyncEngineTest(EngineFixture):
             # [1] == .args, not in 3.7
             eq_regex(m.mock_calls[0][1][0], expected_msg)
         else:
-            # the warning emitted by the pool is inside of a try/except:
+            # the warning emitted by the pool is inside of a try/except Exception:
             # so it's impossible right now to have this warning "raise".
             # for now, test by using mock.patch
 
