@@ -81,7 +81,8 @@ The primary forms of relationship loading are:
   option, this form of loading emits a second SELECT statement which re-states the
   original query embedded inside of a subquery, then JOINs that subquery to the
   related table to be loaded to load all members of related collections / scalar
-  references at once.  Subquery eager loading is detailed at :ref:`subquery_eager_loading`.
+  references at once.  Subquery eager loading is deprecated as of SQLAlchemy 2.1
+  and detailed at :ref:`subquery_eager_loading`.
 
 * **write only loading** - available via ``lazy='write_only'``, or by
   annotating the left side of the :class:`_orm.Relationship` object using the
