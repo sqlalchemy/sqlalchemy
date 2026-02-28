@@ -2870,6 +2870,12 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "Enum('x', 'y', length=255)",
         )
 
+    def test_repr_five(self):
+        # this tests that alembic autogenerate renders the enum correctly
+        # without the metadata since that isn't needed.
+        e = Enum("x", "y", length=42, metadata=MetaData(), schema="foo")
+        eq_(repr(e), "Enum('x', 'y', length=42, schema='foo')")
+
     def test_length_native(self):
         e = Enum("x", "y", "long", length=42)
         eq_(e.length, 42)
