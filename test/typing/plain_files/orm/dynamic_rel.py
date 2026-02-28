@@ -84,3 +84,10 @@ with Session() as session:
 
     # test #9985
     stmt = select(User).join(User.addresses)
+
+    # test #13128
+    if typing.TYPE_CHECKING:
+        # EXPECTED_TYPE: Address
+        reveal_type(u.addresses[0])
+        # EXPECTED_TYPE: list[Address]
+        reveal_type(u.addresses[1:3])

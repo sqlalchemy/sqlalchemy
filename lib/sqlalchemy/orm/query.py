@@ -93,6 +93,7 @@ from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectLabelStyle
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import SupportsIndex
 
 
 if TYPE_CHECKING:
@@ -2557,6 +2558,12 @@ class Query(
 
         self._set_select_from(from_obj, False)
         return self
+
+    @overload
+    def __getitem__(self, item: slice) -> List[_T]: ...
+
+    @overload
+    def __getitem__(self, item: SupportsIndex) -> _T: ...
 
     def __getitem__(self, item: Any) -> Any:
         return orm_util._getitem(
