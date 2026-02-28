@@ -36,6 +36,7 @@ from .base import VARCHAR2
 from .base import VECTOR
 from .base import VectorIndexConfig
 from .base import VectorIndexType
+from .json import JSON
 from .vector import SparseVector
 from .vector import VectorDistanceType
 from .vector import VectorStorageFormat
@@ -80,4 +81,5 @@ __all__ = (
     "VectorStorageFormat",
     "VectorStorageType",
     "SparseVector",
+    "JSON",
 )

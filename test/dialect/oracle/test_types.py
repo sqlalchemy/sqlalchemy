@@ -1806,3 +1806,43 @@ class SetInputSizesTest(fixtures.TestBase):
             )
         finally:
             event.remove(testing.db, "do_setinputsizes", _remove_type)
+
+class JSONTest(fixtures.TestBase):
+    __requires__ = ("json_type",)
+    __only_on__ = "oracle"
+    __backend__ = True
+
+    @testing.requires.reflects_json_type
+    def test_reflection(self, metadata, connection):
+        Table("oracle_json", metadata, Column("foo", oracle.JSON))
+        metadata.create_all(connection)
+
+        reflected = Table("oracle_json", MetaData(), autoload_with=connection)
+        is_(reflected.c.foo.type._type_affinity, sqltypes.JSON)
+        assert isinstance(reflected.c.foo.type, oracle.JSON)
+
+    def test_rudimentary_round_trip(self, metadata, connection):
+        oracle_json = Table(
+            "oracle_json", metadata, Column("foo", oracle.JSON)
+        )
+        metadata.create_all(connection)
+
+        value = {"json": {"foo": "bar"}, "recs": ["one", "two"]}
+
+        connection.execute(oracle_json.insert(), dict(foo=value))
+
+        eq_(connection.scalar(select(oracle_json.c.foo)), value)
+
+    def test_extract_subobject(self, connection, metadata):
+        oracle_json = Table(
+            "oracle_json", metadata, Column("foo", oracle.JSON)
+        )
+        metadata.create_all(connection)
+
+        value = {"json": {"foo": "bar"}}
+        connection.execute(oracle_json.insert(), dict(foo=value))
+
+        eq_(
+            connection.scalar(select(oracle_json.c.foo["json"])),
+            value["json"],
+        )
