@@ -614,9 +614,8 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     dialect = dialect_cls(**dialect_args)
 
     # assemble connection arguments
-    (cargs_tup, cparams) = dialect.create_connect_args(u)
-    cparams.update(pop_kwarg("connect_args", {}))
-    cargs = list(cargs_tup)  # allow mutability
+    (cargs_tup, _cparams) = dialect.create_connect_args(u)
+    cparams = util.immutabledict(_cparams).union(pop_kwarg("connect_args", {}))
 
     # look for existing pool or create
     pool = pop_kwarg("pool", None)
@@ -626,15 +625,23 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
             connection_record: Optional[ConnectionPoolEntry] = None,
         ) -> DBAPIConnection:
             if dialect._has_events:
+                mutable_cargs = list(cargs_tup)
+                mutable_cparams = dict(cparams)
                 for fn in dialect.dispatch.do_connect:
                     connection = cast(
                         DBAPIConnection,
-                        fn(dialect, connection_record, cargs, cparams),
+                        fn(
+                            dialect,
+                            connection_record,
+                            mutable_cargs,
+                            mutable_cparams,
+                        ),
                     )
                     if connection is not None:
                         return connection
-
-            return dialect.connect(*cargs, **cparams)
+                return dialect.connect(*mutable_cargs, **mutable_cparams)
+            else:
+                return dialect.connect(*cargs_tup, **cparams)
 
         creator = pop_kwarg("creator", connect)
 
