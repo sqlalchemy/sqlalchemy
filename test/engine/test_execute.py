@@ -3897,6 +3897,54 @@ class DialectEventTest(fixtures.TestBase):
         with e.connect() as conn:
             eq_(conn.info["boom"], "one")
 
+    def test_connect_do_connect_no_cargs_cparams_leak_nullpool(self):
+        """test #13144, cargs/cparams in do_connect are not shared"""
+
+        e = engines.testing_engine(
+            options={"_initialize": False, "poolclass": NullPool}
+        )
+
+        m1 = Mock()
+        e.dialect.connect = m1.mock_connect
+
+        cargs_list = []
+        cparams_list = []
+        call_count = 0
+
+        @event.listens_for(e, "do_connect")
+        def evt(dialect, conn_rec, cargs, cparams):
+            nonlocal call_count
+            cargs_list.append(cargs)
+            cparams_list.append(cparams)
+
+            cargs.append(f"extra_arg_{call_count}")
+            cparams[f"extra_param_{call_count}"] = "value"
+            call_count += 1
+
+        for _ in range(3):
+            with e.connect():
+                pass
+
+        all_list_keys = ["extra_arg_0", "extra_arg_1", "extra_arg_2"]
+
+        for carg, expected in zip(cargs_list, all_list_keys):
+            eq_(set(carg).intersection(all_list_keys), {expected})
+
+        all_param_keys = ["extra_param_0", "extra_param_1", "extra_param_2"]
+        for cparam, expected in zip(cparams_list, all_param_keys):
+            eq_(set(cparam).intersection(all_param_keys), {expected})
+
+        eq_(
+            len(set(id(carg) for carg in cargs_list)),
+            3,
+            "cargs should be different objects",
+        )
+        eq_(
+            len(set(id(cparam) for cparam in cparams_list)),
+            3,
+            "cparams should be different objects",
+        )
+
 
 class SetInputSizesTest(fixtures.TablesTest):
     __backend__ = True
