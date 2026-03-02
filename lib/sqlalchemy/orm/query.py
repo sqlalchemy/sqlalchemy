@@ -35,6 +35,7 @@ from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Sequence
+from typing import SupportsIndex
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -2587,6 +2588,12 @@ class Query(
 
         self._set_select_from(from_obj, False)
         return self
+
+    @overload
+    def __getitem__(self, item: slice) -> List[_T]: ...
+
+    @overload
+    def __getitem__(self, item: SupportsIndex) -> _T: ...
 
     def __getitem__(self, item: Any) -> Any:
         return orm_util._getitem(

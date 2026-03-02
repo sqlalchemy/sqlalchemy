@@ -24,6 +24,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Optional
+from typing import overload
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -176,7 +177,13 @@ class _AppenderMixin(_AbstractCollectionWriter[_T]):
 
         def __iter__(self) -> Iterator[_T]: ...
 
-    def __getitem__(self, index: Any) -> Union[_T, List[_T]]:
+    @overload
+    def __getitem__(self, index: int) -> _T: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> List[_T]: ...
+
+    def __getitem__(self, index: Union[int, slice]) -> Union[_T, List[_T]]:
         sess = self.session
         if sess is None:
             return self.attr._get_collection_history(
@@ -184,7 +191,7 @@ class _AppenderMixin(_AbstractCollectionWriter[_T]):
                 PassiveFlag.PASSIVE_NO_INITIALIZE,
             ).indexed(index)
         else:
-            return self._generate(sess).__getitem__(index)  # type: ignore[no-any-return] # noqa: E501
+            return self._generate(sess).__getitem__(index)
 
     def count(self) -> int:
         sess = self.session
