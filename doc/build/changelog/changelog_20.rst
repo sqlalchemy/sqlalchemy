@@ -10,7 +10,20 @@
 
 .. changelog::
     :version: 2.0.48
-    :include_notes_from: unreleased_20
+    :released: March 2, 2026
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 13144
+
+        Fixed a critical issue in :class:`.Engine` where connections created in
+        conjunction with the :meth:`.DialectEvents.do_connect` event listeners
+        would receive shared, mutable collections for the connection arguments,
+        leading to a variety of potential issues including unlimited growth of the
+        argument list as well as elements within the parameter dictionary being
+        shared among concurrent connection calls.  In particular this could impact
+        do_connect routines making use of complex mutable authentication
+        structures.
 
 .. changelog::
     :version: 2.0.47
