@@ -1395,6 +1395,14 @@ class TypeReflectionTest(fixtures.TestBase):
             type_._type_affinity,
         )
 
+    def test_raw_type(self, metadata, connection):
+        """Test that RAW columns preserve data_length on reflection."""
+        specs = [
+            (RAW(50), RAW(50)),
+            (RAW(128), RAW(128)),
+        ]
+        self._run_test(metadata, connection, specs, ["length"])
+
 
 class IdentityReflectionTest(fixtures.TablesTest):
     __only_on__ = "oracle"
