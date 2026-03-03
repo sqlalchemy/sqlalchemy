@@ -1384,16 +1384,19 @@ class TypeReflectionTest(fixtures.TestBase):
         ]
         self._run_test(metadata, connection, specs, ["length"])
 
-    @testing.combinations(ROWID(), RAW(1), argnames="type_")
+    @testing.combinations(ROWID(), RAW(1), RAW(50), argnames="type_")
     def test_misc_types(self, metadata, connection, type_):
         t = Table("t1", metadata, Column("x", type_))
 
         t.create(connection)
-
+        reflected_type = inspect(connection).get_columns("t1")[0]["type"]
         eq_(
-            inspect(connection).get_columns("t1")[0]["type"]._type_affinity,
+            reflected_type._type_affinity,
             type_._type_affinity,
         )
+
+        if hasattr(type_, "length"):
+            eq_(type_.length, reflected_type.length)
 
     def test_raw_type(self, metadata, connection):
         """Test that RAW columns preserve data_length on reflection."""
