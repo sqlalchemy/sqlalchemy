@@ -2778,6 +2778,7 @@ class OracleDialect(default.DefaultDialect):
                 all_cols.c.column_name,
                 all_cols.c.data_type,
                 all_cols.c.char_length,
+                all_cols.c.data_length,
                 all_cols.c.data_precision,
                 all_cols.c.data_scale,
                 all_cols.c.nullable,
@@ -2896,6 +2897,9 @@ class OracleDialect(default.DefaultDialect):
             elif coltype in ("VARCHAR2", "NVARCHAR2", "CHAR", "NCHAR"):
                 char_length = maybe_int(row_dict["char_length"])
                 coltype = self.ischema_names.get(coltype)(char_length)
+            elif coltype == "RAW":
+                data_length = maybe_int(row_dict["data_length"])
+                coltype = RAW(data_length)
             elif "WITH TIME ZONE" in coltype:
                 coltype = TIMESTAMP(timezone=True)
             elif "WITH LOCAL TIME ZONE" in coltype:
