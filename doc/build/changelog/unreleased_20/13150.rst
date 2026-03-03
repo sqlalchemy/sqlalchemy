@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 13150
+
+    Fixed issue in Oracle dialect where the :class:`_oracle.RAW` datatype would
+    not reflect the length parameter.   Pull request courtesy Daniel Sullivan.
+
