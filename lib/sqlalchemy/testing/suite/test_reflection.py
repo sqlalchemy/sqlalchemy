@@ -2633,13 +2633,13 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         eq_({c["name"]: c["comment"]}, {"emoji": "🐍🧙🝝🧙‍♂️🧙‍♀️"})
 
     @testing.requires.column_collation_reflection
-    @testing.requires.order_by_collation
     def test_column_collation_reflection(self, connection, metadata):
-        collation = testing.requires.get_order_by_collation(config)
+        connection.exec_driver_sql("CREATE SCHEMA s")
+        connection.exec_driver_sql("CREATE COLLATION s.c (LOCALE = 'C.utf8')")
         Table(
             "t",
             metadata,
-            Column("collated", sa.String(collation=collation)),
+            Column("collated", sa.String(collation="c", collation_schema="s")),
             Column("not_collated", sa.String()),
         )
         metadata.create_all(connection)
@@ -2647,12 +2647,21 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         m2 = MetaData()
         t2 = Table("t", m2, autoload_with=connection)
 
-        eq_(t2.c.collated.type.collation, collation)
+        eq_(
+            (
+                t2.c.collated.type.collation,
+                t2.c.collated.type.collation_schema,
+            ),
+            ("c", "s"),
+        )
         is_none(t2.c.not_collated.type.collation)
 
         insp = inspect(connection)
         collated, not_collated = insp.get_columns("t")
-        eq_(collated["type"].collation, collation)
+        eq_(
+            (collated["type"].collation, collated["type"].collation_schema),
+            ("c", "s"),
+        )
         is_none(not_collated["type"].collation)
 
 
