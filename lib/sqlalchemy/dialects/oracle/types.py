@@ -40,6 +40,23 @@ class NCLOB(sqltypes.Text):
 class VARCHAR2(VARCHAR):
     __visit_name__ = "VARCHAR2"
 
+    @classmethod
+    def _adapt_string_for_cast(cls, type_: sqltypes.String) -> "VARCHAR2":
+        """Adapt a String type for use in CAST expressions.
+
+        Oracle requires a length for VARCHAR2 in CAST expressions.
+        If no length is specified, we default to 4000 (max for VARCHAR2).
+        """
+        type_ = sqltypes.to_instance(type_)
+        if isinstance(type_, VARCHAR2):
+            return type_
+        elif isinstance(type_, VARCHAR):
+            return VARCHAR2(
+                length=type_.length or 4000, collation=type_.collation
+            )
+        else:
+            return VARCHAR2(length=type_.length or 4000)
+
 
 NVARCHAR2 = NVARCHAR
 
