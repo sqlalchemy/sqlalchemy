@@ -1817,12 +1817,23 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def pyodbc_fast_executemany(self):
         def has_fastexecutemany(config):
-            if not against(config, "mssql+pyodbc"):
+            if not against(config, "mssql+pyodbc") and not against(
+                config, "mssql+aioodbc"
+            ):
                 return False
             if config.db.dialect._dbapi_version() < (4, 0, 19):
                 return False
             with config.db.connect() as conn:
-                drivername = conn.connection.driver_connection.getinfo(
+                driver_connection = conn.connection.driver_connection
+
+                # for aioodbc, instead of trying to await, just cheat and
+                # use the pyodbc connection
+                if hasattr(
+                    driver_connection, "__module__"
+                ) and driver_connection.__module__.startswith("aioodbc"):
+                    driver_connection = driver_connection._conn
+
+                drivername = driver_connection.getinfo(
                     config.db.dialect.dbapi.SQL_DRIVER_NAME
                 )
                 # on linux this is something like 'libmsodbcsql-13.1.so.9.2'.

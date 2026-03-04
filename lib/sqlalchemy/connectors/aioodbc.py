@@ -32,6 +32,14 @@ class AsyncAdapt_aioodbc_cursor(AsyncAdapt_dbapi_cursor):
         # how it's supposed to work
         # return await_(self._cursor.setinputsizes(*inputsizes))
 
+    @property
+    def fast_executemany(self):
+        return self._cursor._impl.fast_executemany
+
+    @fast_executemany.setter
+    def fast_executemany(self, value):
+        self._cursor._impl.fast_executemany = value
+
 
 class AsyncAdapt_aioodbc_ss_cursor(
     AsyncAdapt_aioodbc_cursor, AsyncAdapt_dbapi_ss_cursor
@@ -116,6 +124,7 @@ class AsyncAdapt_aioodbc_dbapi(AsyncAdapt_dbapi_module):
             "ProgrammingError",
             "InternalError",
             "NotSupportedError",
+            "SQL_DRIVER_NAME",
             "NUMBER",
             "STRING",
             "DATETIME",
@@ -124,6 +133,7 @@ class AsyncAdapt_aioodbc_dbapi(AsyncAdapt_dbapi_module):
             "BinaryNull",
             "SQL_VARCHAR",
             "SQL_WVARCHAR",
+            "SQL_DECIMAL",
         ):
             setattr(self, name, getattr(self.pyodbc, name))
 
