@@ -32,6 +32,13 @@ class AsyncAdapt_aioodbc_cursor(AsyncAdapt_dbapi_cursor):
         # how it's supposed to work
         # return await_(self._cursor.setinputsizes(*inputsizes))
 
+    @property
+    def fast_executemany(self):
+        return self._cursor._impl.fast_executemany
+
+    @fast_executemany.setter
+    def fast_executemany(self, value):
+        self._cursor._impl.fast_executemany = value
 
 class AsyncAdapt_aioodbc_ss_cursor(
     AsyncAdapt_aioodbc_cursor, AsyncAdapt_dbapi_ss_cursor
