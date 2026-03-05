@@ -20,10 +20,12 @@ Class Mapping API
 
 .. autoclass:: DeclarativeBase
     :members:
+    :inherited-members:
     :special-members: __table__, __mapper__, __mapper_args__, __tablename__, __table_args__
 
 .. autoclass:: DeclarativeBaseNoMeta
     :members:
+    :inherited-members:
     :special-members: __table__, __mapper__, __mapper_args__, __tablename__, __table_args__
 
 .. autoclass:: declared_attr
