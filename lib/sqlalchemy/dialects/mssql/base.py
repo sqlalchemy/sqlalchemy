@@ -1838,6 +1838,7 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
 
 
 class MSExecutionContext(default.DefaultExecutionContext):
+    _embedded_scope_identity = False
     _enable_identity_insert = False
     _select_lastrowid = False
     _lastrowid = None
@@ -1900,15 +1901,46 @@ class MSExecutionContext(default.DefaultExecutionContext):
                     self,
                 )
 
+            # don't embed the scope_identity select into an
+            # "INSERT .. DEFAULT VALUES"
+            if (
+                self._select_lastrowid
+                and self.dialect.scope_identity_must_be_embedded
+                and self.dialect.use_scope_identity
+                and len(self.parameters[0])
+            ):
+                self._embedded_scope_identity = True
+
+                self.statement += "; select scope_identity()"
+
     def post_exec(self):
-        """Disable IDENTITY_INSERT if enabled."""
 
         conn = self.root_connection
 
         if self.isinsert or self.isupdate or self.isdelete:
             self._rowcount = self.cursor.rowcount
 
-        if self._select_lastrowid:
+        # handle INSERT with embedded SELECT SCOPE_IDENTITY() call
+        if self._embedded_scope_identity:
+            # Fetch the last inserted id from the manipulated statement
+            # We may have to skip over a number of result sets with
+            # no data (due to triggers, etc.) so run up to three times
+
+            row = None
+            for _ in range(3):
+                if self.cursor.description:
+                    rows = self.cursor.fetchall()
+                    if rows:
+                        row = rows[0]
+                        break
+                else:
+                    self.cursor.nextset()
+
+            self._lastrowid = int(row[0]) if row else None
+
+            self.cursor_fetch_strategy = _cursor._NO_CURSOR_DML
+
+        elif self._select_lastrowid:
             if self.dialect.use_scope_identity:
                 conn._cursor_execute(
                     self.cursor,
@@ -1939,6 +1971,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
             )
 
         if self._enable_identity_insert:
+            # Disable IDENTITY_INSERT if enabled.
             if TYPE_CHECKING:
                 assert is_sql_compiler(self.compiled)
                 assert isinstance(self.compiled.compile_state, DMLState)
@@ -3026,6 +3059,7 @@ class MSDialect(default.DefaultDialect):
     supports_default_values = True
     supports_empty_insert = False
     favor_returning_over_lastrowid = True
+    scope_identity_must_be_embedded = False
 
     returns_native_bytes = True
 
@@ -3259,6 +3293,7 @@ class MSDialect(default.DefaultDialect):
                 'attempting to query the "{}" view.'.format(err, view_name)
             ) from err
         else:
+
             row = cursor.fetchone()
             return row[0].upper()
         finally:

@@ -325,8 +325,13 @@ class DefaultRequirements(SuiteRequirements):
     def non_broken_binary(self):
         """target DBAPI must work fully with binary values"""
 
+        # for pymssql
         # see https://github.com/pymssql/pymssql/issues/504
-        return skip_if(["mssql+pymssql"])
+        #
+        # for mssqlpython:
+        # Streaming parameters is not yet supported. Parameter size must be
+        # less than 8192 bytes
+        return skip_if(["mssql+pymssql", "mssql+mssqlpython"])
 
     @property
     def binary_comparisons(self):
@@ -757,6 +762,17 @@ class DefaultRequirements(SuiteRequirements):
             ["mssql", "mysql", "mariadb<10.3", "sqlite"],
             "no FOR UPDATE NOWAIT support",
         )
+
+    @property
+    def unusual_column_name_characters(self):
+        """target database allows column names that have unusual characters
+        in them, such as dots, spaces, slashes, or percent signs.
+
+        The column names are as always in such a case quoted, however the
+        DB still needs to support those characters in the name somehow.
+
+        """
+        return exclusions.skip_if("+mssqlpython", "waiting on GH issue 464")
 
     @property
     def subqueries(self):
@@ -1614,7 +1630,7 @@ class DefaultRequirements(SuiteRequirements):
 
         """
 
-        return exclusions.open()
+        return fails_on("+mssqlpython")
 
     @property
     def fetch_null_from_numeric(self):

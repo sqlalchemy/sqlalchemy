@@ -2095,7 +2095,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                         sub_params,
                         context,
                     )
-
             except BaseException as e:
                 self._handle_dbapi_exception(
                     e,

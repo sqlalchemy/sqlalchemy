@@ -600,3 +600,14 @@ def delete_from_all_tables(connection, cfg, metadata):
                 connection.execute(table.delete())
         else:
             connection.execute(table.delete())
+
+
+@register.init
+def dbapi_error(cfg, cls, message):
+    """create a DBAPI error
+
+    :param cls: the DBAPI class, like ``dialect.dbapi.OperationalError``
+    :param message: message for the error
+
+    """
+    return cls(message)

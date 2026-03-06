@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, mssql
+    :tickets: 12869
+
+    Added support for the ``mssql-python`` driver, Microsoft's official Python
+    driver for SQL Server.
+
+    .. seealso::
+
+        :ref:`change_12869`
+

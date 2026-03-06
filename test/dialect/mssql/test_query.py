@@ -184,6 +184,11 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         older SCOPE_IDENTITY() call, which still works for this scenario.
         To enable the workaround, the Table must be instantiated
         with the init parameter 'implicit_returning = False'.
+
+        Note: this **wont work** with SELECT @@identity.  it has to be
+        SCOPE_IDENTITY().   for pyodbc, this means the function has to be
+        embedded on the same line as the INSERT.
+
         """
 
         # TODO: this same test needs to be tried in a multithreaded context
@@ -305,7 +310,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
             ),
         )
 
-    @testing.only_on("mssql+pyodbc")
+    @testing.only_on(["mssql+pyodbc", "mssql+mssqlpython"])
     @testing.provide_metadata
     def test_embedded_scope_identity(self):
         engine = engines.testing_engine(options={"use_scope_identity": True})
@@ -323,11 +328,20 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
             with engine.begin() as conn:
                 conn.execute(t1.insert(), {"data": "somedata"})
 
-        # pyodbc-specific system
+        if testing.against("mssql+pyodbc"):
+            paramstyle = "?"
+            params = ("somedata",)
+        elif testing.against("mssql+mssqlpython"):
+            paramstyle = "%(data)s"
+            params = {"data": "somedata"}
+        else:
+            assert False
+
         asserter.assert_(
             CursorSQL(
-                "INSERT INTO t1 (data) VALUES (?); select scope_identity()",
-                ("somedata",),
+                f"INSERT INTO t1 (data) VALUES ({paramstyle}); "
+                "select scope_identity()",
+                params,
                 consume_statement=False,
             )
         )

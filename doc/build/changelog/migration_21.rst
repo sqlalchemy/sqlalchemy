@@ -1675,6 +1675,41 @@ required if using the connection string directly with ``pyodbc.connect()``).
 
 :ticket:`11250`
 
+.. _change_12869:
+
+Support for mssql-python driver
+--------------------------------
+
+SQLAlchemy 2.1 adds support for the ``mssql-python`` driver, Microsoft's
+official Python driver for SQL Server. This driver represents a modern
+alternative to the widely-used ``pyodbc`` driver, with native support for
+several SQL Server-specific features.
+
+The ``mssql-python`` driver can be used by specifying ``mssql+mssqlpython``
+in the connection URL::
+
+    from sqlalchemy import create_engine
+
+    # Basic connection
+    engine = create_engine("mssql+mssqlpython://user:password@hostname/database")
+
+    # With Windows Authentication
+    engine = create_engine(
+        "mssql+mssqlpython://hostname/database?authentication=ActiveDirectoryIntegrated"
+    )
+
+The ``mssql-python`` driver is available from PyPI:
+
+.. sourcecode:: text
+
+    pip install mssql-python
+
+.. seealso::
+
+    :ref:`mssql_python` - Documentation for the mssql-python dialect
+
+:ticket:`12869`
+
 
 Oracle Database
 ===============

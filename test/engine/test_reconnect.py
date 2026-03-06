@@ -19,6 +19,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_raises_message_context_ok
 from sqlalchemy.testing import assert_warns_message
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
@@ -29,6 +30,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing import provision
 from sqlalchemy.testing.engines import DBAPIProxyConnection
 from sqlalchemy.testing.engines import DBAPIProxyCursor
 from sqlalchemy.testing.engines import testing_engine
@@ -1037,7 +1039,9 @@ class RealPrePingEventHandlerTest(fixtures.TestBase):
         class ExplodeCursor(DBAPIProxyCursor):
             def execute(self, stmt, parameters=None, **kw):
                 if fail and next(fail_count) < 1:
-                    raise DBAPIError("unhandled disconnect situation")
+                    raise provision.dbapi_error(
+                        config, DBAPIError, "unhandled disconnect situation"
+                    )
                 else:
                     return super().execute(stmt, parameters=parameters, **kw)
 
