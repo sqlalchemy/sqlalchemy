@@ -512,3 +512,9 @@ def t_aliased_fromclause() -> None:
 def test_select_from() -> None:
     select(1).select_from(User).exists()
     exists(1).select_from(User).select()
+
+
+def t_legacy_query_getitem() -> None:
+    q1 = session.query(User).filter(User.id == 5)
+    assert_type(q1[0], User)
+    assert_type(q1[1:3], list[User])
