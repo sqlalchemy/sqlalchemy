@@ -30,7 +30,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.sql.ddl import CreateView
-from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_raises_message, expect_warnings
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
@@ -443,6 +443,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             t.count(),
             "SELECT count(sometable.somecolumn) AS "
             "tbl_row_count FROM sometable",
+        )
+
+    # test-case 1 of 2 for mssql dialect - issue#11526
+    def test_unary_distinct_with_limit(self):
+        t = table("sometable", column("somecolumn"))
+        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
+            self.assert_compile(
+                select(t.c.somecolumn.distinct()).limit(1),
+                "SELECT TOP __[POSTCOMPILE_param_1] DISTINCT sometable.somecolumn "
+                "FROM sometable"
+            )
+
+    # test-case 2 of 2 for mssql dialect - issue#11526
+    def test_selectable_distinct_with_limit(self):
+        t = table("sometable", column("somecolumn"))
+        self.assert_compile(
+            select(t.c.somecolumn).distinct().limit(1),
+            "SELECT DISTINCT TOP __[POSTCOMPILE_param_1] sometable.somecolumn "
+            "FROM sometable"
         )
 
     def test_noorderby_insubquery(self):
