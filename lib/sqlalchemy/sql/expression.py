@@ -106,6 +106,7 @@ from .elements import ReleaseSavepointClause as ReleaseSavepointClause
 from .elements import RollbackToSavepointClause as RollbackToSavepointClause
 from .elements import SavepointClause as SavepointClause
 from .elements import SQLColumnExpression as SQLColumnExpression
+from .elements import TableValuedColumn as TableValuedColumn
 from .elements import TextClause as TextClause
 from .elements import True_ as True_
 from .elements import TryCast as TryCast

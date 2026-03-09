@@ -10,6 +10,7 @@ from typing import Any
 from typing import TYPE_CHECKING
 
 from ... import types as sqltypes
+from ...sql.sqltypes import _T_JSON
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from ...sql.type_api import _LiteralProcessorType
 
 
-class JSON(sqltypes.JSON):
+class JSON(sqltypes.JSON[_T_JSON]):
     """MySQL JSON type.
 
     MySQL supports JSON as of version 5.7.

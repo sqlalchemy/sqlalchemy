@@ -4,12 +4,21 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+from __future__ import annotations
+
+from typing import Any
+from typing import TYPE_CHECKING
 
 from ... import types as sqltypes
+from ...sql.sqltypes import _T_JSON
+
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _BindProcessorType
+    from ...sql.type_api import _LiteralProcessorType
 
 
-class JSON(sqltypes.JSON):
+class JSON(sqltypes.JSON[_T_JSON]):
     """SQLite JSON type.
 
     SQLite supports JSON as of version 3.9 through its JSON1_ extension. Note
@@ -42,13 +51,13 @@ class JSON(sqltypes.JSON):
 # these are not generalizable to all JSON implementations, remain separately
 # implemented for each dialect.
 class _FormatTypeMixin:
-    def _format_value(self, value):
+    def _format_value(self, value: Any) -> str:
         raise NotImplementedError()
 
-    def bind_processor(self, dialect):
-        super_proc = self.string_bind_processor(dialect)
+    def bind_processor(self, dialect: Dialect) -> _BindProcessorType[Any]:
+        super_proc = self.string_bind_processor(dialect)  # type: ignore[attr-defined]  # noqa: E501
 
-        def process(value):
+        def process(value: Any) -> Any:
             value = self._format_value(value)
             if super_proc:
                 value = super_proc(value)
@@ -56,29 +65,31 @@ class _FormatTypeMixin:
 
         return process
 
-    def literal_processor(self, dialect):
-        super_proc = self.string_literal_processor(dialect)
+    def literal_processor(
+        self, dialect: Dialect
+    ) -> _LiteralProcessorType[Any]:
+        super_proc = self.string_literal_processor(dialect)  # type: ignore[attr-defined]  # noqa: E501
 
-        def process(value):
+        def process(value: Any) -> str:
             value = self._format_value(value)
             if super_proc:
                 value = super_proc(value)
-            return value
+            return value  # type: ignore[no-any-return]
 
         return process
 
 
 class JSONIndexType(_FormatTypeMixin, sqltypes.JSON.JSONIndexType):
-    def _format_value(self, value):
+    def _format_value(self, value: Any) -> str:
         if isinstance(value, int):
-            value = "$[%s]" % value
+            formatted_value = "$[%s]" % value
         else:
-            value = '$."%s"' % value
-        return value
+            formatted_value = '$."%s"' % value
+        return formatted_value
 
 
 class JSONPathType(_FormatTypeMixin, sqltypes.JSON.JSONPathType):
-    def _format_value(self, value):
+    def _format_value(self, value: Any) -> str:
         return "$%s" % (
             "".join(
                 [

@@ -204,6 +204,7 @@ from .sql.expression import TableClause as TableClause
 from .sql.expression import TableSample as TableSample
 from .sql.expression import tablesample as tablesample
 from .sql.expression import TableValuedAlias as TableValuedAlias
+from .sql.expression import TableValuedColumn as TableValuedColumn
 from .sql.expression import text as text
 from .sql.expression import TextAsFrom as TextAsFrom
 from .sql.expression import TextClause as TextClause
