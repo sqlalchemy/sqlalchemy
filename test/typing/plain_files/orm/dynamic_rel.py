@@ -80,3 +80,8 @@ with Session() as session:
 
     # test #9985
     stmt = select(User).join(User.addresses)
+
+    # test #13128
+    if typing.TYPE_CHECKING:
+        assert_type(u.addresses[0], Address)
+        assert_type(u.addresses[1:3], list[Address])
