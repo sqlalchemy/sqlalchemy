@@ -5616,7 +5616,10 @@ class Index(
         )
 
 
-_NamingSchemaCallable = Callable[[Constraint, Table], str]
+_NamingSchemaCallable = Union[
+    Callable[[Constraint, Table], str],
+    Callable[[Index, Table], str],
+]
 _NamingSchemaDirective = Union[str, _NamingSchemaCallable]
 
 
