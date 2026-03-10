@@ -1318,7 +1318,9 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         Table(
             "data_table",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("name", String(30), nullable=False),
             Column("data", cls.datatype, nullable=False),
             Column("nulldata", cls.datatype(none_as_null=True)),
@@ -1592,6 +1594,9 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             eq_(row, (data_element, data_element))
 
     def test_round_trip_custom_json(self):
+        if not testing.requires.json_deserializer_is_used.enabled:
+            return
+
         data_table = self.tables.data_table
         data_element = {"key1": "data1"}
 
@@ -1611,6 +1616,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
             eq_(row, (data_element,))
             eq_(js.mock_calls, [mock.call(data_element)])
+
             if testing.requires.json_deserializer_binary.enabled:
                 eq_(
                     jd.mock_calls,
@@ -1936,7 +1942,9 @@ class JSONLegacyStringCastIndexTest(
         Table(
             "data_table",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("name", String(30), nullable=False),
             Column("data", cls.datatype),
             Column("nulldata", cls.datatype(none_as_null=True)),

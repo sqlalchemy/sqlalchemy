@@ -1932,6 +1932,16 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def json_deserializer_is_used(self):
+        """Indicates if custom json_deserializer is called for JSON columns.
+        
+        Some database drivers (e.g., Oracle's oracledb) automatically
+        deserialize JSON at the DBAPI level, returning native Python objects
+        directly, which means custom json_deserializer cannot be invoked.
+        """
+        return exclusions.closed() + exclusions.skip_if(["oracle"])
+
+    @property
     def reflect_table_options(self):
         """Target database must support reflecting table_options."""
         return exclusions.closed()
