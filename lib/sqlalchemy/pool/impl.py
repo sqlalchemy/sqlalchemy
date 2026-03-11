@@ -23,6 +23,13 @@ from typing import TYPE_CHECKING
 from typing import Union
 import weakref
 
+try:
+    from prometheus_client import Gauge, Counter
+    _PROMETHEUS_AVAILABLE = True
+except ImportError:
+    _PROMETHEUS_AVAILABLE = False
+    Gauge = Counter = None
+
 from .base import _AsyncConnDialect
 from .base import _ConnectionFairy
 from .base import _ConnectionRecord
@@ -265,6 +272,9 @@ class AsyncAdaptedQueuePool(QueuePool):
     The arguments and operation of :class:`.AsyncAdaptedQueuePool` are
     otherwise identical to that of :class:`.QueuePool`.
 
+    Optional Prometheus metrics are exposed when prometheus-client is installed.
+    Metrics are automatically registered under the "sqlalchemy_pool" namespace.
+
     """
 
     _is_asyncio = True
@@ -273,6 +283,91 @@ class AsyncAdaptedQueuePool(QueuePool):
     )
 
     _dialect = _AsyncConnDialect()
+
+    def __init__(
+        self,
+        creator: Union[_CreatorFnType, _CreatorWRecFnType],
+        pool_size: int = 5,
+        max_overflow: int = 10,
+        timeout: float = 30.0,
+        use_lifo: bool = False,
+        enable_prometheus_metrics: bool = False,
+        prometheus_namespace: str = "sqlalchemy",
+        **kw: Any,
+    ):
+        super().__init__(creator, pool_size, max_overflow, timeout, use_lifo, **kw)
+        self.enable_prometheus_metrics = enable_prometheus_metrics and _PROMETHEUS_AVAILABLE
+        
+        if self.enable_prometheus_metrics:
+            self._gauge_idle = Gauge(
+                "pool_connections_idle",
+                "Number of idle connections in the pool",
+                namespace=prometheus_namespace,
+                labelnames=["pool_name"]
+            ).labels(pool_name=self.logging_name)
+            
+            self._gauge_active = Gauge(
+                "pool_connections_active",
+                "Number of active (checked out) connections",
+                namespace=prometheus_namespace,
+                labelnames=["pool_name"]
+            ).labels(pool_name=self.logging_name)
+            
+            self._gauge_wait_queue = Gauge(
+                "pool_wait_queue_length",
+                "Number of requests waiting for a connection",
+                namespace=prometheus_namespace,
+                labelnames=["pool_name"]
+            ).labels(pool_name=self.logging_name)
+            
+            self._counter_created = Counter(
+                "pool_connections_created_total",
+                "Total number of connections created",
+                namespace=prometheus_namespace,
+                labelnames=["pool_name"]
+            ).labels(pool_name=self.logging_name)
+            
+            self._counter_destroyed = Counter(
+                "pool_connections_destroyed_total",
+                "Total number of connections destroyed",
+                namespace=prometheus_namespace,
+                labelnames=["pool_name"]
+            ).labels(pool_name=self.logging_name)
+
+    def _create_connection(self) -> ConnectionPoolEntry:
+        conn = super()._create_connection()
+        if self.enable_prometheus_metrics:
+            self._counter_created.inc()
+            self._update_metrics()
+        return conn
+
+    def _do_return_conn(self, record: ConnectionPoolEntry) -> None:
+        try:
+            self._pool.put(record, False)
+            if self.enable_prometheus_metrics:
+                self._update_metrics()
+        except sqla_queue.Full:
+            try:
+                record.close()
+                if self.enable_prometheus_metrics:
+                    self._counter_destroyed.inc()
+                    self._update_metrics()
+            finally:
+                self._dec_overflow()
+
+    def _do_get(self) -> ConnectionPoolEntry:
+        conn = super()._do_get()
+        if self.enable_prometheus_metrics:
+            self._update_metrics()
+        return conn
+
+    def _update_metrics(self) -> None:
+        if self.enable_prometheus_metrics:
+            self._gauge_idle.set(self.checkedin())
+            self._gauge_active.set(self.checkedout())
+            # Wait queue length is tracked in AsyncAdaptedQueue
+            if hasattr(self._pool, "wait_queue_length"):
+                self._gauge_wait_queue.set(self._pool.wait_queue_length)
 
 
 class NullPool(Pool):
