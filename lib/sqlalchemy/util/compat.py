@@ -193,8 +193,8 @@ def inspect_formatargspec(
     varkw: Optional[str] = None,
     defaults: Optional[Sequence[Any]] = None,
     kwonlyargs: Optional[Sequence[str]] = (),
-    kwonlydefaults: Optional[Mapping[str, Any]] = {},
-    annotations: Mapping[str, Any] = {},
+    kwonlydefaults: Optional[Mapping[str, Any]] = None,
+    annotations: Mapping[str, Any] = None,
     formatarg: Callable[[str], str] = str,
     formatvarargs: Callable[[str], str] = lambda name: "*" + name,
     formatvarkw: Callable[[str], str] = lambda name: "**" + name,
@@ -215,6 +215,10 @@ def inspect_formatargspec(
     is dropped.
 
     """
+    if kwonlydefaults is None:
+        kwonlydefaults = {}
+    if annotations is None:
+        annotations = {}
 
     kwonlydefaults = kwonlydefaults or {}
     annotations = annotations or {}
