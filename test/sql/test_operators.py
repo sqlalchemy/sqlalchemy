@@ -5321,19 +5321,30 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             expr = py_op(column("q", Integer))
             assert isinstance(expr, UnaryExpression)
 
-            self.assert_compile(
-                select(expr),
-                f"SELECT {sql_op}q",
-            )
-
+            if py_op is operators.distinct_op:
+                self.assert_compile(
+                    select(func.count(expr)),
+                    f"SELECT count({sql_op}q) AS count_1",
+                )
+            else:
+                self.assert_compile(
+                    select(expr),
+                    f"SELECT {sql_op}q",
+                )
         elif named.unnamed:
             expr = py_op(literal("x", Integer))
             assert isinstance(expr, UnaryExpression)
 
-            self.assert_compile(
-                select(expr),
-                f"SELECT {sql_op}:param_1 AS anon_1",
-            )
+            if py_op is operators.distinct_op:
+                self.assert_compile(
+                    select(func.count(expr)),
+                    f"SELECT count({sql_op}:param_1) AS count_1",
+                )
+            else:
+                self.assert_compile(
+                    select(expr),
+                    f"SELECT {sql_op}:param_1 AS anon_1",
+                )
         elif named.label:
             expr = py_op(literal("x", Integer).label("z"))
             if py_op is operators.inv:
@@ -5344,10 +5355,16 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             else:
                 assert isinstance(expr, UnaryExpression)
 
-            self.assert_compile(
-                select(expr),
-                f"SELECT {sql_op}:param_1 AS z",
-            )
+            if py_op is operators.distinct_op:
+                self.assert_compile(
+                    select(func.count(expr).label("z")),
+                    f"SELECT count({sql_op}:param_1) AS z",
+                )
+            else:
+                self.assert_compile(
+                    select(expr),
+                    f"SELECT {sql_op}:param_1 AS z",
+                )
 
     def test_compile_not_column_lvl(self):
         c = column("c", Integer)

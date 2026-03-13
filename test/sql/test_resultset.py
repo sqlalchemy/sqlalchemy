@@ -977,9 +977,8 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(users.insert(), dict(user_id=1, user_name="john"))
 
-        # unary expressions
         r = connection.execute(
-            select(users.c.user_name.distinct()).order_by(users.c.user_name)
+            select(users.c.user_name).distinct().order_by(users.c.user_name)
         ).first()
         eq_(r._mapping[users.c.user_name], "john")
         eq_(r.user_name, "john")
