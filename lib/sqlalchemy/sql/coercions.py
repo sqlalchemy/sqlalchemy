@@ -1138,13 +1138,6 @@ class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
 
     _guess_straight_column = re.compile(r"^\w\S*$", re.I)
 
-    _aggregate_functions = {
-        # Basic Aggregate function listed from GenericFunctions
-        'count', 'sum', 'avg',
-
-        # other aggregate functions
-    }
-
     def _raise_for_expected(
         self, element, argname=None, resolved=None, *, advice=None, **kw
     ):
@@ -1157,41 +1150,6 @@ class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
         return super()._raise_for_expected(
             element, argname=argname, resolved=resolved, advice=advice, **kw
         )
-
-    @staticmethod
-    def _warn_unary_expression_outside_aggregate():
-        util.warn(
-            "column-expression-level unary DISTINCT clause used outside aggregate;"
-            " use select().distinct() for full-statement DISTINCT."
-        )
-
-    def _valid_unary_hierarchy(self, ent: ColumnElement[_T], op_name: str) -> bool:
-        seen_agg_func = False
-
-        if not isinstance(ent, elements.ClauseElement):
-            return True
-
-        for item in visitors.iterate(ent):
-            operator = getattr(item, 'operator', None)
-
-            if (
-                isinstance(item, elements.UnaryExpression)
-                and getattr(operator, "__name__", None) == op_name
-                and seen_agg_func is False
-            ):
-                return False
-
-            if getattr(type(item), '__name__', None) in self._aggregate_functions:
-                seen_agg_func = True
-
-        return True
-
-    def _post_coercion(
-            self, resolved, *, original_element, argname=None, **kw
-    ) -> Any:
-        if not self._valid_unary_hierarchy(original_element, op_name='distinct_op'):
-            self._warn_unary_expression_outside_aggregate()
-        return resolved
 
     def _text_coercion(self, element, argname=None):
         element = str(element)

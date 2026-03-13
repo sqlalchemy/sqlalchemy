@@ -3943,13 +3943,14 @@ class ExpressionTest(
 
     def test_distinct(self, connection):
         test_table = self.tables.test
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            s = select(distinct(test_table.c.avalue))
-            eq_(connection.execute(s).scalar(), 25)
+        s = select(test_table.c.avalue).distinct()
+        eq_(connection.execute(s).scalar(), 25)
 
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            s = select(test_table.c.avalue.distinct())
-            eq_(connection.execute(s).scalar(), 25)
+        s = select(func.sum(test_table.c.avalue.distinct()))
+        eq_(connection.execute(s).scalar(), 25)
+
+        s = select(func.sum(distinct(test_table.c.avalue)))
+        eq_(connection.execute(s).scalar(), 25)
 
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type

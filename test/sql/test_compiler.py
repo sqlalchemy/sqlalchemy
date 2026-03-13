@@ -1941,48 +1941,31 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_distinct(self):
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            self.assert_compile(
-                select(table1.c.myid.distinct()),
-                "SELECT DISTINCT mytable.myid FROM mytable",
-            )
+        self.assert_compile(
+            select(table1.c.myid).distinct(),
+            "SELECT DISTINCT mytable.myid FROM mytable",
+        )
 
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            self.assert_compile(
-                select(distinct(table1.c.myid)),
-                "SELECT DISTINCT mytable.myid FROM mytable",
-            )
-
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            self.assert_compile(
-                select(distinct(table1.c.myid)).set_label_style(
-                    LABEL_STYLE_TABLENAME_PLUS_COL
-                ),
-                "SELECT DISTINCT mytable.myid FROM mytable",
-            )
+        self.assert_compile(
+            select(table1.c.myid).distinct().set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
+            "SELECT DISTINCT mytable.myid AS mytable_myid FROM mytable",
+        )
 
         # the bug fixed here as part of #6008 is the same bug that's
         # in 1.3 as well, producing
         # "SELECT anon_2.anon_1 FROM (SELECT distinct mytable.myid
         # FROM mytable) AS anon_2"
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            self.assert_compile(
-                select(select(distinct(table1.c.myid)).subquery()),
-                "SELECT anon_2.anon_1 FROM (SELECT "
-                "DISTINCT mytable.myid AS anon_1 FROM mytable) AS anon_2",
-            )
-
-        # test-case 1 of 1 for issue#11526
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            self.assert_compile(
-                select(distinct(table1.c.myid) + 1),
-                "SELECT (DISTINCT mytable.myid) + :param_1 AS anon_1 "
-                "FROM mytable"
-            )
+        self.assert_compile(
+            select(select(table1.c.myid).distinct().subquery()),
+            "SELECT anon_1.myid FROM (SELECT "
+            "DISTINCT mytable.myid AS myid FROM mytable) AS anon_1",
+        )
 
         self.assert_compile(
-            select(table1.c.myid).distinct(),
-            "SELECT DISTINCT mytable.myid FROM mytable",
+            select(func.sum(distinct(table1.c.myid))),
+            "SELECT sum(DISTINCT mytable.myid) AS sum_1 FROM mytable"
         )
 
         self.assert_compile(

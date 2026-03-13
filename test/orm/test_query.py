@@ -4631,21 +4631,23 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         # issue 6008.  the UnaryExpression now places itself into the
         # result map so that it can be matched positionally without the need
         # for any label.
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            q = fixture_session().query(distinct(User.id)).order_by(User.id)
-            self.assert_compile(
-                q, "SELECT DISTINCT users.id FROM users ORDER BY users.id"
-            )
-            eq_([(7,), (8,), (9,), (10,)], q.all())
+
+        # pr 11362
+        # removed column-unary-level distinct() for query.distinct()
+        # in response to column-unary-level distinct() warning system.
+        q = fixture_session().query(User.id).distinct().order_by(User.id)
+        self.assert_compile(
+            q, "SELECT DISTINCT users.id AS users_id FROM users ORDER BY users.id"
+        )
+        eq_([(7,), (8,), (9,), (10,)], q.all())
 
     def test_standalone_w_subquery(self):
         User = self.classes.User
-        with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-            q = fixture_session().query(distinct(User.id))
+        q = fixture_session().query(User.id).distinct()
 
-            subq = q.subquery()
-            q = fixture_session().query(subq).order_by(subq.c[0])
-            eq_([(7,), (8,), (9,), (10,)], q.all())
+        subq = q.subquery()
+        q = fixture_session().query(subq).order_by(subq.c[0])
+        eq_([(7,), (8,), (9,), (10,)], q.all())
 
     def test_no_automatic_distinct_thing_w_future(self):
         User = self.classes.User

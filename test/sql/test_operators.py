@@ -5322,11 +5322,10 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             assert isinstance(expr, UnaryExpression)
 
             if py_op is operators.distinct_op:
-                with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-                    self.assert_compile(
-                        select(expr),
-                        f"SELECT {sql_op}q",
-                    )
+                self.assert_compile(
+                    select(func.count(expr)),
+                    f"SELECT count({sql_op}q) AS count_1",
+                )
             else:
                 self.assert_compile(
                     select(expr),
@@ -5337,11 +5336,10 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             assert isinstance(expr, UnaryExpression)
 
             if py_op is operators.distinct_op:
-                with testing.expect_warnings("column-expression-level unary.*DISTINCT.*outside aggregate"):
-                    self.assert_compile(
-                        select(expr),
-                        f"SELECT {sql_op}:param_1 AS anon_1",
-                    )
+                self.assert_compile(
+                    select(func.count(expr)),
+                    f"SELECT count({sql_op}:param_1) AS count_1",
+                )
             else:
                 self.assert_compile(
                     select(expr),
@@ -5358,11 +5356,10 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 assert isinstance(expr, UnaryExpression)
 
             if py_op is operators.distinct_op:
-                with testing.expect_warnings("column-expression-level unary.*DISTINCT"):
-                    self.assert_compile(
-                        select(expr),
-                        f"SELECT {sql_op}:param_1 AS z",
-                    )
+                self.assert_compile(
+                    select(func.count(expr).label("z")),
+                    f"SELECT count({sql_op}:param_1) AS z",
+                )
             else:
                 self.assert_compile(
                     select(expr),
