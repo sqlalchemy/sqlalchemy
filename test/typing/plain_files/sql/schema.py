@@ -66,3 +66,20 @@ NAMING_CONVENTIONS_STR = {
 }
 
 MetaData(naming_convention=NAMING_CONVENTIONS_STR)
+
+
+def index_only(index: Index, table: Table) -> str:
+    return "index_only"
+
+
+def constraint_only(constraint: Constraint, table: Table) -> str:
+    return "constraint_only"
+
+
+# constraint-only callable or index-only callable
+MetaData(
+    naming_convention={
+        "ix": index_only,
+        "uq": constraint_only,
+    }
+)
