@@ -1669,6 +1669,9 @@ ischema_names = {
     "smallmoney": SMALLMONEY,
     "uniqueidentifier": UNIQUEIDENTIFIER,
     "sql_variant": SQL_VARIANT,
+    # sysname is a SQL Server system-defined alias for NVARCHAR(128) NOT NULL.
+    # it appears in system catalogs and can be used in user tables.
+    "sysname": NVARCHAR,
 }
 
 

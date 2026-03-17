@@ -577,6 +577,10 @@ class TypeDDLTest(fixtures.TestBase):
         ):
             mssql.MSVarBinary(length=1000, filestream=True)
 
+    def test_sysname_in_ischema_names(self):
+        dialect = mssql.dialect()
+        is_(dialect.ischema_names["sysname"], mssql.NVARCHAR)
+
 
 class TypeRoundTripTest(
     fixtures.TestBase, AssertsExecutionResults, ComparesTables
