@@ -56,6 +56,7 @@ from .context import FromStatement as FromStatement
 from .context import QueryContext as QueryContext
 from .decl_api import add_mapped_attribute as add_mapped_attribute
 from .decl_api import as_declarative as as_declarative
+from .decl_api import as_typed_table as as_typed_table
 from .decl_api import declarative_base as declarative_base
 from .decl_api import declarative_mixin as declarative_mixin
 from .decl_api import DeclarativeBase as DeclarativeBase

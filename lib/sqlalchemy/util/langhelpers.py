@@ -2036,7 +2036,7 @@ def attrsetter(attrname):
     return env["set"]
 
 
-_dunders = re.compile("^__.+__$")
+dunders_re = re.compile("^__.+__$")
 
 
 class TypingOnly:
@@ -2050,7 +2050,7 @@ class TypingOnly:
     def __init_subclass__(cls, **kw: Any) -> None:
         if TypingOnly in cls.__bases__:
             remaining = {
-                name for name in cls.__dict__ if not _dunders.match(name)
+                name for name in cls.__dict__ if not dunders_re.match(name)
             }
             if remaining:
                 raise AssertionError(

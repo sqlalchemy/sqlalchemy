@@ -27,11 +27,14 @@ from typing import TypeVar
 from typing import Union
 
 from . import exc
+from ._typing import _O
 from ._typing import insp_is_mapper
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
 from ..sql import roles
+from ..sql._typing import _T
+from ..sql._typing import _T_co
 from ..sql.elements import SQLColumnExpression
 from ..sql.elements import SQLCoreOperations
 from ..util import FastIntFlag
@@ -46,18 +49,16 @@ if typing.TYPE_CHECKING:
     from .instrumentation import ClassManager
     from .interfaces import PropComparator
     from .mapper import Mapper
+    from .properties import MappedColumn
     from .state import InstanceState
     from .util import AliasedClass
     from .writeonly import WriteOnlyCollection
+    from ..sql._annotated_cols import TypedColumns
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _InfoType
     from ..sql.elements import ColumnElement
     from ..sql.operators import OperatorType
-
-_T = TypeVar("_T", bound=Any)
-_T_co = TypeVar("_T_co", bound=Any, covariant=True)
-
-_O = TypeVar("_O", bound=object)
+    from ..sql.schema import Column
 
 
 class LoaderCallableStatus(Enum):
@@ -805,6 +806,11 @@ class Mapped(
     if typing.TYPE_CHECKING:
 
         @overload
+        def __get__(  # type: ignore[misc]
+            self: MappedColumn[_T_co], instance: TypedColumns, owner: Any
+        ) -> Column[_T_co]: ...
+
+        @overload
         def __get__(
             self, instance: None, owner: Any
         ) -> InstrumentedAttribute[_T_co]: ...
@@ -814,7 +820,7 @@ class Mapped(
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T_co], _T_co]: ...
+        ) -> Union[InstrumentedAttribute[_T_co], Column[_T_co], _T_co]: ...
 
         @classmethod
         def _empty_constructor(cls, arg1: Any) -> Mapped[_T_co]: ...

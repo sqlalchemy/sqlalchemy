@@ -150,4 +150,6 @@ Class Mapping API
 
 .. autofunction:: unmapped_dataclass
 
+.. autofunction:: as_typed_table
+
 

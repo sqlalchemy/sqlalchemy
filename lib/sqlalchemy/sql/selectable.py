@@ -49,6 +49,10 @@ from . import roles
 from . import traversals
 from . import type_api
 from . import visitors
+from ._annotated_cols import _ColClauseCC_co
+from ._annotated_cols import _KeyColCC_co
+from ._annotated_cols import _TC_co
+from ._annotated_cols import HasRowPos
 from ._typing import _ColumnsClauseArgument
 from ._typing import _no_kw
 from ._typing import _T
@@ -615,7 +619,9 @@ class HasHints:
         return self
 
 
-class FromClause(roles.AnonymizedFromClauseRole, Selectable):
+class FromClause(
+    roles.AnonymizedFromClauseRole, Generic[_KeyColCC_co], Selectable
+):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
 
@@ -643,7 +649,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     def _hide_froms(self) -> Iterable[FromClause]:
         return ()
 
-    _is_clone_of: Optional[FromClause]
+    _is_clone_of: Optional[FromClause[_KeyColCC_co]]
 
     _columns: WriteableColumnCollection[Any, Any]
 
@@ -661,6 +667,21 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     _is_join = False
 
     _use_schema_map = False
+
+    def with_cols(self, type_: Type[_TC_co]) -> FromClause[_TC_co]:
+        """Cast this :class:`.FromClause` to be generic on a specific a
+        :class:`_schema.TypedColumns` subclass.
+
+        At runtime returns self unchanged, without performing any validation.
+        """
+        return self  # type: ignore
+
+    @overload
+    def select(
+        self: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+    ) -> Select[Unpack[_Ts]]: ...
+    @overload
+    def select(self) -> Select[Unpack[TupleAny]]: ...
 
     def select(self) -> Select[Unpack[TupleAny]]:
         r"""Return a SELECT of this :class:`_expression.FromClause`.
@@ -782,7 +803,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     def alias(
         self, name: Optional[str] = None, flat: bool = False
-    ) -> NamedFromClause:
+    ) -> NamedFromClause[_KeyColCC_co]:
         """Return an alias of this :class:`_expression.FromClause`.
 
         E.g.::
@@ -870,9 +891,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         )
 
     @util.ro_non_memoized_property
-    def exported_columns(
-        self,
-    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
+    def exported_columns(self) -> _KeyColCC_co:
         """A :class:`_expression.ColumnCollection`
         that represents the "exported"
         columns of this :class:`_expression.FromClause`.
@@ -894,9 +913,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return self.c
 
     @util.ro_non_memoized_property
-    def columns(
-        self,
-    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
+    def columns(self) -> _KeyColCC_co:
         """A named-based collection of :class:`_expression.ColumnElement`
         objects maintained by this :class:`_expression.FromClause`.
 
@@ -912,7 +929,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return self.c
 
     @util.ro_memoized_property
-    def c(self) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
+    def c(self) -> _KeyColCC_co:
         """
         A synonym for :attr:`.FromClause.columns`
 
@@ -921,7 +938,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         """
         if "_columns" not in self.__dict__:
             self._setup_collections()
-        return self._columns.as_readonly()
+        return self._columns.as_readonly()  # type: ignore[return-value]
 
     def _setup_collections(self) -> None:
         with util.mini_gil:
@@ -1072,7 +1089,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         ) -> Union[FromGrouping, Self]: ...
 
 
-class NamedFromClause(FromClause):
+class NamedFromClause(FromClause[_KeyColCC_co]):
     """A :class:`.FromClause` that has a name.
 
     Examples include tables, subqueries, CTEs, aliased tables.
@@ -1114,6 +1131,12 @@ class NamedFromClause(FromClause):
 
         """
         return TableValuedColumn(self, type_api.TABLEVALUE)
+
+    if TYPE_CHECKING:
+
+        def with_cols(
+            self, type_: type[_TC_co]
+        ) -> NamedFromClause[_TC_co]: ...
 
 
 class SelectLabelStyle(Enum):
@@ -1244,7 +1267,7 @@ class SelectLabelStyle(Enum):
 LABEL_STYLE_DEFAULT = LABEL_STYLE_DISAMBIGUATE_ONLY
 
 
-class Join(roles.DMLTableRole, FromClause):
+class Join(roles.DMLTableRole, FromClause[_KeyColCC_co]):
     """Represent a ``JOIN`` construct between two
     :class:`_expression.FromClause`
     elements.
@@ -1604,6 +1627,13 @@ class Join(roles.DMLTableRole, FromClause):
                 "join explicitly." % (a.description, b.description)
             )
 
+    @overload
+    def select(
+        self: Join[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+    ) -> Select[Unpack[_Ts]]: ...
+    @overload
+    def select(self) -> Select[Unpack[TupleAny]]: ...
+
     def select(self) -> Select[Unpack[TupleAny]]:
         r"""Create a :class:`_expression.Select` from this
         :class:`_expression.Join`.
@@ -1677,6 +1707,10 @@ class Join(roles.DMLTableRole, FromClause):
         self_list: List[FromClause] = [self]
         return self_list + self.left._from_objects + self.right._from_objects
 
+    if TYPE_CHECKING:
+
+        def with_cols(self, type_: type[_TC_co]) -> Join[_TC_co]: ...
+
 
 class NoInit:
     def __init__(self, *arg: Any, **kw: Any):
@@ -1707,7 +1741,7 @@ class LateralFromClause(NamedFromClause):
 #        -> TableSample -> only for FromClause
 
 
-class AliasedReturnsRows(NoInit, NamedFromClause):
+class AliasedReturnsRows(NoInit, NamedFromClause[_KeyColCC_co]):
     """Base class of aliases against tables, subqueries, and other
     selectables."""
 
@@ -1808,8 +1842,8 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         return [self]
 
 
-class FromClauseAlias(AliasedReturnsRows):
-    element: FromClause
+class FromClauseAlias(AliasedReturnsRows[_KeyColCC_co]):
+    element: FromClause[_KeyColCC_co]
 
     @util.ro_non_memoized_property
     def description(self) -> str:
@@ -1820,7 +1854,7 @@ class FromClauseAlias(AliasedReturnsRows):
         return name
 
 
-class Alias(roles.DMLTableRole, FromClauseAlias):
+class Alias(roles.DMLTableRole, FromClauseAlias[_KeyColCC_co]):
     """Represents an table or selectable alias (AS).
 
     Represents an alias, as typically applied to any table or
@@ -1842,16 +1876,18 @@ class Alias(roles.DMLTableRole, FromClauseAlias):
 
     inherit_cache = True
 
-    element: FromClause
+    element: FromClause[_KeyColCC_co]
 
     @classmethod
     def _factory(
         cls,
-        selectable: FromClause,
+        selectable: FromClause[_KeyColCC_co],
         name: Optional[str] = None,
         flat: bool = False,
-    ) -> NamedFromClause:
-        return coercions.expect(roles.FromClauseRole, selectable).alias(
+    ) -> NamedFromClause[_KeyColCC_co]:
+        # mypy refuses to see the overload that has this returning
+        # NamedFromClause[Any].  Pylance sees it just fine.
+        return coercions.expect(roles.FromClauseRole, selectable).alias(  # type: ignore[no-any-return]  # noqa: E501
             name=name, flat=flat
         )
 
@@ -2137,7 +2173,7 @@ class CTE(
     Generative,
     HasPrefixes,
     HasSuffixes,
-    AliasedReturnsRows,
+    AliasedReturnsRows[_KeyColCC_co],
 ):
     """Represent a Common Table Expression.
 
@@ -2197,8 +2233,8 @@ class CTE(
         name: Optional[str] = None,
         recursive: bool = False,
         nesting: bool = False,
-        _cte_alias: Optional[CTE] = None,
-        _restates: Optional[CTE] = None,
+        _cte_alias: Optional[CTE[_KeyColCC_co]] = None,
+        _restates: Optional[CTE[_KeyColCC_co]] = None,
         _prefixes: Optional[Tuple[()]] = None,
         _suffixes: Optional[Tuple[()]] = None,
     ) -> None:
@@ -2234,7 +2270,9 @@ class CTE(
                 foreign_keys=foreign_keys,
             )
 
-    def alias(self, name: Optional[str] = None, flat: bool = False) -> CTE:
+    def alias(
+        self, name: Optional[str] = None, flat: bool = False
+    ) -> CTE[_KeyColCC_co]:
         """Return an :class:`_expression.Alias` of this
         :class:`_expression.CTE`.
 
@@ -2258,7 +2296,9 @@ class CTE(
             _suffixes=self._suffixes,
         )
 
-    def union(self, *other: _SelectStatementForCompoundArgument[Any]) -> CTE:
+    def union(
+        self, *other: _SelectStatementForCompoundArgument[Any]
+    ) -> CTE[_KeyColCC_co]:
         r"""Return a new :class:`_expression.CTE` with a SQL ``UNION``
         of the original CTE against the given selectables provided
         as positional arguments.
@@ -2289,7 +2329,7 @@ class CTE(
 
     def union_all(
         self, *other: _SelectStatementForCompoundArgument[Any]
-    ) -> CTE:
+    ) -> CTE[_KeyColCC_co]:
         r"""Return a new :class:`_expression.CTE` with a SQL ``UNION ALL``
         of the original CTE against the given selectables provided
         as positional arguments.
@@ -2319,13 +2359,17 @@ class CTE(
             _suffixes=self._suffixes,
         )
 
-    def _get_reference_cte(self) -> CTE:
+    def _get_reference_cte(self) -> CTE[_KeyColCC_co]:
         """
         A recursive CTE is updated to attach the recursive part.
         Updated CTEs should still refer to the original CTE.
         This function returns this reference identifier.
         """
         return self._restates if self._restates is not None else self
+
+    if TYPE_CHECKING:
+
+        def with_cols(self, type_: type[_TC_co]) -> CTE[_TC_co]: ...
 
 
 class _CTEOpts(NamedTuple):
@@ -2965,7 +3009,7 @@ class HasCTE(roles.HasCTERole, SelectsRows):
         )
 
 
-class Subquery(AliasedReturnsRows):
+class Subquery(AliasedReturnsRows[_KeyColCC_co]):
     """Represent a subquery of a SELECT.
 
     A :class:`.Subquery` is created by invoking the
@@ -3026,26 +3070,24 @@ class Subquery(AliasedReturnsRows):
         return self.element.set_label_style(LABEL_STYLE_NONE).scalar_subquery()
 
 
-class FromGrouping(GroupedElement, FromClause):
+class FromGrouping(GroupedElement, FromClause[_KeyColCC_co]):
     """Represent a grouping of a FROM clause"""
 
     _traverse_internals: _TraverseInternalsType = [
         ("element", InternalTraversal.dp_clauseelement)
     ]
 
-    element: FromClause
+    element: FromClause[_KeyColCC_co]
 
-    def __init__(self, element: FromClause):
+    def __init__(self, element: FromClause[_KeyColCC_co]):
         self.element = coercions.expect(roles.FromClauseRole, element)
 
     @util.ro_non_memoized_property
-    def columns(
-        self,
-    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
+    def columns(self) -> _KeyColCC_co:
         return self.element.columns
 
     @util.ro_non_memoized_property
-    def c(self) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
+    def c(self) -> _KeyColCC_co:
         return self.element.columns
 
     @property
@@ -3061,11 +3103,15 @@ class FromGrouping(GroupedElement, FromClause):
 
     def alias(
         self, name: Optional[str] = None, flat: bool = False
-    ) -> NamedFromGrouping:
+    ) -> NamedFromGrouping[_KeyColCC_co]:
         return NamedFromGrouping(self.element.alias(name=name, flat=flat))
 
-    def _anonymous_fromclause(self, **kw: Any) -> FromGrouping:
-        return FromGrouping(self.element._anonymous_fromclause(**kw))
+    def _anonymous_fromclause(
+        self, *, name: Optional[str] = None, flat: bool = False
+    ) -> FromGrouping:
+        return FromGrouping(
+            self.element._anonymous_fromclause(name=name, flat=flat)
+        )
 
     @util.ro_non_memoized_property
     def _hide_froms(self) -> Iterable[FromClause]:
@@ -3075,10 +3121,10 @@ class FromGrouping(GroupedElement, FromClause):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
-    def __getstate__(self) -> Dict[str, FromClause]:
+    def __getstate__(self) -> Dict[str, FromClause[_KeyColCC_co]]:
         return {"element": self.element}
 
-    def __setstate__(self, state: Dict[str, FromClause]) -> None:
+    def __setstate__(self, state: Dict[str, FromClause[_KeyColCC_co]]) -> None:
         self.element = state["element"]
 
     if TYPE_CHECKING:
@@ -3088,7 +3134,9 @@ class FromGrouping(GroupedElement, FromClause):
         ) -> Self: ...
 
 
-class NamedFromGrouping(FromGrouping, NamedFromClause):
+class NamedFromGrouping(
+    FromGrouping[_KeyColCC_co], NamedFromClause[_KeyColCC_co]
+):
     """represent a grouping of a named FROM clause
 
     .. versionadded:: 2.0
@@ -3104,7 +3152,9 @@ class NamedFromGrouping(FromGrouping, NamedFromClause):
         ) -> Self: ...
 
 
-class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
+class TableClause(
+    roles.DMLTableRole, Immutable, NamedFromClause[_ColClauseCC_co]
+):
     """Represents a minimal "table" construct.
 
     This is a lightweight table object that has only a name, a
@@ -3183,13 +3233,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
 
     if TYPE_CHECKING:
 
-        @util.ro_non_memoized_property
-        def columns(
-            self,
-        ) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]: ...
-
-        @util.ro_non_memoized_property
-        def c(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]: ...
+        def with_cols(self, type_: type[_TC_co]) -> TableClause[_TC_co]: ...
 
     def __str__(self) -> str:
         if self.schema is not None:

@@ -916,3 +916,13 @@ Column, Table, MetaData API
 .. autoclass:: Table
     :members:
     :inherited-members:
+
+.. autoclass:: TypedColumns
+    :members:
+
+.. autoclass:: Named
+    :members:
+
+.. autoclass:: sqlalchemy.sql._annotated_cols.HasRowPos
+    :special-members: __row_pos__
+

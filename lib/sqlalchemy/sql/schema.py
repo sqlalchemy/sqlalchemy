@@ -65,6 +65,12 @@ from . import ddl
 from . import roles
 from . import type_api
 from . import visitors
+from ._annotated_cols import _ColCC_co
+from ._annotated_cols import _extract_columns_from_class
+from ._annotated_cols import _TC_co
+from ._annotated_cols import Named
+from ._annotated_cols import TypedColumns
+from ._typing import _T
 from .base import _DefaultDescriptionTuple
 from .base import _NoArg
 from .base import _NoneName
@@ -119,7 +125,6 @@ if typing.TYPE_CHECKING:
     from ..engine.reflection import _ReflectionInfo
     from ..sql.selectable import FromClause
 
-_T = TypeVar("_T", bound="Any")
 _SI = TypeVar("_SI", bound="SchemaItem")
 _TAB = TypeVar("_TAB", bound="Table")
 
@@ -320,11 +325,18 @@ class HasSchemaAttr(SchemaItem):
 
 
 class Table(
-    DialectKWArgs, HasSchemaAttr, TableClause, inspection.Inspectable["Table"]
+    DialectKWArgs,
+    HasSchemaAttr,
+    TableClause[_ColCC_co],
+    inspection.Inspectable["Table"],
 ):
     r"""Represent a table in a database.
 
     e.g.::
+
+        from sqlalchemy import Table, MetaData, Integer, String, Column
+
+        metadata = MetaData()
 
         mytable = Table(
             "mytable",
@@ -342,10 +354,56 @@ class Table(
     object - in this way
     the :class:`_schema.Table` constructor acts as a registry function.
 
+    May also be defined as "typed table" by passing a subclass of
+    :class:`_schema.TypedColumns` as the 3rd argument::
+
+        from sqlalchemy import TypedColumns, select
+
+
+        class user_cols(TypedColumns):
+            id = Column(Integer, primary_key=True)
+            name: Column[str]
+            age: Column[int]
+            middle_name: Column[str | None]
+
+            # optional, used to infer the select types when selecting the table
+            __row_pos__: tuple[int, str, int, str | None]
+
+
+        user = Table("user", metadata, user_cols)
+
+        # the columns are typed: the statement has type Select[int, str]
+        stmt = sa.select(user.c.id, user.c.name).where(user.c.age > 30)
+
+        # Inferred as Select[int, str, int, str | None] thanks to __row_pos__
+        stmt1 = user.select()
+        stmt2 = sa.select(user)
+
+    The :attr:`sqlalchemy.sql._annotated_cols.HasRowPos.__row_pos__`
+    annotation is optional, and it's used to infer the types in a
+    :class:`_sql.Select` when selecting the complete table.
+    If a :class:`_schema.TypedColumns` does not define it,
+    the default ``Select[*tuple[Any]]`` will be inferred.
+
+    An existing :class:`Table` can be casted as "typed table" using
+    the :meth:`Table.with_cols`::
+
+        class mytable_cols(TypedColumns):
+            mytable_id: Column[int]
+            value: Column[str | None]
+
+
+        typed_mytable = mytable.with_cols(mytable_cols)
+
     .. seealso::
 
-        :ref:`metadata_describing` - Introduction to database metadata
+        :ref:`metadata_describing` Introduction to database metadata
 
+        :class:`_schema.TypedColumns` More information about typed column
+        definition
+
+    .. versionchanged:: 2.1.0b2 - :class:`_schema.Table` is now generic to
+        support "typed tables"
     """
 
     __visit_name__ = "table"
@@ -357,6 +415,8 @@ class Table(
 
         @util.ro_non_memoized_property
         def foreign_keys(self) -> Set[ForeignKey]: ...
+
+        def with_cols(self, type_: type[_TC_co]) -> Table[_TC_co]: ...
 
     _columns: DedupeColumnCollection[Column[Any]]  # type: ignore[assignment]
 
@@ -400,19 +460,6 @@ class Table(
 
     """
 
-    if TYPE_CHECKING:
-
-        @util.ro_non_memoized_property
-        def columns(self) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
-
-        @util.ro_non_memoized_property
-        def exported_columns(
-            self,
-        ) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
-
-        @util.ro_non_memoized_property
-        def c(self) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
-
     def _gen_cache_key(
         self, anon_map: anon_map, bindparams: List[BindParameter[Any]]
     ) -> Tuple[Any, ...]:
@@ -441,11 +488,32 @@ class Table(
             return object.__new__(cls)
 
         try:
-            name, metadata, args = args[0], args[1], args[2:]
-        except IndexError:
+            name, metadata, *other_args = args
+        except ValueError:
             raise TypeError(
                 "Table() takes at least two positional-only "
-                "arguments 'name' and 'metadata'"
+                "arguments 'name', and 'metadata'"
+            ) from None
+        if other_args and isinstance(other_args[0], type):
+            typed_columns_cls = other_args[0]
+            if not issubclass(typed_columns_cls, TypedColumns):
+                raise exc.InvalidRequestError(
+                    "The ``typed_columns_cls`` argument requires a "
+                    "TypedColumns subclass."
+                )
+            elif hasattr(typed_columns_cls, "_sa_class_manager"):
+                # an orm class subclassed with TypedColumns. Reject it
+                raise exc.InvalidRequestError(
+                    "To get a typed table from an ORM class, use the "
+                    "`as_typed_table()` function instead."
+                )
+
+            extracted_columns = _extract_columns_from_class(typed_columns_cls)
+            other_args = extracted_columns + other_args[1:]
+        elif "typed_columns_cls" in kw:
+            raise TypeError(
+                "The ``typed_columns_cls`` argument may be passed "
+                "only positionally"
             )
 
         schema = kw.get("schema", None)
@@ -463,7 +531,7 @@ class Table(
         must_exist = kw.pop("must_exist", kw.pop("mustexist", False))
         key = _get_table_key(name, schema)
         if key in metadata.tables:
-            if not keep_existing and not extend_existing and bool(args):
+            if not keep_existing and not extend_existing and bool(other_args):
                 raise exc.InvalidRequestError(
                     f"Table '{key}' is already defined for this MetaData "
                     "instance.  Specify 'extend_existing=True' "
@@ -473,7 +541,7 @@ class Table(
                 )
             table = metadata.tables[key]
             if extend_existing:
-                table._init_existing(*args, **kw)
+                table._init_existing(*other_args, **kw)
             return table
         else:
             if must_exist:
@@ -482,20 +550,45 @@ class Table(
             table.dispatch.before_parent_attach(table, metadata)
             metadata._add_table(name, schema, table)
             try:
-                table.__init__(name, metadata, *args, _no_init=False, **kw)  # type: ignore[misc] # noqa: E501
+                table.__init__(name, metadata, *other_args, _no_init=False, **kw)  # type: ignore[misc] # noqa: E501
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
             except Exception:
                 with util.safe_reraise():
                     metadata._remove_table(name, schema)
 
+    @overload
     def __init__(
-        self,
+        self: Table[_TC_co],
         name: str,
         metadata: MetaData,
+        typed_columns_cls: type[_TC_co],
+        /,
         *args: SchemaItem,
-        schema: Optional[Union[str, Literal[SchemaConst.BLANK_SCHEMA]]] = None,
-        quote: Optional[bool] = None,
+        schema: str | Literal[SchemaConst.BLANK_SCHEMA] | None = None,
+        quote: bool | None = None,
+        quote_schema: bool | None = None,
+        keep_existing: bool = False,
+        extend_existing: bool = False,
+        implicit_returning: bool = True,
+        comment: str | None = None,
+        info: dict[Any, Any] | None = None,
+        listeners: (
+            _typing_Sequence[tuple[str, Callable[..., Any]]] | None
+        ) = None,
+        prefixes: _typing_Sequence[str] | None = None,
+        **kw: Any,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self: Table[ReadOnlyColumnCollection[str, Column[Any]]],
+        name: str,
+        metadata: MetaData,
+        /,
+        *args: SchemaItem,
+        schema: str | Literal[SchemaConst.BLANK_SCHEMA] | None = None,
+        quote: bool | None = None,
         quote_schema: Optional[bool] = None,
         autoload_with: Optional[Union[Engine, Connection]] = None,
         autoload_replace: bool = True,
@@ -504,12 +597,44 @@ class Table(
         resolve_fks: bool = True,
         include_columns: Optional[Collection[str]] = None,
         implicit_returning: bool = True,
-        comment: Optional[str] = None,
-        info: Optional[Dict[Any, Any]] = None,
-        listeners: Optional[
-            _typing_Sequence[Tuple[str, Callable[..., Any]]]
-        ] = None,
-        prefixes: Optional[_typing_Sequence[str]] = None,
+        comment: str | None = None,
+        info: dict[Any, Any] | None = None,
+        listeners: (
+            _typing_Sequence[tuple[str, Callable[..., Any]]] | None
+        ) = None,
+        prefixes: _typing_Sequence[str] | None = None,
+        _creator_ddl: TableCreateDDL | None = None,
+        _dropper_ddl: TableDropDDL | None = None,
+        # used internally in the metadata.reflect() process
+        _extend_on: Optional[Set[Table]] = None,
+        # used by __new__ to bypass __init__
+        _no_init: bool = True,
+        # dialect-specific keyword args
+        **kw: Any,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        name: str,
+        metadata: MetaData,
+        /,
+        *args: Any,
+        schema: str | Literal[SchemaConst.BLANK_SCHEMA] | None = None,
+        quote: bool | None = None,
+        quote_schema: Optional[bool] = None,
+        autoload_with: Optional[Union[Engine, Connection]] = None,
+        autoload_replace: bool = True,
+        keep_existing: bool = False,
+        extend_existing: bool = False,
+        resolve_fks: bool = True,
+        include_columns: Optional[Collection[str]] = None,
+        implicit_returning: bool = True,
+        comment: str | None = None,
+        info: dict[Any, Any] | None = None,
+        listeners: (
+            _typing_Sequence[tuple[str, Callable[..., Any]]] | None
+        ) = None,
+        prefixes: _typing_Sequence[str] | None = None,
         _creator_ddl: TableCreateDDL | None = None,
         _dropper_ddl: TableDropDDL | None = None,
         # used internally in the metadata.reflect() process
@@ -549,6 +674,12 @@ class Table(
             may be used to associate this table with a particular
             :class:`.Connection` or :class:`.Engine`.
 
+        :param table_columns_cls: a subclass of :class:`_schema.TypedColumns`
+            that defines the columns that will be "typed" when accessing
+            them from the :attr:`_schema.Table.c` attribute.
+
+            .. versionadded:: 2.1.0b2
+
         :param \*args: Additional positional arguments are used primarily
             to add the list of :class:`_schema.Column`
             objects contained within this
@@ -556,6 +687,10 @@ class Table(
             :class:`.SchemaItem` constructs may be added here, including
             :class:`.PrimaryKeyConstraint`, and
             :class:`_schema.ForeignKeyConstraint`.
+            Additional columns may be provided also when using a
+            :paramref:`_schema.Table.table_columns_cls` class; they will
+            be appended to the "typed" columns and will appear as untyped
+            when accessing them via the :attr:`_schema.Table.c` collection.
 
         :param autoload_replace: Defaults to ``True``; when using
             :paramref:`_schema.Table.autoload_with`
@@ -813,6 +948,12 @@ class Table(
             # don't run __init__ from __new__ by default;
             # __new__ has a specific place that __init__ is called
             return
+        if args:
+            # this is the call done by `__new__` that should have resolved
+            # TypedColumns to the individual columns
+            assert not (
+                isinstance(args[0], type) and issubclass(args[0], TypedColumns)
+            )
 
         super().__init__(quoted_name(name, quote))
         self.metadata = metadata
@@ -1440,7 +1581,7 @@ class Table(
             ]
         ] = None,
         name: Optional[str] = None,
-    ) -> Table:
+    ) -> Table[_ColCC_co]:
         """Return a copy of this :class:`_schema.Table`
         associated with a different
         :class:`_schema.MetaData`.
@@ -1466,7 +1607,7 @@ class Table(
             ]
         ] = None,
         name: Optional[str] = None,
-    ) -> Table:
+    ) -> Table[_ColCC_co]:
         """Return a copy of this :class:`_schema.Table` associated with a
         different :class:`_schema.MetaData`.
 
@@ -1566,7 +1707,7 @@ class Table(
         for col in self.columns:
             args.append(col._copy(schema=actual_schema, _to_metadata=metadata))
 
-        table = Table(
+        table: Table[_ColCC_co] = Table(  # type: ignore[assignment]
             name,
             metadata,
             schema=actual_schema,
@@ -1625,7 +1766,7 @@ class Table(
         return self._schema_item_copy(table)
 
 
-class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
+class Column(DialectKWArgs, SchemaItem, ColumnClause[_T], Named[_T]):
     """Represents a column in a database table."""
 
     __visit_name__ = "column"
@@ -2182,15 +2323,14 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         l_args = [__name_pos, __type_pos] + list(args)
         del args
 
-        if l_args:
-            if isinstance(l_args[0], str):
-                if name is not None:
-                    raise exc.ArgumentError(
-                        "May not pass name positionally and as a keyword."
-                    )
-                name = l_args.pop(0)  # type: ignore
-            elif l_args[0] is None:
-                l_args.pop(0)
+        if isinstance(l_args[0], str):
+            if name is not None:
+                raise exc.ArgumentError(
+                    "May not pass name positionally and as a keyword."
+                )
+            name = l_args.pop(0)  # type: ignore
+        elif l_args[0] is None:
+            l_args.pop(0)
         if l_args:
             coltype = l_args[0]
 

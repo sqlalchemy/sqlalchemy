@@ -15,6 +15,8 @@ from typing import Union
 
 from . import coercions
 from . import roles
+from ._annotated_cols import _KeyColCC_co
+from ._annotated_cols import HasRowPos
 from ._typing import _ColumnsClauseArgument
 from ._typing import _no_kw
 from .elements import ColumnClause
@@ -49,6 +51,7 @@ if TYPE_CHECKING:
     from ._typing import _T8
     from ._typing import _T9
     from ._typing import _Ts
+    from ._typing import _Ts2
     from ._typing import _TypedColumnClauseArgument as _TCCA
     from .functions import Function
     from .selectable import CTE
@@ -58,8 +61,10 @@ if TYPE_CHECKING:
 
 
 def alias(
-    selectable: FromClause, name: Optional[str] = None, flat: bool = False
-) -> NamedFromClause:
+    selectable: FromClause[_KeyColCC_co],
+    name: Optional[str] = None,
+    flat: bool = False,
+) -> NamedFromClause[_KeyColCC_co]:
     """Return a named alias of the given :class:`.FromClause`.
 
     For :class:`.Table` and :class:`.Join` objects, the return type is the
@@ -496,6 +501,68 @@ def select(
 
 
 # END OVERLOADED FUNCTIONS select
+@overload
+def select(
+    __table: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+) -> Select[Unpack[_Ts]]: ...
+
+
+# NOTE: this seems to currently be interpreted by mypy as not allowed.
+# https://peps.python.org/pep-0646/#multiple-type-variable-tuples-not-allowed
+# https://github.com/python/mypy/issues/20188
+@overload
+def select(
+    __table: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+    __table2: FromClause[HasRowPos[Unpack[_Ts2]]],  # type: ignore[type-var]
+) -> Select[Unpack[_Ts], Unpack[_Ts2]]: ...  # type: ignore[misc]
+
+
+@overload
+def select(
+    __table: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+    __ent0: _TCCA[_T0],
+) -> Select[Unpack[_Ts], _T0]: ...
+
+
+@overload
+def select(
+    __table: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+) -> Select[Unpack[_Ts], _T0, _T1]: ...
+
+
+@overload
+def select(
+    __table: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+) -> Select[Unpack[_Ts], _T0, _T1, _T2]: ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __table: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+) -> Select[_T0, Unpack[_Ts]]: ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __table: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+) -> Select[_T0, _T1, Unpack[_Ts]]: ...
+
+
+@overload
+def select(
+    __ent0: _TCCA[_T0],
+    __ent1: _TCCA[_T1],
+    __ent2: _TCCA[_T2],
+    __table: FromClause[HasRowPos[Unpack[_Ts]]],  # type: ignore[type-var]
+) -> Select[_T0, _T1, _T2, Unpack[_Ts]]: ...
 
 
 @overload

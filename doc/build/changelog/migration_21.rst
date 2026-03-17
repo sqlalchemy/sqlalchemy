@@ -198,7 +198,7 @@ dataclass-level default (i.e. set using any of the
 :paramref:`_orm.column_property.default`, or :paramref:`_orm.deferred.default`
 parameters) is directed to be delivered at the
 Python :term:`descriptor` level using mechanisms in SQLAlchemy's attribute
-system that normally return ``None`` for un-popualted columns, so that even though the default is not
+system that normally return ``None`` for un-populated columns, so that even though the default is not
 populated into ``__dict__``, it's still delivered when the attribute is
 accessed.  This behavior is based on what Python dataclasses itself does
 when a default is indicated for a field that also includes ``init=False``.
@@ -720,6 +720,92 @@ up front, which would be verbose and not automatic.
 .. [1] https://github.com/python/typing/discussions/1001#discussioncomment-1897813
 
 :ticket:`10635`
+
+.. _change_13085:
+
+Better type checker integration for Core froms, like Table
+----------------------------------------------------------
+
+SQLAlchemy 2.1 changes :class:`_schema.Table`, along with most
+:class:`_sql.FromClause` subclasses, to be generic on the column collection,
+providing the option for better static type checking support.
+By declaring the columns using a :class:`_schema.TypedColumns` subclass and
+providing it to the :class:`_schema.Table` instance, IDEs and type checkers
+can infer the exact types of columns when accessing them via the
+:attr:`_schema.Table.c` attribute, enabling better autocomplete and type validation.
+
+Example usage::
+
+    from sqlalchemy import Table, TypedColumns, Column, Integer, MetaData, select
+
+
+    class user_cols(TypedColumns):
+        id = Column(Integer, primary_key=True)
+        name: Column[str]
+        age: Column[int]
+
+        # optional, used to infer the select types when selecting the table
+        __row_pos__: tuple[int, str, int]
+
+
+    metadata = MetaData()
+    user = Table("user", metadata, user_cols)
+
+    # Type checkers now understand the column types when selecting single columns
+    stmt = select(user.c.id, user.c.name)  # Inferred as Select[int, str]
+
+    # and also when selecting the whole table, when __row_pos__ is present
+    stmt = select(user)  # Inferred as Select[int, str, int]
+
+The optional :attr:`sqlalchemy.sql._annotated_cols.HasRowPos.__row_pos__` annotation
+is used to infer the types of a select when selecting the table directly.
+
+Columns can be declared in :class:`.TypedColumns` subclasses by instantiating
+them directly or by using only a type annotations, that will be inferred when
+generating a :class:`_schema.Table`.
+
+Other :class:`_sql.FromClause`, like :class:`_sql.Join`, :class:`_sql.CTE`, etc, can be made
+generic using the :meth:`_sql.FromClause.with_cols` method::
+
+    # using with_cols the ``c`` collection of the cte has typed tables
+    cte = user.select().cte().with_cols(user_cols)
+
+ORM Integration
+^^^^^^^^^^^^^^^
+
+This functionality also offers some integration with the ORM, by using
+:class:`_orm.MappedColumn` annotated attributes in the ORM model and
+:func:`_orm.as_typed_table` to get an annotated :class:`_sql.FromClause`::
+
+    from sqlalchemy import TypedColumns
+    from sqlalchemy.orm import DeclarativeBase, mapped_column
+    from sqlalchemy.orm import MappedColumn, as_typed_table
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class A(Base):
+        __tablename__ = "a"
+        __typed_cols__: "a_cols"
+
+        id: MappedColumn[int] = mapped_column(primary_key=True)
+        data: MappedColumn[str]
+
+
+    class a_cols(A, TypedColumns):
+        pass
+
+
+    # table_a is annotated as FromClause[a_cols], and is just A.__table__
+    table_a = as_typed_table(A)
+
+For proper typing integration :class:`_orm.MappedColumn` should be used
+to annotate the single columns, since it's a more specific annotation than
+the usual :class:`_orm.Mapped` used for ORM attributes.
+
+:ticket:`13085`
 
 .. _change_8601:
 

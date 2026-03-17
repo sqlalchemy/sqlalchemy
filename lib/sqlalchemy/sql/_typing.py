@@ -81,6 +81,7 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
 _Ts = TypeVarTuple("_Ts")
+_Ts2 = TypeVarTuple("_Ts2")
 
 
 _CE = TypeVar("_CE", bound="ColumnElement[Any]")
