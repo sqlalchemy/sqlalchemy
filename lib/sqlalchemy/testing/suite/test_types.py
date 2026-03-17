@@ -1307,7 +1307,7 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
 
-class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+class JSONTest(fixtures.TablesTest):
     __requires__ = ("json_type",)
     __backend__ = True
 
@@ -1318,9 +1318,11 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         Table(
             "data_table",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("name", String(30), nullable=False),
-            Column("data", cls.datatype, nullable=False),
+            Column("data", cls.datatype(), nullable=False),
             Column("nulldata", cls.datatype(none_as_null=True)),
         )
 
@@ -1589,7 +1591,11 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
                 select(data_table.c.data, data_table.c.nulldata)
             ).first()
 
-            eq_(row, (data_element, data_element))
+            if isinstance(data_element, float):
+                c1, c2 = row
+                eq_((float(c1), float(c2)), (data_element, data_element))
+            else:
+                eq_(row, (data_element, data_element))
 
     def test_round_trip_custom_json(self):
         data_table = self.tables.data_table
@@ -1611,13 +1617,23 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
             eq_(row, (data_element,))
             eq_(js.mock_calls, [mock.call(data_element)])
+
+            eq_(len(jd.mock_calls), 1)
+            eq_(len(jd.mock_calls[0].args), 1)
+
+            # oracledb's json outputtypehandler receives the json
+            # without spaces between the colons, so we have to normalize
+            # for the compare
+
             if testing.requires.json_deserializer_binary.enabled:
-                eq_(
-                    jd.mock_calls,
-                    [mock.call(json.dumps(data_element).encode())],
-                )
+                json_str_given_to_adapter = jd.mock_calls[0].args[0].decode()
             else:
-                eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
+                json_str_given_to_adapter = jd.mock_calls[0].args[0]
+
+            eq_(
+                json.dumps(json.loads(json_str_given_to_adapter)),
+                json.dumps(data_element),
+            )
 
     @testing.combinations(
         ("parameters",),
@@ -1936,7 +1952,9 @@ class JSONLegacyStringCastIndexTest(
         Table(
             "data_table",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("name", String(30), nullable=False),
             Column("data", cls.datatype),
             Column("nulldata", cls.datatype(none_as_null=True)),

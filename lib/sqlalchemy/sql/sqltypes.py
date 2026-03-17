@@ -2399,6 +2399,9 @@ class JSON(Indexable, TypeEngine[_T_JSON]):
        * Microsoft SQL Server 2016 and later - see
          :class:`sqlalchemy.dialects.mssql.JSON` for backend-specific notes
 
+       * Oracle 21c and later - see :class:`sqlalchemy.dialects.oracle.JSON`
+         for backend-specific notes
+
     :class:`_types.JSON` is part of the Core in support of the growing
     popularity of native JSON datatypes.
 
@@ -2562,6 +2565,8 @@ class JSON(Indexable, TypeEngine[_T_JSON]):
         :class:`sqlalchemy.dialects.mysql.JSON`
 
         :class:`sqlalchemy.dialects.sqlite.JSON`
+
+        :class:`sqlalchemy.dialects.oracle.JSON`
 
     """  # noqa: E501
 
@@ -2926,12 +2931,31 @@ class JSON(Indexable, TypeEngine[_T_JSON]):
         return process
 
     def bind_processor(self, dialect):
+        if (
+            dialect._json_serializer is None
+            and dialect.supports_native_json_serialization
+        ):
+            return None
+
         string_process = self._str_impl.bind_processor(dialect)
         json_serializer = dialect._json_serializer or json.dumps
 
         return self._make_bind_processor(string_process, json_serializer)
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Optional[_ResultProcessorType[_T_JSON]]:
+
+        # note that for dialects that have native json deserialization,
+        # a custom deserializer function typically needs to be
+        # installed at the connection level, as an adapter, codec,
+        # or outputtypehandler, so return None here
+        if dialect.supports_native_json_deserialization and (
+            dialect._json_deserializer is None
+            or dialect.dialect_injects_custom_json_deserializer
+        ):
+            return None
+
         string_process = self._str_impl.result_processor(dialect, coltype)
         json_deserializer = dialect._json_deserializer or json.loads
 

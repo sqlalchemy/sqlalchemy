@@ -1030,6 +1030,7 @@ if TYPE_CHECKING:
     from ...engine.interfaces import DBAPIConnection
     from ...engine.interfaces import Dialect
     from ...engine.interfaces import IsolationLevel
+    from ...sql.sqltypes import _JSON_VALUE
     from ...sql.type_api import _BindProcessorType
     from ...sql.type_api import _ResultProcessorType
 
@@ -2167,8 +2168,8 @@ class SQLiteDialect(default.DefaultDialect):
     def __init__(
         self,
         native_datetime: bool = False,
-        json_serializer: Optional[Callable[..., Any]] = None,
-        json_deserializer: Optional[Callable[..., Any]] = None,
+        json_serializer: Callable[[_JSON_VALUE], str] | None = None,
+        json_deserializer: Callable[[str], _JSON_VALUE] | None = None,
         **kwargs: Any,
     ) -> None:
         default.DefaultDialect.__init__(self, **kwargs)

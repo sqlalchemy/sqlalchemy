@@ -1177,6 +1177,7 @@ if TYPE_CHECKING:
     from ...sql.functions import random
     from ...sql.functions import rollup
     from ...sql.functions import sysdate
+    from ...sql.sqltypes import _JSON_VALUE
     from ...sql.type_api import TypeEngine
     from ...sql.visitors import ExternallyTraversible
     from ...util.typing import TupleAny
@@ -2807,8 +2808,8 @@ class MySQLDialect(_mariadb_shim.MariaDBShim, default.DefaultDialect):
 
     def __init__(
         self,
-        json_serializer: Optional[Callable[..., Any]] = None,
-        json_deserializer: Optional[Callable[..., Any]] = None,
+        json_serializer: Callable[[_JSON_VALUE], str] | None = None,
+        json_deserializer: Callable[[str], _JSON_VALUE] | None = None,
         is_mariadb: Optional[bool] = None,
         **kwargs: Any,
     ) -> None:

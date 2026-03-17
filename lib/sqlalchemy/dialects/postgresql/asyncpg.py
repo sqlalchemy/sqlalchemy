@@ -308,16 +308,6 @@ class AsyncpgBigInteger(sqltypes.BigInteger):
     render_bind_cast = True
 
 
-class AsyncpgJSON(json.JSON):
-    def result_processor(self, dialect, coltype):
-        return None
-
-
-class AsyncpgJSONB(json.JSONB):
-    def result_processor(self, dialect, coltype):
-        return None
-
-
 class AsyncpgJSONIndexType(sqltypes.JSON.JSONIndexType):
     pass
 
@@ -1091,6 +1081,10 @@ class PGDialect_asyncpg(PGDialect):
     statement_compiler = PGCompiler_asyncpg
     preparer = PGIdentifierPreparer_asyncpg
 
+    supports_native_json_serialization = False
+    supports_native_json_deserialization = True
+    dialect_injects_custom_json_deserializer = True
+
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
@@ -1110,9 +1104,7 @@ class PGDialect_asyncpg(PGDialect):
             sqltypes.BigInteger: AsyncpgBigInteger,
             sqltypes.Numeric: AsyncpgNumeric,
             sqltypes.Float: AsyncpgFloat,
-            sqltypes.JSON: AsyncpgJSON,
             sqltypes.LargeBinary: AsyncpgByteA,
-            json.JSONB: AsyncpgJSONB,
             sqltypes.JSON.JSONPathType: AsyncpgJSONPathType,
             sqltypes.JSON.JSONIndexType: AsyncpgJSONIndexType,
             sqltypes.JSON.JSONIntIndexType: AsyncpgJSONIntIndexType,

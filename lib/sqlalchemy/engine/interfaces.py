@@ -68,6 +68,7 @@ if TYPE_CHECKING:
     from ..sql.schema import DefaultGenerator
     from ..sql.schema import SchemaItem
     from ..sql.schema import Sequence as Sequence_SchemaItem
+    from ..sql.sqltypes import _JSON_VALUE
     from ..sql.sqltypes import Integer
     from ..sql.type_api import _TypeMemoDict
     from ..sql.type_api import TypeEngine
@@ -862,6 +863,35 @@ class Dialect(EventTarget):
     supports_multivalues_insert: bool
     """Target database supports INSERT...VALUES with multiple value
     sets, i.e. INSERT INTO table (cols) VALUES (...), (...), (...), ...
+
+    """
+
+    _json_serializer: Callable[[_JSON_VALUE], str] | None
+
+    _json_deserializer: Callable[[str], _JSON_VALUE] | None
+
+    supports_native_json_serialization: bool
+    """target dialect includes a native JSON serializer, eliminating
+    the need to use json.dumps() for JSON data
+
+    .. versionadded:: 2.1
+
+    """
+
+    supports_native_json_deserialization: bool
+    """target dialect includes a native JSON deserializer, eliminating
+    the need to use json.loads() for JSON data
+
+    .. versionadded:: 2.1
+
+    """
+
+    dialect_injects_custom_json_deserializer: bool
+    """target dialect, when given a custom _json_deserializer, needs to
+    inject this handler at the connection/cursor level, rather than
+    having JSON data returned as a string to be handled by the type
+
+    ..versionadded:: 2.1
 
     """
 

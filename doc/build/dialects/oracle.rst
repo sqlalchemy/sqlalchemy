@@ -62,6 +62,9 @@ construction arguments, are as follows:
 .. autoclass:: INTERVAL
   :members: __init__
 
+.. autoclass:: JSON
+  :members: __init__
+
 .. autoclass:: NCLOB
   :members: __init__
 

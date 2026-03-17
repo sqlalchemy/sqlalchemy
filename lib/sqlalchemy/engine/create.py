@@ -322,12 +322,13 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     :param json_deserializer: for dialects that support the
         :class:`_types.JSON`
         datatype, this is a Python callable that will convert a JSON string
-        to a Python object.  By default, the Python ``json.loads`` function is
-        used.
+        to a Python object.  By default, either the driver's built-in
+        capabilities are used, or if none are available, the Python
+        ``json.loads`` function is used.
 
     :param json_serializer: for dialects that support the :class:`_types.JSON`
-        datatype, this is a Python callable that will render a given object
-        as JSON.   By default, the Python ``json.dumps`` function is used.
+        datatype, this is a Python callable that will render a given object as
+        JSON.   By default, the Python ``json.dumps`` function is used.
 
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many

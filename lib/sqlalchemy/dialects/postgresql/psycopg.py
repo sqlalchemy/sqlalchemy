@@ -214,18 +214,16 @@ class _PGREGCONFIG(REGCONFIG):
 
 class _PGJSON(JSON):
     def bind_processor(self, dialect):
+        """psycopg's bind processor is assembled on the type adapter,
+        but we still need to wrap the value in a psycopg.Json() object"""
         return self._make_bind_processor(None, dialect._psycopg_Json)
-
-    def result_processor(self, dialect, coltype):
-        return None
 
 
 class _PGJSONB(JSONB):
     def bind_processor(self, dialect):
+        """psycopg's bind processor is assembled on the type adapter,
+        but we still need to wrap the value in a psycopg.Jsonb() object"""
         return self._make_bind_processor(None, dialect._psycopg_Jsonb)
-
-    def result_processor(self, dialect, coltype):
-        return None
 
 
 class _PGJSONIntIndexType(sqltypes.JSON.JSONIntIndexType):
@@ -373,6 +371,10 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
     supports_server_side_cursors = True
     default_paramstyle = "pyformat"
     supports_sane_multi_rowcount = True
+
+    supports_native_json_serialization = True
+    supports_native_json_deserialization = True
+    dialect_injects_custom_json_deserializer = True
 
     execution_ctx_cls = PGExecutionContext_psycopg
     statement_compiler = PGCompiler_psycopg
