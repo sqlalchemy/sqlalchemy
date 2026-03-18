@@ -35,6 +35,7 @@ jobs:
           # this is only meaningful on linux. windows and macos ignore exclude all but one arch
           - "aarch64"
           - "x86_64"
+          - "riscv64"
 
         include:
           # create pure python build
@@ -54,11 +55,25 @@ jobs:
             linux_archs: "aarch64"
           - os: "ubuntu-22.04-arm"
             linux_archs: "x86_64"
+          - os: "windows-2022"
+            linux_archs: "riscv64"
+          - os: "windows-11-arm"
+            linux_archs: "riscv64"
+          - os: "macos-15"
+            linux_archs: "riscv64"
+          - os: "ubuntu-22.04-arm"
+            linux_archs: "riscv64"
 
       fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        if: matrix.linux_archs == 'riscv64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: riscv64
 
       - name: Remove tag-build from pyproject.toml
         # sqlalchemy has `tag-build` set to `dev` in pyproject.toml. It needs to be removed before creating the wheel
