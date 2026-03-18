@@ -39,6 +39,7 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
     ):
         indent = ""
         in_block = False
+        alias_mapping: dict[str, str] = {}
 
         for line in orig_py:
             m = re.match(
@@ -63,7 +64,9 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                 for key, fn_class in _fns_in_deterministic_order():
                     is_reserved_word = key in builtins
 
+                    class_name = f"_{fn_class.__name__}_func"
                     if issubclass(fn_class, ReturnTypeFromArgs):
+                        guess_its_generic = True
                         if issubclass(fn_class, ReturnTypeFromOptionalArgs):
                             _TEE = "Optional[_T]"
                         else:
@@ -84,7 +87,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     col: ColumnElement[_T],
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
-) -> {fn_class.__name__}[_T]:
+) -> {class_name}[_T]:
     ...
 
 @overload
@@ -93,7 +96,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     col: _ColumnExpressionArgument[{_TEE}],
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
-) -> {fn_class.__name__}[_T]:
+) -> {class_name}[_T]:
         ...
 
 @overload
@@ -102,7 +105,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     col: {_TEE},
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
-) -> {fn_class.__name__}[_T]:
+) -> {class_name}[_T]:
         ...
 
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
@@ -110,7 +113,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     col: _ColumnExpressionOrLiteralArgument[{_TEE}],
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
-) -> {fn_class.__name__}[_T]:
+) -> {class_name}[_T]:
     ...
 
     """,
@@ -130,7 +133,7 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
                         #    to get around the indentation errors
                         # 4. Therefore here I have to concat part of the
                         #    string outside of the f-string
-                        _type = fn_class.__name__
+                        _type = class_name
                         _type += "[Any]" if guess_its_generic else ""
                         _reserved_word = (
                             "  # noqa: A001" if is_reserved_word else ""
@@ -148,6 +151,11 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                                 indent,
                             )
                         )
+                    orig_name = fn_class.__name__
+                    alias_name = class_name
+                    if guess_its_generic:
+                        orig_name += "[_T]"
+                    alias_mapping[orig_name] = alias_name
 
             m = re.match(
                 r"^( *)# START GENERATED FUNCTION TYPING TESTS",
@@ -189,9 +197,16 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                         buf.write(
                             textwrap.indent(
                                 rf"""
-stmt{count} = select(func.{key}(column('x', Integer)))
 
+# test the {key}() function.
+# this function is a ReturnTypeFromArgs type.
+
+fn{count} = func.{key}(column('x', Integer))
+assert_type(fn{count}, functions.{key}[int])
+
+stmt{count} = select(func.{key}(column('x', Integer)))
 assert_type(stmt{count}, Select[{coltype}])
+
 
 """,
                                 indent,
@@ -202,8 +217,11 @@ assert_type(stmt{count}, Select[{coltype}])
                         buf.write(
                             textwrap.indent(
                                 rf"""
-stmt{count} = select(func.{key}(column('x', String), ','))
 
+# test the aggregate_strings() function.
+# this function is somewhat special case.
+
+stmt{count} = select(func.{key}(column('x', String), ','))
 assert_type(stmt{count}, Select[str])
 
 """,
@@ -228,14 +246,32 @@ assert_type(stmt{count}, Select[str])
                         buf.write(
                             textwrap.indent(
                                 rf"""
-stmt{count} = select(func.{key}({args}))
 
+# test the {key}() function.
+# this function is fixed to the SQL {fn_class.type} class, or the {python_expr} type.
+
+fn{count} = func.{key}({args})
+assert_type(fn{count}, functions.{key})
+
+stmt{count} = select(func.{key}({args}))
 assert_type(stmt{count}, Select[{python_expr}])
 
-""",
+""",  # noqa: E501
                                 indent,
                             )
                         )
+
+            m = re.match(
+                r"^( *)# START GENERATED FUNCTION ALIASES",
+                line,
+            )
+            if m:
+                in_block = True
+                buf.write(line)
+                indent = m.group(1)
+
+                for name, alias in alias_mapping.items():
+                    buf.write(f"{indent}{alias}: TypeAlias = {name}\n")
 
             if in_block and line.startswith(
                 f"{indent}# END GENERATED FUNCTION"

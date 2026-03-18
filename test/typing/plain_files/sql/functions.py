@@ -14,134 +14,258 @@ from sqlalchemy import Select
 from sqlalchemy import select
 from sqlalchemy import Sequence as SqlAlchemySequence
 from sqlalchemy import String
+from sqlalchemy.sql import functions
 
 # START GENERATED FUNCTION TYPING TESTS
 
 # code within this block is **programmatically,
 # statically generated** by tools/generate_sql_functions.py
 
-stmt1 = select(func.aggregate_strings(column("x", String), ","))
 
+# test the aggregate_strings() function.
+# this function is somewhat special case.
+
+stmt1 = select(func.aggregate_strings(column("x", String), ","))
 assert_type(stmt1, Select[str])
 
 
-stmt2 = select(func.array_agg(column("x", Integer)))
+# test the array_agg() function.
+# this function is a ReturnTypeFromArgs type.
 
+fn2 = func.array_agg(column("x", Integer))
+assert_type(fn2, functions.array_agg[int])
+
+stmt2 = select(func.array_agg(column("x", Integer)))
 assert_type(stmt2, Select[Sequence[int]])
 
 
-stmt3 = select(func.char_length(column("x")))
+# test the char_length() function.
+# this function is fixed to the SQL INTEGER class, or the int type.
 
+fn3 = func.char_length(column("x"))
+assert_type(fn3, functions.char_length)
+
+stmt3 = select(func.char_length(column("x")))
 assert_type(stmt3, Select[int])
 
 
-stmt4 = select(func.coalesce(column("x", Integer)))
+# test the coalesce() function.
+# this function is a ReturnTypeFromArgs type.
 
+fn4 = func.coalesce(column("x", Integer))
+assert_type(fn4, functions.coalesce[int])
+
+stmt4 = select(func.coalesce(column("x", Integer)))
 assert_type(stmt4, Select[int])
 
 
-stmt5 = select(func.concat())
+# test the concat() function.
+# this function is fixed to the SQL VARCHAR class, or the str type.
 
+fn5 = func.concat()
+assert_type(fn5, functions.concat)
+
+stmt5 = select(func.concat())
 assert_type(stmt5, Select[str])
 
 
-stmt6 = select(func.count(column("x")))
+# test the count() function.
+# this function is fixed to the SQL INTEGER class, or the int type.
 
+fn6 = func.count(column("x"))
+assert_type(fn6, functions.count)
+
+stmt6 = select(func.count(column("x")))
 assert_type(stmt6, Select[int])
 
 
-stmt7 = select(func.cume_dist())
+# test the cume_dist() function.
+# this function is fixed to the SQL NUMERIC class, or the Decimal type.
 
+fn7 = func.cume_dist()
+assert_type(fn7, functions.cume_dist)
+
+stmt7 = select(func.cume_dist())
 assert_type(stmt7, Select[Decimal])
 
 
-stmt8 = select(func.current_date())
+# test the current_date() function.
+# this function is fixed to the SQL DATE class, or the date type.
 
+fn8 = func.current_date()
+assert_type(fn8, functions.current_date)
+
+stmt8 = select(func.current_date())
 assert_type(stmt8, Select[date])
 
 
-stmt9 = select(func.current_time())
+# test the current_time() function.
+# this function is fixed to the SQL TIME class, or the time type.
 
+fn9 = func.current_time()
+assert_type(fn9, functions.current_time)
+
+stmt9 = select(func.current_time())
 assert_type(stmt9, Select[time])
 
 
-stmt10 = select(func.current_timestamp())
+# test the current_timestamp() function.
+# this function is fixed to the SQL DATETIME class, or the datetime type.
 
+fn10 = func.current_timestamp()
+assert_type(fn10, functions.current_timestamp)
+
+stmt10 = select(func.current_timestamp())
 assert_type(stmt10, Select[datetime])
 
 
-stmt11 = select(func.current_user())
+# test the current_user() function.
+# this function is fixed to the SQL VARCHAR class, or the str type.
 
+fn11 = func.current_user()
+assert_type(fn11, functions.current_user)
+
+stmt11 = select(func.current_user())
 assert_type(stmt11, Select[str])
 
 
-stmt12 = select(func.dense_rank())
+# test the dense_rank() function.
+# this function is fixed to the SQL INTEGER class, or the int type.
 
+fn12 = func.dense_rank()
+assert_type(fn12, functions.dense_rank)
+
+stmt12 = select(func.dense_rank())
 assert_type(stmt12, Select[int])
 
 
-stmt13 = select(func.localtime())
+# test the localtime() function.
+# this function is fixed to the SQL DATETIME class, or the datetime type.
 
+fn13 = func.localtime()
+assert_type(fn13, functions.localtime)
+
+stmt13 = select(func.localtime())
 assert_type(stmt13, Select[datetime])
 
 
-stmt14 = select(func.localtimestamp())
+# test the localtimestamp() function.
+# this function is fixed to the SQL DATETIME class, or the datetime type.
 
+fn14 = func.localtimestamp()
+assert_type(fn14, functions.localtimestamp)
+
+stmt14 = select(func.localtimestamp())
 assert_type(stmt14, Select[datetime])
 
 
-stmt15 = select(func.max(column("x", Integer)))
+# test the max() function.
+# this function is a ReturnTypeFromArgs type.
 
+fn15 = func.max(column("x", Integer))
+assert_type(fn15, functions.max[int])
+
+stmt15 = select(func.max(column("x", Integer)))
 assert_type(stmt15, Select[int])
 
 
-stmt16 = select(func.min(column("x", Integer)))
+# test the min() function.
+# this function is a ReturnTypeFromArgs type.
 
+fn16 = func.min(column("x", Integer))
+assert_type(fn16, functions.min[int])
+
+stmt16 = select(func.min(column("x", Integer)))
 assert_type(stmt16, Select[int])
 
 
-stmt17 = select(func.next_value(SqlAlchemySequence("x_seq")))
+# test the next_value() function.
+# this function is fixed to the SQL INTEGER class, or the int type.
 
+fn17 = func.next_value(SqlAlchemySequence("x_seq"))
+assert_type(fn17, functions.next_value)
+
+stmt17 = select(func.next_value(SqlAlchemySequence("x_seq")))
 assert_type(stmt17, Select[int])
 
 
-stmt18 = select(func.now())
+# test the now() function.
+# this function is fixed to the SQL DATETIME class, or the datetime type.
 
+fn18 = func.now()
+assert_type(fn18, functions.now)
+
+stmt18 = select(func.now())
 assert_type(stmt18, Select[datetime])
 
 
-stmt19 = select(func.percent_rank())
+# test the percent_rank() function.
+# this function is fixed to the SQL NUMERIC class, or the Decimal type.
 
+fn19 = func.percent_rank()
+assert_type(fn19, functions.percent_rank)
+
+stmt19 = select(func.percent_rank())
 assert_type(stmt19, Select[Decimal])
 
 
-stmt20 = select(func.pow(column("x", Integer)))
+# test the pow() function.
+# this function is a ReturnTypeFromArgs type.
 
+fn20 = func.pow(column("x", Integer))
+assert_type(fn20, functions.pow[int])
+
+stmt20 = select(func.pow(column("x", Integer)))
 assert_type(stmt20, Select[int])
 
 
-stmt21 = select(func.rank())
+# test the rank() function.
+# this function is fixed to the SQL INTEGER class, or the int type.
 
+fn21 = func.rank()
+assert_type(fn21, functions.rank)
+
+stmt21 = select(func.rank())
 assert_type(stmt21, Select[int])
 
 
-stmt22 = select(func.session_user())
+# test the session_user() function.
+# this function is fixed to the SQL VARCHAR class, or the str type.
 
+fn22 = func.session_user()
+assert_type(fn22, functions.session_user)
+
+stmt22 = select(func.session_user())
 assert_type(stmt22, Select[str])
 
 
-stmt23 = select(func.sum(column("x", Integer)))
+# test the sum() function.
+# this function is a ReturnTypeFromArgs type.
 
+fn23 = func.sum(column("x", Integer))
+assert_type(fn23, functions.sum[int])
+
+stmt23 = select(func.sum(column("x", Integer)))
 assert_type(stmt23, Select[int])
 
 
-stmt24 = select(func.sysdate())
+# test the sysdate() function.
+# this function is fixed to the SQL DATETIME class, or the datetime type.
 
+fn24 = func.sysdate()
+assert_type(fn24, functions.sysdate)
+
+stmt24 = select(func.sysdate())
 assert_type(stmt24, Select[datetime])
 
 
-stmt25 = select(func.user())
+# test the user() function.
+# this function is fixed to the SQL VARCHAR class, or the str type.
 
+fn25 = func.user()
+assert_type(fn25, functions.user)
+
+stmt25 = select(func.user())
 assert_type(stmt25, Select[str])
 
 # END GENERATED FUNCTION TYPING TESTS
