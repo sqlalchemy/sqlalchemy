@@ -260,6 +260,46 @@ class RowVersionTest(fixtures.TablesTest):
             )
 
 
+class AliasTypeReflectionTest(fixtures.TestBase):
+    """Test reflection of alias and CLR types via base-type fallback.
+
+    SYSNAME is a built-in alias for NVARCHAR(128); geography, geometry,
+    and hierarchyid are CLR types with no base system type row.
+    """
+
+    __only_on__ = "mssql"
+    __backend__ = True
+
+    def test_sysname_column_reflects_as_nvarchar(self, metadata, connection):
+        connection.exec_driver_sql(
+            "create table sysname_t (id integer primary key, name sysname)"
+        )
+
+        insp = inspect(connection)
+        cols = {c["name"]: c for c in insp.get_columns("sysname_t")}
+        assert isinstance(cols["name"]["type"], mssql.NVARCHAR)
+        assert not isinstance(cols["name"]["type"], sqltypes.NullType)
+
+    @testing.combinations(
+        "geography",
+        "geometry",
+        "hierarchyid",
+        argnames="type_name",
+    )
+    def test_clr_type_reflection(self, metadata, connection, type_name):
+        connection.exec_driver_sql(
+            "create table clr_t (id integer primary key, "
+            "data %s)" % type_name
+        )
+
+        with testing.expect_warnings(
+            "Did not recognize type '%s' of column 'data'" % type_name
+        ):
+            insp = inspect(connection)
+            cols = {c["name"]: c for c in insp.get_columns("clr_t")}
+        assert isinstance(cols["data"]["type"], sqltypes.NullType)
+
+
 class TypeDDLTest(fixtures.TestBase):
     def test_boolean(self):
         "Exercise type specification for boolean type."
@@ -576,10 +616,6 @@ class TypeDDLTest(fixtures.TestBase):
             ValueError, "length must be None or 'max' when setting filestream"
         ):
             mssql.MSVarBinary(length=1000, filestream=True)
-
-    def test_sysname_in_ischema_names(self):
-        dialect = mssql.dialect()
-        is_(dialect.ischema_names["sysname"], mssql.NVARCHAR)
 
 
 class TypeRoundTripTest(

@@ -1669,9 +1669,6 @@ ischema_names = {
     "smallmoney": SMALLMONEY,
     "uniqueidentifier": UNIQUEIDENTIFIER,
     "sql_variant": SQL_VARIANT,
-    # sysname is a SQL Server system-defined alias for NVARCHAR(128) NOT NULL.
-    # it appears in system catalogs and can be used in user tables.
-    "sysname": NVARCHAR,
 }
 
 
@@ -3696,6 +3693,7 @@ order by
     def get_columns(self, connection, tablename, dbname, owner, schema, **kw):
         sys_columns = ischema.sys_columns
         sys_types = ischema.sys_types
+        sys_base_types = ischema.sys_types.alias("base_types")
         sys_default_constraints = ischema.sys_default_constraints
         computed_cols = ischema.computed_columns
         identity_cols = ischema.identity_columns
@@ -3737,6 +3735,7 @@ order by
             sql.select(
                 sys_columns.c.name,
                 sys_types.c.name,
+                sys_base_types.c.name.label("base_type"),
                 sys_columns.c.is_nullable,
                 sys_columns.c.max_length,
                 sys_columns.c.precision,
@@ -3755,6 +3754,15 @@ order by
                 sys_types,
                 onclause=sys_columns.c.user_type_id
                 == sys_types.c.user_type_id,
+            )
+            .outerjoin(
+                sys_base_types,
+                onclause=sql.and_(
+                    sys_types.c.system_type_id
+                    == sys_base_types.c.system_type_id,
+                    sys_base_types.c.user_type_id
+                    == sys_base_types.c.system_type_id,
+                ),
             )
             .outerjoin(
                 sys_default_constraints,
@@ -3802,6 +3810,7 @@ order by
         for row in c.mappings():
             name = row[sys_columns.c.name]
             type_ = row[sys_types.c.name]
+            base_type = row["base_type"]
             nullable = row[sys_columns.c.is_nullable] == 1
             maxlen = row[sys_columns.c.max_length]
             numericprec = row[sys_columns.c.precision]
@@ -3815,7 +3824,13 @@ order by
             identity_increment = row[identity_cols.c.increment_value]
             comment = row[extended_properties.c.value]
 
+            # Try to resolve the user type first (e.g., "sysname"),
+            # then fall back to the base type (e.g., "nvarchar").
+            # base_type may be None for CLR types (geography, geometry,
+            # hierarchyid) which have no corresponding base type.
             coltype = self.ischema_names.get(type_, None)
+            if coltype is None and base_type is not None and base_type != type_:
+                coltype = self.ischema_names.get(base_type, None)
 
             kwargs = {}
 
@@ -3843,10 +3858,16 @@ order by
                     kwargs["collation"] = collation
 
             if coltype is None:
-                util.warn(
-                    "Did not recognize type '%s' of column '%s'"
-                    % (type_, name)
-                )
+                if base_type is not None and base_type != type_:
+                    util.warn(
+                        "Did not recognize type '%s' (user type) or '%s' "
+                        "(base type) of column '%s'" % (type_, base_type, name)
+                    )
+                else:
+                    util.warn(
+                        "Did not recognize type '%s' of column '%s'"
+                        % (type_, name)
+                    )
                 coltype = sqltypes.NULLTYPE
             else:
                 if issubclass(coltype, sqltypes.NumericCommon):
