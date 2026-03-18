@@ -3829,7 +3829,11 @@ order by
             # base_type may be None for CLR types (geography, geometry,
             # hierarchyid) which have no corresponding base type.
             coltype = self.ischema_names.get(type_, None)
-            if coltype is None and base_type is not None and base_type != type_:
+            if (
+                coltype is None
+                and base_type is not None
+                and base_type != type_
+            ):
                 coltype = self.ischema_names.get(base_type, None)
 
             kwargs = {}
