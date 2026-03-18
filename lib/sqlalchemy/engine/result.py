@@ -966,7 +966,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         self.close()
 
     def close(self) -> None:
-        """close this :class:`_engine.Result`.
+        """Hard close this :class:`_engine.Result`.
 
         The behavior of this method is implementation specific, and is
         not implemented by default.    The method should generally end
@@ -993,9 +993,19 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
 
     @property
     def closed(self) -> bool:
-        """return ``True`` if this :class:`_engine.Result` reports .closed
+        """Return ``True`` if this :class:`_engine.Result` was **hard closed**
+        by explicitly calling the :meth:`close` method.
 
-        .. versionadded:: 1.4.43
+        The attribute is **not** True if the :class:`_engine.Result` was only
+        **soft closed**; a "soft close" is the style of close that takes place
+        for example when the :class:`.CursorResult` is returned for a DML
+        only statement without RETURNING, or when all result rows are fetched.
+
+        .. seealso::
+
+            :attr:`.CursorResult.returns_rows` -  attribute specific to
+            :class:`.CursorResult` which indicates if the result is one that
+            may return zero or more rows
 
         """
         raise NotImplementedError()
@@ -1661,10 +1671,13 @@ class FilterResult(ResultInternal[_R]):
 
     @property
     def closed(self) -> bool:
-        """Return ``True`` if the underlying :class:`_engine.Result` reports
-        closed
+        """Return ``True`` if this :class:`_engine.Result` being
+        proxied by this :class:`_engine.FilterResult` was
+        **hard closed** by explicitly calling the :meth:`_engine.Result.close`
+        method.
 
-        .. versionadded:: 1.4.43
+        This is a direct proxy for the :attr:`_engine.Result.closed` attribute;
+        see that attribute for details.
 
         """
         return self._real_result.closed
@@ -2239,10 +2252,20 @@ class IteratorResult(Result[_TP]):
 
     @property
     def closed(self) -> bool:
-        """Return ``True`` if this :class:`_engine.IteratorResult` has
-        been closed
+        """Return ``True`` if this :class:`_engine.IteratorResult` was
+        **hard closed** by explicitly calling the :meth:`_engine.Result.close`
+        method.
 
-        .. versionadded:: 1.4.43
+        The attribute is **not** True if the :class:`_engine.Result` was only
+        **soft closed**; a "soft close" is the style of close that takes place
+        for example when the :class:`.CursorResult` is returned for a DML
+        only statement without RETURNING, or when all result rows are fetched.
+
+        .. seealso::
+
+            :attr:`.CursorResult.returns_rows` -  attribute specific to
+            :class:`.CursorResult` which indicates if the result is one that
+            may return zero or more rows
 
         """
         return self._hard_closed
