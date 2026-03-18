@@ -1352,3 +1352,45 @@ class IdentityReflectionTest(fixtures.TablesTest):
             is_true("dialect_options" not in col)
             is_true("identity" in col)
             eq_(col["identity"], {})
+
+
+class AliasTypeReflectionTest(fixtures.TestBase):
+    """Test reflection of alias and CLR types via base-type fallback.
+
+    issue #13181
+
+    SYSNAME is a built-in alias for NVARCHAR(128); geography, geometry,
+    and hierarchyid are CLR types with no base system type row.
+    """
+
+    __only_on__ = "mssql"
+    __backend__ = True
+
+    def test_sysname_column_reflects_as_nvarchar(self, metadata, connection):
+        connection.exec_driver_sql(
+            "create table sysname_t (id integer primary key, name sysname)"
+        )
+
+        insp = inspect(connection)
+        cols = {c["name"]: c for c in insp.get_columns("sysname_t")}
+        assert isinstance(cols["name"]["type"], mssql.NVARCHAR)
+        assert not isinstance(cols["name"]["type"], sqltypes.NullType)
+
+    @testing.combinations(
+        "geography",
+        "geometry",
+        "hierarchyid",
+        argnames="type_name",
+    )
+    def test_clr_type_reflection(self, metadata, connection, type_name):
+        connection.exec_driver_sql(
+            "create table clr_t (id integer primary key, "
+            "data %s)" % type_name
+        )
+
+        with testing.expect_warnings(
+            "Did not recognize type '%s' of column 'data'" % type_name
+        ):
+            insp = inspect(connection)
+            cols = {c["name"]: c for c in insp.get_columns("clr_t")}
+        assert isinstance(cols["data"]["type"], sqltypes.NullType)
