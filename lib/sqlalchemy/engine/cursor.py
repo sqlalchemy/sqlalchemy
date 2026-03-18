@@ -2334,6 +2334,11 @@ class CursorResult(Result[Unpack[_Ts]]):
         using the MSSQL / pyodbc dialect a SELECT is emitted inline in
         order to retrieve an inserted primary key value.
 
+        .. seealso::
+
+            :meth:`.Result.close`
+
+            :attr:`.Result.closed`
 
         """
         return self._metadata.returns_rows
