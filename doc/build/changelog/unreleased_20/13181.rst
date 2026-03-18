@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 13181, 13182
+
+    Fixed regression from version 2.0.42 caused by :ticket:`12654` where the
+    updated column reflection query would receive SQL Server "type alias" names
+    for special types such as ``sysname``, whereas previously the base name
+    would be received (e.g. ``nvarchar`` for ``sysname``), leading to warnings
+    that such types could not be reflected and resulting in :class:`.NullType`,
+    rather than the expected :class:`.NVARCHAR` for a type like ``sysname``.
+    The column reflection query now joins ``sys.types`` a second time to look
+    up the base type when the user type name is not present in
+    :attr:`.MSDialect.ischema_names`, and both names are checked in
+    :attr:`.MSDialect.ischema_names` for a match. Pull request courtesy Carlos
+    Serrano.
