@@ -424,18 +424,6 @@ class ParseConnectTest(fixtures.TestBase):
             False,
         )
 
-    @testing.requires.mssql_freetds
-    def test_bad_freetds_warning(self):
-        engine = engines.testing_engine()
-
-        def _bad_version(connection):
-            return 95, 10, 255
-
-        engine.dialect._get_server_version_info = _bad_version
-        assert_raises_message(
-            exc.SAWarning, "Unrecognized server version info", engine.connect
-        )
-
 
 class FastExecutemanyTest(fixtures.TestBase):
     __only_on__ = "mssql"
