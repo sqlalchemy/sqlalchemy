@@ -1,0 +1,7 @@
+.. change::
+    :tags: postgresql, bug
+    :tickets: 10902
+
+    Fixed regular expression used when reflecting foreign keys in PostgreSQL to
+    support escaped quotes in table names.
+    Pull request courtesy of Austin Graham
