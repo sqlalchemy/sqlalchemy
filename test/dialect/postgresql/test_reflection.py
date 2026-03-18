@@ -1181,6 +1181,29 @@ class RegexTest(fixtures.TestBase):
                 referred_schema='"schema_スキーマ"',
             ),
         ),
+        # Tests quoted identifiers containing characters
+        # not valid in unquoted SQL identifiers
+        (
+            'FOREIGN KEY ("tid 1", "tid-2") '
+            'REFERENCES some_schema."some table"(id1, id2)',
+            _fk_match(
+                '"tid 1", "tid-2"',
+                '"some table"',
+                "id1, id2",
+                referred_schema="some_schema",
+            ),
+        ),
+        # Tests more quotes escaped within a quote string
+        (
+            "FOREIGN KEY (tid_1, tid_2) "
+            'REFERENCES some_schema."""some_table"""(id1, id2)',
+            _fk_match(
+                "tid_1, tid_2",
+                '"""some_table"""',
+                "id1, id2",
+                referred_schema="some_schema",
+            ),
+        ),
     )
     def test_fk_parsing(self, condef, expected):
 
