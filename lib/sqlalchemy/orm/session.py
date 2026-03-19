@@ -3907,7 +3907,7 @@ class Session(_SessionClassMethods, EventTarget):
         if (
             not populate_existing
             and not mapper.always_refresh
-            and with_for_update is None
+            and not with_for_update
         ):
             instance = self._identity_lookup(
                 mapper,
