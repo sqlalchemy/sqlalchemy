@@ -49,7 +49,7 @@ DB_CLI_NAMES = {
         "greenlet": {"asyncmy", "aiomysql"},
     },
     "oracle": {
-        "nogreenlet": {"cx_oracle", "oracledb"},
+        "nogreenlet": {"oracledb"},
         "greenlet": {"oracledb_async"},
     },
     "mssql": {
