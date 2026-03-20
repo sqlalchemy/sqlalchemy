@@ -4507,7 +4507,7 @@ class PGDialect(default.DefaultDialect):
     @util.memoized_property
     def _fk_regex_pattern(self):
         # optionally quoted token
-        qtoken = r'(?:"[^"]+"|[\w]+?)'
+        qtoken = r'(?:"(?:[^"]|"")+"|[\w]+?)'
 
         # https://www.postgresql.org/docs/current/static/sql-createtable.html
         return re.compile(
