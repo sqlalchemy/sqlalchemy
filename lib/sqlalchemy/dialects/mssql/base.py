@@ -3306,13 +3306,6 @@ class MSDialect(default.DefaultDialect):
         self._setup_supports_comments(connection)
 
     def _setup_version_attributes(self):
-        if self.server_version_info[0] not in list(range(8, 17)):
-            util.warn(
-                "Unrecognized server version info '%s'.  Some SQL Server "
-                "features may not function properly."
-                % ".".join(str(x) for x in self.server_version_info)
-            )
-
         if self.server_version_info >= MS_2008_VERSION:
             self.supports_multivalues_insert = True
         else:
