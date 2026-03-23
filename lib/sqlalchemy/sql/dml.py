@@ -1125,6 +1125,9 @@ class ValuesBase(UpdateBase):
                the traditional Core method of multiple parameter set
                invocation for INSERTs and other statements.
 
+               :ref:`tutorial_core_insert_values_clause` - Insert tutorial
+               detailing alternatives to the multiple values syntax.
+
           The UPDATE construct also supports rendering the SET parameters
           in a specific order.  For this feature refer to the
           :meth:`_expression.Update.ordered_values` method.
