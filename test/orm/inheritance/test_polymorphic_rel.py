@@ -1147,6 +1147,44 @@ class _PolymorphicTestBase:
 
         self.assert_sql_count(testing.db, go, 2)
 
+    def test_chained_joinedload_with_polymorphic_inherited_rel(self):
+        """test #13193
+
+        Chained joinedload where the final relationship is declared on a
+        base mapper but accessed through a subclass in a with_polymorphic
+        query. The loader should correctly find the option even though the
+        lookup path uses the declaring mapper.
+        """
+        sess = fixture_session()
+
+        def go():
+            # paperwork is declared on Person but we're accessing via Engineer
+            # Using with_polymorphic for Company->employees and chaining to
+            # Engineer.paperwork which is inherited from Person.paperwork
+            result = (
+                sess.query(Company)
+                .options(
+                    joinedload(Company.employees.of_type(Engineer)).joinedload(
+                        Engineer.paperwork
+                    )
+                )
+                .filter(Company.company_id == 1)
+                .all()
+            )
+            eq_(len(result), 1)
+            company = result[0]
+            engineers = [
+                e for e in company.employees if isinstance(e, Engineer)
+            ]
+            # Verify engineers loaded (should be > 0)
+            assert len(engineers) > 0
+            # Access paperwork - should not trigger additional SQL
+            for eng in engineers:
+                _ = list(eng.paperwork)
+
+        # Should be 1 query with all joins including paperwork
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_query_subclass_join_to_base_relationship(self):
         sess = fixture_session()
         # non-polymorphic
