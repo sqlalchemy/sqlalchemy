@@ -2825,6 +2825,33 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_floordiv_op_numeric(self):
         self.assert_compile(5.10 // literal(5.5), "FLOOR(:param_1 / :param_2)")
 
+    def test_floordiv_float_by_int(self):
+        """float // int must include FLOOR even with div_is_floordiv dialect"""
+        expr = column("a", Float()) // column("b", Integer())
+        self.assert_compile(
+            expr,
+            "FLOOR(a / b)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_floordiv_numeric_by_int(self):
+        """numeric // int must include FLOOR even with div_is_floordiv dialect"""
+        expr = column("a", Numeric()) // column("b", Integer())
+        self.assert_compile(
+            expr,
+            "FLOOR(a / b)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_floordiv_int_by_int_pg(self):
+        """int // int can skip FLOOR when dialect has div_is_floordiv"""
+        expr = column("a", Integer()) // column("b", Integer())
+        self.assert_compile(
+            expr,
+            "a / b",
+            dialect=postgresql.dialect(),
+        )
+
     @testing.combinations(
         ("format", "mytable.myid %% %s"),
         ("qmark", "mytable.myid % ?"),
