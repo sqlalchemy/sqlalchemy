@@ -2447,7 +2447,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T], Named[_T]):
 
         self._extra_kwargs(**dialect_kwargs)
 
-    table: Table
+    table: Optional[Table]
 
     constraints: Set[Constraint]
 
