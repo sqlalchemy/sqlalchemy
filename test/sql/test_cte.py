@@ -86,7 +86,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "top_regions AS (SELECT "
             "regional_sales.region AS region FROM regional_sales "
             "WHERE regional_sales.total_sales > "
-            "(SELECT sum(regional_sales.total_sales) / :sum_1 AS "
+            "(SELECT FLOOR(sum(regional_sales.total_sales) / :sum_1) AS "
             "anon_1 FROM regional_sales)) "
             "SELECT orders.region, orders.product, "
             "sum(orders.quantity) AS product_units, "
