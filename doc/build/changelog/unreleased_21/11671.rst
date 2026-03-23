@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 11671
+
+    Add the `exclude` parameter to the `Over` construct and all `.over()`
+    methods, enabling SQL standard frame exclusion clauses
+    `EXCLUDE CURRENT ROW`, `EXCLUDE GROUP`, `EXCLUDE TIES`,
+    `EXCLUDE NO OTHERS` in window functions.
+    Pull request courtesy of Varun Chawla.

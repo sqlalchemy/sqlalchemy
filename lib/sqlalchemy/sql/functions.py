@@ -463,6 +463,7 @@ class FunctionElement(
         rows: _FrameIntTuple | FrameClause | None = None,
         range_: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
+        exclude: str | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this function.
 
@@ -495,6 +496,7 @@ class FunctionElement(
             rows=rows,
             range_=range_,
             groups=groups,
+            exclude=exclude,
         )
 
     def aggregate_order_by(
