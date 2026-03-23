@@ -23,6 +23,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -3102,4 +3103,159 @@ class JoinedLoadSpliceFromJoinedTest(
             "JOIN sub_model_element AS sub_model_element_1 "
             "ON base_model_1.id = sub_model_element_1.model_id"
             "",
+        )
+
+
+class ChainedJoinedloadInheritedRelationshipTest(
+    fixtures.MappedTest, AssertsCompiledSQL
+):
+    """test #13193 - chained joinedload with inherited relationships
+
+    When using with_polymorphic() and chained joinedload() where the final
+    relationship is inherited from a base mapper, verify that the loader
+    is correctly found and applied.
+    """
+
+    __dialect__ = "default"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "meta",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+
+        Table(
+            "top",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("type", String(50)),
+            Column("meta_id", Integer, ForeignKey("meta.id")),
+        )
+
+        Table(
+            "foo",
+            metadata,
+            Column("id", Integer, ForeignKey("top.id"), primary_key=True),
+        )
+
+        Table(
+            "bar",
+            metadata,
+            Column("id", Integer, ForeignKey("top.id"), primary_key=True),
+            Column("foo_id", Integer, ForeignKey("foo.id")),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Meta(cls.Comparable):
+            pass
+
+        class Top(cls.Comparable):
+            pass
+
+        class Foo(Top):
+            pass
+
+        class Bar(Top):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Meta, Top, Foo, Bar = cls.classes("Meta", "Top", "Foo", "Bar")
+        meta, top, foo, bar = cls.tables("meta", "top", "foo", "bar")
+
+        cls.mapper_registry.map_imperatively(Meta, meta)
+
+        cls.mapper_registry.map_imperatively(
+            Top,
+            top,
+            polymorphic_on=top.c.type,
+            properties={"meta": relationship(Meta)},
+        )
+
+        cls.mapper_registry.map_imperatively(
+            Foo,
+            foo,
+            inherits=Top,
+            polymorphic_identity="FOO",
+        )
+
+        cls.mapper_registry.map_imperatively(
+            Bar,
+            bar,
+            inherits=Top,
+            polymorphic_identity="BAR",
+            properties={"foo": relationship(Foo, foreign_keys=[bar.c.foo_id])},
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        meta, top, foo, bar = cls.tables("meta", "top", "foo", "bar")
+
+        connection.execute(meta.insert(), [{"id": 1, "name": "meta1"}])
+        connection.execute(
+            top.insert(),
+            [
+                {"id": 1, "type": "FOO", "meta_id": 1},
+                {"id": 2, "type": "BAR", "meta_id": 1},
+            ],
+        )
+        connection.execute(foo.insert(), [{"id": 1}])
+        connection.execute(bar.insert(), [{"id": 2, "foo_id": 1}])
+
+    @testing.variation("use_of_type", ["plain", "aliased"])
+    def test_chained_joinedload_inherited_relationship(self, use_of_type):
+        """Test chained joinedload where final rel is inherited from base.
+
+        The 'meta' relationship is declared on Top but accessed via Foo.
+        The loader should be found whether we use plain Foo or aliased(Foo).
+        """
+        Top, Foo, Bar = self.classes("Top", "Foo", "Bar")
+        sess = fixture_session()
+
+        tp = with_polymorphic(Top, "*", flat=True)
+
+        if use_of_type.plain:
+            # joinedload(tp.Bar.foo).joinedload(Foo.meta)
+            options = [joinedload(tp.Bar.foo).joinedload(Foo.meta)]
+        elif use_of_type.aliased:
+            # joinedload(tp.Bar.foo.of_type(foo_alias)).joinedload(foo_alias.meta)
+            foo_alias = aliased(Foo, flat=True)
+            options = [
+                joinedload(tp.Bar.foo.of_type(foo_alias)).joinedload(
+                    foo_alias.meta
+                )
+            ]
+
+        # Verify SQL includes join to meta table
+        with self.sql_execution_asserter(testing.db) as asserter:
+            result = sess.query(tp).options(*options).all()
+
+            # Verify round-trip: data loads correctly
+            eq_(len(result), 2)
+            bar_obj = [r for r in result if isinstance(r, Bar)][0]
+            eq_(bar_obj.foo.meta.name, "meta1")
+
+        # Should have exactly one query with the meta join
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT top_1.id AS top_1_id, top_1.type AS top_1_type, "
+                "top_1.meta_id AS top_1_meta_id, "
+                "foo_1.id AS foo_1_id, bar_1.id AS bar_1_id, "
+                "bar_1.foo_id AS bar_1_foo_id, "
+                "meta_1.id AS meta_1_id, meta_1.name AS meta_1_name, "
+                "foo_2.id AS foo_2_id, top_2.id AS top_2_id, "
+                "top_2.type AS top_2_type, top_2.meta_id AS top_2_meta_id "
+                "FROM top AS top_1 "
+                "LEFT OUTER JOIN foo AS foo_1 ON top_1.id = foo_1.id "
+                "LEFT OUTER JOIN bar AS bar_1 ON top_1.id = bar_1.id "
+                "LEFT OUTER JOIN "
+                "(top AS top_2 JOIN foo AS foo_2 ON top_2.id = foo_2.id) "
+                "ON foo_2.id = bar_1.foo_id "
+                "LEFT OUTER JOIN meta AS meta_1 "
+                "ON meta_1.id = top_2.meta_id"
+            )
         )
