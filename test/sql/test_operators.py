@@ -5314,6 +5314,7 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         argnames="py_op, sql_op",
     )
     @testing.variation("named", ["column", "unnamed", "label"])
+    @testing.emits_warning("Column-expression-level unary distinct")
     def test_wraps_named_column_heuristic(self, py_op, sql_op, named):
         """test for #12681"""
 
@@ -5325,7 +5326,6 @@ class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 select(expr),
                 f"SELECT {sql_op}q",
             )
-
         elif named.unnamed:
             expr = py_op(literal("x", Integer))
             assert isinstance(expr, UnaryExpression)

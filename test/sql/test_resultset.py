@@ -972,6 +972,7 @@ class CursorResultTest(fixtures.TablesTest):
         not_in("user_name", r._mapping)
         eq_(list(r._fields), ["users.user_id", "users.user_name"])
 
+    @testing.emits_warning("Column-expression-level unary distinct")
     def test_column_accessor_unary(self, connection):
         users = self.tables.users
 

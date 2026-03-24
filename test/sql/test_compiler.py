@@ -1940,24 +1940,21 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=default.DefaultDialect(supports_native_boolean=True),
         )
 
-    def test_distinct(self):
+    def test_distinct_select_modifier(self):
         self.assert_compile(
-            select(table1.c.myid.distinct()),
+            select(table1.c.myid).distinct(),
             "SELECT DISTINCT mytable.myid FROM mytable",
         )
 
         self.assert_compile(
-            select(distinct(table1.c.myid)),
-            "SELECT DISTINCT mytable.myid FROM mytable",
+            select(table1.c.myid)
+            .distinct()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            "SELECT DISTINCT mytable.myid AS mytable_myid FROM mytable",
         )
 
-        self.assert_compile(
-            select(distinct(table1.c.myid)).set_label_style(
-                LABEL_STYLE_TABLENAME_PLUS_COL
-            ),
-            "SELECT DISTINCT mytable.myid FROM mytable",
-        )
-
+    @testing.emits_warning("Column-expression-level unary distinct")
+    def test_distinct_function_6008(self):
         # the bug fixed here as part of #6008 is the same bug that's
         # in 1.3 as well, producing
         # "SELECT anon_2.anon_1 FROM (SELECT distinct mytable.myid
@@ -1969,8 +1966,15 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select(table1.c.myid).distinct(),
-            "SELECT DISTINCT mytable.myid FROM mytable",
+            select(select(table1.c.myid.distinct()).subquery()),
+            "SELECT anon_2.anon_1 FROM (SELECT "
+            "DISTINCT mytable.myid AS anon_1 FROM mytable) AS anon_2",
+        )
+
+    def test_distinct_function(self):
+        self.assert_compile(
+            select(func.sum(distinct(table1.c.myid))),
+            "SELECT sum(DISTINCT mytable.myid) AS sum_1 FROM mytable",
         )
 
         self.assert_compile(
@@ -1982,6 +1986,23 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             select(func.count(distinct(table1.c.myid))),
             "SELECT count(DISTINCT mytable.myid) AS count_1 FROM mytable",
         )
+
+    def test_distinct_function_warn_outside_aggregate(self):
+        with testing.expect_warnings(
+            "Column-expression-level unary distinct.*SELECT DISTINCT"
+        ):
+            self.assert_compile(
+                select(distinct(table1.c.myid)),
+                "SELECT DISTINCT mytable.myid FROM mytable",
+            )
+
+        with testing.expect_warnings(
+            "Column-expression-level unary distinct.*SELECT DISTINCT"
+        ):
+            self.assert_compile(
+                select(table1.c.myid.distinct()),
+                "SELECT DISTINCT mytable.myid FROM mytable",
+            )
 
     def test_distinct_on(self):
         with testing.expect_deprecated(

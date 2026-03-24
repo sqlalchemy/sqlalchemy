@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 11526
+
+    A warning is emitted when using the standalone :func:`_.sql.distinct`
+    function in a :func:`_sql.select` columns list outside of an aggregate
+    function; this function is not intended as a replacement for the use of
+    :meth:`.Select.distinct`. Pull request courtesy bekapono.

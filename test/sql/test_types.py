@@ -3943,11 +3943,13 @@ class ExpressionTest(
 
     def test_distinct(self, connection):
         test_table = self.tables.test
-
-        s = select(distinct(test_table.c.avalue))
+        s = select(test_table.c.avalue).distinct()
         eq_(connection.execute(s).scalar(), 25)
 
-        s = select(test_table.c.avalue.distinct())
+        s = select(func.sum(test_table.c.avalue.distinct()))
+        eq_(connection.execute(s).scalar(), 25)
+
+        s = select(func.sum(distinct(test_table.c.avalue)))
         eq_(connection.execute(s).scalar(), 25)
 
         assert distinct(test_table.c.data).type == test_table.c.data.type

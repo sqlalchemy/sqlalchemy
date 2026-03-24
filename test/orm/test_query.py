@@ -4625,10 +4625,11 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             .all(),
         )
 
+    @testing.emits_warning("Column-expression-level unary distinct")
     def test_basic_standalone(self):
         User = self.classes.User
 
-        # issue 6008.  the UnaryExpression now places itself into the
+        # issue #6008.  the UnaryExpression now places itself into the
         # result map so that it can be matched positionally without the need
         # for any label.
         q = fixture_session().query(distinct(User.id)).order_by(User.id)
@@ -4637,10 +4638,12 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         )
         eq_([(7,), (8,), (9,), (10,)], q.all())
 
+    @testing.emits_warning("Column-expression-level unary distinct")
     def test_standalone_w_subquery(self):
+        # additional test for #6008
         User = self.classes.User
-        q = fixture_session().query(distinct(User.id))
 
+        q = fixture_session().query(distinct(User.id))
         subq = q.subquery()
         q = fixture_session().query(subq).order_by(subq.c[0])
         eq_([(7,), (8,), (9,), (10,)], q.all())

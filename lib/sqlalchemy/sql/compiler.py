@@ -3119,6 +3119,8 @@ class SQLCompiler(Compiled):
 
         text: str
 
+        kwargs["within_aggregate_function"] = True
+
         if disp:
             text = disp(func, **kwargs)
         else:
@@ -3256,6 +3258,16 @@ class SQLCompiler(Compiled):
             result_map_targets += (unary,)
             kw["add_to_result_map"] = add_to_result_map
             kw["result_map_targets"] = result_map_targets
+
+        if unary.operator is operators.distinct_op and not kw.get(
+            "within_aggregate_function", False
+        ):
+            util.warn(
+                "Column-expression-level unary distinct() "
+                "should not be used outside of an aggregate "
+                "function. For general 'SELECT DISTINCT' support"
+                "use select().distinct()."
+            )
 
         if unary.operator:
             if unary.modifier:
