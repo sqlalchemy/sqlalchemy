@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 13198
+
+    The ``metadata``, ``type_annotation_map``, or ``registry`` can now be
+    set up in a declarative base also via a mixin class, not only by
+    directly setting them on the subclass like before.
+    The declarative class setup now uses ``getattr()`` to look for these
+    attributes, instead of relying only on the class ``__dict__``.

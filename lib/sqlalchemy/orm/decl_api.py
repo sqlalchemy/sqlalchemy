@@ -529,17 +529,10 @@ def declarative_mixin(cls: Type[_T]) -> Type[_T]:
 
 
 def _setup_declarative_base(cls: Type[Any]) -> None:
-    if "metadata" in cls.__dict__:
-        metadata = cls.__dict__["metadata"]
-    else:
-        metadata = None
+    metadata = getattr(cls, "metadata", None)
+    type_annotation_map = getattr(cls, "type_annotation_map", None)
+    reg = getattr(cls, "registry", None)
 
-    if "type_annotation_map" in cls.__dict__:
-        type_annotation_map = cls.__dict__["type_annotation_map"]
-    else:
-        type_annotation_map = None
-
-    reg = cls.__dict__.get("registry", None)
     if reg is not None:
         if not isinstance(reg, registry):
             raise exc.InvalidRequestError(

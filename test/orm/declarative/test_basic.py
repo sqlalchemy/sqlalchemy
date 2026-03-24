@@ -12,6 +12,7 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import literal
+from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -970,6 +971,69 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
             id_ = Column(Integer, primary_key=True)
 
         eq_(User._set_random_keyword_used_here, True)
+
+    @testing.variation(
+        "basetype", ["DeclarativeBase", "DeclarativeBaseNoMeta"]
+    )
+    @testing.variation("arg", ["registry", "meta", "type_map"])
+    @testing.variation("mixin", ["none", "first", "last"])
+    def test_declarative_base_provide_args(self, basetype, arg, mixin):
+        r = registry()
+        m = MetaData()
+        tm = {int: String}
+
+        def class_with_args(name, bases):
+            kw = {}
+            if arg.registry:
+                kw["registry"] = r
+            elif arg.meta:
+                kw["metadata"] = m
+            elif arg.type_map:
+                kw["type_annotation_map"] = tm
+            else:
+                arg.fail()
+            return type(name, bases, kw)
+
+        def make(base):
+            if mixin.first:
+                mixin_cls = class_with_args("Mixin", ())
+
+                class Base(mixin_cls, base):
+                    pass
+
+            elif mixin.last:
+                mixin_cls = class_with_args("Mixin", ())
+
+                class Base(
+                    base,
+                    mixin_cls,
+                ):
+                    pass
+
+            else:
+                Base = class_with_args("Base", (base,))
+            return Base
+
+        if basetype.DeclarativeBase:
+            Base = make(DeclarativeBase)
+        elif basetype.DeclarativeBaseNoMeta:
+            Base = make(DeclarativeBaseNoMeta)
+        else:
+            basetype.fail()
+
+        class MyClass(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            zeta: Mapped[int]
+
+        if arg.registry:
+            is_(Base.registry, r)
+            assertions.in_("a", r.metadata.tables)
+        elif arg.meta:
+            is_(Base.metadata, m)
+            assertions.in_("a", m.tables)
+        elif arg.type_map:
+            eq_(isinstance(MyClass.__table__.c.zeta.type, String), True)
 
     def test_declarative_base_bad_registry(self):
         with assertions.expect_raises_message(
