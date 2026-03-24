@@ -59,16 +59,9 @@ jobs:
 
         exclude:
 
-          # the threaded pythons are not stable under greenlet. Even
-          # though we can run individual tests, when you run the whole suite
-          # with xdist and the greenlet wrapper, the workers keep crashing
-          # and getting replaced
+          # t builds should now work fine on 3.14, but not worth it on 3.13
           - build-type: "cext-greenlet"
             python-version: "3.13t"
-
-          - build-type: "cext-greenlet"
-            python-version: "3.14t"
-
           # linux do not have x86 / arm64 python
           - os: "ubuntu-22.04"
             architecture: x86
