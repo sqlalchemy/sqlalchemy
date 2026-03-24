@@ -3251,11 +3251,14 @@ class SQLCompiler(Compiled):
             kw["add_to_result_map"] = add_to_result_map
             kw["result_map_targets"] = result_map_targets
 
-        if unary.operator is operators.distinct_op and not kw.get("within_aggregate_function", False):
+        if unary.operator is operators.distinct_op and not kw.get(
+            "within_aggregate_function", False
+        ):
             util.warn(
-                "Column-expression-level unary distinct() should not be used outside "
-                " of an aggregate function. For general `SELECT DISTINCT` support,"
-                " use select().distinct()"
+                "Column-expression-level unary distinct() "
+                "should not be used outside of an aggregate "
+                "function. For general 'SELECT DISTINCT' support"
+                "use select().distinct()."
             )
 
         if unary.operator:

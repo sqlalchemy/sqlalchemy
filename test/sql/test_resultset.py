@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 from sqlalchemy import CHAR
 from sqlalchemy import column
+from sqlalchemy import distinct
 from sqlalchemy import exc
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
@@ -977,11 +978,11 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(users.insert(), dict(user_id=1, user_name="john"))
 
-        r = connection.execute(
-            select(users.c.user_name).distinct().order_by(users.c.user_name)
-        ).first()
-        eq_(r._mapping[users.c.user_name], "john")
-        eq_(r.user_name, "john")
+        r = connection.execute(select(func.max(users.c.user_name.distinct())))
+        eq_(list(r), [("john",)])
+
+        r = connection.execute(select(func.max(distinct(users.c.user_name))))
+        eq_(list(r), [("john",)])
 
     @testing.fixture
     def _ab_row_fixture(self, connection):

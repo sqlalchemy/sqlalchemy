@@ -30,7 +30,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.sql.ddl import CreateView
-from sqlalchemy.testing import assert_raises_message, expect_warnings
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
