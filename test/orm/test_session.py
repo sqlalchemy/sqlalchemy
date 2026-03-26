@@ -642,6 +642,20 @@ class SessionUtilTest(_fixtures.FixtureTest):
         u2 = s.get(User, 7)
         is_not(u, u2)
 
+    def test_get_with_for_update_false_uses_identity_map(self):
+        """test #13176"""
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        s = fixture_session()
+        s.execute(
+            insert(self.tables.users),
+            [{"id": 7, "name": "7"}],
+        )
+        u = s.get(User, 7)
+        u2 = s.get(User, 7, with_for_update=False)
+        is_(u, u2)
+
     def test_get_one(self):
         users, User = self.tables.users, self.classes.User
         self.mapper_registry.map_imperatively(User, users)
