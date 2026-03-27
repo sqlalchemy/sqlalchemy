@@ -3904,10 +3904,12 @@ class Session(_SessionClassMethods, EventTarget):
                     )
                 ) from err
 
+        for_update_arg = ForUpdateArg._from_argument(with_for_update)
+
         if (
             not populate_existing
             and not mapper.always_refresh
-            and with_for_update is None
+            and for_update_arg is None
         ):
             instance = self._identity_lookup(
                 mapper,
@@ -3932,10 +3934,8 @@ class Session(_SessionClassMethods, EventTarget):
         if populate_existing:
             load_options += {"_populate_existing": populate_existing}
         statement = sql.select(mapper)
-        if with_for_update is not None:
-            statement._for_update_arg = ForUpdateArg._from_argument(
-                with_for_update
-            )
+        if for_update_arg is not None:
+            statement._for_update_arg = for_update_arg
 
         if options:
             statement = statement.options(*options)
