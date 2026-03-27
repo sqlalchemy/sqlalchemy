@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 13176
-
-    Fixed issue where :meth:`_orm.Session.get` would bypass the identity map
-    and emit unnecessary SQL when ``with_for_update=False`` was passed,
-    rather than treating it equivalently to the default of ``None``.
