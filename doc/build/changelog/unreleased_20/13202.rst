@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm, inheritance
+    :tickets: 13202
+
+    Fixed issue where using :meth:`_orm.Load.options` to apply a chained loader
+    option such as :func:`_orm.joinedload` or :func:`_orm.selectinload` with
+    :meth:`_orm.PropComparator.of_type` for a polymorphic relationship would
+    not generate the necessary clauses for the polymorphic subclasses. The
+    polymorphic loading strategy is now correctly propagated when using a call
+    such as ``joinedload(A.b).options(joinedload(B.c.of_type(poly)))`` to match
+    the behavior of direct chaining e.g.
+    ``joinedload(A.b).joinedload(B.c.of_type(poly))``.

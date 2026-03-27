@@ -1586,7 +1586,7 @@ class _LoadElement(
     def is_opts_only(self) -> bool:
         return bool(self.local_opts and self.strategy is None)
 
-    def _clone(self, **kw: Any) -> _LoadElement:
+    def _clone(self, **kw: Any) -> Self:
         cls = self.__class__
         s = cls.__new__(cls)
 
@@ -1807,7 +1807,7 @@ class _LoadElement(
 
         return self._prepend_path(parent.path)
 
-    def _prepend_path(self, path: PathRegistry) -> _LoadElement:
+    def _prepend_path(self, path: PathRegistry) -> Self:
         cloned = self._clone()
 
         assert cloned.strategy == self.strategy
@@ -1975,6 +1975,24 @@ class _AttributeStrategyLoad(_LoadElement):
             path = path.entity_path
 
         return path
+
+    def _prepend_path(self, path: PathRegistry) -> Self:
+        """Override to also prepend the path for _path_with_polymorphic_path.
+
+        When using .options() to chain loader options with of_type(), this
+        ensures that the polymorphic path information is correctly updated
+        to include the parent path. Fixes issue #13202.
+        """
+        cloned = super()._prepend_path(path)
+
+        # Also prepend the parent path to _path_with_polymorphic_path if
+        # present
+        if self._path_with_polymorphic_path is not None:
+            cloned._path_with_polymorphic_path = PathRegistry.coerce(
+                path[0:-1] + self._path_with_polymorphic_path[:]
+            )
+
+        return cloned
 
     def _generate_extra_criteria(self, context):
         """Apply the current bound parameters in a QueryContext to the

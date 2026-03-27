@@ -2,12 +2,14 @@ from sqlalchemy import and_
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
@@ -1246,3 +1248,127 @@ class SubclassRelationshipTest3(
 
     def test_aliased_join_flat_contains_eager_of_type_b1(self):
         self._test(join_of_type=False, of_type_for_c1=False, aliased_=True)
+
+
+class JoinedloadOfTypeOptionsTest(
+    testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest
+):
+    """Regression test for issue #13202."""
+
+    run_setup_classes = "once"
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(ComparableEntity, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B")
+
+        class B(ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer, ForeignKey("a.id"))
+            cs = relationship("C", lazy="joined")
+
+        class C(ComparableEntity, Base):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(Integer, ForeignKey("b.id"))
+            type = Column(String(50))
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class CSub(C):
+            __tablename__ = "c_sub"
+            id = Column(Integer, ForeignKey("c.id"), primary_key=True)
+            data = Column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "sub"}
+
+    @classmethod
+    def insert_data(cls, connection):
+        with Session(connection) as sess:
+            A, B, CSub = cls.classes("A", "B", "CSub")
+            sess.add(A(bs=[B(cs=[CSub(data="csub1")])]))
+            sess.commit()
+
+    @testing.variation("format_", ["chained", "suboption"])
+    @testing.variation("loader", ["joined", "selectin"])
+    def test_joinedload_of_type_chained_vs_options(
+        self, format_: testing.Variation, loader: testing.Variation
+    ):
+        """Test that joinedload().joinedload(...of_type()) and
+        joinedload().options(joinedload(...of_type())) generate equivalent SQL.
+
+        Regression test for issue #13202 where using .options() to apply
+        a nested joinedload with of_type() would not propagate the
+        polymorphic loading strategy correctly, resulting in missing
+        polymorphic LEFT OUTER JOIN clauses.
+        """
+        A, B, C, CSub = self.classes("A", "B", "C", "CSub")
+
+        c_poly = with_polymorphic(C, "*", flat=True)
+
+        if format_.chained:
+            if loader.selectin:
+                stmt = select(A).options(
+                    selectinload(A.bs).selectinload(B.cs.of_type(c_poly))
+                )
+            elif loader.joined:
+                stmt = select(A).options(
+                    joinedload(A.bs).joinedload(B.cs.of_type(c_poly))
+                )
+            else:
+                loader.fail()
+        elif format_.suboption:
+            if loader.selectin:
+                stmt = select(A).options(
+                    selectinload(A.bs).options(
+                        selectinload(B.cs.of_type(c_poly))
+                    )
+                )
+            elif loader.joined:
+                stmt = select(A).options(
+                    joinedload(A.bs).options(joinedload(B.cs.of_type(c_poly)))
+                )
+            else:
+                loader.fail()
+        else:
+            format_.fail()
+
+        session = fixture_session()
+        with self.sql_execution_asserter(testing.db) as asserter_:
+            eq_(
+                session.scalars(stmt).unique().all(),
+                [A(bs=[B(cs=[CSub(data="csub1")])])],
+            )
+
+        if loader.selectin:
+            asserter_.assert_(
+                CompiledSQL("SELECT a.id FROM a"),
+                CompiledSQL(
+                    "SELECT b.a_id AS b_a_id, b.id AS b_id FROM b WHERE b.a_id"
+                    " IN (__[POSTCOMPILE_primary_keys])"
+                ),
+                CompiledSQL(
+                    "SELECT c_1.b_id AS c_1_b_id, c_1.id AS c_1_id, c_1.type"
+                    " AS c_1_type, c_sub_1.id AS c_sub_1_id, c_sub_1.data AS"
+                    " c_sub_1_data FROM c AS c_1 LEFT OUTER JOIN c_sub AS"
+                    " c_sub_1 ON c_1.id = c_sub_1.id WHERE c_1.b_id IN"
+                    " (__[POSTCOMPILE_primary_keys])"
+                ),
+            )
+        elif loader.joined:
+            asserter_.assert_(
+                CompiledSQL(
+                    "SELECT a.id, c_1.id AS id_1, c_1.b_id, c_1.type,"
+                    " c_sub_1.id AS id_2, c_sub_1.data, b_1.id AS id_3,"
+                    " b_1.a_id FROM a LEFT OUTER JOIN b AS b_1 ON a.id ="
+                    " b_1.a_id LEFT OUTER JOIN (c AS c_1 LEFT OUTER JOIN c_sub"
+                    " AS c_sub_1 ON c_1.id = c_sub_1.id) ON b_1.id = c_1.b_id"
+                )
+            )
