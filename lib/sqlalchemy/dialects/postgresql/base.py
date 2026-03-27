@@ -1831,6 +1831,30 @@ from ...types import TEXT
 from ...types import UUID as UUID
 from ...types import VARCHAR
 
+
+def _strip_outer_parens(text):
+    """Strip only balanced outer parentheses from constraint text.
+
+    Unlike a naive greedy regex, this correctly handles expressions
+    like '(a > 1) AND (b < 2)' where inner parens must be preserved.
+    """
+    text = text.strip()
+    if not text.startswith("(") or not text.endswith(")"):
+        return text
+    depth = 0
+    for i, ch in enumerate(text):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if depth == 0:
+            # Found the closing paren matching the first opening paren
+            if i == len(text) - 1:
+                return text[1:-1].strip()
+            return text
+    return text
+
+
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 
 RESERVED_WORDS = {
@@ -5503,9 +5527,7 @@ class PGDialect(default.DefaultDialect):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = re.compile(
-                    r"^[\s\n]*\((.+)\)[\s\n]*$", flags=re.DOTALL
-                ).sub(r"\1", m.group(1))
+                sqltext = _strip_outer_parens(m.group(1))
             entry = {
                 "name": check_name,
                 "sqltext": sqltext,
