@@ -2805,3 +2805,76 @@ class SubqueryCriteriaTest(fixtures.DeclarativeMappedTest):
                 ("Red-2", ["Red-1", "Orange-2"]),
             ],
         )
+
+
+class JoinedloadOfTypeAndTest(fixtures.DeclarativeMappedTest):
+    """test #13203
+
+    joinedload + of_type() + .and_() with a subclass column should
+    adapt the column reference to the subquery alias.
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Animal(Base):
+            __tablename__ = "animal"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str] = mapped_column(String(50))
+            name: Mapped[str] = mapped_column(String(50))
+            owner_id: Mapped[int] = mapped_column(
+                ForeignKey("owner.id"), nullable=True
+            )
+            owner = relationship("Owner", back_populates="animals")
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "animal",
+            }
+
+        class Dog(Animal):
+            __tablename__ = "dog"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("animal.id"), primary_key=True
+            )
+            breed: Mapped[str] = mapped_column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "dog"}
+
+        class Owner(Base):
+            __tablename__ = "owner"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column(String(50))
+            animals = relationship("Animal", back_populates="owner")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Animal, Dog, Owner = cls.classes("Animal", "Dog", "Owner")
+        with Session(connection) as s:
+            o = Owner(id=1, name="Alice")
+            s.add(o)
+            s.flush()
+            s.add(Dog(id=1, name="Rex", breed="Lab", owner=o))
+            s.add(Animal(id=2, name="Generic", type="animal", owner=o))
+            s.commit()
+
+    def test_joinedload_of_type_and_subclass_col(self):
+        Animal, Dog, Owner = self.classes("Animal", "Dog", "Owner")
+
+        s = fixture_session()
+        stmt = select(Owner).options(
+            joinedload(Owner.animals.of_type(Dog).and_(Dog.breed == "Lab"))
+        )
+        result = s.execute(stmt).unique().scalars().all()
+        eq_(len(result), 1)
+        eq_(result[0].name, "Alice")
+
+    def test_selectinload_of_type_and_subclass_col(self):
+        Animal, Dog, Owner = self.classes("Animal", "Dog", "Owner")
+
+        s = fixture_session()
+        stmt = select(Owner).options(
+            selectinload(Owner.animals.of_type(Dog).and_(Dog.breed == "Lab"))
+        )
+        result = s.execute(stmt).unique().scalars().all()
+        eq_(len(result), 1)
+        eq_(result[0].name, "Alice")

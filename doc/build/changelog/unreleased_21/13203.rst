@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13203
+
+    Fixed issue where using :func:`_orm.joinedload` with
+    :meth:`.PropComparator.of_type` targeting a joined-table subclass
+    combined with :meth:`.PropComparator.and_` referencing a column on
+    that subclass would generate invalid SQL, where the subclass column
+    was not adapted to the subquery alias.
