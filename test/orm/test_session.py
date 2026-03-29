@@ -628,6 +628,48 @@ class SessionUtilTest(_fixtures.FixtureTest):
         u2 = s.get(User, 7)
         is_not(u, u2)
 
+    @testing.variation(
+        "with_for_update_arg", ["true", "false", "none", "omitted"]
+    )
+    def test_get_with_for_update_use(self, with_for_update_arg):
+        """test #13176"""
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        s = fixture_session()
+        s.execute(
+            insert(self.tables.users),
+            [{"id": 7, "name": "7"}],
+        )
+        u = s.get(User, 7)
+
+        if with_for_update_arg.true:
+            self.assert_sql_count(
+                testing.db,
+                lambda: s.get(User, 7, with_for_update=True),
+                1,
+            )
+        elif with_for_update_arg.false:
+            self.assert_sql_count(
+                testing.db,
+                lambda: is_(s.get(User, 7, with_for_update=False), u),
+                0,
+            )
+        elif with_for_update_arg.none:
+            self.assert_sql_count(
+                testing.db,
+                lambda: is_(s.get(User, 7, with_for_update=None), u),
+                0,
+            )
+        elif with_for_update_arg.omitted:
+            self.assert_sql_count(
+                testing.db,
+                lambda: is_(s.get(User, 7), u),
+                0,
+            )
+        else:
+            with_for_update_arg.fail()
+
     def test_get_one(self):
         users, User = self.tables.users, self.classes.User
         self.mapper_registry.map_imperatively(User, users)
