@@ -1372,3 +1372,171 @@ class JoinedloadOfTypeOptionsTest(
                     " AS c_sub_1 ON c_1.id = c_sub_1.id) ON b_1.id = c_1.b_id"
                 )
             )
+
+
+class ChainedLoaderAfterOfTypeTest(
+    testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest
+):
+    """Regression test for issue #13209.
+
+    Tests that loader options chained after of_type() are properly applied.
+    """
+
+    run_setup_classes = "once"
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class TopABC(ComparableEntity, Base):
+            __tablename__ = "top_abc"
+            id = Column(Integer, primary_key=True)
+
+        class Top(ComparableEntity, Base):
+            __tablename__ = "top"
+            id = Column(Integer, ForeignKey("top_abc.id"), primary_key=True)
+            top_abc_id = Column(Integer, ForeignKey("top_abc.id"))
+            type = Column(String(50))
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class Foo(Top):
+            __tablename__ = "foo"
+            id = Column(Integer, ForeignKey("top.id"), primary_key=True)
+            foo_name = Column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "FOO"}
+
+        class Bar(Top):
+            __tablename__ = "bar"
+            id = Column(Integer, ForeignKey("top.id"), primary_key=True)
+            bar_name = Column(String(50))
+            foo_id = Column(Integer, ForeignKey("foo.id"))
+            __mapper_args__ = {"polymorphic_identity": "BAR"}
+
+        TopABC.top = relationship(
+            Top, foreign_keys=[Top.top_abc_id], uselist=False
+        )
+        Bar.foo = relationship(Foo, foreign_keys=[Bar.foo_id], uselist=False)
+
+    @classmethod
+    def insert_data(cls, connection):
+        with Session(connection) as sess:
+            TopABC, Foo, Bar = cls.classes("TopABC", "Foo", "Bar")
+            sess.add(
+                TopABC(id=1, top=Foo(id=1, top_abc_id=1, foo_name="foo1"))
+            )
+            sess.add(
+                TopABC(
+                    id=2,
+                    top=Bar(id=2, top_abc_id=2, bar_name="bar1", foo_id=1),
+                )
+            )
+            sess.commit()
+
+    @testing.variation("loader", ["joined", "selectin", "subquery"])
+    def test_chained_loader_after_of_type(self, loader: testing.Variation):
+        """Test that selectinload/joinedload/subqueryload works when chained
+        after joinedload with of_type().
+
+        Regression test for issue #13209 where chaining a loader option
+        after joinedload(...of_type(poly)) would not properly apply the
+        chained loader, resulting in lazy loads.
+        """
+        TopABC, Top, Foo, Bar = self.classes("TopABC", "Top", "Foo", "Bar")
+
+        top_poly = with_polymorphic(Top, "*", flat=True)
+
+        if loader.selectin:
+            stmt = select(TopABC).options(
+                joinedload(TopABC.top.of_type(top_poly)).selectinload(
+                    top_poly.Bar.foo
+                )
+            )
+        elif loader.joined:
+            stmt = select(TopABC).options(
+                joinedload(TopABC.top.of_type(top_poly)).joinedload(
+                    top_poly.Bar.foo
+                )
+            )
+        elif loader.subquery:
+            stmt = select(TopABC).options(
+                joinedload(TopABC.top.of_type(top_poly)).subqueryload(
+                    top_poly.Bar.foo
+                )
+            )
+        else:
+            loader.fail()
+
+        session = fixture_session()
+        with self.sql_execution_asserter(testing.db) as asserter_:
+            result = session.scalars(stmt).unique().all()
+            # Access the chained relationship - should not trigger lazy load
+            for obj in result:
+                if isinstance(obj.top, Bar):
+                    _ = obj.top.foo
+
+        if loader.selectin:
+            asserter_.assert_(
+                CompiledSQL(
+                    "SELECT top_abc.id, top_1.id AS id_1, top_1.top_abc_id,"
+                    " top_1.type, foo_1.id AS id_2, foo_1.foo_name,"
+                    " bar_1.id AS id_3, bar_1.bar_name, bar_1.foo_id"
+                    " FROM top_abc LEFT OUTER JOIN (top AS top_1 LEFT"
+                    " OUTER JOIN foo AS foo_1 ON top_1.id = foo_1.id"
+                    " LEFT OUTER JOIN bar AS bar_1 ON top_1.id ="
+                    " bar_1.id) ON top_abc.id = top_1.top_abc_id"
+                ),
+                CompiledSQL(
+                    "SELECT top.id AS top_id, foo.id AS foo_id,"
+                    " top.top_abc_id AS top_top_abc_id, top.type AS"
+                    " top_type, foo.foo_name AS foo_foo_name FROM top"
+                    " JOIN foo ON top.id = foo.id WHERE top.id IN"
+                    " (__[POSTCOMPILE_primary_keys])"
+                ),
+            )
+        elif loader.subquery:
+            asserter_.assert_(
+                CompiledSQL(
+                    "SELECT top_abc.id, top_1.id AS id_1, top_1.top_abc_id,"
+                    " top_1.type, foo_1.id AS id_2, foo_1.foo_name,"
+                    " bar_1.id AS id_3, bar_1.bar_name, bar_1.foo_id"
+                    " FROM top_abc LEFT OUTER JOIN (top AS top_1 LEFT"
+                    " OUTER JOIN foo AS foo_1 ON top_1.id = foo_1.id"
+                    " LEFT OUTER JOIN bar AS bar_1 ON top_1.id ="
+                    " bar_1.id) ON top_abc.id = top_1.top_abc_id"
+                ),
+                CompiledSQL(
+                    "SELECT foo.id AS foo_id, top.id AS top_id,"
+                    " top.top_abc_id AS top_top_abc_id, top.type AS"
+                    " top_type, foo.foo_name AS foo_foo_name,"
+                    " anon_1.bar_foo_id AS anon_1_bar_foo_id FROM"
+                    " (SELECT top_abc.id AS top_abc_id FROM top_abc)"
+                    " AS anon_2 JOIN (SELECT top.id AS top_id,"
+                    " top.top_abc_id AS top_top_abc_id, top.type AS"
+                    " top_type, bar.id AS bar_id, bar.bar_name AS"
+                    " bar_bar_name, bar.foo_id AS bar_foo_id FROM top"
+                    " JOIN bar ON top.id = bar.id) AS anon_1 ON"
+                    " anon_2.top_abc_id = anon_1.top_top_abc_id JOIN"
+                    " (top JOIN foo ON top.id = foo.id) ON foo.id ="
+                    " anon_1.bar_foo_id"
+                ),
+            )
+        elif loader.joined:
+            asserter_.assert_(
+                CompiledSQL(
+                    "SELECT top_abc.id, top_1.id AS id_1, top_1.top_abc_id,"
+                    " top_1.type, foo_1.id AS id_2, foo_1.foo_name,"
+                    " bar_1.id AS id_3, bar_1.bar_name, bar_1.foo_id,"
+                    " foo_2.id AS id_4, top_2.id AS id_5, top_2.top_abc_id"
+                    " AS top_abc_id_1, top_2.type AS type_1, foo_2.foo_name"
+                    " AS foo_name_1 FROM top_abc LEFT OUTER JOIN (top AS"
+                    " top_1 LEFT OUTER JOIN foo AS foo_1 ON top_1.id ="
+                    " foo_1.id LEFT OUTER JOIN bar AS bar_1 ON top_1.id ="
+                    " bar_1.id) ON top_abc.id = top_1.top_abc_id LEFT"
+                    " OUTER JOIN (top AS top_2 JOIN foo AS foo_2 ON"
+                    " top_2.id = foo_2.id) ON foo_2.id = bar_1.foo_id"
+                )
+            )

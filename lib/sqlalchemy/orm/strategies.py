@@ -2020,7 +2020,12 @@ class SubqueryLoader(PostLoader):
         if len(path) == 1:
             if not orm_util._entity_isa(query_entity.entity_zero, self.parent):
                 return
-        elif not orm_util._entity_isa(path[-1], self.parent):
+        elif not orm_util._entity_isa(
+            path[-1], self.parent
+        ) and not self.parent.isa(path[-1].mapper):
+            # second check accommodates a polymorphic entity where
+            # the path has been normalized to the base mapper but
+            # self.parent is a subclass mapper.  Fixes #13209.
             return
 
         subq = self._setup_query_from_rowproc(
@@ -3099,7 +3104,14 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         if len(path) == 1:
             if not orm_util._entity_isa(query_entity.entity_zero, self.parent):
                 return
-        elif not orm_util._entity_isa(path[-1], self.parent):
+        elif not orm_util._entity_isa(
+            path[-1], self.parent
+        ) and not self.parent.isa(path[-1].mapper):
+            # second check accommodates a polymorphic entity where
+            # the path has been normalized to the base mapper but
+            # self.parent is a subclass mapper, e.g.
+            # joinedload(A.b.of_type(poly)).selectinload(poly.Sub.rel)
+            # Fixes #13209.
             return
 
         selectin_path = effective_path
