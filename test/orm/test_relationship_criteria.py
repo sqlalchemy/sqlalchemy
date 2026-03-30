@@ -2860,21 +2860,57 @@ class JoinedloadOfTypeAndTest(fixtures.DeclarativeMappedTest):
     def test_joinedload_of_type_and_subclass_col(self):
         Animal, Dog, Owner = self.classes("Animal", "Dog", "Owner")
 
-        s = fixture_session()
         stmt = select(Owner).options(
             joinedload(Owner.animals.of_type(Dog).and_(Dog.breed == "Lab"))
         )
-        result = s.execute(stmt).unique().scalars().all()
-        eq_(len(result), 1)
-        eq_(result[0].name, "Alice")
+
+        with self.sql_execution_asserter(testing.db) as asserter_:
+            result = fixture_session().execute(stmt).unique().scalars().all()
+            eq_(
+                result,
+                [Owner(name="Alice", animals=[Dog(name="Rex", breed="Lab")])],
+            )
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT owner.id, owner.name, animal_1.id AS id_1,"
+                " animal_1.type, animal_1.name AS name_1,"
+                " animal_1.owner_id, dog_1.id AS id_2, dog_1.breed"
+                " FROM owner LEFT OUTER JOIN"
+                " (animal AS animal_1 JOIN dog AS dog_1"
+                " ON animal_1.id = dog_1.id)"
+                " ON owner.id = animal_1.owner_id"
+                " AND dog_1.breed = :breed_1",
+            ),
+        )
 
     def test_selectinload_of_type_and_subclass_col(self):
         Animal, Dog, Owner = self.classes("Animal", "Dog", "Owner")
 
-        s = fixture_session()
         stmt = select(Owner).options(
             selectinload(Owner.animals.of_type(Dog).and_(Dog.breed == "Lab"))
         )
-        result = s.execute(stmt).unique().scalars().all()
-        eq_(len(result), 1)
-        eq_(result[0].name, "Alice")
+
+        with self.sql_execution_asserter(testing.db) as asserter_:
+            result = fixture_session().execute(stmt).unique().scalars().all()
+            eq_(
+                result,
+                [Owner(name="Alice", animals=[Dog(name="Rex", breed="Lab")])],
+            )
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT owner.id, owner.name FROM owner",
+            ),
+            CompiledSQL(
+                "SELECT animal_1.owner_id AS animal_1_owner_id,"
+                " animal_1.id AS animal_1_id, animal_1.type AS"
+                " animal_1_type, animal_1.name AS animal_1_name,"
+                " dog_1.id AS dog_1_id, dog_1.breed AS dog_1_breed"
+                " FROM animal AS animal_1 JOIN dog AS dog_1"
+                " ON animal_1.id = dog_1.id"
+                " WHERE animal_1.owner_id IN"
+                " (__[POSTCOMPILE_primary_keys])"
+                " AND dog_1.breed = :breed_1",
+            ),
+        )
