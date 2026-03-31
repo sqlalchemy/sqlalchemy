@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm, inheritance
+    :tickets: 13209
+
+    Fixed issue where using chained loader options such as
+    :func:`_orm.selectinload` after :func:`_orm.joinedload` with
+    :meth:`_orm.PropComparator.of_type` for a polymorphic relationship would
+    not properly apply the chained loader option. The loader option is now
+    correctly applied when using a call such as
+    ``joinedload(A.b.of_type(poly)).selectinload(poly.SubClass.c)`` to eagerly
+    load related objects.
