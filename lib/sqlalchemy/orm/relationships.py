@@ -3319,8 +3319,14 @@ class JoinCondition:
                 )
 
                 if (
+                    # NOTE: it's not clear yet if this needs to test for
+                    # parentmapper_for_element.isa(self.prop.parent).  so far
+                    # we have not come up with a test.
                     parentmapper_for_element is not self.prop.parent
-                    and parentmapper_for_element is not self.prop.mapper
+                    and (
+                        parentmapper_for_element is None
+                        or not parentmapper_for_element.isa(self.prop.mapper)
+                    )
                     and elem not in self._secondary_lineage_set
                 ):
                     return _safe_annotate(elem, annotations)
