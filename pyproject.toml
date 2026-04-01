@@ -158,7 +158,6 @@ tests-oracle-asyncio = [
 ]
 tests-oracle = [
     "sqlalchemy[oracle]",
-    "sqlalchemy[oracle-cxoracle]",
 ]
 
 tests-mssql = [
