@@ -61,7 +61,6 @@ tests-oracle-asyncio = [
     {include-group = "tests-oracle"},
 ]
 tests-oracle = [
-    "sqlalchemy[oracle]",
     "sqlalchemy[oracle-oracledb]",
 ]
 
