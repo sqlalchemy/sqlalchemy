@@ -45,7 +45,7 @@ Discussions = "https://github.com/sqlalchemy/sqlalchemy/discussions"
 [project.optional-dependencies]
 asyncio = ["greenlet>=1"]
 mypy = [
-    "mypy >= 1.19",
+    "mypy >= 1.20",
     "types-greenlet >= 2",
 ]
 mssql = ["pyodbc"]

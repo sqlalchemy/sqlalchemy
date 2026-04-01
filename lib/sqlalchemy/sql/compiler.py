@@ -4756,6 +4756,8 @@ class SQLCompiler(Compiled):
             "_label_select_column is only relevant within "
             "the columns clause of a SELECT or RETURNING"
         )
+        result_expr: elements.Label[Any] | _CompileLabel
+
         if isinstance(column, elements.Label):
             if col_expr is not column:
                 result_expr = _CompileLabel(

@@ -20,6 +20,7 @@ is completely automated.
 from __future__ import annotations
 
 from typing import Any
+from typing import ClassVar
 from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine
@@ -91,6 +92,8 @@ class HasAddresses:
     for each parent.
 
     """
+
+    Address: ClassVar[type]
 
     @declared_attr
     def addresses(cls: type[Any]) -> Mapped[list[AddressWithParent]]:

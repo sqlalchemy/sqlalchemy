@@ -229,12 +229,12 @@ class immutabledict(Dict[_KT, _VT]):
         self, __value: Mapping[_KT, _VT], /
     ) -> immutabledict[_KT, _VT]:
         return immutabledict(
-            dict.__or__(self, __value),  # type: ignore[call-overload]
+            dict.__or__(self, __value),  # type: ignore[call-overload,operator,unused-ignore]  # noqa: E501
         )
 
     def __ror__(  # type: ignore[override]
         self, __value: Mapping[_KT, _VT], /
     ) -> immutabledict[_KT, _VT]:
         return immutabledict(
-            dict.__ror__(self, __value),  # type: ignore[call-overload]
+            dict.__ror__(self, __value),  # type: ignore[call-overload,operator,unused-ignore]  # noqa: E501
         )
