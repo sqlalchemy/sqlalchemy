@@ -147,14 +147,14 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         self, __value: Mapping[_KT, _VT]
     ) -> immutabledict[_KT, _VT]:
         return immutabledict(
-            super().__or__(__value),  # type: ignore[call-overload]
+            super().__or__(__value),  # type: ignore[call-overload,operator,unused-ignore]  # noqa: E501
         )
 
     def __ror__(  # type: ignore[override]
         self, __value: Mapping[_KT, _VT]
     ) -> immutabledict[_KT, _VT]:
         return immutabledict(
-            super().__ror__(__value),  # type: ignore[call-overload]
+            super().__ror__(__value),  # type: ignore[call-overload,operator,unused-ignore]  # noqa: E501
         )
 
 
@@ -198,7 +198,7 @@ class OrderedSet(Set[_T]):
             self._list.insert(pos, element)
         super().add(element)
 
-    def discard(self, element: _T) -> None:
+    def discard(self, element: _T) -> None:  # type: ignore[override,unused-ignore]  # noqa: E501
         if element in self:
             self._list.remove(element)
             super().remove(element)
@@ -248,7 +248,7 @@ class OrderedSet(Set[_T]):
     def __and__(self, other: AbstractSet[object]) -> OrderedSet[_T]:
         return self.intersection(other)
 
-    def symmetric_difference(self, other: Iterable[_T]) -> OrderedSet[_T]:
+    def symmetric_difference(self, other: Iterable[_T]) -> OrderedSet[_T]:  # type: ignore[override,unused-ignore]  # noqa: E501
         collection: Collection[_T]
         if isinstance(other, set):
             collection = other_set = other
@@ -271,7 +271,7 @@ class OrderedSet(Set[_T]):
         other_set = super().difference(*other)
         return self.__class__(a for a in self._list if a in other_set)
 
-    def __sub__(self, other: AbstractSet[Optional[_T]]) -> OrderedSet[_T]:
+    def __sub__(self, other: AbstractSet[Optional[_T]]) -> OrderedSet[_T]:  # type: ignore[override,unused-ignore]  # noqa: E501
         return self.difference(other)
 
     def intersection_update(self, *other: Iterable[Any]) -> None:

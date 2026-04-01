@@ -99,10 +99,10 @@ class Address(Base):
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[trad_relationship_uselist.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[list\*?\[trad_relationship_uselist.Address\]\]
     reveal_type(User.addresses_style_one)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*?\[trad_relationship_uselist.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[set\*?\[trad_relationship_uselist.Address\]\]
     reveal_type(User.addresses_style_two)
 
     # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
@@ -139,5 +139,5 @@ if typing.TYPE_CHECKING:
     # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Any\]
     reveal_type(Address.user_style_ten)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.dict\*?\[builtins.str, trad_relationship_uselist.User\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[dict\*?\[str, trad_relationship_uselist.User\]\]
     reveal_type(Address.user_style_ten_typed)

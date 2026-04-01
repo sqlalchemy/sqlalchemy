@@ -88,12 +88,12 @@ reveal_type(async_session)
 
 single_stmt = select(User.name).where(User.name == "foo")
 
-# EXPECTED_RE_TYPE: sqlalchemy..*Select\*?\[Tuple\[builtins.str\*?\]\]
+# EXPECTED_RE_TYPE: sqlalchemy..*Select\*?\[Tuple\[str\*?\]\]
 reveal_type(single_stmt)
 
 multi_stmt = select(User.id, User.name).where(User.name == "foo")
 
-# EXPECTED_RE_TYPE: sqlalchemy..*Select\*?\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+# EXPECTED_RE_TYPE: sqlalchemy..*Select\*?\[Tuple\[int\*?, str\*?\]\]
 reveal_type(multi_stmt)
 
 
@@ -144,7 +144,7 @@ def t_entity_varieties() -> None:
 
     r1 = session.execute(s1)
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*.Result\[Tuple\[builtins.int\*?, typed_results.User\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*.Result\[Tuple\[int\*?, typed_results.User\*?, str\*?\]\]
     reveal_type(r1)
 
     s2 = select(User, a1).where(User.name == "foo")
@@ -167,7 +167,7 @@ def t_entity_varieties() -> None:
     # automatically typed since they are dynamically generated
     a1_id = cast(Mapped[int], a1.id)
     s3 = select(User.id, a1_id, a1, User).where(User.name == "foo")
-    # EXPECTED_RE_TYPE: sqlalchemy.*Select\*?\[Tuple\[builtins.int\*?, builtins.int\*?, typed_results.User\*?, typed_results.User\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*Select\*?\[Tuple\[int\*?, int\*?, typed_results.User\*?, typed_results.User\*?\]\]
     reveal_type(s3)
 
     # testing Mapped[entity]
@@ -187,7 +187,7 @@ def t_entity_varieties() -> None:
 
     s5 = select(x, y, User.name + "hi")
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*Select\*?\[Tuple\[builtins.int\*?, builtins.int\*?\, builtins.str\*?]\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*Select\*?\[Tuple\[int\*?, int\*?\, str\*?]\]
     reveal_type(s5)
 
 
@@ -231,27 +231,27 @@ def t_result_scalar_accessors() -> None:
 
     r1 = result.scalar()
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(r1)
 
     r2 = result.scalar_one()
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(r2)
 
     r3 = result.scalar_one_or_none()
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(r3)
 
     r4 = result.scalars()
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[builtins.str.*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[str.*?\]
     reveal_type(r4)
 
     r5 = result.scalars(0)
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[builtins.str.*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[str.*?\]
     reveal_type(r5)
 
 
@@ -260,27 +260,27 @@ async def t_async_result_scalar_accessors() -> None:
 
     r1 = await result.scalar()
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(r1)
 
     r2 = await result.scalar_one()
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(r2)
 
     r3 = await result.scalar_one_or_none()
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(r3)
 
     r4 = result.scalars()
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[builtins.str.*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[str.*?\]
     reveal_type(r4)
 
     r5 = result.scalars(0)
 
-    # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[builtins.str.*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy..*ScalarResult\[str.*?\]
     reveal_type(r5)
 
 
@@ -355,336 +355,336 @@ async def t_async_result_insertmanyvalues_scalars() -> None:
 def t_connection_execute_multi_row_t() -> None:
     result = connection.execute(multi_stmt)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*CursorResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*CursorResult\[Tuple\[int\*?, str\*?\]\]
     reveal_type(result)
     row = result.one()
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*Row\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*Row\[Tuple\[int\*?, str\*?\]\]
     reveal_type(row)
 
     x, y = row.t
 
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: int\*?
     reveal_type(x)
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(y)
 
 
 def t_connection_execute_multi() -> None:
     result = connection.execute(multi_stmt).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[int\*?, str\*?\]\]
     reveal_type(result)
     row = result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[int\*?, str\*?\]
     reveal_type(row)
 
     x, y = row
 
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: int\*?
     reveal_type(x)
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(y)
 
 
 def t_connection_execute_single() -> None:
     result = connection.execute(single_stmt).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[str\*?\]\]
     reveal_type(result)
     row = result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[str\*?\]
     reveal_type(row)
 
     (x,) = row
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(x)
 
 
 def t_connection_execute_single_row_scalar() -> None:
     result = connection.execute(single_stmt).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[str\*?\]\]
     reveal_type(result)
 
     x = result.scalar()
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(x)
 
 
 def t_connection_scalar() -> None:
     obj = connection.scalar(single_stmt)
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(obj)
 
 
 def t_connection_scalars() -> None:
     result = connection.scalars(single_stmt)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\[str\*?\]
     reveal_type(result)
     data = result.all()
 
-    # EXPECTED_RE_TYPE: typing.Sequence\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: typing.Sequence\[str\*?\]
     reveal_type(data)
 
 
 def t_session_execute_multi() -> None:
     result = session.execute(multi_stmt).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[int\*?, str\*?\]\]
     reveal_type(result)
     row = result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[int\*?, str\*?\]
     reveal_type(row)
 
     x, y = row
 
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: int\*?
     reveal_type(x)
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(y)
 
 
 def t_session_execute_single() -> None:
     result = session.execute(single_stmt).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[str\*?\]\]
     reveal_type(result)
     row = result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[str\*?\]
     reveal_type(row)
 
     (x,) = row
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(x)
 
 
 def t_session_scalar() -> None:
     obj = session.scalar(single_stmt)
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(obj)
 
 
 def t_session_scalars() -> None:
     result = session.scalars(single_stmt)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\[str\*?\]
     reveal_type(result)
     data = result.all()
 
-    # EXPECTED_RE_TYPE: typing.Sequence\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: typing.Sequence\[str\*?\]
     reveal_type(data)
 
 
 async def t_async_connection_execute_multi() -> None:
     result = (await async_connection.execute(multi_stmt)).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[int\*?, str\*?\]\]
     reveal_type(result)
     row = result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[int\*?, str\*?\]
     reveal_type(row)
 
     x, y = row
 
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: int\*?
     reveal_type(x)
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(y)
 
 
 async def t_async_connection_execute_single() -> None:
     result = (await async_connection.execute(single_stmt)).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[str\*?\]\]
     reveal_type(result)
 
     row = result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[str\*?\]
     reveal_type(row)
 
     (x,) = row
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(x)
 
 
 async def t_async_connection_scalar() -> None:
     obj = await async_connection.scalar(single_stmt)
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(obj)
 
 
 async def t_async_connection_scalars() -> None:
     result = await async_connection.scalars(single_stmt)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\*?\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\*?\[str\*?\]
     reveal_type(result)
     data = result.all()
 
-    # EXPECTED_RE_TYPE: typing.Sequence\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: typing.Sequence\[str\*?\]
     reveal_type(data)
 
 
 async def t_async_session_execute_multi() -> None:
     result = (await async_session.execute(multi_stmt)).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[int\*?, str\*?\]\]
     reveal_type(result)
     row = result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[int\*?, str\*?\]
     reveal_type(row)
 
     x, y = row
 
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: int\*?
     reveal_type(x)
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(y)
 
 
 async def t_async_session_execute_single() -> None:
     result = (await async_session.execute(single_stmt)).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[str\*?\]\]
     reveal_type(result)
     row = result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[str\*?\]
     reveal_type(row)
 
     (x,) = row
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(x)
 
 
 async def t_async_session_scalar() -> None:
     obj = await async_session.scalar(single_stmt)
 
-    # EXPECTED_RE_TYPE: builtins.str \| None
+    # EXPECTED_RE_TYPE: str \| None
     reveal_type(obj)
 
 
 async def t_async_session_scalars() -> None:
     result = await async_session.scalars(single_stmt)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\*?\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*ScalarResult\*?\[str\*?\]
     reveal_type(result)
     data = result.all()
 
-    # EXPECTED_RE_TYPE: typing.Sequence\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: typing.Sequence\[str\*?\]
     reveal_type(data)
 
 
 async def t_async_connection_stream_multi() -> None:
     result = (await async_connection.stream(multi_stmt)).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[int\*?, str\*?\]\]
     reveal_type(result)
     row = await result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[int\*?, str\*?\]
     reveal_type(row)
 
     x, y = row
 
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: int\*?
     reveal_type(x)
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(y)
 
 
 async def t_async_connection_stream_single() -> None:
     result = (await async_connection.stream(single_stmt)).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[str\*?\]\]
     reveal_type(result)
     row = await result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[str\*?\]
     reveal_type(row)
 
     (x,) = row
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(x)
 
 
 async def t_async_connection_stream_scalars() -> None:
     result = await async_connection.stream_scalars(single_stmt)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncScalarResult\*?\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncScalarResult\*?\[str\*?\]
     reveal_type(result)
     data = await result.all()
 
-    # EXPECTED_RE_TYPE: typing.Sequence\*?\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: typing.Sequence\*?\[str\*?\]
     reveal_type(data)
 
 
 async def t_async_session_stream_multi() -> None:
     result = (await async_session.stream(multi_stmt)).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[builtins.int\*?, builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*TupleResult\[Tuple\[int\*?, str\*?\]\]
     reveal_type(result)
     row = await result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.int\*?, builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[int\*?, str\*?\]
     reveal_type(row)
 
     x, y = row
 
-    # EXPECTED_RE_TYPE: builtins.int\*?
+    # EXPECTED_RE_TYPE: int\*?
     reveal_type(x)
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(y)
 
 
 async def t_async_session_stream_single() -> None:
     result = (await async_session.stream(single_stmt)).t
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[builtins.str\*?\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncTupleResult\[Tuple\[str\*?\]\]
     reveal_type(result)
     row = await result.one()
 
-    # EXPECTED_RE_TYPE: Tuple\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: Tuple\[str\*?\]
     reveal_type(row)
 
     (x,) = row
 
-    # EXPECTED_RE_TYPE: builtins.str\*?
+    # EXPECTED_RE_TYPE: str\*?
     reveal_type(x)
 
 
 async def t_async_session_stream_scalars() -> None:
     result = await async_session.stream_scalars(single_stmt)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncScalarResult\*?\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*AsyncScalarResult\*?\[str\*?\]
     reveal_type(result)
     data = await result.all()
 
-    # EXPECTED_RE_TYPE: typing.Sequence\*?\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: typing.Sequence\*?\[str\*?\]
     reveal_type(data)
 
 

@@ -469,7 +469,7 @@ def de_optionalize_union_types(
                     else:
                         typ.add(elem)
 
-            typ.discard(None)  # type: ignore
+            typ.discard(None)  # type: ignore[arg-type,unused-ignore]
 
         typ = {t for t in typ if t is not NoneType and not is_fwd_none(t)}
 

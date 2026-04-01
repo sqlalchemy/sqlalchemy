@@ -131,34 +131,34 @@ class Engineer(Employee):
 
 
 if typing.TYPE_CHECKING:
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str \| None\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[str \| None\]
     reveal_type(User.extra)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str \| None\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[str \| None\]
     reveal_type(User.extra_name)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[str\*?\]
     reveal_type(Address.email)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.str\*?\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[str\*?\]
     reveal_type(Address.email_name)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[relationship.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[list\*?\[relationship.Address\]\]
     reveal_type(User.addresses_style_one)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*?\[relationship.Address\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[set\*?\[relationship.Address\]\]
     reveal_type(User.addresses_style_two)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[relationship.User\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[list\*?\[relationship.User\]\]
     reveal_type(Group.addresses_style_one_anno_only)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*?\[relationship.User\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[set\*?\[relationship.User\]\]
     reveal_type(Group.addresses_style_two_anno_only)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[relationship.MoreMail\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[list\*?\[relationship.MoreMail\]\]
     reveal_type(Address.rel_style_one)
 
-    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*?\[relationship.MoreMail\]\]
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[set\*?\[relationship.MoreMail\]\]
     reveal_type(Address.rel_style_one_anno_only)
 
     # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Engineer\]

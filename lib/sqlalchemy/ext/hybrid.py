@@ -1436,7 +1436,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
                         name = self.__name__
                         break
             else:
-                name = attributes._UNKNOWN_ATTR_KEY  # type: ignore[assignment]
+                name = attributes._UNKNOWN_ATTR_KEY  # type: ignore[assignment,unused-ignore]  # noqa: E501
 
             return cast(
                 "_HybridClassLevelAccessor[_T]",

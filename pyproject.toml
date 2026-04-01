@@ -96,7 +96,7 @@ lint = [
 
 mypy = [
     {include-group = "tests-greenlet"},
-    "mypy>=1.19.0",
+    "mypy>=1.20.0",
     "nox",  # because we check noxfile.py
     "pytest>8,<10",  # alembic/testing imports pytest
     "types-greenlet",

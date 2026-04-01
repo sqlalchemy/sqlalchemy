@@ -41,7 +41,7 @@ a = Article(
 # EXPECTED_TYPE: str
 reveal_type(a.topic)
 
-# EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[builtins.str\*?\]
+# EXPECTED_RE_TYPE: sqlalchemy.*._HybridClassLevelAccessor\[str\*?\]
 reveal_type(Article.topic)
 
 # EXPECTED_TYPE: date

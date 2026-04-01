@@ -1038,7 +1038,7 @@ class MutableSet(Mutable, Set[_T]):
         self.symmetric_difference_update(other)
         return self
 
-    def __isub__(self, other: AbstractSet[object]) -> MutableSet[_T]:  # type: ignore[misc] # noqa: E501
+    def __isub__(self, other: AbstractSet[object]) -> MutableSet[_T]:  # type: ignore[misc,unused-ignore] # noqa: E501
         self.difference_update(other)
         return self
 
@@ -1050,7 +1050,7 @@ class MutableSet(Mutable, Set[_T]):
         set.remove(self, elem)
         self.changed()
 
-    def discard(self, elem: _T) -> None:
+    def discard(self, elem: _T) -> None:  # type: ignore[override,unused-ignore] # noqa: E501
         set.discard(self, elem)
         self.changed()
 

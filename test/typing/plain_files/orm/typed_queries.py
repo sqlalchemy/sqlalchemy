@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import assert_type
 from typing import Optional
 from typing import Tuple
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column
 from sqlalchemy import column
@@ -25,6 +26,11 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
+
+
+if TYPE_CHECKING:
+    from sqlalchemy import Row
+    from sqlalchemy.orm.query import RowReturningQuery
 
 
 class Base(DeclarativeBase):
@@ -140,9 +146,7 @@ def t_legacy_query_single_entity() -> None:
     # EXPECTED_TYPE: List[User]
     reveal_type(q1.all())
 
-    # mypy switches to builtins.list for some reason here
-    # EXPECTED_RE_TYPE: .*\.[Ll]ist\[.*Row\*?\[Tuple\[.*User\]\]\]
-    reveal_type(q1.only_return_tuples(True).all())
+    assert_type(q1.only_return_tuples(True).all(), list[Row[tuple[User]]])
 
     # EXPECTED_TYPE: List[Tuple[User]]
     reveal_type(q1.tuples().all())
@@ -151,8 +155,7 @@ def t_legacy_query_single_entity() -> None:
 def t_legacy_query_cols_1() -> None:
     q1 = session.query(User.id, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[Tuple[int, str]]
-    reveal_type(q1)
+    assert_type(q1, RowReturningQuery[tuple[int, str]])
 
     # EXPECTED_TYPE: Row[Tuple[int, str]]
     reveal_type(q1.one())
