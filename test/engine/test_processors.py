@@ -76,7 +76,7 @@ class _DateProcessorTest(fixtures.TestBase):
     def test_date_no_string(self):
         assert_raises_message(
             TypeError,
-            "fromisoformat: argument must be str",
+            r"fromisoformat.* argument must be str",
             self.module.str_to_date,
             2012,
         )
