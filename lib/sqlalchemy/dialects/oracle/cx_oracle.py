@@ -470,6 +470,7 @@ SQLAlchemy type (or a subclass of such).
 from __future__ import annotations
 
 import decimal
+import json
 import random
 import re
 
@@ -477,6 +478,7 @@ from . import base as oracle
 from .base import OracleCompiler
 from .base import OracleDialect
 from .base import OracleExecutionContext
+from .json import JSON
 from .types import _OracleDateLiteralRender
 from ... import exc
 from ... import util
@@ -485,11 +487,70 @@ from ...engine import interfaces
 from ...engine import processors
 from ...sql import sqltypes
 from ...sql._typing import is_sql_compiler
+from ...sql.base import NO_ARG
 from ...sql.sqltypes import Boolean
 
 # source:
 # https://github.com/oracle/python-cx_Oracle/issues/596#issuecomment-999243649
 _CX_ORACLE_MAGIC_LOB_SIZE = 131072
+
+# largest JSON we can deserialize if we are not using
+# DB_TYPE_JSON
+_CX_ORACLE_MAX_JSON_CONVERTED = 32767
+
+
+class _OracleJson(JSON):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.DB_TYPE_JSON
+
+    def _should_use_blob(self, dialect):
+        use_blob = (
+            not dialect._supports_oracle_json
+            if self.use_blob is NO_ARG
+            else self.use_blob
+        )
+
+        return use_blob
+
+    def bind_processor(self, dialect):
+
+        if self._should_use_blob(dialect):
+
+            DBAPIBinary = dialect.dbapi.Binary
+
+            def string_process(value):
+                if value is not None:
+                    # utf-8 is standard for oracledb
+                    # https://python-oracledb.readthedocs.io/en/latest/user_guide/globalization.html#setting-the-client-character-set  # noqa: E501
+                    return DBAPIBinary(value.encode("utf-8"))
+                else:
+                    return None
+
+        else:
+            string_process = None
+
+        json_serializer = dialect._json_serializer or json.dumps
+
+        return self._make_bind_processor(string_process, json_serializer)
+
+    def result_processor(self, dialect, coltype):
+        if self._should_use_blob(dialect):
+            # for plain BLOB, use traditional binary decode + json.loads()
+            string_process = self._str_impl.result_processor(dialect, coltype)
+            json_deserializer = dialect._json_deserializer or json.loads
+
+            def process(value):
+                if value is None:
+                    return None
+                if string_process:
+                    value = string_process(value)
+                return json_deserializer(value)
+
+            return process
+
+        else:
+            # for JSON, json decoder is set as an outputtypehandler
+            return None
 
 
 class _OracleInteger(sqltypes.Integer):
@@ -1041,6 +1102,10 @@ class OracleDialect_cx_oracle(OracleDialect):
     update_executemany_returning = True
     delete_executemany_returning = True
 
+    supports_native_json_serialization = False
+    supports_native_json_deserialization = False
+    dialect_injects_custom_json_deserializer = True
+
     bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
     driver = "cx_oracle"
@@ -1053,6 +1118,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             sqltypes.Float: _OracleFloat,
             oracle.BINARY_FLOAT: _OracleBINARY_FLOAT,
             oracle.BINARY_DOUBLE: _OracleBINARY_DOUBLE,
+            sqltypes.JSON: _OracleJson,
             sqltypes.Integer: _OracleInteger,
             oracle.NUMBER: _OracleNUMBER,
             sqltypes.Date: _CXOracleDate,
@@ -1123,6 +1189,9 @@ class OracleDialect_cx_oracle(OracleDialect):
                 dbapi_module.FIXED_NCHAR,
                 dbapi_module.FIXED_CHAR,
                 dbapi_module.TIMESTAMP,
+                # we dont make use of Oracle's JSON serialization; does not
+                # handle "none as null"
+                # dbapi_module.DB_TYPE_JSON,
                 int,  # _OracleInteger,
                 # _OracleBINARY_FLOAT, _OracleBINARY_DOUBLE,
                 dbapi_module.NATIVE_FLOAT,
@@ -1356,6 +1425,16 @@ class OracleDialect_cx_oracle(OracleDialect):
                     cx_Oracle.DB_TYPE_RAW,
                     _CX_ORACLE_MAGIC_LOB_SIZE,
                     cursor.arraysize,
+                )
+            elif (
+                default_type is cx_Oracle.DB_TYPE_JSON
+                and dialect._json_deserializer is not None
+            ):
+                return cursor.var(
+                    cx_Oracle.DB_TYPE_VARCHAR,
+                    _CX_ORACLE_MAX_JSON_CONVERTED,
+                    cursor.arraysize,
+                    outconverter=dialect._json_deserializer,
                 )
 
         return output_type_handler

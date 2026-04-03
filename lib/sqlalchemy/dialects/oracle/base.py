@@ -1000,8 +1000,14 @@ from dataclasses import fields
 from functools import lru_cache
 from functools import wraps
 import re
+from typing import Any
+from typing import Callable
+from typing import TYPE_CHECKING
 
 from . import dictionary
+from .json import JSON
+from .json import JSONIndexType
+from .json import JSONPathType
 from .types import _OracleBoolean
 from .types import _OracleDate
 from .types import BFILE
@@ -1036,6 +1042,7 @@ from ...engine.reflection import ReflectionDefaults
 from ...sql import and_
 from ...sql import bindparam
 from ...sql import compiler
+from ...sql import elements
 from ...sql import expression
 from ...sql import func
 from ...sql import null
@@ -1045,6 +1052,7 @@ from ...sql import selectable as sa_selectable
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql import visitors
+from ...sql.base import NO_ARG
 from ...sql.compiler import AggregateOrderByStyle
 from ...sql.visitors import InternalTraversal
 from ...types import BLOB
@@ -1056,6 +1064,9 @@ from ...types import NCHAR
 from ...types import NVARCHAR
 from ...types import REAL
 from ...types import VARCHAR
+
+if TYPE_CHECKING:
+    from ...sql.sqltypes import _JSON_VALUE
 
 RESERVED_WORDS = set(
     "SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN "
@@ -1079,6 +1090,9 @@ colspecs = {
     sqltypes.Interval: INTERVAL,
     sqltypes.DateTime: DATE,
     sqltypes.Date: _OracleDate,
+    sqltypes.JSON: JSON,
+    sqltypes.JSON.JSONIndexType: JSONIndexType,
+    sqltypes.JSON.JSONPathType: JSONPathType,
 }
 
 ischema_names = {
@@ -1106,6 +1120,7 @@ ischema_names = {
     "ROWID": ROWID,
     "BOOLEAN": BOOLEAN,
     "VECTOR": VECTOR,
+    "JSON": JSON,
 }
 
 
@@ -1278,6 +1293,18 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         )
         return f"VECTOR({dim},{storage_format},{storage_type})"
 
+    def visit_JSON(self, type_: JSON, **kw: Any) -> str:
+        use_blob = (
+            not self.dialect._supports_oracle_json
+            if getattr(type_, "use_blob", NO_ARG) is NO_ARG
+            else type_.use_blob
+        )
+
+        if use_blob:
+            return "BLOB"
+        else:
+            return "JSON"
+
 
 class OracleCompiler(compiler.SQLCompiler):
     """Oracle compiler modifies the lexical structure of Select
@@ -1320,6 +1347,23 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def visit_false(self, expr, **kw):
         return "0"
+
+    def visit_cast(self, cast, **kwargs):
+        # Oracle requires VARCHAR2 to have a length in CAST expressions
+        # Adapt String types to VARCHAR2 with appropriate length
+        type_ = cast.typeclause.type
+        if isinstance(type_, sqltypes.String) and not isinstance(
+            type_, (sqltypes.Text, sqltypes.CLOB)
+        ):
+            adapted = VARCHAR2._adapt_string_for_cast(type_)
+            type_clause = self.dialect.type_compiler_instance.process(adapted)
+        else:
+            type_clause = cast.typeclause._compiler_dispatch(self, **kwargs)
+
+        return "CAST(%s AS %s)" % (
+            cast.clause._compiler_dispatch(self, **kwargs),
+            type_clause,
+        )
 
     def get_cte_preamble(self, recursive):
         return "WITH"
@@ -1790,6 +1834,57 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_bitwise_not_op_unary_operator(self, element, operator, **kw):
         raise exc.CompileError("Cannot compile bitwise_not in oracle")
 
+    def _render_json_extract_from_binary(self, binary, operator, **kw):
+        literal_kw = kw.copy()
+        literal_kw["literal_binds"] = True
+
+        left = self.process(binary.left, **kw)
+        right = self.process(binary.right, **literal_kw)
+
+        if binary.type._type_affinity is sqltypes.Boolean:
+            # RETURNING clause doesn't handle true/false to 1/0
+            # mapping, so use CASE expression for boolean
+            return (
+                f"CASE JSON_VALUE({left}, {right})"
+                f" WHEN 'true' THEN 1"
+                f" WHEN 'false' THEN 0"
+                f" ELSE CAST(JSON_VALUE({left}, {right})"
+                f" AS NUMBER(1)) END"
+            )
+        elif binary.type._type_affinity is sqltypes.Integer:
+            json_value_returning = "INTEGER"
+        elif binary.type._type_affinity in (
+            sqltypes.Numeric,
+            sqltypes.Float,
+        ):
+            if isinstance(binary.type, sqltypes.Float):
+                json_value_returning = "FLOAT"
+            else:
+                json_value_returning = (
+                    f"NUMBER({binary.type.precision}, {binary.type.scale})"
+                )
+        elif binary.type._type_affinity is sqltypes.String:
+            json_value_returning = "VARCHAR2(4000)"
+        else:
+            # binary.type._type_affinity is sqltypes.JSON
+            # or other
+            return f"JSON_QUERY({left}, {right})"
+
+        return (
+            f"JSON_VALUE({left}, {right}"
+            f" RETURNING {json_value_returning} ERROR ON ERROR)"
+        )
+
+    def visit_json_getitem_op_binary(
+        self, binary: elements.BinaryExpression[Any], operator: Any, **kw: Any
+    ) -> str:
+        return self._render_json_extract_from_binary(binary, operator, **kw)
+
+    def visit_json_path_getitem_op_binary(
+        self, binary: elements.BinaryExpression[Any], operator: Any, **kw: Any
+    ) -> str:
+        return self._render_json_extract_from_binary(binary, operator, **kw)
+
 
 class OracleDDLCompiler(compiler.DDLCompiler):
 
@@ -2023,6 +2118,8 @@ class OracleDialect(default.DefaultDialect):
     supports_empty_insert = False
     supports_identity_columns = True
 
+    _supports_oracle_json = True
+
     aggregate_order_by_style = AggregateOrderByStyle.WITHIN_GROUP
 
     statement_compiler = OracleCompiler
@@ -2077,6 +2174,8 @@ class OracleDialect(default.DefaultDialect):
         use_nchar_for_unicode=False,
         exclude_tablespaces=("SYSTEM", "SYSAUX"),
         enable_offset_fetch=True,
+        json_serializer: Callable[[_JSON_VALUE], str] | None = None,
+        json_deserializer: Callable[[str], _JSON_VALUE] | None = None,
         **kwargs,
     ):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -2087,6 +2186,8 @@ class OracleDialect(default.DefaultDialect):
         self.enable_offset_fetch = self._supports_offset_fetch = (
             enable_offset_fetch
         )
+        self._json_serializer = json_serializer
+        self._json_deserializer = json_deserializer
 
     def initialize(self, connection):
         super().initialize(connection)
@@ -2102,6 +2203,7 @@ class OracleDialect(default.DefaultDialect):
             self.colspecs.pop(sqltypes.Interval)
             self.use_ansi = False
 
+        self._supports_oracle_json = self.server_version_info >= (21,)
         self.supports_native_boolean = self.server_version_info >= (23,)
         self.supports_identity_columns = self.server_version_info >= (12,)
         self._supports_offset_fetch = (

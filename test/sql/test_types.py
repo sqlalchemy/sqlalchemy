@@ -1101,7 +1101,9 @@ class TypeDecoratorSpecialCasesTest(AssertsCompiledSQL, fixtures.TestBase):
         t = Table(
             "t",
             metadata,
-            Column("id", Integer, primary_key=True),
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
             Column("data", JsonDec),
         )
         t.create(connection)

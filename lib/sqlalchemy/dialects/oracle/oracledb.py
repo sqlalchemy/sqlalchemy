@@ -571,6 +571,21 @@ SQLAlchemy type (or a subclass of such).
 
 .. versionadded:: 2.0.0 added support for the python-oracledb driver.
 
+.. _oracledb_json:
+
+JSON Support
+------------
+
+Oracle Database supports a native JSON datatype as of version 21c, as well as
+support for JSON functions on character and BLOB columns as of version 12c. The
+SQLAlchemy :class:`_sqltypes.JSON` datatype may be used with the oracledb
+backend in the same way it works with any other backend, with some slight
+behavioral changes particularly when using the native JSON datatype.  See
+:class:`_oracle.JSON` for platform-specific notes.
+
+.. versionadded:: 2.1  added JSON support for the Oracle backend.
+
+
 """  # noqa
 from __future__ import annotations
 

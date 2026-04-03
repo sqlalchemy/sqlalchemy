@@ -170,15 +170,9 @@ class _PGNumericNoBind(_PGNumeric):
 class _PGJSON(JSON):
     render_bind_cast = True
 
-    def result_processor(self, dialect, coltype):
-        return None
-
 
 class _PGJSONB(JSONB):
     render_bind_cast = True
-
-    def result_processor(self, dialect, coltype):
-        return None
 
 
 class _PGJSONIndexType(sqltypes.JSON.JSONIndexType):
@@ -420,6 +414,10 @@ class PGDialect_pg8000(PGDialect):
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
     supports_server_side_cursors = True
+
+    supports_native_json_serialization = False
+    supports_native_json_deserialization = True
+    dialect_injects_custom_json_deserializer = True
 
     render_bind_cast = True
 

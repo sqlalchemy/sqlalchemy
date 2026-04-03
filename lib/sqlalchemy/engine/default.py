@@ -100,6 +100,7 @@ if typing.TYPE_CHECKING:
     from ..sql.dml import UpdateBase
     from ..sql.elements import BindParameter
     from ..sql.schema import Column
+    from ..sql.sqltypes import _JSON_VALUE
     from ..sql.type_api import _BindProcessorType
     from ..sql.type_api import _ResultProcessorType
     from ..sql.type_api import TypeEngine
@@ -169,6 +170,13 @@ class DefaultDialect(Dialect):
     supports_native_boolean = False
     supports_native_uuid = False
     returns_native_bytes = False
+
+    supports_native_json_serialization = False
+    supports_native_json_deserialization = False
+    dialect_injects_custom_json_deserializer = False
+    _json_serializer: Callable[[_JSON_VALUE], str] | None = None
+
+    _json_deserializer: Callable[[str], _JSON_VALUE] | None = None
 
     non_native_boolean_check_constraint = True
 

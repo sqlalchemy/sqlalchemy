@@ -1259,8 +1259,9 @@ class DefaultRequirements(SuiteRequirements):
                 "postgresql >= 9.3",
                 self._sqlite_json,
                 "mssql",
+                "oracle>=21",
             ]
-        )
+        ) + skip_if("oracle+cx_oracle")
 
     @property
     def json_index_supplementary_unicode_element(self):
@@ -1351,6 +1352,7 @@ class DefaultRequirements(SuiteRequirements):
                 and not config.db.dialect._is_mariadb,
                 "postgresql >= 9.3",
                 "sqlite >= 3.9",
+                "oracle>=21",
             ]
         )
 

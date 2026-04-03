@@ -1,0 +1,16 @@
+.. change::
+    :tags: feature, oracle
+    :tickets: 10375
+
+    Added support for the :class:`_sqltypes.JSON` datatype when using the
+    Oracle database with the oracledb dialect.  JSON values are serialized and
+    deserialized using configurable strategies that accommodate Oracle's native
+    JSON type available as of Oracle 21c.  Pull request courtesy Abdallah
+    Alhadad.
+
+    .. seealso::
+
+        :class:`_oracle.JSON` - Oracle-specific JSON class that includes
+        implementation and platform notes.
+
+        :ref:`oracledb_json`
