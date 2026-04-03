@@ -10,7 +10,120 @@
 
 .. changelog::
     :version: 2.0.49
-    :include_notes_from: unreleased_20
+    :released: April 3, 2026
+
+    .. change::
+        :tags: postgresql, bug
+        :tickets: 10902
+
+        Fixed regular expression used when reflecting foreign keys in PostgreSQL to
+        support escaped quotes in table names.
+        Pull request courtesy of Austin Graham
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 13150
+
+        Fixed issue in Oracle dialect where the :class:`_oracle.RAW` datatype would
+        not reflect the length parameter.   Pull request courtesy Daniel Sullivan.
+
+
+    .. change::
+        :tags: usecase, mssql
+        :tickets: 13152
+
+        Enhanced the ``aioodbc`` dialect to expose the ``fast_executemany``
+        attribute of the pyodbc cursor.   This allows the ``fast_executemany``
+        parameter to work with the ``mssql+aioodbc`` dialect.   Pull request
+        courtesy Georg Sieber.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 13167
+
+        Fixed a typing issue where the typed members of :data:`.func` would return
+        the appropriate class of the same name, however this creates an issue for
+        typecheckers such as Zuban and pyrefly that assume :pep:`749` style
+        typechecking even if the file states that it's a :pep:`563` file; they see
+        the returned name as indicating the method object and not the class object.
+        These typecheckers are actually following along with an upcoming test
+        harness that insists on :pep:`749` style name resolution for this case
+        unconditionally.  Since :pep:`749` is the way of the future regardless,
+        differently-named type aliases have been added for these return types.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13176
+
+        Fixed issue where :meth:`_orm.Session.get` would bypass the identity map
+        and emit unnecessary SQL when ``with_for_update=False`` was passed,
+        rather than treating it equivalently to the default of ``None``.
+        Pull request courtesy of Joshua Swanson.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 13181, 13182
+
+        Fixed regression from version 2.0.42 caused by :ticket:`12654` where the
+        updated column reflection query would receive SQL Server "type alias" names
+        for special types such as ``sysname``, whereas previously the base name
+        would be received (e.g. ``nvarchar`` for ``sysname``), leading to warnings
+        that such types could not be reflected and resulting in :class:`.NullType`,
+        rather than the expected :class:`.NVARCHAR` for a type like ``sysname``.
+        The column reflection query now joins ``sys.types`` a second time to look
+        up the base type when the user type name is not present in
+        :attr:`.MSDialect.ischema_names`, and both names are checked in
+        :attr:`.MSDialect.ischema_names` for a match. Pull request courtesy Carlos
+        Serrano.
+
+    .. change::
+        :tags: mssql, usecase
+        :tickets: 13185
+
+        Remove warning for SQL Server dialect when a new version is detected.
+        The warning was originally added more than 15 years ago due to an unexpected
+        value returned when using an old version of FreeTDS.
+        The assumption is that since then the issue has been resolved, so make the
+        SQL Server dialect behave like the other ones that don't have an upper bound
+        check on the version number.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13193
+
+        Fixed issue where chained :func:`_orm.joinedload` options would not be
+        applied correctly when the final relationship in the chain is declared on a
+        base mapper and accessed through a subclass mapper in a
+        :func:`_orm.with_polymorphic` query. The path registry now correctly
+        computes the natural path when a property declared on a base class is
+        accessed through a path containing a subclass mapper, ensuring the loader
+        option can be located during query compilation.
+
+    .. change::
+        :tags: bug, orm, inheritance
+        :tickets: 13202
+
+        Fixed issue where using :meth:`_orm.Load.options` to apply a chained loader
+        option such as :func:`_orm.joinedload` or :func:`_orm.selectinload` with
+        :meth:`_orm.PropComparator.of_type` for a polymorphic relationship would
+        not generate the necessary clauses for the polymorphic subclasses. The
+        polymorphic loading strategy is now correctly propagated when using a call
+        such as ``joinedload(A.b).options(joinedload(B.c.of_type(poly)))`` to match
+        the behavior of direct chaining e.g.
+        ``joinedload(A.b).joinedload(B.c.of_type(poly))``.
+
+    .. change::
+        :tags: bug, orm, inheritance
+        :tickets: 13209
+
+        Fixed issue where using chained loader options such as
+        :func:`_orm.selectinload` after :func:`_orm.joinedload` with
+        :meth:`_orm.PropComparator.of_type` for a polymorphic relationship would
+        not properly apply the chained loader option. The loader option is now
+        correctly applied when using a call such as
+        ``joinedload(A.b.of_type(poly)).selectinload(poly.SubClass.c)`` to eagerly
+        load related objects.
 
 .. changelog::
     :version: 2.0.48

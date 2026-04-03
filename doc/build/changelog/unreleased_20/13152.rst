@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, mssql
-    :tickets: 13152
-
-    Enhanced the ``aioodbc`` dialect to expose the ``fast_executemany``
-    attribute of the pyodbc cursor.   This allows the ``fast_executemany``
-    parameter to work with the ``mssql+aioodbc`` dialect.   Pull request
-    courtesy Georg Sieber.
