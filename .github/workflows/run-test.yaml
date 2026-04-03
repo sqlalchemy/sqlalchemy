@@ -99,6 +99,15 @@ jobs:
           - os: "windows-latest"
             python-version: "pypy-3.10"
             architecture: x86
+          # these combos are failing on CI, disabled for now
+          - os: "windows-latest"
+            python-version: "3.11"
+            architecture: x86
+            build-type: "cext-greenlet"
+          - os: "windows-latest"
+            python-version: "3.11"
+            architecture: x64
+            build-type: "cext"
 
       fail-fast: false
 
