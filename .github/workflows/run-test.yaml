@@ -107,7 +107,7 @@ jobs:
           - os: "windows-latest"
             python-version: "3.11"
             architecture: x64
-            build-type: "cext"
+            build-type: "cext-greenlet"
 
       fail-fast: false
 
