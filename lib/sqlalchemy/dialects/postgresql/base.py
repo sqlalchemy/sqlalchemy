@@ -3687,19 +3687,21 @@ class PGDialect(default.DefaultDialect):
         self.do_begin(connection.connection)
 
     def do_prepare_twophase(self, connection, xid):
-        connection.exec_driver_sql("PREPARE TRANSACTION '%s'" % xid)
+        xid_literal = self._twophase_xid_literal(xid)
+        connection.exec_driver_sql(f"PREPARE TRANSACTION {xid_literal}")
 
     def do_rollback_twophase(
         self, connection, xid, is_prepared=True, recover=False
     ):
         if is_prepared:
+            xid_literal = self._twophase_xid_literal(xid)
             if recover:
                 # FIXME: ugly hack to get out of transaction
                 # context when committing recoverable transactions
                 # Must find out a way how to make the dbapi not
                 # open a transaction.
                 connection.exec_driver_sql("ROLLBACK")
-            connection.exec_driver_sql("ROLLBACK PREPARED '%s'" % xid)
+            connection.exec_driver_sql(f"ROLLBACK PREPARED {xid_literal}")
             connection.exec_driver_sql("BEGIN")
             self.do_rollback(connection.connection)
         else:
@@ -3709,13 +3711,17 @@ class PGDialect(default.DefaultDialect):
         self, connection, xid, is_prepared=True, recover=False
     ):
         if is_prepared:
+            xid_literal = self._twophase_xid_literal(xid)
             if recover:
                 connection.exec_driver_sql("ROLLBACK")
-            connection.exec_driver_sql("COMMIT PREPARED '%s'" % xid)
+            connection.exec_driver_sql(f"COMMIT PREPARED {xid_literal}")
             connection.exec_driver_sql("BEGIN")
             self.do_rollback(connection.connection)
         else:
             self.do_commit(connection.connection)
+
+    def _twophase_xid_literal(self, xid):
+        return sql_util._quote_ddl_expr(xid)
 
     def do_recover_twophase(self, connection):
         return connection.scalars(

@@ -622,8 +622,9 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
         self, connection, xid, is_prepared=True, recover=False
     ):
         if is_prepared:
+            xid_literal = self._twophase_xid_literal(xid)
             self._do_prepared_twophase(
-                connection, f"ROLLBACK PREPARED '{xid}'", recover=recover
+                connection, f"ROLLBACK PREPARED {xid_literal}", recover=recover
             )
         else:
             self.do_rollback(connection.connection)
@@ -632,8 +633,9 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
         self, connection, xid, is_prepared=True, recover=False
     ):
         if is_prepared:
+            xid_literal = self._twophase_xid_literal(xid)
             self._do_prepared_twophase(
-                connection, f"COMMIT PREPARED '{xid}'", recover=recover
+                connection, f"COMMIT PREPARED {xid_literal}", recover=recover
             )
         else:
             self.do_commit(connection.connection)

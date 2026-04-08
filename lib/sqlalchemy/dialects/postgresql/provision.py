@@ -11,6 +11,7 @@ import time
 from ... import exc
 from ... import inspect
 from ... import text
+from ...sql import util as sql_util
 from ...testing import warn_test_suite
 from ...testing.provision import create_db
 from ...testing.provision import drop_all_schema_objects_post_tables
@@ -97,7 +98,8 @@ def drop_all_schema_objects_pre_tables(cfg, eng):
         for xid in conn.exec_driver_sql(
             "select gid from pg_prepared_xacts"
         ).scalars():
-            conn.exec_driver_sql("ROLLBACK PREPARED '%s'" % xid)
+            xid_literal = sql_util._quote_ddl_expr(xid)
+            conn.exec_driver_sql(f"ROLLBACK PREPARED {xid_literal}")
 
 
 @drop_all_schema_objects_post_tables.for_db("postgresql")

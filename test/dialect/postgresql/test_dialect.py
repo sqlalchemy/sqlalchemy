@@ -158,6 +158,39 @@ class DialectTest(fixtures.TestBase):
         ]:
             eq_(dialect._get_server_version_info(mock_conn(string)), version)
 
+    def test_twophase_xid_literal_quotes_single_quotes(self):
+        dialect = postgresql.dialect()
+        eq_(dialect._twophase_xid_literal("x'1"), "'x''1'")
+
+    def test_do_prepare_twophase_uses_quoted_xid(self):
+        dialect = postgresql.dialect()
+        conn = mock.Mock(exec_driver_sql=mock.Mock())
+
+        dialect.do_prepare_twophase(conn, "x'1")
+
+        eq_(
+            conn.exec_driver_sql.mock_calls,
+            [mock.call("PREPARE TRANSACTION 'x''1'")],
+        )
+
+    def test_psycopg_twophase_commands_use_quoted_xid(self):
+        dialect = psycopg_dialect.dialect()
+        conn = mock.Mock()
+        dialect._do_prepared_twophase = mock.Mock()
+
+        dialect.do_commit_twophase(conn, "x'1", is_prepared=True, recover=False)
+        dialect.do_rollback_twophase(
+            conn, "x'1", is_prepared=True, recover=False
+        )
+
+        eq_(
+            dialect._do_prepared_twophase.mock_calls,
+            [
+                mock.call(conn, "COMMIT PREPARED 'x''1'", recover=False),
+                mock.call(conn, "ROLLBACK PREPARED 'x''1'", recover=False),
+            ],
+        )
+
     @testing.only_on("postgresql")
     def test_ensure_version_is_qualified(
         self, future_connection, testing_engine, metadata
