@@ -967,7 +967,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         :meth:`~.TwoPhaseTransaction.prepare` method.
 
         :param xid: the two phase transaction id.  If not supplied, a
-          random id will be generated.
+          random id will be generated. The accepted type and value depends on
+          the driver in use.
 
         .. seealso::
 
