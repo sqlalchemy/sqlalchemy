@@ -131,16 +131,20 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
         # pull the info we need from the URL early.  Even though URL
         # is immutable, we don't want any in-place changes to the URL
         # to affect things
-        passphrase = url.password or ""
-        url_query = dict(url.query)
+        ip = self.identifier_preparer
+        passphrase = ip.quote_identifier(url.password or "")
+        query_pragmas = {
+            prag: ip.quote_identifier(url.query[prag])
+            for prag in self.pragmas
+            if url.query.get(prag) is not None
+        }
 
         def on_connect(conn):
             cursor = conn.cursor()
-            cursor.execute('pragma key="%s"' % passphrase)
-            for prag in self.pragmas:
-                value = url_query.get(prag, None)
-                if value is not None:
-                    cursor.execute('pragma %s="%s"' % (prag, value))
+            cursor.execute(f"pragma key={passphrase}")
+            for prag, value in query_pragmas.items():
+                cursor.execute(f"pragma {prag}={value}")
+            print(query_pragmas)
             cursor.close()
 
             if super_on_connect:
