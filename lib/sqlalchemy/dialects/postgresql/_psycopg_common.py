@@ -187,3 +187,39 @@ class _PGDialect_common_psycopg(PGDialect):
                 dbapi_connection.autocommit = before_autocommit
 
         return True
+
+    def do_begin_twophase(self, connection, xid):
+        connection.connection.tpc_begin(xid)
+
+    def do_prepare_twophase(self, connection, xid):
+        connection.connection.tpc_prepare()
+
+    def _do_twophase(self, dbapi_conn, operation, xid, recover=False):
+        if recover:
+            if not self._twophase_idle_check(dbapi_conn):
+                dbapi_conn.rollback()
+            operation(xid)
+        else:
+            operation()
+
+    def _twophase_idle_check(self, dbapi_conn):
+        raise NotImplementedError
+
+    def do_rollback_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
+        dbapi_conn = connection.connection.dbapi_connection
+        self._do_twophase(
+            dbapi_conn, dbapi_conn.tpc_rollback, xid, recover=recover
+        )
+
+    def do_commit_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
+        dbapi_conn = connection.connection.dbapi_connection
+        self._do_twophase(
+            dbapi_conn, dbapi_conn.tpc_commit, xid, recover=recover
+        )
+
+    def do_recover_twophase(self, connection):
+        return [row[1] for row in connection.connection.tpc_recover()]

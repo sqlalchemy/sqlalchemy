@@ -596,44 +596,12 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
                 return True
         return False
 
-    def _do_prepared_twophase(self, connection, command, recover=False):
-        dbapi_conn = connection.connection.dbapi_connection
-        if (
-            recover
-            # don't rely on psycopg providing enum symbols, compare with
-            # eq/ne
-            or dbapi_conn.info.transaction_status
-            != self._psycopg_TransactionStatus.IDLE
-        ):
-            dbapi_conn.rollback()
-        before_autocommit = dbapi_conn.autocommit
-        try:
-            if not before_autocommit:
-                self._do_autocommit(dbapi_conn, True)
-            dbapi_conn.execute(command)
-        finally:
-            if not before_autocommit:
-                self._do_autocommit(dbapi_conn, before_autocommit)
-
-    def do_rollback_twophase(
-        self, connection, xid, is_prepared=True, recover=False
-    ):
-        if is_prepared:
-            self._do_prepared_twophase(
-                connection, f"ROLLBACK PREPARED '{xid}'", recover=recover
-            )
-        else:
-            self.do_rollback(connection.connection)
-
-    def do_commit_twophase(
-        self, connection, xid, is_prepared=True, recover=False
-    ):
-        if is_prepared:
-            self._do_prepared_twophase(
-                connection, f"COMMIT PREPARED '{xid}'", recover=recover
-            )
-        else:
-            self.do_commit(connection.connection)
+    def _twophase_idle_check(self, dbapi_conn):
+        # don't rely on psycopg providing enum symbols, compare with eq/ne
+        return (
+            dbapi_conn.info.transaction_status
+            == self._psycopg_TransactionStatus.IDLE
+        )
 
     @util.memoized_property
     def _dialect_specific_select_one(self):
@@ -783,6 +751,21 @@ class AsyncAdapt_psycopg_connection(AdaptedConnection):
 
     def set_deferrable(self, value):
         self.await_(self._connection.set_deferrable(value))
+
+    def tpc_begin(self, xid):
+        return self.await_(self._connection.tpc_begin(xid))
+
+    def tpc_prepare(self):
+        return self.await_(self._connection.tpc_prepare())
+
+    def tpc_commit(self, xid=None):
+        return self.await_(self._connection.tpc_commit(xid))
+
+    def tpc_rollback(self, xid=None):
+        return self.await_(self._connection.tpc_rollback(xid))
+
+    def tpc_recover(self):
+        return self.await_(self._connection.tpc_recover())
 
 
 class AsyncAdaptFallback_psycopg_connection(AsyncAdapt_psycopg_connection):

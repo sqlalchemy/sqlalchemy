@@ -3478,7 +3478,11 @@ class PGDialect(default.DefaultDialect):
         self.do_begin(connection.connection)
 
     def do_prepare_twophase(self, connection, xid):
-        connection.exec_driver_sql("PREPARE TRANSACTION '%s'" % xid)
+        connection.execute(
+            sql.text("PREPARE TRANSACTION :xid'").bindparams(
+                sql.bindparam("xid", xid, literal_execute=True)
+            )
+        )
 
     def do_rollback_twophase(
         self, connection, xid, is_prepared=True, recover=False
@@ -3490,7 +3494,11 @@ class PGDialect(default.DefaultDialect):
                 # Must find out a way how to make the dbapi not
                 # open a transaction.
                 connection.exec_driver_sql("ROLLBACK")
-            connection.exec_driver_sql("ROLLBACK PREPARED '%s'" % xid)
+            connection.execute(
+                sql.text("ROLLBACK PREPARED :xid").bindparams(
+                    sql.bindparam("xid", xid, literal_execute=True)
+                )
+            )
             connection.exec_driver_sql("BEGIN")
             self.do_rollback(connection.connection)
         else:
@@ -3502,7 +3510,11 @@ class PGDialect(default.DefaultDialect):
         if is_prepared:
             if recover:
                 connection.exec_driver_sql("ROLLBACK")
-            connection.exec_driver_sql("COMMIT PREPARED '%s'" % xid)
+            connection.execute(
+                sql.text("COMMIT PREPARED :xid").bindparams(
+                    sql.bindparam("xid", xid, literal_execute=True)
+                )
+            )
             connection.exec_driver_sql("BEGIN")
             self.do_rollback(connection.connection)
         else:

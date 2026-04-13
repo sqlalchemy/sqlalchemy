@@ -95,9 +95,10 @@ def _postgresql_set_default_schema_on_connection(
 def drop_all_schema_objects_pre_tables(cfg, eng):
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         for xid in conn.exec_driver_sql(
-            "select gid from pg_prepared_xacts"
+            "SELECT gid FROM pg_prepared_xacts "
+            "WHERE database = current_database()"
         ).scalars():
-            conn.exec_driver_sql("ROLLBACK PREPARED '%s'" % xid)
+            eng.dialect.do_rollback_twophase(conn, xid, recover=True)
 
 
 @drop_all_schema_objects_post_tables.for_db("postgresql")

@@ -1,0 +1,8 @@
+.. change::
+    :tags: postgresql, bug
+    :tickets: 13229
+
+    Improve handling of two phase transaction identifiers for PostgreSQL
+    when the identifier is provided by the user.
+    As part of this change the psycopg dialect was updated to use the DBAPI
+    two phase transaction API instead of executing the SQL directly.
