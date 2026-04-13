@@ -1,6 +1,7 @@
 """SQLite-specific tests."""
 
 import os
+from tempfile import mkstemp
 
 from sqlalchemy import and_
 from sqlalchemy import Column
@@ -197,11 +198,34 @@ class DialectTest(
     @testing.only_on("sqlite+pysqlcipher")
     def test_pysqlcipher_connects(self):
         """test #6586"""
-        str_url = str(testing.db.url)
+        f, name = mkstemp()
+        str_url = str(testing.db.url.set(database=name))
         e = create_engine(str_url)
 
         with e.connect() as conn:
             eq_(conn.scalar(text("select 1")), 1)
+
+        e.dispose()
+        os.close(f)
+        os.unlink(name)
+
+    @testing.only_on("sqlite+pysqlcipher")
+    def test_pysqlcipher_escaped(self):
+        """test #6586"""
+        f, name = mkstemp()
+        new_url = testing.db.url.set(
+            password='tes"ting',
+            database=name,
+            query={"cipher": 'aes-"select 1', "kdf_iter": "64000"},
+        )
+        e = create_engine(new_url)
+
+        with e.connect() as conn:
+            eq_(conn.scalar(text("select 1")), 1)
+
+        e.dispose()
+        os.close(f)
+        os.unlink(name)
 
     @testing.provide_metadata
     def test_extra_reserved_words(self, connection):
