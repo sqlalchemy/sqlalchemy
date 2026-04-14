@@ -359,6 +359,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         self,
         attr: _AttrType,
         recursion_depth: Optional[int] = None,
+        chunksize: Optional[int] = None,
     ) -> Self:
         """Indicate that the given attribute should be loaded using
         SELECT IN eager loading.
@@ -397,6 +398,14 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
          .. versionadded:: 2.0 added
             :paramref:`_orm.selectinload.recursion_depth`
 
+        :param chunksize: optional int; when set to a positive non-zero
+         integer, the keys from the IN statement will be chunked relative
+         to the passed parameter
+
+         .. note:: The :paramref:`_orm.selectinload.chunksize` only allows
+            configurability for use with selectinload() in strategies.py and
+            not for `_SelectInLoader._chunksize` use in loader.py
+
 
         .. seealso::
 
@@ -408,7 +417,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self._set_relationship_strategy(
             attr,
             {"lazy": "selectin"},
-            opts={"recursion_depth": recursion_depth},
+            opts={"recursion_depth": recursion_depth, "chunksize": chunksize},
         )
 
     def lazyload(self, attr: _AttrType) -> Self:
@@ -2435,10 +2444,15 @@ def subqueryload(*keys: _AttrType) -> _AbstractLoad:
 
 @loader_unbound_fn
 def selectinload(
-    *keys: _AttrType, recursion_depth: Optional[int] = None
+    *keys: _AttrType,
+    recursion_depth: Optional[int] = None,
+    chunksize: Optional[int] = None,
 ) -> _AbstractLoad:
     return _generate_from_keys(
-        Load.selectinload, keys, False, {"recursion_depth": recursion_depth}
+        Load.selectinload,
+        keys,
+        False,
+        {"recursion_depth": recursion_depth, "chunksize": chunksize},
     )
 
 

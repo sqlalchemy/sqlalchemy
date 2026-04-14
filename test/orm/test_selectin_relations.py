@@ -2379,24 +2379,43 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
         )
         session.commit()
 
-    def test_odd_number_chunks(self):
+    @testing.combinations(True, False)
+    def test_odd_number_chunks(self, legacy):
         A, B = self.classes("A", "B")
 
         session = fixture_session()
 
         def go():
-            with mock.patch(
-                "sqlalchemy.orm.strategies._SelectInLoader._chunksize", 47
-            ):
-                q = session.query(A).options(selectinload(A.bs)).order_by(A.id)
+            if legacy:
+                with mock.patch(
+                    "sqlalchemy.orm.strategies._SelectInLoader._chunksize", 47
+                ):
+                    q = (
+                        session.query(A)
+                        .options(selectinload(A.bs))
+                        .order_by(A.id)
+                    )
 
-                for a in q:
-                    a.bs
+                    for a in q:
+                        a.bs
+            else:
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs, chunksize=47))
+                    .order_by(A.id)
+                )
+
+                q = session.scalars(statement).all()
+
+        if legacy:
+            initial_sql = "SELECT a.id AS a_id FROM a ORDER BY a.id"
+        else:
+            initial_sql = "SELECT a.id FROM a ORDER BY a.id"
 
         self.assert_sql_execution(
             testing.db,
             go,
-            CompiledSQL("SELECT a.id AS a_id FROM a ORDER BY a.id", {}),
+            CompiledSQL(initial_sql, {}),
             CompiledSQL(
                 "SELECT b.a_id, b.id "
                 "FROM b WHERE b.a_id IN "
@@ -2416,6 +2435,25 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
                 {"primary_keys": list(range(95, 101))},
             ),
         )
+
+    @testing.combinations(-250, "a", 0)
+    def test_chunksize_value_error(self, chunksize):
+        A, B = self.classes("A", "B")
+
+        session = fixture_session()
+
+        def go():
+            with testing.expect_raises_message(
+               ValueError,
+               ".*please use a positive non-zero integer.*"
+            ):
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs, chunksize=chunksize))
+                    .order_by(A.id)
+                )
+
+                q = session.scalars(statement).all()
 
     @testing.requires.independent_cursors
     def test_yield_per(self):
@@ -2489,6 +2527,152 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
                 "SELECT a.id FROM a WHERE a.id IN "
                 "(__[POSTCOMPILE_primary_keys])",
                 {"primary_keys": list(range(95, 101))},
+            ),
+        )
+
+
+class ChainedChunkingTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_mappers(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(ComparableEntity, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B", order_by="B.id", back_populates="a")
+
+        class B(ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            a = relationship("A", back_populates="bs")
+            cs = relationship("C", order_by="C.id", back_populates="b")
+
+        class C(ComparableEntity, Base):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey("b.id"))
+            b = relationship("B", back_populates="cs")
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B, C = cls.classes("A", "B", "C")
+
+        session = Session(connection)
+
+        for i in range(1, 6):
+            b_list = []
+            for j in range(1, 4):
+                b_id = (i * 6) + j
+                c_id = b_id + 1
+
+                b_list.append(B(id=b_id, cs=[C(id=c_id)]))
+            session.add(A(id=i, bs=b_list))
+        session.commit()
+
+    def test_chained_selectinload_with_two_custom_chunksize(self):
+        A, B, C = self.classes("A", "B", "C")
+
+        b_list = [7, 8, 9, 13, 14, 15, 19, 20, 21, 25, 26, 27, 31, 32, 33]
+
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A)
+                .options(
+                    selectinload(A.bs, chunksize=3).selectinload(
+                        B.cs, chunksize=4
+                    )
+                )
+                .order_by(A.id)
+            )
+            q = session.scalars(statement).all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+            CompiledSQL(
+                "SELECT b.a_id, b.id "
+                "FROM b WHERE b.a_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
+                {"primary_keys": list(range(1, 4))},
+            ),
+            CompiledSQL(
+                "SELECT b.a_id, b.id "
+                "FROM b WHERE b.a_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
+                {"primary_keys": list(range(4, 6))},
+            ),
+            CompiledSQL(
+                "SELECT c.b_id, c.id "
+                "FROM c WHERE c.b_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY c.id",
+                {"primary_keys": b_list[0:4]},
+            ),
+            CompiledSQL(
+                "SELECT c.b_id, c.id "
+                "FROM c WHERE c.b_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY c.id",
+                {"primary_keys": b_list[4:8]},
+            ),
+            CompiledSQL(
+                "SELECT c.b_id, c.id "
+                "FROM c WHERE c.b_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY c.id",
+                {"primary_keys": b_list[8:12]},
+            ),
+            CompiledSQL(
+                "SELECT c.b_id, c.id "
+                "FROM c WHERE c.b_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY c.id",
+                {"primary_keys": b_list[12:]},
+            ),
+        )
+
+    def test_chained_selectinload_with_one_chunksize(self):
+        """
+        This test is to make sure that a previous custom chunksize doesn't
+        effect chunksize in remaining selectinload
+        """
+
+        A, B, C = self.classes("A", "B", "C")
+
+        b_list = [7, 8, 9, 13, 14, 15, 19, 20, 21, 25, 26, 27, 31, 32, 33]
+
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A)
+                .options(selectinload(A.bs, chunksize=3).selectinload(B.cs))
+                .order_by(A.id)
+            )
+
+            q = session.scalars(statement).all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+            CompiledSQL(
+                "SELECT b.a_id, b.id "
+                "FROM b WHERE b.a_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
+                {"primary_keys": list(range(1, 4))},
+            ),
+            CompiledSQL(
+                "SELECT b.a_id, b.id "
+                "FROM b WHERE b.a_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
+                {"primary_keys": list(range(4, 6))},
+            ),
+            CompiledSQL(
+                "SELECT c.b_id, c.id "
+                "FROM c WHERE c.b_id IN "
+                "(__[POSTCOMPILE_primary_keys]) ORDER BY c.id",
+                {"primary_keys": b_list},
             ),
         )
 
