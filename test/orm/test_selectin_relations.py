@@ -2405,7 +2405,7 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
                     .order_by(A.id)
                 )
 
-                q = session.scalars(statement).all()
+                session.scalars(statement).all()
 
         if legacy:
             initial_sql = "SELECT a.id AS a_id FROM a ORDER BY a.id"
@@ -2440,20 +2440,13 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
     def test_chunksize_value_error(self, chunksize):
         A, B = self.classes("A", "B")
 
-        session = fixture_session()
-
         def go():
             with testing.expect_raises_message(
-               ValueError,
-               ".*please use a positive non-zero integer.*"
+                ValueError, ".*please use a positive non-zero integer.*"
             ):
-                statement = (
-                    select(A)
-                    .options(selectinload(A.bs, chunksize=chunksize))
-                    .order_by(A.id)
-                )
-
-                q = session.scalars(statement).all()
+                select(A).options(
+                    selectinload(A.bs, chunksize=chunksize)
+                ).order_by(A.id)
 
     @testing.requires.independent_cursors
     def test_yield_per(self):
@@ -2587,7 +2580,8 @@ class ChainedChunkingTest(fixtures.DeclarativeMappedTest):
                 )
                 .order_by(A.id)
             )
-            q = session.scalars(statement).all()
+
+            session.scalars(statement).all()
 
         self.assert_sql_execution(
             testing.db,
@@ -2650,7 +2644,7 @@ class ChainedChunkingTest(fixtures.DeclarativeMappedTest):
                 .order_by(A.id)
             )
 
-            q = session.scalars(statement).all()
+            session.scalars(statement).all()
 
         self.assert_sql_execution(
             testing.db,
