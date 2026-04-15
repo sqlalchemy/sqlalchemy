@@ -982,6 +982,8 @@ from ... import text
 from ... import util
 from ...engine import cursor as _cursor
 from ...engine import default
+from ...engine import ObjectKind
+from ...engine import ObjectScope
 from ...engine import reflection
 from ...engine.reflection import ReflectionDefaults
 from ...sql import coercions
@@ -2967,6 +2969,24 @@ def _db_plus_owner(fn):
     return update_wrapper(wrap, fn)
 
 
+def _db_plus_owner_multi(fn):
+    def wrap(dialect, connection, schema=None, **kw):
+        dbname, owner = _owner_plus_db(dialect, schema)
+        return _switch_db(
+            dbname,
+            connection,
+            fn,
+            dialect,
+            connection,
+            dbname,
+            owner,
+            schema,
+            **kw,
+        )
+
+    return update_wrapper(wrap, fn)
+
+
 def _switch_db(dbname, connection, fn, *arg, **kw):
     if dbname:
         current_db = connection.exec_driver_sql("select db_name()").scalar()
@@ -3673,6 +3693,97 @@ order by
                 % tablename
             ) from ne
 
+    def _parse_column_info(
+        self,
+        name,
+        type_,
+        nullable,
+        maxlen,
+        numericprec,
+        numericscale,
+        default,
+        collation,
+        definition,
+        is_persisted,
+        is_identity,
+        identity_start,
+        identity_increment,
+        comment,
+        base_type=None,
+    ):
+        # Try to resolve the user type first (e.g., "sysname"),
+        # then fall back to the base type (e.g., "nvarchar").
+        # base_type may be None for CLR types (geography, geometry,
+        # hierarchyid) which have no corresponding base type.
+        coltype = self.ischema_names.get(type_, None)
+        if coltype is None and base_type is not None and base_type != type_:
+            coltype = self.ischema_names.get(base_type, None)
+        kwargs = {}
+
+        if coltype in (MSBinary, MSVarBinary, sqltypes.LargeBinary):
+            kwargs["length"] = maxlen if maxlen != -1 else None
+        elif coltype in (MSString, MSChar, MSText):
+            kwargs["length"] = maxlen if maxlen != -1 else None
+            if collation:
+                kwargs["collation"] = collation
+        elif coltype in (MSNVarchar, MSNChar, MSNText):
+            kwargs["length"] = maxlen // 2 if maxlen != -1 else None
+            if collation:
+                kwargs["collation"] = collation
+
+        if coltype is None:
+            if base_type is not None and base_type != type_:
+                util.warn(
+                    "Did not recognize type '%s' (user type) or '%s' "
+                    "(base type) of column '%s'" % (type_, base_type, name)
+                )
+            else:
+                util.warn(
+                    "Did not recognize type '%s' of column '%s'"
+                    % (type_, name)
+                )
+            coltype = sqltypes.NULLTYPE
+        else:
+            if issubclass(coltype, sqltypes.NumericCommon):
+                kwargs["precision"] = numericprec
+                if not issubclass(coltype, sqltypes.Float):
+                    kwargs["scale"] = numericscale
+            coltype = coltype(**kwargs)
+
+        cdict = {
+            "name": name,
+            "type": coltype,
+            "nullable": nullable,
+            "default": default,
+            "autoincrement": is_identity is not None,
+            "comment": comment,
+        }
+
+        if definition is not None and is_persisted is not None:
+            cdict["computed"] = {
+                "sqltext": definition,
+                "persisted": is_persisted,
+            }
+
+        if is_identity is not None:
+            if identity_start is None or identity_increment is None:
+                cdict["identity"] = {}
+            else:
+                if isinstance(
+                    coltype, (sqltypes.BigInteger, sqltypes.Integer)
+                ):
+                    start = int(identity_start)
+                    increment = int(identity_increment)
+                else:
+                    start = identity_start
+                    increment = identity_increment
+                cdict["identity"] = {
+                    "start": start,
+                    "increment": increment,
+                }
+
+        return cdict
+
     @reflection.cache
     @_db_plus_owner
     def get_columns(self, connection, tablename, dbname, owner, schema, **kw):
@@ -3793,115 +3904,25 @@ order by
 
         cols = []
         for row in c.mappings():
-            name = row[sys_columns.c.name]
-            type_ = row[sys_types.c.name]
-            base_type = row["base_type"]
-            nullable = row[sys_columns.c.is_nullable] == 1
-            maxlen = row[sys_columns.c.max_length]
-            numericprec = row[sys_columns.c.precision]
-            numericscale = row[sys_columns.c.scale]
-            default = row[sys_default_constraints.c.definition]
-            collation = row[sys_columns.c.collation_name]
-            definition = row[computed_definition]
-            is_persisted = row[computed_cols.c.is_persisted]
-            is_identity = row[identity_cols.c.is_identity]
-            identity_start = row[identity_cols.c.seed_value]
-            identity_increment = row[identity_cols.c.increment_value]
-            comment = row[extended_properties.c.value]
-
-            # Try to resolve the user type first (e.g., "sysname"),
-            # then fall back to the base type (e.g., "nvarchar").
-            # base_type may be None for CLR types (geography, geometry,
-            # hierarchyid) which have no corresponding base type.
-            coltype = self.ischema_names.get(type_, None)
-            if (
-                coltype is None
-                and base_type is not None
-                and base_type != type_
-            ):
-                coltype = self.ischema_names.get(base_type, None)
-
-            kwargs = {}
-
-            if coltype in (
-                MSBinary,
-                MSVarBinary,
-                sqltypes.LargeBinary,
-            ):
-                kwargs["length"] = maxlen if maxlen != -1 else None
-            elif coltype in (
-                MSString,
-                MSChar,
-                MSText,
-            ):
-                kwargs["length"] = maxlen if maxlen != -1 else None
-                if collation:
-                    kwargs["collation"] = collation
-            elif coltype in (
-                MSNVarchar,
-                MSNChar,
-                MSNText,
-            ):
-                kwargs["length"] = maxlen // 2 if maxlen != -1 else None
-                if collation:
-                    kwargs["collation"] = collation
-
-            if coltype is None:
-                if base_type is not None and base_type != type_:
-                    util.warn(
-                        "Did not recognize type '%s' (user type) or '%s' "
-                        "(base type) of column '%s'" % (type_, base_type, name)
-                    )
-                else:
-                    util.warn(
-                        "Did not recognize type '%s' of column '%s'"
-                        % (type_, name)
-                    )
-                coltype = sqltypes.NULLTYPE
-            else:
-                if issubclass(coltype, sqltypes.NumericCommon):
-                    kwargs["precision"] = numericprec
-
-                    if not issubclass(coltype, sqltypes.Float):
-                        kwargs["scale"] = numericscale
-
-                coltype = coltype(**kwargs)
-            cdict = {
-                "name": name,
-                "type": coltype,
-                "nullable": nullable,
-                "default": default,
-                "autoincrement": is_identity is not None,
-                "comment": comment,
-            }
-
-            if definition is not None and is_persisted is not None:
-                cdict["computed"] = {
-                    "sqltext": definition,
-                    "persisted": is_persisted,
-                }
-
-            if is_identity is not None:
-                # identity_start and identity_increment are Decimal or None
-                if identity_start is None or identity_increment is None:
-                    cdict["identity"] = {}
-                else:
-                    if isinstance(coltype, sqltypes.BigInteger):
-                        start = int(identity_start)
-                        increment = int(identity_increment)
-                    elif isinstance(coltype, sqltypes.Integer):
-                        start = int(identity_start)
-                        increment = int(identity_increment)
-                    else:
-                        start = identity_start
-                        increment = identity_increment
-
-                    cdict["identity"] = {
-                        "start": start,
-                        "increment": increment,
-                    }
-
-            cols.append(cdict)
+            cols.append(
+                self._parse_column_info(
+                    name=row[sys_columns.c.name],
+                    type_=row[sys_types.c.name],
+                    base_type=row["base_type"],
+                    nullable=row[sys_columns.c.is_nullable] == 1,
+                    maxlen=row[sys_columns.c.max_length],
+                    numericprec=row[sys_columns.c.precision],
+                    numericscale=row[sys_columns.c.scale],
+                    default=row[sys_default_constraints.c.definition],
+                    collation=row[sys_columns.c.collation_name],
+                    definition=row[computed_definition],
+                    is_persisted=row[computed_cols.c.is_persisted],
+                    is_identity=row[identity_cols.c.is_identity],
+                    identity_start=row[identity_cols.c.seed_value],
+                    identity_increment=row[identity_cols.c.increment_value],
+                    comment=row[extended_properties.c.value],
+                )
+            )
 
         if cols:
             return cols
@@ -3967,14 +3988,9 @@ order by
                 **kw,
             )
 
-    @reflection.cache
-    @_db_plus_owner
-    def get_foreign_keys(
-        self, connection, tablename, dbname, owner, schema, **kw
-    ):
-        # Foreign key constraints
-        s = (
-            text("""\
+    @staticmethod
+    def _fk_query_sql(fk_info_where, extra_cols=""):
+        return """\
 WITH fk_info AS (
     SELECT
         ischema_ref_con.constraint_schema,
@@ -3992,11 +4008,11 @@ WITH fk_info AS (
         INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS ischema_ref_con
         INNER JOIN
         INFORMATION_SCHEMA.KEY_COLUMN_USAGE ischema_key_col ON
-            ischema_key_col.table_schema = ischema_ref_con.constraint_schema
+            ischema_key_col.table_schema =
+                ischema_ref_con.constraint_schema
             AND ischema_key_col.constraint_name =
-            ischema_ref_con.constraint_name
-    WHERE ischema_key_col.table_name = :tablename
-        AND ischema_key_col.table_schema = :owner
+                ischema_ref_con.constraint_name
+    WHERE %(fk_info_where)s
 ),
 constraint_info AS (
     SELECT
@@ -4019,22 +4035,19 @@ index_info AS (
         sys.columns.name AS column_name
     FROM
         sys.indexes
-        INNER JOIN
-        sys.objects ON
-            sys.objects.object_id = sys.indexes.object_id
-        INNER JOIN
-        sys.schemas ON
-            sys.schemas.schema_id = sys.objects.schema_id
-        INNER JOIN
-        sys.index_columns ON
-            sys.index_columns.object_id = sys.objects.object_id
+        INNER JOIN sys.objects
+            ON sys.objects.object_id = sys.indexes.object_id
+        INNER JOIN sys.schemas
+            ON sys.schemas.schema_id = sys.objects.schema_id
+        INNER JOIN sys.index_columns
+            ON sys.index_columns.object_id = sys.objects.object_id
             AND sys.index_columns.index_id = sys.indexes.index_id
-        INNER JOIN
-        sys.columns ON
-            sys.columns.object_id = sys.indexes.object_id
+        INNER JOIN sys.columns
+            ON sys.columns.object_id = sys.indexes.object_id
             AND sys.columns.column_id = sys.index_columns.column_id
 )
     SELECT
+        %(extra_cols)s
         fk_info.constraint_schema,
         fk_info.constraint_name,
         fk_info.ordinal_position,
@@ -4054,6 +4067,7 @@ index_info AS (
             AND constraint_info.ordinal_position = fk_info.ordinal_position
     UNION
     SELECT
+        %(extra_cols)s
         fk_info.constraint_schema,
         fk_info.constraint_name,
         fk_info.ordinal_position,
@@ -4074,7 +4088,27 @@ index_info AS (
 
     ORDER BY fk_info.constraint_schema, fk_info.constraint_name,
         fk_info.ordinal_position
-""")
+""" % {
+            "fk_info_where": fk_info_where,
+            "extra_cols": extra_cols,
+        }
+
+    @reflection.cache
+    @_db_plus_owner
+    def get_foreign_keys(
+        self, connection, tablename, dbname, owner, schema, **kw
+    ):
+        # Foreign key constraints
+        s = (
+            text(
+                self._fk_query_sql(
+                    fk_info_where=(
+                        "ischema_key_col.table_name = :tablename"
+                        "\n        AND ischema_key_col.table_schema = :owner"
+                    ),
+                    extra_cols="",
+                )
+            )
             .bindparams(
                 sql.bindparam("tablename", tablename, ischema.CoerceUnicode()),
                 sql.bindparam("owner", owner, ischema.CoerceUnicode()),
@@ -4154,3 +4188,594 @@ index_info AS (
                 ReflectionDefaults.foreign_keys,
                 **kw,
             )
+
+    # --- multi-reflection API (issue #8430) ---
+
+    @staticmethod
+    def _multi_reflect_use_default(scope, filter_names):
+        """Return True if multi-reflection should delegate to the default
+        per-table fallback rather than running the bulk MSSQL query.
+
+        We fall back when:
+
+        * ``scope`` is :attr:`.ObjectScope.TEMPORARY` (only temp objects;
+          they live in ``tempdb`` and can't be enumerated efficiently
+          via the user db's ``sys.objects``).
+
+        * ``filter_names`` includes a ``#``-prefixed temp table name.
+          This covers the autoload-by-name case
+          ``Table("#tmp", autoload_with=conn)`` which uses
+          ``scope=ANY, kind=ANY, filter_names=["#tmp"]``.
+        """
+        if scope is ObjectScope.TEMPORARY:
+            return True
+        if filter_names and any(n.startswith("#") for n in filter_names):
+            return True
+        return False
+
+    @staticmethod
+    def _multi_name_map(filter_names):
+        """Build a case-insensitive ``server_name -> user_name`` mapper.
+
+        MSSQL object names are case-insensitive under the default
+        collation, so a user may pass ``"sOmEtAbLe"`` for a table
+        physically stored as ``"SomeTable"``. The bulk SQL returns the
+        server-side casing, but result keys must use the user-supplied
+        casing so that downstream code (e.g.
+        :meth:`.Inspector.reflect_table`) can find the entry.
+
+        Returns a callable ``(server_name) -> user_name``. When
+        ``filter_names`` is empty/None, returns identity.
+        """
+        if not filter_names:
+            return lambda n: n
+        lookup = {n.lower(): n for n in filter_names}
+        return lambda n: lookup.get(n.lower(), n)
+
+    def _get_multi_object_names(
+        self, connection, owner, filter_names, scope, kind
+    ):
+        """Return matching table/view names for the given kind/scope."""
+        if scope is ObjectScope.TEMPORARY:
+            return []
+
+        type_filter = []
+        if ObjectKind.TABLE in kind:
+            type_filter.append("'U'")
+        if ObjectKind.VIEW in kind:
+            type_filter.append("'V'")
+        if not type_filter:
+            return []
+
+        query = (
+            "SELECT o.name "
+            "FROM sys.objects o "
+            "JOIN sys.schemas s ON o.schema_id = s.schema_id "
+            "WHERE s.name = :owner "
+            "AND o.type IN (%s)" % ", ".join(type_filter)
+        )
+        params = [sql.bindparam("owner", owner, ischema.CoerceUnicode())]
+        if filter_names:
+            query += " AND o.name IN :filter_names"
+            params.append(
+                sql.bindparam("filter_names", filter_names, expanding=True)
+            )
+
+        rp = connection.execute(sql.text(query).bindparams(*params))
+        return [row[0] for row in rp]
+
+    @_db_plus_owner_multi
+    def get_multi_columns(
+        self,
+        connection,
+        dbname,
+        owner,
+        schema,
+        filter_names,
+        scope,
+        kind,
+        **kw,
+    ):
+        if self._multi_reflect_use_default(scope, filter_names):
+            return self._default_multi_reflect(
+                self.get_columns,
+                connection,
+                kind=kind,
+                schema=schema,
+                filter_names=filter_names,
+                scope=scope,
+                **kw,
+            )
+
+        names = self._get_multi_object_names(
+            connection, owner, filter_names, scope, kind
+        )
+        if not names:
+            return iter([])
+        name_map = self._multi_name_map(filter_names)
+
+        computed_def = (
+            "comp.definition"
+            if self._supports_nvarchar_max
+            else "CAST(comp.definition AS NVARCHAR(4000))"
+        )
+        rp = connection.execution_options(schema_translate_map={}).execute(
+            sql.text(f"""
+SELECT
+    o.name AS table_name,
+    c.name AS column_name,
+    t.name AS type_name,
+    bt.name AS base_type,
+    c.is_nullable,
+    c.max_length,
+    c.precision,
+    c.scale,
+    dc.definition AS default_value,
+    c.collation_name,
+    {computed_def} AS computed_definition,
+    comp.is_persisted,
+    ic.is_identity,
+    CAST(ic.seed_value AS NUMERIC(38, 0)) AS seed_value,
+    CAST(ic.increment_value AS NUMERIC(38, 0)) AS increment_value,
+    CAST(ep.value AS NVARCHAR(MAX)) AS comment
+FROM sys.columns c
+JOIN sys.objects o ON c.object_id = o.object_id
+JOIN sys.schemas s ON o.schema_id = s.schema_id
+JOIN sys.types t ON c.user_type_id = t.user_type_id
+LEFT JOIN sys.types bt
+    ON t.system_type_id = bt.system_type_id
+    AND bt.user_type_id = bt.system_type_id
+LEFT JOIN sys.default_constraints dc
+    ON dc.object_id = c.default_object_id
+    AND dc.parent_column_id = c.column_id
+LEFT JOIN sys.computed_columns comp
+    ON comp.object_id = c.object_id AND comp.column_id = c.column_id
+LEFT JOIN sys.identity_columns ic
+    ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+LEFT JOIN sys.extended_properties ep
+    ON ep.class = 1 AND ep.name = 'MS_Description'
+    AND ep.major_id = c.object_id AND ep.minor_id = c.column_id
+WHERE s.name = :owner
+  AND o.type IN ('U', 'V')
+  AND o.name IN :filter_names
+ORDER BY o.name, c.column_id
+""").bindparams(
+                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                sql.bindparam("filter_names", names, expanding=True),
+            )
+        )
+
+        result = {}
+        for row in rp.mappings():
+            table_name = name_map(row["table_name"])
+            cdict = self._parse_column_info(
+                name=row["column_name"],
+                type_=row["type_name"],
+                base_type=row["base_type"],
+                nullable=row["is_nullable"] == 1,
+                maxlen=row["max_length"],
+                numericprec=row["precision"],
+                numericscale=row["scale"],
+                default=row["default_value"],
+                collation=row["collation_name"],
+                definition=row["computed_definition"],
+                is_persisted=row["is_persisted"],
+                is_identity=row["is_identity"],
+                identity_start=row["seed_value"],
+                identity_increment=row["increment_value"],
+                comment=row["comment"],
+            )
+            result.setdefault((schema, table_name), []).append(cdict)
+
+        for n in names:
+            key = (schema, name_map(n))
+            if key not in result:
+                result[key] = ReflectionDefaults.columns()
+
+        return result.items()
+
+    @_db_plus_owner_multi
+    def get_multi_pk_constraint(
+        self,
+        connection,
+        dbname,
+        owner,
+        schema,
+        filter_names,
+        scope,
+        kind,
+        **kw,
+    ):
+        if self._multi_reflect_use_default(scope, filter_names):
+            return self._default_multi_reflect(
+                self.get_pk_constraint,
+                connection,
+                kind=kind,
+                schema=schema,
+                filter_names=filter_names,
+                scope=scope,
+                **kw,
+            )
+
+        names = self._get_multi_object_names(
+            connection, owner, filter_names, scope, kind
+        )
+        if not names:
+            return iter([])
+        name_map = self._multi_name_map(filter_names)
+
+        rp = connection.execute(
+            sql.text("""
+SELECT
+    o.name AS table_name,
+    kc.name AS constraint_name,
+    c.name AS column_name,
+    ic.key_ordinal,
+    i.type AS index_type
+FROM sys.key_constraints kc
+JOIN sys.objects o ON kc.parent_object_id = o.object_id
+JOIN sys.schemas s ON o.schema_id = s.schema_id
+JOIN sys.index_columns ic
+    ON ic.object_id = kc.parent_object_id
+    AND ic.index_id = kc.unique_index_id
+JOIN sys.columns c
+    ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+JOIN sys.indexes i
+    ON i.object_id = kc.parent_object_id
+    AND i.index_id = kc.unique_index_id
+WHERE kc.type = 'PK'
+  AND s.name = :owner
+  AND o.name IN :filter_names
+ORDER BY o.name, ic.key_ordinal
+""").bindparams(
+                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                sql.bindparam("filter_names", names, expanding=True),
+            )
+        )
+
+        result = {}
+        for row in rp.mappings():
+            table_name = name_map(row["table_name"])
+            key = (schema, table_name)
+            if key not in result:
+                result[key] = {
+                    "constrained_columns": [],
+                    "name": row["constraint_name"],
+                    "dialect_options": {
+                        "mssql_clustered": row["index_type"] == 1
+                    },
+                }
+            result[key]["constrained_columns"].append(row["column_name"])
+
+        for n in names:
+            key = (schema, name_map(n))
+            if key not in result:
+                result[key] = ReflectionDefaults.pk_constraint()
+
+        return result.items()
+
+    @_db_plus_owner_multi
+    def get_multi_foreign_keys(
+        self,
+        connection,
+        dbname,
+        owner,
+        schema,
+        filter_names,
+        scope,
+        kind,
+        **kw,
+    ):
+        if self._multi_reflect_use_default(scope, filter_names):
+            return self._default_multi_reflect(
+                self.get_foreign_keys,
+                connection,
+                kind=kind,
+                schema=schema,
+                filter_names=filter_names,
+                scope=scope,
+                **kw,
+            )
+
+        names = self._get_multi_object_names(
+            connection, owner, filter_names, scope, kind
+        )
+        if not names:
+            return iter([])
+        name_map = self._multi_name_map(filter_names)
+
+        rp = connection.execute(
+            sql.text(
+                self._fk_query_sql(
+                    fk_info_where=(
+                        "ischema_key_col.table_schema = :owner"
+                        "\n      AND ischema_key_col.table_name"
+                        " IN :filter_names"
+                    ),
+                    extra_cols="fk_info.table_name,",
+                )
+            )
+            .bindparams(
+                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                sql.bindparam("filter_names", names, expanding=True),
+            )
+            .columns(
+                constraint_schema=sqltypes.Unicode(),
+                constraint_name=sqltypes.Unicode(),
+                table_name=sqltypes.Unicode(),
+                constrained_column=sqltypes.Unicode(),
+                referred_table_schema=sqltypes.Unicode(),
+                referred_table_name=sqltypes.Unicode(),
+                referred_column=sqltypes.Unicode(),
+            )
+        )
+
+        result = {}
+        for r in rp.all():
+            (
+                table_name,
+                _,  # constraint_schema
+                rfknm,
+                _,  # ordinal
+                scol,
+                rschema,
+                rtbl,
+                rcol,
+                _,  # match
+                fkuprule,
+                fkdelrule,
+            ) = r
+
+            key = (schema, name_map(table_name))
+            if key not in result:
+                result[key] = util.defaultdict(
+                    lambda: {
+                        "name": None,
+                        "constrained_columns": [],
+                        "referred_schema": None,
+                        "referred_table": None,
+                        "referred_columns": [],
+                        "options": {},
+                    }
+                )
+
+            rec = result[key][rfknm]
+            rec["name"] = rfknm
+
+            if fkuprule != "NO ACTION":
+                rec["options"]["onupdate"] = fkuprule
+            if fkdelrule != "NO ACTION":
+                rec["options"]["ondelete"] = fkdelrule
+
+            if not rec["referred_table"]:
+                rec["referred_table"] = rtbl
+                if schema is not None or owner != rschema:
+                    if dbname:
+                        rschema = dbname + "." + rschema
+                    rec["referred_schema"] = rschema
+
+            rec["constrained_columns"].append(scol)
+            rec["referred_columns"].append(rcol)
+
+        final = {}
+        for key, fk_dict in result.items():
+            final[key] = list(fk_dict.values())
+
+        for n in names:
+            key = (schema, name_map(n))
+            if key not in final:
+                final[key] = ReflectionDefaults.foreign_keys()
+
+        return final.items()
+
+    @_db_plus_owner_multi
+    def get_multi_indexes(
+        self,
+        connection,
+        dbname,
+        owner,
+        schema,
+        filter_names,
+        scope,
+        kind,
+        **kw,
+    ):
+        if self._multi_reflect_use_default(scope, filter_names):
+            return self._default_multi_reflect(
+                self.get_indexes,
+                connection,
+                kind=kind,
+                schema=schema,
+                filter_names=filter_names,
+                scope=scope,
+                **kw,
+            )
+
+        names = self._get_multi_object_names(
+            connection, owner, filter_names, scope, kind
+        )
+        if not names:
+            return iter([])
+        name_map = self._multi_name_map(filter_names)
+
+        filter_definition = (
+            "ind.filter_definition"
+            if self.server_version_info >= MS_2008_VERSION
+            else "NULL as filter_definition"
+        )
+
+        rp = connection.execution_options(future_result=True).execute(
+            sql.text(f"""
+SELECT
+    tab.name AS table_name,
+    ind.index_id,
+    ind.is_unique,
+    ind.name,
+    ind.type,
+    {filter_definition}
+FROM sys.indexes ind
+JOIN sys.objects tab ON ind.object_id = tab.object_id
+JOIN sys.schemas sch ON sch.schema_id = tab.schema_id
+WHERE sch.name = :owner
+  AND ind.is_primary_key = 0
+  AND ind.type != 0
+  AND tab.name IN :filter_names
+ORDER BY tab.name, ind.name
+""")
+            .bindparams(
+                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                sql.bindparam("filter_names", names, expanding=True),
+            )
+            .columns(name=sqltypes.Unicode())
+        )
+
+        # {table_name: {index_id: index_dict}}
+        indexes_by_table = {}
+        for row in rp.mappings():
+            tname = name_map(row["table_name"])
+            if tname not in indexes_by_table:
+                indexes_by_table[tname] = {}
+
+            current = {
+                "name": row["name"],
+                "unique": row["is_unique"] == 1,
+                "column_names": [],
+                "include_columns": [],
+                "dialect_options": {},
+            }
+            do = current["dialect_options"]
+            index_type = row["type"]
+            if index_type in {1, 2}:
+                do["mssql_clustered"] = index_type == 1
+            if index_type in {5, 6}:
+                do["mssql_clustered"] = index_type == 5
+                do["mssql_columnstore"] = True
+            if row["filter_definition"] is not None:
+                do["mssql_where"] = row["filter_definition"]
+
+            indexes_by_table[tname][row["index_id"]] = current
+
+        # Fetch index columns
+        rp2 = connection.execution_options(future_result=True).execute(
+            sql.text("""
+SELECT
+    tab.name AS table_name,
+    ind_col.index_id,
+    col.name,
+    ind_col.is_included_column
+FROM sys.index_columns ind_col
+JOIN sys.columns col
+    ON col.object_id = ind_col.object_id
+    AND col.column_id = ind_col.column_id
+JOIN sys.objects tab ON tab.object_id = ind_col.object_id
+JOIN sys.schemas sch ON sch.schema_id = tab.schema_id
+WHERE sch.name = :owner
+  AND tab.name IN :filter_names
+ORDER BY tab.name, ind_col.index_id, ind_col.key_ordinal
+""")
+            .bindparams(
+                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                sql.bindparam("filter_names", names, expanding=True),
+            )
+            .columns(name=sqltypes.Unicode())
+        )
+
+        for row in rp2.mappings():
+            tname = name_map(row["table_name"])
+            idx_id = row["index_id"]
+            if tname not in indexes_by_table:
+                continue
+            if idx_id not in indexes_by_table[tname]:
+                continue
+            index_def = indexes_by_table[tname][idx_id]
+            is_colstore = index_def["dialect_options"].get("mssql_columnstore")
+            is_clustered = index_def["dialect_options"].get("mssql_clustered")
+            if not (is_colstore and is_clustered):
+                if row["is_included_column"] and not is_colstore:
+                    index_def["include_columns"].append(row["name"])
+                else:
+                    index_def["column_names"].append(row["name"])
+
+        result = {}
+        for tname, idx_dict in indexes_by_table.items():
+            for index_info in idx_dict.values():
+                index_info["dialect_options"]["mssql_include"] = index_info[
+                    "include_columns"
+                ]
+            result[(schema, tname)] = list(idx_dict.values())
+
+        for n in names:
+            key = (schema, name_map(n))
+            if key not in result:
+                result[key] = ReflectionDefaults.indexes()
+
+        return result.items()
+
+    @_db_plus_owner_multi
+    def get_multi_table_comment(
+        self,
+        connection,
+        dbname,
+        owner,
+        schema,
+        filter_names,
+        scope,
+        kind,
+        **kw,
+    ):
+        if not self.supports_comments:
+            raise NotImplementedError(
+                "Can't get table comments on current SQL Server "
+                "version in use"
+            )
+
+        if self._multi_reflect_use_default(scope, filter_names):
+            return self._default_multi_reflect(
+                self.get_table_comment,
+                connection,
+                kind=kind,
+                schema=schema,
+                filter_names=filter_names,
+                scope=scope,
+                **kw,
+            )
+
+        names = self._get_multi_object_names(
+            connection, owner, filter_names, scope, kind
+        )
+        if not names:
+            return iter([])
+        name_map = self._multi_name_map(filter_names)
+
+        rp = connection.execute(
+            sql.text("""
+SELECT
+    o.name AS table_name,
+    CAST(ep.value AS NVARCHAR(MAX)) AS comment
+FROM sys.objects o
+JOIN sys.schemas s ON o.schema_id = s.schema_id
+LEFT JOIN sys.extended_properties ep
+    ON ep.class = 1 AND ep.name = 'MS_Description'
+    AND ep.major_id = o.object_id AND ep.minor_id = 0
+WHERE s.name = :owner
+  AND o.name IN :filter_names
+""").bindparams(
+                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                sql.bindparam("filter_names", names, expanding=True),
+            )
+        )
+
+        result = {}
+        for row in rp.mappings():
+            table_name = name_map(row["table_name"])
+            comment = row["comment"]
+            result[(schema, table_name)] = (
+                {"text": comment} if comment else {"text": None}
+            )
+
+        for n in names:
+            key = (schema, name_map(n))
+            if key not in result:
+                result[key] = ReflectionDefaults.table_comment()
+
+        return result.items()
