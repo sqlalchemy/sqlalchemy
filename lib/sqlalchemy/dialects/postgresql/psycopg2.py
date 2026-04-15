@@ -794,35 +794,8 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         else:
             cursor.executemany(statement, parameters)
 
-    def do_begin_twophase(self, connection, xid):
-        connection.connection.tpc_begin(xid)
-
-    def do_prepare_twophase(self, connection, xid):
-        connection.connection.tpc_prepare()
-
-    def _do_twophase(self, dbapi_conn, operation, xid, recover=False):
-        if recover:
-            if dbapi_conn.status != self._psycopg2_extensions.STATUS_READY:
-                dbapi_conn.rollback()
-            operation(xid)
-        else:
-            operation()
-
-    def do_rollback_twophase(
-        self, connection, xid, is_prepared=True, recover=False
-    ):
-        dbapi_conn = connection.connection.dbapi_connection
-        self._do_twophase(
-            dbapi_conn, dbapi_conn.tpc_rollback, xid, recover=recover
-        )
-
-    def do_commit_twophase(
-        self, connection, xid, is_prepared=True, recover=False
-    ):
-        dbapi_conn = connection.connection.dbapi_connection
-        self._do_twophase(
-            dbapi_conn, dbapi_conn.tpc_commit, xid, recover=recover
-        )
+    def _twophase_idle_check(self, dbapi_conn):
+        return dbapi_conn.status == self._psycopg2_extensions.STATUS_READY
 
     @util.memoized_instancemethod
     def _hstore_oids(self, dbapi_connection):

@@ -1565,8 +1565,9 @@ class ExecutionOptionsTest(fixtures.TestBase):
                 "hoho",
             )
             eng.update_execution_options(foo="hoho")
-            conn = eng.connect()
-            eq_(conn._execution_options["foo"], "hoho")
+            conn2 = eng.connect()
+            eq_(conn2._execution_options["foo"], "hoho")
+            conn2.close()
 
     def test_generative_engine_execution_options(self):
         eng = engines.testing_engine(
@@ -2873,6 +2874,7 @@ class EngineEventsTest(fixtures.TestBase):
                 "commit_twophase",
             ],
         )
+        conn.close()
 
 
 class HandleErrorTest(fixtures.TestBase):
