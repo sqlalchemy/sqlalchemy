@@ -402,11 +402,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
          integer, the keys from the IN statement will be chunked relative
          to the passed parameter
 
-         .. note:: The :paramref:`_orm.selectinload.chunksize` only allows
-            configurability for use with selectinload() in strategies.py and
-            not for `_SelectInLoader._chunksize` use in loader.py
-
-
         .. seealso::
 
             :ref:`loading_toplevel`

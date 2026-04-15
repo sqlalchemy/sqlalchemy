@@ -2442,7 +2442,8 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
 
         def go():
             with testing.expect_raises_message(
-                ValueError, ".*please use a positive non-zero integer.*"
+                sa.exc.InvalidRequestError,
+                ".*please use a positive non-zero integer.*",
             ):
                 select(A).options(
                     selectinload(A.bs, chunksize=chunksize)
