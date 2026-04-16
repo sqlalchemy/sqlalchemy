@@ -751,7 +751,9 @@ class _DeclarativeTyping(TypingOnly):
 
 class MappedClassWithTypedColumnsProtocol(Protocol[_TC]):
     """An ORM mapped class that also defines in the ``__typed_cols__``
-    attribute its .
+    attribute its typed columns.
+
+    .. versionadded:: 2.1.0b2
     """
 
     __typed_cols__: _TC
@@ -839,6 +841,7 @@ def as_typed_table(
     to annotate the single columns, since it's a more specific annotation than
     the usual :class:`_orm.Mapped` used for ORM attributes.
 
+    .. versionadded:: 2.1.0b2
     """
     return cls.__table__
 
