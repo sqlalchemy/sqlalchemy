@@ -250,7 +250,7 @@ BEGIN.
 
 * **Using SQLAlchemy to emit BEGIN in lieu of SQLite's transaction control** (all Python versions, sqlite3 and aiosqlite)
 
-  For older versions of ``sqlite3`` or for cross-compatiblity with older and
+  For older versions of ``sqlite3`` or for cross-compatibility with older and
   newer versions, SQLAlchemy can also take over the job of transaction control.
   This is achieved by using the :meth:`.ConnectionEvents.begin` hook
   to emit the "BEGIN" command directly, while also disabling SQLite's control
