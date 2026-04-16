@@ -51,13 +51,13 @@ has_refcount_gc = bool(cpython)
 dottedgetter = operator.attrgetter
 
 
-if py314:
+if sys.version_info >= (3, 14):
 
-    import annotationlib  # type: ignore[import-not-found]
-    from string.templatelib import Template as Template  # type: ignore[import-not-found]  # noqa: E501
+    import annotationlib
+    from string.templatelib import Template as Template
 
     def get_annotations(obj: Any) -> Mapping[str, Any]:
-        return annotationlib.get_annotations(  # type: ignore[no-any-return]
+        return annotationlib.get_annotations(
             obj, format=annotationlib.Format.FORWARDREF
         )
 
@@ -66,7 +66,7 @@ else:
     def get_annotations(obj: Any) -> Mapping[str, Any]:
         return inspect.get_annotations(obj)
 
-    class Template:  # type: ignore[no-redef]
+    class Template:
         """Minimal Template for Python < 3.14 (test usage only)."""
 
         def __init__(self, *parts: Any):

@@ -53,8 +53,6 @@ from .elements import WithinGroup
 from .functions import FunctionElement
 
 if typing.TYPE_CHECKING:
-    from string.templatelib import Template  # type: ignore[import-not-found]
-
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
@@ -66,6 +64,7 @@ if typing.TYPE_CHECKING:
     from .elements import FrameClause
     from .selectable import FromClause
     from .type_api import TypeEngine
+    from ..util.compat import Template
 
 _T = TypeVar("_T")
 
