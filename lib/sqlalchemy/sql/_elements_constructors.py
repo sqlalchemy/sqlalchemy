@@ -1725,11 +1725,12 @@ def over(
 
      .. versionadded:: 2.0.40
 
-    :param exclude: optional string for the frame exclusion clause.
-     This is a string value which can be one of ``CURRENT ROW``,
-     ``GROUP``, ``TIES``, or ``NO OTHERS`` and will render an
-     EXCLUDE clause within the window frame specification.  Requires
-     that one of ``rows``, ``range_``, or ``groups`` is also specified.
+    :param exclude: optional string for the frame exclusion clause. This is a
+     string value which can be one of ``CURRENT ROW``, ``GROUP``, ``TIES``, or
+     ``NO OTHERS`` and will render an EXCLUDE clause within the window frame
+     specification.  Requires that one of :paramref:`_sql.over.rows`,
+     :paramref:`_sql.over.range_`, or :paramref:`_sql.over.groups` is also
+     specified.
 
      .. versionadded:: 2.1
 

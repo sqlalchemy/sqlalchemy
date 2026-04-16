@@ -7,5 +7,5 @@
 
     .. seealso::
 
-        :ref:`change_12869`
+        :ref:`mssql_python` - Documentation for the mssql-python dialect
 
