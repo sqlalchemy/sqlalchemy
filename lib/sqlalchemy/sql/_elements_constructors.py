@@ -53,7 +53,7 @@ from .elements import WithinGroup
 from .functions import FunctionElement
 
 if typing.TYPE_CHECKING:
-    from string.templatelib import Template
+    from string.templatelib import Template  # type: ignore[import-not-found]
 
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
