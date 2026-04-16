@@ -51,6 +51,7 @@ has_refcount_gc = bool(cpython)
 dottedgetter = operator.attrgetter
 
 
+# use sys.version_info to enable mypy version narrowing
 if sys.version_info >= (3, 14):
 
     import annotationlib
