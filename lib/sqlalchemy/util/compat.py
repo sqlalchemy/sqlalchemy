@@ -31,7 +31,6 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
-from typing import TYPE_CHECKING
 
 py314b1 = sys.version_info >= (3, 14, 0, "beta", 1)
 py314 = sys.version_info >= (3, 14)
@@ -51,11 +50,24 @@ has_refcount_gc = bool(cpython)
 
 dottedgetter = operator.attrgetter
 
-if py314 or TYPE_CHECKING:
+
+# use sys.version_info to enable mypy version narrowing
+if sys.version_info >= (3, 14):
+
+    import annotationlib
     from string.templatelib import Template as Template
+
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        return annotationlib.get_annotations(
+            obj, format=annotationlib.Format.FORWARDREF
+        )
+
 else:
 
-    class Template:  # type: ignore[no-redef]
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        return inspect.get_annotations(obj)
+
+    class Template:
         """Minimal Template for Python < 3.14 (test usage only)."""
 
         def __init__(self, *parts: Any):
@@ -71,21 +83,6 @@ else:
 
         def __iter__(self) -> Any:
             return iter(self._parts)
-
-
-if py314:
-
-    import annotationlib
-
-    def get_annotations(obj: Any) -> Mapping[str, Any]:
-        return annotationlib.get_annotations(
-            obj, format=annotationlib.Format.FORWARDREF
-        )
-
-else:
-
-    def get_annotations(obj: Any) -> Mapping[str, Any]:
-        return inspect.get_annotations(obj)
 
 
 class FullArgSpec(typing.NamedTuple):
