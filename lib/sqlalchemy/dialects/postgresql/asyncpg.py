@@ -990,6 +990,9 @@ class AsyncAdapt_asyncpg_dbapi:
     class InternalServerError(InternalError):
         pass
 
+    class InternalClientError(InternalError):
+        pass
+
     class InvalidCachedStatementError(NotSupportedError):
         def __init__(self, message):
             super().__init__(
@@ -1014,6 +1017,7 @@ class AsyncAdapt_asyncpg_dbapi:
             asyncpg.exceptions.InterfaceError: self.InterfaceError,
             asyncpg.exceptions.InvalidCachedStatementError: self.InvalidCachedStatementError,  # noqa: E501
             asyncpg.exceptions.InternalServerError: self.InternalServerError,
+            asyncpg.exceptions.InternalClientError: self.InternalClientError,
         }
 
     def Binary(self, value):
