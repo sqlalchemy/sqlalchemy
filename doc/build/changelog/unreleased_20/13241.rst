@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13241
+
+    Fixed issue where the asyncpg driver could throw an insufficiently-handled
+    exception ``InternalClientError`` under some circumstances, leading to
+    connections not being properly marked as invalidated.
+
+

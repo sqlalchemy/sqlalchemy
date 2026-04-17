@@ -1030,6 +1030,9 @@ class AsyncAdapt_asyncpg_dbapi(AsyncAdapt_dbapi_module):
     class InternalServerError(InternalError):
         pass
 
+    class InternalClientError(InternalError):
+        pass
+
     class InvalidCachedStatementError(NotSupportedError):
         def __init__(self, message, error=None):
             super().__init__(
@@ -1060,6 +1063,7 @@ class AsyncAdapt_asyncpg_dbapi(AsyncAdapt_dbapi_module):
             asyncpg.exceptions.UniqueViolationError: self.UniqueViolationError,
             asyncpg.exceptions.CheckViolationError: self.CheckViolationError,
             asyncpg.exceptions.ExclusionViolationError: self.ExclusionViolationError,  # noqa: E501
+            asyncpg.exceptions.InternalClientError: self.InternalClientError,
         }
 
     def Binary(self, value):
