@@ -1098,7 +1098,7 @@ class Dialect(EventTarget):
 
     If the above construct is established on the PostgreSQL dialect,
     the :class:`.Index` construct will now accept the keyword arguments
-    ``postgresql_using``, ``postgresql_where``, nad ``postgresql_ops``.
+    ``postgresql_using``, ``postgresql_where``, and ``postgresql_ops``.
     Any other argument specified to the constructor of :class:`.Index`
     which is prefixed with ``postgresql_`` will raise :class:`.ArgumentError`.
 
