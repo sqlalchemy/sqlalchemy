@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, mysql, reflection
+    :tickets: 13243
+
+    Narrowed the scope of the internal workaround for MySQL bugs `#88718
+    <https://bugs.mysql.com/bug.php?id=88718>`_ and `#96365
+    <https://bugs.mysql.com/bug.php?id=96365>`_ so that it is only applied
+    where needed: MySQL 8.0.1 through 8.0.13 (where bug 88718 is present), and
+    on systems with ``lower_case_table_names=2`` (where bug 96365 applies,
+    typically macOS).  Previously the workaround was applied unconditionally
+    for all MySQL 8.0+ versions, which caused a ``KeyError`` during foreign key
+    reflection when the database user lacked SELECT privileges on referred
+    tables.

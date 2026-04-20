@@ -2784,6 +2784,7 @@ class MySQLDialect(_mariadb_shim.MariaDBShim, default.DefaultDialect):
     # i.e. first connect
     _backslash_escapes = True
     _server_ansiquotes = False
+    _casing = 0
     _support_default_function = True
     _support_float_cast = False
 
@@ -3177,7 +3178,9 @@ class MySQLDialect(_mariadb_shim.MariaDBShim, default.DefaultDialect):
 
         self.use_mysql_for_share = self.server_version_info >= (8, 0, 1)
 
-        self._needs_correct_for_88718_96365 = self.server_version_info >= (8,)
+        self._needs_correct_for_88718_96365 = self.server_version_info >= (
+            8,
+        ) and (self.server_version_info < (8, 0, 14) or self._casing == 2)
 
         self._requires_alias_for_on_duplicate_key = (
             self.server_version_info >= (8, 0, 20)
