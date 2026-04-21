@@ -2736,6 +2736,36 @@ class ReflectionTest(
         ):
             testing.db.dialect.get_check_constraints(conn, "foo")
 
+    def test_reflect_check_constraint_compound_expr_no_strip(self):
+        # Compound expressions like (a) AND (b) must not have outer parens
+        # stripped, as first ( and last ) are not a matching pair.
+        rows = [
+            (
+                "foo",
+                "broken",
+                "CHECK ((x IS NULL OR y IS NULL) AND (x IS NULL OR y IS NULL))",
+                None,
+            ),
+        ]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        check_constraints = testing.db.dialect.get_check_constraints(
+            conn, "foo"
+        )
+        eq_(
+            check_constraints,
+            [
+                {
+                    "name": "broken",
+                    "sqltext": "(x IS NULL OR y IS NULL) AND (x IS NULL OR y IS NULL)",
+                    "comment": None,
+                }
+            ],
+        )
+
     def test_reflect_extra_newlines(self):
         rows = [
             (
