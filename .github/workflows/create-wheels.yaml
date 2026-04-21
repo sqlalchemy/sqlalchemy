@@ -69,6 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # See details at https://cibuildwheel.readthedocs.io/en/stable/faq/#emulation
       - name: Set up QEMU
         if: matrix.linux_archs == 'riscv64'
         uses: docker/setup-qemu-action@v3
@@ -86,14 +87,6 @@ jobs:
         # `-replace` uses a regexp match
         run: |
           (get-content pyproject.toml) | %{$_ -replace 'tag-build.?=.?"dev"',""} | set-content pyproject.toml
-
-      # See details at https://cibuildwheel.readthedocs.io/en/stable/faq/#emulation
-      # no longer needed since arm runners are now available
-      # - name: Set up QEMU on linux
-      #   if: ${{ runner.os == 'Linux' }}
-      #   uses: docker/setup-qemu-action@v3
-      #   with:
-      #     platforms: all
 
       - name: Build compiled wheels
         if: ${{ matrix.wheel_mode == 'compiled' }}
@@ -140,5 +133,5 @@ jobs:
           # TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
           TWINE_PASSWORD: ${{ secrets.pypi_token }}
         run: |
-          pip install -U twine
+          python -m pip install -U twine
           twine upload --skip-existing ./wheelhouse/*
