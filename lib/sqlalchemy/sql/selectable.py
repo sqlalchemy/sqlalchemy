@@ -4503,9 +4503,12 @@ class GenerativeSelect(DialectKWArgs, SelectBase, Generative):
         __first: Union[
             Literal[None, _NoArg.NO_ARG],
             _ColumnExpressionOrStrLabelArgument[Any],
+            roles.OrderByRole,
         ] = _NoArg.NO_ARG,
         /,
-        *clauses: _ColumnExpressionOrStrLabelArgument[Any],
+        *clauses: Union[
+            _ColumnExpressionOrStrLabelArgument[Any], roles.OrderByRole
+        ],
     ) -> Self:
         r"""Return a new selectable with the given list of ORDER BY
         criteria applied.
