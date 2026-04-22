@@ -5515,9 +5515,24 @@ class PGDialect(default.DefaultDialect):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = re.compile(
-                    r"^[\s\n]*\((.+)\)[\s\n]*$", flags=re.DOTALL
-                ).sub(r"\1", m.group(1))
+                sqltext = m.group(1)
+                # Strip outer parens iteratively; regex greedy match
+                # breaks on nested expressions like ((a) AND (b)).
+                while True:
+                    s = sqltext.strip()
+                    if len(s) >= 2 and s[0] == "(" and s[-1] == ")":
+                        depth = matched = 0
+                        for i, c in enumerate(s):
+                            depth += (c == "(") - (c == ")")
+                            if depth == 0:
+                                if i == len(s) - 1:
+                                    sqltext = s[1:-1]
+                                    matched = 1
+                                break
+                        if not matched:
+                            break
+                    else:
+                        break
             entry = {
                 "name": check_name,
                 "sqltext": sqltext,
