@@ -164,7 +164,7 @@ is also called once for each set of parameters.
 
 When the function is invoked, the special method
 :meth:`.DefaultExecutionContext.get_current_parameters` is available from
-the context object (an subclass of :class:`.DefaultExecutionContext`).  This
+the context object (a subclass of :class:`.ExecutionContext`).  This
 method returns a dictionary of column-key to values that represents the
 full set of values for the INSERT or UPDATE statement.   In the case of a
 multi-valued INSERT construct, the subset of parameters that corresponds to
