@@ -2847,6 +2847,127 @@ class ReflectionTest(
             ],
         )
 
+    def test_reflect_check_constraint_with_parens_in_strings(self):
+        """Test CHECK constraints that contain parentheses inside string
+        literals.
+
+        Parentheses inside quoted strings must not be counted when
+        matching balanced parentheses in the constraint expression.
+        """
+        rows = [
+            ("foo", None, "CHECK (a != '(')", None),
+            ("foo", None, "CHECK (a != ')')", None),
+            ("foo", None, "CHECK (a NOT LIKE '%(')", None),
+            ("foo", None, "CHECK (a IN (')', '(', 'test'))", None),
+            (
+                "foo",
+                None,
+                "CHECK (a != 'it''s (not) valid')",
+                None,
+            ),
+            ('foo', None, 'CHECK (a != "say ""(hello)"" ")', None),
+            (
+                "foo",
+                None,
+                "CHECK (a NOT IN ('()', 'a''b''c', ')'))",
+                None,
+            ),
+            (
+                "foo",
+                None,
+                "CHECK (a != '((' OR a = ')))')",
+                None,
+            ),
+            (
+                "foo",
+                None,
+                "CHECK (((a != '(') AND (a != ')')))",
+                None,
+            ),
+            (
+                "foo",
+                "cc1",
+                "CHECK ((a > 1) AND (a < 5)) NOT VALID",
+                None,
+            ),
+            (
+                "foo",
+                "cc2",
+                "CHECK ((a = 1) OR ((a > 2) AND (a < 5))) NO INHERIT",
+                None,
+            ),
+        ]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        check_constraints = testing.db.dialect.get_multi_check_constraints(
+            conn, "foo", None, None, None
+        )
+        eq_(
+            list(check_constraints)[0][1],
+            [
+                {
+                    "name": None,
+                    "sqltext": "a != '('",
+                    "comment": None,
+                },
+                {
+                    "name": None,
+                    "sqltext": "a != ')'",
+                    "comment": None,
+                },
+                {
+                    "name": None,
+                    "sqltext": "a NOT LIKE '%('",
+                    "comment": None,
+                },
+                {
+                    "name": None,
+                    "sqltext": "a IN (')', '(', 'test')",
+                    "comment": None,
+                },
+                {
+                    "name": None,
+                    "sqltext": "a != 'it''s (not) valid'",
+                    "comment": None,
+                },
+                {
+                    "name": None,
+                    'sqltext': 'a != "say ""(hello)"" "',
+                    "comment": None,
+                },
+                {
+                    "name": None,
+                    "sqltext": "a NOT IN ('()', 'a''b''c', ')')",
+                    "comment": None,
+                },
+                {
+                    "name": None,
+                    "sqltext": "a != '((' OR a = ')))'",
+                    "comment": None,
+                },
+                {
+                    "name": None,
+                    "sqltext": "(a != '(') AND (a != ')')",
+                    "comment": None,
+                },
+                {
+                    "name": "cc1",
+                    "sqltext": "a > 1 AND a < 5",
+                    "dialect_options": {"not_valid": True},
+                    "comment": None,
+                },
+                {
+                    "name": "cc2",
+                    "sqltext": "(a = 1) OR ((a > 2) AND (a < 5))",
+                    "dialect_options": {"no_inherit": True},
+                    "comment": None,
+                },
+            ],
+        )
+
     def _apply_stm(self, connection, use_map):
         if use_map:
             return connection.execution_options(

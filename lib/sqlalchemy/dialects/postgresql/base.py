@@ -5505,44 +5505,36 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
             # "CHECK (a NOT NULL) NO INHERIT"
             # "CHECK (a NOT NULL) NO INHERIT NOT VALID"
+            # "CHECK (c != 'hi')"
 
-            m = re.match(
-                r"^CHECK *\((.+)\)( NO INHERIT)?( NOT VALID)?$",
-                src,
-                flags=re.DOTALL,
-            )
-            if not m:
+            _suffix = ""
+            if not src.startswith("CHECK ("):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = m.group(1)
-                # Strip outer parens iteratively; regex greedy match
-                # breaks on nested expressions like ((a) AND (b)).
-                while True:
-                    s = sqltext.strip()
-                    if len(s) >= 2 and s[0] == "(" and s[-1] == ")":
-                        depth = matched = 0
-                        for i, c in enumerate(s):
-                            depth += (c == "(") - (c == ")")
-                            if depth == 0:
-                                if i == len(s) - 1:
-                                    sqltext = s[1:-1]
-                                    matched = 1
-                                break
-                        if not matched:
-                            break
-                    else:
-                        break
+                try:
+                    end = util.find_parentheses_end(src, len("CHECK (") - 1)
+                except ValueError:
+                    util.warn(
+                        "Could not parse CHECK constraint text: %r" % src
+                    )
+                    sqltext = ""
+                else:
+                    sqltext = util.strip_parentheses(
+                        src[len("CHECK (") : end - 1]
+                    )
+                    # Remaining text after the closing paren
+                    _suffix = src[end:].strip()
             entry = {
                 "name": check_name,
                 "sqltext": sqltext,
                 "comment": comment,
             }
-            if m:
+            if sqltext != "":
                 do = {}
-                if " NOT VALID" in m.groups():
+                if " NOT VALID" in _suffix:
                     do["not_valid"] = True
-                if " NO INHERIT" in m.groups():
+                if " NO INHERIT" in _suffix:
                     do["no_inherit"] = True
                 if do:
                     entry["dialect_options"] = do

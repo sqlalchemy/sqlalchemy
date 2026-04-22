@@ -2876,31 +2876,21 @@ class SQLiteDialect(default.DefaultDialect):
                 )
 
             # Find the matching closing parenthesis by counting balanced parens
-            # Must track string context to ignore parens inside string literals
+            # Use the shared utility to find the matching closing paren,
+            # accounting for string literals
             start = match.end()  # Position after 'CHECK ('
-            paren_count = 1
-            in_single_quote = False
-            in_double_quote = False
 
-            for pos, char in enumerate(table_data[start:], start):
-                # Track string literal context
-                if char == "'" and not in_double_quote:
-                    in_single_quote = not in_single_quote
-                elif char == '"' and not in_single_quote:
-                    in_double_quote = not in_double_quote
-                # Only count parens when not inside a string literal
-                elif not in_single_quote and not in_double_quote:
-                    if char == "(":
-                        paren_count += 1
-                    elif char == ")":
-                        paren_count -= 1
-                        if paren_count == 0:
-                            # Successfully found matching closing parenthesis
-                            sqltext = table_data[start:pos].strip()
-                            cks.append(
-                                {"sqltext": sqltext, "name": constraint_name}
-                            )
-                            break
+            try:
+                close_end = util.find_parentheses_end(
+                    table_data, start - 1
+                )
+            except ValueError:
+                continue
+
+            sqltext = table_data[start : close_end - 1].strip()
+            cks.append(
+                {"sqltext": sqltext, "name": constraint_name}
+            )
 
         cks.sort(key=lambda d: d["name"] or "~")  # sort None as last
         if cks:

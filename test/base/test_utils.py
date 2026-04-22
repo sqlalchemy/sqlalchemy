@@ -3787,3 +3787,90 @@ class TestTest(fixtures.TestBase):
                 is_false(foo.foo)
             case _:
                 foo.fail()
+
+
+class StripParenthesesTest(fixtures.TestBase):
+    def test_strip_no_parens(self):
+        eq_(util.strip_parentheses("a > 1"), "a > 1")
+
+    def test_strip_single_level(self):
+        eq_(util.strip_parentheses("(a > 1)"), "a > 1")
+
+    def test_strip_multiple_levels(self):
+        eq_(util.strip_parentheses("((a > 1))"), "a > 1")
+        eq_(util.strip_parentheses("(((a > 1)))"), "a > 1")
+
+    def test_strip_nested_expression(self):
+        eq_(
+            util.strip_parentheses("((a > 1) AND (a < 5))"),
+            "(a > 1) AND (a < 5)",
+        )
+
+    def test_strip_preserves_inner_unbalanced(self):
+        """Outer parens that don't balance should not be stripped."""
+        eq_(util.strip_parentheses("(a > 1) AND (a < 5)"), "(a > 1) AND (a < 5)")
+
+    def test_string_literal_single_quotes(self):
+        """Parens inside single-quoted strings are ignored."""
+        eq_(util.strip_parentheses("(a != '(')"), "a != '('")
+        eq_(util.strip_parentheses("(a != ')')"), "a != ')'")
+        eq_(
+            util.strip_parentheses("(a IN (')', '('))"),
+            "a IN (')', '(')",
+        )
+
+    def test_string_literal_double_quotes(self):
+        """Parens inside double-quoted strings are ignored."""
+        eq_(util.strip_parentheses('(a != "(")'), 'a != "("')
+        eq_(
+            util.strip_parentheses('(a != "say ""(hello)"" ")'),
+            'a != "say ""(hello)"" "',
+        )
+
+    def test_escaped_quotes(self):
+        """Escaped quotes ('' or "") don't toggle quote state."""
+        eq_(
+            util.strip_parentheses("(a != 'it''s (not) valid')"),
+            "a != 'it''s (not) valid'",
+        )
+        eq_(
+            util.strip_parentheses('(a != "say ""(hello)"" ")'),
+            'a != "say ""(hello)"" "',
+        )
+
+    def test_complex_mixed(self):
+        eq_(
+            util.strip_parentheses(
+                "(((a != '((') AND (a = ')))')))"
+            ),
+            "(a != '((') AND (a = ')))')",
+        )
+
+
+class FindParenthesesEndTest(fixtures.TestBase):
+    def test_simple(self):
+        eq_(util.find_parentheses_end("(a > 1)", 0), 7)
+
+    def test_nested(self):
+        eq_(util.find_parentheses_end("((a > 1) AND (a < 5))", 0), 21)
+
+    def test_with_string_literal(self):
+        eq_(util.find_parentheses_end("(a != '(')", 0), 10)
+
+    def test_with_string_literal_closing_paren(self):
+        eq_(util.find_parentheses_end("(a != ')')", 0), 10)
+
+    def test_complex_strings(self):
+        text = "(a != '((' OR a = ')))')"
+        eq_(util.find_parentheses_end(text, 0), len(text))
+
+    def test_escaped_quotes_in_string(self):
+        text = "(a != 'it''s (not) valid')"
+        eq_(util.find_parentheses_end(text, 0), len(text))
+
+    def test_no_match_raises(self):
+        with expect_raises(ValueError):
+            util.find_parentheses_end("(a > 1", 0)
+
+    def test_start_offset(self):
+        eq_(util.find_parentheses_end("CHECK (a > 1)", 6), 13)

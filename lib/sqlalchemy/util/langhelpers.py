@@ -2274,6 +2274,109 @@ def repr_tuple_names(names: List[str]) -> Optional[str]:
         return "%s, ..., %s" % (", ".join(res[0:3]), res[-1])
 
 
+def strip_parentheses(text: str) -> str:
+    """Strip outer balanced parentheses from *text*, taking string literals
+    into account.
+
+    This is used when reflecting CHECK constraint expressions, where
+    databases wrap the expression in parentheses (possibly multiple
+    levels).  The function walks the string character-by-character,
+    tracking parenthesis depth **and** whether we are inside a single- or
+    double-quoted string literal so that parentheses inside literals are
+    not counted.
+
+    The stripping is applied iteratively: if after one strip the result
+    is again wrapped in balanced parentheses, another round is performed.
+    """
+    while True:
+        s = text.strip()
+        if len(s) < 2 or s[0] != "(" or s[-1] != ")":
+            break
+
+        depth = 0
+        in_single_quote = False
+        in_double_quote = False
+        matched = False
+
+        for i, c in enumerate(s):
+            if c == "'" and not in_double_quote:
+                # Handle escaped quotes ('')
+                if (
+                    i + 1 < len(s)
+                    and s[i + 1] == "'"
+                    and not in_single_quote
+                ):
+                    # Skip past escaped quote – stay in same quote state
+                    continue
+                in_single_quote = not in_single_quote
+            elif c == '"' and not in_single_quote:
+                if (
+                    i + 1 < len(s)
+                    and s[i + 1] == '"'
+                    and not in_double_quote
+                ):
+                    continue
+                in_double_quote = not in_double_quote
+            elif not in_single_quote and not in_double_quote:
+                if c == "(":
+                    depth += 1
+                elif c == ")":
+                    depth -= 1
+                    if depth == 0:
+                        if i == len(s) - 1:
+                            text = s[1:-1]
+                            matched = True
+                        break
+
+        if not matched:
+            break
+
+    return text
+
+
+def find_parentheses_end(text: str, start: int = 0) -> int:
+    """Return the index of the character **after** the closing ``)`` that
+    balances the opening ``(`` at position *start*.
+
+    The scan tracks single- and double-quoted string literals so that
+    parentheses inside strings are ignored.  Escaped quotes (``''`` for
+    single, ``""`` for double) are handled.
+
+    Raises :exc:`ValueError` if no balanced closing paren is found.
+    """
+    depth = 0
+    in_single_quote = False
+    in_double_quote = False
+
+    for i in range(start, len(text)):
+        c = text[i]
+        if c == "'" and not in_double_quote:
+            if (
+                i + 1 < len(text)
+                and text[i + 1] == "'"
+                and not in_single_quote
+            ):
+                continue  # escaped quote
+            in_single_quote = not in_single_quote
+        elif c == '"' and not in_single_quote:
+            if (
+                i + 1 < len(text)
+                and text[i + 1] == '"'
+                and not in_double_quote
+            ):
+                continue  # escaped quote
+            in_double_quote = not in_double_quote
+        elif not in_single_quote and not in_double_quote:
+            if c == "(":
+                depth += 1
+            elif c == ")":
+                depth -= 1
+                if depth == 0:
+                    return i + 1  # position *after* the closing )
+
+    raise ValueError("Could not find matching closing parenthesis")
+
+
 def has_compiled_ext(raise_=False):
     from ._has_cython import HAS_CYEXTENSION
 
