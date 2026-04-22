@@ -172,6 +172,11 @@ s12730_3 = select(A, B).with_for_update(of=[A, B])
 s12730_4 = select(A, B).with_for_update(of=[A, B])
 s12730_5 = select(a_table, b_table).with_for_update(of=[a_table, b_table])
 
+# test 13248 - freestanding asc/desc in order_by
+s13248_1 = select(User.id).order_by(asc(User.id))
+s13248_2 = select(User.id).order_by(desc(User.id))
+s13248_3 = select(User.id).order_by(User.id, asc(User.id))
+
 
 # with_for_update but for query
 session = Session()
