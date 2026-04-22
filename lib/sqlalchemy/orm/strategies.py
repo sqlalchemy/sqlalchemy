@@ -2977,6 +2977,21 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
 
     _chunksize = 500
 
+    @classmethod
+    def _set_chunksize(cls, loadopt) -> int:
+        if loadopt is None or hasattr(loadopt, "local_opts") is None:
+            return cls._chunksize
+
+        user_input = loadopt.local_opts.get("chunksize", None)
+        if user_input is None:
+            return cls._chunksize
+        elif not isinstance(user_input, int) or user_input < 1:
+            raise sa_exc.ArgumentError(
+                f"'chunksize={user_input}' is not an appropriate input, "
+                f"please use a positive non-zero integer."
+            )
+        return user_input
+
     def __init__(self, parent, strategy_key):
         super().__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
@@ -3347,6 +3362,8 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                     _setup_outermost_orderby, self.parent_property
                 )
 
+        chunksize = self._set_chunksize(loadopt)
+
         if query_info.load_only_child:
             self._load_via_child(
                 our_states,
@@ -3355,10 +3372,16 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 q,
                 context,
                 execution_options,
+                chunksize,
             )
         else:
             self._load_via_parent(
-                our_states, query_info, q, context, execution_options
+                our_states,
+                query_info,
+                q,
+                context,
+                execution_options,
+                chunksize,
             )
 
     def _load_via_child(
@@ -3369,14 +3392,15 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         q,
         context,
         execution_options,
+        chunksize,
     ):
         uselist = self.uselist
 
         # this sort is really for the benefit of the unit tests
         our_keys = sorted(our_states)
         while our_keys:
-            chunk = our_keys[0 : self._chunksize]
-            our_keys = our_keys[self._chunksize :]
+            chunk = our_keys[0:chunksize]
+            our_keys = our_keys[chunksize:]
             data = {
                 k: v
                 for k, v in context.session.execute(
@@ -3417,14 +3441,14 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             state.get_impl(self.key).set_committed_value(state, dict_, None)
 
     def _load_via_parent(
-        self, our_states, query_info, q, context, execution_options
+        self, our_states, query_info, q, context, execution_options, chunksize
     ):
         uselist = self.uselist
         _empty_result = () if uselist else None
 
         while our_states:
-            chunk = our_states[0 : self._chunksize]
-            our_states = our_states[self._chunksize :]
+            chunk = our_states[0:chunksize]
+            our_states = our_states[chunksize:]
 
             primary_keys = [
                 key[0] if query_info.zero_idx else key
