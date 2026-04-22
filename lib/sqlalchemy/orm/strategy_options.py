@@ -402,6 +402,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
          integer, the keys from the IN statement will be chunked relative
          to the passed parameter
 
+         .. versionadded:: 2.1rc1 added
+            :paramref:`_orm.selectinload.chunksize`
+
         .. seealso::
 
             :ref:`loading_toplevel`

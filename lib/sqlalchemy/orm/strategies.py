@@ -2981,7 +2981,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         if user_input is None:
             return cls._chunksize
         elif not isinstance(user_input, int) or user_input < 1:
-            raise sa_exc.InvalidRequestError(
+            raise sa_exc.ArgumentError(
                 f"'chunksize={user_input}' is not an appropriate input, "
                 f"please use a positive non-zero integer."
             )

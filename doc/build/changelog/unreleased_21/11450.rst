@@ -1,0 +1,8 @@
+. change::
+  :tags: orm, loader options, feature
+  :tickets: 11450
+
+  Added `chunksize` parameter to :func`.selectinload` allowing users
+  to configure the number of primary keys sent per IN clause when loading
+  reltaionships. 
+  Pull request courtesy bekapono

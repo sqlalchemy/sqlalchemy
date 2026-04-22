@@ -2379,61 +2379,41 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
         )
         session.commit()
 
-    @testing.combinations(True, False)
-    def test_odd_number_chunks(self, legacy):
+    @testing.combinations(
+        (None, (1, 101)),
+        (47, (1, 48, 95, 101)),
+        (50, (1, 51, 101)),
+        (99, (1, 100, 101)),
+        (108, (1, 101)),
+        argnames="chunksize, expected_range",
+    )
+    def test_odd_number_chunks(self, chunksize, expected_range):
         A, B = self.classes("A", "B")
 
         session = fixture_session()
 
         def go():
-            if legacy:
-                with mock.patch(
-                    "sqlalchemy.orm.strategies._SelectInLoader._chunksize", 47
-                ):
-                    q = (
-                        session.query(A)
-                        .options(selectinload(A.bs))
-                        .order_by(A.id)
-                    )
+            statement = (
+                select(A)
+                .options(selectinload(A.bs, chunksize=chunksize))
+                .order_by(A.id)
+            )
 
-                    for a in q:
-                        a.bs
-            else:
-                statement = (
-                    select(A)
-                    .options(selectinload(A.bs, chunksize=47))
-                    .order_by(A.id)
-                )
-
-                session.scalars(statement).all()
-
-        if legacy:
-            initial_sql = "SELECT a.id AS a_id FROM a ORDER BY a.id"
-        else:
-            initial_sql = "SELECT a.id FROM a ORDER BY a.id"
+            session.scalars(statement).all()
 
         self.assert_sql_execution(
             testing.db,
             go,
-            CompiledSQL(initial_sql, {}),
-            CompiledSQL(
-                "SELECT b.a_id, b.id "
-                "FROM b WHERE b.a_id IN "
-                "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
-                {"primary_keys": list(range(1, 48))},
-            ),
-            CompiledSQL(
-                "SELECT b.a_id, b.id "
-                "FROM b WHERE b.a_id IN "
-                "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
-                {"primary_keys": list(range(48, 95))},
-            ),
-            CompiledSQL(
-                "SELECT b.a_id, b.id "
-                "FROM b WHERE b.a_id IN "
-                "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
-                {"primary_keys": list(range(95, 101))},
-            ),
+            CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+            *[
+                CompiledSQL(
+                    "SELECT b.a_id, b.id "
+                    "FROM b WHERE b.a_id IN "
+                    "(__[POSTCOMPILE_primary_keys]) ORDER BY b.id",
+                    {"primary_keys": list(range(a, b))},
+                )
+                for a, b in zip(expected_range, expected_range[1:])
+            ],
         )
 
     @testing.combinations(-250, "a", 0)
@@ -2442,7 +2422,7 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
 
         def go():
             with testing.expect_raises_message(
-                sa.exc.InvalidRequestError,
+                sa.exc.ArgumentError,
                 ".*please use a positive non-zero integer.*",
             ):
                 select(A).options(
