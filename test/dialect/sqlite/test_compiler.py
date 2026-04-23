@@ -5,6 +5,7 @@ import contextlib
 import random
 
 from sqlalchemy import and_
+from sqlalchemy import union_all
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import column
@@ -322,6 +323,17 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(table),
             "CREATE TABLE atable (id INTEGER) WITHOUT ROWID, STRICT",
+        )
+
+    def test_union_all_with_limit_no_parens(self):
+        t = sql.table("t", sql.column("col1"))
+        s1 = select(t.c.col1).limit(5)
+        s2 = select(t.c.col1).limit(10)
+        u = union_all(s1, s2)
+        self.assert_compile(
+            u,
+            "SELECT t.col1 FROM t LIMIT ? OFFSET ? "
+            "UNION ALL SELECT t.col1 FROM t LIMIT ? OFFSET ?",
         )
 
 

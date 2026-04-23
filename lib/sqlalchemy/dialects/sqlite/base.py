@@ -1712,6 +1712,27 @@ class SQLiteCompiler(compiler.SQLCompiler):
         and_ = self._generate_generic_binary(binary, " & ", **kw)
         return f"({or_} - {and_})"
 
+    def visit_compound_select(
+        self, cs, asfrom=False, compound_index=None, **kwargs
+    ):
+        text = super().visit_compound_select(
+            cs, asfrom=asfrom, compound_index=compound_index, **kwargs
+        )
+
+        # SQLite does not allow parentheses around SELECT statements in a
+        # compound select (UNION, etc.) when they have LIMIT/OFFSET.
+        # Strip the wrapping parentheses from such statements.
+        # Match (SELECT ... LIMIT/OFFSET ...) and remove outer parens
+        text = re.sub(
+            r"\(SELECT ((?:[^()]|\([^()]*\))*?"
+            r"\b(?:LIMIT|OFFSET)\b"
+            r"(?:[^()]|\([^()]*\))*)\)",
+            r"SELECT \1",
+            text,
+        )
+
+        return text
+
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
