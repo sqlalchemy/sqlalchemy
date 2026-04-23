@@ -2421,3 +2421,23 @@ class _Missing(enum.Enum):
 
 Missing = _Missing.Missing
 MissingOr = Union[_T, Literal[_Missing.Missing]]
+
+
+def consume_parenthesized_expression(text: str, start: int) -> tuple[str, int]:
+    """Extract a parenthesized expression starting at *start*.
+
+    Given *text* and the position of an opening ``(`` at *start*,
+    return a tuple of ``(inner_text, end_pos)`` where *inner_text* is
+    the content inside the parentheses (with outer balanced parentheses
+    stripped) and *end_pos* is the position **after** the matching
+    closing ``)``.
+
+    The scan correctly handles nested parentheses, single- and
+    double-quoted string literals, and SQL-style escaped quotes
+    (``''`` and ``""``).
+
+    Raises :exc:`ValueError` if no balanced closing parenthesis is found.
+    """
+    end = find_parentheses_end(text, start)
+    inner = strip_parentheses(text[start + 1 : end - 1])
+    return inner, end

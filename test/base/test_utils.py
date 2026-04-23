@@ -3874,3 +3874,45 @@ class FindParenthesesEndTest(fixtures.TestBase):
 
     def test_start_offset(self):
         eq_(util.find_parentheses_end("CHECK (a > 1)", 6), 13)
+
+
+class ConsumeParenthesizedExpressionTest(fixtures.TestBase):
+    def test_simple(self):
+        text, end = util.consume_parenthesized_expression("(a > 1)", 0)
+        eq_(text, "a > 1")
+        eq_(end, 7)
+
+    def test_nested(self):
+        text, end = util.consume_parenthesized_expression(
+            "((a > 1) AND (a < 5))", 0
+        )
+        eq_(text, "(a > 1) AND (a < 5)")
+        eq_(end, 21)
+
+    def test_with_suffix(self):
+        text, end = util.consume_parenthesized_expression(
+            "CHECK (a > 1) NOT VALID", 6
+        )
+        eq_(text, "a > 1")
+        eq_(end, 13)
+
+    def test_with_string_literal(self):
+        text, end = util.consume_parenthesized_expression(
+            "(a != '(')", 0
+        )
+        eq_(text, "a != '('")
+        eq_(end, 10)
+
+    def test_multi_level_wrapping(self):
+        """Multiple outer parens are stripped down to the inner expression."""
+        text, end = util.consume_parenthesized_expression(
+            "CHECK (((a > 1) AND (a < 5))) NO INHERIT", 6
+        )
+        eq_(text, "(a > 1) AND (a < 5)")
+        # end points after the closing paren that matches start
+        suffix_after = "CHECK (((a > 1) AND (a < 5))) NO INHERIT"[end:]
+        eq_(suffix_after.strip(), "NO INHERIT")
+
+    def test_no_match_raises(self):
+        with expect_raises(ValueError):
+            util.consume_parenthesized_expression("(a > 1", 0)

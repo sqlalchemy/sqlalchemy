@@ -5506,25 +5506,21 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (a NOT NULL) NO INHERIT"
             # "CHECK (a NOT NULL) NO INHERIT NOT VALID"
             # "CHECK (c != 'hi')"
-
             _suffix = ""
             if not src.startswith("CHECK ("):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
                 try:
-                    end = util.find_parentheses_end(src, len("CHECK (") - 1)
+                    sqltext, after_paren = util.consume_parenthesized_expression(
+                        src, len("CHECK (") - 1
+                    )
+                    _suffix = after_paren.strip()
                 except ValueError:
                     util.warn(
                         "Could not parse CHECK constraint text: %r" % src
                     )
                     sqltext = ""
-                else:
-                    sqltext = util.strip_parentheses(
-                        src[len("CHECK (") : end - 1]
-                    )
-                    # Remaining text after the closing paren
-                    _suffix = src[end:].strip()
             entry = {
                 "name": check_name,
                 "sqltext": sqltext,

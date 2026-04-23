@@ -2885,6 +2885,7 @@ class SQLiteDialect(default.DefaultDialect):
                     table_data, start - 1
                 )
             except ValueError:
+                # Unbalanced parentheses — skip this constraint
                 continue
 
             sqltext = table_data[start : close_end - 1].strip()
