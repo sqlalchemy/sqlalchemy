@@ -50,9 +50,6 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T", bound=Any)
 
-
-_T_co = TypeVar("_T_co", bound=Any, covariant=True)
-
 _O = TypeVar("_O", bound=object)
 """The 'ORM mapped object' type.
 

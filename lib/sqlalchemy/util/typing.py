@@ -39,8 +39,6 @@ from typing import Union
 
 import typing_extensions
 
-from . import compat
-
 if True:  # zimports removes the tailing comments
     from typing_extensions import (
         dataclass_transform as dataclass_transform,  # 3.11,
@@ -57,8 +55,6 @@ if True:  # zimports removes the tailing comments
 
 _T = TypeVar("_T", bound=Any)
 _KT = TypeVar("_KT")
-_KT_co = TypeVar("_KT_co", covariant=True)
-_KT_contra = TypeVar("_KT_contra", contravariant=True)
 _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
