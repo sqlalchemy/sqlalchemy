@@ -3330,6 +3330,7 @@ class SQLCompiler(Compiled):
         if (
             self.dialect.div_is_floordiv
             and binary.right.type._type_affinity is sqltypes.Integer
+            and binary.left.type._type_affinity is sqltypes.Integer
         ):
             return (
                 self.process(binary.left, **kw)
