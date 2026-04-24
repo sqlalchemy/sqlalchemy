@@ -2274,79 +2274,36 @@ def repr_tuple_names(names: List[str]) -> Optional[str]:
         return "%s, ..., %s" % (", ".join(res[0:3]), res[-1])
 
 
-def strip_parentheses(text: str) -> str:
-    """Strip outer balanced parentheses from *text*, taking string literals
-    into account.
+def consume_parenthesized_expression(text: str, start: int) -> tuple[str, int]:
+    """Extract a parenthesized expression starting at *start*.
 
-    This is used when reflecting CHECK constraint expressions, where
-    databases wrap the expression in parentheses (possibly multiple
-    levels).  The function walks the string character-by-character,
-    tracking parenthesis depth **and** whether we are inside a single- or
-    double-quoted string literal so that parentheses inside literals are
-    not counted.
+    Given *text* and the position of an opening ``(`` at *start*,
+    return a tuple of ``(inner_text, end_pos)`` where *inner_text* is
+    the content inside the parentheses (with redundant outer balanced
+    parentheses stripped) and *end_pos* is the position **after** the
+    matching closing ``)``.
 
-    The stripping is applied iteratively: if after one strip the result
-    is again wrapped in balanced parentheses, another round is performed.
+    The scan correctly handles nested parentheses, single- and
+    double-quoted string literals, and SQL-style escaped quotes
+    (``''`` and ``""``).
+
+    This is the single entry-point for parsing CHECK constraint
+    expression bodies from the raw SQL returned by the database.
+    Databases typically wrap the expression in parentheses, sometimes
+    with multiple nesting levels, e.g. ``(((a > 1) AND (a < 5)))``.
+
+    Raises :exc:`ValueError` when the input text has no balanced
+    closing parenthesis for the opening ``(`` at *start*.  This
+    indicates malformed or unexpected constraint text that cannot be
+    parsed; callers should catch this and fall back to returning the
+    raw/unparsed text.
     """
-    while True:
-        s = text.strip()
-        if len(s) < 2 or s[0] != "(" or s[-1] != ")":
-            break
 
-        depth = 0
-        in_single_quote = False
-        in_double_quote = False
-        matched = False
-
-        for i, c in enumerate(s):
-            if c == "'" and not in_double_quote:
-                # Handle escaped quotes ('')
-                if (
-                    i + 1 < len(s)
-                    and s[i + 1] == "'"
-                    and not in_single_quote
-                ):
-                    # Skip past escaped quote – stay in same quote state
-                    continue
-                in_single_quote = not in_single_quote
-            elif c == '"' and not in_single_quote:
-                if (
-                    i + 1 < len(s)
-                    and s[i + 1] == '"'
-                    and not in_double_quote
-                ):
-                    continue
-                in_double_quote = not in_double_quote
-            elif not in_single_quote and not in_double_quote:
-                if c == "(":
-                    depth += 1
-                elif c == ")":
-                    depth -= 1
-                    if depth == 0:
-                        if i == len(s) - 1:
-                            text = s[1:-1]
-                            matched = True
-                        break
-
-        if not matched:
-            break
-
-    return text
-
-
-def find_parentheses_end(text: str, start: int = 0) -> int:
-    """Return the index of the character **after** the closing ``)`` that
-    balances the opening ``(`` at position *start*.
-
-    The scan tracks single- and double-quoted string literals so that
-    parentheses inside strings are ignored.  Escaped quotes (``''`` for
-    single, ``""`` for double) are handled.
-
-    Raises :exc:`ValueError` if no balanced closing paren is found.
-    """
+    # --- Phase 1: find the matching closing parenthesis ---
     depth = 0
     in_single_quote = False
     in_double_quote = False
+    close_end = -1
 
     for i in range(start, len(text)):
         c = text[i]
@@ -2356,7 +2313,7 @@ def find_parentheses_end(text: str, start: int = 0) -> int:
                 and text[i + 1] == "'"
                 and not in_single_quote
             ):
-                continue  # escaped quote
+                continue  # escaped single quote
             in_single_quote = not in_single_quote
         elif c == '"' and not in_single_quote:
             if (
@@ -2364,7 +2321,7 @@ def find_parentheses_end(text: str, start: int = 0) -> int:
                 and text[i + 1] == '"'
                 and not in_double_quote
             ):
-                continue  # escaped quote
+                continue  # escaped double quote
             in_double_quote = not in_double_quote
         elif not in_single_quote and not in_double_quote:
             if c == "(":
@@ -2372,9 +2329,59 @@ def find_parentheses_end(text: str, start: int = 0) -> int:
             elif c == ")":
                 depth -= 1
                 if depth == 0:
-                    return i + 1  # position *after* the closing )
+                    close_end = i + 1  # position *after* the closing )
+                    break
 
-    raise ValueError("Could not find matching closing parenthesis")
+    if close_end == -1:
+        raise ValueError(
+            "Could not find matching closing parenthesis "
+            "for '(' at position %d" % start
+        )
+
+    # --- Phase 2: strip redundant outer parentheses from inner content ---
+    inner = text[start + 1 : close_end - 1]
+    while True:
+        s = inner.strip()
+        if len(s) < 2 or s[0] != "(" or s[-1] != ")":
+            break
+
+        _depth = 0
+        _in_sq = False
+        _in_dq = False
+        _matched = False
+
+        for j, c in enumerate(s):
+            if c == "'" and not _in_dq:
+                if (
+                    j + 1 < len(s)
+                    and s[j + 1] == "'"
+                    and not _in_sq
+                ):
+                    continue
+                _in_sq = not _in_sq
+            elif c == '"' and not _in_sq:
+                if (
+                    j + 1 < len(s)
+                    and s[j + 1] == '"'
+                    and not _in_dq
+                ):
+                    continue
+                _in_dq = not _in_dq
+            elif not _in_sq and not _in_dq:
+                if c == "(":
+                    _depth += 1
+                elif c == ")":
+                    _depth -= 1
+                    if _depth == 0:
+                        if j == len(s) - 1:
+                            inner = s[1:-1]
+                            _matched = True
+                        break
+
+        if not _matched:
+            break
+
+    return inner, close_end
 
 
 def has_compiled_ext(raise_=False):
@@ -2422,22 +2429,3 @@ class _Missing(enum.Enum):
 Missing = _Missing.Missing
 MissingOr = Union[_T, Literal[_Missing.Missing]]
 
-
-def consume_parenthesized_expression(text: str, start: int) -> tuple[str, int]:
-    """Extract a parenthesized expression starting at *start*.
-
-    Given *text* and the position of an opening ``(`` at *start*,
-    return a tuple of ``(inner_text, end_pos)`` where *inner_text* is
-    the content inside the parentheses (with outer balanced parentheses
-    stripped) and *end_pos* is the position **after** the matching
-    closing ``)``.
-
-    The scan correctly handles nested parentheses, single- and
-    double-quoted string literals, and SQL-style escaped quotes
-    (``''`` and ``""``).
-
-    Raises :exc:`ValueError` if no balanced closing parenthesis is found.
-    """
-    end = find_parentheses_end(text, start)
-    inner = strip_parentheses(text[start + 1 : end - 1])
-    return inner, end

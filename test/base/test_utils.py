@@ -3789,105 +3789,109 @@ class TestTest(fixtures.TestBase):
                 foo.fail()
 
 
-class StripParenthesesTest(fixtures.TestBase):
-    def test_strip_no_parens(self):
-        eq_(util.strip_parentheses("a > 1"), "a > 1")
-
-    def test_strip_single_level(self):
-        eq_(util.strip_parentheses("(a > 1)"), "a > 1")
-
-    def test_strip_multiple_levels(self):
-        eq_(util.strip_parentheses("((a > 1))"), "a > 1")
-        eq_(util.strip_parentheses("(((a > 1)))"), "a > 1")
-
-    def test_strip_nested_expression(self):
-        eq_(
-            util.strip_parentheses("((a > 1) AND (a < 5))"),
-            "(a > 1) AND (a < 5)",
-        )
-
-    def test_strip_preserves_inner_unbalanced(self):
-        """Outer parens that don't balance should not be stripped."""
-        eq_(util.strip_parentheses("(a > 1) AND (a < 5)"), "(a > 1) AND (a < 5)")
-
-    def test_string_literal_single_quotes(self):
-        """Parens inside single-quoted strings are ignored."""
-        eq_(util.strip_parentheses("(a != '(')"), "a != '('")
-        eq_(util.strip_parentheses("(a != ')')"), "a != ')'")
-        eq_(
-            util.strip_parentheses("(a IN (')', '('))"),
-            "a IN (')', '(')",
-        )
-
-    def test_string_literal_double_quotes(self):
-        """Parens inside double-quoted strings are ignored."""
-        eq_(util.strip_parentheses('(a != "(")'), 'a != "("')
-        eq_(
-            util.strip_parentheses('(a != "say ""(hello)"" ")'),
-            'a != "say ""(hello)"" "',
-        )
-
-    def test_escaped_quotes(self):
-        """Escaped quotes ('' or "") don't toggle quote state."""
-        eq_(
-            util.strip_parentheses("(a != 'it''s (not) valid')"),
-            "a != 'it''s (not) valid'",
-        )
-        eq_(
-            util.strip_parentheses('(a != "say ""(hello)"" ")'),
-            'a != "say ""(hello)"" "',
-        )
-
-    def test_complex_mixed(self):
-        eq_(
-            util.strip_parentheses(
-                "(((a != '((') AND (a = ')))')))"
-            ),
-            "(a != '((') AND (a = ')))')",
-        )
-
-
-class FindParenthesesEndTest(fixtures.TestBase):
-    def test_simple(self):
-        eq_(util.find_parentheses_end("(a > 1)", 0), 7)
-
-    def test_nested(self):
-        eq_(util.find_parentheses_end("((a > 1) AND (a < 5))", 0), 21)
-
-    def test_with_string_literal(self):
-        eq_(util.find_parentheses_end("(a != '(')", 0), 10)
-
-    def test_with_string_literal_closing_paren(self):
-        eq_(util.find_parentheses_end("(a != ')')", 0), 10)
-
-    def test_complex_strings(self):
-        text = "(a != '((' OR a = ')))')"
-        eq_(util.find_parentheses_end(text, 0), len(text))
-
-    def test_escaped_quotes_in_string(self):
-        text = "(a != 'it''s (not) valid')"
-        eq_(util.find_parentheses_end(text, 0), len(text))
-
-    def test_no_match_raises(self):
-        with expect_raises(ValueError):
-            util.find_parentheses_end("(a > 1", 0)
-
-    def test_start_offset(self):
-        eq_(util.find_parentheses_end("CHECK (a > 1)", 6), 13)
-
 
 class ConsumeParenthesizedExpressionTest(fixtures.TestBase):
-    def test_simple(self):
+    # --- strip (phase 2) behaviour ---
+
+    def test_strip_no_parens(self):
         text, end = util.consume_parenthesized_expression("(a > 1)", 0)
         eq_(text, "a > 1")
-        eq_(end, 7)
 
-    def test_nested(self):
+    def test_strip_single_level(self):
+        text, end = util.consume_parenthesized_expression("(a > 1)", 0)
+        eq_(text, "a > 1")
+
+    def test_strip_multiple_levels(self):
+        text, end = util.consume_parenthesized_expression("((a > 1))", 0)
+        eq_(text, "a > 1")
+        text, end = util.consume_parenthesized_expression("(((a > 1)))", 0)
+        eq_(text, "a > 1")
+
+    def test_strip_nested_expression(self):
         text, end = util.consume_parenthesized_expression(
             "((a > 1) AND (a < 5))", 0
         )
         eq_(text, "(a > 1) AND (a < 5)")
+
+    def test_strip_preserves_inner_unbalanced(self):
+        """Only the first balanced paren group is consumed; trailing text is ignored."""
+        text, end = util.consume_parenthesized_expression(
+            "(a > 1) AND (a < 5)", 0
+        )
+        eq_(text, "a > 1")
+
+    def test_string_literal_single_quotes(self):
+        """Parens inside single-quoted strings are ignored."""
+        text, end = util.consume_parenthesized_expression("(a != '(')", 0)
+        eq_(text, "a != '('")
+        text, end = util.consume_parenthesized_expression("(a != ')')", 0)
+        eq_(text, "a != ')'")
+        text, end = util.consume_parenthesized_expression(
+            "(a IN (')', '('))", 0
+        )
+        eq_(text, "a IN (')', '(')")
+
+    def test_string_literal_double_quotes(self):
+        """Parens inside double-quoted strings are ignored."""
+        text, end = util.consume_parenthesized_expression('(a != "(")', 0)
+        eq_(text, 'a != "("')
+        text, end = util.consume_parenthesized_expression(
+            '(a != "say ""(hello)"" ")', 0
+        )
+        eq_(text, 'a != "say ""(hello)"" "')
+
+    def test_escaped_quotes(self):
+        """Escaped quotes ('' or "") don't toggle quote state."""
+        text, end = util.consume_parenthesized_expression(
+            "(a != 'it''s (not) valid')", 0
+        )
+        eq_(text, "a != 'it''s (not) valid'")
+        text, end = util.consume_parenthesized_expression(
+            '(a != "say ""(hello)"" ")', 0
+        )
+        eq_(text, 'a != "say ""(hello)"" "')
+
+    def test_complex_mixed(self):
+        text, end = util.consume_parenthesized_expression(
+            "(((a != '((') AND (a = ')))')))", 0
+        )
+        eq_(text, "(a != '((') AND (a = ')))')")
+
+    # --- find-end (phase 1) behaviour ---
+
+    def test_simple_end(self):
+        text, end = util.consume_parenthesized_expression("(a > 1)", 0)
+        eq_(end, 7)
+
+    def test_nested_end(self):
+        text, end = util.consume_parenthesized_expression(
+            "((a > 1) AND (a < 5))", 0
+        )
         eq_(end, 21)
+
+    def test_with_string_literal_end(self):
+        text, end = util.consume_parenthesized_expression("(a != '(')", 0)
+        eq_(end, 10)
+
+    def test_with_string_literal_closing_paren_end(self):
+        text, end = util.consume_parenthesized_expression("(a != ')')", 0)
+        eq_(end, 10)
+
+    def test_complex_strings_end(self):
+        text = "(a != '((' OR a = ')))')"
+        _text, end = util.consume_parenthesized_expression(text, 0)
+        eq_(end, len(text))
+
+    def test_escaped_quotes_in_string_end(self):
+        text = "(a != 'it''s (not) valid')"
+        _text, end = util.consume_parenthesized_expression(text, 0)
+        eq_(end, len(text))
+
+    def test_start_offset(self):
+        text, end = util.consume_parenthesized_expression("CHECK (a > 1)", 6)
+        eq_(end, 13)
+
+    # --- combined / integration ---
 
     def test_with_suffix(self):
         text, end = util.consume_parenthesized_expression(
@@ -3895,13 +3899,6 @@ class ConsumeParenthesizedExpressionTest(fixtures.TestBase):
         )
         eq_(text, "a > 1")
         eq_(end, 13)
-
-    def test_with_string_literal(self):
-        text, end = util.consume_parenthesized_expression(
-            "(a != '(')", 0
-        )
-        eq_(text, "a != '('")
-        eq_(end, 10)
 
     def test_multi_level_wrapping(self):
         """Multiple outer parens are stripped down to the inner expression."""
@@ -3913,6 +3910,16 @@ class ConsumeParenthesizedExpressionTest(fixtures.TestBase):
         suffix_after = "CHECK (((a > 1) AND (a < 5))) NO INHERIT"[end:]
         eq_(suffix_after.strip(), "NO INHERIT")
 
-    def test_no_match_raises(self):
+    # --- error cases ---
+
+    def test_no_match_raises_valueerror(self):
+        """Unbalanced input raises ValueError with a descriptive message."""
         with expect_raises(ValueError):
             util.consume_parenthesized_expression("(a > 1", 0)
+
+    def test_error_message_includes_position(self):
+        """The ValueError message tells which opening paren is unmatched."""
+        try:
+            util.consume_parenthesized_expression("CHECK (a > 1", 6)
+        except ValueError as ve:
+            assert "position 6" in str(ve)

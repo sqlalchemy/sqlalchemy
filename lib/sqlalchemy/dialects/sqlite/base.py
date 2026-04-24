@@ -2875,20 +2875,18 @@ class SQLiteDialect(default.DefaultDialect):
                     flags=re.DOTALL,
                 )
 
-            # Find the matching closing parenthesis by counting balanced parens
-            # Use the shared utility to find the matching closing paren,
-            # accounting for string literals
+            # Use the shared utility to extract the CHECK expression,
+            # accounting for string literals and nested parentheses
             start = match.end()  # Position after 'CHECK ('
 
             try:
-                close_end = util.find_parentheses_end(
+                sqltext, _end = util.consume_parenthesized_expression(
                     table_data, start - 1
                 )
+                sqltext = sqltext.strip()
             except ValueError:
                 # Unbalanced parentheses — skip this constraint
                 continue
-
-            sqltext = table_data[start : close_end - 1].strip()
             cks.append(
                 {"sqltext": sqltext, "name": constraint_name}
             )

@@ -960,8 +960,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 # Triple-quote multi-line definition should have added a
                 # newline and whitespace:
                 {
-                    "sqltext": "((value > 0) AND \n\t(value < 100) AND \n\t\n"
-                    "                      (value != 50))",
+                    "sqltext": "(value > 0) AND \n\t(value < 100) AND \n\t\n"
+                    "                      (value != 50)",
                     "name": "ck_r_value_multiline",
                 },
                 {"sqltext": "id > 0", "name": None},

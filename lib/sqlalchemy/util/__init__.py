@@ -154,8 +154,6 @@ from .langhelpers import warn as warn
 from .langhelpers import warn_exception as warn_exception
 from .langhelpers import warn_limited as warn_limited
 from .langhelpers import wrap_callable as wrap_callable
-from .langhelpers import strip_parentheses as strip_parentheses
 from .langhelpers import consume_parenthesized_expression as consume_parenthesized_expression
-from .langhelpers import find_parentheses_end as find_parentheses_end
 from .preloaded import preload_module as preload_module
 from .typing import is_non_string_iterable as is_non_string_iterable
