@@ -1,0 +1,8 @@
+.. change::
+  :tags: feature, sqlite
+  :tickets: 13260
+
+  Added :class:`.sqlite.JSONB` type for SQLite's binary JSON storage
+  format, available as of SQLite version 3.45.0. Values are stored via
+  the ``jsonb()`` SQL function and retrieved via ``json()``, while the
+  Python-side behavior remains identical to :class:`.sqlite.JSON`.
