@@ -1313,6 +1313,24 @@ class DefaultRequirements(SuiteRequirements):
                 except exc.DBAPIError:
                     return False
 
+    def _sqlite_jsonb(self, config):
+        if not against(config, "sqlite >= 3.45"):
+            return False
+        with config.db.connect() as conn:
+            try:
+                return (
+                    conn.exec_driver_sql(
+                        'select json(jsonb(\'{"foo": "bar"}\'))'
+                    ).scalar()
+                    is not None
+                )
+            except exc.DBAPIError:
+                return False
+
+    @property
+    def sqlite_jsonb(self):
+        return only_on(self._sqlite_jsonb)
+
     @property
     def sqlite_memory(self):
         return only_on(self._sqlite_memory_db)
