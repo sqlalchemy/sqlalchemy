@@ -2805,3 +2805,119 @@ class SubqueryCriteriaTest(fixtures.DeclarativeMappedTest):
                 ("Red-2", ["Red-1", "Orange-2"]),
             ],
         )
+
+
+class JoinedloadOfTypeAndTest(fixtures.DeclarativeMappedTest):
+    """test #13203
+
+    joinedload + of_type() + .and_() with a subclass column should
+    adapt the column reference to the subquery alias.
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Animal(Base):
+            __tablename__ = "animal"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str] = mapped_column(String(50))
+            name: Mapped[str] = mapped_column(String(50))
+            owner_id: Mapped[int] = mapped_column(
+                ForeignKey("owner.id"), nullable=True
+            )
+            owner = relationship("Owner", back_populates="animals")
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "animal",
+            }
+
+        class Dog(Animal):
+            __tablename__ = "dog"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("animal.id"), primary_key=True
+            )
+            breed: Mapped[str] = mapped_column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "dog"}
+
+        class Owner(Base):
+            __tablename__ = "owner"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column(String(50))
+            animals = relationship("Animal", back_populates="owner")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Animal, Dog, Owner = cls.classes("Animal", "Dog", "Owner")
+        with Session(connection) as s:
+            o = Owner(id=1, name="Alice")
+            s.add(o)
+            s.flush()
+            s.add(Dog(id=1, name="Rex", breed="Lab", owner=o))
+            s.add(Animal(id=2, name="Generic", type="animal", owner=o))
+            s.commit()
+
+    def test_joinedload_of_type_and_subclass_col(self):
+        Animal, Dog, Owner = self.classes("Animal", "Dog", "Owner")
+
+        stmt = select(Owner).options(
+            joinedload(Owner.animals.of_type(Dog).and_(Dog.breed == "Lab"))
+        )
+
+        with self.sql_execution_asserter(testing.db) as asserter_:
+            result = fixture_session().execute(stmt).unique().scalars().all()
+            eq_(
+                result,
+                [Owner(name="Alice", animals=[Dog(name="Rex", breed="Lab")])],
+            )
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT owner.id, owner.name,"
+                " anon_1.animal_id, anon_1.animal_type,"
+                " anon_1.animal_name, anon_1.animal_owner_id,"
+                " anon_1.dog_id, anon_1.dog_breed"
+                " FROM owner LEFT OUTER JOIN"
+                " (SELECT animal.id AS animal_id,"
+                " animal.type AS animal_type,"
+                " animal.name AS animal_name,"
+                " animal.owner_id AS animal_owner_id,"
+                " dog.id AS dog_id, dog.breed AS dog_breed"
+                " FROM animal LEFT OUTER JOIN dog"
+                " ON animal.id = dog.id) AS anon_1"
+                " ON owner.id = anon_1.animal_owner_id"
+                " AND anon_1.dog_breed = :breed_1",
+            ),
+        )
+
+    def test_selectinload_of_type_and_subclass_col(self):
+        Animal, Dog, Owner = self.classes("Animal", "Dog", "Owner")
+
+        stmt = select(Owner).options(
+            selectinload(Owner.animals.of_type(Dog).and_(Dog.breed == "Lab"))
+        )
+
+        with self.sql_execution_asserter(testing.db) as asserter_:
+            result = fixture_session().execute(stmt).unique().scalars().all()
+            eq_(
+                result,
+                [Owner(name="Alice", animals=[Dog(name="Rex", breed="Lab")])],
+            )
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT owner.id, owner.name FROM owner",
+            ),
+            CompiledSQL(
+                "SELECT animal.id AS animal_id,"
+                " animal.type AS animal_type,"
+                " animal.name AS animal_name,"
+                " animal.owner_id AS animal_owner_id,"
+                " dog.id AS dog_id, dog.breed AS dog_breed"
+                " FROM animal LEFT OUTER JOIN dog"
+                " ON animal.id = dog.id"
+                " WHERE animal.owner_id IN"
+                " (__[POSTCOMPILE_primary_keys])"
+                " AND dog.breed = :breed_1",
+            ),
+        )
