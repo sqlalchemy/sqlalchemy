@@ -995,6 +995,7 @@ from typing import Optional
 from typing import TYPE_CHECKING
 
 from .json import JSON
+from .json import JSONB
 from .json import JSONIndexType
 from .json import JSONPathType
 from ... import exc
@@ -1401,6 +1402,7 @@ colspecs = {
     sqltypes.JSON.JSONIndexType: JSONIndexType,
     sqltypes.JSON.JSONPathType: JSONPathType,
     sqltypes.Time: TIME,
+    JSONB: JSONB,
 }
 
 ischema_names = {
@@ -1419,6 +1421,7 @@ ischema_names = {
     "INT": sqltypes.INTEGER,
     "INTEGER": sqltypes.INTEGER,
     "JSON": JSON,
+    "JSONB": JSONB,
     "NUMERIC": sqltypes.NUMERIC,
     "REAL": sqltypes.REAL,
     "SMALLINT": sqltypes.SMALLINT,
@@ -1950,6 +1953,9 @@ class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
         # should not be an issue unless the JSON value consists of a single
         # numeric value.   JSONTEXT can be used if this case is required.
         return "JSON"
+
+    def visit_JSONB(self, type_, **kw):
+        return "JSONB"
 
 
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):

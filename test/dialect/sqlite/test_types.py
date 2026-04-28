@@ -310,6 +310,72 @@ class JSONTest(fixtures.TestBase):
             eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
 
 
+class JSONBTest(fixtures.TestBase, AssertsCompiledSQL):
+    __requires__ = ("sqlite_jsonb",)
+    __only_on__ = "sqlite"
+    __backend__ = True
+    __dialect__ = "sqlite"
+
+    def test_ddl(self, metadata, connection):
+        Table("jsonb_test", metadata, Column("foo", sqlite.JSONB))
+        metadata.create_all(connection)
+        result = connection.exec_driver_sql(
+            "select sql from sqlite_master where name='jsonb_test'"
+        ).scalar()
+        assert "JSONB" in result
+
+    def test_reflection(self, metadata, connection):
+        Table("jsonb_test", metadata, Column("foo", sqlite.JSONB))
+        metadata.create_all(connection)
+        reflected = Table("jsonb_test", MetaData(), autoload_with=connection)
+        is_(reflected.c.foo.type._type_affinity, sqltypes.JSON)
+        assert isinstance(reflected.c.foo.type, sqlite.JSONB)
+
+    def test_roundtrip(self, metadata, connection):
+        t = Table("jsonb_test", metadata, Column("foo", sqlite.JSONB))
+        metadata.create_all(connection)
+        value = {"json": {"foo": "bar"}, "recs": ["one", "two"]}
+        connection.execute(t.insert(), {"foo": value})
+        eq_(connection.scalar(select(t.c.foo)), value)
+
+    def test_roundtrip_none(self, metadata, connection):
+        t = Table("jsonb_test", metadata, Column("foo", sqlite.JSONB))
+        metadata.create_all(connection)
+        connection.execute(t.insert(), {"foo": None})
+        eq_(connection.scalar(select(t.c.foo)), None)
+
+    def test_extract_subobject(self, metadata, connection):
+        t = Table("jsonb_test", metadata, Column("foo", sqlite.JSONB))
+        metadata.create_all(connection)
+        value = {"json": {"foo": "bar"}}
+        connection.execute(t.insert(), {"foo": value})
+        eq_(connection.scalar(select(t.c.foo["json"])), value["json"])
+
+    def test_bind_expression_renders_jsonb_func(self):
+        t = Table("jsonb_test", MetaData(), Column("foo", sqlite.JSONB))
+        self.assert_compile(
+            t.insert().values(foo={"key": "val"}),
+            "INSERT INTO jsonb_test (foo) VALUES (jsonb(?))",
+        )
+
+    def test_column_expression_renders_json_func(self):
+        t = Table("jsonb_test", MetaData(), Column("foo", sqlite.JSONB))
+        self.assert_compile(
+            select(t.c.foo),
+            "SELECT json(jsonb_test.foo) AS foo FROM jsonb_test",
+        )
+
+    def test_storage_is_binary(self, metadata, connection):
+        """JSONB data is stored as BLOB, not text."""
+        t = Table("jsonb_test", metadata, Column("foo", sqlite.JSONB))
+        metadata.create_all(connection)
+        connection.execute(t.insert(), {"foo": {"key": "val"}})
+        raw = connection.exec_driver_sql(
+            "select typeof(foo) from jsonb_test"
+        ).scalar()
+        eq_(raw, "blob")
+
+
 class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_time_microseconds(self):
         dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)

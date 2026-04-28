@@ -1314,6 +1314,10 @@ class DefaultRequirements(SuiteRequirements):
                     return False
 
     @property
+    def sqlite_jsonb(self):
+        return only_on("sqlite >= 3.45")
+
+    @property
     def sqlite_memory(self):
         return only_on(self._sqlite_memory_db)
 

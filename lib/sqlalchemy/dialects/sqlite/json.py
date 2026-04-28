@@ -10,10 +10,12 @@ from typing import Any
 from typing import TYPE_CHECKING
 
 from ... import types as sqltypes
+from ...sql import func
 from ...sql.sqltypes import _T_JSON
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
+    from ...sql.elements import ColumnElement
     from ...sql.type_api import _BindProcessorType
     from ...sql.type_api import _LiteralProcessorType
 
@@ -45,6 +47,36 @@ class JSON(sqltypes.JSON[_T_JSON]):
     .. _JSON1: https://www.sqlite.org/json1.html
 
     """
+
+
+class JSONB(JSON[_T_JSON]):
+    """SQLite JSONB type.
+
+    Stores JSON data in SQLite's binary JSONB format, available as of
+    SQLite version 3.45.0.  The binary format is more compact and faster
+    to parse than the text-based :class:`_sqlite.JSON` type.
+
+    Values are transparently stored using the ``jsonb()`` SQL function and
+    retrieved as text JSON via the ``json()`` SQL function, so the Python
+    side behaves identically to :class:`_sqlite.JSON`.
+
+    .. seealso::
+
+        :class:`_sqlite.JSON`
+
+        https://sqlite.org/jsonb.html
+
+    """
+
+    __visit_name__ = "JSONB"
+
+    def bind_expression(
+        self, bindvalue: ColumnElement[Any]
+    ) -> ColumnElement[Any]:
+        return func.jsonb(bindvalue, type_=self)
+
+    def column_expression(self, col: ColumnElement[Any]) -> ColumnElement[Any]:
+        return func.json(col, type_=self)
 
 
 # Note: these objects currently match exactly those of MySQL, however since

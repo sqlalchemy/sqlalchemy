@@ -20,6 +20,7 @@ from .base import DECIMAL
 from .base import FLOAT
 from .base import INTEGER
 from .base import JSON
+from .base import JSONB
 from .base import NUMERIC
 from .base import REAL
 from .base import SMALLINT
@@ -44,6 +45,7 @@ __all__ = (
     "FLOAT",
     "INTEGER",
     "JSON",
+    "JSONB",
     "NUMERIC",
     "SMALLINT",
     "TEXT",
