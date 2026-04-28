@@ -96,6 +96,7 @@ if TYPE_CHECKING:
     from ..util.typing import _MatchedOnType
 
 _T = TypeVar("_T", bound=Any)
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
 _TT = TypeVar("_TT", bound=Any)
 
@@ -105,7 +106,7 @@ _TypeAnnotationMapType = Mapping[Any, "_TypeEngineArgument[Any]"]
 _MutableTypeAnnotationMapType = Dict[Any, "_TypeEngineArgument[Any]"]
 
 _DeclaredAttrDecorated = Callable[
-    ..., Union[Mapped[_T], ORMDescriptor[_T], SQLCoreOperations[_T]]
+    ..., Union[Mapped[_T_co], ORMDescriptor[_T_co], SQLCoreOperations[_T_co]]
 ]
 
 
@@ -330,7 +331,7 @@ class _declared_directive(_declared_attr_common, Generic[_T]):
             ...
 
 
-class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
+class declared_attr(interfaces._MappedAttribute[_T_co], _declared_attr_common):
     """Mark a class-level method as representing the definition of
     a mapped property or Declarative directive.
 
@@ -427,7 +428,7 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
 
         def __init__(
             self,
-            fn: _DeclaredAttrDecorated[_T],
+            fn: _DeclaredAttrDecorated[_T_co],
             cascading: bool = False,
         ): ...
 
@@ -442,17 +443,17 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> InstrumentedAttribute[_T]: ...
+        ) -> InstrumentedAttribute[_T_co]: ...
 
         @overload
-        def __get__(self, instance: object, owner: Any) -> _T: ...
+        def __get__(self, instance: object, owner: Any) -> _T_co: ...
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T], _T]: ...
+        ) -> Union[InstrumentedAttribute[_T_co], _T_co]: ...
 
     @hybridmethod
-    def _stateful(cls, **kw: Any) -> _stateful_declared_attr[_T]:
+    def _stateful(cls, **kw: Any) -> _stateful_declared_attr[_T_co]:
         return _stateful_declared_attr(**kw)
 
     @hybridproperty
@@ -461,24 +462,26 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
         return _declared_directive  # type: ignore
 
     @hybridproperty
-    def cascading(cls) -> _stateful_declared_attr[_T]:
+    def cascading(cls) -> _stateful_declared_attr[_T_co]:
         # see mapping_api.rst for docstring
         return cls._stateful(cascading=True)
 
 
-class _stateful_declared_attr(declared_attr[_T]):
+class _stateful_declared_attr(declared_attr[_T_co]):
     kw: Dict[str, Any]
 
     def __init__(self, **kw: Any):
         self.kw = kw
 
     @hybridmethod
-    def _stateful(self, **kw: Any) -> _stateful_declared_attr[_T]:
+    def _stateful(self, **kw: Any) -> _stateful_declared_attr[_T_co]:
         new_kw = self.kw.copy()
         new_kw.update(kw)
         return _stateful_declared_attr(**new_kw)
 
-    def __call__(self, fn: _DeclaredAttrDecorated[_T]) -> declared_attr[_T]:
+    def __call__(
+        self, fn: _DeclaredAttrDecorated[_T_co]
+    ) -> declared_attr[_T_co]:
         return declared_attr(fn, **self.kw)
 
 

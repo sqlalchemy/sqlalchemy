@@ -1,0 +1,11 @@
+.. change::
+    :tags: orm, typing
+    :tickets: 10673
+
+    Made :class:`_orm.declared_attr` covariant to match
+    :class:`_orm.Mapped`, improving compatibility with protocols that refer
+    to mapped attributes produced by declarative mixins. For mypy
+    compatibility, these protocol members should be declared as read-only
+    ``@property`` attributes; plain protocol variables such as
+    ``id: Mapped[int | UUID]`` are interpreted by mypy as settable variables
+    rather than descriptor-backed instance attributes.
