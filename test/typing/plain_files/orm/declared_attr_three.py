@@ -1,3 +1,6 @@
+# Regression tests for the declared_attr typing issue reported in #10673.
+
+import typing
 from typing import Protocol
 from typing import assert_type
 from uuid import UUID
@@ -56,5 +59,6 @@ int_id_attr: declared_attr[int] = declared_attr(_int_id)
 union_id_attr: declared_attr[int | UUID] = int_id_attr
 assert union_id_attr
 
-assert_type(m1.compare(m2), bool)
-assert_type(m1.compare(u1), bool)
+if typing.TYPE_CHECKING:
+    assert_type(m1.compare(m2), bool)
+    assert_type(m1.compare(u1), bool)
