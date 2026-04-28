@@ -10,6 +10,7 @@ from typing import Any
 from typing import TYPE_CHECKING
 
 from ... import types as sqltypes
+from ...sql import func
 from ...sql.sqltypes import _T_JSON
 
 if TYPE_CHECKING:
@@ -72,13 +73,9 @@ class JSONB(JSON[_T_JSON]):
     def bind_expression(
         self, bindvalue: ColumnElement[Any]
     ) -> ColumnElement[Any]:
-        from ...sql import func
-
         return func.jsonb(bindvalue, type_=self)
 
     def column_expression(self, col: ColumnElement[Any]) -> ColumnElement[Any]:
-        from ...sql import func
-
         return func.json(col, type_=self)
 
 
