@@ -3265,7 +3265,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = postgresql.dialect()
         self.assert_compile(
             sql.column("foo").ilike("bar", escape="\\"),
-            "foo ILIKE %(foo_1)s::VARCHAR ESCAPE '\\\\'",
+            "foo ILIKE %(foo_1)s::VARCHAR ESCAPE '\\'",
         )
 
         self.assert_compile(
@@ -3276,7 +3276,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             sql.column("foo").notilike("bar", escape="\\"),
-            "foo NOT ILIKE %(foo_1)s::VARCHAR ESCAPE '\\\\'",
+            "foo NOT ILIKE %(foo_1)s::VARCHAR ESCAPE '\\'",
         )
 
         self.assert_compile(

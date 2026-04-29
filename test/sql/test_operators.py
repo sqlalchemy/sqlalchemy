@@ -3219,14 +3219,14 @@ class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_like_7(self):
         self.assert_compile(
             self.table1.c.myid.ilike("somstr", escape="\\"),
-            "mytable.myid ILIKE %(myid_1)s::VARCHAR ESCAPE '\\\\'",
+            "mytable.myid ILIKE %(myid_1)s::VARCHAR ESCAPE '\\'",
             dialect=postgresql.dialect(),
         )
 
     def test_like_8(self):
         self.assert_compile(
             ~self.table1.c.myid.ilike("somstr", escape="\\"),
-            "mytable.myid NOT ILIKE %(myid_1)s::VARCHAR ESCAPE '\\\\'",
+            "mytable.myid NOT ILIKE %(myid_1)s::VARCHAR ESCAPE '\\'",
             dialect=postgresql.dialect(),
         )
 

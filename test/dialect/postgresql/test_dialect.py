@@ -989,17 +989,18 @@ class MiscBackendTest(
     def test_backslash_escapes_detection(self, explicit_setting, expected):
         engine = engines.testing_engine()
 
-        if explicit_setting is not None:
+        # check the default value before connect
+        eq_(engine.dialect._backslash_escapes, False)
 
-            @event.listens_for(engine, "connect", insert=True)
-            @event.listens_for(engine, "first_connect", insert=True)
-            def connect(dbapi_connection, connection_record):
-                cursor = dbapi_connection.cursor()
-                cursor.execute(
-                    "SET SESSION standard_conforming_strings = %s"
-                    % ("off" if not explicit_setting else "on")
-                )
-                dbapi_connection.commit()
+        @event.listens_for(engine, "connect", insert=True)
+        @event.listens_for(engine, "first_connect", insert=True)
+        def connect(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute(
+                "SET SESSION standard_conforming_strings = %s"
+                % ("off" if not explicit_setting else "on")
+            )
+            dbapi_connection.commit()
 
         with engine.connect():
             eq_(engine.dialect._backslash_escapes, expected)
