@@ -1,8 +1,8 @@
 # Regression tests for the declared_attr typing issue reported in #10673.
 
 import typing
-from typing import Protocol
 from typing import assert_type
+from typing import Protocol
 from uuid import UUID
 from uuid import uuid4
 
