@@ -22,7 +22,7 @@ jobs:
         python:
           - "cp310-* cp311-*"
           - "cp312-* cp313-* cp314-*"
-          - "cp313t-* cp314t-*"
+          - "cp314t-*"
         wheel_mode:
           - compiled
         os:
@@ -94,7 +94,7 @@ jobs:
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
-          CIBW_ENABLE: ${{ matrix.python == 'cp313t-* cp314t-*' && 'cpython-freethreading' || '' }}
+          CIBW_ENABLE: ${{ matrix.python == 'cp314t-*' && 'cpython-freethreading' || '' }}
           # setting it here does not work on linux
           # PYTHONNOUSERSITE: "1"
 
