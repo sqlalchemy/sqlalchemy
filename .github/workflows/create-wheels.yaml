@@ -72,7 +72,7 @@ jobs:
       # See details at https://cibuildwheel.readthedocs.io/en/stable/faq/#emulation
       - name: Set up QEMU
         if: matrix.linux_archs == 'riscv64'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: riscv64
 
