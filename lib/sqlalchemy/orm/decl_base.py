@@ -58,6 +58,7 @@ from .properties import ColumnProperty
 from .properties import MappedColumn
 from .util import _extract_mapped_subtype
 from .util import _is_mapped_annotation
+from .util import _metadata_for_cls as _metadata_for_cls_fn
 from .util import class_mapper
 from .util import de_stringify_annotation
 from .. import event
@@ -1814,11 +1815,7 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
         self.local_table = table
 
     def _metadata_for_cls(self, manager: ClassManager[Any]) -> MetaData:
-        meta: Optional[MetaData] = getattr(self.cls, "metadata", None)
-        if meta is not None:
-            return meta
-        else:
-            return manager.registry.metadata
+        return _metadata_for_cls_fn(self.cls, manager.registry)
 
     def _setup_inheriting_mapper(self) -> None:
         cls = self.cls

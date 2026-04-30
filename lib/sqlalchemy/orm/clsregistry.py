@@ -38,6 +38,7 @@ from . import attributes
 from . import interfaces
 from .descriptor_props import SynonymProperty
 from .properties import ColumnProperty
+from .util import _metadata_for_cls
 from .util import class_mapper
 from .. import exc
 from .. import inspection
@@ -444,20 +445,45 @@ class _class_resolver:
         self._resolvers = ()
         self.tables_only = tables_only
 
+    def _resolve_table_key(
+        self, key: str, metadata: MetaData
+    ) -> Optional[Table]:
+        if metadata.schema is not None and "." not in key:
+            schema_key = _get_table_key(key, metadata.schema)
+            if schema_key in metadata.tables:
+                return metadata.tables[schema_key]
+            if key in metadata.tables:
+                util.warn_deprecated(
+                    "The string '%s' was resolved to the "
+                    "non-schema-qualified table '%s', however "
+                    "the MetaData object has a default schema "
+                    "of '%s'. In a future version of SQLAlchemy, "
+                    "this unqualified name will be resolved as "
+                    "'%s'. To reference a table without a "
+                    "schema, use the Table object directly."
+                    % (key, key, metadata.schema, schema_key),
+                    "2.1",
+                )
+                return metadata.tables[key]
+        elif key in metadata.tables:
+            return metadata.tables[key]
+        return None
+
     def _access_cls(self, key: str) -> Any:
         cls = self.cls
 
         manager = attributes.manager_of_class(cls)
-        decl_base = manager.registry
-        assert decl_base is not None
-        decl_class_registry = decl_base._class_registry
-        metadata = decl_base.metadata
+        registry = manager.registry
+        assert registry is not None
+        decl_class_registry = registry._class_registry
+        metadata = _metadata_for_cls(cls, registry)
 
         if self.tables_only:
-            if key in metadata.tables:
-                return metadata.tables[key]
+            table = self._resolve_table_key(key, metadata)
+            if table is not None:
+                return table
             elif key in metadata._schemas:
-                return _GetTable(key, getattr(cls, "metadata", metadata))
+                return _GetTable(key, metadata)
 
         if key in decl_class_registry:
             dt = _determine_container(key, decl_class_registry[key])
@@ -467,18 +493,19 @@ class _class_resolver:
                 return dt
 
         if not self.tables_only:
-            if key in metadata.tables:
-                return metadata.tables[key]
+            table = self._resolve_table_key(key, metadata)
+            if table is not None:
+                return table
             elif key in metadata._schemas:
-                return _GetTable(key, getattr(cls, "metadata", metadata))
+                return _GetTable(key, metadata)
 
         if "_sa_module_registry" in decl_class_registry and key in cast(
             _ModuleMarker, decl_class_registry["_sa_module_registry"]
         ):
-            registry = cast(
+            _module_registry = cast(
                 _ModuleMarker, decl_class_registry["_sa_module_registry"]
             )
-            return registry.resolve_attr(key)
+            return _module_registry.resolve_attr(key)
 
         if self._resolvers:
             for resolv in self._resolvers:
@@ -503,12 +530,33 @@ class _class_resolver:
                 f"['{clsarg}']] = relationship()\""
             ) from err
         else:
+            manager = attributes.manager_of_class(self.cls)
+            registry = manager.registry
+            metadata = (
+                _metadata_for_cls(self.cls, registry)
+                if registry is not None
+                else None
+            )
+
+            # when deprecated fallback lookup in
+            # _resolve_table_key is removed, consider adding
+            # additional context to the error message if the
+            # unqualified key is located under BLANK_SCHEMA
+            if metadata is not None and metadata.schema is not None:
+                schema_key = _get_table_key(name, metadata.schema)
+                assert schema_key not in metadata.tables
+
             raise exc.InvalidRequestError(
                 "When initializing mapper %s, expression %r failed to "
                 "locate a name (%r). If this is a class name, consider "
                 "adding this relationship() to the %r class after "
                 "both dependent classes have been defined."
-                % (self.prop.parent, self.arg, name, self.cls)
+                % (
+                    self.prop.parent,
+                    self.arg,
+                    name,
+                    self.cls,
+                )
             ) from err
 
     def _resolve_name(self) -> Union[Table, Type[Any], _ModNS]:
