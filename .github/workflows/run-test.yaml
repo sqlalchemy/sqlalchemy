@@ -58,17 +58,6 @@ jobs:
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
 
         exclude:
-
-          # the threaded pythons are not stable under greenlet. Even
-          # though we can run individual tests, when you run the whole suite
-          # with xdist and the greenlet wrapper, the workers keep crashing
-          # and getting replaced
-          - build-type: "cext-greenlet"
-            python-version: "3.13t"
-
-          - build-type: "cext-greenlet"
-            python-version: "3.14t"
-
           # linux do not have x86 / arm64 python
           - os: "ubuntu-22.04"
             architecture: x86
