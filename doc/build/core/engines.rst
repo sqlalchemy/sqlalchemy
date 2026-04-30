@@ -514,7 +514,7 @@ namespace of SA loggers that can be turned on is as follows:
 * ``sqlalchemy.pool`` - controls connection pool logging.  Set to
   ``logging.INFO`` to log connection invalidation and recycle events; set to
   ``logging.DEBUG`` to additionally log all pool checkins and checkouts.
-  These settings are equivalent to ``pool_echo=True`` and ``pool_echo="debug"``
+  These settings are equivalent to ``echo_pool=True`` and ``echo_pool="debug"``
   on :paramref:`_sa.create_engine.echo_pool`, respectively.
 
 * ``sqlalchemy.dialects`` - controls custom logging for SQL dialects, to the
