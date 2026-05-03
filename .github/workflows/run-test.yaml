@@ -38,7 +38,6 @@ jobs:
           - "3.13"
           - "3.14"
           - "3.14t"
-          - "pypy-3.11"
         build-type:
           # builds greenlet, runs asyncio tests.  includes aiosqlite driver
           - "cext-greenlet"
@@ -56,6 +55,9 @@ jobs:
           # autocommit tests fail on the ci for some reason
           - python-version: "pypy-3.11"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
+            architecture: x64
+            build-type: "nocext"
+            os: "ubuntu-22.04"
 
         exclude:
           # linux do not have x86 / arm64 python
@@ -76,17 +78,6 @@ jobs:
             architecture: x86
           - os: "macos-latest"
             architecture: x64
-          # pypy does not have cext or x86 or arm on linux
-          - python-version: "pypy-3.11"
-            build-type: "cext"
-          - os: "ubuntu-22.04-arm"
-            python-version: "pypy-3.11"
-          - os: "windows-latest"
-            python-version: "pypy-3.11"
-            architecture: x86
-          # Setup-python does not support any versions before 3.11 for arm64 windows
-          - os: "windows-11-arm"
-            python-version: "pypy-3.11"
           - os: "windows-11-arm"
             python-version: "3.10"
           - os: "windows-11-arm"

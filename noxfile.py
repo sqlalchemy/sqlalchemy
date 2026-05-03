@@ -187,7 +187,7 @@ def github_cext(session: nox.Session) -> None:
 def github_nocext(session: nox.Session) -> None:
     """run tests for github actions"""
 
-    _tests(session, "sqlite", "cext", greenlet=False)
+    _tests(session, "sqlite", "nocext", greenlet=False)
 
 
 def _tests(
