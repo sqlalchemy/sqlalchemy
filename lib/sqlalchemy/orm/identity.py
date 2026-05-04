@@ -168,7 +168,10 @@ class _WeakInstanceDict(IdentityMap):
                 existing = None
             else:
                 if existing_non_none is not state:
-                    self._manage_removed_state(existing_non_none)
+                    if existing_non_none.obj() is not None:
+                        self._manage_removed_state(existing_non_none)
+                    else:
+                        existing = None
                 else:
                     return None
         else:

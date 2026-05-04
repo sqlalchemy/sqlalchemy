@@ -737,6 +737,64 @@ class SessionUtilTest(_fixtures.FixtureTest):
         eq_(sess.scalars(select(User)).all(), [])
 
 
+class WeakInstanceDictTest(fixtures.TestBase):
+    """Unit tests for WeakInstanceDict, independent of mappers/DB."""
+
+    def test_replace_dead_weakref(self):
+        """replace() must not return a state whose instance has been GC'd.
+
+        On PyPy (and other non-refcounting runtimes) an object can become
+        unreachable and have its weakref cleared before the weakref callback
+        fires.  WeakInstanceDict.replace() must treat such a state the same
+        as absent rather than returning it to the caller.
+        """
+        import weakref
+        from sqlalchemy.orm.identity import _WeakInstanceDict
+
+        class _FakeState:
+            modified = False
+
+            def __init__(self, key, instance=None):
+                self.key = key
+                self._ref = (
+                    weakref.ref(instance)
+                    if instance is not None
+                    else lambda: None
+                )
+                self._instance_dict = None
+
+            def obj(self):
+                return self._ref()
+
+        imap = _WeakInstanceDict()
+
+        # Simulate a state in the map whose object has been collected
+        # but whose _cleanup callback hasn't fired yet (PyPy deferred GC).
+        dead_state = _FakeState(key=("MyClass", (1,), None))
+        dead_state._instance_dict = weakref.ref(imap)
+        imap._dict[dead_state.key] = dead_state
+
+        is_(dead_state.obj(), None)
+
+        class _Instance:
+            pass
+
+        live_obj = _Instance()
+        new_state = _FakeState(
+            key=("MyClass", (1,), None), instance=live_obj
+        )
+
+        old = imap.replace(new_state)
+
+        is_(
+            old,
+            None,
+            "replace() returned a state with a dead weakref; "
+            "this would cause errors when the caller tries to access "
+            "the instance (e.g. on PyPy with deferred GC)",
+        )
+
+
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None
 
