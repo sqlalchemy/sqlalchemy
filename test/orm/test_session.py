@@ -780,9 +780,7 @@ class WeakInstanceDictTest(fixtures.TestBase):
             pass
 
         live_obj = _Instance()
-        new_state = _FakeState(
-            key=("MyClass", (1,), None), instance=live_obj
-        )
+        new_state = _FakeState(key=("MyClass", (1,), None), instance=live_obj)
 
         old = imap.replace(new_state)
 
