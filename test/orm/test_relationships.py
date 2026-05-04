@@ -6674,11 +6674,11 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
                 params=[{"id_1": 2}],
             ),
             CompiledSQL(
-                "SELECT a_1.id, b.id FROM a AS a_1 JOIN "
+                "SELECT anon_1.aid, b.id FROM "
                 "(SELECT a.id AS aid, b.id AS id FROM a JOIN b ON a.b_ids "
                 "LIKE (:id_1 || b.id || :param_1)) AS anon_1 "
-                "ON a_1.id = anon_1.aid JOIN b ON b.id = anon_1.id "
-                "WHERE a_1.id IN (__[POSTCOMPILE_primary_keys])",
+                "JOIN b ON b.id = anon_1.id "
+                "WHERE anon_1.aid IN (__[POSTCOMPILE_primary_keys])",
                 params=[{"id_1": "%", "param_1": "%", "primary_keys": [2]}],
             ),
         )

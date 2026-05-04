@@ -2996,6 +2996,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         super().__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
         is_m2o = self.parent_property.direction is interfaces.MANYTOONE
+        is_m2m = self.parent_property.direction is interfaces.MANYTOMANY
 
         if self.parent_property.omit_join is not None:
             self.omit_join = self.parent_property.omit_join
@@ -3005,6 +3006,8 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             )
             if is_m2o:
                 self.omit_join = lazyloader.use_get
+            elif is_m2m and not self.parent_property._is_self_referential:
+                self.omit_join = True
             else:
                 self.omit_join = self.parent._get_clause[0].compare(
                     lazyloader._rev_lazywhere,
@@ -3253,7 +3256,18 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             },
         )
 
-        if not query_info.load_with_join:
+        if (
+            self.parent_property.secondary is not None
+            and self.omit_join is True
+        ):
+            # The secondaryjoin condition is used to connect the
+            # secondary table to the related entity,
+            # and is required for composite foreign keys where SQLAlchemy
+            # cannot determine the join condition.
+            q = q.select_from(self.parent_property.secondary).join(
+                entity_sql, self.parent_property._join_condition.secondaryjoin
+            )
+        elif not query_info.load_with_join:
             # the Bundle we have in the "omit_join" case is against raw, non
             # annotated columns, so to ensure the Query knows its primary
             # entity, we add it explicitly.  If we made the Bundle against

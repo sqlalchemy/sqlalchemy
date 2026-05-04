@@ -1,5 +1,7 @@
 import sqlalchemy as sa
+from sqlalchemy import and_
 from sqlalchemy import bindparam
+from sqlalchemy import Boolean
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Integer
@@ -3636,6 +3638,562 @@ class M2OWDegradeTest(
                 A(id=5, b=b1),
             ],
         )
+
+
+class M2MSimpleOmitTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        association_table = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id", Integer, ForeignKey("a.id")),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B", secondary=association_table)
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+            )
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+        session = Session(connection)
+        a1 = A(id=1)
+        a2 = A(id=2)
+        b1 = B(id=1)
+        b2 = B(id=2)
+
+        a1.bs = [b1, b2]
+        a2.bs = [b1]
+
+        session.add_all([a1, a2, b1, b2])
+        session.commit()
+
+    def test_m2m_omit_join_true(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = select(A).options(selectinload(A.bs)).order_by(A.id)
+            session.execute(statement).scalars().all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+            CompiledSQL(
+                "SELECT a_b.a_id, b.id "
+                "FROM a_b JOIN b ON b.id = a_b.b_id "
+                "WHERE a_b.a_id IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [1, 2]},
+            ),
+        )
+
+    def test_m2m_omit_join_false(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A)
+                .options(selectinload(A.bs_no_omit_join))
+                .order_by(A.id)
+            )
+            session.execute(statement).scalars().all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+            CompiledSQL(
+                "SELECT a_1.id, b.id "
+                "FROM a AS a_1 JOIN a_b AS a_b_1 ON a_1.id = a_b_1.a_id "
+                "JOIN b ON b.id = a_b_1.b_id "
+                "WHERE a_1.id IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [1, 2]},
+            ),
+        )
+
+
+class M2MSymmetricCompositeKeyOmitTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        association_table = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id1", Integer, ForeignKey("a.id1")),
+            Column("a_id2", Integer, ForeignKey("a.id2")),
+            Column("b_id1", Integer, ForeignKey("b.id1")),
+            Column("b_id2", Integer, ForeignKey("b.id2")),
+        )
+
+        class B(Base):
+            __tablename__ = "b"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+
+        class A(Base):
+            __tablename__ = "a"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+        session = Session(connection)
+        a1 = A(id1=1, id2=1)
+        a2 = A(id1=1, id2=2)
+        b1 = B(id1=1, id2=1)
+        b2 = B(id1=1, id2=2)
+
+        a1.bs = [b1, b2]
+        a2.bs = [b1]
+
+        session.add_all([a1, a2, b1, b2])
+        session.commit()
+
+    def test_m2m_omit_join_true(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A).options(selectinload(A.bs)).order_by(A.id1, A.id2)
+            )
+            session.execute(statement).scalars().all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id1, a.id2 FROM a ORDER BY a.id1, a.id2",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a_b.a_id1, a_b.a_id2, b.id1, b.id2 "
+                "FROM a_b JOIN b ON b.id1 = a_b.b_id1 AND b.id2 = a_b.b_id2 "
+                "WHERE (a_b.a_id1, a_b.a_id2) IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [(1, 1), (1, 2)]},
+            ),
+        )
+
+    def test_m2m_omit_join_false(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A)
+                .options(selectinload(A.bs_no_omit_join))
+                .order_by(A.id1, A.id2)
+            )
+            session.execute(statement).scalars().all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id1, a.id2 FROM a ORDER BY a.id1, a.id2",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a_1.id1, a_1.id2, b.id1, b.id2 "
+                "FROM a AS a_1 JOIN a_b AS a_b_1 ON "
+                "a_1.id1 = a_b_1.a_id1 AND a_1.id2 = a_b_1.a_id2 "
+                "JOIN b ON b.id1 = a_b_1.b_id1 AND b.id2 = a_b_1.b_id2 "
+                "WHERE (a_1.id1, a_1.id2) IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [(1, 1), (1, 2)]},
+            ),
+        )
+
+
+class M2MAsymmetricCompositeKeyOmitTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        association_table = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id1", Integer, ForeignKey("a.id1")),
+            Column("a_id2", Integer, ForeignKey("a.id2")),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=lambda: B.id == association_table.c.b_id,
+            )
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=lambda: B.id == association_table.c.b_id,
+            )
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+        session = Session(connection)
+        a1 = A(id1=1, id2=1)
+        a2 = A(id1=1, id2=2)
+        b1 = B(id=1)
+        b2 = B(id=2)
+        b3 = B(id=3)
+
+        a1.bs = [b1, b2, b3]
+        a2.bs = [b2, b3]
+
+        session.add_all([a1, a2, b1, b2, b3])
+        session.commit()
+
+    def test_m2m_omit_join_true(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A).options(selectinload(A.bs)).order_by(A.id1, A.id2)
+            )
+            session.execute(statement).scalars().all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id1, a.id2 " "FROM a ORDER BY a.id1, a.id2",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a_b.a_id1, a_b.a_id2, b.id "
+                "FROM a_b JOIN b ON b.id = a_b.b_id "
+                "WHERE (a_b.a_id1, a_b.a_id2) IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [(1, 1), (1, 2)]},
+            ),
+        )
+
+    def test_m2m_omit_join_false(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A)
+                .options(selectinload(A.bs_no_omit_join))
+                .order_by(A.id1, A.id2)
+            )
+            session.execute(statement).scalars().all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id1, a.id2 FROM a ORDER BY a.id1, a.id2",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a_1.id1, a_1.id2, b.id "
+                "FROM a AS a_1 JOIN a_b AS a_b_1 "
+                "ON a_1.id1 = a_b_1.a_id1 AND a_1.id2 = a_b_1.a_id2 "
+                "JOIN b ON b.id = a_b_1.b_id "
+                "WHERE (a_1.id1, a_1.id2) IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [(1, 1), (1, 2)]},
+            ),
+        )
+
+
+class M2MReverseAsymmetricCompositeKeyOmitTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        association_table = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id", Integer, ForeignKey("a.id")),
+            Column("b_id1", Integer, ForeignKey("b.id1")),
+            Column("b_id2", Integer, ForeignKey("b.id2")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: A.id == association_table.c.a_id,
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+                primaryjoin=lambda: A.id == association_table.c.a_id,
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+
+        class B(Base):
+            __tablename__ = "b"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+        session = Session(connection)
+        a1 = A(id=1)
+        a2 = A(id=2)
+        b1 = B(id1=1, id2=1)
+        b2 = B(id1=1, id2=2)
+        b3 = B(id1=2, id2=1)
+
+        a1.bs = [b1, b2, b3]
+        a2.bs = [b2, b3]
+
+        session.add_all([a1, a2, b1, b2, b3])
+        session.commit()
+
+    def test_m2m_omit_join_true(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = select(A).options(selectinload(A.bs)).order_by(A.id)
+            session.execute(statement).scalars().all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id FROM a ORDER BY a.id",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a_b.a_id, b.id1, b.id2 "
+                "FROM a_b JOIN b ON b.id1 = a_b.b_id1 AND b.id2 = a_b.b_id2 "
+                "WHERE a_b.a_id IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [1, 2]},
+            ),
+        )
+
+    def test_m2m_omit_join_false(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A)
+                .options(selectinload(A.bs_no_omit_join))
+                .order_by(A.id)
+            )
+            session.execute(statement).scalars().all()
+
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id FROM a ORDER BY a.id",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a_1.id, b.id1, b.id2 "
+                "FROM a AS a_1 JOIN a_b AS a_b_1 ON a_1.id = a_b_1.a_id "
+                "JOIN b ON b.id1 = a_b_1.b_id1 AND b.id2 = a_b_1.b_id2 "
+                "WHERE a_1.id IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [1, 2]},
+            ),
+        )
+
+
+class M2MFilteredSecondaryjoinOmitTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        association_table = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id", Integer, ForeignKey("a.id")),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: A.id == association_table.c.a_id,
+                secondaryjoin=lambda: and_(
+                    B.id == association_table.c.b_id,
+                    B.active == True,
+                ),
+            )
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+                primaryjoin=lambda: A.id == association_table.c.a_id,
+                secondaryjoin=lambda: and_(
+                    B.id == association_table.c.b_id,
+                    B.active == True,
+                ),
+            )
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            active = Column(Boolean, default=True)
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+        session = Session(connection)
+        a1 = A(id=1)
+        a2 = A(id=2)
+        b1 = B(id=1, active=True)
+        b2 = B(id=2, active=False)  # inactive - should be filtered out
+        b3 = B(id=3, active=True)
+
+        a1.bs = [b1, b2, b3]
+        a2.bs = [b2, b3]
+
+        session.add_all([a1, a2, b1, b2, b3])
+        session.commit()
+
+    def test_m2m_omit_join_true(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = select(A).options(selectinload(A.bs)).order_by(A.id)
+            return session.execute(statement).scalars().all()
+
+        results = self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id FROM a ORDER BY a.id",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a_b.a_id, b.id, b.active "
+                "FROM a_b JOIN b ON b.id = a_b.b_id AND b.active = 1 "
+                "WHERE a_b.a_id IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [1, 2]},
+            ),
+        )
+
+        eq_(sorted(b.id for b in results[0].bs), [1, 3])
+        eq_(sorted(b.id for b in results[1].bs), [3])
+
+    def test_m2m_omit_join_false(self):
+        A = self.classes.A
+        session = fixture_session()
+
+        def go():
+            statement = (
+                select(A)
+                .options(selectinload(A.bs_no_omit_join))
+                .order_by(A.id)
+            )
+            return session.execute(statement).scalars().all()
+
+        results = self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT a.id FROM a ORDER BY a.id",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT a_1.id, b.id, b.active "
+                "FROM a AS a_1 JOIN a_b AS a_b_1 ON a_1.id = a_b_1.a_id "
+                "JOIN b ON b.id = a_b_1.b_id AND b.active = 1 "
+                "WHERE a_1.id IN "
+                "(__[POSTCOMPILE_primary_keys])",
+                {"primary_keys": [1, 2]},
+            ),
+        )
+
+        eq_(sorted(b.id for b in results[0].bs_no_omit_join), [1, 3])
+        eq_(sorted(b.id for b in results[1].bs_no_omit_join), [3])
 
 
 class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
