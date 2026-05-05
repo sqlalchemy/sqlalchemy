@@ -47,7 +47,7 @@ _EchoFlagType = Union[None, bool, Literal["debug"]]
 # logging being enabled for 'sqlalchemy'.
 rootlogger = logging.getLogger("sqlalchemy")
 if rootlogger.level == logging.NOTSET:
-    rootlogger.setLevel(logging.WARN)
+    rootlogger.setLevel(logging.WARNING)
 
 
 def _add_default_handler(logger: logging.Logger) -> None:

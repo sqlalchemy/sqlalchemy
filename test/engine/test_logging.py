@@ -1060,7 +1060,7 @@ class EchoTest(fixtures.TestBase):
 
     def setup_test(self):
         self.level = logging.getLogger("sqlalchemy.engine").level
-        logging.getLogger("sqlalchemy.engine").setLevel(logging.WARN)
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
         self.buf = logging.handlers.BufferingHandler(100)
         logging.getLogger("sqlalchemy.engine").addHandler(self.buf)
 
@@ -1085,7 +1085,7 @@ class EchoTest(fixtures.TestBase):
         eq_(e1._should_log_info(), False)
         eq_(e1._should_log_debug(), False)
         eq_(e1.logger.isEnabledFor(logging.INFO), False)
-        eq_(e1.logger.getEffectiveLevel(), logging.WARN)
+        eq_(e1.logger.getEffectiveLevel(), logging.WARNING)
 
         e1.echo = True
         eq_(e1._should_log_info(), True)
@@ -1103,7 +1103,7 @@ class EchoTest(fixtures.TestBase):
         eq_(e1._should_log_info(), False)
         eq_(e1._should_log_debug(), False)
         eq_(e1.logger.isEnabledFor(logging.INFO), False)
-        eq_(e1.logger.getEffectiveLevel(), logging.WARN)
+        eq_(e1.logger.getEffectiveLevel(), logging.WARNING)
 
     def test_echo_flag_independence(self):
         """test the echo flag's independence to a specific engine."""

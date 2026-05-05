@@ -533,7 +533,7 @@ For example, to log SQL queries using Python logging instead of the
     logging.basicConfig()
     logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
-By default, the log level is set to ``logging.WARN`` within the entire
+By default, the log level is set to ``logging.WARNING`` within the entire
 ``sqlalchemy`` namespace so that no log operations occur, even within an
 application that has logging enabled otherwise.
 
