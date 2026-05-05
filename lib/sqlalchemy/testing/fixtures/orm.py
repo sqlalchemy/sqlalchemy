@@ -18,7 +18,7 @@ from .. import schema
 from ..entities import BasicEntity
 from ..entities import ComparableEntity
 from ..util import adict
-from ..util import gc_collect
+from ..util import lazy_gc
 from ... import orm
 from ...orm import DeclarativeBase
 from ...orm import events as orm_events
@@ -226,4 +226,4 @@ def stop_test_class_inside_fixtures(cls):
 def after_test():
     if _fixture_sessions:
         close_all_sessions()
-    gc_collect()
+    lazy_gc()
