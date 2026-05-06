@@ -33,14 +33,6 @@ jobs:
           - "nocext"
         architecture:
           - x64
-
-        include:
-          - python-version: "pypy-3.11"
-            pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
-            architecture: x64
-            build-type: "nocext"
-            os: "ubuntu-22.04"
-
       # abort all jobs as soon as one fails
       fail-fast: false
 
@@ -63,7 +55,6 @@ jobs:
 
       - name: Run tests
         run: nox -v -s github-${{ matrix.build-type }} -- ${{ matrix.pytest-args }}
-        continue-on-error: ${{ matrix.python-version == 'pypy-3.11' }}
 
   run-nox:
     name: ${{ matrix.nox-env }}-${{ matrix.python-version }}

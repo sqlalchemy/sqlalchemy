@@ -3,6 +3,8 @@ from __future__ import annotations
 import inspect as _py_inspect
 import pickle
 from typing import TYPE_CHECKING
+import weakref
+
 
 import sqlalchemy as sa
 from sqlalchemy import delete
@@ -33,6 +35,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import was_deleted
+from sqlalchemy.orm.identity import _WeakInstanceDict
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_warns_message
@@ -748,9 +751,6 @@ class WeakInstanceDictTest(fixtures.TestBase):
         fires.  WeakInstanceDict.replace() must treat such a state the same
         as absent rather than returning it to the caller.
         """
-        import weakref
-        from sqlalchemy.orm.identity import _WeakInstanceDict
-
         class _FakeState:
             modified = False
 
