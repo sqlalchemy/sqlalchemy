@@ -751,6 +751,7 @@ class WeakInstanceDictTest(fixtures.TestBase):
         fires.  WeakInstanceDict.replace() must treat such a state the same
         as absent rather than returning it to the caller.
         """
+
         class _FakeState:
             modified = False
 
