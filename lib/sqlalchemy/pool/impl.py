@@ -442,7 +442,7 @@ class SingletonThreadPool(Pool):
         except AttributeError:
             pass
         else:
-            if rec is not None and not rec.is_detached:
+            if rec is not None:
                 return rec._checkout_existing()
 
         return _ConnectionFairy._checkout(self, self._fairy)
