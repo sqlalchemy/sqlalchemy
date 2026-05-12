@@ -1845,6 +1845,35 @@ class RelationshipProperty(
         else:
             is_write_only = is_dynamic = False
 
+        if is_write_only:
+            if (
+                self._attribute_options.dataclasses_default_factory
+                is not _NoArg.NO_ARG
+            ):
+                raise sa_exc.ArgumentError(
+                    f"For relationship "
+                    f"{self._format_as_string(cls, key)}: "
+                    "'default_factory' is not supported for "
+                    "WriteOnlyMapped relationships, which have "
+                    "no in-memory collection. Use 'init=False' "
+                    "to exclude this attribute from __init__ "
+                    "and add items after construction via "
+                    "direct assignment or "
+                    "WriteOnlyCollection.add_all()."
+                )
+            if (
+                self._attribute_options.dataclasses_default
+                is not _NoArg.NO_ARG
+            ):
+                raise sa_exc.ArgumentError(
+                    f"For relationship "
+                    f"{self._format_as_string(cls, key)}: "
+                    "'default' is not supported for "
+                    "WriteOnlyMapped relationships, which have "
+                    "no in-memory collection. Use 'init=False' "
+                    "to exclude this attribute from __init__."
+                )
+
         argument = de_optionalize_union_types(argument)
 
         if hasattr(argument, "__origin__"):

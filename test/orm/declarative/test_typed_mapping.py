@@ -4572,6 +4572,27 @@ class WriteOnlyRelationshipTest(fixtures.TestBase):
 
         self._assertions(A, B, "write_only")
 
+    def test_write_only_default_factory_raises(self, decl_base):
+        """test #13227"""
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(
+                ForeignKey("a.id", ondelete="cascade")
+            )
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "'default_factory' is not supported for "
+            "WriteOnlyMapped relationships",
+        ):
+            class A(decl_base):
+                __tablename__ = "a"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                bs: WriteOnlyMapped[B] = relationship(
+                    default_factory=list
+                )
+
 
 class GenericMappingQueryTest(AssertsCompiledSQL, fixtures.TestBase):
     """test the Generic support added as part of #8665"""
