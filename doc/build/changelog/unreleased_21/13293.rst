@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13293
+
+    Fixed issue where the :meth:`_engine.Result.unique` filter was not properly
+    validated against the :meth:`_engine.Result.yield_per` method when both
+    were called as methods on the result object, such as
+    ``result.unique().yield_per(N)`` or ``result.yield_per(N).unique()``. The
+    uniquing filter was previously only checked when ``yield_per`` was set via
+    :paramref:`_engine.Connection.execution_options.yield_per`. Since these two
+    features are fundamentally incompatible for ORM results, an
+    :class:`.InvalidRequestError` is now raised in all cases.

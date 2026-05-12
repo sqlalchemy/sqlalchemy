@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from enum import Enum
 import operator
 from typing import Any
+from typing import cast
 from typing import Generic
 from typing import Literal
 from typing import overload
@@ -557,17 +558,21 @@ class BaseResultInternal(Generic[_R]):
         assert self._unique_filter_state is not None
         uniques, strategy = self._unique_filter_state
 
-        if strategy is None and self._metadata._unique_filters is not None:
-            real_result = (
-                self if self._real_result is None else self._real_result
+        if (
+            strategy is None
+            and self._metadata._create_unique_filters is not None
+        ):
+            real_result = cast(
+                "Result[Any]",
+                self if self._real_result is None else self._real_result,
             )
+            filters = self._metadata._create_unique_filters(real_result)
             if (
                 real_result._source_supports_scalars
                 and not self._generate_rows
             ):
-                strategy = self._metadata._unique_filters[0]
+                strategy = filters[0]
             else:
-                filters = self._metadata._unique_filters
                 if self._metadata._tuplefilter is not None:
                     filters = self._metadata._tuplefilter(filters)
 

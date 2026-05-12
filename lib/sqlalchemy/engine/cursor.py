@@ -166,7 +166,7 @@ class CursorResultMetaData(ResultMetaData):
         "_safe_for_cache",
         "_unpickled",
         "_key_to_index",
-        # don't need _unique_filters support here for now.  Can be added
+        # don't need _create_unique_filters here for now.  Can be added
         # if a need arises.
     )
 

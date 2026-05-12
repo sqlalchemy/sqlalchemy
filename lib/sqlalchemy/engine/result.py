@@ -94,7 +94,9 @@ class ResultMetaData:
 
     _tuplefilter: Optional[_TupleGetterType] = None
     _translated_indexes: Optional[Sequence[int]] = None
-    _unique_filters: Optional[Sequence[Callable[[Any], Any]]] = None
+    _create_unique_filters: Optional[
+        Callable[["Result[Any]"], Sequence[Optional[Callable[[Any], Any]]]]
+    ] = None
     _keymap: _KeyMapType
     _keys: Sequence[str]
     _processors: Optional[_ProcessorsType]
@@ -250,7 +252,7 @@ class SimpleResultMetaData(ResultMetaData):
         "_processors",
         "_tuplefilter",
         "_translated_indexes",
-        "_unique_filters",
+        "_create_unique_filters",
         "_key_to_index",
     )
 
@@ -263,12 +265,17 @@ class SimpleResultMetaData(ResultMetaData):
         _processors: Optional[_ProcessorsType] = None,
         _tuplefilter: Optional[_TupleGetterType] = None,
         _translated_indexes: Optional[Sequence[int]] = None,
-        _unique_filters: Optional[Sequence[Callable[[Any], Any]]] = None,
+        _create_unique_filters: Optional[
+            Callable[
+                [Any],
+                Sequence[Optional[Callable[[Any], Any]]],
+            ]
+        ] = None,
     ):
         self._keys = list(keys)
         self._tuplefilter = _tuplefilter
         self._translated_indexes = _translated_indexes
-        self._unique_filters = _unique_filters
+        self._create_unique_filters = _create_unique_filters
         if extra:
             assert len(self._keys) == len(extra)
             recs_names = [
@@ -294,16 +301,24 @@ class SimpleResultMetaData(ResultMetaData):
         return key in self._keymap
 
     def _for_freeze(self) -> ResultMetaData:
-        unique_filters = self._unique_filters
-        if unique_filters and self._tuplefilter:
-            unique_filters = self._tuplefilter(unique_filters)
-
         # TODO: are we freezing the result with or without uniqueness
         # applied?
+        create_unique_filters = self._create_unique_filters
+        if create_unique_filters is not None and self._tuplefilter is not None:
+            _tuplefilter = self._tuplefilter
+            _orig_create_unique_filters = create_unique_filters
+
+            def create_unique_filters_filtered(
+                result: Result[Any],
+            ) -> Sequence[Optional[Callable[[Any], Any]]]:
+                return _tuplefilter(_orig_create_unique_filters(result))
+
+            create_unique_filters = create_unique_filters_filtered
+
         return SimpleResultMetaData(
             self._keys,
             extra=[self._keymap[key][2] for key in self._keys],
-            _unique_filters=unique_filters,
+            _create_unique_filters=create_unique_filters,
         )
 
     def __getstate__(self) -> Dict[str, Any]:
@@ -376,7 +391,7 @@ class SimpleResultMetaData(ResultMetaData):
             _tuplefilter=tup,
             _translated_indexes=indexes,
             _processors=self._processors,
-            _unique_filters=self._unique_filters,
+            _create_unique_filters=self._create_unique_filters,
         )
 
         return new_metadata

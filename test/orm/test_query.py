@@ -5671,6 +5671,65 @@ class YieldTest(_fixtures.FixtureTest):
         ):
             next(result)
 
+        result.close()
+
+    def test_no_unique_w_yield_per_method_unique_first(self):
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        sess = fixture_session()
+        stmt = select(User)
+
+        result = sess.execute(stmt).unique().yield_per(10)
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't use the ORM yield_per feature in "
+            r"conjunction with unique\(\)",
+        ):
+            next(result)
+
+        result.close()
+
+    def test_no_unique_w_yield_per_method_yield_per_first(self):
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        sess = fixture_session()
+        stmt = select(User)
+
+        result = sess.execute(stmt).yield_per(10).unique()
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't use the ORM yield_per feature in "
+            r"conjunction with unique\(\)",
+        ):
+            next(result)
+
+        result.close()
+
+    def test_no_unique_w_yield_per_stream_results(self):
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        sess = fixture_session()
+        stmt = select(User).execution_options(stream_results=True)
+
+        result = sess.execute(stmt).unique().yield_per(10)
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't use the ORM yield_per feature in "
+            r"conjunction with unique\(\)",
+        ):
+            next(result)
+
+        result.close()
+
 
 class YieldIterationTest(_fixtures.FixtureTest):
     run_inserts = "once"
