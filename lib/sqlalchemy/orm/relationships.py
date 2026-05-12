@@ -1849,29 +1849,20 @@ class RelationshipProperty(
             if (
                 self._attribute_options.dataclasses_default_factory
                 is not _NoArg.NO_ARG
-            ):
-                raise sa_exc.ArgumentError(
-                    f"For relationship "
-                    f"{self._format_as_string(cls, key)}: "
-                    "'default_factory' is not supported for "
-                    "WriteOnlyMapped relationships, which have "
-                    "no in-memory collection. Use 'init=False' "
-                    "to exclude this attribute from __init__ "
-                    "and add items after construction via "
-                    "direct assignment or "
-                    "WriteOnlyCollection.add_all()."
-                )
-            if (
+            ) or (
                 self._attribute_options.dataclasses_default
                 is not _NoArg.NO_ARG
             ):
                 raise sa_exc.ArgumentError(
                     f"For relationship "
                     f"{self._format_as_string(cls, key)}: "
-                    "'default' is not supported for "
+                    "'default' and 'default_factory' are not supported for "
                     "WriteOnlyMapped relationships, which have "
                     "no in-memory collection. Use 'init=False' "
-                    "to exclude this attribute from __init__."
+                    "to exclude this attribute from __init__ "
+                    "and add items after construction via "
+                    "direct assignment or "
+                    "WriteOnlyCollection.add_all()."
                 )
 
         argument = de_optionalize_union_types(argument)
