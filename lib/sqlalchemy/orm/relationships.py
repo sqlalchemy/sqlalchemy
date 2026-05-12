@@ -464,10 +464,11 @@ class RelationshipProperty(
             _NoArg.NO_ARG,
             None,
         ):
-            raise sa_exc.ArgumentError(
-                "Only 'None' is accepted as dataclass "
-                "default for a relationship()"
-            )
+            if lazy not in ("write_only", "dynamic"):
+                raise sa_exc.ArgumentError(
+                    "Only 'None' is accepted as dataclass "
+                    "default for a relationship()"
+                )
 
         self.post_update = post_update
         self.viewonly = viewonly
@@ -1845,7 +1846,7 @@ class RelationshipProperty(
         else:
             is_write_only = is_dynamic = False
 
-        if is_write_only:
+        if is_write_only or is_dynamic:
             if (
                 self._attribute_options.dataclasses_default_factory
                 is not _NoArg.NO_ARG
@@ -1854,15 +1855,11 @@ class RelationshipProperty(
                 is not _NoArg.NO_ARG
             ):
                 raise sa_exc.ArgumentError(
-                    f"For relationship "
-                    f"{self._format_as_string(cls, key)}: "
-                    "'default' and 'default_factory' are not supported for "
-                    "WriteOnlyMapped relationships, which have "
-                    "no in-memory collection. Use 'init=False' "
-                    "to exclude this attribute from __init__ "
-                    "and add items after construction via "
-                    "direct assignment or "
-                    "WriteOnlyCollection.add_all()."
+                    f"WriteOnlyMapped / DynamicMapped relationship "
+                    f"{self._format_as_string(cls, key)} does not "
+                    "support 'default' or 'default_factory' "
+                    "properties. Use 'init=False' to exclude this "
+                    "attribute from __init__."
                 )
 
         argument = de_optionalize_union_types(argument)
