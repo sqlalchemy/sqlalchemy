@@ -1746,7 +1746,7 @@ class SubqueryLoader(PostLoader):
         if loadopt and loadopt._extra_criteria:
             new_options += (
                 orm_util.LoaderCriteriaOption(
-                    self.entity,
+                    effective_entity,
                     loadopt._generate_extra_criteria(context),
                 ),
             )
