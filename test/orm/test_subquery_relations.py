@@ -3837,3 +3837,85 @@ class Issue11173Test(fixtures.DeclarativeMappedTest):
 
                 for sub_item in sub_items:
                     eq_(sub_item.number, sub_item_number)
+
+
+class SubqueryloadOfTypeAndTest(fixtures.DeclarativeMappedTest):
+    """Test that .and_() criteria are preserved when combined with
+    of_type() in subqueryload."""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Employee(Base):
+            __tablename__ = "employee"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            company_id = Column(
+                Integer, ForeignKey("company.id"), nullable=True
+            )
+            type = Column(String(20))
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "employee",
+            }
+
+        class Engineer(Employee):
+            __tablename__ = "engineer"
+            id = Column(
+                Integer, ForeignKey("employee.id"), primary_key=True
+            )
+            primary_language = Column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+            id = Column(
+                Integer, ForeignKey("employee.id"), primary_key=True
+            )
+            department = Column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "manager"}
+
+        class Company(Base):
+            __tablename__ = "company"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            employees = relationship("Employee")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Company, Engineer, Manager = cls.classes(
+            "Company", "Engineer", "Manager"
+        )
+        with Session(connection) as sess:
+            c1 = Company(name="c1")
+            e1 = Engineer(name="e1", primary_language="python")
+            e2 = Engineer(name="e2", primary_language="java")
+            m1 = Manager(name="m1", department="engineering")
+            sess.add_all([c1, e1, e2, m1])
+            c1.employees = [e1, e2, m1]
+            sess.commit()
+
+    def test_subqueryload_of_type_and_criteria(self):
+        """Verify .and_() filter is applied when combining
+        of_type() with subqueryload."""
+        Company, Engineer = self.classes("Company", "Engineer")
+        s = fixture_session()
+
+        q = s.query(Company).options(
+            subqueryload(
+                Company.employees.of_type(Engineer).and_(
+                    Engineer.primary_language == "python"
+                )
+            )
+        )
+
+        result = q.all()
+        eq_(len(result), 1)
+        company = result[0]
+
+        # only python engineers should be loaded via subqueryload;
+        # java engineer and manager should be missing
+        eq_(len(company.employees), 1)
+        eq_(company.employees[0].name, "e1")
+        eq_(company.employees[0].primary_language, "python")
