@@ -3007,7 +3007,8 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             if is_m2o:
                 self.omit_join = lazyloader.use_get
             elif is_m2m and not self.parent_property._is_self_referential:
-                self.omit_join = True
+                join_cond = self.parent_property._join_condition
+                self.omit_join = join_cond.secondary_covers_parent_primary_key
             else:
                 self.omit_join = self.parent._get_clause[0].compare(
                     lazyloader._rev_lazywhere,

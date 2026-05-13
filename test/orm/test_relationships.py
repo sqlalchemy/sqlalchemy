@@ -1,4 +1,6 @@
 import datetime
+from typing import List
+from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy import and_
@@ -23,6 +25,8 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import selectinload
@@ -5634,6 +5638,454 @@ class InvalidRelationshipEscalationTestM2M(
             "Foo.bars",
             "secondary",
         )
+
+
+class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
+    def test_false_no_secondary(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            bs: Mapped[list["B"]] = relationship("B", back_populates="a")
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            a: Mapped["A"] = relationship("A", back_populates="bs")
+
+        join_cond = A.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is False
+
+    def test_false_secondary_joins_on_non_pk(self):
+        Base = declarative_base()
+
+        atob = Table(
+            "atob",
+            Base.metadata,
+            Column("a_code", ForeignKey("a.code")),
+            Column("b_id", ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            code: Mapped[str] = mapped_column(unique=True)
+            bs: Mapped[list["B"]] = relationship("B", secondary=atob)
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = A.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is False
+
+    def test_true_with_composite(self):
+        Base = declarative_base()
+
+        association_table = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id1", Integer, ForeignKey("a.id1")),
+            Column("a_id2", Integer, ForeignKey("a.id2")),
+            Column("b_id1", Integer, ForeignKey("b.id1")),
+            Column("b_id2", Integer, ForeignKey("b.id2")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id1: Mapped[int] = mapped_column(primary_key=True)
+            id2: Mapped[int] = mapped_column(primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+
+        class B(Base):
+            __tablename__ = "b"
+            id1: Mapped[int] = mapped_column(primary_key=True)
+            id2: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = A.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is True
+
+    def test_false_with_inheritance(self):
+        Base = declarative_base()
+
+        a_b = Table(
+            "a_b",
+            Base.metadata,
+            Column(
+                "a_code", String, ForeignKey("a_child.code"), primary_key=True
+            ),
+            Column("b_id", Integer, ForeignKey("b.id"), primary_key=True),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str]
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "a",
+            }
+
+        class AChild(A):
+            __tablename__ = "a_child"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("a.id"), primary_key=True
+            )
+            code: Mapped[str] = mapped_column(unique=True)
+            bs: Mapped[list["B"]] = relationship(secondary=a_b)
+            __mapper_args__ = {"polymorphic_identity": "a_child"}
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = AChild.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is False
+
+    def test_true_inheritance_on_child(self):
+        Base = self.DeclarativeBasic
+
+        a_b = Table(
+            "a_b",
+            Base.metadata,
+            Column(
+                "a_child_id",
+                String,
+                ForeignKey("a_child.id"),
+                primary_key=True,
+            ),
+            Column("b_id", Integer, ForeignKey("b.id"), primary_key=True),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str]
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "a",
+            }
+
+        class AChild(A):
+            __tablename__ = "a_child"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("a.id"), primary_key=True
+            )
+            code: Mapped[str] = mapped_column(unique=True)
+            bs: Mapped[list["B"]] = relationship(secondary=a_b)
+            __mapper_args__ = {"polymorphic_identity": "a_child"}
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = AChild.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is True
+
+    def test_true_with_inheritance_on_parent(self):
+        Base = declarative_base()
+
+        a_b = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id", Integer, ForeignKey("a.id"), primary_key=True),
+            Column("b_id", Integer, ForeignKey("b.id"), primary_key=True),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str] = mapped_column()
+            bs = relationship("B", secondary=a_b)
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "parent",
+            }
+
+        class AChild(A):
+            __tablename__ = "a_child"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("a.id"), primary_key=True
+            )
+            code: Mapped[str] = mapped_column(unique=True)
+            __mapper_args__ = {"polymorphic_identity": "child"}
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = A.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is True
+
+    def test_false_special_case_with_inheritance(self):
+        """
+        This is a special case where relationship bs is for
+        AChild, and AChild's pk is a fk from parent A. But
+        for table a_b the keys come from parent A and B.
+
+        We are expecting the results to be False since
+        it should fail the `issubset` evaluation between AChild
+        and B.
+
+        When forcing True to allow omit_join=True for this example,
+        the IN statement still works and gets optimized since
+        AChild.id = A.id
+        """
+        Base = declarative_base()
+
+        a_b = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id", Integer, ForeignKey("a.id"), primary_key=True),
+            Column("b_id", Integer, ForeignKey("b.id"), primary_key=True),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str] = mapped_column()
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "parent",
+            }
+
+        class AChild(A):
+            __tablename__ = "a_child"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("a.id"), primary_key=True
+            )
+            code: Mapped[str] = mapped_column(unique=True)
+            bs = relationship("B", secondary=a_b)
+            __mapper_args__ = {"polymorphic_identity": "child"}
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = AChild.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is False
+
+    def test_true_asymmetric_composite(self):
+        Base = declarative_base()
+
+        association_table = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id1", Integer, ForeignKey("a.id1")),
+            Column("a_id2", Integer, ForeignKey("a.id2")),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id1: Mapped[int] = mapped_column(primary_key=True)
+            id2: Mapped[int] = mapped_column(primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=lambda: B.id == association_table.c.b_id,
+            )
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = A.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is True
+
+    def test_false_asymmetric_composite_secondary_joins_on_partial_pk(self):
+        Base = declarative_base()
+
+        association_table = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id1", Integer, ForeignKey("a.id1")),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id1: Mapped[int] = mapped_column(primary_key=True)
+            id2: Mapped[int] = mapped_column(primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: A.id1 == association_table.c.a_id1,
+                secondaryjoin=lambda: B.id == association_table.c.b_id,
+            )
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = A.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is False
+
+    def test_true_simple_secondary_joins_on_pk(self):
+        Base = declarative_base()
+
+        atob = Table(
+            "atob",
+            Base.metadata,
+            Column("a_id", ForeignKey("a.id")),
+            Column("b_id", ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            bs: Mapped[list["B"]] = relationship("B", secondary=atob)
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        join_cond = A.bs.property._join_condition
+        flag = join_cond.secondary_covers_parent_primary_key
+
+        assert flag is True
+
+    def test_true_bi_directional(self):
+        Base = declarative_base()
+
+        atob = Table(
+            "atob",
+            Base.metadata,
+            Column("a_id", ForeignKey("a.id")),
+            Column("b_id", ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            bs: Mapped[list["B"]] = relationship(
+                "B", secondary=atob, back_populates="as_"
+            )
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            as_: Mapped[list["A"]] = relationship(
+                "A", secondary=atob, back_populates="bs"
+            )
+
+        join_cond = A.bs.property._join_condition
+        a_flag = join_cond.secondary_covers_parent_primary_key
+
+        join_cond = B.as_.property._join_condition
+        b_flag = join_cond.secondary_covers_parent_primary_key
+
+        assert a_flag is True
+        assert b_flag is True
+
+    def test_true_association_table_with_m2m_access_pattern(self):
+        """
+        Example pulled from Sqlalchemy documentation, with the only
+        changes was to include "viewonly=True" to the secondary
+        relationship.
+        """
+        Base = declarative_base()
+
+        class Association(Base):
+            __tablename__ = "association_table"
+
+            left_id: Mapped[int] = mapped_column(
+                ForeignKey("left_table.id"), primary_key=True
+            )
+            right_id: Mapped[int] = mapped_column(
+                ForeignKey("right_table.id"), primary_key=True
+            )
+            extra_data: Mapped[Optional[str]]
+
+            # association between Association -> Child
+            child: Mapped["Child"] = relationship(
+                back_populates="parent_associations"
+            )
+
+            # association between Association -> Parent
+            parent: Mapped["Parent"] = relationship(
+                back_populates="child_associations"
+            )
+
+        class Parent(Base):
+            __tablename__ = "left_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            # many-to-many relationship to Child,
+            # bypassing the `Association` class
+            children: Mapped[List["Child"]] = relationship(
+                secondary="association_table",
+                back_populates="parents",
+                viewonly=True,
+            )
+
+            # association between Parent -> Association -> Child
+            child_associations: Mapped[List["Association"]] = relationship(
+                back_populates="parent"
+            )
+
+        class Child(Base):
+            __tablename__ = "right_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            # many-to-many relationship to Parent,
+            # bypassing the `Association` class
+            parents: Mapped[List["Parent"]] = relationship(
+                secondary="association_table",
+                back_populates="children",
+                viewonly=True,
+            )
+
+            # association between Child -> Association -> Parent
+            parent_associations: Mapped[List["Association"]] = relationship(
+                back_populates="child"
+            )
+
+        join_cond = Parent.children.property._join_condition
+        parent_child_flag = join_cond.secondary_covers_parent_primary_key
+
+        join_cond = Child.parents.property._join_condition
+        child_parent_flag = join_cond.secondary_covers_parent_primary_key
+
+        assert parent_child_flag is True
+        assert child_parent_flag is True
 
 
 class ActiveHistoryFlagTest(_fixtures.FixtureTest):

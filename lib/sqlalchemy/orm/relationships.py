@@ -93,6 +93,7 @@ from ..sql.util import ClauseAdapter
 from ..sql.util import join_condition
 from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
+from ..util import memoized_property
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import resolve_name_to_real_class_name
 
@@ -2413,6 +2414,21 @@ class _JoinCondition:
         self._determine_direction()
         self._check_remote_side()
         self._log_joins()
+        self.secondary_covers_parent_primary_key
+
+    @memoized_property
+    def secondary_covers_parent_primary_key(self) -> bool:
+        if self.secondary is None:
+            return False
+
+        parent_pk_cols = util.column_set(
+            col for col in self.parent_local_selectable.c if col.primary_key
+        )
+
+        secondary_synced_parent_cols = util.column_set(
+            l for (l, r) in self.synchronize_pairs
+        )
+        return parent_pk_cols.issubset(secondary_synced_parent_cols)
 
     def _log_joins(self) -> None:
         log = self.prop.logger
