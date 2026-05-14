@@ -3491,9 +3491,10 @@ class MSDialect(default.DefaultDialect):
         else:
             raise exc.NoSuchTableError(f"{owner}.{tablename}")
 
-    @reflection.cache
     @_db_plus_owner
-    def get_indexes(self, connection, tablename, dbname, owner, schema, **kw):
+    def _internal_get_indexes(
+        self, connection, tablename, dbname, owner, schema, **kw
+    ):
         filter_definition = (
             "ind.filter_definition"
             if self.server_version_info >= MS_2008_VERSION
@@ -3626,8 +3627,9 @@ order by
         else:
             raise exc.NoSuchTableError(f"{owner}.{viewname}")
 
-    @reflection.cache
-    def get_table_comment(self, connection, table_name, schema=None, **kw):
+    def _internal_get_table_comment(
+        self, connection, table_name, schema=None, **kw
+    ):
         if not self.supports_comments:
             raise NotImplementedError(
                 "Can't get table comments on current SQL Server version in use"
@@ -3784,9 +3786,10 @@ order by
 
         return cdict
 
-    @reflection.cache
     @_db_plus_owner
-    def get_columns(self, connection, tablename, dbname, owner, schema, **kw):
+    def _internal_get_columns(
+        self, connection, tablename, dbname, owner, schema, **kw
+    ):
         sys_columns = ischema.sys_columns
         sys_types = ischema.sys_types
         sys_base_types = ischema.sys_types.alias("base_types")
@@ -3931,9 +3934,8 @@ order by
                 connection, tablename, owner, ReflectionDefaults.columns, **kw
             )
 
-    @reflection.cache
     @_db_plus_owner
-    def get_pk_constraint(
+    def _internal_get_pk_constraint(
         self, connection, tablename, dbname, owner, schema, **kw
     ):
         pkeys = []
@@ -4093,9 +4095,8 @@ index_info AS (
             "extra_cols": extra_cols,
         }
 
-    @reflection.cache
     @_db_plus_owner
-    def get_foreign_keys(
+    def _internal_get_foreign_keys(
         self, connection, tablename, dbname, owner, schema, **kw
     ):
         # Foreign key constraints
@@ -4189,29 +4190,56 @@ index_info AS (
                 **kw,
             )
 
-    # --- multi-reflection API (issue #8430) ---
+    # --- multi-reflection API ---
 
     @staticmethod
-    def _multi_reflect_use_default(scope, filter_names):
-        """Return True if multi-reflection should delegate to the default
-        per-table fallback rather than running the bulk MSSQL query.
+    def _partition_filter_names(filter_names, scope, kind):
+        """Split caller-supplied ``filter_names`` between the bulk
+        ``sys.*`` query path (regular objects in the user database) and
+        the per-name ``_internal_*`` fallback path (temporary objects
+        living in ``tempdb``).
 
-        We fall back when:
+        Returns the tuple ``(run_bulk, regular_names, temp_names)``:
 
-        * ``scope`` is :attr:`.ObjectScope.TEMPORARY` (only temp objects;
-          they live in ``tempdb`` and can't be enumerated efficiently
-          via the user db's ``sys.objects``).
+        * ``run_bulk`` -- whether the multi method should run its bulk
+          ``sys.*`` query at all.
+        * ``regular_names`` -- list (or ``None`` for "no name filter")
+          to be passed to :meth:`._get_multi_object_names`. ``None`` is
+          only returned when the caller passed no ``filter_names`` and
+          ``scope`` includes regular objects.
+        * ``temp_names`` -- list of ``#``-prefixed temp object names
+          that the caller asked for and that the requested
+          ``scope``/``kind`` allows.
 
-        * ``filter_names`` includes a ``#``-prefixed temp table name.
-          This covers the autoload-by-name case
-          ``Table("#tmp", autoload_with=conn)`` which uses
-          ``scope=ANY, kind=ANY, filter_names=["#tmp"]``.
+        ``scope=ObjectScope.DEFAULT`` excludes temp objects entirely.
+        ``scope=ObjectScope.TEMPORARY`` excludes regular objects.
+        ``ObjectKind.VIEW`` (without TABLE) excludes temp because SQL
+        Server does not have temp views in the same form. SQL Server
+        also has no ``get_temp_table_names`` implementation, so temp
+        objects can only be reflected when the caller supplies their
+        names explicitly.
         """
-        if scope is ObjectScope.TEMPORARY:
-            return True
-        if filter_names and any(n.startswith("#") for n in filter_names):
-            return True
-        return False
+        include_default = scope is not ObjectScope.TEMPORARY
+        include_temp = (
+            scope is not ObjectScope.DEFAULT and ObjectKind.TABLE in kind
+        )
+
+        if not filter_names:
+            return (include_default, filter_names, [])
+
+        if include_temp:
+            temp_names = [n for n in filter_names if n.startswith("#")]
+        else:
+            temp_names = []
+
+        if include_default:
+            regular_names = [n for n in filter_names if not n.startswith("#")]
+            run_bulk = bool(regular_names)
+        else:
+            regular_names = []
+            run_bulk = False
+
+        return (run_bulk, regular_names, temp_names)
 
     @staticmethod
     def _multi_name_map(filter_names):
@@ -4231,6 +4259,22 @@ index_info AS (
             return lambda n: n
         lookup = {n.lower(): n for n in filter_names}
         return lambda n: lookup.get(n.lower(), n)
+
+    @staticmethod
+    def _value_or_raise(data, table, schema):
+        """Unwrap a single ``(schema, table)`` entry from a multi-method
+        result, raising :exc:`.NoSuchTableError` when missing.
+
+        Mirrors PostgreSQL's helper of the same name. Used by the
+        single-table reflection wrappers that delegate to the multi
+        implementation.
+        """
+        try:
+            return dict(data)[(schema, table)]
+        except KeyError:
+            raise exc.NoSuchTableError(
+                f"{schema}.{table}" if schema else table
+            ) from None
 
     def _get_multi_object_names(
         self, connection, owner, filter_names, scope, kind
@@ -4276,31 +4320,26 @@ index_info AS (
         kind,
         **kw,
     ):
-        if self._multi_reflect_use_default(scope, filter_names):
-            return self._default_multi_reflect(
-                self.get_columns,
-                connection,
-                kind=kind,
-                schema=schema,
-                filter_names=filter_names,
-                scope=scope,
-                **kw,
+        run_bulk, regular_names, temp_names = self._partition_filter_names(
+            filter_names, scope, kind
+        )
+
+        result = {}
+
+        if run_bulk:
+            names = self._get_multi_object_names(
+                connection, owner, regular_names, scope, kind
             )
+            if names:
+                name_map = self._multi_name_map(regular_names)
 
-        names = self._get_multi_object_names(
-            connection, owner, filter_names, scope, kind
-        )
-        if not names:
-            return iter([])
-        name_map = self._multi_name_map(filter_names)
-
-        computed_def = (
-            "comp.definition"
-            if self._supports_nvarchar_max
-            else "CAST(comp.definition AS NVARCHAR(4000))"
-        )
-        rp = connection.execution_options(schema_translate_map={}).execute(
-            sql.text(f"""
+                computed_def = (
+                    "comp.definition"
+                    if self._supports_nvarchar_max
+                    else "CAST(comp.definition AS NVARCHAR(4000))"
+                )
+                rp = connection.execute(
+                    sql.text(f"""
 SELECT
     o.name AS table_name,
     c.name AS column_name,
@@ -4336,41 +4375,48 @@ LEFT JOIN sys.extended_properties ep
     ON ep.class = 1 AND ep.name = 'MS_Description'
     AND ep.major_id = c.object_id AND ep.minor_id = c.column_id
 WHERE s.name = :owner
-  AND o.type IN ('U', 'V')
   AND o.name IN :filter_names
 ORDER BY o.name, c.column_id
 """).bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
-            )
-        )
+                        sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                        sql.bindparam("filter_names", names, expanding=True),
+                    )
+                )
 
-        result = {}
-        for row in rp.mappings():
-            table_name = name_map(row["table_name"])
-            cdict = self._parse_column_info(
-                name=row["column_name"],
-                type_=row["type_name"],
-                base_type=row["base_type"],
-                nullable=row["is_nullable"] == 1,
-                maxlen=row["max_length"],
-                numericprec=row["precision"],
-                numericscale=row["scale"],
-                default=row["default_value"],
-                collation=row["collation_name"],
-                definition=row["computed_definition"],
-                is_persisted=row["is_persisted"],
-                is_identity=row["is_identity"],
-                identity_start=row["seed_value"],
-                identity_increment=row["increment_value"],
-                comment=row["comment"],
-            )
-            result.setdefault((schema, table_name), []).append(cdict)
+                for row in rp.mappings():
+                    table_name = name_map(row["table_name"])
+                    cdict = self._parse_column_info(
+                        name=row["column_name"],
+                        type_=row["type_name"],
+                        base_type=row["base_type"],
+                        nullable=row["is_nullable"] == 1,
+                        maxlen=row["max_length"],
+                        numericprec=row["precision"],
+                        numericscale=row["scale"],
+                        default=row["default_value"],
+                        collation=row["collation_name"],
+                        definition=row["computed_definition"],
+                        is_persisted=row["is_persisted"],
+                        is_identity=row["is_identity"],
+                        identity_start=row["seed_value"],
+                        identity_increment=row["increment_value"],
+                        comment=row["comment"],
+                    )
+                    result.setdefault((schema, table_name), []).append(cdict)
 
-        for n in names:
-            key = (schema, name_map(n))
-            if key not in result:
-                result[key] = ReflectionDefaults.columns()
+                for n in names:
+                    key = (schema, name_map(n))
+                    if key not in result:
+                        result[key] = ReflectionDefaults.columns()
+
+        for name in temp_names:
+            try:
+                cols = self._internal_get_columns(
+                    connection, name, schema=schema, **kw
+                )
+            except exc.NoSuchTableError:
+                continue
+            result[(schema, name)] = cols
 
         return result.items()
 
@@ -4386,26 +4432,20 @@ ORDER BY o.name, c.column_id
         kind,
         **kw,
     ):
-        if self._multi_reflect_use_default(scope, filter_names):
-            return self._default_multi_reflect(
-                self.get_pk_constraint,
-                connection,
-                kind=kind,
-                schema=schema,
-                filter_names=filter_names,
-                scope=scope,
-                **kw,
+        run_bulk, regular_names, temp_names = self._partition_filter_names(
+            filter_names, scope, kind
+        )
+        names = []
+        name_map = self._multi_name_map(regular_names)
+        if run_bulk:
+            names = self._get_multi_object_names(
+                connection, owner, regular_names, scope, kind
             )
 
-        names = self._get_multi_object_names(
-            connection, owner, filter_names, scope, kind
-        )
-        if not names:
-            return iter([])
-        name_map = self._multi_name_map(filter_names)
-
-        rp = connection.execute(
-            sql.text("""
+        result = {}
+        if names:
+            rp = connection.execute(
+                sql.text("""
 SELECT
     o.name AS table_name,
     kc.name AS constraint_name,
@@ -4428,29 +4468,37 @@ WHERE kc.type = 'PK'
   AND o.name IN :filter_names
 ORDER BY o.name, ic.key_ordinal
 """).bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
+                    sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                    sql.bindparam("filter_names", names, expanding=True),
+                )
             )
-        )
 
-        result = {}
-        for row in rp.mappings():
-            table_name = name_map(row["table_name"])
-            key = (schema, table_name)
-            if key not in result:
-                result[key] = {
-                    "constrained_columns": [],
-                    "name": row["constraint_name"],
-                    "dialect_options": {
-                        "mssql_clustered": row["index_type"] == 1
-                    },
-                }
-            result[key]["constrained_columns"].append(row["column_name"])
+            for row in rp.mappings():
+                table_name = name_map(row["table_name"])
+                key = (schema, table_name)
+                if key not in result:
+                    result[key] = {
+                        "constrained_columns": [],
+                        "name": row["constraint_name"],
+                        "dialect_options": {
+                            "mssql_clustered": row["index_type"] == 1
+                        },
+                    }
+                result[key]["constrained_columns"].append(row["column_name"])
 
-        for n in names:
-            key = (schema, name_map(n))
-            if key not in result:
-                result[key] = ReflectionDefaults.pk_constraint()
+            for n in names:
+                key = (schema, name_map(n))
+                if key not in result:
+                    result[key] = ReflectionDefaults.pk_constraint()
+
+        for name in temp_names:
+            try:
+                pk = self._internal_get_pk_constraint(
+                    connection, name, schema=schema, **kw
+                )
+            except exc.NoSuchTableError:
+                continue
+            result[(schema, name)] = pk
 
         return result.items()
 
@@ -4466,105 +4514,107 @@ ORDER BY o.name, ic.key_ordinal
         kind,
         **kw,
     ):
-        if self._multi_reflect_use_default(scope, filter_names):
-            return self._default_multi_reflect(
-                self.get_foreign_keys,
-                connection,
-                kind=kind,
-                schema=schema,
-                filter_names=filter_names,
-                scope=scope,
-                **kw,
-            )
-
-        names = self._get_multi_object_names(
-            connection, owner, filter_names, scope, kind
+        run_bulk, regular_names, temp_names = self._partition_filter_names(
+            filter_names, scope, kind
         )
-        if not names:
-            return iter([])
-        name_map = self._multi_name_map(filter_names)
-
-        rp = connection.execute(
-            sql.text(
-                self._fk_query_sql(
-                    fk_info_where=(
-                        "ischema_key_col.table_schema = :owner"
-                        "\n      AND ischema_key_col.table_name"
-                        " IN :filter_names"
-                    ),
-                    extra_cols="fk_info.table_name,",
-                )
+        names = []
+        name_map = self._multi_name_map(regular_names)
+        if run_bulk:
+            names = self._get_multi_object_names(
+                connection, owner, regular_names, scope, kind
             )
-            .bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
-            )
-            .columns(
-                constraint_schema=sqltypes.Unicode(),
-                constraint_name=sqltypes.Unicode(),
-                table_name=sqltypes.Unicode(),
-                constrained_column=sqltypes.Unicode(),
-                referred_table_schema=sqltypes.Unicode(),
-                referred_table_name=sqltypes.Unicode(),
-                referred_column=sqltypes.Unicode(),
-            )
-        )
-
-        result = {}
-        for r in rp.all():
-            (
-                table_name,
-                _,  # constraint_schema
-                rfknm,
-                _,  # ordinal
-                scol,
-                rschema,
-                rtbl,
-                rcol,
-                _,  # match
-                fkuprule,
-                fkdelrule,
-            ) = r
-
-            key = (schema, name_map(table_name))
-            if key not in result:
-                result[key] = util.defaultdict(
-                    lambda: {
-                        "name": None,
-                        "constrained_columns": [],
-                        "referred_schema": None,
-                        "referred_table": None,
-                        "referred_columns": [],
-                        "options": {},
-                    }
-                )
-
-            rec = result[key][rfknm]
-            rec["name"] = rfknm
-
-            if fkuprule != "NO ACTION":
-                rec["options"]["onupdate"] = fkuprule
-            if fkdelrule != "NO ACTION":
-                rec["options"]["ondelete"] = fkdelrule
-
-            if not rec["referred_table"]:
-                rec["referred_table"] = rtbl
-                if schema is not None or owner != rschema:
-                    if dbname:
-                        rschema = dbname + "." + rschema
-                    rec["referred_schema"] = rschema
-
-            rec["constrained_columns"].append(scol)
-            rec["referred_columns"].append(rcol)
 
         final = {}
-        for key, fk_dict in result.items():
-            final[key] = list(fk_dict.values())
+        if names:
+            rp = connection.execute(
+                sql.text(
+                    self._fk_query_sql(
+                        fk_info_where=(
+                            "ischema_key_col.table_schema = :owner"
+                            "\n      AND ischema_key_col.table_name"
+                            " IN :filter_names"
+                        ),
+                        extra_cols="fk_info.table_name,",
+                    )
+                )
+                .bindparams(
+                    sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                    sql.bindparam("filter_names", names, expanding=True),
+                )
+                .columns(
+                    constraint_schema=sqltypes.Unicode(),
+                    constraint_name=sqltypes.Unicode(),
+                    table_name=sqltypes.Unicode(),
+                    constrained_column=sqltypes.Unicode(),
+                    referred_table_schema=sqltypes.Unicode(),
+                    referred_table_name=sqltypes.Unicode(),
+                    referred_column=sqltypes.Unicode(),
+                )
+            )
 
-        for n in names:
-            key = (schema, name_map(n))
-            if key not in final:
-                final[key] = ReflectionDefaults.foreign_keys()
+            grouped = {}
+            for r in rp.all():
+                (
+                    table_name,
+                    _,  # constraint_schema
+                    rfknm,
+                    _,  # ordinal
+                    scol,
+                    rschema,
+                    rtbl,
+                    rcol,
+                    _,  # match
+                    fkuprule,
+                    fkdelrule,
+                ) = r
+
+                key = (schema, name_map(table_name))
+                if key not in grouped:
+                    grouped[key] = util.defaultdict(
+                        lambda: {
+                            "name": None,
+                            "constrained_columns": [],
+                            "referred_schema": None,
+                            "referred_table": None,
+                            "referred_columns": [],
+                            "options": {},
+                        }
+                    )
+
+                rec = grouped[key][rfknm]
+                rec["name"] = rfknm
+
+                if fkuprule != "NO ACTION":
+                    rec["options"]["onupdate"] = fkuprule
+                if fkdelrule != "NO ACTION":
+                    rec["options"]["ondelete"] = fkdelrule
+
+                if not rec["referred_table"]:
+                    rec["referred_table"] = rtbl
+                    if schema is not None or owner != rschema:
+                        if dbname:
+                            rschema = dbname + "." + rschema
+                        rec["referred_schema"] = rschema
+
+                rec["constrained_columns"].append(scol)
+                rec["referred_columns"].append(rcol)
+
+            for key, fk_dict in grouped.items():
+                final[key] = list(fk_dict.values())
+
+            for n in names:
+                key = (schema, name_map(n))
+                if key not in final:
+                    final[key] = ReflectionDefaults.foreign_keys()
+
+        for name in temp_names:
+            try:
+                fks = self._internal_get_foreign_keys(
+                    connection, name, schema=schema, **kw
+                )
+            except exc.NoSuchTableError:
+                continue
+            final[(schema, name)] = fks
 
         return final.items()
 
@@ -4580,32 +4630,26 @@ ORDER BY o.name, ic.key_ordinal
         kind,
         **kw,
     ):
-        if self._multi_reflect_use_default(scope, filter_names):
-            return self._default_multi_reflect(
-                self.get_indexes,
-                connection,
-                kind=kind,
-                schema=schema,
-                filter_names=filter_names,
-                scope=scope,
-                **kw,
+        run_bulk, regular_names, temp_names = self._partition_filter_names(
+            filter_names, scope, kind
+        )
+        names = []
+        name_map = self._multi_name_map(regular_names)
+        if run_bulk:
+            names = self._get_multi_object_names(
+                connection, owner, regular_names, scope, kind
             )
 
-        names = self._get_multi_object_names(
-            connection, owner, filter_names, scope, kind
-        )
-        if not names:
-            return iter([])
-        name_map = self._multi_name_map(filter_names)
+        result = {}
+        if names:
+            filter_definition = (
+                "ind.filter_definition"
+                if self.server_version_info >= MS_2008_VERSION
+                else "NULL as filter_definition"
+            )
 
-        filter_definition = (
-            "ind.filter_definition"
-            if self.server_version_info >= MS_2008_VERSION
-            else "NULL as filter_definition"
-        )
-
-        rp = connection.execution_options(future_result=True).execute(
-            sql.text(f"""
+            rp = connection.execution_options(future_result=True).execute(
+                sql.text(f"""
 SELECT
     tab.name AS table_name,
     ind.index_id,
@@ -4622,42 +4666,42 @@ WHERE sch.name = :owner
   AND tab.name IN :filter_names
 ORDER BY tab.name, ind.name
 """)
-            .bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
+                .bindparams(
+                    sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                    sql.bindparam("filter_names", names, expanding=True),
+                )
+                .columns(name=sqltypes.Unicode())
             )
-            .columns(name=sqltypes.Unicode())
-        )
 
-        # {table_name: {index_id: index_dict}}
-        indexes_by_table = {}
-        for row in rp.mappings():
-            tname = name_map(row["table_name"])
-            if tname not in indexes_by_table:
-                indexes_by_table[tname] = {}
+            # {table_name: {index_id: index_dict}}
+            indexes_by_table = {}
+            for row in rp.mappings():
+                tname = name_map(row["table_name"])
+                if tname not in indexes_by_table:
+                    indexes_by_table[tname] = {}
 
-            current = {
-                "name": row["name"],
-                "unique": row["is_unique"] == 1,
-                "column_names": [],
-                "include_columns": [],
-                "dialect_options": {},
-            }
-            do = current["dialect_options"]
-            index_type = row["type"]
-            if index_type in {1, 2}:
-                do["mssql_clustered"] = index_type == 1
-            if index_type in {5, 6}:
-                do["mssql_clustered"] = index_type == 5
-                do["mssql_columnstore"] = True
-            if row["filter_definition"] is not None:
-                do["mssql_where"] = row["filter_definition"]
+                current = {
+                    "name": row["name"],
+                    "unique": row["is_unique"] == 1,
+                    "column_names": [],
+                    "include_columns": [],
+                    "dialect_options": {},
+                }
+                do = current["dialect_options"]
+                index_type = row["type"]
+                if index_type in {1, 2}:
+                    do["mssql_clustered"] = index_type == 1
+                if index_type in {5, 6}:
+                    do["mssql_clustered"] = index_type == 5
+                    do["mssql_columnstore"] = True
+                if row["filter_definition"] is not None:
+                    do["mssql_where"] = row["filter_definition"]
 
-            indexes_by_table[tname][row["index_id"]] = current
+                indexes_by_table[tname][row["index_id"]] = current
 
-        # Fetch index columns
-        rp2 = connection.execution_options(future_result=True).execute(
-            sql.text("""
+            # Fetch index columns
+            rp2 = connection.execution_options(future_result=True).execute(
+                sql.text("""
 SELECT
     tab.name AS table_name,
     ind_col.index_id,
@@ -4673,41 +4717,53 @@ WHERE sch.name = :owner
   AND tab.name IN :filter_names
 ORDER BY tab.name, ind_col.index_id, ind_col.key_ordinal
 """)
-            .bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
+                .bindparams(
+                    sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                    sql.bindparam("filter_names", names, expanding=True),
+                )
+                .columns(name=sqltypes.Unicode())
             )
-            .columns(name=sqltypes.Unicode())
-        )
 
-        for row in rp2.mappings():
-            tname = name_map(row["table_name"])
-            idx_id = row["index_id"]
-            if tname not in indexes_by_table:
+            for row in rp2.mappings():
+                tname = name_map(row["table_name"])
+                idx_id = row["index_id"]
+                if tname not in indexes_by_table:
+                    continue
+                if idx_id not in indexes_by_table[tname]:
+                    continue
+                index_def = indexes_by_table[tname][idx_id]
+                is_colstore = index_def["dialect_options"].get(
+                    "mssql_columnstore"
+                )
+                is_clustered = index_def["dialect_options"].get(
+                    "mssql_clustered"
+                )
+                if not (is_colstore and is_clustered):
+                    if row["is_included_column"] and not is_colstore:
+                        index_def["include_columns"].append(row["name"])
+                    else:
+                        index_def["column_names"].append(row["name"])
+
+            for tname, idx_dict in indexes_by_table.items():
+                for index_info in idx_dict.values():
+                    index_info["dialect_options"]["mssql_include"] = (
+                        index_info["include_columns"]
+                    )
+                result[(schema, tname)] = list(idx_dict.values())
+
+            for n in names:
+                key = (schema, name_map(n))
+                if key not in result:
+                    result[key] = ReflectionDefaults.indexes()
+
+        for name in temp_names:
+            try:
+                idx = self._internal_get_indexes(
+                    connection, name, schema=schema, **kw
+                )
+            except exc.NoSuchTableError:
                 continue
-            if idx_id not in indexes_by_table[tname]:
-                continue
-            index_def = indexes_by_table[tname][idx_id]
-            is_colstore = index_def["dialect_options"].get("mssql_columnstore")
-            is_clustered = index_def["dialect_options"].get("mssql_clustered")
-            if not (is_colstore and is_clustered):
-                if row["is_included_column"] and not is_colstore:
-                    index_def["include_columns"].append(row["name"])
-                else:
-                    index_def["column_names"].append(row["name"])
-
-        result = {}
-        for tname, idx_dict in indexes_by_table.items():
-            for index_info in idx_dict.values():
-                index_info["dialect_options"]["mssql_include"] = index_info[
-                    "include_columns"
-                ]
-            result[(schema, tname)] = list(idx_dict.values())
-
-        for n in names:
-            key = (schema, name_map(n))
-            if key not in result:
-                result[key] = ReflectionDefaults.indexes()
+            result[(schema, name)] = idx
 
         return result.items()
 
@@ -4729,26 +4785,20 @@ ORDER BY tab.name, ind_col.index_id, ind_col.key_ordinal
                 "version in use"
             )
 
-        if self._multi_reflect_use_default(scope, filter_names):
-            return self._default_multi_reflect(
-                self.get_table_comment,
-                connection,
-                kind=kind,
-                schema=schema,
-                filter_names=filter_names,
-                scope=scope,
-                **kw,
+        run_bulk, regular_names, temp_names = self._partition_filter_names(
+            filter_names, scope, kind
+        )
+        names = []
+        name_map = self._multi_name_map(regular_names)
+        if run_bulk:
+            names = self._get_multi_object_names(
+                connection, owner, regular_names, scope, kind
             )
 
-        names = self._get_multi_object_names(
-            connection, owner, filter_names, scope, kind
-        )
-        if not names:
-            return iter([])
-        name_map = self._multi_name_map(filter_names)
-
-        rp = connection.execute(
-            sql.text("""
+        result = {}
+        if names:
+            rp = connection.execute(
+                sql.text("""
 SELECT
     o.name AS table_name,
     CAST(ep.value AS NVARCHAR(MAX)) AS comment
@@ -4758,24 +4808,95 @@ LEFT JOIN sys.extended_properties ep
     ON ep.class = 1 AND ep.name = 'MS_Description'
     AND ep.major_id = o.object_id AND ep.minor_id = 0
 WHERE s.name = :owner
+  AND o.type IN ('U', 'V')
   AND o.name IN :filter_names
 """).bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
-            )
-        )
-
-        result = {}
-        for row in rp.mappings():
-            table_name = name_map(row["table_name"])
-            comment = row["comment"]
-            result[(schema, table_name)] = (
-                {"text": comment} if comment else {"text": None}
+                    sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+                    sql.bindparam("filter_names", names, expanding=True),
+                )
             )
 
-        for n in names:
-            key = (schema, name_map(n))
-            if key not in result:
-                result[key] = ReflectionDefaults.table_comment()
+            for row in rp.mappings():
+                table_name = name_map(row["table_name"])
+                comment = row["comment"]
+                result[(schema, table_name)] = (
+                    {"text": comment} if comment else {"text": None}
+                )
+
+            for n in names:
+                key = (schema, name_map(n))
+                if key not in result:
+                    result[key] = ReflectionDefaults.table_comment()
+
+        for name in temp_names:
+            try:
+                tc = self._internal_get_table_comment(
+                    connection, name, schema=schema, **kw
+                )
+            except exc.NoSuchTableError:
+                continue
+            result[(schema, name)] = tc
 
         return result.items()
+
+    # --- Single-table reflection wrappers (delegate to multi) ---
+
+    @reflection.cache
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_columns(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_pk_constraint(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_foreign_keys(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_indexes(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_indexes(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_table_comment(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)

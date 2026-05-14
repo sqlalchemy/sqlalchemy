@@ -22,6 +22,8 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql.information_schema import tables
+from sqlalchemy.engine import ObjectKind
+from sqlalchemy.engine import ObjectScope
 from sqlalchemy.pool import NullPool
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -292,6 +294,87 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 result,
                 [(2, "bar", datetime.datetime(2020, 2, 2, 2, 2, 2))],
             )
+
+    def test_get_multi_columns_temp_table(self, metadata, connection):
+        """Direct ``get_multi_columns`` API works for temp tables across
+        scope/kind combinations.
+
+        Regression coverage for the case where a ``#``-prefixed name was
+        passed to a multi method outside the autoload-shaped
+        ``scope=ANY/kind=ANY`` call.
+        """
+        tt = Table(
+            "#mr_tmp",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", mssql.NVARCHAR(50)),
+        )
+        tt.create(connection)
+
+        insp = inspect(connection)
+
+        # ANY scope, TABLE kind: should return the temp table
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_tmp"],
+                scope=ObjectScope.ANY,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        eq_(set(r.keys()), {(None, "#mr_tmp")})
+        eq_(
+            [c["name"] for c in r[(None, "#mr_tmp")]],
+            ["id", "name"],
+        )
+
+        # TEMPORARY scope: should also return the temp table
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_tmp"],
+                scope=ObjectScope.TEMPORARY,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        eq_(set(r.keys()), {(None, "#mr_tmp")})
+
+        # DEFAULT scope: must EXCLUDE the temp table
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_tmp"],
+                scope=ObjectScope.DEFAULT,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        eq_(r, {})
+
+        # VIEW kind: must EXCLUDE the temp table (no temp views on mssql)
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_tmp"],
+                scope=ObjectScope.ANY,
+                kind=ObjectKind.VIEW,
+            )
+        )
+        eq_(r, {})
+
+    def test_get_multi_pk_constraint_temp_table(self, metadata, connection):
+        tt = Table(
+            "#mr_pk_tmp",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("val", Integer),
+        )
+        tt.create(connection)
+
+        insp = inspect(connection)
+        r = dict(
+            insp.get_multi_pk_constraint(
+                filter_names=["#mr_pk_tmp"],
+                scope=ObjectScope.ANY,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        in_((None, "#mr_pk_tmp"), r)
 
     @testing.combinations(
         ("local_temp", "#tmp", True),
