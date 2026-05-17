@@ -1216,7 +1216,6 @@ class PGDialect_asyncpg(PGDialect):
         """
 
         asyncpg_connection = conn._connection
-        deserializer = self._json_deserializer or _py_json.loads
 
         def _jsonb_encoder(str_value):
             # \x01 is the prefix for jsonb used by PostgreSQL.
