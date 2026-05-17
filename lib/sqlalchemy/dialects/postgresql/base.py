@@ -1390,6 +1390,29 @@ that are subject to the action::
 .. versionadded:: 2.0.40
 
 
+``NULLS NOT DISTINCT``
+^^^^^^^^^^^^^^^^^^^^^^
+
+By default, two ``null`` values are not considered equal for unique constraints
+and indexes. Therefore, seemingly duplicate rows may be stored if one of the
+values in the constraint is ``null``. This default behavior is implementation
+defined, so other SQL dialects may behave differently than PostgreSQL.
+
+The ``NULLS NOT DISTINCT`` clause can be used to change this behavior, treating
+null values as equal and preventing unintended duplicate rows. The opposite
+``NULLS DISTINCT`` clause can also be used to make PostgreSQL's default behavior
+explict.
+
+The ``postgresql_nulls_not_distinct`` parameter can be set to ``True`` to
+add the ``NULLS NOT DISTINCT`` clause, or ``False`` to add ``NULLS DISTINCT``.
+Not setting it, or passing ``None``, will not add a clause and keep the default
+behavior.
+
+This feature requires PostgreSQL 15 or later.
+
+.. versionadded:: 2.0.16
+
+
 .. _postgresql_table_valued_overview:
 
 Table values, Table and Column valued functions, Row and Tuple objects
