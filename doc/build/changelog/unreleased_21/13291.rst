@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, declarative
+    :tickets: 13291
+
+    Fixed issue where the declarative class registry would not consider
+    class-level :class:`.MetaData` objects set on abstract mixin classes when
+    resolving string-based table references in :func:`.relationship`
+    configurations. The registry now uses the same metadata resolution logic
+    as table creation, first checking for a class-specific ``metadata``
+    attribute before falling back to :attr:`.registry.metadata`.

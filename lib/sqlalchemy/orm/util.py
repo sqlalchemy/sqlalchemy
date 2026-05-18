@@ -86,6 +86,7 @@ from ..sql.cache_key import HasCacheKey
 from ..sql.cache_key import MemoizedHasCacheKey
 from ..sql.elements import ColumnElement
 from ..sql.elements import KeyedColumnElement
+from ..sql.schema import MetaData
 from ..sql.selectable import FromClause
 from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation as _de_stringify_annotation
@@ -103,6 +104,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ORMCOLEXPR
     from .context import _MapperEntity
     from .context import _ORMCompileState
+    from .decl_api import RegistryType
     from .mapper import Mapper
     from .path_registry import _AbstractEntityRegistry
     from .query import Query
@@ -250,6 +252,14 @@ class CascadeOptions(FrozenSet[str]):
     def from_string(cls, arg):
         values = [c for c in re.split(r"\s*,\s*", arg or "") if c]
         return cls(values)
+
+
+def _metadata_for_cls(cls: Type[Any], registry: RegistryType) -> MetaData:
+    meta = getattr(cls, "metadata", None)
+    if meta is not None:
+        assert isinstance(meta, MetaData)
+        return meta
+    return registry.metadata
 
 
 def _validator_events(desc, key, validator, include_removes, include_backrefs):
