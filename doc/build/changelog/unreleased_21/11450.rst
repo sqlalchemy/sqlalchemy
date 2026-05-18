@@ -4,4 +4,4 @@
 
   Added :paramref:`.selectinload.chunksize` parameter to :func`.selectinload`
   allowing users to configure the number of primary keys sent per IN clause
-  when loading reltaionships. Pull request courtesy bekapono.
+  when loading relationships. Pull request courtesy bekapono.

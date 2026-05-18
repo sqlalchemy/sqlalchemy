@@ -1,0 +1,8 @@
+.. change::
+  :tags: postgresql, usecase
+  :tickets: 13268
+
+  Changed the default backslash escape value in the PostgreSQL dialect to
+  ``False`` to align it with the default value of
+  ``standard_conforming_strings=on``. This change should not affect most users
+  since the value is set at driver initialization on first connect.

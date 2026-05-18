@@ -3522,7 +3522,7 @@ class PGDialect(default.DefaultDialect):
 
     reflection_options = ("postgresql_ignore_search_path",)
 
-    _backslash_escapes = True
+    _backslash_escapes = False
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
     _supports_jsonb_subscripting = True
