@@ -136,11 +136,6 @@ def instances(
         with util.safe_reraise():
             cursor.close()
 
-    def _no_unique(entry):
-        raise sa_exc.InvalidRequestError(
-            "Can't use the ORM yield_per feature in conjunction with unique()"
-        )
-
     def _not_hashable(datatype, *, legacy=False, uncertain=False):
         if not legacy:
 
@@ -184,11 +179,20 @@ def instances(
 
             return go
 
-    unique_filters = [
-        (
-            _no_unique
-            if context.yield_per
-            else (
+    _uniquing_is_active = False
+
+    def _create_unique_filters(result):
+        nonlocal _uniquing_is_active
+
+        if result._yield_per:
+            raise sa_exc.InvalidRequestError(
+                "Can't use the ORM yield_per feature "
+                "in conjunction with unique()"
+            )
+
+        _uniquing_is_active = True
+        return [
+            (
                 _not_hashable(
                     ent.column.type,  # type: ignore
                     legacy=context.load_options._legacy_uniquing,
@@ -200,12 +204,11 @@ def instances(
                 )
                 else id if ent.use_id_for_hash else None
             )
-        )
-        for ent in context.compile_state._entities
-    ]
+            for ent in context.compile_state._entities
+        ]
 
     row_metadata = SimpleResultMetaData(
-        labels, extra, _unique_filters=unique_filters
+        labels, extra, _create_unique_filters=_create_unique_filters
     )
 
     def chunks(size):  # type: ignore
@@ -215,6 +218,11 @@ def instances(
             context.partials = {}
 
             if yield_per:
+                if _uniquing_is_active:
+                    raise sa_exc.InvalidRequestError(
+                        "Can't use the ORM yield_per feature "
+                        "in conjunction with unique()"
+                    )
                 fetch = cursor.fetchmany(yield_per)
 
                 if not fetch:

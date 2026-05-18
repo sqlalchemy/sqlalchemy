@@ -308,7 +308,9 @@ class ResultTest(fixtures.TestBase):
             iter(data),
         )
         if default_filters:
-            res._metadata._unique_filters = default_filters
+            res._metadata._create_unique_filters = (
+                lambda result: default_filters
+            )
 
         if alt_row:
             res._process_row = alt_row
@@ -958,6 +960,16 @@ class ResultTest(fixtures.TestBase):
         r1 = frozen()
         eq_(r1.fetchall(), [(1, 1), (1, 2), (3, 2)])
 
+    def test_columns_unique_freeze_w_unique_filters(self):
+        result = self._fixture(default_filters=[id, None, None])
+
+        result = result.columns("b", "c")
+
+        frozen = result.freeze()
+
+        r1 = frozen().unique()
+        eq_(r1.fetchall(), [(1, 1), (1, 2), (3, 2)])
+
     def test_columns_freeze(self):
         result = self._fixture()
 
@@ -1206,7 +1218,7 @@ class OnlyScalarsTest(fixtures.TestBase):
 
     def test_scalar_mode_mfiltered_unique_rows_all(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(
-            ["a", "b", "c"], _unique_filters=[int]
+            ["a", "b", "c"], _create_unique_filters=lambda result: [int]
         )
 
         r = result.ChunkedIteratorResult(
@@ -1227,7 +1239,7 @@ class OnlyScalarsTest(fixtures.TestBase):
     )
     def test_unique_scalar_accessors(self, no_tuple_one_fixture, get):
         metadata = result.SimpleResultMetaData(
-            ["a", "b", "c"], _unique_filters=[int]
+            ["a", "b", "c"], _create_unique_filters=lambda result: [int]
         )
 
         r = result.ChunkedIteratorResult(
@@ -1242,7 +1254,7 @@ class OnlyScalarsTest(fixtures.TestBase):
 
     def test_scalar_mode_mfiltered_unique_mappings_all(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(
-            ["a", "b", "c"], _unique_filters=[int]
+            ["a", "b", "c"], _create_unique_filters=lambda result: [int]
         )
 
         r = result.ChunkedIteratorResult(
@@ -1257,7 +1269,7 @@ class OnlyScalarsTest(fixtures.TestBase):
 
     def test_scalar_mode_mfiltered_unique_scalars_all(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(
-            ["a", "b", "c"], _unique_filters=[int]
+            ["a", "b", "c"], _create_unique_filters=lambda result: [int]
         )
 
         r = result.ChunkedIteratorResult(
