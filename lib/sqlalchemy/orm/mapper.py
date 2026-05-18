@@ -1953,6 +1953,16 @@ class Mapper(
     _validate_polymorphic_identity = None
 
     @HasMemoized.memoized_attribute
+    def _local_pk_cols(self) -> set[Any]:
+        pk_cols = util.column_set(self.primary_key)
+        equiv = self._equivalent_columns
+        for pk_col in pk_cols.intersection(equiv):
+            pk_cols.update(equiv[pk_col])
+        return util.column_set(
+            col for col in pk_cols if col.table is self.local_table
+        )
+
+    @HasMemoized.memoized_attribute
     def _version_id_prop(self):
         if self.version_id_col is not None:
             return self._columntoproperty[self.version_id_col]

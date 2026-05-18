@@ -2609,6 +2609,27 @@ class _JoinCondition:
     def _has_remote_annotations(self) -> bool:
         return self._has_annotation(self.primaryjoin, "remote")
 
+    @util.memoized_property
+    def secondary_covers_parent_primary_key(self) -> bool:
+        """Return True if the "secondary" selectable's join to the parent
+        table contains columns that encompass the complete primary key
+        value of the parent.
+
+        Used in optimizing the selectinload loader strategy to indicate
+        the parent table need not be included in the query, as a complete
+        primary key can be derived from the secondary table.
+
+        """
+        if self.secondary is None:
+            return False
+
+        secondary_synced_parent_cols = util.column_set(
+            l for (l, _) in self.synchronize_pairs
+        )
+        return self.prop.parent._local_pk_cols.issubset(
+            secondary_synced_parent_cols
+        )
+
     def _annotate_fks(self) -> None:
         """Annotate the primaryjoin and secondaryjoin
         structures with 'foreign' annotations marking columns

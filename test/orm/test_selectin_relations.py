@@ -1,5 +1,7 @@
 import sqlalchemy as sa
+from sqlalchemy import and_
 from sqlalchemy import bindparam
+from sqlalchemy import Boolean
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Integer
@@ -20,6 +22,7 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_warns
+from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -3636,6 +3639,593 @@ class M2OWDegradeTest(
                 A(id=5, b=b1),
             ],
         )
+
+
+class M2MOmitJoinTest(
+    fixtures.TestBase, AssertsExecutionResults, testing.AssertsCompiledSQL
+):
+    __dialect__ = "default"
+
+    @testing.fixture
+    def simple_m2m(self, decl_base, connection):
+        association_table = Table(
+            "a_b",
+            decl_base.metadata,
+            Column("a_id", Integer, ForeignKey("a.id")),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B", secondary=association_table)
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+            )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+        decl_base.metadata.create_all(connection)
+
+        with Session(connection) as session:
+            a1 = A(id=1)
+            a2 = A(id=2)
+            b1 = B(id=1)
+            b2 = B(id=2)
+            a1.bs = [b1, b2]
+            a2.bs = [b1]
+            session.add_all([a1, a2, b1, b2])
+            session.commit()
+
+        return A
+
+    @testing.fixture
+    def symmetric_composite_m2m(self, decl_base, connection):
+        association_table = Table(
+            "a_b",
+            decl_base.metadata,
+            Column("a_id1", Integer, ForeignKey("a.id1")),
+            Column("a_id2", Integer, ForeignKey("a.id2")),
+            Column("b_id1", Integer, ForeignKey("b.id1")),
+            Column("b_id2", Integer, ForeignKey("b.id2")),
+        )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+
+        decl_base.metadata.create_all(connection)
+
+        with Session(connection) as session:
+            a1 = A(id1=1, id2=1)
+            a2 = A(id1=1, id2=2)
+            b1 = B(id1=1, id2=1)
+            b2 = B(id1=1, id2=2)
+            a1.bs = [b1, b2]
+            a2.bs = [b1]
+            session.add_all([a1, a2, b1, b2])
+            session.commit()
+
+        return A
+
+    @testing.fixture
+    def asymmetric_composite_m2m(self, decl_base, connection):
+        association_table = Table(
+            "a_b",
+            decl_base.metadata,
+            Column("a_id1", Integer, ForeignKey("a.id1")),
+            Column("a_id2", Integer, ForeignKey("a.id2")),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=(lambda: B.id == association_table.c.b_id),
+            )
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+                primaryjoin=lambda: and_(
+                    A.id1 == association_table.c.a_id1,
+                    A.id2 == association_table.c.a_id2,
+                ),
+                secondaryjoin=(lambda: B.id == association_table.c.b_id),
+            )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+        decl_base.metadata.create_all(connection)
+
+        with Session(connection) as session:
+            a1 = A(id1=1, id2=1)
+            a2 = A(id1=1, id2=2)
+            b1 = B(id=1)
+            b2 = B(id=2)
+            b3 = B(id=3)
+            a1.bs = [b1, b2, b3]
+            a2.bs = [b2, b3]
+            session.add_all([a1, a2, b1, b2, b3])
+            session.commit()
+
+        return A
+
+    @testing.fixture
+    def reverse_asymmetric_composite_m2m(self, decl_base, connection):
+        association_table = Table(
+            "a_b",
+            decl_base.metadata,
+            Column("a_id", Integer, ForeignKey("a.id")),
+            Column("b_id1", Integer, ForeignKey("b.id1")),
+            Column("b_id2", Integer, ForeignKey("b.id2")),
+        )
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=(lambda: A.id == association_table.c.a_id),
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+                primaryjoin=(lambda: A.id == association_table.c.a_id),
+                secondaryjoin=lambda: and_(
+                    B.id1 == association_table.c.b_id1,
+                    B.id2 == association_table.c.b_id2,
+                ),
+            )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id1 = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+
+        decl_base.metadata.create_all(connection)
+
+        with Session(connection) as session:
+            a1 = A(id=1)
+            a2 = A(id=2)
+            b1 = B(id1=1, id2=1)
+            b2 = B(id1=1, id2=2)
+            b3 = B(id1=2, id2=1)
+            a1.bs = [b1, b2, b3]
+            a2.bs = [b2, b3]
+            session.add_all([a1, a2, b1, b2, b3])
+            session.commit()
+
+        return A
+
+    @testing.fixture
+    def filtered_secondaryjoin_m2m(self, decl_base, connection):
+        association_table = Table(
+            "a_b",
+            decl_base.metadata,
+            Column("a_id", Integer, ForeignKey("a.id")),
+            Column("b_id", Integer, ForeignKey("b.id")),
+        )
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship(
+                "B",
+                secondary=association_table,
+                primaryjoin=(lambda: A.id == association_table.c.a_id),
+                secondaryjoin=lambda: and_(
+                    B.id == association_table.c.b_id,
+                    B.active == True,  # noqa: E712
+                ),
+            )
+            bs_no_omit_join = relationship(
+                "B",
+                secondary=association_table,
+                omit_join=False,
+                overlaps="bs",
+                primaryjoin=(lambda: A.id == association_table.c.a_id),
+                secondaryjoin=lambda: and_(
+                    B.id == association_table.c.b_id,
+                    B.active == True,  # noqa: E712
+                ),
+            )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            active = Column(Boolean, default=True)
+
+        decl_base.metadata.create_all(connection)
+
+        with Session(connection) as session:
+            a1 = A(id=1)
+            a2 = A(id=2)
+            b1 = B(id=1, active=True)
+            b2 = B(id=2, active=False)
+            b3 = B(id=3, active=True)
+            a1.bs = [b1, b2, b3]
+            a2.bs = [b2, b3]
+            session.add_all([a1, a2, b1, b2, b3])
+            session.commit()
+
+        return A
+
+    def test_simple_optimized(self, simple_m2m, connection):
+        A = simple_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A).options(selectinload(A.bs)).order_by(A.id)
+                )
+                session.execute(statement).scalars().all()
+
+            self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+                CompiledSQL(
+                    "SELECT a_b.a_id, b.id "
+                    "FROM a_b JOIN b ON b.id = a_b.b_id "
+                    "WHERE a_b.a_id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [1, 2]},
+                ),
+            )
+
+    def test_simple_unoptimized(self, simple_m2m, connection):
+        A = simple_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs_no_omit_join))
+                    .order_by(A.id)
+                )
+                session.execute(statement).scalars().all()
+
+            self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+                CompiledSQL(
+                    "SELECT a_1.id, b.id "
+                    "FROM a AS a_1 "
+                    "JOIN a_b AS a_b_1 ON a_1.id = a_b_1.a_id "
+                    "JOIN b ON b.id = a_b_1.b_id "
+                    "WHERE a_1.id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [1, 2]},
+                ),
+            )
+
+    def test_symmetric_composite(self, symmetric_composite_m2m, connection):
+        A = symmetric_composite_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs))
+                    .order_by(A.id1, A.id2)
+                )
+                session.execute(statement).scalars().all()
+
+            self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL(
+                    "SELECT a.id1, a.id2 " "FROM a ORDER BY a.id1, a.id2",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT a_b.a_id1, a_b.a_id2, b.id1, b.id2 "
+                    "FROM a_b "
+                    "JOIN b ON b.id1 = a_b.b_id1 "
+                    "AND b.id2 = a_b.b_id2 "
+                    "WHERE (a_b.a_id1, a_b.a_id2) IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [(1, 1), (1, 2)]},
+                ),
+            )
+
+    def test_symmetric_composite_unoptimized(
+        self, symmetric_composite_m2m, connection
+    ):
+        A = symmetric_composite_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs_no_omit_join))
+                    .order_by(A.id1, A.id2)
+                )
+                session.execute(statement).scalars().all()
+
+            self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL(
+                    "SELECT a.id1, a.id2 " "FROM a ORDER BY a.id1, a.id2",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT a_1.id1, a_1.id2, b.id1, b.id2 "
+                    "FROM a AS a_1 JOIN a_b AS a_b_1 ON "
+                    "a_1.id1 = a_b_1.a_id1 "
+                    "AND a_1.id2 = a_b_1.a_id2 "
+                    "JOIN b ON b.id1 = a_b_1.b_id1 "
+                    "AND b.id2 = a_b_1.b_id2 "
+                    "WHERE (a_1.id1, a_1.id2) IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [(1, 1), (1, 2)]},
+                ),
+            )
+
+    def test_asymmetric_composite(self, asymmetric_composite_m2m, connection):
+        A = asymmetric_composite_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs))
+                    .order_by(A.id1, A.id2)
+                )
+                session.execute(statement).scalars().all()
+
+            self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL(
+                    "SELECT a.id1, a.id2 FROM a ORDER BY a.id1, a.id2",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT a_b.a_id1, a_b.a_id2, b.id "
+                    "FROM a_b JOIN b ON b.id = a_b.b_id "
+                    "WHERE (a_b.a_id1, a_b.a_id2) IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [(1, 1), (1, 2)]},
+                ),
+            )
+
+    def test_asymmetric_composite_unoptimized(
+        self, asymmetric_composite_m2m, connection
+    ):
+        A = asymmetric_composite_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs_no_omit_join))
+                    .order_by(A.id1, A.id2)
+                )
+                session.execute(statement).scalars().all()
+
+            self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL(
+                    "SELECT a.id1, a.id2 FROM a ORDER BY a.id1, a.id2",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT a_1.id1, a_1.id2, b.id "
+                    "FROM a AS a_1 JOIN a_b AS a_b_1 "
+                    "ON a_1.id1 = a_b_1.a_id1 "
+                    "AND a_1.id2 = a_b_1.a_id2 "
+                    "JOIN b ON b.id = a_b_1.b_id "
+                    "WHERE (a_1.id1, a_1.id2) IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [(1, 1), (1, 2)]},
+                ),
+            )
+
+    def test_reverse_asymmetric_composite(
+        self, reverse_asymmetric_composite_m2m, connection
+    ):
+        A = reverse_asymmetric_composite_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A).options(selectinload(A.bs)).order_by(A.id)
+                )
+                session.execute(statement).scalars().all()
+
+            self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL(
+                    "SELECT a.id FROM a ORDER BY a.id",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT a_b.a_id, b.id1, b.id2 "
+                    "FROM a_b "
+                    "JOIN b ON b.id1 = a_b.b_id1 "
+                    "AND b.id2 = a_b.b_id2 "
+                    "WHERE a_b.a_id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [1, 2]},
+                ),
+            )
+
+    def test_reverse_asymmetric_composite_unoptimized(
+        self, reverse_asymmetric_composite_m2m, connection
+    ):
+        A = reverse_asymmetric_composite_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs_no_omit_join))
+                    .order_by(A.id)
+                )
+                session.execute(statement).scalars().all()
+
+            self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL(
+                    "SELECT a.id FROM a ORDER BY a.id",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT a_1.id, b.id1, b.id2 "
+                    "FROM a AS a_1 "
+                    "JOIN a_b AS a_b_1 ON a_1.id = a_b_1.a_id "
+                    "JOIN b ON b.id1 = a_b_1.b_id1 "
+                    "AND b.id2 = a_b_1.b_id2 "
+                    "WHERE a_1.id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [1, 2]},
+                ),
+            )
+
+    def test_filtered_secondaryjoin(
+        self, filtered_secondaryjoin_m2m, connection
+    ):
+        A = filtered_secondaryjoin_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A).options(selectinload(A.bs)).order_by(A.id)
+                )
+                return session.execute(statement).scalars().all()
+
+            results = self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL(
+                    "SELECT a.id FROM a ORDER BY a.id",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT a_b.a_id, b.id, b.active "
+                    "FROM a_b "
+                    "JOIN b ON b.id = a_b.b_id AND b.active = 1 "
+                    "WHERE a_b.a_id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [1, 2]},
+                ),
+            )
+
+            eq_(sorted(b.id for b in results[0].bs), [1, 3])
+            eq_(sorted(b.id for b in results[1].bs), [3])
+
+    def test_filtered_secondaryjoin_unoptimized(
+        self, filtered_secondaryjoin_m2m, connection
+    ):
+        A = filtered_secondaryjoin_m2m
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs_no_omit_join))
+                    .order_by(A.id)
+                )
+                return session.execute(statement).scalars().all()
+
+            results = self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL(
+                    "SELECT a.id FROM a ORDER BY a.id",
+                    {},
+                ),
+                CompiledSQL(
+                    "SELECT a_1.id, b.id, b.active "
+                    "FROM a AS a_1 "
+                    "JOIN a_b AS a_b_1 ON a_1.id = a_b_1.a_id "
+                    "JOIN b ON b.id = a_b_1.b_id AND b.active = 1 "
+                    "WHERE a_1.id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [1, 2]},
+                ),
+            )
+
+            eq_(
+                sorted(b.id for b in results[0].bs_no_omit_join),
+                [1, 3],
+            )
+            eq_(
+                sorted(b.id for b in results[1].bs_no_omit_join),
+                [3],
+            )
 
 
 class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
