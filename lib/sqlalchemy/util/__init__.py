@@ -100,6 +100,7 @@ from .langhelpers import decorator as decorator
 from .langhelpers import dictlike_iteritems as dictlike_iteritems
 from .langhelpers import duck_type_collection as duck_type_collection
 from .langhelpers import ellipses_string as ellipses_string
+from .langhelpers import find_matching_paren as find_matching_paren
 from .langhelpers import EnsureKWArg as EnsureKWArg
 from .langhelpers import FastIntFlag as FastIntFlag
 from .langhelpers import format_argspec_init as format_argspec_init
@@ -137,6 +138,7 @@ from .langhelpers import (
 )
 from .langhelpers import PluginLoader as PluginLoader
 from .langhelpers import quoted_token_parser as quoted_token_parser
+from .langhelpers import strip_outer_parens as strip_outer_parens
 from .langhelpers import restore_annotations as restore_annotations
 from .langhelpers import ro_memoized_property as ro_memoized_property
 from .langhelpers import ro_non_memoized_property as ro_non_memoized_property

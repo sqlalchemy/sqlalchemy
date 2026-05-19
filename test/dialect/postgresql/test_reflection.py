@@ -1245,9 +1245,9 @@ class RegexTest(fixtures.TestBase):
         argnames="src, expected",
     )
     def test_strip_outer_parens(self, src, expected):
-        from sqlalchemy.dialects.postgresql.base import _strip_outer_parens
+        from sqlalchemy.util import strip_outer_parens
 
-        eq_(_strip_outer_parens(src), expected)
+        eq_(strip_outer_parens(src), expected)
 
 
 class ReflectionTest(

@@ -2124,6 +2124,91 @@ def wrap_callable(wrapper, fn):
         return _f
 
 
+def find_matching_paren(text: str, start: int = 0) -> int:
+    """Return the index of the ``)`` that matches the ``(`` at ``start``.
+
+    The walk skips single-quoted (``'...'``) and double-quoted (``"..."``)
+    string literals, so parentheses inside string literals do not affect
+    the depth counter. ``''`` and ``""`` are treated as escaped quotes
+    inside their respective contexts, matching PostgreSQL/SQLite literal
+    conventions.
+
+    Returns ``-1`` if the opening parenthesis is never closed (unbalanced).
+    The character at ``text[start]`` is assumed to be ``(``; callers should
+    check before calling.
+
+    E.g.::
+
+        >>> find_matching_paren("(a + b)")
+        6
+        >>> find_matching_paren("((a)(b))")
+        7
+        >>> find_matching_paren("(a = '(' AND b = ')')")
+        20
+
+    """
+    depth = 0
+    in_single = False
+    in_double = False
+    n = len(text)
+    i = start
+    while i < n:
+        ch = text[i]
+        if in_single:
+            if ch == "'":
+                if i + 1 < n and text[i + 1] == "'":
+                    i += 2
+                    continue
+                in_single = False
+        elif in_double:
+            if ch == '"':
+                if i + 1 < n and text[i + 1] == '"':
+                    i += 2
+                    continue
+                in_double = False
+        elif ch == "'":
+            in_single = True
+        elif ch == '"':
+            in_double = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return -1
+
+
+def strip_outer_parens(text: str) -> str:
+    """Remove one layer of outer parentheses from ``text`` if they wrap the
+    entire (stripped) string.
+
+    Whitespace is preserved if the parentheses do not wrap the whole
+    expression. String literals are honored via :func:`find_matching_paren`,
+    so ``"(a = '(' AND b = ')')"`` correctly strips to
+    ``"a = '(' AND b = ')'"`` rather than being interpreted as two separate
+    paren groups.
+
+    E.g.::
+
+        >>> strip_outer_parens("(a IS NOT NULL)")
+        'a IS NOT NULL'
+        >>> strip_outer_parens("(a) AND (b)")
+        '(a) AND (b)'
+        >>> strip_outer_parens("a NOT NULL")
+        'a NOT NULL'
+
+    """
+    stripped = text.strip()
+    if len(stripped) < 2 or stripped[0] != "(" or stripped[-1] != ")":
+        return text
+    close = find_matching_paren(stripped, 0)
+    if close == len(stripped) - 1:
+        return stripped[1:-1]
+    return text
+
+
 def quoted_token_parser(value):
     """Parse a dotted identifier with accommodation for quoted names.
 
