@@ -471,7 +471,11 @@ def get_callable_argspec(
     """
     if inspect.isbuiltin(fn):
         raise TypeError("Can't inspect builtin: %s" % fn)
-    elif inspect.isfunction(fn):
+    elif inspect.isfunction(fn) or (
+        hasattr(fn, "__code__")
+        and not inspect.isclass(fn)
+        and not inspect.ismethod(fn)
+    ):
         if _is_init and no_self:
             spec = compat.inspect_getfullargspec(fn)
             return compat.FullArgSpec(

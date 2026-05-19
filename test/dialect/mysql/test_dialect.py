@@ -12,17 +12,78 @@ from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects.mysql.pymysql import _connection_ping_reconnects_true
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from .test_compiler import ReservedWordFixture
+
+
+class DBAPIPingReconnectTest(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = ("+pymysql", "+asyncmy", "+aiomysql")
+
+    @testing.combinations(
+        (
+            type("MyConnection", (object,), {"ping": lambda self: None}),
+            False,
+        ),
+        (
+            type(
+                "MyConnection",
+                (object,),
+                {"ping": lambda self, reconnect=True: None},
+            ),
+            True,
+        ),
+        (
+            type(
+                "MyConnection",
+                (object,),
+                {"ping": lambda self, reconnect: None},
+            ),
+            True,
+        ),
+        (
+            type(
+                "MyConnection",
+                (object,),
+                {"ping": lambda self, reconnect=False: None},
+            ),
+            False,
+        ),
+    )
+    def test_ping_send_false_inspect(self, connection, expected):
+        is_(_connection_ping_reconnects_true(connection), expected)
+
+    def test_do_ping(self):
+        """this is a copy of the same test in the generic suite"""
+        with testing.db.connect() as conn:
+            is_true(
+                testing.db.dialect.do_ping(conn.connection.dbapi_connection)
+            )
+
+    def test_do_ping_disconnected(self):
+        with testing.db.connect() as conn:
+            driver_connection = conn.connection.driver_connection
+            dbapi = testing.db.dialect.loaded_dbapi
+
+            # FIXME: detach seems to set driver_connection to None
+            conn.detach()
+
+            driver_connection.close()
+
+            with expect_raises(dbapi.Error):
+                testing.db.dialect.do_ping(conn.connection.dbapi_connection)
 
 
 class BackendDialectTest(

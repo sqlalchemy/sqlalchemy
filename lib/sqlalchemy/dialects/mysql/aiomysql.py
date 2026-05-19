@@ -39,6 +39,7 @@ from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
+from .pymysql import _connection_ping_reconnects_true
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
@@ -47,6 +48,7 @@ from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...connectors.asyncio import AsyncAdapt_terminate
+from ...util import langhelpers
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 
@@ -92,9 +94,12 @@ class AsyncAdapt_aiomysql_connection(
     _cursor_cls = AsyncAdapt_aiomysql_cursor
     _ss_cursor_cls = AsyncAdapt_aiomysql_ss_cursor
 
-    def ping(self, reconnect: bool) -> None:
+    def ping(self, reconnect: bool = False) -> None:
         assert not reconnect
-        self.await_(self._connection.ping(reconnect))
+        if self.dbapi._send_false_to_ping:
+            self.await_(self._connection.ping(reconnect=False))
+        else:
+            self.await_(self._connection.ping())
 
     def character_set_name(self) -> Optional[str]:
         return self._connection.character_set_name()  # type: ignore[no-any-return]  # noqa: E501
@@ -170,6 +175,24 @@ class AsyncAdapt_aiomysql_dbapi(AsyncAdapt_dbapi_module):
                 self,
                 await_only(creator_fn(*arg, **kw)),
             )
+
+    @langhelpers.memoized_property
+    def _send_false_to_ping(self) -> bool:
+        """determine if aiomysql has deprecated, changed the default of,
+        or removed the 'reconnect' argument of connection.ping().
+
+        See #13306 and #10492
+
+        """  # noqa: E501
+
+        try:
+            Connection = __import__(
+                "aiomysql.connection"
+            ).connection.Connection
+        except (ImportError, AttributeError):
+            return True
+        else:
+            return _connection_ping_reconnects_true(Connection)
 
     def _init_cursors_subclasses(
         self,
