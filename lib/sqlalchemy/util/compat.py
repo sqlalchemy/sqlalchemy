@@ -100,7 +100,7 @@ def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
 
     if inspect.ismethod(func):
         func = func.__func__
-    if not inspect.isfunction(func):
+    if not inspect.isfunction(func) and not hasattr(func, "__code__"):
         raise TypeError(f"{func!r} is not a Python function")
 
     co = func.__code__

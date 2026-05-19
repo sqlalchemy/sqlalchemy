@@ -53,6 +53,7 @@ from __future__ import annotations
 from typing import Any
 from typing import Literal
 from typing import Optional
+from typing import Type
 from typing import TYPE_CHECKING
 from typing import Union
 
@@ -67,6 +68,31 @@ if TYPE_CHECKING:
     from ...engine.interfaces import DBAPIModule
     from ...engine.interfaces import PoolProxiedConnection
     from ...engine.url import URL
+
+
+def _connection_ping_reconnects_true(connection_cls: Type[Any]) -> bool:
+    """Given a Connection class like pymysql.Connection, aiomysql.Connection,
+    asyncmy.Connection, inspect the ping() method and determine if it
+    has a "reconnect" parameter that either defaults to True, or is positional.
+
+    a return value of True here means that when we call ``connection.ping()``,
+    we **must** pass `reconnect=False`.  a return value of False means that
+    we should call ``connection.ping()`` with **no arguments**.
+
+    This routine originates from issue #10492 for pymysql, however arg
+    signature mismatches in aiomysql/asyncmy tracked by issue #13306
+    necessitated a more open ended function.
+
+    """
+    insp = langhelpers.get_callable_argspec(connection_cls.ping)
+    try:
+        reconnect_arg = insp.args[1]
+    except IndexError:
+        return False
+    else:
+        return reconnect_arg == "reconnect" and (
+            not insp.defaults or insp.defaults[0] is not False
+        )
 
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
@@ -97,6 +123,8 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         https://github.com/PyMySQL/mysqlclient/discussions/651#discussioncomment-7308971
         for background.
 
+        Revised as part of #13306
+
         """  # noqa: E501
 
         try:
@@ -106,15 +134,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         except (ImportError, AttributeError):
             return True
         else:
-            insp = langhelpers.get_callable_argspec(Connection.ping)
-            try:
-                reconnect_arg = insp.args[1]
-            except IndexError:
-                return False
-            else:
-                return reconnect_arg == "reconnect" and (
-                    not insp.defaults or insp.defaults[0] is not False
-                )
+            return _connection_ping_reconnects_true(Connection)
 
     def do_ping(self, dbapi_connection: DBAPIConnection) -> Literal[True]:
         if self._send_false_to_ping:

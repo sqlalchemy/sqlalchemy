@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 13306
+
+    Fixed issue in aiomysql and asyncmy dialects that appears as of using
+    pymysql 1.2.0; the dialects were not properly taking into account logic
+    that detects the argument signature of pymysql's ``ping()`` method which
+    was added as part of :ticket:`10492`.
+
+
+

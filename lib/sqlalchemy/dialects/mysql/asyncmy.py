@@ -36,6 +36,7 @@ from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
 
+from .pymysql import _connection_ping_reconnects_true
 from .pymysql import MySQLDialect_pymysql
 from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
@@ -43,6 +44,7 @@ from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...connectors.asyncio import AsyncAdapt_terminate
+from ...util import langhelpers
 from ...util.concurrency import await_
 
 if TYPE_CHECKING:
@@ -89,18 +91,21 @@ class AsyncAdapt_asyncmy_connection(
         if isinstance(error, AttributeError):
             raise dbapi.InternalError(
                 "network operation failed due to asyncmy attribute error"
-            )
+            ) from error
 
         raise error
 
-    def ping(self, reconnect: bool) -> None:
+    def ping(self, reconnect: bool = False) -> None:
         assert not reconnect
         return await_(self._do_ping())
 
     async def _do_ping(self) -> None:
         try:
             async with self._execute_mutex:
-                await self._connection.ping(False)
+                if self.dbapi._send_false_to_ping:
+                    await self._connection.ping(reconnect=False)
+                else:
+                    await self._connection.ping()
         except Exception as error:
             self._handle_exception(error)
 
@@ -163,6 +168,22 @@ class AsyncAdapt_asyncmy_dbapi(AsyncAdapt_dbapi_module):
                 creator_fn(*arg, **kw),
             )
         )
+
+    @langhelpers.memoized_property
+    def _send_false_to_ping(self) -> bool:
+        """determine if asyncmy has deprecated, changed the default of,
+        or removed the 'reconnect' argument of connection.ping().
+
+        See #13306 and #10492
+
+        """  # noqa: E501
+
+        try:
+            Connection = __import__("asyncmy.connection").connection.Connection
+        except (ImportError, AttributeError):
+            return True
+        else:
+            return _connection_ping_reconnects_true(Connection)
 
 
 class MySQLDialect_asyncmy(MySQLDialect_pymysql):
