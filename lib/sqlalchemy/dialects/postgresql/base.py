@@ -2041,63 +2041,6 @@ ischema_names = {
 }
 
 
-def _strip_outer_parens(text: str) -> str:
-    """Remove one layer of outer parentheses from ``text`` if and only if
-    they actually wrap the entire expression.
-
-    The previous implementation used ``re.sub(r"^[\\s\\n]*\\((.+)\\)[\\s\\n]*$", ...)``
-    which assumed the leading ``(`` matched the trailing ``)``. For inputs
-    such as ``(a) AND (b)`` that produced syntactically invalid text
-    (``a) AND (b``). Walk the string and only strip when the position-zero
-    ``(`` closes at the position-last ``)``.
-
-    Single and double quoted string literals are skipped so parens inside
-    them do not affect the count. PostgreSQL ``''`` and ``""`` escapes
-    (a doubled quote inside a quoted literal) are handled.
-    """
-    stripped = text.strip()
-    if len(stripped) < 2 or stripped[0] != "(" or stripped[-1] != ")":
-        return text
-
-    depth = 0
-    in_single = False
-    in_double = False
-    i = 0
-    n = len(stripped)
-    while i < n:
-        ch = stripped[i]
-        if in_single:
-            if ch == "'":
-                if i + 1 < n and stripped[i + 1] == "'":
-                    i += 2
-                    continue
-                in_single = False
-        elif in_double:
-            if ch == '"':
-                if i + 1 < n and stripped[i + 1] == '"':
-                    i += 2
-                    continue
-                in_double = False
-        elif ch == "'":
-            in_single = True
-        elif ch == '"':
-            in_double = True
-        elif ch == "(":
-            depth += 1
-        elif ch == ")":
-            depth -= 1
-            if depth == 0 and i != n - 1:
-                # The leading ``(`` closed before the end, so the outer
-                # parens do not wrap the whole expression.
-                return text
-        i += 1
-
-    if depth != 0:
-        return text
-
-    return stripped[1:-1]
-
-
 class PGCompiler(compiler.SQLCompiler):
     def visit_to_tsvector_func(self, element, **kw):
         return self._assert_pg_ts_ext(element, **kw)
@@ -5493,7 +5436,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = _strip_outer_parens(m.group(1))
+                sqltext = util.strip_outer_parens(m.group(1))
             entry = {
                 "name": check_name,
                 "sqltext": sqltext,
