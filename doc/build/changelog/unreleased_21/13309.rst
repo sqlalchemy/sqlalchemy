@@ -1,0 +1,7 @@
+.. change::
+    :tags: orm, usecase
+    :tickets: 13309
+
+    Updated the attribute :attr:`_orm.ORMExecuteState.user_defined_options` to
+    include options that were added to the statement before calling
+    :meth:`.Select.with_only_columns` or :meth:`_orm.Query.with_entities`.
