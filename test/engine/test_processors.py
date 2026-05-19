@@ -73,13 +73,13 @@ class _DateProcessorTest(fixtures.TestBase):
 
         eq_(self.module.str_to_date("2022-04-03"), datetime.date(2022, 4, 3))
 
-    def test_date_no_string(self):
-        assert_raises_message(
-            TypeError,
-            "fromisoformat: argument must be str",
-            self.module.str_to_date,
-            2012,
-        )
+    @combinations("str_to_datetime", "str_to_time", "str_to_date")
+    def test_no_string(self, meth):
+        with expect_raises_message(
+            TypeError, r"fromisoformat.* argument must be str"
+        ):
+            fn = getattr(self.module, meth)
+            fn(2012)
 
     def test_datetime_no_string_custom_reg(self):
         assert_raises_message(
