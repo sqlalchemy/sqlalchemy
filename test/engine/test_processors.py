@@ -78,7 +78,7 @@ class _DateProcessorTest(fixtures.TestBase):
     @combinations("str_to_datetime", "str_to_time", "str_to_date")
     def test_no_string(self, meth):
         with expect_raises_message(
-            TypeError, "fromisoformat: argument must be str"
+            TypeError, r"fromisoformat.* argument must be str"
         ):
             fn = getattr(self.module, meth)
             fn(2012)
