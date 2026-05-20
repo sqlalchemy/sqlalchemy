@@ -1221,6 +1221,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ")",
         )
 
+    def test_exclude_constraint_info(self):
+        ec = ExcludeConstraint(("a", "="))
+        eq_(ec.info, {})
+
+        ec = ExcludeConstraint(("a", "="), info={"foo": "bar"})
+        eq_(ec.info, {"foo": "bar"})
+
     def test_exclude_constraint_min(self):
         m = MetaData()
         tbl = Table("testtbl", m, Column("room", Integer, primary_key=True))
