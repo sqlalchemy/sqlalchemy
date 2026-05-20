@@ -145,7 +145,9 @@ class ContextualWarningsTest(fixtures.TestBase):
                 "initializing objects.)"
             ),
         ):
-            sess.execute(select(Foo))
+            result = sess.execute(select(Foo))
+            result.close()
+        sess.close()
 
 
 class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
