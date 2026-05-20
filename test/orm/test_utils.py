@@ -14,6 +14,8 @@ from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
@@ -29,6 +31,7 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import is_false
 from sqlalchemy.testing.assertions import is_true
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
@@ -1330,3 +1333,128 @@ class PathRegistryInhTest(_poly_fixtures._Polymorphic):
         # polymorphic AliasedClass with the "use_mapper_path" flag -
         # the AliasedClass acts just like the base mapper
         eq_(p1.path, (emapper, emapper.attrs.machines))
+
+
+class ConfigureAliasedOnSelectTest(fixtures.TestBase):
+    """Test for #13319
+
+    Test that select() with aliased() or with_polymorphic() entities
+    triggers configure_mappers implicitly for all entity types.
+    """
+
+    @testing.fixture
+    def non_inherited_fixture(self, decl_base):
+        class User(decl_base):
+            __tablename__ = "user"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column()
+
+        return User, decl_base
+
+    @testing.fixture
+    def inherited_with_leaves_fixture(self, decl_base):
+        class Employee(decl_base):
+            __tablename__ = "employee"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column()
+            type: Mapped[str] = mapped_column()
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+                "polymorphic_on": "type",
+            }
+
+        class Engineer(Employee):
+            __tablename__ = "engineer"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("employee.id"), primary_key=True
+            )
+            engineer_name: Mapped[str] = mapped_column()
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+        return Employee, Engineer, decl_base
+
+    @testing.fixture
+    def inherited_without_leaves_fixture(self, decl_base):
+        class Employee(decl_base):
+            __tablename__ = "employee"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column()
+            type: Mapped[str] = mapped_column()
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+                "polymorphic_on": "type",
+            }
+
+        return Employee, decl_base
+
+    def test_aliased_non_inherited(self, non_inherited_fixture):
+        User, decl_base = non_inherited_fixture
+        is_false(User.__mapper__.configured)
+
+        a1 = aliased(User)
+        _ = select(a1)
+        is_true(User.__mapper__.configured)
+
+    def test_aliased_inherited_base_with_leaves(
+        self, inherited_with_leaves_fixture
+    ):
+        Employee, Engineer, decl_base = inherited_with_leaves_fixture
+        is_false(Employee.__mapper__.configured)
+
+        a1 = aliased(Employee)
+        _ = select(a1)
+        is_true(Employee.__mapper__.configured)
+
+    def test_aliased_inherited_leaf(self, inherited_with_leaves_fixture):
+        Employee, Engineer, decl_base = inherited_with_leaves_fixture
+        is_false(Engineer.__mapper__.configured)
+
+        a1 = aliased(Engineer)
+        _ = select(a1)
+        is_true(Engineer.__mapper__.configured)
+
+    def test_aliased_inherited_without_leaves(
+        self, inherited_without_leaves_fixture
+    ):
+        Employee, decl_base = inherited_without_leaves_fixture
+        is_false(Employee.__mapper__.configured)
+
+        a1 = aliased(Employee)
+        _ = select(a1)
+        is_true(Employee.__mapper__.configured)
+
+    def test_wp_inherited_base_with_leaves(
+        self, inherited_with_leaves_fixture
+    ):
+        Employee, Engineer, decl_base = inherited_with_leaves_fixture
+        is_false(Employee.__mapper__.configured)
+
+        wp = with_polymorphic(Employee, "*")
+        select(wp).compile()
+        is_true(Employee.__mapper__.configured)
+
+    def test_wp_inherited_leaf(self, inherited_with_leaves_fixture):
+        Employee, Engineer, decl_base = inherited_with_leaves_fixture
+        is_false(Engineer.__mapper__.configured)
+
+        wp = with_polymorphic(Engineer, "*")
+        select(wp).compile()
+        is_true(Engineer.__mapper__.configured)
+
+    def test_wp_inherited_without_leaves(
+        self, inherited_without_leaves_fixture
+    ):
+        Employee, decl_base = inherited_without_leaves_fixture
+        is_false(Employee.__mapper__.configured)
+
+        wp = with_polymorphic(Employee, "*")
+        select(wp).compile()
+        is_true(Employee.__mapper__.configured)
+
+    def test_wp_non_inherited(self, non_inherited_fixture):
+        User, decl_base = non_inherited_fixture
+        is_false(User.__mapper__.configured)
+
+        wp = with_polymorphic(User, "*")
+        select(wp).compile()
+        is_true(User.__mapper__.configured)
