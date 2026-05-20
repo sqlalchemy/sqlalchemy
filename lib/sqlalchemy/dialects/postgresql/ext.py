@@ -234,6 +234,11 @@ class ExcludeConstraint(ColumnCollectionConstraint):
           Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
 
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.SchemaItem.info` attribute of this object.
+
+            .. versionadded:: 2.0.50
+
         :param using:
           Optional string.  If set, emit USING <index_method> when issuing DDL
           for this constraint. Defaults to 'gist'.
@@ -288,6 +293,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             name=kw.get("name"),
             deferrable=kw.get("deferrable"),
             initially=kw.get("initially"),
+            info=kw.get("info"),
         )
         self.using = kw.get("using", "gist")
         where = kw.get("where")
