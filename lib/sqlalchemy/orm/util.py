@@ -1007,6 +1007,10 @@ class AliasedInsp(
         self._adapt_on_names = adapt_on_names
         self._target = mapped_class_or_ac
 
+    @property
+    def _post_inspect(self):  # type: ignore[override]
+        self.mapper._check_configure()
+
     @classmethod
     def _alias_factory(
         cls,
