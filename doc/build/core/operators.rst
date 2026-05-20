@@ -556,7 +556,7 @@ Arithmetic Operators
   For the default backend as well as backends such as PostgreSQL, the SQL ``/`` operator normally
   behaves this way for integer values::
 
-    >>> print(column("x") // 5)
+    >>> print(column("x", Integer) // 5)
     {printsql}x / :x_1{stop}
     >>> print(5 // column("x", Integer))
     {printsql}:x_1 / x{stop}
