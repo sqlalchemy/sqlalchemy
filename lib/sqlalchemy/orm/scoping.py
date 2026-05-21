@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     from ._typing import OrmExecuteOptionsParameter
     from .identity import IdentityMap
     from .interfaces import ORMOption
-    from .mapper import Mapper
     from .query import Query
     from .query import RowReturningQuery
     from .session import _BindArguments
@@ -1392,7 +1391,7 @@ class scoped_session(Generic[_S]):
 
     def bulk_insert_mappings(
         self,
-        mapper: Mapper[Any],
+        mapper: _EntityBindKey[Any],
         mappings: Iterable[Dict[str, Any]],
         return_defaults: bool = False,
         render_nulls: bool = False,
@@ -1478,7 +1477,7 @@ class scoped_session(Generic[_S]):
         )
 
     def bulk_update_mappings(
-        self, mapper: Mapper[Any], mappings: Iterable[Dict[str, Any]]
+        self, mapper: _EntityBindKey[Any], mappings: Iterable[Dict[str, Any]]
     ) -> None:
         r"""Perform a bulk update of the given list of mapping dictionaries.
 

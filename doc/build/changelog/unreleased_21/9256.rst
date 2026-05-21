@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, typing
+    :tickets: 9256
+
+    Adjusted the type annotations for
+    :meth:`_orm.Session.bulk_insert_mappings` and
+    :meth:`_orm.Session.bulk_update_mappings` to accept a mapped class as well
+    as a :class:`_orm.Mapper`, matching the documented and runtime behavior of
+    these legacy methods.
