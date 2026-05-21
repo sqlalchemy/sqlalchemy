@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy import bindparam
+from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Integer
@@ -2934,6 +2935,46 @@ class SelfReferentialTest(fixtures.MappedTest):
             )
 
         self.assert_sql_count(testing.db, go, 4)
+
+    @testing.requires.independent_cursors
+    def test_yield_per_orm_execute_event(self, data_fixture):
+        nodes = self.tables.nodes
+
+        Node = self.classes.Node
+
+        self.mapper_registry.map_imperatively(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(
+                    Node, lazy="selectin", join_depth=1, order_by=nodes.c.id
+                )
+            },
+        )
+        with fixture_session() as sess:
+            data_fixture(sess)
+
+            @event.listens_for(sess, "do_orm_execute")
+            def do_orm_execute(ctx):
+                pass
+
+            stmt = (
+                select(Node)
+                .where(nodes.c.parent_id.is_(None))
+                .order_by(Node.id)
+                .execution_options(yield_per=5)
+            )
+
+            eq_(
+                [
+                    ("n1", ["n11", "n12", "n13"]),
+                    ("n2", ["n21"]),
+                ],
+                [
+                    (node.data, [child.data for child in node.children])
+                    for node in sess.scalars(stmt)
+                ],
+            )
 
     def test_lazy_fallback_doesnt_affect_eager(self, data_fixture):
         nodes = self.tables.nodes
