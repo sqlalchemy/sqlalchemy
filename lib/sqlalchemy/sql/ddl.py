@@ -1344,7 +1344,52 @@ class CheckFirst(Flag):
         return super()._missing_(value)
 
 
-class SchemaGenerator(InvokeCreateDDLBase):
+class _SchemaTableReflector:
+    _effective_tables: typing_Sequence[Table] | None = None
+    _has_tables: dict[tuple[Optional[str], str], bool]
+
+    def __init__(
+        self,
+        dialect: Dialect,
+        connection: Connection,
+        tables: typing_Sequence[Table] | None,
+    ):
+        self.dialect = dialect
+        self.connection = connection
+        self.tables = self._effective_tables = tables
+        self._has_tables = {}
+
+    def _update_effective_tables(self, metadata):
+        if self.tables is not None:
+            self._effective_tables = self.tables
+        else:
+            self._effective_tables = list(metadata.tables.values())
+        return self._effective_tables
+
+    def _has_table(self, table: Table, schema: str | None) -> bool:
+        res = self._has_tables.get((schema, table.name))
+        if res is not None:
+            return res
+        if self._effective_tables is None:
+            to_check = [table.name]
+        else:
+            is_view = table.is_view
+            to_check = [
+                t.name
+                for t in self._effective_tables
+                if t.is_view == is_view
+                and self.connection.schema_for_object(t) == schema
+            ]
+            assert table.name in to_check
+        self._has_tables.update(
+            self.dialect.has_multi_table(
+                self.connection, to_check, schema=schema
+            )
+        )
+        return self._has_tables[(schema, table.name)]
+
+
+class SchemaGenerator(InvokeCreateDDLBase, _SchemaTableReflector):
     def __init__(
         self,
         dialect,
@@ -1353,11 +1398,10 @@ class SchemaGenerator(InvokeCreateDDLBase):
         tables=None,
         **kwargs,
     ):
-        super().__init__(connection, **kwargs)
+        InvokeCreateDDLBase.__init__(self, connection, **kwargs)
+        _SchemaTableReflector.__init__(self, dialect, connection, tables)
         self.checkfirst = CheckFirst(checkfirst)
-        self.tables = tables
         self.preparer = dialect.identifier_preparer
-        self.dialect = dialect
         self.memo = {}
 
     def _can_create_table(self, table):
@@ -1369,11 +1413,8 @@ class SchemaGenerator(InvokeCreateDDLBase):
         bool_to_check = (
             CheckFirst.TABLES if not table.is_view else CheckFirst.VIEWS
         )
-        return (
-            not self.checkfirst & bool_to_check
-            or not self.dialect.has_table(
-                self.connection, table.name, schema=effective_schema
-            )
+        return not self.checkfirst & bool_to_check or not self._has_table(
+            table, effective_schema
         )
 
     def _can_create_index(self, index):
@@ -1404,10 +1445,7 @@ class SchemaGenerator(InvokeCreateDDLBase):
         )
 
     def visit_metadata(self, metadata):
-        if self.tables is not None:
-            tables = self.tables
-        else:
-            tables = list(metadata.tables.values())
+        tables = self._update_effective_tables(metadata)
 
         collection = sort_tables_and_constraints(
             [t for t in tables if self._can_create_table(t)]
@@ -1520,7 +1558,7 @@ class SchemaGenerator(InvokeCreateDDLBase):
             CreateIndex(index)._invoke_with(self.connection)
 
 
-class SchemaDropper(InvokeDropDDLBase):
+class SchemaDropper(InvokeDropDDLBase, _SchemaTableReflector):
     def __init__(
         self,
         dialect,
@@ -1529,18 +1567,14 @@ class SchemaDropper(InvokeDropDDLBase):
         tables=None,
         **kwargs,
     ):
-        super().__init__(connection, **kwargs)
+        InvokeDropDDLBase.__init__(self, connection, **kwargs)
+        _SchemaTableReflector.__init__(self, dialect, connection, tables)
         self.checkfirst = CheckFirst(checkfirst)
-        self.tables = tables
         self.preparer = dialect.identifier_preparer
-        self.dialect = dialect
         self.memo = {}
 
     def visit_metadata(self, metadata):
-        if self.tables is not None:
-            tables = self.tables
-        else:
-            tables = list(metadata.tables.values())
+        tables = self._update_effective_tables(metadata)
 
         try:
             unsorted_tables = [t for t in tables if self._can_drop_table(t)]
@@ -1623,8 +1657,8 @@ class SchemaDropper(InvokeDropDDLBase):
             CheckFirst.TABLES if not table.is_view else CheckFirst.VIEWS
         )
 
-        return not self.checkfirst & bool_to_check or self.dialect.has_table(
-            self.connection, table.name, schema=effective_schema
+        return not self.checkfirst & bool_to_check or self._has_table(
+            table, effective_schema
         )
 
     def _can_drop_index(self, index):
