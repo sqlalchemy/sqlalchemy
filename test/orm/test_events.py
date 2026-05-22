@@ -30,6 +30,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import EXT_SKIP
+from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
@@ -46,6 +47,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import TypeResolve
 from sqlalchemy.orm import UserDefinedOption
+from sqlalchemy.orm.context import QueryContext
 from sqlalchemy.sql.cache_key import NO_CACHE
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -59,6 +61,7 @@ from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
+from sqlalchemy.testing.fixtures import RemovesEvents
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -67,7 +70,9 @@ from sqlalchemy.util.typing import TypeAliasType
 from test.orm import _fixtures
 
 
-class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
+class ORMExecuteTest(
+    RemovesEvents, RemoveORMEventsGlobally, _fixtures.FixtureTest
+):
     run_setup_mappers = "once"
     run_inserts = "once"
     run_deletes = None
@@ -192,6 +197,7 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
                     assert False
 
         if use_query_cache:
+            testing.db._compiled_cache.clear()
             s = fixture_session()
         else:
             s = fixture_session(
@@ -267,6 +273,349 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
             s.execute(stmt)
 
         eq_(found, True)
+
+    @testing.combinations(
+        (lazyload,),
+        (selectinload,),
+        (immediateload,),
+        (joinedload,),
+        (subqueryload,),
+        argnames="loader_opt",
+    )
+    @testing.variation("use_event", [True, False])
+    def test_execution_option_visibility_and_mutation(
+        self, loader_opt, use_event
+    ):
+        """test the full contract of how options are passed to do_orm_execute
+        and then onto a relationship loader.
+
+        part of #13301
+
+        the non-event part of this test has overlap with
+        test_session.py -> test_eagerloader_exec_option, which is also
+        looking at how top level options find their way into eager loader
+        queries.   in this test though we try to establish every possible
+        path for options with all loaders.
+
+        """
+        User, Address, Dinagling = self.classes("User", "Address", "Dingaling")
+
+        s = fixture_session()
+
+        m1 = Mock()
+
+        def _before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            opts = {
+                k: v
+                for k, v in context.execution_options.items()
+                if isinstance(k, str) and k.startswith("user_")
+            }
+            m1.before_cursor_execute(opts)
+
+        self.event_listen(
+            testing.db, "before_cursor_execute", _before_cursor_execute
+        )
+
+        if use_event:
+
+            def go(context):
+                opts = {
+                    k: v
+                    for k, v in context.execution_options.items()
+                    if isinstance(k, str) and k.startswith("user_")
+                }
+                m1.do_orm_execute(context.is_relationship_load, opts)
+
+                context.update_execution_options(
+                    user_defined_three="z",
+                    user_defined_two_override="z2",
+                )
+
+                # local_execution_options receive the updates
+                eq_(context.local_execution_options["user_defined_three"], "z")
+                eq_(
+                    context.local_execution_options[
+                        "user_defined_two_override"
+                    ],
+                    "z2",
+                )
+
+                # the .execution_options does not show the updates
+                # (not sure if i like this but this is how it was done)
+                if not context.is_relationship_load:
+                    # only test for the top-level load.  the options may be
+                    # present in a relationship load.
+                    assert (
+                        "user_defined_three" not in context.execution_options
+                    )
+                    eq_(
+                        context.execution_options["user_defined_two_override"],
+                        "y2",
+                    )
+
+            self.event_listen(s, "do_orm_execute", go)
+
+        stmt = (
+            select(User)
+            .options(
+                loader_opt(User.addresses).options(
+                    loader_opt(Address.dingaling)
+                ),
+            )
+            .execution_options(
+                user_defined_one="x", user_defined_one_override="x2"
+            )
+        )
+
+        for u in (
+            s.execute(
+                stmt,
+                execution_options={
+                    "user_defined_two": "y",
+                    "user_defined_two_override": "y2",
+                    "user_defined_one_override": "y2",
+                },
+            )
+            .unique()
+            .scalars()
+        ):
+            for a in u.addresses:
+                a.dingaling
+
+        if use_event:
+            upfront_expected_calls = [
+                call.do_orm_execute(
+                    False,
+                    {
+                        "user_defined_one": "x",
+                        "user_defined_two": "y",
+                        # for user_defined_two_override, which is overridden by
+                        # the event hook, here the option was logged before the
+                        # event hook overrode it
+                        "user_defined_two_override": "y2",
+                        "user_defined_one_override": "y2",
+                    },
+                ),
+                call.before_cursor_execute(
+                    {
+                        "user_defined_one": "x",
+                        # when it gets to cursor execute, the new value
+                        # is there
+                        "user_defined_two_override": "z2",
+                        "user_defined_one_override": "y2",
+                        "user_defined_two": "y",
+                        "user_defined_three": "z",
+                    },
+                ),
+            ]
+            relationship_level_calls = [
+                call.do_orm_execute(
+                    True,
+                    {
+                        "user_defined_one": "x",
+                        # also there for the relationship calls
+                        "user_defined_two_override": "z2",
+                        "user_defined_one_override": "y2",
+                        "user_defined_two": "y",
+                        "user_defined_three": "z",
+                    },
+                ),
+                call.before_cursor_execute(
+                    {
+                        "user_defined_one": "x",
+                        "user_defined_two_override": "z2",
+                        "user_defined_one_override": "y2",
+                        "user_defined_two": "y",
+                        "user_defined_three": "z",
+                    },
+                ),
+            ]
+            joined_and_lazy_calls = [
+                call.do_orm_execute(
+                    True,
+                    {},
+                ),
+                call.before_cursor_execute(
+                    {
+                        "user_defined_two_override": "z2",
+                        "user_defined_three": "z",
+                    },
+                ),
+            ]
+        else:
+            upfront_expected_calls = [
+                call.before_cursor_execute(
+                    {
+                        "user_defined_one": "x",
+                        "user_defined_two_override": "y2",
+                        "user_defined_one_override": "y2",
+                        "user_defined_two": "y",
+                    },
+                ),
+            ]
+            relationship_level_calls = [
+                call.before_cursor_execute(
+                    {
+                        "user_defined_one": "x",
+                        "user_defined_two_override": "y2",
+                        "user_defined_one_override": "y2",
+                        "user_defined_two": "y",
+                    },
+                ),
+            ]
+            joined_and_lazy_calls = [
+                call.before_cursor_execute({}),
+            ]
+
+        if loader_opt in (selectinload, subqueryload, immediateload):
+            eq_(
+                m1.mock_calls,
+                upfront_expected_calls
+                + (
+                    relationship_level_calls
+                    * (2 if loader_opt in (selectinload, subqueryload) else 9)
+                ),
+            )
+        elif loader_opt in (lazyload, joinedload):
+            eq_(
+                m1.mock_calls,
+                upfront_expected_calls
+                + (
+                    joined_and_lazy_calls
+                    * (9 if loader_opt is lazyload else 0)
+                ),
+            )
+
+    @testing.combinations(
+        (selectinload,),
+        (immediateload,),
+        argnames="loader_opt",
+    )
+    @testing.variation("option_type", ["yield_per", "autoflush"])
+    @testing.variation(
+        "event_style",
+        ["no_event", "noop_event", "set_in_event_for_relationship"],
+    )
+    def test_load_option_propagation_to_post_load(
+        self,
+        loader_opt,
+        option_type,
+        event_style,
+    ):
+        """test that yield_per and autoflush options set on the top-level
+        query don't leak into load_options for post-load queries
+        (selectinload, immediateload), and that options explicitly set
+        via update_execution_options in a do_orm_execute event hook
+        for relationship loads do propagate correctly.
+
+        part of #13301
+
+        """
+
+        User = self.classes.User
+
+        s = fixture_session()
+
+        expected_lead_options = {
+            "yield_per": None,
+            "autoflush": True,
+            "is_post_load": False,
+        }
+        expected_post_load_options = {
+            "yield_per": None,
+            "autoflush": True,
+            "is_post_load": True,
+        }
+        operation_should_fail = (
+            event_style.set_in_event_for_relationship and option_type.yield_per
+        )
+
+        if event_style.noop_event:
+            # no-op event; ensure having this present has no side effects
+            # (this is the original #13301 issue)
+            def go(context):
+                pass
+
+            self.event_listen(s, "do_orm_execute", go)
+
+        elif event_style.set_in_event_for_relationship:
+            # event where we actually set these options for relationship
+            # loaders.  assert that what we do here does in fact get
+            # to those loaders.   the yield_per setting will fail for
+            # immediateload and selectinload because they both use unique()
+            # on the result.
+            def go(context):
+                if context.is_relationship_load:
+                    if option_type.yield_per:
+                        context.update_execution_options(yield_per=7)
+                        expected_post_load_options["yield_per"] = 7
+                    elif option_type.autoflush:
+                        context.update_execution_options(autoflush=False)
+                        expected_post_load_options["autoflush"] = False
+
+            self.event_listen(s, "do_orm_execute", go)
+        elif event_style.no_event:
+            # compare to there being no event at all
+            pass
+
+        captured_load_options = []
+
+        orig_init = QueryContext.__init__
+
+        def tracking_init(self_qc, *args, **kwargs):
+            orig_init(self_qc, *args, **kwargs)
+            captured_load_options.append(
+                {
+                    "yield_per": self_qc.load_options._yield_per,
+                    "autoflush": (self_qc.load_options._autoflush),
+                    "is_post_load": (
+                        self_qc.load_options._sa_top_level_orm_context
+                        is not None
+                    ),
+                }
+            )
+
+        with patch.object(QueryContext, "__init__", tracking_init):
+
+            stmt = select(User).options(loader_opt(User.addresses))
+
+            if not event_style.set_in_event_for_relationship:
+                if option_type.yield_per:
+                    stmt = stmt.execution_options(yield_per=5)
+                    expected_lead_options["yield_per"] = 5
+                elif option_type.autoflush:
+                    stmt = stmt.execution_options(autoflush=False)
+                    expected_lead_options["autoflush"] = False
+
+            if operation_should_fail:
+                with expect_raises_message(
+                    sa_exc.InvalidRequestError,
+                    "Can't use the ORM yield_per feature in "
+                    "conjunction with unique",
+                ):
+                    s.scalars(stmt).all()
+
+                # ensure result / cursor is closed.   needed to prevent
+                # locking issues particularly under free-threaded
+                gc_collect()
+            else:
+                s.scalars(stmt).all()
+
+        # assert the state of all QueryContexts produced
+        eq_(
+            captured_load_options,
+            [expected_lead_options]
+            + (
+                [expected_post_load_options]
+                * (
+                    1
+                    if loader_opt is selectinload or operation_should_fail
+                    else 4
+                )
+            ),
+        )
 
     def test_override_parameters_scalar(self):
         """test that session.scalar() maintains the 'scalar-ness' of the
