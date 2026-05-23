@@ -809,10 +809,20 @@ class ORMExecuteState(util.MemoizedSlots):
         """The sequence of :class:`.UserDefinedOptions` that have been
         associated with the statement being invoked.
 
+        .. versionchanged:: 2.1 - the returned option take into
+            consideration any options added before calling
+            :meth:`_sql.Select.with_only_columns` or
+            :meth:`_orm.Query.with_entities`.
+
         """
+        items = [
+            self.statement,
+            *getattr(self.statement, "_memoized_select_entities", ()),
+        ]
         return [
             opt
-            for opt in self.statement._with_options
+            for item in items
+            for opt in item._with_options
             if is_user_defined_option(opt)
         ]
 

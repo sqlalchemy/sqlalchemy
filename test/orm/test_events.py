@@ -239,6 +239,35 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
             ),
         )
 
+    @testing.combinations("select", "query", "not-select")
+    def test_user_option_propagation_after_with_only_columns(self, operation):
+        User = self.classes("User")[0]
+
+        class MyOption(UserDefinedOption):
+            pass
+
+        s = fixture_session()
+        found = False
+
+        @event.listens_for(s, "do_orm_execute")
+        def go(context):
+            nonlocal found
+            for elem in context.user_defined_options:
+                if isinstance(elem, MyOption):
+                    found = True
+
+        if operation == "select":
+            stmt = select(User).options(MyOption()).with_only_columns(User.id)
+            s.execute(stmt).all()
+        elif operation == "query":
+            stmt = s.query(User).options(MyOption()).with_entities(User.id)
+            stmt.all()
+        elif operation == "not-select":
+            stmt = insert(User).values(name="new name").options(MyOption())
+            s.execute(stmt)
+
+        eq_(found, True)
+
     def test_override_parameters_scalar(self):
         """test that session.scalar() maintains the 'scalar-ness' of the
         result when using re-execute events.
