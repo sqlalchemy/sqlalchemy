@@ -100,6 +100,9 @@ _path_registry = PathRegistry.root
 
 LABEL_STYLE_LEGACY_ORM = SelectLabelStyle.LABEL_STYLE_LEGACY_ORM
 
+# Result batching applies only to the statement being consumed.
+_LOADER_EXEC_OPTION_EXCLUSIONS = frozenset(["yield_per"])
+
 
 class QueryContext:
     __slots__ = (
@@ -534,19 +537,16 @@ class _ORMCompileState(_AbstractORMCompileState):
 
         if "sa_top_level_orm_context" in execution_options:
             ctx = execution_options["sa_top_level_orm_context"]
-            top_level_execution_options = (
-                ctx.query._execution_options.merge_with(ctx.execution_options)
+            merged_top_level_options = ctx.query._execution_options.merge_with(
+                ctx.execution_options
             )
-            if "yield_per" in top_level_execution_options:
-                # loader-generated statements shouldn't inherit the
-                # top-level result batching size
-                top_level_execution_options = util.immutabledict(
-                    {
-                        key: value
-                        for key, value in top_level_execution_options.items()
-                        if key != "yield_per"
-                    }
-                )
+            top_level_execution_options = util.immutabledict(
+                {
+                    key: value
+                    for key, value in merged_top_level_options.items()
+                    if key not in _LOADER_EXEC_OPTION_EXCLUSIONS
+                }
+            )
             execution_options = top_level_execution_options.merge_with(
                 execution_options
             )

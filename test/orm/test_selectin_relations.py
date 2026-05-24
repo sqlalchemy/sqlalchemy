@@ -2937,7 +2937,7 @@ class SelfReferentialTest(fixtures.MappedTest):
         self.assert_sql_count(testing.db, go, 4)
 
     @testing.requires.independent_cursors
-    def test_yield_per_orm_execute_event(self, data_fixture):
+    def test_yield_per_orm_execute_event(self, connection, data_fixture):
         nodes = self.tables.nodes
 
         Node = self.classes.Node
@@ -2951,8 +2951,18 @@ class SelfReferentialTest(fixtures.MappedTest):
                 )
             },
         )
-        with fixture_session() as sess:
+        with fixture_session(bind=connection) as sess:
             data_fixture(sess)
+
+            execution_yield_per = []
+
+            @event.listens_for(connection, "before_cursor_execute")
+            def before_cursor_execute(
+                conn, cursor, statement, parameters, context, executemany
+            ):
+                execution_yield_per.append(
+                    context.execution_options.get("yield_per")
+                )
 
             @event.listens_for(sess, "do_orm_execute")
             def do_orm_execute(ctx):
@@ -2975,6 +2985,7 @@ class SelfReferentialTest(fixtures.MappedTest):
                     for node in sess.scalars(stmt)
                 ],
             )
+            eq_(execution_yield_per, [5, None])
 
     def test_lazy_fallback_doesnt_affect_eager(self, data_fixture):
         nodes = self.tables.nodes
