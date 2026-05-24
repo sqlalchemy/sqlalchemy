@@ -1,5 +1,0 @@
-.. change::
-    :tags: bug, sqlite
-    :tickets: 13230
-
-    Escape key and pragma values when utilizing the pysqlcipher dialect.

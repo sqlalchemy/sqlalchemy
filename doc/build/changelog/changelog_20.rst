@@ -10,7 +10,117 @@
 
 .. changelog::
     :version: 2.0.50
-    :include_notes_from: unreleased_20
+    :released: May 24, 2026
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10528
+
+        Fixed issue where floor division (``//``) between a :class:`.Float` or
+        :class:`.Numeric` numerator and an :class:`.Integer` denominator would omit
+        the ``FLOOR()`` SQL wrapper on dialects where
+        :attr:`.Dialect.div_is_floordiv` is ``True`` (the default, including
+        PostgreSQL and SQLite).  ``FLOOR()`` is now applied if either the
+        denominator or the numerator is a non-integer, so that expressions such as
+        ``float_col // int_col`` render as ``FLOOR(float_col / int_col)`` instead
+        of the incorrect ``float_col / int_col``.  Pull request courtesy r266-tech.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13203
+
+        Fixed issue where using :func:`_orm.joinedload` with
+        :meth:`.PropComparator.of_type` targeting a joined-table subclass combined
+        with :meth:`.PropComparator.and_` referencing a column on that subclass
+        would generate invalid SQL, where the subclass column was not adapted to
+        the subquery alias.  Pull request courtesy Joaquin Hui Gomez.
+
+    .. change::
+        :tags: postgresql, bug
+        :tickets: 13229
+
+        Improve handling of two phase transaction identifiers for PostgreSQL
+        when the identifier is provided by the user.
+        As part of this change the psycopg dialect was updated to use the DBAPI
+        two phase transaction API instead of executing the SQL directly.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 13230
+
+        Escape key and pragma values when utilizing the pysqlcipher dialect.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13241
+
+        Fixed issue where the asyncpg driver could throw an insufficiently-handled
+        exception ``InternalClientError`` under some circumstances, leading to
+        connections not being properly marked as invalidated.
+
+
+
+    .. change::
+        :tags: bug, mysql, reflection
+        :tickets: 13243
+
+        Narrowed the scope of the internal workaround for MySQL bugs `#88718
+        <https://bugs.mysql.com/bug.php?id=88718>`_ and `#96365
+        <https://bugs.mysql.com/bug.php?id=96365>`_ so that it is only applied
+        where needed: MySQL 8.0.1 through 8.0.13 (where bug 88718 is present), and
+        on systems with ``lower_case_table_names=2`` (where bug 96365 applies,
+        typically macOS).  Previously the workaround was applied unconditionally
+        for all MySQL 8.0+ versions, which caused a ``KeyError`` during foreign key
+        reflection when the database user lacked SELECT privileges on referred
+        tables.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13301
+
+        Fixed issue where the presence of a :meth:`.SessionEvents.do_orm_execute`
+        event hook would cause internal execution options such as ``yield_per`` and
+        loader-specific state from the first ``orm_pre_session_exec`` pass to leak
+        into the second pass, leading to errors when using relationship loaders
+        such as :func:`.selectinload` and :func:`.immediateload`.  The execution
+        options passed to the second compilation pass are now based on the original
+        options plus only the explicit updates made via
+        :meth:`.ORMExecuteState.update_execution_options` within the event hook.
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 13306
+
+        Fixed issue in aiomysql and asyncmy dialects that appears as of using
+        pymysql 1.2.0; the dialects were not properly taking into account logic
+        that detects the argument signature of pymysql's ``ping()`` method which
+        was added as part of :ticket:`10492`.
+
+
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13317
+
+        Fixed issue where the :class:`.ExcludeConstraint` construct did not
+        correctly forward the :paramref:`.ExcludeConstraint.info` parameter to
+        the superclass, causing user-defined metadata to be lost. Pull request
+        courtesy Wiktor Byrka.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13319
+
+        Fixed issue where using :func:`_orm.with_polymorphic` on a leaf class (a
+        subclass with no further descendants) or a non-inherited class would fail
+        with an ``AttributeError`` when used in an ORM statement, due to
+        :func:`_orm.configure_mappers` not being triggered implicitly. The fix
+        ensures that :class:`.AliasedInsp` participates in the ``_post_inspect``
+        hook, triggering mapper configuration during ORM statement compilation.
+
 
 .. changelog::
     :version: 2.0.49
