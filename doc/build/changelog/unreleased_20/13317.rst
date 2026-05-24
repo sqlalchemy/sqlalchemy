@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 13317
-
-    Fixed issue where the :class:`.ExcludeConstraint` construct did not
-    correctly forward the :paramref:`.ExcludeConstraint.info` parameter to
-    the superclass, causing user-defined metadata to be lost. Pull request
-    courtesy Wiktor Byrka.
-
