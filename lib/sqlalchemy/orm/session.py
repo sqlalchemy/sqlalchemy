@@ -345,7 +345,7 @@ class ORMExecuteState(util.MemoizedSlots):
     _compile_state_cls: Optional[Type[ORMCompileState]]
     _starting_event_idx: int
     _events_todo: List[Any]
-    _update_execution_options: Optional[_ExecuteOptions]
+    _update_execution_options: _ExecuteOptions
 
     def __init__(
         self,
@@ -372,6 +372,7 @@ class ORMExecuteState(util.MemoizedSlots):
         self.bind_arguments = bind_arguments
         self._compile_state_cls = compile_state_cls
         self._events_todo = list(events_todo)
+        self._update_execution_options = util.EMPTY_DICT
 
     def _remaining_events(self) -> List[_InstanceLevelDispatch[Session]]:
         return self._events_todo[self._starting_event_idx + 1 :]
@@ -643,6 +644,9 @@ class ORMExecuteState(util.MemoizedSlots):
     def update_execution_options(self, **opts: Any) -> None:
         """Update the local execution options with new values."""
         self.local_execution_options = self.local_execution_options.union(opts)
+        self._update_execution_options = self._update_execution_options.union(
+            opts
+        )
 
     def _orm_compile_options(
         self,
@@ -2176,6 +2180,17 @@ class Session(_SessionClassMethods, EventTarget):
                 events_todo = list(events_todo) + [_add_event]
 
         if events_todo:
+            # save the original execution options before
+            # orm_pre_session_exec processes them, so that we can pass
+            # the unprocessed options (plus any explicit updates from event
+            # hooks) to the second orm_pre_session_exec call.  This
+            # prevents internal state like _sa_orm_load_options and
+            # yield_per from the first call leaking into the second call,
+            # which would otherwise cause issues like yield_per incorrectly
+            # propagating into post-load (selectinload etc.) queries.
+            # part of #13301.
+            original_execution_options = execution_options
+
             if compile_state_cls is not None:
                 # for event handlers, do the orm_pre_session_exec
                 # pass ahead of the event handlers, so that things like
@@ -2214,7 +2229,13 @@ class Session(_SessionClassMethods, EventTarget):
                         return fn_result
 
             statement = orm_exec_state.statement
-            execution_options = orm_exec_state.local_execution_options
+
+            # use the original execution options plus only the explicit
+            # updates from event hooks, not the processed options from
+            # the first orm_pre_session_exec call
+            execution_options = original_execution_options.union(
+                orm_exec_state._update_execution_options
+            )
 
         if compile_state_cls is not None:
             # now run orm_pre_session_exec() "for real".   if there were
