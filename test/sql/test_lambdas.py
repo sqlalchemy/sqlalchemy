@@ -346,6 +346,34 @@ class LambdaElementTest(
         eq_(s2key[0], s4key[0])
         ne_(s1key[0], s2key[0])
 
+    def test_stmt_lambda_w_additional_non_lambda_and_closure_var(self):
+        def go(q):
+            stmt = lambdas.lambda_stmt(
+                lambda: select(column("x")).where(column("x") == q)
+            )
+            stmt = stmt.where(column("y") == column("z"))
+
+            return stmt
+
+        s1 = go(5)
+        s2 = go(10)
+
+        self.assert_compile(
+            s1,
+            "SELECT x WHERE x = :q_1 AND y = z",
+            checkparams={"q_1": 5},
+        )
+        self.assert_compile(
+            s2,
+            "SELECT x WHERE x = :q_1 AND y = z",
+            checkparams={"q_1": 10},
+        )
+
+        s1key = s1._generate_cache_key()
+        s2key = s2._generate_cache_key()
+
+        eq_(s1key[0], s2key[0])
+
     def test_stmt_lambda_w_atonce_whereclause_values_notrack(self):
         def go(col_expr, whereclause):
             stmt = lambdas.lambda_stmt(lambda: select(col_expr))

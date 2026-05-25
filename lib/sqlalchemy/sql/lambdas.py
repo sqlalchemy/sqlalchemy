@@ -313,7 +313,7 @@ class LambdaElement(elements.ClauseElement):
         return rec
 
     def __getattr__(self, key):
-        return getattr(self._rec.expected_expr, key)
+        return getattr(self._resolved, key)
 
     @property
     def _is_sequence(self):
