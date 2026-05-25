@@ -4742,7 +4742,7 @@ class Session(_SessionClassMethods, EventTarget):
 
     def bulk_insert_mappings(
         self,
-        mapper: Mapper[Any],
+        mapper: _EntityBindKey[Any],
         mappings: Iterable[Dict[str, Any]],
         return_defaults: bool = False,
         render_nulls: bool = False,
@@ -4824,7 +4824,7 @@ class Session(_SessionClassMethods, EventTarget):
         )
 
     def bulk_update_mappings(
-        self, mapper: Mapper[Any], mappings: Iterable[Dict[str, Any]]
+        self, mapper: _EntityBindKey[Any], mappings: Iterable[Dict[str, Any]]
     ) -> None:
         """Perform a bulk update of the given list of mapping dictionaries.
 
@@ -4873,7 +4873,7 @@ class Session(_SessionClassMethods, EventTarget):
 
     def _bulk_save_mappings(
         self,
-        mapper: Mapper[_O],
+        mapper: _EntityBindKey[_O],
         mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
         *,
         isupdate: bool,

@@ -10,6 +10,7 @@ from typing import Unpack
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Result
@@ -119,6 +120,12 @@ with Session(e) as sess:
 
     with sess.begin() as tx:
         assert_type(tx, SessionTransaction)
+
+    # test #9256
+    sess.bulk_insert_mappings(User, [{"id": 1, "name": "u1"}])
+    sess.bulk_update_mappings(User, [{"id": 1, "name": "u1"}])
+    sess.bulk_insert_mappings(inspect(User), [{"id": 2, "name": "u2"}])
+    sess.bulk_update_mappings(inspect(User), [{"id": 2, "name": "u2"}])
 
 # more result tests in typed_results.py
 
