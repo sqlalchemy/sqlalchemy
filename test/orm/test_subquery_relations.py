@@ -3837,3 +3837,113 @@ class Issue11173Test(fixtures.DeclarativeMappedTest):
 
                 for sub_item in sub_items:
                     eq_(sub_item.number, sub_item_number)
+
+
+class OfTypeWithCriteriaTest(fixtures.DeclarativeMappedTest):
+    """Test that .and_() criteria are preserved when combined with
+    of_type() in subqueryload.
+
+    tests #13207
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Employee(Base):
+            __tablename__ = "employee"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            company_id = Column(
+                Integer, ForeignKey("company.id"), nullable=True
+            )
+            type = Column(String(20))
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "employee",
+            }
+
+        class Engineer(Employee):
+            __tablename__ = "engineer"
+            id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
+            primary_language = Column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+            id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
+            department = Column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "manager"}
+
+        class Company(Base):
+            __tablename__ = "company"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            employees = relationship("Employee")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Company, Engineer, Manager = cls.classes(
+            "Company", "Engineer", "Manager"
+        )
+        with Session(connection) as sess:
+            c1 = Company(name="c1")
+            e1 = Engineer(name="e1", primary_language="python")
+            e2 = Engineer(name="e2", primary_language="java")
+            m1 = Manager(name="m1", department="engineering")
+            sess.add_all([c1, e1, e2, m1])
+            c1.employees = [e1, e2, m1]
+            sess.commit()
+
+    def test_subqueryload_of_type_and_criteria(self):
+        Company, Engineer = self.classes("Company", "Engineer")
+        s = fixture_session()
+
+        stmt = select(Company).options(
+            subqueryload(
+                Company.employees.of_type(Engineer).and_(
+                    Engineer.primary_language == "python"
+                )
+            )
+        )
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            result = s.scalars(stmt).all()
+            eq_(len(result), 1)
+            company = result[0]
+            eq_(len(company.employees), 1)
+            eq_(company.employees[0].name, "e1")
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT company.id, company.name FROM company",
+            ),
+            CompiledSQL(
+                "SELECT anon_1.employee_id AS anon_1_employee_id, "
+                "anon_1.employee_name AS anon_1_employee_name, "
+                "anon_1.employee_company_id "
+                "AS anon_1_employee_company_id, "
+                "anon_1.employee_type AS anon_1_employee_type, "
+                "anon_1.engineer_id AS anon_1_engineer_id, "
+                "anon_1.engineer_primary_language "
+                "AS anon_1_engineer_primary_language, "
+                "anon_2.company_id AS anon_2_company_id "
+                "FROM (SELECT company.id AS company_id "
+                "FROM company) AS anon_2 "
+                "JOIN (SELECT employee.id AS employee_id, "
+                "employee.name AS employee_name, "
+                "employee.company_id AS employee_company_id, "
+                "employee.type AS employee_type, "
+                "engineer.id AS engineer_id, "
+                "engineer.primary_language "
+                "AS engineer_primary_language "
+                "FROM employee LEFT OUTER JOIN engineer "
+                "ON employee.id = engineer.id) AS anon_1 "
+                "ON anon_2.company_id = "
+                "anon_1.employee_company_id "
+                "AND anon_1.engineer_primary_language "
+                "= :primary_language_1",
+                [{"primary_language_1": "python"}],
+            ),
+        )

@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13207
+
+    Fixed issue where :func:`_orm.subqueryload` combined with
+    :meth:`.PropComparator.of_type` and :meth:`.PropComparator.and_` would
+    silently drop the additional filter criteria, causing all related objects
+    to be loaded instead of only those matching the filter.  The
+    :class:`.LoaderCriteriaOption` was being constructed against the base
+    entity rather than the effective entity indicated by
+    :meth:`.PropComparator.of_type`.  Pull request courtesy Arya Rizky.
