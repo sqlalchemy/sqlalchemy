@@ -13,8 +13,8 @@ on:
 #   TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
 
 jobs:
-  build_source_dist_and_pure_python_wheel:
-    name: Build source dist and pure-Python wheel
+  build_pure_python_wheel:
+    name: Build pure-Python wheel
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v6
@@ -39,13 +39,13 @@ jobs:
           python-version: "3.14"
           cache: pip
 
-      - name: Build source dist and pure-Python wheel
+      - name: Build pure-Python wheel
         run: |
           python -m pip install --upgrade pip
           pip --version
           pip install build twine
           pip list
-          DISABLE_SQLALCHEMY_CEXT=y python -m build
+          DISABLE_SQLALCHEMY_CEXT=y python -m build --wheel
           twine check dist/*
 
       - uses: actions/upload-artifact@v7
@@ -53,9 +53,9 @@ jobs:
           name: packages
           path: dist/
 
-  pypi_publish_source_dist_and_pure_python_wheel:
-    needs: [build_source_dist_and_pure_python_wheel]
-    name: Upload source dist and pure-Python wheel to PyPI
+  pypi_publish_pure_python_wheel:
+    needs: [build_pure_python_wheel]
+    name: Upload pure-Python wheel to PyPI
     runs-on: ubuntu-latest
     permissions:
       id-token: write
