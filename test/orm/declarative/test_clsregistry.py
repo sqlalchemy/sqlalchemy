@@ -587,3 +587,150 @@ class ClsRegistryTest(fixtures.TestBase):
         configure_mappers()
 
         assert class_mapper(A).get_property("bs").secondary is a_to_b
+
+    @testing.variation(
+        "mapping_style", ["declarative_base", "registry_mapped"]
+    )
+    @testing.variation("relationship_style", ["backref", "back_populates"])
+    def test_backref_named_metadata(self, mapping_style, relationship_style):
+        """test that a backref or back_populates which overwrites
+        cls.metadata with a relationship collection does not break
+        _metadata_for_cls() when used in combination with string-based
+        relationship references on the same class.
+
+        Reproduces the pattern used by OpenStack Nova where a child model
+        uses backref='metadata' on a relationship to a parent class,
+        thereby shadowing the declarative 'metadata' attribute with an
+        InstrumentedList. When the parent class also has a string-based
+        secondary table reference, the class registry resolver calls
+        _metadata_for_cls() after the backref has already overwritten
+        cls.metadata.
+
+        See https://bugs.launchpad.net/nova/+bug/2154165,
+        https://github.com/sqlalchemy/sqlalchemy/discussions/8619
+        """
+
+        use_backref = bool(relationship_style.backref)
+
+        if mapping_style.declarative_base:
+            Base = declarative_base()
+
+            class InstanceMetadata(Base):
+                __tablename__ = "instance_metadata"
+                id = Column(Integer, primary_key=True)
+                instance_id = Column(Integer, ForeignKey("instance.id"))
+                if use_backref:
+                    instance = relationship("Instance", backref="metadata")
+                else:
+                    instance = relationship(
+                        "Instance",
+                        back_populates="metadata",
+                    )
+
+            class Tag(Base):
+                __tablename__ = "tag"
+                id = Column(Integer, primary_key=True)
+
+            instance_tag = Table(
+                "instance_tag",
+                Base.metadata,
+                Column(
+                    "instance_id",
+                    Integer,
+                    ForeignKey("instance.id"),
+                ),
+                Column(
+                    "tag_id",
+                    Integer,
+                    ForeignKey("tag.id"),
+                ),
+            )
+
+            ctx = (
+                expect_warnings(
+                    r"Attribute name 'metadata' should be left reserved"
+                )
+                if not use_backref
+                else nullcontext()
+            )
+            with ctx:
+
+                class Instance(Base):
+                    __tablename__ = "instance"
+                    id = Column(Integer, primary_key=True)
+                    tags = relationship("Tag", secondary="instance_tag")
+                    if not use_backref:
+                        metadata = relationship(
+                            "InstanceMetadata",
+                            back_populates="instance",
+                        )
+
+        elif mapping_style.registry_mapped:
+            reg = registry()
+
+            @reg.mapped
+            class InstanceMetadata:
+                __tablename__ = "instance_metadata"
+                id = Column(Integer, primary_key=True)
+                instance_id = Column(Integer, ForeignKey("instance.id"))
+                if use_backref:
+                    instance = relationship("Instance", backref="metadata")
+                else:
+                    instance = relationship(
+                        "Instance",
+                        back_populates="metadata",
+                    )
+
+            @reg.mapped
+            class Tag:
+                __tablename__ = "tag"
+                id = Column(Integer, primary_key=True)
+
+            instance_tag = Table(
+                "instance_tag",
+                reg.metadata,
+                Column(
+                    "instance_id",
+                    Integer,
+                    ForeignKey("instance.id"),
+                ),
+                Column(
+                    "tag_id",
+                    Integer,
+                    ForeignKey("tag.id"),
+                ),
+            )
+
+            ctx = (
+                expect_warnings(
+                    r"Attribute name 'metadata' should be left reserved"
+                )
+                if not use_backref
+                else nullcontext()
+            )
+            with ctx:
+
+                @reg.mapped
+                class Instance:
+                    __tablename__ = "instance"
+                    id = Column(Integer, primary_key=True)
+                    tags = relationship("Tag", secondary="instance_tag")
+                    if not use_backref:
+                        metadata = relationship(
+                            "InstanceMetadata",
+                            back_populates="instance",
+                        )
+
+        else:
+            mapping_style.fail()
+
+        configure_mappers()
+
+        eq_(
+            class_mapper(Instance).get_property("metadata").mapper.class_,
+            InstanceMetadata,
+        )
+        is_(
+            class_mapper(Instance).get_property("tags").secondary,
+            instance_tag,
+        )

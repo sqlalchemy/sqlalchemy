@@ -256,8 +256,7 @@ class CascadeOptions(FrozenSet[str]):
 
 def _metadata_for_cls(cls: Type[Any], registry: RegistryType) -> MetaData:
     meta = getattr(cls, "metadata", None)
-    if meta is not None:
-        assert isinstance(meta, MetaData)
+    if meta is not None and isinstance(meta, MetaData):
         return meta
     return registry.metadata
 

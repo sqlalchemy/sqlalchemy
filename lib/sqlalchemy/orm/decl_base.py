@@ -1523,6 +1523,16 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                 value = SynonymProperty(value.key)
                 setattr(cls, k, value)
 
+            if k in ("metadata", "registry"):
+                noun = {
+                    "metadata": "MetaData instance",
+                    "registry": "Declarative class registry",
+                }
+                util.warn(
+                    f"Attribute name '{k}' should be left reserved for the "
+                    f"{noun[k]} when using a Declarative class."
+                )
+
             if (
                 isinstance(value, tuple)
                 and len(value) == 1
@@ -1550,16 +1560,6 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                 if not late_mapped:
                     setattr(cls, k, value)
                 continue
-            # we expect to see the name 'metadata' in some valid cases;
-            # however at this point we see it's assigned to something trying
-            # to be mapped, so raise for that.
-            # TODO: should "registry" here be also?   might be too late
-            # to change that now (2.0 betas)
-            elif k in ("metadata",):
-                raise exc.InvalidRequestError(
-                    f"Attribute name '{k}' is reserved when using the "
-                    "Declarative API."
-                )
             elif isinstance(value, Column):
                 _undefer_column_name(
                     k, self.column_copies.get(value, value)  # type: ignore
