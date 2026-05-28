@@ -659,12 +659,16 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
 
         Base = registry.generate_base()
 
-        class A(Base):
-            __tablename__ = "a"
+        with assertions.expect_warnings(
+            "Attribute name 'registry' should be left reserved",
+        ):
 
-            registry = {"foo": "bar"}
-            id = Column(Integer, primary_key=True)
-            data = Column(String)
+            class A(Base):
+                __tablename__ = "a"
+
+                registry = {"foo": "bar"}
+                id = Column(Integer, primary_key=True)
+                data = Column(String)
 
         class SubA(A):
             pass
@@ -1775,14 +1779,9 @@ class DeclarativeMultiBaseTest(
             configure_mappers,
         )
 
-    # currently "registry" is allowed, "metadata" is not.
-    @testing.combinations(
-        ("metadata", True), ("registry", False), argnames="name, expect_raise"
-    )
+    @testing.combinations(("metadata",), ("registry",), argnames="name")
     @testing.variation("attrtype", ["column", "relationship"])
-    def test_reserved_identifiers(
-        self, decl_base, name, expect_raise, attrtype
-    ):
+    def test_reserved_identifiers(self, decl_base, name, attrtype):
         if attrtype.column:
             clsdict = {
                 "__tablename__": "user",
@@ -1804,16 +1803,12 @@ class DeclarativeMultiBaseTest(
         else:
             assert False
 
-        if expect_raise:
-            with expect_raises_message(
-                exc.InvalidRequestError,
-                f"Attribute name '{name}' is reserved "
-                "when using the Declarative API.",
-            ):
-                type("User", (decl_base,), clsdict)
-        else:
+        with assertions.expect_warnings(
+            f"Attribute name '{name}' should be left reserved",
+        ):
             User = type("User", (decl_base,), clsdict)
-            assert getattr(User, name).property
+
+        assert getattr(User, name).property
 
     def test_recompile_on_othermapper(self):
         """declarative version of the same test in mappers.py"""
