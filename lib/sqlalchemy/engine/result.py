@@ -271,6 +271,7 @@ class SimpleResultMetaData(ResultMetaData):
                 Sequence[Optional[Callable[[Any], Any]]],
             ]
         ] = None,
+        _ambiguous_keys: Optional[Sequence[str]] = None,
     ):
         self._keys = list(keys)
         self._tuplefilter = _tuplefilter
@@ -292,6 +293,16 @@ class SimpleResultMetaData(ResultMetaData):
             ]
 
         self._keymap = {key: rec for keys, rec in recs_names for key in keys}
+
+        # If the caller supplies _ambiguous_keys (a set of key names that are
+        # duplicated and therefore ambiguous), mark those entries with
+        # index=None so that key-based lookups raise InvalidRequestError,
+        # matching the CursorResultMetaData behaviour (see gh#9427).
+        if _ambiguous_keys:
+            for name in _ambiguous_keys:
+                if name in self._keymap:
+                    rec = self._keymap[name]
+                    self._keymap[name] = (None,) + rec[1:]  # type: ignore[assignment]  # noqa: E501
 
         self._processors = _processors
 
@@ -347,7 +358,17 @@ class SimpleResultMetaData(ResultMetaData):
         except KeyError as ke:
             rec = self._key_fallback(key, ke, raiseerr)
 
+        if rec[0] is None:
+            self._raise_for_ambiguous_column_name(rec)
         return rec[0]  # type: ignore[no-any-return]
+
+    def _raise_for_ambiguous_column_name(
+        self, rec: _KeyMapRecType
+    ) -> NoReturn:
+        raise exc.InvalidRequestError(
+            "Ambiguous column name '%s' in "
+            "result set column descriptions" % rec[1]
+        )
 
     def _indexes_for_keys(self, keys: Sequence[Any]) -> Sequence[int]:
         return [self._keymap[key][0] for key in keys]

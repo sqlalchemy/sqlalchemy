@@ -994,8 +994,59 @@ class ResultTest(fixtures.TestBase):
         r2 = frozen().scalars(1).unique()
         eq_(r2.fetchall(), [1, 3])
 
+    def test_ambiguous_column_raises_in_simple_result_metadata(self):
+        """SimpleResultMetaData constructed with _ambiguous_keys should
+        raise InvalidRequestError for those names, matching the behaviour of
+        CursorResultMetaData.
 
-class MergeResultTest(fixtures.TestBase):
+        Regression test for #9427.
+        """
+        # Construct directly with _ambiguous_keys to simulate the freeze path
+        meta = result.SimpleResultMetaData(
+            ["x", "x"], _ambiguous_keys=["x"]
+        )
+        res = result.IteratorResult(meta, iter([(4, 2)]))
+        row = res.fetchone()
+        assert row is not None
+
+        # integer access is unambiguous
+        eq_(row[0], 4)
+        eq_(row[1], 2)
+
+        # key access must raise
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name 'x'",
+            lambda: row._mapping["x"],
+        )
+
+    def test_frozen_ambiguous_column_raises(self):
+        """After freeze(), the thawed SimpleResultMetaData should also
+        raise for ambiguous column names (regression for #9427).
+        """
+        import sqlalchemy as sa
+
+        engine = sa.create_engine("sqlite://", echo=False)
+
+        q = sa.select(sa.literal(4).label("x"), sa.literal(2).label("x"))
+        with engine.connect() as conn:
+            # Live CursorResult already raises.
+            r = conn.execute(q)
+            frozen = r.freeze()
+
+        # Thaw it — uses SimpleResultMetaData
+        thawed = frozen()
+        row = thawed.mappings().fetchone()
+        assert row is not None
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name 'x'",
+            lambda: row["x"],
+        )
+
+
+
     @testing.fixture
     def merge_fixture(self):
         r1 = result.IteratorResult(
