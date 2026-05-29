@@ -327,6 +327,7 @@ sys_indexes = Table(
     Column("is_unique", Boolean),
     Column("is_primary_key", Boolean),
     Column("is_unique_constraint", Boolean),
+    Column("filter_definition", CoerceUnicode),
     schema="sys",
 )
 

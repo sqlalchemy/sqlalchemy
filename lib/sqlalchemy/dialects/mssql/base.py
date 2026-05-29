@@ -4469,48 +4469,109 @@ index_info AS (
 
         return result.items()
 
+    def _indexes_metadata_select(self):
+        """Build the Core sys.* select for index metadata (one row per
+        index per table).
+
+        Used by :meth:`._fetch_multi_indexes` for both the main-DB pass
+        and the tempdb pass (via ``schema_translate_map``). Replaces a
+        previous ``sql.text()`` body that did not honor
+        ``schema_translate_map`` (which only rewrites Core
+        schema-bearing objects, not literal SQL text).
+        """
+        sys_indexes = ischema.sys_indexes
+        sys_objects = ischema.sys_objects
+        sys_schemas = ischema.sys_schemas
+
+        if self.server_version_info >= MS_2008_VERSION:
+            filter_definition = sys_indexes.c.filter_definition
+        else:
+            filter_definition = sql.null()
+
+        s = (
+            sql.select(
+                sys_objects.c.name.label("table_name"),
+                sys_indexes.c.index_id,
+                sys_indexes.c.is_unique,
+                sys_indexes.c.name,
+                sys_indexes.c.type,
+                filter_definition.label("filter_definition"),
+            )
+            .select_from(sys_indexes)
+            .join(
+                sys_objects,
+                onclause=sys_indexes.c.object_id == sys_objects.c.object_id,
+            )
+            .join(
+                sys_schemas,
+                onclause=sys_schemas.c.schema_id == sys_objects.c.schema_id,
+            )
+            .where(sys_indexes.c.is_primary_key == 0)
+            .where(sys_indexes.c.type != 0)
+            .order_by(sys_objects.c.name, sys_indexes.c.name)
+        )
+        return s
+
+    def _indexes_columns_select(self):
+        """Build the Core sys.* select for index columns (one row per
+        index column per index per table)."""
+        sys_index_columns = ischema.sys_index_columns
+        sys_columns = ischema.sys_columns
+        sys_objects = ischema.sys_objects
+        sys_schemas = ischema.sys_schemas
+
+        s = (
+            sql.select(
+                sys_objects.c.name.label("table_name"),
+                sys_index_columns.c.index_id,
+                sys_columns.c.name,
+                sys_index_columns.c.is_included_column,
+            )
+            .select_from(sys_index_columns)
+            .join(
+                sys_columns,
+                onclause=sql.and_(
+                    sys_columns.c.object_id == sys_index_columns.c.object_id,
+                    sys_columns.c.column_id == sys_index_columns.c.column_id,
+                ),
+            )
+            .join(
+                sys_objects,
+                onclause=sys_objects.c.object_id
+                == sys_index_columns.c.object_id,
+            )
+            .join(
+                sys_schemas,
+                onclause=sys_schemas.c.schema_id == sys_objects.c.schema_id,
+            )
+            .order_by(
+                sys_objects.c.name,
+                sys_index_columns.c.index_id,
+                sys_index_columns.c.key_ordinal,
+            )
+        )
+        return s
+
     def _fetch_multi_indexes(
         self, connection, owner, names, schema, name_map, result, exec_opts
     ):
         """Execute the unified indexes queries for one catalog pass.
 
-        Runs two text() queries against ``sys.*`` (the indexes
-        metadata and the index_columns list), grouped by table. Used
-        for both the main-DB pass and the tempdb pass (with
-        ``schema_translate_map={"sys": "tempdb.sys"}`` applied).
+        Runs two Core sys.* selects (index metadata + index columns),
+        grouped by table. Used for both the main-DB pass and the
+        tempdb pass (with ``schema_translate_map={"sys": "tempdb.sys"}``
+        applied).
         """
-        filter_definition = (
-            "ind.filter_definition"
-            if self.server_version_info >= MS_2008_VERSION
-            else "NULL as filter_definition"
-        )
-
         opts_connection = connection.execution_options(**exec_opts)
 
-        rp = opts_connection.execution_options(future_result=True).execute(
-            sql.text(f"""
-SELECT
-    tab.name AS table_name,
-    ind.index_id,
-    ind.is_unique,
-    ind.name,
-    ind.type,
-    {filter_definition}
-FROM sys.indexes ind
-JOIN sys.objects tab ON ind.object_id = tab.object_id
-JOIN sys.schemas sch ON sch.schema_id = tab.schema_id
-WHERE sch.name = :owner
-  AND ind.is_primary_key = 0
-  AND ind.type != 0
-  AND tab.name IN :filter_names
-ORDER BY tab.name, ind.name
-""")
-            .bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
-            )
-            .columns(name=sqltypes.Unicode())
+        meta_q = self._indexes_metadata_select().where(
+            ischema.sys_schemas.c.name == owner,
+            ischema.sys_objects.c.name.in_(
+                sql.bindparam("filter_names", expanding=True)
+            ),
         )
+
+        rp = opts_connection.execute(meta_q, {"filter_names": names})
 
         # {table_name: {index_id: index_dict}}
         indexes_by_table = {}
@@ -4538,29 +4599,14 @@ ORDER BY tab.name, ind.name
 
             indexes_by_table[tname][row["index_id"]] = current
 
-        rp2 = opts_connection.execution_options(future_result=True).execute(
-            sql.text("""
-SELECT
-    tab.name AS table_name,
-    ind_col.index_id,
-    col.name,
-    ind_col.is_included_column
-FROM sys.index_columns ind_col
-JOIN sys.columns col
-    ON col.object_id = ind_col.object_id
-    AND col.column_id = ind_col.column_id
-JOIN sys.objects tab ON tab.object_id = ind_col.object_id
-JOIN sys.schemas sch ON sch.schema_id = tab.schema_id
-WHERE sch.name = :owner
-  AND tab.name IN :filter_names
-ORDER BY tab.name, ind_col.index_id, ind_col.key_ordinal
-""")
-            .bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
-            )
-            .columns(name=sqltypes.Unicode())
+        cols_q = self._indexes_columns_select().where(
+            ischema.sys_schemas.c.name == owner,
+            ischema.sys_objects.c.name.in_(
+                sql.bindparam("filter_names", expanding=True)
+            ),
         )
+
+        rp2 = opts_connection.execute(cols_q, {"filter_names": names})
 
         for row in rp2.mappings():
             tname = name_map(row["table_name"])
@@ -4663,27 +4709,52 @@ ORDER BY tab.name, ind_col.index_id, ind_col.key_ordinal
 
         return result.items()
 
+    def _table_comment_select(self):
+        """Build the Core sys.* select for table comment reflection."""
+        sys_objects = ischema.sys_objects
+        sys_schemas = ischema.sys_schemas
+        extended_properties = ischema.extended_properties
+
+        s = (
+            sql.select(
+                sys_objects.c.name.label("table_name"),
+                extended_properties.c.value.label("comment"),
+            )
+            .select_from(sys_objects)
+            .join(
+                sys_schemas,
+                onclause=sys_objects.c.schema_id == sys_schemas.c.schema_id,
+            )
+            .outerjoin(
+                extended_properties,
+                onclause=sql.and_(
+                    extended_properties.c["class"] == 1,
+                    extended_properties.c.name == "MS_Description",
+                    extended_properties.c.major_id == sys_objects.c.object_id,
+                    extended_properties.c.minor_id == 0,
+                ),
+            )
+            .where(sys_objects.c.type.in_(("U", "V")))
+        )
+        return s
+
     def _fetch_multi_table_comment(
         self, connection, owner, names, schema, name_map, result, exec_opts
     ):
-        """Execute the unified table comment query for one catalog pass."""
+        """Execute the unified table comment query for one catalog pass.
+
+        Core sys.* select so ``schema_translate_map`` actually rewrites
+        the catalog reference for the tempdb pass.
+        """
+        q = self._table_comment_select().where(
+            ischema.sys_schemas.c.name == owner,
+            ischema.sys_objects.c.name.in_(
+                sql.bindparam("filter_names", expanding=True)
+            ),
+        )
+
         rp = connection.execution_options(**exec_opts).execute(
-            sql.text("""
-SELECT
-    o.name AS table_name,
-    CAST(ep.value AS NVARCHAR(MAX)) AS comment
-FROM sys.objects o
-JOIN sys.schemas s ON o.schema_id = s.schema_id
-LEFT JOIN sys.extended_properties ep
-    ON ep.class = 1 AND ep.name = 'MS_Description'
-    AND ep.major_id = o.object_id AND ep.minor_id = 0
-WHERE s.name = :owner
-  AND o.type IN ('U', 'V')
-  AND o.name IN :filter_names
-""").bindparams(
-                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
-                sql.bindparam("filter_names", names, expanding=True),
-            )
+            q, {"filter_names": names}
         )
 
         for row in rp.mappings():
