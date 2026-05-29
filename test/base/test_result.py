@@ -994,6 +994,22 @@ class ResultTest(fixtures.TestBase):
         r2 = frozen().scalars(1).unique()
         eq_(r2.fetchall(), [1, 3])
 
+    def test_ambiguous_key_raises(self):
+        meta = result.SimpleResultMetaData(
+            ["x", "x"], _ambiguous_keys=frozenset(["x"])
+        )
+        res_obj = result.IteratorResult(meta, iter([(4, 2)]))
+        row = res_obj.fetchone()
+
+        eq_(row[0], 4)
+        eq_(row[1], 2)
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name 'x'",
+            lambda: row._mapping["x"],
+        )
+
 
 class MergeResultTest(fixtures.TestBase):
     @testing.fixture

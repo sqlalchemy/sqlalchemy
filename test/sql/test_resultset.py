@@ -1242,7 +1242,37 @@ class CursorResultTest(fixtures.TablesTest):
         )
 
     @testing.requires.duplicate_names_in_cursor_description
-    def test_ambiguous_column(self, connection):
+    @testing.variation(
+        "scenario", ["plain", "pickled", "frozen", "frozen_pickled"]
+    )
+    def test_ambiguous_column(self, connection, scenario):
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
+        result = connection.execute(
+            users.outerjoin(addresses)
+            .select()
+            .set_label_style(LABEL_STYLE_NONE)
+        )
+
+        if scenario.frozen or scenario.frozen_pickled:
+            frozen = result.freeze()
+            result = frozen()
+
+        r = result.first()
+
+        if scenario.pickled or scenario.frozen_pickled:
+            r = pickle.loads(pickle.dumps(r))
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: r._mapping["user_id"],
+        )
+
+    @testing.requires.duplicate_names_in_cursor_description
+    def test_ambiguous_column_getter(self, connection):
         users = self.tables.users
         addresses = self.tables.addresses
 
@@ -1257,12 +1287,6 @@ class CursorResultTest(fixtures.TablesTest):
         assert_raises_message(
             exc.InvalidRequestError,
             "Ambiguous column name",
-            lambda: r._mapping["user_id"],
-        )
-
-        assert_raises_message(
-            exc.InvalidRequestError,
-            "Ambiguous column name",
             result._getter,
             "user_id",
         )
@@ -1273,20 +1297,24 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(r._mapping[users.c.user_id], 1)
         eq_(r._mapping[addresses.c.user_id], None)
 
-        # try to trick it - fake_table isn't in the result!
-        # we get the correct error
+    @testing.requires.duplicate_names_in_cursor_description
+    def test_ambiguous_column_fake_table(self, connection):
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
+        result = connection.execute(
+            users.outerjoin(addresses)
+            .select()
+            .set_label_style(LABEL_STYLE_NONE)
+        )
+        r = result.first()
+
         fake_table = Table("fake", MetaData(), Column("user_id", Integer))
         assert_raises_message(
             exc.InvalidRequestError,
             "Could not locate column in row for column 'fake.user_id'",
             lambda: r._mapping[fake_table.c.user_id],
-        )
-
-        r = pickle.loads(pickle.dumps(r))
-        assert_raises_message(
-            exc.InvalidRequestError,
-            "Ambiguous column name",
-            lambda: r._mapping["user_id"],
         )
 
     @testing.requires.duplicate_names_in_cursor_description
