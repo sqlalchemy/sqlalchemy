@@ -183,17 +183,18 @@ class CursorResultMetaData(ResultMetaData):
         return key in self._keymap
 
     def _for_freeze(self) -> ResultMetaData:
-        # collect any key names whose index is None (ambiguous duplicates)
-        # so that SimpleResultMetaData can preserve the ambiguity flag
-        ambiguous = [
-            key
-            for key in self._keys
-            if self._keymap.get(key, (1,))[MD_INDEX] is None
-        ]
+        # Collect string key names that are marked ambiguous (MD_INDEX is None)
+        # by scanning the full keymap; this catches all aliases/objects that
+        # CursorResultMetaData marks ambiguous, not just those in _keys.
+        ambiguous = {
+            rec[MD_LOOKUP_KEY]
+            for rec in self._keymap.values()
+            if rec[MD_INDEX] is None
+        }
         return SimpleResultMetaData(
             self._keys,
             extra=[self._keymap[key][MD_OBJECTS] for key in self._keys],
-            _ambiguous_keys=ambiguous if ambiguous else None,
+            _ambiguous_keys=list(ambiguous) if ambiguous else None,
         )
 
     def _make_new_metadata(

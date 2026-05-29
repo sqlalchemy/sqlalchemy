@@ -254,6 +254,7 @@ class SimpleResultMetaData(ResultMetaData):
         "_translated_indexes",
         "_create_unique_filters",
         "_key_to_index",
+        "_ambiguous_keys",
     )
 
     _keys: Sequence[str]
@@ -306,6 +307,8 @@ class SimpleResultMetaData(ResultMetaData):
 
         self._processors = _processors
 
+        self._ambiguous_keys = list(_ambiguous_keys) if _ambiguous_keys else None
+
         self._key_to_index = self._make_key_to_index(self._keymap, 0)
 
     def _has_key(self, key: object) -> bool:
@@ -330,12 +333,14 @@ class SimpleResultMetaData(ResultMetaData):
             self._keys,
             extra=[self._keymap[key][2] for key in self._keys],
             _create_unique_filters=create_unique_filters,
+            _ambiguous_keys=self._ambiguous_keys,
         )
 
     def __getstate__(self) -> Dict[str, Any]:
         return {
             "_keys": self._keys,
             "_translated_indexes": self._translated_indexes,
+            "_ambiguous_keys": self._ambiguous_keys,
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
@@ -348,6 +353,7 @@ class SimpleResultMetaData(ResultMetaData):
             state["_keys"],
             _translated_indexes=_translated_indexes,
             _tuplefilter=_tuplefilter,
+            _ambiguous_keys=state.get("_ambiguous_keys"),
         )
 
     def _index_for_key(self, key: Any, raiseerr: bool = True) -> int:

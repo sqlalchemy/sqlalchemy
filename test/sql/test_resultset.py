@@ -3906,3 +3906,52 @@ class GenerativeResultTest(fixtures.TablesTest):
             start += 20
 
         assert result._soft_closed
+
+
+class AmbiguousColumnFreezeTest(fixtures.TestBase):
+    """Tests for gh#9427 — ambiguous duplicate column names must raise
+    after freeze()/thaw() just as they do in the live CursorResult."""
+
+    __requires__ = ("sqlite",)
+
+    def test_ambiguous_key_raises_in_simple_result_metadata(self):
+        """SimpleResultMetaData built with _ambiguous_keys raises
+        InvalidRequestError on key-based access, matching CursorResultMetaData.
+        """
+        from sqlalchemy.engine import result as _result
+
+        meta = SimpleResultMetaData(["x", "x"], _ambiguous_keys=["x"])
+        res_obj = _result.IteratorResult(meta, iter([(4, 2)]))
+        row = res_obj.fetchone()
+        assert row is not None
+
+        # positional access is unambiguous
+        eq_(row[0], 4)
+        eq_(row[1], 2)
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name 'x'",
+            lambda: row._mapping["x"],
+        )
+
+    def test_frozen_ambiguous_column_raises(self, connection):
+        """After freeze()/thaw() the SimpleResultMetaData must still raise
+        InvalidRequestError for duplicate column names (regression for #9427).
+        """
+        q = select(literal(4).label("x"), literal(2).label("x"))
+
+        # Live result already raises — freeze it before consuming
+        r = connection.execute(q)
+        frozen = r.freeze()
+
+        # Thaw produces a SimpleResultMetaData-backed result
+        thawed = frozen()
+        row = thawed.mappings().fetchone()
+        assert row is not None
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name 'x'",
+            lambda: row["x"],
+        )
