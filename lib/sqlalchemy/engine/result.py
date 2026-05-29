@@ -267,6 +267,7 @@ class SimpleResultMetaData(ResultMetaData):
         "_translated_indexes",
         "_unique_filters",
         "_key_to_index",
+        "_ambiguous_keys",
     )
 
     _keys: Sequence[str]
@@ -279,6 +280,7 @@ class SimpleResultMetaData(ResultMetaData):
         _tuplefilter: Optional[_TupleGetterType] = None,
         _translated_indexes: Optional[Sequence[int]] = None,
         _unique_filters: Optional[Sequence[Callable[[Any], Any]]] = None,
+        _ambiguous_keys: Optional[frozenset[str]] = None,
     ):
         self._keys = list(keys)
         self._tuplefilter = _tuplefilter
@@ -300,7 +302,14 @@ class SimpleResultMetaData(ResultMetaData):
 
         self._keymap = {key: rec for keys, rec in recs_names for key in keys}
 
+        if _ambiguous_keys:
+            for name in _ambiguous_keys.intersection(self._keymap):
+                rec = self._keymap[name]
+                self._keymap[name] = (None,) + rec[1:]
+
         self._processors = _processors
+
+        self._ambiguous_keys = _ambiguous_keys
 
         self._key_to_index = self._make_key_to_index(self._keymap, 0)
 
@@ -318,12 +327,14 @@ class SimpleResultMetaData(ResultMetaData):
             self._keys,
             extra=[self._keymap[key][2] for key in self._keys],
             _unique_filters=unique_filters,
+            _ambiguous_keys=self._ambiguous_keys,
         )
 
     def __getstate__(self) -> Dict[str, Any]:
         return {
             "_keys": self._keys,
             "_translated_indexes": self._translated_indexes,
+            "_ambiguous_keys": self._ambiguous_keys,
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
@@ -336,6 +347,7 @@ class SimpleResultMetaData(ResultMetaData):
             state["_keys"],
             _translated_indexes=_translated_indexes,
             _tuplefilter=_tuplefilter,
+            _ambiguous_keys=state.get("_ambiguous_keys"),
         )
 
     def _index_for_key(self, key: Any, raiseerr: bool = True) -> int:
@@ -346,9 +358,21 @@ class SimpleResultMetaData(ResultMetaData):
         except KeyError as ke:
             rec = self._key_fallback(key, ke, raiseerr)
 
+        if rec[0] is None:
+            self._raise_for_ambiguous_column_name(rec)
         return rec[0]  # type: ignore[no-any-return]
 
+    def _raise_for_ambiguous_column_name(
+        self, rec: _KeyMapRecType
+    ) -> NoReturn:
+        raise exc.InvalidRequestError(
+            "Ambiguous column name '%s' in "
+            "result set column descriptions" % rec[1]
+        )
+
     def _indexes_for_keys(self, keys: Sequence[Any]) -> Sequence[int]:
+        # only used by the ORM with Column objects; does not need
+        # ambiguous column name support
         return [self._keymap[key][0] for key in keys]
 
     def _metadata_for_keys(
@@ -362,6 +386,9 @@ class SimpleResultMetaData(ResultMetaData):
                 rec = self._keymap[key]
             except KeyError as ke:
                 rec = self._key_fallback(key, ke, True)
+
+            if rec[0] is None:
+                self._raise_for_ambiguous_column_name(rec)
 
             yield rec
 
