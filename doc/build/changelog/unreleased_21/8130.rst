@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 8130
+
+    Added :meth:`_sql.Delete.using`, allowing explicit FROM expressions such
+    as joins to be rendered in backend-specific multiple-table DELETE forms
+    including MySQL/MariaDB ``DELETE .. USING``.
