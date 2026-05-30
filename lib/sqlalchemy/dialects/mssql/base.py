@@ -961,6 +961,7 @@ from __future__ import annotations
 
 import codecs
 import datetime
+from functools import lru_cache
 import operator
 import re
 from typing import Any
@@ -3631,6 +3632,7 @@ class MSDialect(default.DefaultDialect):
 
         return cdict
 
+    @lru_cache()
     def _columns_select(self):
         """Build the unified Core sys.* select for column reflection.
 
@@ -4161,6 +4163,7 @@ index_info AS (
 
         return result.items()
 
+    @lru_cache()
     def _pk_constraint_select(self):
         """Build the unified Core sys.* select for PK constraint reflection.
 
@@ -4471,6 +4474,7 @@ index_info AS (
 
         return result.items()
 
+    @lru_cache()
     def _indexes_metadata_select(self):
         """Build the Core sys.* select for index metadata (one row per
         index per table).
@@ -4514,6 +4518,7 @@ index_info AS (
         )
         return s
 
+    @lru_cache()
     def _indexes_columns_select(self):
         """Build the Core sys.* select for index columns (one row per
         index column per index per table)."""
@@ -4717,6 +4722,7 @@ index_info AS (
 
         return result.items()
 
+    @lru_cache()
     def _table_comment_select(self):
         """Build the Core sys.* select for table comment reflection."""
         sys_objects = ischema.sys_objects
