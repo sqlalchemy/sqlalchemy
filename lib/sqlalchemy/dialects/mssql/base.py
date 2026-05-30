@@ -4027,8 +4027,9 @@ index_info AS (
         )
 
         rp = connection.execute(
-            s.execution_options(**exec_opts),
+            s,
             {"filter_names": names},
+            execution_options=exec_opts,
         )
 
         for row in rp.mappings():
@@ -4243,8 +4244,9 @@ index_info AS (
         )
 
         rp = connection.execute(
-            s.execution_options(**exec_opts),
+            s,
             {"filter_names": names},
+            execution_options=exec_opts,
         )
 
         for row in rp.mappings():
@@ -4570,8 +4572,9 @@ index_info AS (
         )
 
         rp = connection.execute(
-            meta_q.execution_options(**exec_opts),
+            meta_q,
             {"filter_names": names},
+            execution_options=exec_opts,
         )
 
         # {table_name: {index_id: index_dict}}
@@ -4608,8 +4611,9 @@ index_info AS (
         )
 
         rp2 = connection.execute(
-            cols_q.execution_options(**exec_opts),
+            cols_q,
             {"filter_names": names},
+            execution_options=exec_opts,
         )
 
         for row in rp2.mappings():
@@ -4758,7 +4762,7 @@ index_info AS (
         )
 
         rp = connection.execute(
-            q.execution_options(**exec_opts), {"filter_names": names}
+            q, {"filter_names": names}, execution_options=exec_opts
         )
 
         for row in rp.mappings():

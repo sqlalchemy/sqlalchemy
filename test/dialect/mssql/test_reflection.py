@@ -383,8 +383,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         applied on the caller's connection.
 
         The unified multi reflection path runs the tempdb pass with
-        ``schema_translate_map={"sys": "tempdb.sys"}`` as a statement
-        execution option. Applying it on the connection (e.g. via
+        ``schema_translate_map={"sys": "tempdb.sys"}`` as an
+        execute-level option. Applying it on the connection (e.g. via
         ``connection.execution_options(...)``) mutates the connection
         in place and poisons subsequent Core sys.* queries.
         """
@@ -423,6 +423,48 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         after = dict(connection.get_execution_options())
         eq_(before, after)
+
+    def test_temp_reflection_with_caller_translate_map(
+        self, metadata, connection
+    ):
+        """Temp table reflection must work even when the caller has a
+        ``schema_translate_map`` set on the connection that contains a
+        ``"sys"`` key.
+
+        Statement-level execution options DO NOT override connection
+        options for ``schema_translate_map`` (the connection wins
+        during option merge). Execute-level options DO override, so the
+        tempdb pass must pass its map at execute time, not on the
+        statement or the connection.
+        """
+        tt = Table(
+            "#mr_hostile_map",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("val", Integer),
+        )
+        tt.create(connection)
+
+        # Hostile setup: caller has set a translate_map with a "sys"
+        # key for their own purposes. Our temp pass must still reach
+        # tempdb.sys.* despite this.
+        hostile = connection.execution_options(
+            schema_translate_map={"sys": "INFORMATION_SCHEMA"}
+        )
+
+        insp = inspect(hostile)
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_hostile_map"],
+                scope=ObjectScope.ANY,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        eq_(set(r.keys()), {(None, "#mr_hostile_map")})
+        eq_(
+            [c["name"] for c in r[(None, "#mr_hostile_map")]],
+            ["id", "val"],
+        )
 
     @testing.combinations(
         ("local_temp", "#tmp", True),
