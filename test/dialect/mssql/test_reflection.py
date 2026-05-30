@@ -376,6 +376,54 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         )
         in_((None, "#mr_pk_tmp"), r)
 
+    def test_temp_reflection_does_not_leak_translate_map(
+        self, metadata, connection
+    ):
+        """Reflecting a temp table must not leave ``schema_translate_map``
+        applied on the caller's connection.
+
+        The unified multi reflection path runs the tempdb pass with
+        ``schema_translate_map={"sys": "tempdb.sys"}`` as a statement
+        execution option. Applying it on the connection (e.g. via
+        ``connection.execution_options(...)``) mutates the connection
+        in place and poisons subsequent Core sys.* queries.
+        """
+        tt = Table(
+            "#mr_leak_tmp",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", mssql.NVARCHAR(50)),
+        )
+        tt.create(connection)
+
+        before = dict(connection.get_execution_options())
+
+        insp = inspect(connection)
+        # Each of these would route via the tempdb pass.
+        insp.get_multi_columns(
+            filter_names=["#mr_leak_tmp"],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.TABLE,
+        )
+        insp.get_multi_pk_constraint(
+            filter_names=["#mr_leak_tmp"],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.TABLE,
+        )
+        insp.get_multi_indexes(
+            filter_names=["#mr_leak_tmp"],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.TABLE,
+        )
+        insp.get_multi_table_comment(
+            filter_names=["#mr_leak_tmp"],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.TABLE,
+        )
+
+        after = dict(connection.get_execution_options())
+        eq_(before, after)
+
     @testing.combinations(
         ("local_temp", "#tmp", True),
         ("global_temp", "##tmp", True),

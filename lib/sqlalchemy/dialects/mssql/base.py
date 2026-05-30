@@ -4026,8 +4026,8 @@ index_info AS (
             ),
         )
 
-        rp = connection.execution_options(**exec_opts).execute(
-            s,
+        rp = connection.execute(
+            s.execution_options(**exec_opts),
             {"filter_names": names},
         )
 
@@ -4242,8 +4242,8 @@ index_info AS (
             ),
         )
 
-        rp = connection.execution_options(**exec_opts).execute(
-            s,
+        rp = connection.execute(
+            s.execution_options(**exec_opts),
             {"filter_names": names},
         )
 
@@ -4562,8 +4562,6 @@ index_info AS (
         tempdb pass (with ``schema_translate_map={"sys": "tempdb.sys"}``
         applied).
         """
-        opts_connection = connection.execution_options(**exec_opts)
-
         meta_q = self._indexes_metadata_select().where(
             ischema.sys_schemas.c.name == owner,
             ischema.sys_objects.c.name.in_(
@@ -4571,7 +4569,10 @@ index_info AS (
             ),
         )
 
-        rp = opts_connection.execute(meta_q, {"filter_names": names})
+        rp = connection.execute(
+            meta_q.execution_options(**exec_opts),
+            {"filter_names": names},
+        )
 
         # {table_name: {index_id: index_dict}}
         indexes_by_table = {}
@@ -4606,7 +4607,10 @@ index_info AS (
             ),
         )
 
-        rp2 = opts_connection.execute(cols_q, {"filter_names": names})
+        rp2 = connection.execute(
+            cols_q.execution_options(**exec_opts),
+            {"filter_names": names},
+        )
 
         for row in rp2.mappings():
             tname = name_map(row["table_name"])
@@ -4753,8 +4757,8 @@ index_info AS (
             ),
         )
 
-        rp = connection.execution_options(**exec_opts).execute(
-            q, {"filter_names": names}
+        rp = connection.execute(
+            q.execution_options(**exec_opts), {"filter_names": names}
         )
 
         for row in rp.mappings():
