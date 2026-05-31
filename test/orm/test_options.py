@@ -1908,8 +1908,16 @@ class MapperOptionsTest(_fixtures.FixtureTest):
                 joinedload(User.orders),
                 contains_eager(User.orders),
             ),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.orders -> Mapper\[Order\(orders\)\]\] conflict",
+            r"Loader strategy replacement "
+            r"_AttributeStrategyLoad\(path="
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.orders -> "
+            r"Mapper\[Order\(orders\)\]\], "
+            r"lazy=joined, local_opts=\{\'eager_from_alias\': None\}\) "
+            r"is in conflict with existing strategy "
+            r"_AttributeStrategyLoad\(path="
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.orders -> "
+            r"Mapper\[Order\(orders\)\]\], "
+            r"lazy=joined\)",
         ),
         (
             lambda User, Order: (
@@ -1925,13 +1933,25 @@ class MapperOptionsTest(_fixtures.FixtureTest):
                     Order.items
                 ),
             ),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.orders -> Mapper\[Order\(orders\)\]\] conflict",
+            r"Loader strategy replacement _AttributeStrategyLoad\(path="
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.orders -> "
+            r"Mapper\[Order\(orders\)\]\], "
+            r"lazy=joined, local_opts=\{\'innerjoin\': True\}\) "
+            r"is in conflict with existing strategy "
+            r"_AttributeStrategyLoad\(path="
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.orders -> "
+            r"Mapper\[Order\(orders\)\]\], "
+            r"lazy=joined\)",
         ),
         (
             lambda User: (defer(User.name), undefer(User.name)),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.name\] conflict",
+            r"Loader strategy replacement _AttributeStrategyLoad\(path="
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.name\], "
+            r"deferred=False, instrument=True\) "
+            r"is in conflict with existing strategy "
+            r"_AttributeStrategyLoad\(path="
+            r"ORM Path\[Mapper\[User\(users\)\] -> User.name\], "
+            r"deferred=True, instrument=True\)",
         ),
     )
     def test_conflicts(self, make_opt, errmsg):
