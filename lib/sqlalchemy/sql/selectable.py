@@ -4956,42 +4956,28 @@ class SelectState(util.MemoizedSlots, CompileState):
         if self.statement._correlate:
             to_correlate = self.statement._correlate
             if to_correlate:
-                froms = [
-                    f
-                    for f in froms
-                    if f
-                    not in _cloned_intersection(
-                        _cloned_intersection(
-                            froms, explicit_correlate_froms or ()
-                        ),
-                        to_correlate,
-                    )
-                ]
-
-        if self.statement._correlate_except is not None:
-            froms = [
-                f
-                for f in froms
-                if f
-                not in _cloned_difference(
+                to_remove = _cloned_intersection(
                     _cloned_intersection(
                         froms, explicit_correlate_froms or ()
                     ),
-                    self.statement._correlate_except,
+                    to_correlate,
                 )
-            ]
+                froms = [f for f in froms if f not in to_remove]
+
+        if self.statement._correlate_except is not None:
+            to_remove = _cloned_difference(
+                _cloned_intersection(froms, explicit_correlate_froms or ()),
+                self.statement._correlate_except,
+            )
+            froms = [f for f in froms if f not in to_remove]
 
         if (
             self.statement._auto_correlate
             and implicit_correlate_froms
             and len(froms) > 1
         ):
-            froms = [
-                f
-                for f in froms
-                if f
-                not in _cloned_intersection(froms, implicit_correlate_froms)
-            ]
+            to_remove = _cloned_intersection(froms, implicit_correlate_froms)
+            froms = [f for f in froms if f not in to_remove]
 
             if not len(froms):
                 raise exc.InvalidRequestError(
