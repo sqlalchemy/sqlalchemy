@@ -4230,21 +4230,38 @@ class M2MOmitJoinTest(
     def test_m2m_selectin_no_duplicate_children(
         self, simple_m2m, connection
     ):
-        """selectinload over m2m must not produce duplicate items in the
-        parent's collection when no nested joinedload is present (omit_join
-        fast path).
+        """selectinload over m2m (omit_join fast path) must load the correct
+        collection members and must not produce duplicate items.
+
+        The simple_m2m fixture has a1.bs=[b1,b2] and a2.bs=[b1].
         """
         A = simple_m2m
 
         with Session(connection) as session:
-            results = (
-                session.execute(
+
+            def go():
+                statement = (
                     select(A).options(selectinload(A.bs)).order_by(A.id)
                 )
-                .scalars()
-                .all()
+                return session.execute(statement).scalars().all()
+
+            results = self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+                CompiledSQL(
+                    "SELECT a_b.a_id, b.id "
+                    "FROM a_b JOIN b ON b.id = a_b.b_id "
+                    "WHERE a_b.a_id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [1, 2]},
+                ),
             )
 
+        eq_(sorted(b.id for b in results[0].bs), [1, 2])
+        eq_(sorted(b.id for b in results[1].bs), [1])
+
+        # belt-and-suspenders: no duplicates in either collection
         for a in results:
             b_ids = [b.id for b in a.bs]
             assert len(b_ids) == len(set(b_ids)), (
