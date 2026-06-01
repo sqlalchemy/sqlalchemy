@@ -4227,9 +4227,7 @@ class M2MOmitJoinTest(
                 [3],
             )
 
-    def test_m2m_selectin_no_duplicate_children(
-        self, simple_m2m, connection
-    ):
+    def test_m2m_selectin_no_duplicate_children(self, simple_m2m, connection):
         """selectinload over m2m (omit_join fast path) must load the correct
         collection members and must not produce duplicate items.
 
@@ -4264,9 +4262,9 @@ class M2MOmitJoinTest(
         # belt-and-suspenders: no duplicates in either collection
         for a in results:
             b_ids = [b.id for b in a.bs]
-            assert len(b_ids) == len(set(b_ids)), (
-                f"A id={a.id} has duplicate bs: {b_ids}"
-            )
+            assert len(b_ids) == len(
+                set(b_ids)
+            ), f"A id={a.id} has duplicate bs: {b_ids}"
 
 
 class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
@@ -4541,7 +4539,8 @@ class TestSelectinWithNestedJoinedCollectionDedup(
 
     def test_selectin_with_nested_joined_collection_still_dedupes(self):
         """Regression: selectinload(...).joinedload(...) on a collection must
-        continue to dedupe inner rows after the conditional-unique optimization.
+        continue to dedupe inner rows after the conditional-unique
+        optimization.
         """
         User, Address, Dingaling = self.classes("User", "Address", "Dingaling")
         sess = fixture_session()
@@ -4570,9 +4569,9 @@ class TestSelectinWithNestedJoinedCollectionDedup(
         # raise InvalidRequestError.  The assertions below are belt-and-
         # suspenders for if the conditional logic changes.
         address_ids = [a.id for a in u1.addresses]
-        assert len(address_ids) == len(set(address_ids)), (
-            f"user {u1.id} has duplicate addresses: {address_ids}"
-        )
+        assert len(address_ids) == len(
+            set(address_ids)
+        ), f"user {u1.id} has duplicate addresses: {address_ids}"
         eq_(len(u1.addresses), 2)
 
         # Also verify the grandchildren loaded correctly
@@ -4581,9 +4580,9 @@ class TestSelectinWithNestedJoinedCollectionDedup(
 
         u2 = users[1]
         address_ids2 = [a.id for a in u2.addresses]
-        assert len(address_ids2) == len(set(address_ids2)), (
-            f"user {u2.id} has duplicate addresses: {address_ids2}"
-        )
+        assert len(address_ids2) == len(
+            set(address_ids2)
+        ), f"user {u2.id} has duplicate addresses: {address_ids2}"
         eq_(len(u2.addresses), 1)
         eq_(len(u2.addresses[0].dingalings), 1)
 

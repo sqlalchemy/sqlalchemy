@@ -3420,8 +3420,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 q,
                 params={
                     "primary_keys": [
-                        key[0] if query_info.zero_idx else key
-                        for key in chunk
+                        key[0] if query_info.zero_idx else key for key in chunk
                     ]
                 },
                 execution_options=execution_options,
