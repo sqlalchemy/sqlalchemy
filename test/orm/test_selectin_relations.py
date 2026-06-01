@@ -4227,6 +4227,30 @@ class M2MOmitJoinTest(
                 [3],
             )
 
+    def test_m2m_selectin_no_duplicate_children(
+        self, simple_m2m, connection
+    ):
+        """selectinload over m2m must not produce duplicate items in the
+        parent's collection when no nested joinedload is present (omit_join
+        fast path).
+        """
+        A = simple_m2m
+
+        with Session(connection) as session:
+            results = (
+                session.execute(
+                    select(A).options(selectinload(A.bs)).order_by(A.id)
+                )
+                .scalars()
+                .all()
+            )
+
+        for a in results:
+            b_ids = [b.id for b in a.bs]
+            assert len(b_ids) == len(set(b_ids)), (
+                f"A id={a.id} has duplicate bs: {b_ids}"
+            )
+
 
 class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
     @classmethod
