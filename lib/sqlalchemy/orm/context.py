@@ -133,6 +133,10 @@ class QueryContext:
     post_load_paths: Dict[PathRegistry, _PostLoad]
     compile_state: _ORMCompileState
 
+    @property
+    def requires_uniquing(self) -> bool:
+        return bool(self.compile_state.multi_row_eager_loaders)
+
     class default_load_options(Options):
         _only_return_tuples = False
         _populate_existing = False

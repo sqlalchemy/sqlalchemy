@@ -282,6 +282,7 @@ def instances(
         raw=cursor,
         dynamic_yield_per=cursor.context._is_server_side,
     )
+    result.context = context
 
     # filtered and single_entity are used to indicate to legacy Query that the
     # query has ORM entities, so legacy deduping and scalars should be called
