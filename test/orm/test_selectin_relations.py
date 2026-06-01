@@ -4422,9 +4422,8 @@ class TestSelectinWithNestedJoinedCollectionDedup(
     _load_via_parent must deduplicate those rows so that each parent row ends
     up with exactly one copy of each child object.
 
-    Guards the optimization introduced alongside issue #XXXX that makes
-    .unique() conditional — ensures it still fires when loading.instances()
-    sets _unique_filter_state.
+    Also verifies that the joinedload is folded into the selectin query rather
+    than issuing a separate third query — the total SQL count must be 2.
     """
 
     @classmethod
@@ -4463,8 +4462,9 @@ class TestSelectinWithNestedJoinedCollectionDedup(
         # user 1: one address with TWO dingalings — this is the key fixture.
         # When selectinload(User.addresses).joinedload(Address.dingalings) runs
         # the inner selectin query, address 1 will appear in 2 result rows
-        # (one per dingaling).  Without .unique(), user.addresses would
-        # contain address 1 twice.
+        # (one per dingaling).  Without .unique(), loading.require_unique would
+        # raise InvalidRequestError: "The unique() method must be invoked on
+        # this Result".
         sess.add(
             User(
                 id=1,
@@ -4505,21 +4505,29 @@ class TestSelectinWithNestedJoinedCollectionDedup(
         User, Address, Dingaling = self.classes("User", "Address", "Dingaling")
         sess = fixture_session()
 
-        users = (
-            sess.query(User)
-            .options(
-                selectinload(User.addresses).joinedload(Address.dingalings)
+        def go():
+            # expunge so we get fresh queries on each call
+            sess.expunge_all()
+            return (
+                sess.query(User)
+                .options(
+                    selectinload(User.addresses).joinedload(Address.dingalings)
+                )
+                .order_by(User.id)
+                .all()
             )
-            .order_by(User.id)
-            .all()
-        )
+
+        # assert exactly 2 SQL queries: 1 for User, 1 for the selectin
+        # (joinedload folds into the selectin query, not a third query)
+        users = self.assert_sql_count(testing.db, go, 2)
 
         eq_(len(users), 2)
 
         u1 = users[0]
         # Address 1 has 2 dingalings; without .unique() the selectin result
-        # would produce 2 rows for address 1 and user.addresses would have a
-        # duplicate entry.
+        # would produce 2 rows for address 1 and loading.require_unique would
+        # raise InvalidRequestError.  The assertions below are belt-and-
+        # suspenders for if the conditional logic changes.
         address_ids = [a.id for a in u1.addresses]
         assert len(address_ids) == len(set(address_ids)), (
             f"user {u1.id} has duplicate addresses: {address_ids}"
