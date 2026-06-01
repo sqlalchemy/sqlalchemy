@@ -4412,6 +4412,133 @@ class TestBakedCancelsCorrectly(fixtures.DeclarativeMappedTest):
         self.assert_sql_count(testing.db, go, 2)
 
 
+class TestSelectinWithNestedJoinedCollectionDedup(
+    fixtures.DeclarativeMappedTest
+):
+    """Regression guard for selectinload(...).joinedload(...) on a collection.
+
+    When the inner selectin query uses joinedload on a collection, the result
+    rows are multiplied (one row per grandchild).  The .unique() call in
+    _load_via_parent must deduplicate those rows so that each parent row ends
+    up with exactly one copy of each child object.
+
+    Guards the optimization introduced alongside issue #XXXX that makes
+    .unique() conditional — ensures it still fires when loading.instances()
+    sets _unique_filter_state.
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(ComparableEntity, Base):
+            __tablename__ = "sel_dedup_user"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            addresses = relationship(
+                "Address", back_populates="user", order_by="Address.id"
+            )
+
+        class Address(ComparableEntity, Base):
+            __tablename__ = "sel_dedup_address"
+            id = Column(Integer, primary_key=True)
+            user_id = Column(ForeignKey("sel_dedup_user.id"))
+            email = Column(String(50))
+            user = relationship("User", back_populates="addresses")
+            dingalings = relationship(
+                "Dingaling", back_populates="address", order_by="Dingaling.id"
+            )
+
+        class Dingaling(ComparableEntity, Base):
+            __tablename__ = "sel_dedup_dingaling"
+            id = Column(Integer, primary_key=True)
+            address_id = Column(ForeignKey("sel_dedup_address.id"))
+            data = Column(String(50))
+            address = relationship("Address", back_populates="dingalings")
+
+    @classmethod
+    def insert_data(cls, connection):
+        User, Address, Dingaling = cls.classes("User", "Address", "Dingaling")
+        sess = Session(connection)
+        # user 1: one address with TWO dingalings — this is the key fixture.
+        # When selectinload(User.addresses).joinedload(Address.dingalings) runs
+        # the inner selectin query, address 1 will appear in 2 result rows
+        # (one per dingaling).  Without .unique(), user.addresses would
+        # contain address 1 twice.
+        sess.add(
+            User(
+                id=1,
+                name="u1",
+                addresses=[
+                    Address(
+                        id=1,
+                        email="a1@example.com",
+                        dingalings=[
+                            Dingaling(id=1, data="d1"),
+                            Dingaling(id=2, data="d2"),
+                        ],
+                    ),
+                    Address(id=2, email="a2@example.com"),
+                ],
+            )
+        )
+        # user 2: one address, one dingaling — control case
+        sess.add(
+            User(
+                id=2,
+                name="u2",
+                addresses=[
+                    Address(
+                        id=3,
+                        email="a3@example.com",
+                        dingalings=[Dingaling(id=3, data="d3")],
+                    )
+                ],
+            )
+        )
+        sess.commit()
+
+    def test_selectin_with_nested_joined_collection_still_dedupes(self):
+        """Regression: selectinload(...).joinedload(...) on a collection must
+        continue to dedupe inner rows after the conditional-unique optimization.
+        """
+        User, Address, Dingaling = self.classes("User", "Address", "Dingaling")
+        sess = fixture_session()
+
+        users = (
+            sess.query(User)
+            .options(
+                selectinload(User.addresses).joinedload(Address.dingalings)
+            )
+            .order_by(User.id)
+            .all()
+        )
+
+        eq_(len(users), 2)
+
+        u1 = users[0]
+        # Address 1 has 2 dingalings; without .unique() the selectin result
+        # would produce 2 rows for address 1 and user.addresses would have a
+        # duplicate entry.
+        address_ids = [a.id for a in u1.addresses]
+        assert len(address_ids) == len(set(address_ids)), (
+            f"user {u1.id} has duplicate addresses: {address_ids}"
+        )
+        eq_(len(u1.addresses), 2)
+
+        # Also verify the grandchildren loaded correctly
+        target_address = next(a for a in u1.addresses if a.id == 1)
+        eq_(len(target_address.dingalings), 2)
+
+        u2 = users[1]
+        address_ids2 = [a.id for a in u2.addresses]
+        assert len(address_ids2) == len(set(address_ids2)), (
+            f"user {u2.id} has duplicate addresses: {address_ids2}"
+        )
+        eq_(len(u2.addresses), 1)
+        eq_(len(u2.addresses[0].dingalings), 1)
+
+
 class TestCompositePlusNonComposite(fixtures.DeclarativeMappedTest):
     __requires__ = ("tuple_in",)
 
