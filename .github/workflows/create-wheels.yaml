@@ -16,6 +16,7 @@ jobs:
   build_pure_python_wheel:
     name: Build pure-Python wheel
     runs-on: ubuntu-22.04
+    permissions: {}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -70,6 +71,7 @@ jobs:
   build_platform_wheels:
     name: ${{ matrix.wheel_mode }} wheels ${{ matrix.python }} on ${{ matrix.os }} ${{ matrix.os == 'ubuntu-22.04' && matrix.linux_archs || '' }}
     runs-on: ${{ matrix.os }}
+    permissions: {}
     strategy:
       matrix:
         # emulated wheels on linux take too much time, split wheels into multiple runs
