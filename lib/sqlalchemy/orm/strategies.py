@@ -3416,19 +3416,25 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         while our_keys:
             chunk = our_keys[0:chunksize]
             our_keys = our_keys[chunksize:]
-            data = {
-                k: v
-                for k, v in context.session.execute(
-                    q,
-                    params={
-                        "primary_keys": [
-                            key[0] if query_info.zero_idx else key
-                            for key in chunk
-                        ]
-                    },
-                    execution_options=execution_options,
-                ).unique()
-            }
+            result = context.session.execute(
+                q,
+                params={
+                    "primary_keys": [
+                        key[0] if query_info.zero_idx else key
+                        for key in chunk
+                    ]
+                },
+                execution_options=execution_options,
+            )
+            # the inner query only produces duplicate rows when a nested
+            # joinedload on a collection is in effect, in which case
+            # `instances()` will have already set `_unique_filter_state` on
+            # the result as a guard (see loading.instances). uniquing rows
+            # has measurable cost (hashing each Row), so skip the call when
+            # the result didn't request it.
+            if result._unique_filter_state is not None:
+                result = result.unique()
+            data = {k: v for k, v in result}
 
             for key in chunk:
                 # for a real foreign key and no concurrent changes to the
