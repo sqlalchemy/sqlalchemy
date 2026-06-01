@@ -3427,11 +3427,10 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             )
             # the inner query only produces duplicate rows when a nested
             # joinedload on a collection is in effect, in which case
-            # `instances()` will have already set `_unique_filter_state` on
-            # the result as a guard (see loading.instances). uniquing rows
-            # has measurable cost (hashing each Row), so skip the call when
-            # the result didn't request it.
-            if result._unique_filter_state is not None:
+            # `instances()` will have already flagged the result for uniquing
+            # (see loading.instances). uniquing rows has measurable cost
+            # (hashing each Row), so skip the call when not required.
+            if result.has_unique_filter:
                 result = result.unique()
             data = {k: v for k, v in result}
 
@@ -3483,7 +3482,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             # uniquing only needed when a nested joinedload on a collection
             # inflates rows; otherwise `instances()` leaves the result
             # without a unique filter and per-row hashing is pure overhead.
-            if result._unique_filter_state is not None:
+            if result.has_unique_filter:
                 result = result.unique()
             data = collections.defaultdict(list)
             for k, v in itertools.groupby(result, lambda x: x[0]):

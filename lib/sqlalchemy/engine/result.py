@@ -664,6 +664,11 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         self._unique_filter_state = (set(), strategy)
         return self
 
+    @property
+    def has_unique_filter(self) -> bool:
+        """True if unique filtering has been requested on this result."""
+        return self._unique_filter_state is not None
+
     def columns(self, *col_expressions: _KeyIndexType) -> Self:
         r"""Establish the columns that should be returned in each row.
 
