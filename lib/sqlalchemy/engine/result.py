@@ -1924,6 +1924,8 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
 
     """
 
+    context: Any = None
+
     def __init__(
         self,
         cursor_metadata: ResultMetaData,
@@ -1940,7 +1942,6 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
         self.raw = raw
         self.iterator = itertools.chain.from_iterable(self.chunks(None))
         self.dynamic_yield_per = dynamic_yield_per
-        self.context: Any = None
 
     @_generative
     def yield_per(self, num: int) -> Self:

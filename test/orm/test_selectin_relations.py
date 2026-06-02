@@ -4259,12 +4259,9 @@ class M2MOmitJoinTest(
         eq_(sorted(b.id for b in results[0].bs), [1, 2])
         eq_(sorted(b.id for b in results[1].bs), [1])
 
-        # belt-and-suspenders: no duplicates in either collection
         for a in results:
             b_ids = [b.id for b in a.bs]
-            assert len(b_ids) == len(
-                set(b_ids)
-            ), f"A id={a.id} has duplicate bs: {b_ids}"
+            assert eq_(len(b_ids) == len(set(b_ids)))
 
 
 class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
@@ -4557,8 +4554,6 @@ class TestSelectinWithNestedJoinedCollectionDedup(
                 .all()
             )
 
-        # assert exactly 2 SQL queries: 1 for User, 1 for the selectin
-        # (joinedload folds into the selectin query, not a third query)
         users = self.assert_sql_count(testing.db, go, 2)
 
         eq_(len(users), 2)
@@ -4569,9 +4564,7 @@ class TestSelectinWithNestedJoinedCollectionDedup(
         # raise InvalidRequestError.  The assertions below are belt-and-
         # suspenders for if the conditional logic changes.
         address_ids = [a.id for a in u1.addresses]
-        assert len(address_ids) == len(
-            set(address_ids)
-        ), f"user {u1.id} has duplicate addresses: {address_ids}"
+        eq_(len(address_ids), len(set(address_ids)))
         eq_(len(u1.addresses), 2)
 
         # Also verify the grandchildren loaded correctly
