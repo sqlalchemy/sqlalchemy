@@ -3852,21 +3852,27 @@ index_info AS (
 
     # --- multi-reflection API ---
 
-    @staticmethod
-    def _partition_filter_names(filter_names, scope, kind):
+    def _partition_filter_names(
+        self, connection, owner, filter_names, scope, kind
+    ):
         """Split caller-supplied ``filter_names`` between the bulk
         ``sys.*`` query path (regular objects in the user database) and
-        the per-name ``_internal_*`` fallback path (temporary objects
-        living in ``tempdb``).
+        the temp object path (objects living in ``tempdb``), and resolve
+        the existing-in-catalog names for the bulk path in one shot.
 
-        Returns the tuple ``(run_bulk, regular_names, temp_names)``:
+        Returns the tuple
+        ``(run_bulk, regular_names, multi_object_names, temp_names)``:
 
         * ``run_bulk`` -- whether the multi method should run its bulk
           ``sys.*`` query at all.
-        * ``regular_names`` -- list (or ``None`` for "no name filter")
-          to be passed to :meth:`._get_multi_object_names`. ``None`` is
-          only returned when the caller passed no ``filter_names`` and
-          ``scope`` includes regular objects.
+        * ``regular_names`` -- list of caller-supplied names (with the
+          caller's casing) for the bulk path, used to build the
+          case-insensitive name map. Empty list when no regular names
+          were requested.
+        * ``multi_object_names`` -- list of names (with server-side
+          casing) that actually exist in the catalog and match the
+          requested ``kind``. This is what the bulk SQL's IN clause
+          gets filtered with. Empty list when no matches.
         * ``temp_names`` -- list of ``#``-prefixed temp object names
           that the caller asked for and that the requested
           ``scope``/``kind`` allows.
@@ -3884,22 +3890,54 @@ index_info AS (
             scope is not ObjectScope.DEFAULT and ObjectKind.TABLE in kind
         )
 
-        if not filter_names:
-            return (include_default, filter_names, [])
+        if filter_names:
+            if include_temp:
+                temp_names = [n for n in filter_names if n.startswith("#")]
+            else:
+                temp_names = []
 
-        if include_temp:
-            temp_names = [n for n in filter_names if n.startswith("#")]
+            if include_default:
+                regular_names = [
+                    n for n in filter_names if not n.startswith("#")
+                ]
+                run_bulk = bool(regular_names)
+            else:
+                regular_names = []
+                run_bulk = False
         else:
             temp_names = []
-
-        if include_default:
-            regular_names = [n for n in filter_names if not n.startswith("#")]
-            run_bulk = bool(regular_names)
-        else:
             regular_names = []
-            run_bulk = False
+            run_bulk = include_default
 
-        return (run_bulk, regular_names, temp_names)
+        if not run_bulk:
+            return (run_bulk, regular_names, [], temp_names)
+
+        type_filter = []
+        if ObjectKind.TABLE in kind:
+            type_filter.append("'U'")
+        if ObjectKind.VIEW in kind:
+            type_filter.append("'V'")
+        if not type_filter:
+            return (run_bulk, regular_names, [], temp_names)
+
+        query = (
+            "SELECT o.name "
+            "FROM sys.objects o "
+            "JOIN sys.schemas s ON o.schema_id = s.schema_id "
+            "WHERE s.name = :owner "
+            "AND o.type IN (%s)" % ", ".join(type_filter)
+        )
+        params = [sql.bindparam("owner", owner, ischema.CoerceUnicode())]
+        if regular_names:
+            query += " AND o.name IN :filter_names"
+            params.append(
+                sql.bindparam("filter_names", regular_names, expanding=True)
+            )
+
+        rp = connection.execute(sql.text(query).bindparams(*params))
+        multi_object_names = [row[0] for row in rp]
+
+        return (run_bulk, regular_names, multi_object_names, temp_names)
 
     @staticmethod
     def _multi_name_map(filter_names):
@@ -3936,38 +3974,6 @@ index_info AS (
                 f"{schema}.{table}" if schema else table
             ) from None
 
-    def _get_multi_object_names(
-        self, connection, owner, filter_names, scope, kind
-    ):
-        """Return matching table/view names for the given kind/scope."""
-        if scope is ObjectScope.TEMPORARY:
-            return []
-
-        type_filter = []
-        if ObjectKind.TABLE in kind:
-            type_filter.append("'U'")
-        if ObjectKind.VIEW in kind:
-            type_filter.append("'V'")
-        if not type_filter:
-            return []
-
-        query = (
-            "SELECT o.name "
-            "FROM sys.objects o "
-            "JOIN sys.schemas s ON o.schema_id = s.schema_id "
-            "WHERE s.name = :owner "
-            "AND o.type IN (%s)" % ", ".join(type_filter)
-        )
-        params = [sql.bindparam("owner", owner, ischema.CoerceUnicode())]
-        if filter_names:
-            query += " AND o.name IN :filter_names"
-            params.append(
-                sql.bindparam("filter_names", filter_names, expanding=True)
-            )
-
-        rp = connection.execute(sql.text(query).bindparams(*params))
-        return [row[0] for row in rp]
-
     @_db_plus_owner_multi
     def get_multi_columns(
         self,
@@ -3980,27 +3986,28 @@ index_info AS (
         kind,
         **kw,
     ):
-        run_bulk, regular_names, temp_names = self._partition_filter_names(
-            filter_names, scope, kind
+        (
+            run_bulk,
+            regular_names,
+            multi_object_names,
+            temp_names,
+        ) = self._partition_filter_names(
+            connection, owner, filter_names, scope, kind
         )
 
         result = {}
 
-        if run_bulk:
-            names = self._get_multi_object_names(
-                connection, owner, regular_names, scope, kind
+        if run_bulk and multi_object_names:
+            name_map = self._multi_name_map(regular_names)
+            self._fetch_multi_columns(
+                connection,
+                owner=owner,
+                names=multi_object_names,
+                schema=schema,
+                name_map=name_map,
+                result=result,
+                exec_opts={"schema_translate_map": {}},
             )
-            if names:
-                name_map = self._multi_name_map(regular_names)
-                self._fetch_multi_columns(
-                    connection,
-                    owner=owner,
-                    names=names,
-                    schema=schema,
-                    name_map=name_map,
-                    result=result,
-                    exec_opts={"schema_translate_map": {}},
-                )
 
         if temp_names:
             self._fetch_multi_columns_temp(
@@ -4131,27 +4138,28 @@ index_info AS (
         kind,
         **kw,
     ):
-        run_bulk, regular_names, temp_names = self._partition_filter_names(
-            filter_names, scope, kind
+        (
+            run_bulk,
+            regular_names,
+            multi_object_names,
+            temp_names,
+        ) = self._partition_filter_names(
+            connection, owner, filter_names, scope, kind
         )
 
         result = {}
 
-        if run_bulk:
-            names = self._get_multi_object_names(
-                connection, owner, regular_names, scope, kind
+        if run_bulk and multi_object_names:
+            name_map = self._multi_name_map(regular_names)
+            self._fetch_multi_pk_constraint(
+                connection,
+                owner=owner,
+                names=multi_object_names,
+                schema=schema,
+                name_map=name_map,
+                result=result,
+                exec_opts={"schema_translate_map": {}},
             )
-            if names:
-                name_map = self._multi_name_map(regular_names)
-                self._fetch_multi_pk_constraint(
-                    connection,
-                    owner=owner,
-                    names=names,
-                    schema=schema,
-                    name_map=name_map,
-                    result=result,
-                    exec_opts={"schema_translate_map": {}},
-                )
 
         if temp_names:
             self._fetch_multi_pk_constraint_temp(
@@ -4305,27 +4313,28 @@ index_info AS (
         kind,
         **kw,
     ):
-        run_bulk, regular_names, temp_names = self._partition_filter_names(
-            filter_names, scope, kind
+        (
+            run_bulk,
+            regular_names,
+            multi_object_names,
+            temp_names,
+        ) = self._partition_filter_names(
+            connection, owner, filter_names, scope, kind
         )
 
         final = {}
 
-        if run_bulk:
-            names = self._get_multi_object_names(
-                connection, owner, regular_names, scope, kind
+        if run_bulk and multi_object_names:
+            name_map = self._multi_name_map(regular_names)
+            self._fetch_multi_foreign_keys(
+                connection,
+                dbname=dbname,
+                owner=owner,
+                names=multi_object_names,
+                schema=schema,
+                name_map=name_map,
+                final=final,
             )
-            if names:
-                name_map = self._multi_name_map(regular_names)
-                self._fetch_multi_foreign_keys(
-                    connection,
-                    dbname=dbname,
-                    owner=owner,
-                    names=names,
-                    schema=schema,
-                    name_map=name_map,
-                    final=final,
-                )
 
         # FK reflection for temp tables: the INFORMATION_SCHEMA query in
         # _fk_query_sql does not see tempdb objects (it queries the main
@@ -4442,27 +4451,28 @@ index_info AS (
         kind,
         **kw,
     ):
-        run_bulk, regular_names, temp_names = self._partition_filter_names(
-            filter_names, scope, kind
+        (
+            run_bulk,
+            regular_names,
+            multi_object_names,
+            temp_names,
+        ) = self._partition_filter_names(
+            connection, owner, filter_names, scope, kind
         )
 
         result = {}
 
-        if run_bulk:
-            names = self._get_multi_object_names(
-                connection, owner, regular_names, scope, kind
+        if run_bulk and multi_object_names:
+            name_map = self._multi_name_map(regular_names)
+            self._fetch_multi_indexes(
+                connection,
+                owner=owner,
+                names=multi_object_names,
+                schema=schema,
+                name_map=name_map,
+                result=result,
+                exec_opts={"schema_translate_map": {}},
             )
-            if names:
-                name_map = self._multi_name_map(regular_names)
-                self._fetch_multi_indexes(
-                    connection,
-                    owner=owner,
-                    names=names,
-                    schema=schema,
-                    name_map=name_map,
-                    result=result,
-                    exec_opts={"schema_translate_map": {}},
-                )
 
         if temp_names:
             self._fetch_multi_indexes_temp(
@@ -4690,27 +4700,28 @@ index_info AS (
                 "version in use"
             )
 
-        run_bulk, regular_names, temp_names = self._partition_filter_names(
-            filter_names, scope, kind
+        (
+            run_bulk,
+            regular_names,
+            multi_object_names,
+            temp_names,
+        ) = self._partition_filter_names(
+            connection, owner, filter_names, scope, kind
         )
 
         result = {}
 
-        if run_bulk:
-            names = self._get_multi_object_names(
-                connection, owner, regular_names, scope, kind
+        if run_bulk and multi_object_names:
+            name_map = self._multi_name_map(regular_names)
+            self._fetch_multi_table_comment(
+                connection,
+                owner=owner,
+                names=multi_object_names,
+                schema=schema,
+                name_map=name_map,
+                result=result,
+                exec_opts={"schema_translate_map": {}},
             )
-            if names:
-                name_map = self._multi_name_map(regular_names)
-                self._fetch_multi_table_comment(
-                    connection,
-                    owner=owner,
-                    names=names,
-                    schema=schema,
-                    name_map=name_map,
-                    result=result,
-                    exec_opts={"schema_translate_map": {}},
-                )
 
         if temp_names:
             self._fetch_multi_table_comment_temp(
