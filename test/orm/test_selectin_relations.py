@@ -4451,7 +4451,8 @@ class TestBakedCancelsCorrectly(fixtures.DeclarativeMappedTest):
 class TestSelectinWithNestedJoinedCollectionDedup(
     fixtures.DeclarativeMappedTest
 ):
-    """Regression guard for selectinload(...).joinedload(...) on a collection.
+    """Regression guard for selectinload(...).joinedload/selectinload(...) on a
+    collection.
 
     When the inner selectin query uses joinedload on a collection, the result
     rows are multiplied (one row per grandchild).  The .unique() call in
@@ -4459,7 +4460,8 @@ class TestSelectinWithNestedJoinedCollectionDedup(
     up with exactly one copy of each child object.
 
     Also verifies that the joinedload is folded into the selectin query rather
-    than issuing a separate third query — the total SQL count must be 2.
+    than issuing a separate third query — the total SQL count must be 2 for
+    joinedload and 3 for nested selectinload.
     """
 
     @classmethod
@@ -4534,27 +4536,37 @@ class TestSelectinWithNestedJoinedCollectionDedup(
         )
         sess.commit()
 
-    def test_selectin_with_nested_joined_collection_still_dedupes(self):
-        """Regression: selectinload(...).joinedload(...) on a collection must
-        continue to dedupe inner rows after the conditional-unique
-        optimization.
+    @testing.combinations(
+        ("joinedload", 2),
+        ("selectinload", 3),
+        id_="sa",
+        argnames="inner_loader_name,expected_sql_count",
+    )
+    def test_selectin_with_nested_joined_collection_still_dedupes(
+        self, inner_loader_name, expected_sql_count
+    ):
+        """Regression: selectinload(...).joinedload/selectinload(...) on a
+        collection must continue to dedupe inner rows after the
+        conditional-unique optimization.
         """
         User, Address, Dingaling = self.classes("User", "Address", "Dingaling")
         sess = fixture_session()
 
+        if inner_loader_name == "joinedload":
+            inner_opt = selectinload(User.addresses).joinedload(
+                Address.dingalings
+            )
+        else:
+            inner_opt = selectinload(User.addresses).selectinload(
+                Address.dingalings
+            )
+
         def go():
             # expunge so we get fresh queries on each call
             sess.expunge_all()
-            return (
-                sess.query(User)
-                .options(
-                    selectinload(User.addresses).joinedload(Address.dingalings)
-                )
-                .order_by(User.id)
-                .all()
-            )
+            return sess.query(User).options(inner_opt).order_by(User.id).all()
 
-        users = self.assert_sql_count(testing.db, go, 2)
+        users = self.assert_sql_count(testing.db, go, expected_sql_count)
 
         eq_(len(users), 2)
 
