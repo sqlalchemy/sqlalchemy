@@ -1819,6 +1819,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
 
     _hard_closed = False
     _soft_closed = False
+    context: Any = None
 
     def __init__(
         self,
@@ -1923,8 +1924,6 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
     .. versionadded:: 1.4
 
     """
-
-    context: Any = None
 
     def __init__(
         self,
