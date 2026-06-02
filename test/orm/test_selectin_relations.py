@@ -4261,7 +4261,7 @@ class M2MOmitJoinTest(
 
         for a in results:
             b_ids = [b.id for b in a.bs]
-            assert eq_(len(b_ids), len(set(b_ids)))
+            eq_(len(b_ids), len(set(b_ids)))
 
 
 class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
