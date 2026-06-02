@@ -69,6 +69,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import column
 from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.functions import GenericFunction
@@ -529,6 +530,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(tbl),
             "CREATE TABLE atable (id INTEGER) INHERITS "
             '( "Quote Me", "quote Me Too" )',
+        )
+
+    def test_create_table_inherits_schema_qualified_quoted_name(self):
+        m = MetaData()
+        tbl = Table(
+            "atable",
+            m,
+            Column("id", Integer),
+            postgresql_inherits=quoted_name(
+                "my_schema.parent_table", quote=False
+            ),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) "
+            "INHERITS ( my_schema.parent_table )",
         )
 
     def test_create_table_partition_by_list(self):
