@@ -4534,13 +4534,7 @@ class TestSelectinWithNestedJoinedCollectionDedup(
         )
         sess.commit()
 
-    @testing.combinations(
-        (selectinload, joinedload),
-        argnames="loader",
-    )
-    def test_selectin_with_nested_joined_collection_still_dedupes(
-        self, loader
-    ):
+    def test_selectin_with_nested_joined_collection_still_dedupes(self):
         """Regression: selectinload(...).joinedload(...) on a collection must
         continue to dedupe inner rows after the conditional-unique
         optimization.
@@ -4553,7 +4547,9 @@ class TestSelectinWithNestedJoinedCollectionDedup(
             sess.expunge_all()
             return (
                 sess.query(User)
-                .options(loader(User.addresses).joinedload(Address.dingalings))
+                .options(
+                    selectinload(User.addresses).joinedload(Address.dingalings)
+                )
                 .order_by(User.id)
                 .all()
             )
