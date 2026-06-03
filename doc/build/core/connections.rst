@@ -885,15 +885,34 @@ as the schema name is passed to these methods explicitly.
 .. tip::
 
   To use the schema translation feature with the ORM :class:`_orm.Session`,
-  set this option at the level of the :class:`_engine.Engine`, then pass that engine
-  to the :class:`_orm.Session`.  The :class:`_orm.Session` uses a new
-  :class:`_engine.Connection` for each transaction::
+  pass ``schema_translate_map`` as part of the
+  :paramref:`_orm.Session.execution_options` parameter.  The map will be
+  applied to the :class:`_engine.Connection` when it is first procured for
+  the transaction, so that it takes effect for all operations including
+  queries, flushes (INSERT/UPDATE/DELETE), and event hooks::
+
+      session = Session(
+          engine,
+          execution_options={"schema_translate_map": {None: "my_schema"}},
+      )
+
+      # schema_translate_map is applied to both queries and flush operations
+      session.add(MyObject(data="some data"))
+      session.commit()
+
+  The map may alternatively be set at the :class:`_engine.Engine` level,
+  which applies it to all connections and sessions that use that engine::
 
       schema_engine = engine.execution_options(schema_translate_map={...})
 
       session = Session(schema_engine)
 
-      ...
+  .. versionchanged:: 2.1.0b3
+     Session-level execution options including ``schema_translate_map`` are
+     now applied to the :class:`_engine.Connection` at procurement time,
+     so that they take effect for flush operations.  Previously, setting
+     ``schema_translate_map`` on the :class:`_orm.Session` required that
+     it be set at the :class:`_engine.Engine` level instead.
 
   .. warning::
 

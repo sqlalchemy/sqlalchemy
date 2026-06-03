@@ -89,6 +89,64 @@ all types of SQL execution.
 :ticket:`9809`
 
 
+.. _change_13346:
+
+Session-level execution options applied to Connection at procurement time
+--------------------------------------------------------------------------
+
+Building on the session-level execution options feature introduced in
+:ticket:`12659`, the :paramref:`_orm.Session.execution_options` parameter
+now applies its options to the :class:`_engine.Connection` when it is first
+procured for a transaction, in addition to being merged into explicit query
+executions as before.  This means that execution options such as
+``schema_translate_map`` as well as custom user-defined options now take
+effect for **all** operations within the session, including:
+
+* Flush operations (INSERT/UPDATE/DELETE emitted by the unit of work)
+* Event hooks such as :meth:`_events.ConnectionEvents.before_cursor_execute`
+* Eager loader queries
+
+Previously, session-level execution options were only applied to explicit calls
+such as :meth:`_orm.Session.execute`, which meant that
+``schema_translate_map`` set on the :class:`_orm.Session` would not take effect
+for flush operations.  The prior workaround was to set ``schema_translate_map``
+on the :class:`_engine.Engine` itself, which remains supported.
+
+The new behavior allows ``schema_translate_map`` to be set directly on the
+:class:`_orm.Session`::
+
+    session = Session(
+        engine,
+        execution_options={"schema_translate_map": {None: "my_schema"}},
+    )
+
+    # schema_translate_map takes effect for both queries and flushes
+    session.add(MyObject(data="some data"))
+    session.commit()
+
+    results = session.scalars(select(MyObject)).all()
+
+Custom execution options that are consumed in event hooks such as
+:meth:`_events.ConnectionEvents.before_cursor_execute` are also available
+during flush operations::
+
+    session = Session(engine, execution_options={"my_audit_flag": True})
+
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def receive_before_cursor_execute(
+        conn, cursor, statement, parameters, context, executemany
+    ):
+        if context.execution_options.get("my_audit_flag"):
+            log.info("Executing: %s", statement)
+
+
+    session.add(SomeObject())
+    session.flush()  # before_cursor_execute sees my_audit_flag=True
+
+:ticket:`13346`
+
+
 .. _change_10050:
 
 ORM Relationship allows callable for back_populates

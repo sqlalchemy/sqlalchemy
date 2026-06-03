@@ -1203,8 +1203,13 @@ class SessionTransaction(_StateChange, TransactionalContext):
                     local_connect = True
 
             try:
+                conn_exec_opts: Dict[str, Any] = {}
+                if self.session.execution_options:
+                    conn_exec_opts.update(self.session.execution_options)
                 if execution_options:
-                    conn = conn.execution_options(**execution_options)
+                    conn_exec_opts.update(execution_options)
+                if conn_exec_opts:
+                    conn = conn.execution_options(**conn_exec_opts)
 
                 transaction: Transaction
                 if self.session.twophase and self._parent is None:
@@ -1622,13 +1627,26 @@ class Session(_SessionClassMethods, EventTarget):
               use of this extension within their own code.
 
         :param execution_options: optional dictionary of execution options
-           that will be applied to all calls to :meth:`_orm.Session.execute`,
-           :meth:`_orm.Session.scalars`, and similar.  Execution options
-           present in statements as well as options passed to methods like
-           :meth:`_orm.Session.execute` explicitly take precedence over
-           the session-wide options.
+           that will be applied to the :class:`_engine.Connection` when first
+           procured for a transaction, as well as to all explicit query
+           executions such as :meth:`_orm.Session.execute`,
+           :meth:`_orm.Session.scalars`, and similar.  This includes
+           flush (INSERT/UPDATE/DELETE) operations and is visible within
+           event hooks such as
+           :meth:`_events.ConnectionEvents.before_cursor_execute`.
+
+           Execution options present in statements as well as options passed
+           to methods like :meth:`_orm.Session.execute` explicitly take
+           precedence over the session-wide options.
 
            .. versionadded:: 2.1
+
+           .. versionchanged:: 2.1.0b3
+              Session-level execution options are now applied to the
+              :class:`_engine.Connection` at procurement time, so that
+              they take effect for flush operations as well as explicit
+              query executions. Previously, options were only applied to
+              explicit calls such as :meth:`_orm.Session.execute`.
 
         :param expire_on_commit:  Defaults to ``True``. When ``True``, all
            instances will be fully expired after each :meth:`~.commit`,
