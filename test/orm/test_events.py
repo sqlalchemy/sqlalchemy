@@ -528,8 +528,14 @@ class ORMExecuteTest(
             "autoflush": True,
             "is_post_load": True,
         }
+        # yield_per conflicts with unique() inside the loader.  immediateload
+        # calls unique() unconditionally; selectinload only calls unique() when
+        # a nested joinedload on a collection inflates rows, so without one it
+        # no longer conflicts.
         operation_should_fail = (
-            event_style.set_in_event_for_relationship and option_type.yield_per
+            event_style.set_in_event_for_relationship
+            and option_type.yield_per
+            and loader_opt is immediateload
         )
 
         if event_style.noop_event:
@@ -544,8 +550,7 @@ class ORMExecuteTest(
             # event where we actually set these options for relationship
             # loaders.  assert that what we do here does in fact get
             # to those loaders.   the yield_per setting will fail for
-            # immediateload and selectinload because they both use unique()
-            # on the result.
+            # immediateload because it calls unique() unconditionally.
             def go(context):
                 if context.is_relationship_load:
                     if option_type.yield_per:

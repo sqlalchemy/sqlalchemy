@@ -3416,19 +3416,18 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         while our_keys:
             chunk = our_keys[0:chunksize]
             our_keys = our_keys[chunksize:]
-            data = {
-                k: v
-                for k, v in context.session.execute(
-                    q,
-                    params={
-                        "primary_keys": [
-                            key[0] if query_info.zero_idx else key
-                            for key in chunk
-                        ]
-                    },
-                    execution_options=execution_options,
-                ).unique()
-            }
+            result = context.session.execute(
+                q,
+                params={
+                    "primary_keys": [
+                        key[0] if query_info.zero_idx else key for key in chunk
+                    ]
+                },
+                execution_options=execution_options,
+            )
+            if result.context is not None and result.context.requires_uniquing:
+                result = result.unique()
+            data = {k: v for k, v in result}
 
             for key in chunk:
                 # for a real foreign key and no concurrent changes to the
@@ -3470,15 +3469,15 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 for key, state, state_dict, overwrite in chunk
             ]
 
+            result = context.session.execute(
+                q,
+                params={"primary_keys": primary_keys},
+                execution_options=execution_options,
+            )
+            if result.context is not None and result.context.requires_uniquing:
+                result = result.unique()
             data = collections.defaultdict(list)
-            for k, v in itertools.groupby(
-                context.session.execute(
-                    q,
-                    params={"primary_keys": primary_keys},
-                    execution_options=execution_options,
-                ).unique(),
-                lambda x: x[0],
-            ):
+            for k, v in itertools.groupby(result, lambda x: x[0]):
                 data[k].extend(vv[1] for vv in v)
 
             for key, state, state_dict, overwrite in chunk:

@@ -1826,11 +1826,13 @@ class IteratorResult(Result[Unpack[_Ts]]):
         iterator: Iterator[_InterimSupportsScalarsRowType],
         raw: Optional[Result[Any]] = None,
         _source_supports_scalars: bool = False,
+        context: Optional[Any] = None,
     ):
         self._metadata = cursor_metadata
         self.iterator = iterator
         self.raw = raw
         self._source_supports_scalars = _source_supports_scalars
+        self.context = context
 
     @property
     def closed(self) -> bool:
@@ -1933,6 +1935,7 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
         source_supports_scalars: bool = False,
         raw: Optional[Result[Any]] = None,
         dynamic_yield_per: bool = False,
+        context: Optional[Any] = None,
     ):
         self._metadata = cursor_metadata
         self.chunks = chunks
@@ -1940,6 +1943,7 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
         self.raw = raw
         self.iterator = itertools.chain.from_iterable(self.chunks(None))
         self.dynamic_yield_per = dynamic_yield_per
+        self.context = context
 
     @_generative
     def yield_per(self, num: int) -> Self:
