@@ -22,6 +22,8 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql.information_schema import tables
+from sqlalchemy.engine import ObjectKind
+from sqlalchemy.engine import ObjectScope
 from sqlalchemy.pool import NullPool
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -292,6 +294,177 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 result,
                 [(2, "bar", datetime.datetime(2020, 2, 2, 2, 2, 2))],
             )
+
+    def test_get_multi_columns_temp_table(self, metadata, connection):
+        """Direct ``get_multi_columns`` API works for temp tables across
+        scope/kind combinations.
+
+        Regression coverage for the case where a ``#``-prefixed name was
+        passed to a multi method outside the autoload-shaped
+        ``scope=ANY/kind=ANY`` call.
+        """
+        tt = Table(
+            "#mr_tmp",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", mssql.NVARCHAR(50)),
+        )
+        tt.create(connection)
+
+        insp = inspect(connection)
+
+        # ANY scope, TABLE kind: should return the temp table
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_tmp"],
+                scope=ObjectScope.ANY,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        eq_(set(r.keys()), {(None, "#mr_tmp")})
+        eq_(
+            [c["name"] for c in r[(None, "#mr_tmp")]],
+            ["id", "name"],
+        )
+
+        # TEMPORARY scope: should also return the temp table
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_tmp"],
+                scope=ObjectScope.TEMPORARY,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        eq_(set(r.keys()), {(None, "#mr_tmp")})
+
+        # DEFAULT scope: must EXCLUDE the temp table
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_tmp"],
+                scope=ObjectScope.DEFAULT,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        eq_(r, {})
+
+        # VIEW kind: must EXCLUDE the temp table (no temp views on mssql)
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_tmp"],
+                scope=ObjectScope.ANY,
+                kind=ObjectKind.VIEW,
+            )
+        )
+        eq_(r, {})
+
+    def test_get_multi_pk_constraint_temp_table(self, metadata, connection):
+        tt = Table(
+            "#mr_pk_tmp",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("val", Integer),
+        )
+        tt.create(connection)
+
+        insp = inspect(connection)
+        r = dict(
+            insp.get_multi_pk_constraint(
+                filter_names=["#mr_pk_tmp"],
+                scope=ObjectScope.ANY,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        in_((None, "#mr_pk_tmp"), r)
+
+    def test_temp_reflection_does_not_leak_translate_map(
+        self, metadata, connection
+    ):
+        """Reflecting a temp table must not leave ``schema_translate_map``
+        applied on the caller's connection.
+
+        The unified multi reflection path runs the tempdb pass with
+        ``schema_translate_map={"sys": "tempdb.sys"}`` as an
+        execute-level option. Applying it on the connection (e.g. via
+        ``connection.execution_options(...)``) mutates the connection
+        in place and poisons subsequent Core sys.* queries.
+        """
+        tt = Table(
+            "#mr_leak_tmp",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", mssql.NVARCHAR(50)),
+        )
+        tt.create(connection)
+
+        before = dict(connection.get_execution_options())
+
+        insp = inspect(connection)
+        # Each of these would route via the tempdb pass.
+        insp.get_multi_columns(
+            filter_names=["#mr_leak_tmp"],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.TABLE,
+        )
+        insp.get_multi_pk_constraint(
+            filter_names=["#mr_leak_tmp"],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.TABLE,
+        )
+        insp.get_multi_indexes(
+            filter_names=["#mr_leak_tmp"],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.TABLE,
+        )
+        insp.get_multi_table_comment(
+            filter_names=["#mr_leak_tmp"],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.TABLE,
+        )
+
+        after = dict(connection.get_execution_options())
+        eq_(before, after)
+
+    def test_temp_reflection_with_caller_translate_map(
+        self, metadata, connection
+    ):
+        """Temp table reflection must work even when the caller has a
+        ``schema_translate_map`` set on the connection that contains a
+        ``"sys"`` key.
+
+        Statement-level execution options DO NOT override connection
+        options for ``schema_translate_map`` (the connection wins
+        during option merge). Execute-level options DO override, so the
+        tempdb pass must pass its map at execute time, not on the
+        statement or the connection.
+        """
+        tt = Table(
+            "#mr_hostile_map",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("val", Integer),
+        )
+        tt.create(connection)
+
+        # Hostile setup: caller has set a translate_map with a "sys"
+        # key for their own purposes. Our temp pass must still reach
+        # tempdb.sys.* despite this.
+        hostile = connection.execution_options(
+            schema_translate_map={"sys": "INFORMATION_SCHEMA"}
+        )
+
+        insp = inspect(hostile)
+        r = dict(
+            insp.get_multi_columns(
+                filter_names=["#mr_hostile_map"],
+                scope=ObjectScope.ANY,
+                kind=ObjectKind.TABLE,
+            )
+        )
+        eq_(set(r.keys()), {(None, "#mr_hostile_map")})
+        eq_(
+            [c["name"] for c in r[(None, "#mr_hostile_map")]],
+            ["id", "val"],
+        )
 
     @testing.combinations(
         ("local_temp", "#tmp", True),

@@ -282,3 +282,64 @@ extended_properties = Table(
     Column("value", NVarcharSqlVariant),
     schema="sys",
 )
+
+sys_schemas = Table(
+    "schemas",
+    ischema,
+    Column("schema_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("principal_id", Integer),
+    schema="sys",
+)
+
+sys_objects = Table(
+    "objects",
+    ischema,
+    Column("object_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("schema_id", Integer),
+    Column("parent_object_id", Integer),
+    Column("type", String),  # CHAR(2)
+    Column("type_desc", CoerceUnicode),
+    schema="sys",
+)
+
+sys_key_constraints = Table(
+    "key_constraints",
+    ischema,
+    Column("object_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("schema_id", Integer),
+    Column("parent_object_id", Integer),
+    Column("type", String),  # CHAR(2) ('PK', 'UQ')
+    Column("unique_index_id", Integer),
+    schema="sys",
+)
+
+sys_indexes = Table(
+    "indexes",
+    ischema,
+    Column("object_id", Integer),
+    Column("index_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("type", Integer),  # TINYINT: 1=clustered, 2=nonclustered
+    Column("type_desc", CoerceUnicode),
+    Column("is_unique", Boolean),
+    Column("is_primary_key", Boolean),
+    Column("is_unique_constraint", Boolean),
+    Column("filter_definition", CoerceUnicode),
+    schema="sys",
+)
+
+sys_index_columns = Table(
+    "index_columns",
+    ischema,
+    Column("object_id", Integer),
+    Column("index_id", Integer),
+    Column("index_column_id", Integer),
+    Column("column_id", Integer),
+    Column("key_ordinal", Integer),
+    Column("is_descending_key", Boolean),
+    Column("is_included_column", Boolean),
+    schema="sys",
+)
