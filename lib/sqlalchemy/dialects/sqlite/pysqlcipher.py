@@ -144,7 +144,6 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
             cursor.execute(f"pragma key={passphrase}")
             for prag, value in query_pragmas.items():
                 cursor.execute(f"pragma {prag}={value}")
-            print(query_pragmas)
             cursor.close()
 
             if super_on_connect:
