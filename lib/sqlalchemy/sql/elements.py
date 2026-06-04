@@ -4301,7 +4301,12 @@ class BinaryExpression(OperatorExpression[_T]):
         return self.left._from_objects + self.right._from_objects
 
     def _negate(self):
-        if self.negate is not None:
+        if self.negate is not None and not getattr(
+            self.right, "_is_collection_aggregate", False
+        ) and not (
+            getattr(self.right, "name", None) is not None
+            and getattr(self.right, "name", "").lower() in ("any", "all")
+        ):
             return BinaryExpression(
                 self.left,
                 self.right._negate_in_binary(self.negate, self.operator),

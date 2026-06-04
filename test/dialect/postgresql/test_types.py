@@ -2349,6 +2349,64 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         is_(expr.type.__class__, postgresql.ARRAY)
         is_(expr.type.item_type.__class__, element_type)
 
+    def test_any_all_negation(self):
+        # Test that negation of == ANY/ALL and != ANY/ALL uses NOT()
+        # instead of rewriting the operator.
+        # This addresses issue #13343 where ~(col == any(arr)) was
+        # incorrectly compiled to col != any(arr) instead of
+        # NOT (col = any(arr)).
+
+        # Test any_() constructor
+        self.assert_compile(
+            ~(column("x") == any_(array([1, 2]))),
+            "NOT (x = ANY (ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER]))",
+        )
+        self.assert_compile(
+            ~(column("x") != any_(array([1, 2]))),
+            "NOT (x != ANY (ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER]))",
+        )
+
+        # Test all_() constructor
+        self.assert_compile(
+            ~(column("x") == all_(array([1, 2]))),
+            "NOT (x = ALL (ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER]))",
+        )
+        self.assert_compile(
+            ~(column("x") != all_(array([1, 2]))),
+            "NOT (x != ALL (ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER]))",
+        )
+
+        # Test func.any() - the original bug report case
+        self.assert_compile(
+            ~(column("x") == func.any(array([1, 2]))),
+            "NOT (x = any(ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER]))",
+        )
+        self.assert_compile(
+            ~(column("x") != func.any(array([1, 2]))),
+            "NOT (x != any(ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER]))",
+        )
+
+        # Test func.all()
+        self.assert_compile(
+            ~(column("x") == func.all(array([1, 2]))),
+            "NOT (x = all(ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER]))",
+        )
+        self.assert_compile(
+            ~(column("x") != func.all(array([1, 2]))),
+            "NOT (x != all(ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER]))",
+        )
+
+    def test_any_all_negation_other_ops(self):
+        # Test that other operators with ANY/ALL still work correctly.
+        self.assert_compile(
+            column("x") < any_(array([1, 2])),
+            "x < ANY (ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER])",
+        )
+        self.assert_compile(
+            column("x") > all_(array([1, 2])),
+            "x > ALL (ARRAY[%(param_1)s::INTEGER, %(param_2)s::INTEGER])",
+        )
+
 
 AnEnum = pep435_enum("AnEnum")
 AnEnum("Foo", 1)
