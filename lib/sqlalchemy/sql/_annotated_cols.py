@@ -85,8 +85,9 @@ class TypedColumns(ReadOnlyColumnCollection[str, "Column[Any]"]):
     To resolve the columns, a simplified version of the ORM logic is used,
     in particular, columns can be declared by:
 
-    * directly instantiating them, to declare constraint, custom SQL types and
-      additional column options;
+    * directly instantiating :class:`_schema.Column`, to declare constraint,
+      custom SQL types and additional column options. The annotation is
+      usually inferred by type checkers from the column instance;
     * using only a :class:`.Named` or :class:`_schema.Column` type annotation,
       where nullability and SQL type will be inferred by the python type
       provided.
@@ -94,6 +95,9 @@ class TypedColumns(ReadOnlyColumnCollection[str, "Column[Any]"]):
     * a mix of both, where the instance can be used to declare
       constraints and other column options while the annotation will be used
       to set the SQL type and nullability if not provided by the instance.
+      The information provided in the instance will take precedence over
+      the annotation when they are conflicting, for example if setting
+      nullable=True with an annotation tha does not include ``None``.
 
     In all cases the name is inferred from the attribute name, unless
     explicitly provided.
@@ -111,6 +115,7 @@ class TypedColumns(ReadOnlyColumnCollection[str, "Column[Any]"]):
 
         class tbl_cols(TypedColumns):
             # the name will be set to ``id``, type is inferred as Column[int]
+            # from the Integer SQL type.
             id = Column(Integer, primary_key=True)
 
             # not null String column is generated
@@ -119,7 +124,7 @@ class TypedColumns(ReadOnlyColumnCollection[str, "Column[Any]"]):
             # nullable Double column is generated
             weight: Named[float | None]
 
-            # nullable Integer column, with sql name 'user_age'
+            # nullable Integer column, with SQL name 'user_age'
             age: Named[int | None] = Column("user_age")
 
             # not null column with type String(42)

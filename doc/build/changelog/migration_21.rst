@@ -736,16 +736,23 @@ can infer the exact types of columns when accessing them via the
 
 Example usage::
 
-    from sqlalchemy import Table, TypedColumns, Column, Integer, MetaData, select
+    from sqlalchemy import Table, TypedColumns, Column, Integer
+    from sqlalchemy import MetaData, Named, SmallInteger, select
 
 
     class user_cols(TypedColumns):
+        # the name will be set to ``id``, type is inferred as Column[int]
+        # from the Integer SQL type.
         id = Column(Integer, primary_key=True)
-        name: Column[str]
-        age: Column[int]
+
+        # not null String column is generated
+        name: Named[str]
+
+        # nullable Integer column, the SQL type is manually set SmallInteger
+        age: Named[int | None] = Column(SmallInteger)
 
         # optional, used to infer the select types when selecting the table
-        __row_pos__: tuple[int, str, int]
+        __row_pos__: tuple[int, str, int | None]
 
 
     metadata = MetaData()
@@ -755,19 +762,20 @@ Example usage::
     stmt = select(user.c.id, user.c.name)  # Inferred as Select[int, str]
 
     # and also when selecting the whole table, when __row_pos__ is present
-    stmt = select(user)  # Inferred as Select[int, str, int]
+    stmt = select(user)  # Inferred as Select[int, str, int | None]
 
 The optional :attr:`sqlalchemy.sql._annotated_cols.HasRowPos.__row_pos__` annotation
 is used to infer the types of a select when selecting the table directly.
 
 Columns can be declared in :class:`.TypedColumns` subclasses by instantiating
-them directly or by using only a type annotations, that will be inferred when
-generating a :class:`_schema.Table`.
+them directly, like ``id``, by using only a type annotations, like ``name``, letting
+the :class:`_schema.Table` infer SQL type and nullability, or by mixing the two, like ``age``,
+to provide explicit column options while inferring nullability and/or SQL type.
 
 Other :class:`_sql.FromClause`, like :class:`_sql.Join`, :class:`_sql.CTE`, etc, can be made
 generic using the :meth:`_sql.FromClause.with_cols` method::
 
-    # using with_cols the ``c`` collection of the cte has typed tables
+    # using with_cols the ``c`` collection of the cte has typed columns
     cte = user.select().cte().with_cols(user_cols)
 
 ORM Integration
