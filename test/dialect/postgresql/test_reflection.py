@@ -193,7 +193,6 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
                     "name": "my_index",
                     "unique": False,
                     "column_names": ["q"],
-                    "include_columns": [],
                     "dialect_options": {"postgresql_include": []},
                 }
             ],
@@ -209,7 +208,6 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
             [
                 {
                     "column_names": ["q"],
-                    "include_columns": [],
                     "dialect_options": {"postgresql_include": []},
                     "name": mock.ANY,
                     "unique": False,
@@ -386,7 +384,6 @@ class MaterializedViewReflectionTest(
             "column_sorting": {"data": ("desc",)},
         }
         if connection.dialect.server_version_info >= (11, 0):
-            exp["include_columns"] = []
             exp["dialect_options"] = {"postgresql_include": []}
         plain = {(None, "test_regview"): []}
         mat = {(None, "test_mview"): [exp]}
@@ -1751,14 +1748,12 @@ class ReflectionTest(
                     "(other::text || id::text)",
                 ],
                 "unique": False,
-                "include_columns": [],
                 "dialect_options": {"postgresql_include": []},
             },
             {
                 "name": "idx2",
                 "column_names": ["id"],
                 "unique": True,
-                "include_columns": [],
                 "dialect_options": {
                     "postgresql_include": [],
                     "postgresql_where": "((name)::text = 'test'::text)",
@@ -1773,7 +1768,6 @@ class ReflectionTest(
                     "lower(aname::text)",
                 ],
                 "unique": False,
-                "include_columns": [],
                 "dialect_options": {"postgresql_include": []},
                 "column_sorting": {"lower(aname::text)": ("desc",)},
             },
@@ -1782,7 +1776,6 @@ class ReflectionTest(
                 "column_names": ["name", None, "aname"],
                 "expressions": ["name", "lower(other::text)", "aname"],
                 "unique": False,
-                "include_columns": [],
                 "dialect_options": {
                     "postgresql_include": [],
                     "postgresql_where": "((name)::text <> 'foo'::text)",
@@ -1796,7 +1789,6 @@ class ReflectionTest(
                 "name": "ix_party_name",
                 "column_names": ["name"],
                 "unique": False,
-                "include_columns": [],
                 "dialect_options": {"postgresql_include": []},
             },
         ]
@@ -1807,7 +1799,6 @@ class ReflectionTest(
                     "column_names": ["name", None],
                     "expressions": ["name", "upper(other::text)"],
                     "unique": True,
-                    "include_columns": [],
                     "dialect_options": {
                         "postgresql_include": [],
                         "postgresql_nulls_not_distinct": True,
@@ -1818,7 +1809,6 @@ class ReflectionTest(
 
         if version < (11,):
             for index in expected:
-                index.pop("include_columns")
                 index["dialect_options"].pop("postgresql_include")
                 if not index["dialect_options"]:
                     index.pop("dialect_options")
@@ -1958,7 +1948,6 @@ class ReflectionTest(
         ind = connection.dialect.get_indexes(connection, "t", None)
         expected = [{"name": "idx1", "unique": False, "column_names": ["y"]}]
         if testing.requires.index_reflects_included_columns.enabled:
-            expected[0]["include_columns"] = []
             expected[0]["dialect_options"] = {"postgresql_include": []}
 
         eq_(ind, expected)
@@ -1991,7 +1980,6 @@ class ReflectionTest(
             }
         ]
         if testing.requires.index_reflects_included_columns.enabled:
-            expected[0]["include_columns"] = []
             expected[0]["dialect_options"]["postgresql_include"] = []
         eq_(ind, expected)
 
@@ -2024,7 +2012,6 @@ class ReflectionTest(
             }
         ]
         if testing.requires.index_reflects_included_columns.enabled:
-            expected[0]["include_columns"] = []
             expected[0]["dialect_options"]["postgresql_include"] = []
         eq_(ind, expected)
         m = MetaData()
@@ -2070,7 +2057,6 @@ class ReflectionTest(
             }
         ]
         if connection.dialect.server_version_info >= (11, 0):
-            expected[0]["include_columns"] = []
             expected[0]["dialect_options"]["postgresql_include"] = []
         eq_(ind, expected)
 
@@ -2109,7 +2095,6 @@ class ReflectionTest(
                     "postgresql_nulls_not_distinct": True,
                     "postgresql_include": [],
                 },
-                "include_columns": [],
             },
             {
                 "unique": True,
@@ -2119,7 +2104,6 @@ class ReflectionTest(
                     "postgresql_nulls_not_distinct": True,
                     "postgresql_include": [],
                 },
-                "include_columns": [],
                 "duplicates_constraint": "unq1",
             },
         ]
@@ -2181,7 +2165,6 @@ class ReflectionTest(
                 {
                     "unique": False,
                     "column_names": ["x"],
-                    "include_columns": ["name"],
                     "dialect_options": {"postgresql_include": ["name"]},
                     "name": "idx1",
                 },
@@ -2190,7 +2173,6 @@ class ReflectionTest(
                     "column_names": [None, None],
                     "expressions": ["lower(other)", "(id * id)"],
                     "unique": True,
-                    "include_columns": ["id"],
                     "dialect_options": {"postgresql_include": ["id"]},
                 },
                 {
@@ -2202,7 +2184,6 @@ class ReflectionTest(
                         "lower(aname::text)",
                     ],
                     "unique": False,
-                    "include_columns": ["id", "x"],
                     "dialect_options": {"postgresql_include": ["id", "x"]},
                     "column_sorting": {
                         "other": ("desc", "nulls_last"),
@@ -2612,7 +2593,6 @@ class ReflectionTest(
             }
         ]
         if testing.requires.index_reflects_included_columns.enabled:
-            expected[0]["include_columns"] = []
             expected[0]["dialect_options"]["postgresql_include"] = []
 
         eq_(insp.get_indexes("t"), expected)

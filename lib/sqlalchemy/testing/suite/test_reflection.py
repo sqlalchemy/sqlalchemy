@@ -1281,7 +1281,6 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
                 "column_names": list(cols),
                 "name": name,
                 "dialect_options": mock.ANY,
-                "include_columns": [],
             }
             if column_sorting:
                 res["column_sorting"] = column_sorting
@@ -2079,8 +2078,6 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         expected = [
             {"unique": False, "column_names": ["foo"], "name": "user_tmp_ix"}
         ]
-        if testing.requires.index_reflects_included_columns.enabled:
-            expected[0]["include_columns"] = []
         eq_(
             [idx for idx in indexes if idx["name"] == "user_tmp_ix"],
             expected,
@@ -2914,7 +2911,6 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
 
         def completeIndex(entry):
             if testing.requires.index_reflects_included_columns.enabled:
-                entry["include_columns"] = []
                 entry["dialect_options"] = {
                     f"{connection.engine.name}_include": []
                 }
@@ -2997,7 +2993,6 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
                 {
                     "name": "t_idx",
                     "column_names": ["x"],
-                    "include_columns": ["y"],
                     "unique": False,
                     "dialect_options": mock.ANY,
                 }

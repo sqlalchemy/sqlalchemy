@@ -4597,10 +4597,7 @@ index_info AS (
                 "name": row["name"],
                 "unique": row["is_unique"] == 1,
                 "column_names": [],
-                # NOTE: this is legacy, this is part of
-                # dialect_options now as of #7382
-                "include_columns": [],
-                "dialect_options": {},
+                "dialect_options": {"mssql_include": []},
             }
             do = current["dialect_options"]
             index_type = row["type"]
@@ -4635,23 +4632,20 @@ index_info AS (
             if idx_id not in indexes_by_table[tname]:
                 continue
             index_def = indexes_by_table[tname][idx_id]
-            is_colstore = index_def["dialect_options"].get("mssql_columnstore")
-            is_clustered = index_def["dialect_options"].get("mssql_clustered")
+            do = index_def["dialect_options"]
+            is_colstore = do.get("mssql_columnstore")
+            is_clustered = do.get("mssql_clustered")
             if not (is_colstore and is_clustered):
                 # a clustered columnstore index includes all columns but does
                 # not want them in the index definition
                 if row["is_included_column"] and not is_colstore:
                     # a noncludsted columnstore index reports that includes
                     # columns but requires that are listed as normal columns
-                    index_def["include_columns"].append(row["name"])
+                    do["mssql_include"].append(row["name"])
                 else:
                     index_def["column_names"].append(row["name"])
 
         for tname, idx_dict in indexes_by_table.items():
-            for index_info in idx_dict.values():
-                index_info["dialect_options"]["mssql_include"] = index_info[
-                    "include_columns"
-                ]
             result[(schema, tname)] = list(idx_dict.values())
 
         for n in names:
