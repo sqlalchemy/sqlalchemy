@@ -4176,7 +4176,7 @@ index_info AS (
 
         Returns a ``select()`` that includes ``table_name`` and ``owner``
         in the result so callers can group rows by table. The clustered
-        flag comes directly from ``sys.indexes.type``(1 = clustered).
+        flag comes directly from ``sys.indexes.type`` (1 = clustered).
         """
         sys_key_constraints = ischema.sys_key_constraints
         sys_indexes = ischema.sys_indexes
