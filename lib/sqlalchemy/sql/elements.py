@@ -3190,7 +3190,7 @@ class OperatorExpression(ColumnElement[_T]):
                     *(left_flattened + right_flattened),
                 )
 
-        if right._is_collection_aggregate:
+        if left._is_collection_aggregate or right._is_collection_aggregate:
             negate = None
 
         return BinaryExpression(

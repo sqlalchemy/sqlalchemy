@@ -19,6 +19,7 @@ from sqlalchemy import JSON
 from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
+from sqlalchemy import not_
 from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import Sequence
@@ -1256,6 +1257,77 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt2,
             "SELECT array_agg(foo.a ORDER BY foo.b DESC) AS array_agg_1 "
             "FROM table1 AS foo",
+        )
+
+
+class CollectionAggregateFunctionTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.combinations(
+        ("any", func.any),
+        ("all", func.all),
+        ("some", func.some),
+        id_="ia",
+    )
+    def test_is_collection_aggregate(self, fn):
+        c = column("x", Integer)
+        expr = fn(c)
+        is_(expr._is_collection_aggregate, True)
+
+    @testing.combinations(
+        ("any", func.any, "any"),
+        ("all", func.all, "all"),
+        ("some", func.some, "some"),
+        id_="iaa",
+    )
+    def test_negate_rhs(self, fn, name):
+        c = column("x", Integer)
+        arr = column("arr", Integer)
+        self.assert_compile(
+            ~(c == fn(arr)),
+            "NOT (x = %s(arr))" % name,
+        )
+
+    @testing.combinations(
+        ("any", func.any, "any"),
+        ("all", func.all, "all"),
+        ("some", func.some, "some"),
+        id_="iaa",
+    )
+    def test_negate_lhs(self, fn, name):
+        c = column("x", Integer)
+        arr = column("arr", Integer)
+        self.assert_compile(
+            ~(fn(arr) == c),
+            "NOT (%s(arr) = x)" % name,
+        )
+
+    @testing.combinations(
+        ("any", func.any, "any"),
+        ("all", func.all, "all"),
+        ("some", func.some, "some"),
+        id_="iaa",
+    )
+    def test_not_function(self, fn, name):
+        c = column("x", Integer)
+        arr = column("arr", Integer)
+        self.assert_compile(
+            not_(c == fn(arr)),
+            "NOT (x = %s(arr))" % name,
+        )
+
+    @testing.combinations(
+        ("any", func.any, "any"),
+        ("all", func.all, "all"),
+        ("some", func.some, "some"),
+        id_="iaa",
+    )
+    def test_ne_not_affected(self, fn, name):
+        c = column("x", Integer)
+        arr = column("arr", Integer)
+        self.assert_compile(
+            c != fn(arr),
+            "x != %s(arr)" % name,
         )
 
 
