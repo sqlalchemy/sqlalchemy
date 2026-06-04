@@ -281,6 +281,7 @@ def instances(
         source_supports_scalars=single_entity,
         raw=cursor,
         dynamic_yield_per=cursor.context._is_server_side,
+        context=context,
     )
 
     # filtered and single_entity are used to indicate to legacy Query that the
@@ -291,7 +292,7 @@ def instances(
     )
 
     # multi_row_eager_loaders OTOH is specific to joinedload.
-    if context.compile_state.multi_row_eager_loaders:
+    if context.requires_uniquing:
 
         def require_unique(obj):
             raise sa_exc.InvalidRequestError(
