@@ -1,11 +1,17 @@
 """basic tests of lazy loaded attributes"""
 
+from sqlalchemy import ForeignKey
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import immediateload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
@@ -302,3 +308,108 @@ class SelfReferentialTest(_fixtures.FixtureTest):
                 is_(n1.parent, n0)
             else:
                 eq_(n1.parent, Node(data="n0"))
+
+
+class PolymorphicImmediateLoadTest(fixtures.DeclarativeMappedTest):
+    """test #13204"""
+
+    run_setup_bind = "once"
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_classes(cls):
+        class Meta(cls.DeclarativeBasic):
+            __tablename__ = "meta_13204"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column(String(50))
+
+        class Owner(cls.DeclarativeBasic):
+            __tablename__ = "owner_13204"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str] = mapped_column(String(50))
+
+        class Animal(cls.DeclarativeBasic):
+            __tablename__ = "animal_13204"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str] = mapped_column(String(50))
+            name: Mapped[str] = mapped_column(String(50))
+            meta_id: Mapped[int] = mapped_column(ForeignKey("meta_13204.id"))
+            owner_id: Mapped[int] = mapped_column(
+                ForeignKey("owner_13204.id")
+            )
+            meta: Mapped["Meta"] = relationship()
+            owner: Mapped["Owner"] = relationship(back_populates="animals")
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "animal",
+            }
+
+        class Dog(Animal):
+            __tablename__ = "dog_13204"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("animal_13204.id"), primary_key=True
+            )
+            breed: Mapped[str] = mapped_column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "dog"}
+
+        class Cat(Animal):
+            __tablename__ = "cat_13204"
+            id: Mapped[int] = mapped_column(
+                ForeignKey("animal_13204.id"), primary_key=True
+            )
+            color: Mapped[str] = mapped_column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "cat"}
+
+        Owner.animals = relationship("Animal", back_populates="owner")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Meta, Animal, Dog, Cat, Owner = cls.classes(
+            "Meta", "Animal", "Dog", "Cat", "Owner"
+        )
+
+        with Session(connection) as sess:
+            m1 = Meta(name="alpha")
+            m2 = Meta(name="beta")
+            sess.add_all([m1, m2])
+            sess.flush()
+            o = Owner(name="Alice")
+            sess.add(o)
+            sess.flush()
+            sess.add_all([
+                Dog(id=1, name="Rex", breed="Lab", meta=m1, owner=o),
+                Cat(id=2, name="Whiskers", color="orange", meta=m2, owner=o),
+            ])
+            sess.commit()
+
+    def test_immediateload_with_polymorphic(self):
+        """test #13204 - immediateload at level 1 on with_polymorphic"""
+        Animal = self.classes.Animal
+
+        ap = with_polymorphic(Animal, "*", flat=True)
+        stmt = select(ap).options(immediateload(ap.meta))
+
+        sess = fixture_session()
+        objs = sess.scalars(stmt).unique().all()
+        with self.assert_statement_count(testing.db, 0):
+            for obj in objs:
+                assert obj.meta is not None
+                assert obj.meta.name in ("alpha", "beta")
+
+    def test_immediateload_chained_suboption(self):
+        """test #13204 - immediateload as chained sub-option"""
+        Owner, Animal = self.classes("Owner", "Animal")
+
+        stmt = select(Owner).options(
+            immediateload(Owner.animals).options(immediateload(Animal.meta))
+        )
+
+        sess = fixture_session()
+        owners = sess.scalars(stmt).unique().all()
+        with self.assert_statement_count(testing.db, 0):
+            for owner in owners:
+                for animal in owner.animals:
+                    assert animal.meta is not None
+                    assert animal.meta.name in ("alpha", "beta")

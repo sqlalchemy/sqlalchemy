@@ -1413,6 +1413,17 @@ class _ImmediateLoader(_PostLoader):
             # "use get" load.   the "_RELATED" part means it may return
             # instance even if its expired, since this is a mutually-recursive
             # load operation.
+            #
+            # if a loader was already registered for this path/token,
+            # don't overwrite it with the weaker PASSIVE_NO_FETCH_RELATED
+            # flags.  This can occur with polymorphic mappers where
+            # create_row_processor is invoked for each subclass and the
+            # first invocation already registered the eager loader.
+            # Fixes #13204.
+            if loading._PostLoad.path_exists(
+                context, effective_path, self.parent_property
+            ):
+                return
             flags = attributes.PASSIVE_NO_FETCH_RELATED | PassiveFlag.NO_RAISE
         else:
             flags = attributes.PASSIVE_OFF | PassiveFlag.NO_RAISE
