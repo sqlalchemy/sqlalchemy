@@ -17,6 +17,7 @@ from sqlalchemy import distinct
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import Float
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import intersect
 from sqlalchemy import join
@@ -5144,6 +5145,39 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             t.c.data > fn(t.c.arrval),
             f"tab1.data > {op} (tab1.arrval)",
+            checkparams={},
+        )
+
+    def test_func_any_all_outer_negate(self, t_fixture):
+        """test #13343 - func.any()/func.all() with outer negation"""
+        t = t_fixture
+        # func.any() on the right side
+        self.assert_compile(
+            ~(t.c.data == func.any(t.c.arrval)),
+            "NOT (tab1.data = any(tab1.arrval))",
+            checkparams={},
+        )
+        self.assert_compile(
+            not_(t.c.data == func.any(t.c.arrval)),
+            "NOT (tab1.data = any(tab1.arrval))",
+            checkparams={},
+        )
+        # func.all() on the right side
+        self.assert_compile(
+            ~(t.c.data == func.all(t.c.arrval)),
+            "NOT (tab1.data = all(tab1.arrval))",
+            checkparams={},
+        )
+        # func.any() on the left side
+        self.assert_compile(
+            ~(func.any(t.c.arrval) == t.c.data),
+            "NOT (any(tab1.arrval) = tab1.data)",
+            checkparams={},
+        )
+        # func.all() on the left side
+        self.assert_compile(
+            ~(func.all(t.c.arrval) == t.c.data),
+            "NOT (all(tab1.arrval) = tab1.data)",
             checkparams={},
         )
 

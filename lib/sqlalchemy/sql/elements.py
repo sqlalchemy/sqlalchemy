@@ -3190,7 +3190,15 @@ class OperatorExpression(ColumnElement[_T]):
                     *(left_flattened + right_flattened),
                 )
 
-        if right._is_collection_aggregate:
+        if right._is_collection_aggregate or left._is_collection_aggregate:
+            negate = None
+        elif (
+            getattr(right, "__visit_name__", None) == "function"
+            and getattr(right, "name", "").lower() in ("any", "all")
+        ) or (
+            getattr(left, "__visit_name__", None) == "function"
+            and getattr(left, "name", "").lower() in ("any", "all")
+        ):
             negate = None
 
         return BinaryExpression(
