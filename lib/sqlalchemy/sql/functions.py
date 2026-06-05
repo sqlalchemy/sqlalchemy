@@ -1047,7 +1047,15 @@ class _FunctionGenerator:
         def aggregate_strings(self) -> Type[_aggregate_strings_func]: ...
 
         @property
+        def all(self) -> Type[_all__func[Any]]:  # noqa: A001
+            ...
+
+        @property
         def ansifunction(self) -> Type[_AnsiFunction_func[Any]]: ...
+
+        @property
+        def any(self) -> Type[_any__func[Any]]:  # noqa: A001
+            ...
 
         # set ColumnElement[_T] as a separate overload, to appease
         # mypy which seems to not want to accept _T from
@@ -1306,6 +1314,9 @@ class _FunctionGenerator:
 
         @property
         def session_user(self) -> Type[_session_user_func]: ...
+
+        @property
+        def some(self) -> Type[_some_func[Any]]: ...
 
         # set ColumnElement[_T] as a separate overload, to appease
         # mypy which seems to not want to accept _T from
@@ -1702,6 +1713,23 @@ class AnsiFunction(GenericFunction[_T]):
         GenericFunction.__init__(self, *args, **kwargs)
 
 
+class CollectionAggregateFunction(GenericFunction[_T]):
+    """Define a function that acts as a collection aggregate modifier.
+
+    Collection aggregate functions such as ``ANY``, ``ALL``, and ``SOME``
+    modify the semantics of comparison operators, so negation of comparisons
+    involving these functions must use ``NOT`` rather than flipping the
+    comparison operator.
+
+    .. versionadded:: 2.1
+
+    """
+
+    _is_collection_aggregate = True
+    _register = False
+    inherit_cache = True
+
+
 class ReturnTypeFromArgs(GenericFunction[_T]):
     """Define a function whose return type is bound to the type of its
     arguments.
@@ -2032,6 +2060,50 @@ class array_agg(ReturnTypeFromArgs[Sequence[_T]]):
         super().__init__(*fn_args, **kwargs)
 
 
+class any_(CollectionAggregateFunction[_T]):
+    """The SQL ANY() collection aggregate function.
+
+    .. versionadded:: 2.1
+
+    .. seealso::
+
+        :func:`_expression.any_` - standalone ANY expression
+
+    """
+
+    name = "any"
+    identifier = "any"
+    inherit_cache = True
+
+
+class all_(CollectionAggregateFunction[_T]):
+    """The SQL ALL() collection aggregate function.
+
+    .. versionadded:: 2.1
+
+    .. seealso::
+
+        :func:`_expression.all_` - standalone ALL expression
+
+    """
+
+    name = "all"
+    identifier = "all"
+    inherit_cache = True
+
+
+class some(CollectionAggregateFunction[_T]):
+    """The SQL SOME() collection aggregate function.
+
+    SOME is a synonym for ANY in the SQL standard.
+
+    .. versionadded:: 2.1
+
+    """
+
+    inherit_cache = True
+
+
 class OrderedSetAgg(GenericFunction[_T]):
     """Define a function where the return type is based on the sort
     expression type as defined by the expression passed to the
@@ -2267,7 +2339,9 @@ class aggregate_strings(GenericFunction[str]):
 # name. See https://github.com/sqlalchemy/sqlalchemy/issues/13167
 # START GENERATED FUNCTION ALIASES
 _aggregate_strings_func: TypeAlias = aggregate_strings
+_all__func: TypeAlias = all_[_T]
 _AnsiFunction_func: TypeAlias = AnsiFunction[_T]
+_any__func: TypeAlias = any_[_T]
 _array_agg_func: TypeAlias = array_agg[_T]
 _Cast_func: TypeAlias = Cast[_T]
 _char_length_func: TypeAlias = char_length
@@ -2299,6 +2373,7 @@ _random_func: TypeAlias = random
 _rank_func: TypeAlias = rank
 _rollup_func: TypeAlias = rollup[_T]
 _session_user_func: TypeAlias = session_user
+_some_func: TypeAlias = some[_T]
 _sum_func: TypeAlias = sum[_T]
 _sysdate_func: TypeAlias = sysdate
 _user_func: TypeAlias = user

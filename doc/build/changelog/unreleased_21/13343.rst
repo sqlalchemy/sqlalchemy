@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13343
+
+    Fixed issue where negation of comparison expressions involving
+    ``func.any()``, ``func.all()``, and ``func.some()`` SQL functions would
+    incorrectly flip the comparison operator (e.g. ``=`` to ``!=``) rather
+    than wrapping the expression with ``NOT``. These functions are now
+    registered as collection aggregate functions that prevent operator
+    flipping on negation, consistent with the behavior of the standalone
+    :func:`_expression.any_` and :func:`_expression.all_` constructs.
