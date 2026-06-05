@@ -222,4 +222,4 @@ class _PGDialect_common_psycopg(PGDialect):
         )
 
     def do_recover_twophase(self, connection):
-        return [row[1] for row in connection.connection.tpc_recover()]
+        return [str(row) for row in connection.connection.tpc_recover()]
