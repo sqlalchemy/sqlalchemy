@@ -8,6 +8,10 @@ on:
   #   branches:
   #     - "go_wheel_*"
 
+permissions:
+  id-token: write
+  contents: read
+
 # env:
 #   # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
 #   TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
@@ -99,7 +103,7 @@ jobs:
           # PYTHONNOUSERSITE: "1"
 
 
-      - name: Set up Python for twine and pure-python wheel
+      - name: Set up Python for pure-python wheel
         uses: actions/setup-python@v6
         with:
           python-version: "3.14"
@@ -124,14 +128,12 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           files: './wheelhouse/*.whl'
 
-      - name: Publish wheel
-        # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify
-        # additional options
-        env:
-          TWINE_USERNAME: __token__
-          # replace TWINE_PASSWORD with token for real pypi
-          # TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
-          TWINE_PASSWORD: ${{ secrets.pypi_token }}
+      - name: Generate attestations
         run: |
-          python -m pip install -U twine
-          twine upload --skip-existing ./wheelhouse/*
+          pip install pypi-attestations
+          python -m pypi_attestations sign ./wheelhouse/*
+
+      - name: Publish wheel
+        run: |
+          pip install "twine>=6.2.0"
+          twine upload --skip-existing --attestations ./wheelhouse/*
