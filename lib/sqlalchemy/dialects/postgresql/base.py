@@ -5538,9 +5538,25 @@ class PGDialect(default.DefaultDialect):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = re.compile(
-                    r"^[\s\n]*\((.+)\)[\s\n]*$", flags=re.DOTALL
-                ).sub(r"\1", m.group(1))
+                # Strip outermost matching parentheses, preserving
+                # inner grouping parentheses.  Use paren-counting
+                # instead of regex to avoid greedy/non-greedy pitfalls.
+                # e.g. "((a) AND (b))" -> "(a) AND (b)"
+                # e.g. "(a) AND (b)" -> "(a) AND (b)" (unchanged)
+                sqltext = m.group(1)
+                sqltext_stripped = sqltext.strip()
+                if sqltext_stripped.startswith("(") and sqltext_stripped.endswith(")"):
+                    depth = 0
+                    for i, ch in enumerate(sqltext_stripped):
+                        if ch == "(":
+                            depth += 1
+                        elif ch == ")":
+                            depth -= 1
+                            if depth == 0 and i == len(sqltext_stripped) - 1:
+                                sqltext = sqltext_stripped[1:-1].strip()
+                                break
+                            elif depth == 0:
+                                break
             entry = {
                 "name": check_name,
                 "sqltext": sqltext,

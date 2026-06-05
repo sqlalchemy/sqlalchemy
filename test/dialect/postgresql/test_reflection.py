@@ -2831,6 +2831,68 @@ class ReflectionTest(
             ],
         )
 
+    def test_reflect_check_constraint_nested_parens(self):
+        """test #13157 - nested parens in check constraint reflection"""
+        rows = [
+            (
+                "foo",
+                "chk_nested",
+                "CHECK (((x IS NULL OR y IS NULL) AND (x IS NULL OR y IS NULL)))",
+                None,
+            ),
+            (
+                "foo",
+                "chk_single",
+                "CHECK ((a > 1))",
+                None,
+            ),
+            (
+                "foo",
+                "chk_no_extra",
+                "CHECK (a > 1)",
+                None,
+            ),
+            (
+                "foo",
+                "chk_complex",
+                "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))",
+                None,
+            ),
+        ]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        check_constraints = testing.db.dialect.get_check_constraints(
+            conn, "foo"
+        )
+        eq_(
+            check_constraints,
+            [
+                {
+                    "name": "chk_nested",
+                    "sqltext": "(x IS NULL OR y IS NULL) AND (x IS NULL OR y IS NULL)",
+                    "comment": None,
+                },
+                {
+                    "name": "chk_single",
+                    "sqltext": "a > 1",
+                    "comment": None,
+                },
+                {
+                    "name": "chk_no_extra",
+                    "sqltext": "a > 1",
+                    "comment": None,
+                },
+                {
+                    "name": "chk_complex",
+                    "sqltext": "(a = 1) OR ((a > 2) AND (a < 5))",
+                    "comment": None,
+                },
+            ],
+        )
+
     def _apply_stm(self, connection, use_map):
         if use_map:
             return connection.execution_options(
