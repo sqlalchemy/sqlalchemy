@@ -3424,7 +3424,7 @@ class PGDeferrableConnectionCharacteristic(
         return dialect.get_deferrable(dbapi_conn)
 
 
-class PGDialect(default.DefaultDialect):
+class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
     name = "postgresql"
     supports_statement_cache = True
     supports_alter = True
@@ -3980,14 +3980,6 @@ class PGDialect(default.DefaultDialect):
         else:
             return res
 
-    def _value_or_raise(self, data, table, schema):
-        try:
-            return dict(data)[(schema, table)]
-        except KeyError:
-            raise exc.NoSuchTableError(
-                f"{schema}.{table}" if schema else table
-            ) from None
-
     def _prepare_filter_names(self, filter_names):
         if filter_names:
             return True, {"filter_names": filter_names}
@@ -4005,18 +3997,6 @@ class PGDialect(default.DefaultDialect):
         if ObjectKind.MATERIALIZED_VIEW in kind:
             relkinds += pg_catalog.RELKINDS_MAT_VIEW
         return relkinds
-
-    @reflection.cache
-    def get_table_options(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_table_options(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @lru_cache()
     def _table_options_query(self, schema, has_filter_names, scope, kind):
@@ -4129,18 +4109,6 @@ class PGDialect(default.DefaultDialect):
             table_options[(schema, row["relname"])] = current
 
         return table_options.items()
-
-    @reflection.cache
-    def get_columns(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_columns(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @lru_cache()
     def _columns_query(self, schema, has_filter_names, scope, kind):
@@ -4739,18 +4707,6 @@ class PGDialect(default.DefaultDialect):
                 else:
                     yield tablename, None, None, None, None
 
-    @reflection.cache
-    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_pk_constraint(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
-
     def get_multi_pk_constraint(
         self, connection, schema, filter_names, scope, kind, **kw
     ):
@@ -4783,26 +4739,6 @@ class PGDialect(default.DefaultDialect):
             )
             for table_name, cols, pk_name, comment, opts in result
         )
-
-    @reflection.cache
-    def get_foreign_keys(
-        self,
-        connection,
-        table_name,
-        schema=None,
-        postgresql_ignore_search_path=False,
-        **kw,
-    ):
-        data = self.get_multi_foreign_keys(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            postgresql_ignore_search_path=postgresql_ignore_search_path,
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @lru_cache()
     def _foreing_key_query(self, schema, has_filter_names, scope, kind):
@@ -5014,18 +4950,6 @@ class PGDialect(default.DefaultDialect):
             }
             table_fks.append(fkey_d)
         return fkeys.items()
-
-    @reflection.cache
-    def get_indexes(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_indexes(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @util.memoized_property
     def _index_query(self):
@@ -5341,20 +5265,6 @@ class PGDialect(default.DefaultDialect):
                     table_indexes.append(index)
         return indexes.items()
 
-    @reflection.cache
-    def get_unique_constraints(
-        self, connection, table_name, schema=None, **kw
-    ):
-        data = self.get_multi_unique_constraints(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
-
     def get_multi_unique_constraints(
         self,
         connection,
@@ -5388,18 +5298,6 @@ class PGDialect(default.DefaultDialect):
 
             uniques[(schema, table_name)].append(uc_dict)
         return uniques.items()
-
-    @reflection.cache
-    def get_table_comment(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_table_comment(
-            connection,
-            schema,
-            [table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @lru_cache()
     def _comment_query(self, schema, has_filter_names, scope, kind):
@@ -5444,18 +5342,6 @@ class PGDialect(default.DefaultDialect):
             )
             for table, comment in result
         )
-
-    @reflection.cache
-    def get_check_constraints(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_check_constraints(
-            connection,
-            schema,
-            [table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @lru_cache()
     def _check_constraint_query(self, schema, has_filter_names, scope, kind):
