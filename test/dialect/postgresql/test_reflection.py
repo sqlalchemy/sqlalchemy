@@ -1211,6 +1211,44 @@ class RegexTest(fixtures.TestBase):
 
         eq_(received, expected)
 
+    @testing.combinations(
+        # Regression for #13157: independent sibling parens must not be
+        # treated as if they wrap the whole expression.
+        (
+            "(x IS NULL OR y IS NULL) AND (x IS NULL OR y IS NULL)",
+            "(x IS NULL OR y IS NULL) AND (x IS NULL OR y IS NULL)",
+        ),
+        # The existing strip-once cases (regression coverage for the
+        # samples enumerated in get_multi_check_constraints).
+        ("((a > 1) AND (a < 5))", "(a > 1) AND (a < 5)"),
+        (
+            "((a = 1) OR ((a > 2) AND (a < 5)))",
+            "(a = 1) OR ((a > 2) AND (a < 5))",
+        ),
+        ("(some_boolean_function(a))", "some_boolean_function(a)"),
+        # Already unwrapped -- no change.
+        ("a NOT NULL", "a NOT NULL"),
+        # Parens inside a single-quoted literal must not throw off the
+        # depth counter.
+        ("(a = '(' AND b = ')')", "a = '(' AND b = ')'"),
+        ("a = '(' AND b = ')'", "a = '(' AND b = ')'"),
+        # Doubled '' inside a quoted literal is the PG single-quote escape.
+        ("(a = 'it''s')", "a = 'it''s'"),
+        # Parens inside a double-quoted identifier must not throw off the
+        # depth counter either.
+        ('("col(1)" IS NOT NULL)', '"col(1)" IS NOT NULL'),
+        # Newlines / whitespace.
+        (
+            "(\n(a < 1)\n OR\n (a >= 5)\n)",
+            "\n(a < 1)\n OR\n (a >= 5)\n",
+        ),
+        argnames="src, expected",
+    )
+    def test_strip_outer_parens(self, src, expected):
+        from sqlalchemy.util import strip_outer_parens
+
+        eq_(strip_outer_parens(src), expected)
+
 
 class ReflectionTest(
     ReflectionFixtures, AssertsCompiledSQL, ComparesIndexes, fixtures.TestBase
@@ -2766,6 +2804,56 @@ class ReflectionTest(
                 {
                     "name": "some name",
                     "sqltext": "c != 'hi\nim a name\n'",
+                    "comment": None,
+                },
+            ],
+        )
+
+    def test_reflect_check_constraint_unwrapped_parens(self):
+        """Sibling-paren CHECK expressions must round-trip unchanged through
+        reflection.
+
+        Regression test for #13157: the previous second-strip regex was
+        ``r"^[\\s\\n]*\\((.+)\\)[\\s\\n]*$"`` which greedily paired the
+        leading ``(`` with the trailing ``)`` and dropped both, producing
+        syntactically invalid SQL like ``x IS NULL OR y IS NULL) AND
+        (x IS NULL OR y IS NULL``.
+        """
+        rows = [
+            (
+                "foo",
+                "broken",
+                "CHECK ((x IS NULL OR y IS NULL)"
+                " AND (x IS NULL OR y IS NULL))",
+                None,
+            ),
+            (
+                "foo",
+                "with_literal_parens",
+                "CHECK ((a = '(' AND b = ')'))",
+                None,
+            ),
+        ]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        check_constraints = testing.db.dialect.get_check_constraints(
+            conn, "foo"
+        )
+        eq_(
+            check_constraints,
+            [
+                {
+                    "name": "broken",
+                    "sqltext": "(x IS NULL OR y IS NULL)"
+                    " AND (x IS NULL OR y IS NULL)",
+                    "comment": None,
+                },
+                {
+                    "name": "with_literal_parens",
+                    "sqltext": "a = '(' AND b = ')'",
                     "comment": None,
                 },
             ],
