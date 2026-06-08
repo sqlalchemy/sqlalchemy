@@ -19,6 +19,7 @@ from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Protocol
+from typing import Sequence
 from typing import Set
 from typing import Type
 from typing import TYPE_CHECKING
@@ -209,6 +210,7 @@ _ColumnExpressionArgument = Union[
     roles.TypedColumnsClauseRole[_T],
     Callable[[], "ColumnElement[_T]"],
     "LambdaElement",
+    Sequence[_T],
 ]
 "See docs in public alias ColumnExpressionArgument."
 
