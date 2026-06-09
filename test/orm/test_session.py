@@ -863,6 +863,118 @@ class SessionStateTest(_fixtures.FixtureTest):
         for key, value in expected_opts.items():
             eq_(gather_options[key], value)
 
+    @testing.variation("operation", ["insert", "update", "delete"])
+    def test_execution_options_flush_before_cursor_execute(
+        self,
+        operation: testing.Variation,
+    ):
+        """test #13346 - custom session execution options are visible
+        in before_cursor_execute during flush operations"""
+
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = Session(
+            testing.db,
+            execution_options={
+                "my_custom_opt": "my_value",
+                "my_other_opt": 42,
+            },
+        )
+
+        gather_options = []
+
+        @event.listens_for(sess.get_bind(), "before_cursor_execute")
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            gather_options.append(
+                {
+                    k: v
+                    for k, v in context.execution_options.items()
+                    if k in ("my_custom_opt", "my_other_opt")
+                }
+            )
+
+        expected = {
+            "my_custom_opt": "my_value",
+            "my_other_opt": 42,
+        }
+
+        if operation.insert:
+            sess.add(User(name="u1"))
+            sess.flush()
+        elif operation.update:
+            sess.add(User(name="u1"))
+            sess.flush()
+            gather_options.clear()
+            u1 = sess.scalars(select(User)).first()
+            gather_options.clear()
+            u1.name = "u1modified"
+            sess.flush()
+        elif operation.delete:
+            sess.add(User(name="u1"))
+            sess.flush()
+            gather_options.clear()
+            u1 = sess.scalars(select(User)).first()
+            gather_options.clear()
+            sess.delete(u1)
+            sess.flush()
+        else:
+            operation.fail()
+
+        sess.close()
+
+        eq_(gather_options, [expected])
+
+    def test_execution_options_flush_and_execute(self):
+        """test #13346 - session execution options are visible in both
+        do_orm_execute (explicit queries) and before_cursor_execute
+        (flush and queries) for the same session"""
+
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = Session(
+            testing.db,
+            execution_options={
+                "my_custom_opt": "my_value",
+            },
+        )
+
+        cursor_options = []
+        orm_options = []
+
+        @event.listens_for(sess.get_bind(), "before_cursor_execute")
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            cursor_options.append(
+                context.execution_options.get("my_custom_opt")
+            )
+
+        @event.listens_for(sess, "do_orm_execute")
+        def do_orm_execute(ctx: ORMExecuteState) -> None:
+            orm_options.append(ctx.execution_options.get("my_custom_opt"))
+
+        sess.add(User(name="u1"))
+        sess.flush()
+
+        # flush fires before_cursor_execute but not do_orm_execute
+        is_true(len(cursor_options) > 0)
+        eq_(cursor_options, ["my_value"] * len(cursor_options))
+        eq_(orm_options, [])
+
+        cursor_options.clear()
+
+        # explicit execute fires both
+        sess.execute(select(User))
+        is_true(len(cursor_options) > 0)
+        eq_(cursor_options, ["my_value"] * len(cursor_options))
+        eq_(orm_options, ["my_value"])
+
+        sess.close()
+
     @testing.combinations(
         ("default", None, {}, None),
         ("arg_true", True, {}, True),
@@ -1605,6 +1717,122 @@ class SessionStateTest(_fixtures.FixtureTest):
         else:
             s.add(u2)
             assertions.in_(u2, s)
+
+
+class SessionSchemaTranslateTest(
+    fixtures.MappedTest, testing.AssertsExecutionResults
+):
+    __requires__ = ("schemas",)
+    __sparse_driver_backend__ = True
+    run_inserts = None
+    run_setup_mappers = "each"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("name", String(30), nullable=False),
+            schema=config.test_schema,
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        user_table = Table(
+            "users",
+            sa.MetaData(),
+            Column(
+                "id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("name", String(30), nullable=False),
+            schema="placeholder",
+        )
+        cls.mapper_registry.map_imperatively(User, user_table)
+
+    @testing.variation("operation", ["insert", "update", "delete"])
+    def test_schema_translate_map_flush(
+        self,
+        operation: testing.Variation,
+        connection,
+    ):
+        """test #13346 - schema_translate_map on Session
+        execution_options works for flush operations"""
+
+        User = self.classes.User
+
+        sess = Session(
+            connection,
+            execution_options={
+                "schema_translate_map": {"placeholder": config.test_schema},
+            },
+        )
+
+        if operation.insert:
+            sess.add(User(name="u1"))
+            sess.flush()
+            eq_(
+                sess.connection()
+                .execute(
+                    sa.text(f"SELECT name FROM {config.test_schema}.users")
+                )
+                .fetchall(),
+                [("u1",)],
+            )
+        elif operation.update:
+            sess.add(User(name="u1"))
+            sess.flush()
+            u1 = sess.scalars(
+                select(User).execution_options(
+                    schema_translate_map={"placeholder": config.test_schema}
+                )
+            ).first()
+            u1.name = "u1modified"
+            sess.flush()
+            eq_(
+                sess.connection()
+                .execute(
+                    sa.text(f"SELECT name FROM {config.test_schema}.users")
+                )
+                .fetchall(),
+                [("u1modified",)],
+            )
+        elif operation.delete:
+            sess.add(User(name="u1"))
+            sess.flush()
+            u1 = sess.scalars(
+                select(User).execution_options(
+                    schema_translate_map={"placeholder": config.test_schema}
+                )
+            ).first()
+            sess.delete(u1)
+            sess.flush()
+            eq_(
+                sess.connection()
+                .execute(
+                    sa.text(f"SELECT name FROM {config.test_schema}.users")
+                )
+                .fetchall(),
+                [],
+            )
+        else:
+            operation.fail()
+
+        sess.close()
 
 
 class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
