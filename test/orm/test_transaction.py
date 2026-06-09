@@ -1535,6 +1535,26 @@ class TwoPhaseTest(_LocalFixture):
 
         assert u not in s
 
+    @testing.requires.two_phase_transactions
+    def test_rollback_on_prepare_failure(self):
+        """test #13356"""
+
+        User = self.classes.User
+        s = fixture_session(twophase=True)
+
+        u = User(name="ed")
+        s.add(u)
+
+        with mock.patch.object(
+            testing.db.dialect,
+            "do_prepare_twophase",
+            side_effect=Exception("simulated prepare failure"),
+        ):
+            with expect_raises_message(Exception, "simulated prepare failure"):
+                s.commit()
+
+        assert u not in s
+
 
 class RollbackRecoverTest(_LocalFixture):
     __sparse_driver_backend__ = True
