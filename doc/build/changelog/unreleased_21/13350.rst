@@ -1,0 +1,8 @@
+.. change::
+    :tags: reflection
+    :tickets: 13350
+
+    Removed the legacy ``include_columns`` key from the dictionary returned
+    by the index reflection methods of some dialects.
+    This information is now part of the ``dialect_options`` dictionary under the key
+    ``{dialect_name}_include``, such as ``postgresql_include`` or ``mssql_include``.

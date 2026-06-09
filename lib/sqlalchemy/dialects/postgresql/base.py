@@ -5325,9 +5325,6 @@ class PGDialect(default.DefaultDialect):
                             "filter_definition"
                         ]
                     if self.server_version_info >= (11,):
-                        # NOTE: this is legacy, this is part of
-                        # dialect_options now as of #7382
-                        index["include_columns"] = inc_cols
                         dialect_options["postgresql_include"] = inc_cols
                     if row["indnullsnotdistinct"]:
                         # the default is False, so ignore it.
