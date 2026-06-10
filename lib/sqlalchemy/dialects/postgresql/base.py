@@ -3711,7 +3711,7 @@ class PGDialect(default.DefaultDialect):
 
     def do_prepare_twophase(self, connection, xid):
         connection.execute(
-            sql.text("PREPARE TRANSACTION :xid'").bindparams(
+            sql.text("PREPARE TRANSACTION :xid").bindparams(
                 sql.bindparam("xid", xid, literal_execute=True)
             )
         )
