@@ -145,6 +145,25 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             ")",
         )
 
+    def test_delete_with_nested_alias_exists(self):
+        table1, table2 = self.tables.mytable, self.tables.myothertable
+
+        t2_alias = table2.alias("t2_alias")
+
+        stmt = table1.delete().where(
+            exists()
+            .where(t2_alias.c.otherid == table1.c.myid)
+            .where(t2_alias.c.othername == "x")
+        )
+
+        self.assert_compile(
+            stmt,
+            "DELETE FROM mytable WHERE EXISTS "
+            "(SELECT * FROM myothertable AS t2_alias "
+            "WHERE t2_alias.otherid = mytable.myid "
+            "AND t2_alias.othername = :othername_1)",
+        )
+
 
 class DeleteFromCompileTest(
     _DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL
