@@ -3934,3 +3934,70 @@ class GenerativeResultTest(fixtures.TablesTest):
             start += 20
 
         assert result._soft_closed
+
+
+class AllInterimRowsTest(fixtures.TablesTest):
+    """test Result._all_interim_rows(), which ORM loading uses to fetch
+    processed rows without constructing Row objects."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        class UpperString(TypeDecorator):
+            impl = String(50)
+            cache_ok = True
+
+            def process_result_value(self, value, dialect):
+                return value.upper() if value is not None else None
+
+        Table(
+            "interim",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("plain", String(50)),
+            Column("upper", UpperString()),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.interim.insert(),
+            [
+                {"id": 1, "plain": "p1", "upper": "u1"},
+                {"id": 2, "plain": "p2", "upper": None},
+            ],
+        )
+
+    def test_processors_applied(self, connection):
+        """rows are plain tuples with result processors applied"""
+        t = self.tables.interim
+        result = connection.execute(select(t).order_by(t.c.id))
+        rows = result._all_interim_rows()
+        eq_(list(rows), [(1, "p1", "U1"), (2, "p2", None)])
+        for r in rows:
+            is_(type(r), tuple)
+
+    def test_no_processors(self, connection):
+        """rows with no result processors in play are plain tuples"""
+        t = self.tables.interim
+        result = connection.execute(select(t.c.id, t.c.plain).order_by(t.c.id))
+        rows = result._all_interim_rows()
+        eq_(list(rows), [(1, "p1"), (2, "p2")])
+        for r in rows:
+            is_(type(r), tuple)
+
+    def test_empty_result(self, connection):
+        t = self.tables.interim
+        result = connection.execute(select(t).where(t.c.id == -1))
+        eq_(list(result._all_interim_rows()), [])
+
+    def test_row_logging_falls_back_to_rows(self, connection):
+        """with a row logging function present, Row objects are built so
+        that they can be logged"""
+        t = self.tables.interim
+        result = connection.execute(select(t).order_by(t.c.id))
+        result._row_logging_fn = lambda row: row
+        rows = result._all_interim_rows()
+        eq_(len(rows), 2)
+        for r in rows:
+            is_true(isinstance(r, Row))
+        eq_(tuple(rows[0]), (1, "p1", "U1"))

@@ -282,6 +282,59 @@ class BaseResultInternal(Generic[_R]):
         assert make_rows is not None
         return make_rows(self._fetchall_impl())
 
+    def _all_interim_rows(self) -> Sequence[Any]:
+        """Return all remaining rows as plain processed tuples, without
+        constructing :class:`.Row` objects when possible.
+
+        Used by ORM loading, whose row getters are position-based and
+        accept any tuple-like row.  Falls back to Row construction for
+        row-logging or scalar-source results.
+
+        """
+        real_result = self if self._real_result is None else self._real_result
+
+        if (
+            real_result._row_logging_fn is not None
+            or real_result._source_supports_scalars
+        ):
+            return self._raw_all_rows()
+
+        metadata = self._metadata
+        tuple_filters = metadata._tuplefilter
+
+        rows = self._fetchall_impl()
+
+        ep = metadata._effective_processors
+        if ep is not None:
+            if tuple_filters is not None:
+                ep = tuple_filters(ep)
+            processors: tuple = tuple(ep)
+            proc_size: cython.Py_ssize_t = len(processors)
+            proc_valid = tuple(
+                [i for i, p in enumerate(processors) if p is not None]
+            )
+            if tuple_filters is not None:
+                return [
+                    _apply_processors(
+                        processors, proc_size, proc_valid, tuple_filters(row)
+                    )
+                    for row in rows
+                ]
+            else:
+                return [
+                    _apply_processors(processors, proc_size, proc_valid, row)
+                    for row in rows
+                ]
+        elif tuple_filters is not None:
+            interim = [tuple_filters(row) for row in rows]
+            if interim and type(interim[0]) is not tuple:
+                interim = [tuple(row) for row in interim]
+            return interim
+        else:
+            if rows and type(rows[0]) is not tuple:
+                return [tuple(row) for row in rows]
+            return rows
+
     def _allrows(self) -> Sequence[_R]:
         post_creational_filter = self._post_creational_filter
 

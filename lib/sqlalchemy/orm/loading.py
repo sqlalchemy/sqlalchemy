@@ -228,7 +228,7 @@ def instances(
                 if not fetch:
                     break
             else:
-                fetch = cursor._raw_all_rows()
+                fetch = cursor._all_interim_rows()
 
             if single_entity:
                 proc = process[0]
