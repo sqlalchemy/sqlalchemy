@@ -13,7 +13,6 @@ implementations, and related MapperOptions."""
 from __future__ import annotations
 
 import collections
-import itertools
 from typing import Any
 from typing import Dict
 from typing import Literal
@@ -56,6 +55,7 @@ from .. import inspect
 from .. import log
 from .. import sql
 from .. import util
+from ..engine.result import IteratorResult
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -1830,9 +1830,12 @@ class _SubqueryLoader(_PostLoader):
             # to work with baked query, the parameters may have been
             # updated since this query was created, so take these into account
 
-            rows = list(q.params(self.params))
-            for k, v in itertools.groupby(rows, lambda x: x[1:]):
-                self._data[k].extend(vv[0] for vv in v)
+            data = self._data
+            for row in q.params(self.params):
+                # group plain tuples rather than Row slices, which would
+                # incur Row construction and Row.__eq__ per row
+                tup = row._to_tuple_instance()
+                data[tup[1:]].append(tup[0])
 
         def loader(self, state, dict_, row):
             if self._data is None:
@@ -3192,17 +3195,30 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
 
             mapper = self.parent
 
+            # attribute keys for the lookup columns; when these are
+            # present in the state's dict, equivalent to the
+            # PASSIVE_NO_FETCH attribute lookup below
+            lookup_keys = [
+                mapper._columntoproperty[lk].key
+                for lk in query_info.child_lookup_cols
+            ]
+
             for state, overwrite in states:
                 state_dict = state.dict
-                related_ident = tuple(
-                    mapper._get_state_attr_by_column(
-                        state,
-                        state_dict,
-                        lk,
-                        passive=attributes.PASSIVE_NO_FETCH,
+                try:
+                    related_ident = tuple(
+                        [state_dict[lk] for lk in lookup_keys]
                     )
-                    for lk in query_info.child_lookup_cols
-                )
+                except KeyError:
+                    related_ident = tuple(
+                        mapper._get_state_attr_by_column(
+                            state,
+                            state_dict,
+                            lk,
+                            passive=attributes.PASSIVE_NO_FETCH,
+                        )
+                        for lk in query_info.child_lookup_cols
+                    )
                 # if the loaded parent objects do not have the foreign key
                 # to the related item loaded, then degrade into the joined
                 # version of selectinload
@@ -3244,12 +3260,18 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 ]
                 in_expr = effective_entity._adapt_element(in_expr)
 
-        bundle_ent = orm_util.Bundle("pk", *pk_cols)
-        bundle_sql = bundle_ent.__clause_element__()
+        if query_info.zero_idx:
+            # single column key; select the column directly so that
+            # result rows carry the plain key value rather than a
+            # per-row Bundle Row object
+            pk_sql = pk_cols[0]
+        else:
+            bundle_ent = orm_util.Bundle("pk", *pk_cols)
+            pk_sql = bundle_ent.__clause_element__()
 
         entity_sql = effective_entity.__clause_element__()
         q = Select._create_raw_select(
-            _raw_columns=[bundle_sql, entity_sql],
+            _raw_columns=[pk_sql, entity_sql],
             _compile_options=_ORMCompileState.default_compile_options,
             _propagate_attrs={
                 "compile_state_plugin": "orm",
@@ -3399,6 +3421,21 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 chunksize,
             )
 
+    @staticmethod
+    def _iterate_result(result):
+        """Iterate (key, instance) pairs from the SELECT .. IN result.
+
+        When no uniquing is required, raw interim rows are consumed
+        directly, skipping per-row Row object construction.
+
+        """
+        if result.context is not None and result.context.requires_uniquing:
+            return iter(result.unique())
+        elif isinstance(result, IteratorResult):
+            return result._raw_row_iterator()
+        else:
+            return iter(result)
+
     def _load_via_child(
         self,
         our_states,
@@ -3416,26 +3453,23 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         while our_keys:
             chunk = our_keys[0:chunksize]
             our_keys = our_keys[chunksize:]
+            primary_keys = [
+                key[0] if query_info.zero_idx else key for key in chunk
+            ]
             result = context.session.execute(
                 q,
-                params={
-                    "primary_keys": [
-                        key[0] if query_info.zero_idx else key for key in chunk
-                    ]
-                },
+                params={"primary_keys": primary_keys},
                 execution_options=execution_options,
             )
-            if result.context is not None and result.context.requires_uniquing:
-                result = result.unique()
-            data = {k: v for k, v in result}
+            data = dict(self._iterate_result(result))
 
-            for key in chunk:
+            for lookup_key, key in zip(primary_keys, chunk):
                 # for a real foreign key and no concurrent changes to the
                 # DB while running this method, "key" is always present in
                 # data.  However, for primaryjoins without real foreign keys
                 # a non-None primaryjoin condition may still refer to no
                 # related object.
-                related_obj = data.get(key, None)
+                related_obj = data.get(lookup_key, None)
                 for state, dict_, overwrite in our_states[key]:
                     if not overwrite and self.key in dict_:
                         continue
@@ -3474,17 +3508,17 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 params={"primary_keys": primary_keys},
                 execution_options=execution_options,
             )
-            if result.context is not None and result.context.requires_uniquing:
-                result = result.unique()
             data = collections.defaultdict(list)
-            for k, v in itertools.groupby(result, lambda x: x[0]):
-                data[k].extend(vv[1] for vv in v)
+            for k, v in self._iterate_result(result):
+                data[k].append(v)
 
-            for key, state, state_dict, overwrite in chunk:
+            for lookup_key, (key, state, state_dict, overwrite) in zip(
+                primary_keys, chunk
+            ):
                 if not overwrite and self.key in state_dict:
                     continue
 
-                collection = data.get(key, _empty_result)
+                collection = data.get(lookup_key, _empty_result)
 
                 if not uselist and collection:
                     if len(collection) > 1:
