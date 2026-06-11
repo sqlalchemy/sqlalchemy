@@ -55,7 +55,6 @@ from .. import inspect
 from .. import log
 from .. import sql
 from .. import util
-from ..engine.result import IteratorResult
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -3424,21 +3423,6 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 chunksize,
             )
 
-    @staticmethod
-    def _iterate_result(result):
-        """Iterate (key, instance) pairs from the SELECT .. IN result.
-
-        When no uniquing is required, raw interim rows are consumed
-        directly, skipping per-row Row object construction.
-
-        """
-        if result.context is not None and result.context.requires_uniquing:
-            return iter(result.unique())
-        elif isinstance(result, IteratorResult):
-            return result._raw_row_iterator()
-        else:
-            return iter(result)
-
     def _load_via_child(
         self,
         our_states,
@@ -3464,7 +3448,16 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 params={"primary_keys": primary_keys},
                 execution_options=execution_options,
             )
-            data = dict(self._iterate_result(result))
+            if result.context is not None and result.context.requires_uniquing:
+                # iter() is significant here; dict() would otherwise
+                # interpret the Result as a mapping, due to its keys()
+                # method
+                rows = iter(result.unique())
+            else:
+                # consume the result as plain tuples, skipping per-row
+                # Row construction
+                rows = result._all_tuples()
+            data = dict(rows)
 
             for lookup_key, key in zip(primary_keys, chunk):
                 # for a real foreign key and no concurrent changes to the
@@ -3511,8 +3504,14 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 params={"primary_keys": primary_keys},
                 execution_options=execution_options,
             )
+            if result.context is not None and result.context.requires_uniquing:
+                rows = result.unique()
+            else:
+                # consume the result as plain tuples, skipping per-row
+                # Row construction
+                rows = result._all_tuples()
             data = collections.defaultdict(list)
-            for k, v in self._iterate_result(result):
+            for k, v in rows:
                 data[k].append(v)
 
             for lookup_key, (key, state, state_dict, overwrite) in zip(
