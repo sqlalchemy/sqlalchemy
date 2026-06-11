@@ -3426,8 +3426,12 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 execution_options=execution_options,
             )
             if result.context is not None and result.context.requires_uniquing:
-                result = result.unique()
-            data = {k: v for k, v in result}
+                rows = result.unique()
+            else:
+                # consume the result as plain tuples, skipping per-row
+                # Row construction
+                rows = result._all_tuples()
+            data = {k: v for k, v in rows}
 
             for key in chunk:
                 # for a real foreign key and no concurrent changes to the
@@ -3475,9 +3479,13 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 execution_options=execution_options,
             )
             if result.context is not None and result.context.requires_uniquing:
-                result = result.unique()
+                rows = result.unique()
+            else:
+                # consume the result as plain tuples, skipping per-row
+                # Row construction
+                rows = result._all_tuples()
             data = collections.defaultdict(list)
-            for k, v in itertools.groupby(result, lambda x: x[0]):
+            for k, v in itertools.groupby(rows, lambda x: x[0]):
                 data[k].extend(vv[1] for vv in v)
 
             for key, state, state_dict, overwrite in chunk:

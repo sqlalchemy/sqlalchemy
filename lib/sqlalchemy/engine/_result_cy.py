@@ -268,19 +268,33 @@ class BaseResultInternal(Generic[_R]):
             interim_rows = many_rows
         else:
 
-            def interim_rows(rows: Sequence[Any], /) -> Sequence[Any]:
-                out: list = []
-                for input_row in rows:
-                    if flag == _FLAG_TUPLE_FILTER:
-                        input_row = tuple_filters(input_row)
-                    if proc_size != 0:
-                        input_row = _apply_processors(
-                            processors, proc_size, proc_valid, input_row
-                        )
-                    elif type(input_row) is not tuple:
-                        input_row = tuple(input_row)
-                    out.append(input_row)
-                return out
+            def single_interim_row(input_row: Sequence[Any], /) -> Any:
+                if flag == _FLAG_TUPLE_FILTER:
+                    input_row = tuple_filters(input_row)
+                if proc_size != 0:
+                    input_row = _apply_processors(
+                        processors, proc_size, proc_valid, input_row
+                    )
+                elif type(input_row) is not tuple:
+                    input_row = tuple(input_row)
+                return input_row
+
+            if cython.compiled:
+
+                def interim_rows(rows: Sequence[Any], /) -> Sequence[Any]:
+                    size: cython.Py_hash_t = len(rows)
+                    i: cython.Py_ssize_t
+                    result: list = PyList_New(size)
+                    for i in range(size):
+                        row: object = single_interim_row(rows[i])
+                        Py_INCREF(row)
+                        PyList_SET_ITEM(result, i, row)
+                    return result
+
+            else:
+
+                def interim_rows(rows: Sequence[Any], /) -> Sequence[Any]:
+                    return [single_interim_row(row) for row in rows]
 
         return single_row, many_rows, interim_rows  # type: ignore[return-value] # noqa: E501
 
@@ -325,10 +339,11 @@ class BaseResultInternal(Generic[_R]):
         assert make_rows is not None
         return make_rows(self._fetchall_impl())
 
-    def _all_interim_rows(self) -> Sequence[Any]:
-        """Return all remaining rows in "interim" form, as produced by the
-        ``interim_rows`` element of :attr:`._row_getter`: plain processed
-        tuples where possible, :class:`.Row` objects where required.
+    def _all_tuples(self) -> Sequence[tuple[Any, ...]]:
+        """Return all remaining rows as plain processed tuples, as produced
+        by the ``interim_rows`` element of :attr:`._row_getter`;
+        :class:`.Row` objects are produced instead where required (row
+        logging, scalar sources).
 
         Used by ORM loading, whose row getters are position-based and
         accept any tuple-like row.

@@ -3938,8 +3938,8 @@ class GenerativeResultTest(fixtures.TablesTest):
         assert result._soft_closed
 
 
-class AllInterimRowsTest(fixtures.TablesTest):
-    """test Result._all_interim_rows(), which ORM loading uses to fetch
+class AllTuplesTest(fixtures.TablesTest):
+    """test Result._all_tuples(), which ORM loading uses to fetch
     processed rows without constructing Row objects."""
 
     @classmethod
@@ -3973,7 +3973,7 @@ class AllInterimRowsTest(fixtures.TablesTest):
         """rows are plain tuples with result processors applied"""
         t = self.tables.interim
         result = connection.execute(select(t).order_by(t.c.id))
-        rows = result._all_interim_rows()
+        rows = result._all_tuples()
         eq_(list(rows), [(1, "p1", "U1"), (2, "p2", None)])
         for r in rows:
             is_(type(r), tuple)
@@ -3982,7 +3982,7 @@ class AllInterimRowsTest(fixtures.TablesTest):
         """rows with no result processors in play are plain tuples"""
         t = self.tables.interim
         result = connection.execute(select(t.c.id, t.c.plain).order_by(t.c.id))
-        rows = result._all_interim_rows()
+        rows = result._all_tuples()
         eq_(list(rows), [(1, "p1"), (2, "p2")])
         for r in rows:
             is_(type(r), tuple)
@@ -3990,7 +3990,7 @@ class AllInterimRowsTest(fixtures.TablesTest):
     def test_empty_result(self, connection):
         t = self.tables.interim
         result = connection.execute(select(t).where(t.c.id == -1))
-        eq_(list(result._all_interim_rows()), [])
+        eq_(list(result._all_tuples()), [])
 
     def test_row_logging_falls_back_to_rows(self):
         """with debug-level engine logging established, Row objects are
@@ -4009,7 +4009,7 @@ class AllInterimRowsTest(fixtures.TablesTest):
             # established, as echo state is fixed at connect time
             with testing.db.connect() as conn:
                 result = conn.execute(select(t).order_by(t.c.id))
-                rows = result._all_interim_rows()
+                rows = result._all_tuples()
         finally:
             logger.setLevel(old_level)
             logger.propagate = old_propagate
