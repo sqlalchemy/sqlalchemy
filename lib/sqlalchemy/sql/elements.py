@@ -5267,9 +5267,8 @@ class quoted_name(util.MemoizedSlots, str):
     :class:`_schema.Table`, :class:`_schema.Column`, and others.
     The class can also be
     passed explicitly as the name to any function that receives a name which
-    can be quoted.  Such as to use the :meth:`_engine.Engine.has_table`
-    method with
-    an unconditionally quoted name::
+    can be quoted, such as :meth:`.Inspector.has_table` with an
+    unconditionally quoted name::
 
         from sqlalchemy import create_engine
         from sqlalchemy import inspect
@@ -5281,6 +5280,11 @@ class quoted_name(util.MemoizedSlots, str):
     The above logic will run the "has table" logic against the Oracle Database
     backend, passing the name exactly as ``"some_table"`` without converting to
     upper case.
+
+    A :class:`.quoted_name` object with ``quote=False`` may be passed to APIs
+    that apply automatic quoting in order to keep the given name unquoted,
+    such as when a PostgreSQL ``INHERITS`` option refers to a schema-qualified
+    table name like ``my_schema.some_table``.
 
     .. versionchanged:: 1.2 The :class:`.quoted_name` construct is now
        importable from ``sqlalchemy.sql``, in addition to the previous
