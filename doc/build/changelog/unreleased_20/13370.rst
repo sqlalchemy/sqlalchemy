@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13370
+
+    Fixed issue where the regular expression used by the pure Python hstore
+    result processor, in use when ``use_native_hstore=False`` is set, could
+    exhibit catastrophic backtracking on malformed hstore text containing an
+    unterminated quoted segment followed by a run of backslashes, with
+    parsing time roughly doubling for each additional backslash.  Such input
+    is now rejected immediately; parsing of valid hstore values is
+    unchanged.  Pull request courtesy dxbjavid.
