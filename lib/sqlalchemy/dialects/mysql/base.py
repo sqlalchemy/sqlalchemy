@@ -530,6 +530,9 @@ available.
   .. versionchanged:: 2.1 the :func:`_mysql.limit()` extension supersedes the
      previous use of ``mysql_limit``
 
+* DELETE with an explicit ``USING`` expression such as a JOIN, use
+  :meth:`_sql.Delete.using`.  See :ref:`tutorial_multi_table_deletes`.
+
 * optimizer hints, use :meth:`_expression.Select.prefix_with` and
   :meth:`_query.Query.prefix_with`::
 
@@ -1894,9 +1897,18 @@ class MySQLCompiler(
     ) -> str:
         """Render the DELETE .. USING clause specific to MySQL."""
         kw["asfrom"] = True
+        if any(
+            from_table in elem._cloned_set
+            for extra_from in extra_froms
+            for elem in sql_util.surface_selectables_only(extra_from)
+        ):
+            froms = extra_froms
+        else:
+            froms = [from_table] + extra_froms
+
         return "USING " + ", ".join(
             t._compiler_dispatch(self, fromhints=from_hints, **kw)
-            for t in [from_table] + extra_froms
+            for t in froms
         )
 
     def visit_empty_set_expr(
