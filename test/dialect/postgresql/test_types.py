@@ -4152,6 +4152,16 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         eq_(proc('"\\\\\\"a"=>"\\\\\\"1"'), {'\\"a': '\\"1'})
 
+    def test_result_deserialize_malformed_no_backtracking(self):
+        # a quoted segment with a long run of backslashes and no closing
+        # quote used to make HSTORE_PAIR_RE backtrack catastrophically; the
+        # parser should reject it promptly instead of hanging
+        dialect = postgresql.dialect(use_native_hstore=False)
+        proc = self.test_table.c.hash.type._cached_result_processor(
+            dialect, None
+        )
+        assert_raises(ValueError, proc, '"' + "\\" * 40 + "!")
+
     def test_bind_serialize_psycopg2(self):
         from sqlalchemy.dialects.postgresql import psycopg2
 
