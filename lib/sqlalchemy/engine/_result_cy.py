@@ -334,7 +334,13 @@ class BaseResultInternal(Generic[_R]):
         Used by ORM loading, whose row getters are position-based and
         accept any tuple-like row.
 
+        Uniquing and post-creational filters are not applied here, so
+        may not be present on the :class:`.Result` when this method is
+        used.
+
         """
+        assert self._unique_filter_state is None
+        assert self._post_creational_filter is None
         interim_rows = self._row_getter[2]
         rows = self._fetchall_impl()
         return interim_rows(rows) if interim_rows is not None else rows

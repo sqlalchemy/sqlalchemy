@@ -3992,6 +3992,22 @@ class AllTuplesTest(fixtures.TablesTest):
         result = connection.execute(select(t).where(t.c.id == -1))
         eq_(list(result._all_tuples()), [])
 
+    def test_rejects_unique_filter(self, connection):
+        """_all_tuples() does not apply uniquing, so asserts it's not
+        present"""
+        t = self.tables.interim
+        result = connection.execute(select(t).order_by(t.c.id))
+        with expect_raises(AssertionError):
+            result.unique()._all_tuples()
+
+    def test_rejects_post_creational_filter(self, connection):
+        """_all_tuples() does not apply post-creational filters such as
+        the one used by mappings(), so asserts it's not present"""
+        t = self.tables.interim
+        result = connection.execute(select(t).order_by(t.c.id))
+        with expect_raises(AssertionError):
+            result.mappings()._all_tuples()
+
     def test_row_logging_falls_back_to_rows(self):
         """with debug-level engine logging established, Row objects are
         built so that each row can be logged"""
