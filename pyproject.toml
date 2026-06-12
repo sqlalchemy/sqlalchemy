@@ -51,7 +51,7 @@ mypy = [
 mssql = ["pyodbc"]
 mssql-pymssql = ["pymssql"]
 mssql-pyodbc = ["pyodbc"]
-mssql-python = ["mssql-python>=0.13.1"]
+mssql-python = ["mssql-python>=1.9.0"]
 mysql = ["mysqlclient>=1.4.0"]
 mysql-connector = ["mysql-connector-python"]
 mariadb-connector = ["mariadb>=1.0.1,!=1.1.2,!=1.1.5,!=1.1.10"]
