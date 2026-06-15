@@ -502,6 +502,14 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             testing.db,
         )
 
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Not an acceptable bind target: foobar",
+            sess.bind_table,
+            "foobar",
+            testing.db,
+        )
+
         self.mapper_registry.map_imperatively(
             self.classes.User, self.tables.users
         )
@@ -511,6 +519,14 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             sa.exc.ArgumentError,
             "Not an acceptable bind target: User()",
             sess.bind_mapper,
+            u_object,
+            testing.db,
+        )
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Not an acceptable bind target: User()",
+            sess.bind_table,
             u_object,
             testing.db,
         )

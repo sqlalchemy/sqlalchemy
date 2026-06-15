@@ -9,6 +9,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 from .. import assertions
 from .. import config
@@ -28,23 +31,25 @@ from ...orm import registry
 @config.mark_base_test_class()
 class TestBase:
     # A sequence of requirement names matching testing.requires decorators
-    __requires__ = ()
+    __requires__: tuple[str, ...] = ()
 
     # A sequence of dialect names to exclude from the test class.
-    __unsupported_on__ = ()
+    __unsupported_on__: tuple[str, ...] = ()
 
     # If present, test class is only runnable for the *single* specified
     # dialect.  If you need multiple, use __unsupported_on__ and invert.
-    __only_on__ = None
+    __only_on__: tuple[str, ...] | str | None = None
 
     # A sequence of no-arg callables. If any are True, the entire testcase is
     # skipped.
-    __skip_if__ = None
+    __skip_if__: Sequence[Callable[[], bool]] | None = None
 
     # if True, the testing reaper will not attempt to touch connection
     # state after a test is completed and before the outer teardown
     # starts
-    __leave_connections_for_teardown__ = False
+    __leave_connections_for_teardown__: bool = False
+
+    __backend__: bool
 
     def assert_(self, val, msg=None):
         assert val, msg
