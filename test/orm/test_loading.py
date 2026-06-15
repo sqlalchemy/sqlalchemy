@@ -1,21 +1,28 @@
 from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import insert
+from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import TypeDecorator
 from sqlalchemy import update
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.schema import Column
 from . import _fixtures
 
 # class GetFromIdentityTest(_fixtures.FixtureTest):
@@ -270,3 +277,64 @@ class MergeResultTest(_fixtures.FixtureTest):
         it = list(it())
         eq_([(x.id, y) for x, y in it], [(7, 7), (8, 8), (9, 9)])
         eq_(list(it[0]._mapping.keys()), ["User", "id"])
+
+
+class InterimRowsLoadTest(fixtures.DeclarativeMappedTest):
+    """ORM loading fetches rows as plain processed tuples via
+    Result._raw_all_tuples(); test that result processors apply and
+    that engine-level row logging, which requires Row objects, still
+    loads correctly via its fallback."""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class UpperString(TypeDecorator):
+            impl = String(50)
+            cache_ok = True
+
+            def process_result_value(self, value, dialect):
+                return value.upper() if value is not None else None
+
+        class A(Base):
+            __tablename__ = "interim_a"
+            id = Column(Integer, primary_key=True)
+            data = Column(UpperString())
+
+    @classmethod
+    def insert_data(cls, connection):
+        A = cls.classes.A
+        s = Session(connection)
+        s.add_all([A(id=1, data="one"), A(id=2, data=None)])
+        s.commit()
+
+    def _assert_load(self, connection):
+        A = self.classes.A
+        s = fixture_session(bind=connection)
+        a1, a2 = s.query(A).order_by(A.id).all()
+        eq_(a1.data, "ONE")
+        is_(a2.data, None)
+
+    def test_result_processors_applied(self, connection):
+        self._assert_load(connection)
+
+    def test_row_logging_fallback(self, debug_logging_engine):
+        """with debug-level logging, the ORM row fetch falls back to
+        constructing Row objects, and each row is logged"""
+
+        testing_engine, buf = debug_logging_engine
+
+        engine = testing_engine(echo="debug")
+
+        with engine.connect() as conn:
+            self._assert_load(conn)
+
+        row_messages = [
+            rec.getMessage()
+            for rec in buf.buffer
+            if rec.getMessage().startswith("Row ")
+        ]
+        eq_(
+            row_messages,
+            ["Row (1, 'ONE')", "Row (2, None)"],
+        )
