@@ -4032,6 +4032,7 @@ class AllTuplesTest(fixtures.TablesTest):
             logger.setLevel(old_level)
             logger.propagate = old_propagate
             logger.removeHandler(handler)
+            result.close()
 
         eq_(len(rows), 2)
         for r in rows:
