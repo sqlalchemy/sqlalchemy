@@ -3457,7 +3457,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 # consume the result as plain tuples, skipping per-row
                 # Row construction
                 rows = result._raw_all_tuples()
-                data = dict(rows)
+            data = dict(rows)
 
             for lookup_key, key in zip(primary_keys, chunk):
                 # for a real foreign key and no concurrent changes to the
