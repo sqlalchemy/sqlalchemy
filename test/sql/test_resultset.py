@@ -3939,7 +3939,7 @@ class GenerativeResultTest(fixtures.TablesTest):
 
 
 class AllTuplesTest(fixtures.TablesTest):
-    """test Result._all_tuples(), which ORM loading uses to fetch
+    """test Result._raw_all_tuples(), which ORM loading uses to fetch
     processed rows without constructing Row objects."""
 
     @classmethod
@@ -3973,7 +3973,7 @@ class AllTuplesTest(fixtures.TablesTest):
         """rows are plain tuples with result processors applied"""
         t = self.tables.interim
         result = connection.execute(select(t).order_by(t.c.id))
-        rows = result._all_tuples()
+        rows = result._raw_all_tuples()
         eq_(list(rows), [(1, "p1", "U1"), (2, "p2", None)])
         for r in rows:
             is_(type(r), tuple)
@@ -3982,7 +3982,7 @@ class AllTuplesTest(fixtures.TablesTest):
         """rows with no result processors in play are plain tuples"""
         t = self.tables.interim
         result = connection.execute(select(t.c.id, t.c.plain).order_by(t.c.id))
-        rows = result._all_tuples()
+        rows = result._raw_all_tuples()
         eq_(list(rows), [(1, "p1"), (2, "p2")])
         for r in rows:
             is_(type(r), tuple)
@@ -3990,23 +3990,23 @@ class AllTuplesTest(fixtures.TablesTest):
     def test_empty_result(self, connection):
         t = self.tables.interim
         result = connection.execute(select(t).where(t.c.id == -1))
-        eq_(list(result._all_tuples()), [])
+        eq_(list(result._raw_all_tuples()), [])
 
     def test_rejects_unique_filter(self, connection):
-        """_all_tuples() does not apply uniquing, so asserts it's not
+        """_raw_all_tuples() does not apply uniquing, so asserts it's not
         present"""
         t = self.tables.interim
         result = connection.execute(select(t).order_by(t.c.id))
         with expect_raises(AssertionError):
-            result.unique()._all_tuples()
+            result.unique()._raw_all_tuples()
 
     def test_rejects_post_creational_filter(self, connection):
-        """_all_tuples() does not apply post-creational filters such as
+        """_raw_all_tuples() does not apply post-creational filters such as
         the one used by mappings(), so asserts it's not present"""
         t = self.tables.interim
         result = connection.execute(select(t).order_by(t.c.id))
         with expect_raises(AssertionError):
-            result.mappings()._all_tuples()
+            result.mappings()._raw_all_tuples()
 
     def test_row_logging_falls_back_to_rows(self):
         """with debug-level engine logging established, Row objects are
@@ -4025,7 +4025,7 @@ class AllTuplesTest(fixtures.TablesTest):
             # established, as echo state is fixed at connect time
             with testing.db.connect() as conn:
                 result = conn.execute(select(t).order_by(t.c.id))
-                rows = result._all_tuples()
+                rows = result._raw_all_tuples()
         finally:
             logger.setLevel(old_level)
             logger.propagate = old_propagate

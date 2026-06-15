@@ -3430,7 +3430,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             else:
                 # consume the result as plain tuples, skipping per-row
                 # Row construction
-                rows = result._all_tuples()
+                rows = result._raw_all_tuples()
             data = {k: v for k, v in rows}
 
             for key in chunk:
@@ -3483,7 +3483,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             else:
                 # consume the result as plain tuples, skipping per-row
                 # Row construction
-                rows = result._all_tuples()
+                rows = result._raw_all_tuples()
             data = collections.defaultdict(list)
             for k, v in itertools.groupby(rows, lambda x: x[0]):
                 data[k].extend(vv[1] for vv in v)

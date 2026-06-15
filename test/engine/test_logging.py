@@ -1197,7 +1197,7 @@ class RowLoggingTest(fixtures.TablesTest):
         ("fetchmany", lambda result: result.fetchmany(2), 2),
         ("scalar", lambda result: result.scalar(), 1),
         ("partitions", lambda result: list(result.partitions(2)), 3),
-        ("_raw_all_rows", lambda result: result._raw_all_rows(), 3),
+        ("_raw_all_tuples", lambda result: result._raw_all_tuples(), 3),
         id_="iaa",
         argnames="consume,expected_rows",
     )

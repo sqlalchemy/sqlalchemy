@@ -284,7 +284,7 @@ class MergeResultTest(_fixtures.FixtureTest):
 
 class InterimRowsLoadTest(fixtures.DeclarativeMappedTest):
     """ORM loading fetches rows as plain processed tuples via
-    Result._all_tuples(); test that result processors apply and
+    Result._raw_all_tuples(); test that result processors apply and
     that engine-level row logging, which requires Row objects, still
     loads correctly via its fallback."""
 

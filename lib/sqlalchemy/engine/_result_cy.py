@@ -320,12 +320,7 @@ class BaseResultInternal(Generic[_R]):
 
         return iterrows
 
-    def _raw_all_rows(self) -> Sequence[_R]:
-        make_rows = self._row_getter[1]
-        assert make_rows is not None
-        return make_rows(self._fetchall_impl())
-
-    def _all_tuples(self) -> Sequence[tuple[Any, ...]]:
+    def _raw_all_tuples(self) -> Sequence[tuple[Any, ...]]:
         """Return all remaining rows as plain processed tuples, as produced
         by the ``interim_rows`` element of :attr:`._row_getter`;
         :class:`.Row` objects are produced instead where required (row
