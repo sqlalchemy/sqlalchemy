@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 10827
-
-    Fixed issue where :class:`_sql.StatementLambdaElement` would proxy
-    attribute access through the cached "expected" expression rather than the
-    resolved expression, causing stale closure-bound parameter values to be
-    used when a lambda statement was extended with non-lambda criteria such as
-    an additional ``.where()`` clause.  Courtesy cjc0013.

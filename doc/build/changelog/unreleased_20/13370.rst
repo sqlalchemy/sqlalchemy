@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 13370
-
-    Fixed regular expression in the pure Python hstore result processor,
-    used when ``use_native_hstore=False`` is set, which could hang on
-    malformed hstore text containing unterminated quoted segments with
-    backslashes.  Pull request courtesy dxbjavid.
