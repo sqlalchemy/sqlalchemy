@@ -3999,6 +3999,7 @@ class AllTuplesTest(fixtures.TablesTest):
         result = connection.execute(select(t).order_by(t.c.id))
         with expect_raises(AssertionError):
             result.unique()._raw_all_tuples()
+        result.close()
 
     def test_rejects_post_creational_filter(self, connection):
         """_raw_all_tuples() does not apply post-creational filters such as
@@ -4007,6 +4008,7 @@ class AllTuplesTest(fixtures.TablesTest):
         result = connection.execute(select(t).order_by(t.c.id))
         with expect_raises(AssertionError):
             result.mappings()._raw_all_tuples()
+        result.close()
 
     def test_row_logging_falls_back_to_rows(self):
         """with debug-level engine logging established, Row objects are
