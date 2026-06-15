@@ -124,6 +124,16 @@ class _CommonResult(Case):
 
             setattr(cls, name + "_iter", test_case(go_iter, number=number))
 
+            def go_raw_all_tuples(self):
+                result = self.impl(*init_args())
+                result._raw_all_tuples()
+
+            setattr(
+                cls,
+                name + "_raw_all_tuples",
+                test_case(go_raw_all_tuples, number=number),
+            )
+
             def go_iter_uq(self):
                 result = self.impl(*init_args()).unique()
                 for _ in result:
