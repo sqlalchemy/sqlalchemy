@@ -10,7 +10,71 @@
 
 .. changelog::
     :version: 2.0.51
-    :include_notes_from: unreleased_20
+    :released: June 15, 2026
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10827
+
+        Fixed issue where :class:`_sql.StatementLambdaElement` would proxy
+        attribute access through the cached "expected" expression rather than the
+        resolved expression, causing stale closure-bound parameter values to be
+        used when a lambda statement was extended with non-lambda criteria such as
+        an additional ``.where()`` clause.  Courtesy cjc0013.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13207
+
+        Fixed issue where :func:`_orm.subqueryload` combined with
+        :meth:`.PropComparator.of_type` and :meth:`.PropComparator.and_` would
+        silently drop the additional filter criteria, causing all related objects
+        to be loaded instead of only those matching the filter.  The
+        :class:`.LoaderCriteriaOption` was being constructed against the base
+        entity rather than the effective entity indicated by
+        :meth:`.PropComparator.of_type`.  Pull request courtesy Arya Rizky.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13355
+
+        Repaired bug introduced in :ticket:`13229` where a two-phase
+        transaction recovery would not return the correct transaction
+        identifier when generating the identifiers using the ``xid()``
+        method of the psycopg connection.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13356
+
+        Fixed bug where a failure during ``tpc_prepare()`` within
+        :meth:`_orm.Session.commit` for a two-phase session would raise
+        :class:`.IllegalStateChangeError` instead of the original database
+        exception.  The internal ``_prepare_impl()`` method's error handler
+        was unable to invoke :meth:`_orm.SessionTransaction.rollback` due
+        to a state-change guard, preventing proper cleanup and masking the
+        underlying error.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13370
+
+        Fixed regular expression in the pure Python hstore result processor,
+        used when ``use_native_hstore=False`` is set, which could hang on
+        malformed hstore text containing unterminated quoted segments with
+        backslashes.  Pull request courtesy dxbjavid.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 9427
+
+        Fixed issue where :meth:`.Result.freeze` would lose track of ambiguous
+        column names present in the original :class:`.CursorResult`, causing
+        key-based access on the thawed result to silently return a value instead of
+        raising :class:`.InvalidRequestError`.  The
+        :class:`.SimpleResultMetaData` now accepts and propagates ambiguous key
+        information so that frozen, thawed, and pickled results raise consistently
+        for duplicate column names.  Pull request courtesy Saurabh Kohli.
 
 .. changelog::
     :version: 2.0.50
