@@ -279,8 +279,22 @@ class BaseResultInternal(Generic[_R]):
                     input_row = tuple(input_row)
                 return input_row
 
-            def interim_rows(rows: Sequence[Any], /) -> Sequence[Any]:
-                return [single_interim_row(row) for row in rows]
+            if cython.compiled:
+
+                def interim_rows(rows: Sequence[Any], /) -> Sequence[Any]:
+                    size: cython.Py_hash_t = len(rows)
+                    i: cython.Py_ssize_t
+                    result: list = PyList_New(size)
+                    for i in range(size):
+                        row: object = single_interim_row(rows[i])
+                        Py_INCREF(row)
+                        PyList_SET_ITEM(result, i, row)
+                    return result
+
+            else:
+
+                def interim_rows(rows: Sequence[Any], /) -> Sequence[Any]:
+                    return [single_interim_row(row) for row in rows]
 
         return single_row, many_rows, interim_rows  # type: ignore[return-value] # noqa: E501
 
