@@ -796,10 +796,6 @@ class ExecuteDriverTest(fixtures.TablesTest):
         "Exception doesn't come back exactly the same from pickle",
     )
     @testing.fails_on(
-        "+mssqlpython",
-        "Exception pickling not working due to additional parameter",
-    )
-    @testing.fails_on(
         "oracle+cx_oracle",
         "cx_oracle exception seems to be having some issue with pickling",
     )

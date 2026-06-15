@@ -3072,7 +3072,7 @@ def _schema_elements(schema):
     return dbname, owner
 
 
-class MSDialect(default.DefaultDialect):
+class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
     # will assume it's at least mssql2005
     name = "mssql"
     supports_statement_cache = True
@@ -3959,22 +3959,6 @@ index_info AS (
         lookup = {n.lower(): n for n in filter_names}
         return lambda n: lookup.get(n.lower(), n)
 
-    @staticmethod
-    def _value_or_raise(data, table, schema):
-        """Unwrap a single ``(schema, table)`` entry from a multi-method
-        result, raising :exc:`.NoSuchTableError` when missing.
-
-        Mirrors PostgreSQL's helper of the same name. Used by the
-        single-table reflection wrappers that delegate to the multi
-        implementation.
-        """
-        try:
-            return dict(data)[(schema, table)]
-        except KeyError:
-            raise exc.NoSuchTableError(
-                f"{schema}.{table}" if schema else table
-            ) from None
-
     @_db_plus_owner_multi
     def get_multi_columns(
         self,
@@ -4785,64 +4769,17 @@ index_info AS (
                 exec_opts={"schema_translate_map": {"sys": "tempdb.sys"}},
             )
 
-    # --- Single-table reflection wrappers (delegate to multi) ---
+    # override mixin methods for which this dialect has no native
+    # get_multi_* implementation, preventing infinite recursion
+    # through DefaultDialect._default_multi_reflect
 
-    @reflection.cache
-    def get_columns(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_columns(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
+    def get_unique_constraints(
+        self, connection, table_name, schema=None, **kw
+    ):
+        raise NotImplementedError()
 
-    @reflection.cache
-    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_pk_constraint(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
+    def get_check_constraints(self, connection, table_name, schema=None, **kw):
+        raise NotImplementedError()
 
-    @reflection.cache
-    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_foreign_keys(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
-
-    @reflection.cache
-    def get_indexes(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_indexes(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
-
-    @reflection.cache
-    def get_table_comment(self, connection, table_name, schema=None, **kw):
-        data = self.get_multi_table_comment(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        raise NotImplementedError()

@@ -1314,7 +1314,8 @@ class SessionTransaction(_StateChange, TransactionalContext):
                     cast("TwoPhaseTransaction", t[1]).prepare()
             except:
                 with util.safe_reraise():
-                    self.rollback()
+                    with self._expect_state(SessionTransactionState.CLOSED):
+                        self.rollback()
 
         self._state = SessionTransactionState.PREPARED
 

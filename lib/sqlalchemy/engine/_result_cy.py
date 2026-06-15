@@ -320,12 +320,7 @@ class BaseResultInternal(Generic[_R]):
 
         return iterrows
 
-    def _raw_all_rows(self) -> Sequence[_R]:
-        make_rows = self._row_getter[1]
-        assert make_rows is not None
-        return make_rows(self._fetchall_impl())
-
-    def _all_tuples(self) -> Sequence[tuple[Any, ...]]:
+    def _raw_all_tuples(self) -> Sequence[tuple[Any, ...]]:
         """Return all remaining rows as plain processed tuples, as produced
         by the ``interim_rows`` element of :attr:`._row_getter`;
         :class:`.Row` objects are produced instead where required (row
@@ -334,7 +329,13 @@ class BaseResultInternal(Generic[_R]):
         Used by ORM loading, whose row getters are position-based and
         accept any tuple-like row.
 
+        Uniquing and post-creational filters are not applied here, so
+        may not be present on the :class:`.Result` when this method is
+        used.
+
         """
+        assert self._unique_filter_state is None
+        assert self._post_creational_filter is None
         interim_rows = self._row_getter[2]
         rows = self._fetchall_impl()
         return interim_rows(rows) if interim_rows is not None else rows

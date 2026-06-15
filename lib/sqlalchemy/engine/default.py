@@ -44,6 +44,7 @@ import weakref
 from . import characteristics
 from . import cursor as _cursor
 from . import interfaces
+from . import reflection
 from .base import Connection
 from .interfaces import CacheStats
 from .interfaces import DBAPICursor
@@ -117,6 +118,121 @@ SERVER_SIDE_CURSOR_RE = re.compile(r"\s*SELECT", re.I | re.UNICODE)
     NO_CACHE_KEY,
     NO_DIALECT_SUPPORT,
 ) = list(CacheStats)
+
+
+class _BackendsMultiReflection(Dialect):
+    """Mixin providing single-table reflection wrappers that delegate to
+    the corresponding ``get_multi_*`` methods.
+
+    Used by dialects that implement native multi-table reflection
+    (PostgreSQL, Oracle, MSSQL).
+    """
+
+    def _value_or_raise(self, data, table, schema):
+        try:
+            return dict(data)[(schema, table)]
+        except KeyError:
+            raise exc.NoSuchTableError(
+                f"{schema}.{table}" if schema else table
+            ) from None
+
+    @reflection.cache
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_columns(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_table_options(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_pk_constraint(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_foreign_keys(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_indexes(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_indexes(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_unique_constraints(
+        self, connection, table_name, schema=None, **kw
+    ):
+        data = self.get_multi_unique_constraints(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_check_constraints(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_check_constraints(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_table_comment(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
 
 
 class DefaultDialect(Dialect):

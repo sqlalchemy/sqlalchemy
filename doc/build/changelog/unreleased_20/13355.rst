@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13355
+
+    Repaired bug introduced in :ticket:`13229` where a two-phase
+    transaction recovery would not return the correct transaction
+    identifier when generating the identifiers using the ``xid()``
+    method of the psycopg connection.

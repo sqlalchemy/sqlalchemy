@@ -2083,7 +2083,7 @@ class OracleExecutionContext(default.DefaultExecutionContext):
             )
 
 
-class OracleDialect(default.DefaultDialect):
+class OracleDialect(default._BackendsMultiReflection, default.DefaultDialect):
     name = "oracle"
     supports_statement_cache = True
     supports_alter = True
@@ -2738,21 +2738,6 @@ class OracleDialect(default.DefaultDialect):
         else:
             return False, {}
 
-    @reflection.cache
-    def get_table_options(self, connection, table_name, schema=None, **kw):
-        """Supported kw arguments are: ``dblink`` to reflect via a db link;
-        ``oracle_resolve_synonyms`` to resolve names to synonyms
-        """
-        data = self.get_multi_table_options(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
-
     @lru_cache()
     def _table_options_query(
         self, owner, scope, kind, has_filter_names, has_mat_views
@@ -2875,22 +2860,6 @@ class OracleDialect(default.DefaultDialect):
                     options[(schema, view)] = default()
 
         return options.items()
-
-    @reflection.cache
-    def get_columns(self, connection, table_name, schema=None, **kw):
-        """Supported kw arguments are: ``dblink`` to reflect via a db link;
-        ``oracle_resolve_synonyms`` to resolve names to synonyms
-        """
-
-        data = self.get_multi_columns(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     def _run_batches(
         self, connection, query, dblink, returns_long, mappings, all_objects
@@ -3158,21 +3127,6 @@ class OracleDialect(default.DefaultDialect):
                 identity["oracle_order"] = value == "Y"
         return identity
 
-    @reflection.cache
-    def get_table_comment(self, connection, table_name, schema=None, **kw):
-        """Supported kw arguments are: ``dblink`` to reflect via a db link;
-        ``oracle_resolve_synonyms`` to resolve names to synonyms
-        """
-        data = self.get_multi_table_comment(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
-
     @lru_cache()
     def _comment_query(self, owner, scope, kind, has_filter_names):
         # NOTE: all_tab_comments / all_mview_comments have a row for all
@@ -3269,21 +3223,6 @@ class OracleDialect(default.DefaultDialect):
             )
             for table, comment in result
         )
-
-    @reflection.cache
-    def get_indexes(self, connection, table_name, schema=None, **kw):
-        """Supported kw arguments are: ``dblink`` to reflect via a db link;
-        ``oracle_resolve_synonyms`` to resolve names to synonyms
-        """
-        data = self.get_multi_indexes(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @lru_cache()
     def _index_query(self, owner):
@@ -3452,21 +3391,6 @@ class OracleDialect(default.DefaultDialect):
             )
         )
 
-    @reflection.cache
-    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        """Supported kw arguments are: ``dblink`` to reflect via a db link;
-        ``oracle_resolve_synonyms`` to resolve names to synonyms
-        """
-        data = self.get_multi_pk_constraint(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
-
     @lru_cache()
     def _constraint_query(self, owner):
         local = dictionary.all_cons_columns.alias("local")
@@ -3589,27 +3513,6 @@ class OracleDialect(default.DefaultDialect):
                 for obj_name in all_objects
             )
         )
-
-    @reflection.cache
-    def get_foreign_keys(
-        self,
-        connection,
-        table_name,
-        schema=None,
-        **kw,
-    ):
-        """Supported kw arguments are: ``dblink`` to reflect via a db link;
-        ``oracle_resolve_synonyms`` to resolve names to synonyms
-        """
-        data = self.get_multi_foreign_keys(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @_handle_synonyms_decorator
     def get_multi_foreign_keys(
@@ -3745,23 +3648,6 @@ class OracleDialect(default.DefaultDialect):
             )
         )
 
-    @reflection.cache
-    def get_unique_constraints(
-        self, connection, table_name, schema=None, **kw
-    ):
-        """Supported kw arguments are: ``dblink`` to reflect via a db link;
-        ``oracle_resolve_synonyms`` to resolve names to synonyms
-        """
-        data = self.get_multi_unique_constraints(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
-
     @_handle_synonyms_decorator
     def get_multi_unique_constraints(
         self,
@@ -3885,24 +3771,6 @@ class OracleDialect(default.DefaultDialect):
             )
         else:
             return rp
-
-    @reflection.cache
-    def get_check_constraints(
-        self, connection, table_name, schema=None, include_all=False, **kw
-    ):
-        """Supported kw arguments are: ``dblink`` to reflect via a db link;
-        ``oracle_resolve_synonyms`` to resolve names to synonyms
-        """
-        data = self.get_multi_check_constraints(
-            connection,
-            schema=schema,
-            filter_names=[table_name],
-            scope=ObjectScope.ANY,
-            include_all=include_all,
-            kind=ObjectKind.ANY,
-            **kw,
-        )
-        return self._value_or_raise(data, table_name, schema)
 
     @_handle_synonyms_decorator
     def get_multi_check_constraints(
