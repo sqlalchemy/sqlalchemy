@@ -9,6 +9,10 @@
 
 
 .. changelog::
+    :version: 2.0.52
+    :include_notes_from: unreleased_20
+
+.. changelog::
     :version: 2.0.51
     :released: June 15, 2026
 
