@@ -3206,6 +3206,452 @@ class SubqueryloadDistinctTest(
         )
 
 
+class SubqueryloadRawTupleTest(
+    _fixtures.FixtureTest, testing.AssertsExecutionResults
+):
+    """coverage for consuming subqueryload results as plain processed
+    tuples and replicating the legacy ``result.unique()`` dedup.
+
+    See ``_SubqCollections._load`` in ``orm/strategies.py``.
+
+    """
+
+    run_inserts = "once"
+    run_deletes = None
+
+    def _o2m_fixture(self):
+        User, Address = self.classes.User, self.classes.Address
+        self.mapper_registry.map_imperatively(
+            User,
+            self.tables.users,
+            properties={
+                "addresses": relationship(
+                    Address, order_by=self.tables.addresses.c.id
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Address, self.tables.addresses)
+        return User, Address
+
+    def _m2o_fixture(self):
+        User, Order, Address = (
+            self.classes.User,
+            self.classes.Order,
+            self.classes.Address,
+        )
+        self.mapper_registry.map_imperatively(User, self.tables.users)
+        self.mapper_registry.map_imperatively(Address, self.tables.addresses)
+        self.mapper_registry.map_imperatively(
+            Order,
+            self.tables.orders,
+            properties={
+                "user": relationship(User),
+                "address": relationship(Address),
+            },
+        )
+        return User, Order, Address
+
+    def _m2m_fixture(self):
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+        self.mapper_registry.map_imperatively(Keyword, self.tables.keywords)
+        self.mapper_registry.map_imperatively(
+            Item,
+            self.tables.items,
+            properties={
+                "keywords": relationship(
+                    Keyword,
+                    secondary=self.tables.item_keywords,
+                    order_by=self.tables.keywords.c.id,
+                )
+            },
+        )
+        return Item, Keyword
+
+    def _o2m_nested_joinedload_fixture(self):
+        # User.orders (subqueryload) -> Order.items (joinedload, collection)
+        # the inner joinedload on a collection sets
+        # multi_row_eager_loaders, so result.context.requires_uniquing is
+        # True and the retained Row-based result.unique() path runs.
+        User, Order, Item = (
+            self.classes.User,
+            self.classes.Order,
+            self.classes.Item,
+        )
+        self.mapper_registry.map_imperatively(
+            User,
+            self.tables.users,
+            properties={
+                "orders": relationship(Order, order_by=self.tables.orders.c.id)
+            },
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            self.tables.orders,
+            properties={
+                "items": relationship(
+                    Item,
+                    secondary=self.tables.order_items,
+                    order_by=self.tables.items.c.id,
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Item, self.tables.items)
+        return User, Order, Item
+
+    def test_basic_o2m_collection(self):
+        """1. basic o2m collection: collections populated, grouped to the
+        right parent, per-collection order preserved."""
+
+        User, Address = self._o2m_fixture()
+        sess = fixture_session()
+
+        q = sess.query(User).options(subqueryload(User.addresses))
+
+        def go():
+            eq_(self.static.user_address_result, q.order_by(User.id).all())
+
+        # one query for users, one for the subqueryload
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_dedup_m2o_no_uselist_warning(self):
+        """2. dedup on the scalar/m2o path: many orders share the same user.
+
+        With ``distinct_target_key=False`` the subquery does NOT apply
+        DISTINCT, so it returns duplicate ``(User, user_id)`` rows -- the
+        SAME key mapping to the SAME related object multiple times.  The new
+        raw-tuple dedup must collapse these to a single related object,
+        otherwise ``load_scalar_from_subq`` sees a collection of len > 1 and
+        emits the "Multiple rows returned with uselist=False" SAWarning
+        (which the test suite escalates to an error).
+        """
+
+        User, Order, Address = self._m2o_fixture()
+
+        # turn off the DISTINCT optimisation so duplicate same-key rows are
+        # actually produced and must be de-duplicated by _SubqCollections.
+        Order.user.property.distinct_target_key = False
+
+        sess = fixture_session()
+        q = sess.query(Order).options(subqueryload(Order.user))
+
+        def go():
+            orders = q.order_by(Order.id).all()
+            # orders 1,3,5 -> user 7 (jack); orders 2,4 -> user 9 (fred)
+            eq_(
+                [(o.id, o.user.id) for o in orders],
+                [(1, 7), (2, 9), (3, 7), (4, 9), (5, 7)],
+            )
+            # the same user object is shared across orders pointing at it
+            users = {o.id: o.user for o in orders}
+            is_(users[1], users[3])
+            is_(users[1], users[5])
+            is_(users[2], users[4])
+
+        # 2 statements (Order + the subqueryload) and, crucially, no
+        # uselist=False warning escalated to an error.
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_dedup_m2o_with_distinct(self):
+        """3. subqueryload combined with an explicit .distinct() on the
+        outer query."""
+
+        User, Order, Address = self._m2o_fixture()
+        sess = fixture_session()
+
+        q = (
+            sess.query(Order)
+            .distinct()
+            .options(subqueryload(Order.user))
+            .order_by(Order.id)
+        )
+
+        def go():
+            orders = q.all()
+            eq_(
+                [(o.id, o.user.name) for o in orders],
+                [
+                    (1, "jack"),
+                    (2, "fred"),
+                    (3, "jack"),
+                    (4, "fred"),
+                    (5, "jack"),
+                ],
+            )
+
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_dedup_order_by_join_duplicate_rows(self):
+        """4. ordering across a join that yields duplicate parent rows still
+        dedups the subqueryloaded scalar correctly.
+
+        The outer query joins Order->Address and orders by a joined column;
+        with the DISTINCT optimisation disabled the subquery returns
+        duplicate ``(User, user_id)`` rows in this ordered shape, which must
+        still collapse to one related object per key.
+        """
+
+        User, Order, Address = self._m2o_fixture()
+        Order.user.property.distinct_target_key = False
+
+        sess = fixture_session()
+        q = (
+            sess.query(Order)
+            .join(Order.address)
+            .options(subqueryload(Order.user))
+            .order_by(Address.email_address, Order.id)
+        )
+
+        def go():
+            orders = q.all()
+            # orders with NULL address_id (order 5) are dropped by the join
+            eq_(
+                {o.id: o.user.name for o in orders},
+                {1: "jack", 3: "jack", 2: "fred", 4: "fred"},
+            )
+            # de-duplicated to a single shared User per key
+            by_id = {o.id: o.user for o in orders}
+            is_(by_id[1], by_id[3])
+            is_(by_id[2], by_id[4])
+
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_requires_uniquing_nested_joinedload(self):
+        """5. requires_uniquing fallback: a joinedload of a collection nested
+        inside the subqueryload drives the retained result.unique() Row
+        path; verify correctly de-duplicated collections."""
+
+        User, Order, Item = self._o2m_nested_joinedload_fixture()
+        sess = fixture_session()
+
+        q = sess.query(User).options(
+            subqueryload(User.orders).joinedload(Order.items)
+        )
+
+        def go():
+            eq_(self.static.user_order_result, q.order_by(User.id).all())
+
+        # query for users + the subqueryload (which itself joins items);
+        # no per-Order item query thanks to the inner joinedload
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_requires_uniquing_consistent_with_plain(self):
+        """5b. the nested-joinedload subqueryload (Row-based unique() path)
+        produces the same parent->collection grouping as the plain o2m
+        subqueryload (raw-tuple dedup path), and fully populates the inner
+        joinedloaded collections."""
+
+        User, Order, Item = self._o2m_nested_joinedload_fixture()
+
+        sess = fixture_session()
+        plain = (
+            sess.query(User)
+            .options(subqueryload(User.orders))
+            .order_by(User.id)
+            .all()
+        )
+        plain_map = {u.id: [o.id for o in u.orders] for u in plain}
+
+        sess2 = fixture_session()
+        nested = (
+            sess2.query(User)
+            .options(subqueryload(User.orders).joinedload(Order.items))
+            .order_by(User.id)
+            .all()
+        )
+        nested_map = {u.id: [o.id for o in u.orders] for u in nested}
+
+        eq_(plain_map, nested_map)
+        eq_(plain_map, {7: [1, 3, 5], 8: [], 9: [2, 4], 10: []})
+
+        # the nested case also fully (and de-duplicated) populated the inner
+        # joinedloaded item collections
+        items_map = {
+            o.id: [i.id for i in o.items] for u in nested for o in u.orders
+        }
+        eq_(
+            items_map,
+            {1: [1, 2, 3], 2: [1, 2, 3], 3: [3, 4, 5], 4: [1, 5], 5: [5]},
+        )
+
+    def test_populate_existing(self):
+        """6. populate_existing() with subqueryload reverts mutated
+        collections from the database."""
+
+        User, Address = self._o2m_fixture()
+        sess = fixture_session(autoflush=False)
+
+        u1 = (
+            sess.query(User)
+            .options(subqueryload(User.addresses))
+            .filter_by(id=8)
+            .one()
+        )
+        eq_(len(u1.addresses), 3)
+
+        # mutate the loaded collection in the session
+        u1.addresses[0].email_address = "mutated@example.com"
+        del u1.addresses[1]
+        eq_(len(u1.addresses), 2)
+
+        u2 = (
+            sess.query(User)
+            .populate_existing()
+            .options(subqueryload(User.addresses))
+            .filter_by(id=8)
+            .one()
+        )
+        is_(u1, u2)
+        # collection reverted from the DB
+        eq_(len(u1.addresses), 3)
+        eq_(
+            [a.email_address for a in u1.addresses],
+            ["ed@wood.com", "ed@bettyboop.com", "ed@lala.com"],
+        )
+
+    def test_no_related_rows_empty_collection(self):
+        """7a. subqueryload resolving to NO related rows -> empty
+        collection (and a parent with no rows is still present)."""
+
+        User, Address = self._o2m_fixture()
+        sess = fixture_session()
+
+        q = (
+            sess.query(User)
+            .options(subqueryload(User.addresses))
+            .filter(User.id == 10)
+        )
+
+        def go():
+            u = q.one()
+            eq_(u.id, 10)
+            eq_(u.addresses, [])
+
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_no_related_rows_none_scalar(self):
+        """7b. subqueryload of a scalar m2o that resolves to no related row
+        sets the attribute to None without warning."""
+
+        User, Order, Address = self._m2o_fixture()
+        sess = fixture_session()
+
+        # order 5 has address_id = NULL -> Order.address is None
+        q = (
+            sess.query(Order)
+            .options(subqueryload(Order.address))
+            .filter(Order.id == 5)
+        )
+
+        def go():
+            o = q.one()
+            eq_(o.id, 5)
+            is_(o.address, None)
+
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_deep_chain_subquery_subquery(self):
+        """8a. two-level chain: subqueryload -> subqueryload."""
+
+        User, Order, Item = (
+            self.classes.User,
+            self.classes.Order,
+            self.classes.Item,
+        )
+        self.mapper_registry.map_imperatively(
+            User,
+            self.tables.users,
+            properties={
+                "orders": relationship(Order, order_by=self.tables.orders.c.id)
+            },
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            self.tables.orders,
+            properties={
+                "items": relationship(
+                    Item,
+                    secondary=self.tables.order_items,
+                    order_by=self.tables.items.c.id,
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Item, self.tables.items)
+        sess = fixture_session()
+
+        q = sess.query(User).options(
+            subqueryload(User.orders).subqueryload(Order.items)
+        )
+
+        def go():
+            eq_(self.static.user_order_result, q.order_by(User.id).all())
+
+        # users, orders subq, items subq
+        self.assert_sql_count(testing.db, go, 3)
+
+    def test_deep_chain_m2m(self):
+        """8b. subqueryload of a many-to-many collection."""
+
+        Item, Keyword = self._m2m_fixture()
+        sess = fixture_session()
+
+        q = sess.query(Item).options(subqueryload(Item.keywords))
+
+        def go():
+            eq_(self.static.item_keyword_result, q.order_by(Item.id).all())
+
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_params_bound_filtered_query(self):
+        """9. parameterized / bound-param query with subqueryload: the
+        .params() path is preserved, so a filtered query still loads the
+        related collections correctly."""
+
+        User, Address = self._o2m_fixture()
+        sess = fixture_session()
+
+        q = (
+            sess.query(User)
+            .filter(User.id == bindparam("uid"))
+            .options(subqueryload(User.addresses))
+            .params(uid=8)
+        )
+
+        def go():
+            u = q.one()
+            eq_(u.id, 8)
+            eq_(
+                [a.email_address for a in u.addresses],
+                ["ed@wood.com", "ed@bettyboop.com", "ed@lala.com"],
+            )
+
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_params_reused_across_values(self):
+        """9b. the same compiled query re-run with different bound params
+        loads the correct (and correctly grouped) subquery collections each
+        time -- guards the q.params(self.params) propagation."""
+
+        User, Address = self._o2m_fixture()
+        cache: dict = {}
+        sess = fixture_session()
+
+        def load(uid):
+            return (
+                sess.query(User)
+                .execution_options(compiled_cache=cache)
+                .filter(User.id == uid)
+                .options(subqueryload(User.addresses))
+                .one()
+            )
+
+        u7 = load(7)
+        u8 = load(8)
+        u9 = load(9)
+        eq_([a.id for a in u7.addresses], [1])
+        eq_([a.id for a in u8.addresses], [2, 3, 4])
+        eq_([a.id for a in u9.addresses], [5])
+
+
 class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
     """test for [ticket:2887]"""
 
