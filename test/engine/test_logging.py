@@ -1161,32 +1161,18 @@ class RowLoggingTest(fixtures.TablesTest):
             ],
         )
 
-    def setup_test(self):
-        self.buf = logging.handlers.BufferingHandler(100)
-        logging.getLogger("sqlalchemy.engine").addHandler(self.buf)
-
-    def teardown_test(self):
-        logging.getLogger("sqlalchemy.engine").removeHandler(self.buf)
-
     @testing.fixture(params=["echo_debug", "plain_logging"])
-    def debug_engine(self, testing_engine, request):
+    def debug_engine(self, debug_logging_engine, request):
+        testing_engine, buf = debug_logging_engine
         if request.param == "echo_debug":
-            yield testing_engine(
-                options={"echo": "debug", "sqlite_share_pool": True}
-            )
+            yield testing_engine(echo="debug"), buf
         elif request.param == "plain_logging":
-            log = logging.getLogger("sqlalchemy.engine")
-            existing_level = log.level
-            log.setLevel(logging.DEBUG)
-            try:
-                yield testing_engine(options={"sqlite_share_pool": True})
-            finally:
-                log.setLevel(existing_level)
+            yield testing_engine(log_level=logging.DEBUG), buf
 
-    def _get_row_messages(self):
+    def _get_row_messages(self, buf):
         return [
             rec.getMessage()
-            for rec in self.buf.buffer
+            for rec in buf.buffer
             if rec.getMessage().startswith("Row ")
         ]
 
@@ -1203,30 +1189,38 @@ class RowLoggingTest(fixtures.TablesTest):
     )
     def test_row_logging(self, debug_engine, consume, expected_rows):
         t = self.tables.data
-        self.buf.flush()
 
-        with debug_engine.connect() as conn:
+        engine, buf = debug_engine
+        with engine.connect() as conn:
             result = conn.execute(select(t).order_by(t.c.id))
             consume(result)
 
         eq_(
-            self._get_row_messages(),
+            self._get_row_messages(buf),
             ["Row (%d, 'v%d')" % (i, i) for i in range(1, expected_rows + 1)],
         )
 
     @testing.combinations(
         ("echo_false", False),
         ("echo_true", True),
+        ("echo_debug", "debug"),
         id_="ia",
         argnames="echo",
     )
-    def test_no_row_logging(self, testing_engine, echo):
+    def test_row_logging_flag(self, debug_logging_engine, echo):
         t = self.tables.data
-        eng = testing_engine(options={"echo": echo, "sqlite_share_pool": True})
-        self.buf.flush()
+
+        testing_engine, buf = debug_logging_engine
+        eng = testing_engine(echo=echo)
 
         with eng.connect() as conn:
             result = conn.execute(select(t).order_by(t.c.id))
             result.all()
 
-        eq_(self._get_row_messages(), [])
+        if echo == "debug":
+            eq_(
+                self._get_row_messages(buf),
+                ["Row (%d, 'v%d')" % (i, i) for i in range(1, 4)],
+            )
+        else:
+            eq_(self._get_row_messages(buf), [])

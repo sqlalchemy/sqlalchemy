@@ -3,8 +3,6 @@ import collections.abc as collections_abc
 from contextlib import contextmanager
 import csv
 from io import StringIO
-import logging
-import logging.handlers
 import operator
 import os
 import pickle
@@ -39,6 +37,7 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.engine import Row
+from sqlalchemy.engine.result import IteratorResult
 from sqlalchemy.engine.result import SimpleResultMetaData
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import ColumnElement
@@ -4010,29 +4009,29 @@ class AllTuplesTest(fixtures.TablesTest):
             result.mappings()._raw_all_tuples()
         result.close()
 
-    def test_row_logging_falls_back_to_rows(self):
+    def test_rejects_scalar_source(self):
+        """_raw_all_tuples() asserts that interim_rows is not None, which
+        excludes results whose source delivers scalars without row
+        construction"""
+        result = IteratorResult(
+            SimpleResultMetaData(["a"]),
+            iter([(1,), (2,)]),
+            _source_supports_scalars=True,
+        )
+        result._generate_rows = False
+        with expect_raises(AssertionError):
+            result._raw_all_tuples()
+
+    def test_row_logging_falls_back_to_rows(self, debug_logging_engine):
         """with debug-level engine logging established, Row objects are
         built so that each row can be logged"""
         t = self.tables.interim
+        testing_engine, buf = debug_logging_engine
 
-        logger = logging.getLogger("sqlalchemy.engine")
-        old_level = logger.level
-        old_propagate = logger.propagate
-        handler = logging.handlers.BufferingHandler(100)
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
-        logger.propagate = False
-        try:
-            # connection must be created after debug logging is
-            # established, as echo state is fixed at connect time
-            with testing.db.connect() as conn:
-                result = conn.execute(select(t).order_by(t.c.id))
-                rows = result._raw_all_tuples()
-        finally:
-            logger.setLevel(old_level)
-            logger.propagate = old_propagate
-            logger.removeHandler(handler)
-            result.close()
+        engine = testing_engine(echo="debug")
+        with engine.connect() as conn:
+            result = conn.execute(select(t).order_by(t.c.id))
+            rows = result._raw_all_tuples()
 
         eq_(len(rows), 2)
         for r in rows:
@@ -4041,7 +4040,7 @@ class AllTuplesTest(fixtures.TablesTest):
 
         row_messages = [
             rec.getMessage()
-            for rec in handler.buffer
+            for rec in buf.buffer
             if rec.getMessage().startswith("Row ")
         ]
         eq_(

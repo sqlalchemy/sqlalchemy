@@ -13,6 +13,7 @@ implementations, and related MapperOptions."""
 from __future__ import annotations
 
 import collections
+import itertools
 from typing import Any
 from typing import Dict
 from typing import Literal
@@ -3449,15 +3450,12 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 execution_options=execution_options,
             )
             if result.context is not None and result.context.requires_uniquing:
-                # iter() is significant here; dict() would otherwise
-                # interpret the Result as a mapping, due to its keys()
-                # method
-                rows = iter(result.unique())
+                rows = result.unique()
             else:
                 # consume the result as plain tuples, skipping per-row
                 # Row construction
                 rows = result._raw_all_tuples()
-            data = dict(rows)
+            data = {k: v for k, v in rows}
 
             for lookup_key, key in zip(primary_keys, chunk):
                 # for a real foreign key and no concurrent changes to the
@@ -3511,8 +3509,8 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 # Row construction
                 rows = result._raw_all_tuples()
             data = collections.defaultdict(list)
-            for k, v in rows:
-                data[k].append(v)
+            for k, v in itertools.groupby(rows, lambda x: x[0]):
+                data[k].extend(vv[1] for vv in v)
 
             for lookup_key, (key, state, state_dict, overwrite) in zip(
                 primary_keys, chunk

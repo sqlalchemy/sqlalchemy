@@ -1,6 +1,3 @@
-import logging
-import logging.handlers
-
 from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import insert
@@ -311,36 +308,30 @@ class InterimRowsLoadTest(fixtures.DeclarativeMappedTest):
         s.add_all([A(id=1, data="one"), A(id=2, data=None)])
         s.commit()
 
-    def _assert_load(self):
+    def _assert_load(self, connection):
         A = self.classes.A
-        s = fixture_session()
+        s = fixture_session(bind=connection)
         a1, a2 = s.query(A).order_by(A.id).all()
         eq_(a1.data, "ONE")
         is_(a2.data, None)
 
-    def test_result_processors_applied(self):
-        self._assert_load()
+    def test_result_processors_applied(self, connection):
+        self._assert_load(connection)
 
-    def test_row_logging_fallback(self):
+    def test_row_logging_fallback(self, debug_logging_engine):
         """with debug-level logging, the ORM row fetch falls back to
         constructing Row objects, and each row is logged"""
-        logger = logging.getLogger("sqlalchemy.engine")
-        old_level = logger.level
-        old_propagate = logger.propagate
-        handler = logging.handlers.BufferingHandler(200)
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
-        logger.propagate = False
-        try:
-            self._assert_load()
-        finally:
-            logger.setLevel(old_level)
-            logger.propagate = old_propagate
-            logger.removeHandler(handler)
+
+        testing_engine, buf = debug_logging_engine
+
+        engine = testing_engine(echo="debug")
+
+        with engine.connect() as conn:
+            self._assert_load(conn)
 
         row_messages = [
             rec.getMessage()
-            for rec in handler.buffer
+            for rec in buf.buffer
             if rec.getMessage().startswith("Row ")
         ]
         eq_(

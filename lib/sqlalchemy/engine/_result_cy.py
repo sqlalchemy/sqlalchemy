@@ -351,8 +351,9 @@ class BaseResultInternal(Generic[_R]):
         assert self._unique_filter_state is None
         assert self._post_creational_filter is None
         interim_rows = self._row_getter[2]
+        assert interim_rows is not None
         rows = self._fetchall_impl()
-        return interim_rows(rows) if interim_rows is not None else rows
+        return interim_rows(rows)
 
     def _allrows(self) -> Sequence[_R]:
         post_creational_filter = self._post_creational_filter
