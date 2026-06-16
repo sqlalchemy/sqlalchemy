@@ -1818,7 +1818,7 @@ class _SubqueryLoader(_PostLoader):
             return self._data.get(key, default)
 
         def _load(self):
-            self._data = collections.defaultdict(list)
+            self._data = data = collections.defaultdict(list)
 
             q = self.subq
             assert q.session is None
@@ -1829,10 +1829,40 @@ class _SubqueryLoader(_PostLoader):
                 q = q.populate_existing()
             # to work with baked query, the parameters may have been
             # updated since this query was created, so take these into account
+            q = q.params(self.params)
 
-            rows = list(q.params(self.params))
-            for k, v in itertools.groupby(rows, lambda x: x[1:]):
-                self._data[k].extend(vv[0] for vv in v)
+            # execute the statement directly rather than iterating the Query,
+            # which would route through Query.__iter__ -> result.unique() and
+            # build a Row object per row.  the subquery entity result does not
+            # actually require uniquing in the common case, so consume the
+            # raw tuples and group on a plain tuple slice.
+            result = self.session.execute(
+                q._statement_20(),
+                q._params,
+                execution_options={"_sa_orm_load_options": q.load_options},
+            )
+
+            if result.context is not None and result.context.requires_uniquing:
+                # e.g. a joinedload nested inside the subqueryload requires
+                # de-duplicating the rows; keep the Row-based unique() path
+                for row in result.unique():
+                    tup = row._to_tuple_instance()
+                    data[tup[1:]].append(tup[0])
+            else:
+                # legacy Query iteration always applied result.unique();
+                # replicate that dedup on the plain processed tuples so we
+                # avoid building a Row per row.  the related object (tup[0])
+                # is keyed on identity, matching the ORM uniquing filter
+                # (use_id_for_hash), while the remaining key columns are
+                # scalar values compared by value.
+                seen: set = set()
+                seen_add = seen.add
+                for tup in result._raw_all_tuples():
+                    unique_key = (id(tup[0]),) + tup[1:]
+                    if unique_key in seen:
+                        continue
+                    seen_add(unique_key)
+                    data[tup[1:]].append(tup[0])
 
         def loader(self, state, dict_, row):
             if self._data is None:
