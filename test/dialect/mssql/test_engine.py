@@ -294,6 +294,7 @@ class ParseConnectTest(fixtures.TestBase):
                 "somehost%3BPORT%3D50001",
                 "somedb%3BPORT%3D50001",
             ),
+            "driver=foob",
             (
                 "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
                 "Database={somedb;PORT=50001};UID={someuser;PORT=50001};"
@@ -308,64 +309,59 @@ class ParseConnectTest(fixtures.TestBase):
                 "localhost",
                 "mydb",
             ),
+            "driver=foob",
             (
                 "DRIVER={foob};Server=localhost;"
                 "Database=mydb;UID=larry;"
                 "PWD={{moe}",
             ),
         ),
-        argnames="tokens, connection_string",
-        id_="iaa",
+        (
+            # the driver name is always wrapped in braces, so a closing
+            # brace in the value has to be escaped, otherwise it ends the
+            # brace early and the remainder is read as further attributes
+            "driver_brace_injection",
+            (
+                "username",
+                "password",
+                "hostspec",
+                "database",
+            ),
+            "driver=foob%7DUID%3Devil",
+            (
+                "DRIVER={foob}}UID=evil};Server=hostspec;Database=database;"
+                "UID=username;PWD=password",
+            ),
+        ),
+        (
+            # names of pass-through parameters get the same brace quoting
+            # as their values, so a semicolon in a parameter name can't be
+            # used to smuggle in an extra attribute
+            "pass_through_key_injection",
+            (
+                "username",
+                "password",
+                "hostspec",
+                "database",
+            ),
+            "driver=foob&foo%3BUID=evil",
+            (
+                "DRIVER={foob};Server=hostspec;Database=database;"
+                "UID=username;PWD=password;{foo;UID}=evil",
+            ),
+        ),
+        argnames="tokens, query, connection_string",
+        id_="iaaa",
     )
-    def test_pyodbc_token_injection(self, tokens, connection_string):
-        u = url.make_url("mssql+pyodbc://%s:%s@%s/%s?driver=foob" % tokens)
+    def test_pyodbc_token_injection(self, tokens, query, connection_string):
+        u = url.make_url(
+            "mssql+pyodbc://%s:%s@%s/%s?%s" % (tokens + (query,))
+        )
         dialect = pyodbc.dialect()
         connection = dialect.create_connect_args(u)
         eq_(
             (
                 connection_string,
-                {},
-            ),
-            connection,
-        )
-
-    def test_pyodbc_driver_token_injection(self):
-        # the driver name is always wrapped in braces, so a closing brace
-        # in the value has to be escaped, otherwise it ends the brace early
-        # and the remainder is read as further connection attributes
-        dialect = pyodbc.dialect()
-        u = url.make_url(
-            "mssql+pyodbc://username:password@hostspec/database"
-            "?driver=foob%7DUID%3Devil"
-        )
-        connection = dialect.create_connect_args(u)
-        eq_(
-            (
-                (
-                    "DRIVER={foob}}UID=evil};Server=hostspec;Database=database;"
-                    "UID=username;PWD=password",
-                ),
-                {},
-            ),
-            connection,
-        )
-
-    def test_pyodbc_pass_through_key_injection(self):
-        # names of pass-through parameters get the same brace quoting as
-        # their values, so a semicolon in a parameter name can't be used to
-        # smuggle in an extra attribute
-        dialect = pyodbc.dialect()
-        u = url.make_url(
-            "mssql+pyodbc://username:password@hostspec/database"
-            "?driver=foob&foo%3BUID=evil"
-        )
-        connection = dialect.create_connect_args(u)
-        eq_(
-            (
-                (
-                    "DRIVER={foob};Server=hostspec;Database=database;"
-                    "UID=username;PWD=password;{foo;UID}=evil",
-                ),
                 {},
             ),
             connection,
