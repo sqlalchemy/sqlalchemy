@@ -31,7 +31,9 @@ from typing import Union
 
 from . import attributes
 from . import exc as orm_exc
+from . import instrumentation
 from . import path_registry
+from ._loading_cy import _InstancesBatch
 from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
@@ -39,6 +41,7 @@ from .base import PassiveFlag
 from .context import _ORMCompileState
 from .context import FromStatement
 from .context import QueryContext
+from .state import InstanceState
 from .strategies import _SelectInLoader
 from .util import _none_set
 from .util import state_str
@@ -63,7 +66,6 @@ if TYPE_CHECKING:
     from .mapper import Mapper
     from .query import Query
     from .session import Session
-    from .state import InstanceState
     from ..engine.cursor import CursorResult
     from ..engine.interfaces import _ExecuteOptions
     from ..engine.result import Result
@@ -232,11 +234,34 @@ def instances(
 
             if single_entity:
                 proc = process[0]
-                rows = [proc(row) for row in fetch]
+                batch_proc = getattr(proc, "_sa_row_batch", None)
+                if batch_proc is not None:
+                    rows = batch_proc(fetch)
+                else:
+                    rows = [proc(row) for row in fetch]
             else:
-                rows = [
-                    tuple([proc(row) for proc in process]) for row in fetch
+                batches = [
+                    getattr(proc, "_sa_row_batch", None) for proc in process
                 ]
+                if any(batch is not None for batch in batches):
+                    # apply each processor across all rows, then pivot
+                    # column-major results into row tuples
+                    rows = list(
+                        zip(
+                            *[
+                                (
+                                    batch(fetch)
+                                    if batch is not None
+                                    else map(proc, fetch)
+                                )
+                                for proc, batch in zip(process, batches)
+                            ]
+                        )
+                    )
+                else:
+                    rows = [
+                        tuple([proc(row) for proc in process]) for row in fetch
+                    ]
 
             # if we are the originating load from a query, meaning we
             # aren't being called as a result of a nested "post load",
@@ -1246,7 +1271,7 @@ def _instance_processor(
             else:
                 return None
 
-        _instance = _decorate_polymorphic_switch(
+        return _decorate_polymorphic_switch(
             _instance,
             context,
             query_entity,
@@ -1256,6 +1281,44 @@ def _instance_processor(
             polymorphic_discriminator,
             adapter,
             ensure_no_pk,
+        )
+
+    if refresh_identity_key is None:
+        # batch row processor for the common new-instance load path,
+        # with constant per-row conditions hoisted out of the loop; rows
+        # for instances already in the identity map delegate to
+        # _instance().  note "existing instance" rows are the only ones
+        # subject to the version check
+        manager = mapper.class_manager
+        _instance._sa_row_batch = _InstancesBatch(
+            _instance,
+            identity_class,
+            identity_token,
+            primary_key_getter,
+            is_not_primary_key,
+            session_identity_map,
+            manager,
+            (
+                InstanceState
+                if type(manager) is instrumentation.ClassManager
+                and manager._state_constructor is InstanceState
+                else None
+            ),
+            session_id,
+            runid,
+            bool(propagated_loader_options or not populate_existing),
+            propagated_loader_options,
+            load_path,
+            populate_existing,
+            populators["quick"],
+            populators["expire"],
+            populators["new"],
+            load_evt,
+            persistent_evt,
+            loaded_as_persistent if persistent_evt else None,
+            context,
+            post_load,
+            _warn_for_runid_changed,
         )
 
     return _instance
