@@ -105,7 +105,9 @@ class PyODBCConnector(Connector):
                         "DSN-less connections"
                     )
                 else:
-                    connectors.append("DRIVER={%s}" % driver)
+                    connectors.append(
+                        "DRIVER={%s}" % str(driver).replace("}", "}}")
+                    )
 
                 connectors.extend(
                     [
@@ -136,7 +138,9 @@ class PyODBCConnector(Connector):
                     "AutoTranslate=%s" % keys.pop("odbc_autotranslate")
                 )
 
-            connectors.extend(["%s=%s" % (k, v) for k, v in keys.items()])
+            connectors.extend(
+                ["%s=%s" % (check_quote(k), v) for k, v in keys.items()]
+            )
 
         return ((";".join(connectors),), connect_args)
 

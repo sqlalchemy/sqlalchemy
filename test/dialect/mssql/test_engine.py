@@ -329,6 +329,48 @@ class ParseConnectTest(fixtures.TestBase):
             connection,
         )
 
+    def test_pyodbc_driver_token_injection(self):
+        # the driver name is always wrapped in braces, so a closing brace
+        # in the value has to be escaped, otherwise it ends the brace early
+        # and the remainder is read as further connection attributes
+        dialect = pyodbc.dialect()
+        u = url.make_url(
+            "mssql+pyodbc://username:password@hostspec/database"
+            "?driver=foob%7DUID%3Devil"
+        )
+        connection = dialect.create_connect_args(u)
+        eq_(
+            (
+                (
+                    "DRIVER={foob}}UID=evil};Server=hostspec;Database=database;"
+                    "UID=username;PWD=password",
+                ),
+                {},
+            ),
+            connection,
+        )
+
+    def test_pyodbc_pass_through_key_injection(self):
+        # names of pass-through parameters get the same brace quoting as
+        # their values, so a semicolon in a parameter name can't be used to
+        # smuggle in an extra attribute
+        dialect = pyodbc.dialect()
+        u = url.make_url(
+            "mssql+pyodbc://username:password@hostspec/database"
+            "?driver=foob&foo%3BUID=evil"
+        )
+        connection = dialect.create_connect_args(u)
+        eq_(
+            (
+                (
+                    "DRIVER={foob};Server=hostspec;Database=database;"
+                    "UID=username;PWD=password;{foo;UID}=evil",
+                ),
+                {},
+            ),
+            connection,
+        )
+
     def test_pymssql_port_setting(self):
         dialect = pymssql.dialect()
 
