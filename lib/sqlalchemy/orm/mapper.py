@@ -3561,6 +3561,24 @@ class Mapper(
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
 
+    def _state_ident_getter(self, columns, passive):
+        lookup_keys = [self._columntoproperty[col].key for col in columns]
+        missing = object()
+
+        def get_ident(state, state_dict):
+            return tuple(
+                (
+                    v
+                    if (v := state_dict.get(lk, missing)) is not missing
+                    else self._get_state_attr_by_column(
+                        state, state_dict, col, passive=passive
+                    )
+                )
+                for lk, col in zip(lookup_keys, columns)
+            )
+
+        return get_ident
+
     def _set_committed_state_attr_by_column(self, state, dict_, column, value):
         prop = self._columntoproperty[column]
         state.manager[prop.key].impl.set_committed_value(state, dict_, value)

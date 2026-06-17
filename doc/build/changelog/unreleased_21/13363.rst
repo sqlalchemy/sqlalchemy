@@ -9,3 +9,27 @@
     that individual rows can be logged. Benchmarks show a 3-16% improvement in
     ORM entity load times depending on query shape.  Pull request courtesy
     Oliver Parker.
+
+.. change::
+    :tags: performance, orm
+    :tickets: 13363
+
+    Improved performance of :func:`_orm.selectinload` and
+    :func:`_orm.subqueryload` result handling:
+
+    * in selectinloader, the primary key columns used to correlate related
+      rows are now selected directly rather than being wrapped in a
+      :class:`.Bundle`, and are read from positional slices of each result
+      row.  This removes the per-row :class:`.Row` construction that the
+      :class:`.Bundle` introduced, including for the common single-column
+      primary key case.
+
+    * removed use of ``groupby()`` + ``lambda`` against :class:`.Row` objects
+      in subqueryloader; rows are converted to plain tuples and the result
+      lists are built via ``append()``.
+
+    * many-to-one selectinload reads foreign key values directly from the
+      parent instance dictionary when present, falling back to attribute-level
+      access only for expired or deferred attributes.
+
+    Pull request courtesy Oliver Parker.
