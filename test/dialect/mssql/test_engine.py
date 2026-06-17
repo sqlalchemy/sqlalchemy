@@ -354,9 +354,7 @@ class ParseConnectTest(fixtures.TestBase):
         id_="iaaa",
     )
     def test_pyodbc_token_injection(self, tokens, query, connection_string):
-        u = url.make_url(
-            "mssql+pyodbc://%s:%s@%s/%s?%s" % (tokens + (query,))
-        )
+        u = url.make_url("mssql+pyodbc://%s:%s@%s/%s?%s" % (tokens + (query,)))
         dialect = pyodbc.dialect()
         connection = dialect.create_connect_args(u)
         eq_(
