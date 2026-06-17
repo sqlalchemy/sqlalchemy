@@ -13,7 +13,6 @@ implementations, and related MapperOptions."""
 from __future__ import annotations
 
 import collections
-import itertools
 from typing import Any
 from typing import Dict
 from typing import Literal
@@ -2974,6 +2973,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             "in_expr",
             "pk_cols",
             "zero_idx",
+            "n_pk",
             "child_lookup_cols",
         ],
     )
@@ -3049,7 +3049,9 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             in_expr = fk_cols[0]
             zero_idx = True
 
-        return self.query_info(False, False, in_expr, pk_cols, zero_idx, None)
+        return self.query_info(
+            False, False, in_expr, pk_cols, zero_idx, len(pk_cols), None
+        )
 
     def _init_for_omit_join_m2o(self):
         pk_cols = self.mapper.primary_key
@@ -3064,7 +3066,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         lookup_cols = [lazyloader._equated_columns[pk] for pk in pk_cols]
 
         return self.query_info(
-            True, False, in_expr, pk_cols, zero_idx, lookup_cols
+            True, False, in_expr, pk_cols, zero_idx, len(pk_cols), lookup_cols
         )
 
     def _init_for_join(self):
@@ -3079,7 +3081,9 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         else:
             in_expr = pk_cols[0]
             zero_idx = True
-        return self.query_info(False, True, in_expr, pk_cols, zero_idx, None)
+        return self.query_info(
+            False, True, in_expr, pk_cols, zero_idx, len(pk_cols), None
+        )
 
     def init_class_attribute(self, mapper):
         self.parent_property._get_strategy(
@@ -3201,27 +3205,14 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             # whether or not a key is present can vary per state, e.g.
             # individual instances may have the attribute expired or
             # deferred, so this is determined state-by-state
-            lookup_keys = [
-                mapper._columntoproperty[lk].key
-                for lk in query_info.child_lookup_cols
-            ]
-            missing = object()
+            get_related_ident = mapper._state_ident_getter(
+                query_info.child_lookup_cols,
+                passive=attributes.PASSIVE_NO_FETCH,
+            )
 
             for state, overwrite in states:
                 state_dict = state.dict
-                related_ident = tuple(
-                    [state_dict.get(lk, missing) for lk in lookup_keys]
-                )
-                if missing in related_ident:
-                    related_ident = tuple(
-                        mapper._get_state_attr_by_column(
-                            state,
-                            state_dict,
-                            lk,
-                            passive=attributes.PASSIVE_NO_FETCH,
-                        )
-                        for lk in query_info.child_lookup_cols
-                    )
+                related_ident = get_related_ident(state, state_dict)
                 # if the loaded parent objects do not have the foreign key
                 # to the related item loaded, then degrade into the joined
                 # version of selectinload
@@ -3263,18 +3254,9 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 ]
                 in_expr = effective_entity._adapt_element(in_expr)
 
-        if query_info.zero_idx:
-            # single column key; select the column directly so that
-            # result rows carry the plain key value rather than a
-            # per-row Bundle Row object
-            pk_sql = pk_cols[0]
-        else:
-            bundle_ent = orm_util.Bundle("pk", *pk_cols)
-            pk_sql = bundle_ent.__clause_element__()
-
         entity_sql = effective_entity.__clause_element__()
         q = Select._create_raw_select(
-            _raw_columns=[pk_sql, entity_sql],
+            _raw_columns=[*pk_cols, entity_sql],
             _compile_options=_ORMCompileState.default_compile_options,
             _propagate_attrs={
                 "compile_state_plugin": "orm",
@@ -3294,16 +3276,15 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 entity_sql, self.parent_property._join_condition.secondaryjoin
             )
         elif not query_info.load_with_join:
-            # the Bundle we have in the "omit_join" case is against raw, non
-            # annotated columns, so to ensure the Query knows its primary
-            # entity, we add it explicitly.  If we made the Bundle against
-            # annotated columns, we hit a performance issue in this specific
-            # case, which is detailed in issue #4347.
+            # the pk columns in the "omit_join" case are raw, non-annotated
+            # columns, so to ensure the Query knows its primary entity, we
+            # add it explicitly.  Using annotated columns here would hit a
+            # performance issue detailed in issue #4347.
             q = q.select_from(effective_entity)
         else:
-            # in the non-omit_join case, the Bundle is against the annotated/
-            # mapped column of the parent entity, but the #4347 issue does not
-            # occur in this case.
+            # in the non-omit_join case, the pk columns are against the
+            # annotated/mapped column of the parent entity, but the #4347
+            # issue does not occur in this case.
             q = q.select_from(self._parent_alias).join(
                 getattr(self._parent_alias, self.parent_property.key).of_type(
                     effective_entity
@@ -3435,6 +3416,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         chunksize,
     ):
         uselist = self.uselist
+        n_pk = query_info.n_pk
 
         # this sort is really for the benefit of the unit tests
         our_keys = sorted(our_states)
@@ -3452,18 +3434,16 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             if result.context is not None and result.context.requires_uniquing:
                 rows = result.unique()
             else:
-                # consume the result as plain tuples, skipping per-row
-                # Row construction
                 rows = result._raw_all_tuples()
-            data = {k: v for k, v in rows}
+            data = {row[:n_pk]: row[n_pk] for row in rows}
 
-            for lookup_key, key in zip(primary_keys, chunk):
+            for key in chunk:
                 # for a real foreign key and no concurrent changes to the
                 # DB while running this method, "key" is always present in
                 # data.  However, for primaryjoins without real foreign keys
                 # a non-None primaryjoin condition may still refer to no
                 # related object.
-                related_obj = data.get(lookup_key, None)
+                related_obj = data.get(key, None)
                 for state, dict_, overwrite in our_states[key]:
                     if not overwrite and self.key in dict_:
                         continue
@@ -3486,6 +3466,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         self, our_states, query_info, q, context, execution_options, chunksize
     ):
         uselist = self.uselist
+        n_pk = query_info.n_pk
         _empty_result = () if uselist else None
 
         while our_states:
@@ -3505,20 +3486,16 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             if result.context is not None and result.context.requires_uniquing:
                 rows = result.unique()
             else:
-                # consume the result as plain tuples, skipping per-row
-                # Row construction
                 rows = result._raw_all_tuples()
             data = collections.defaultdict(list)
-            for k, v in itertools.groupby(rows, lambda x: x[0]):
-                data[k].extend(vv[1] for vv in v)
+            for row in rows:
+                data[row[:n_pk]].append(row[n_pk])
 
-            for lookup_key, (key, state, state_dict, overwrite) in zip(
-                primary_keys, chunk
-            ):
+            for key, state, state_dict, overwrite in chunk:
                 if not overwrite and self.key in state_dict:
                     continue
 
-                collection = data.get(lookup_key, _empty_result)
+                collection = data.get(key, _empty_result)
 
                 if not uselist and collection:
                     if len(collection) > 1:
