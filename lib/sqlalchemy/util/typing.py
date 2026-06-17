@@ -357,6 +357,8 @@ def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
     # though.
     # NOTE: things seems to work also without this additional check
     if is_generic(type_):
+        if is_pep593(type_):
+            return False
         return is_pep695(type_.__origin__)
     return isinstance(type_, _type_instances.TypeAliasType)
 

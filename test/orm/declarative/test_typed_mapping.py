@@ -152,6 +152,7 @@ def pep_695_types():
 def pep_593_types(pep_695_types):
     global _GenericPep593TypeAlias, _GenericPep593Pep695
     global _RecursivePep695Pep593
+    global _AnnotatedPep695
 
     _GenericPep593TypeAlias = Annotated[
         TV, mapped_column(info={"hi": "there"})  # type: ignore
@@ -170,6 +171,11 @@ def pep_593_types(pep_695_types):
             mapped_column(info={"hi": "there"}),
         ],
     )
+
+    _AnnotatedPep695 = Annotated[
+        _TypingStrPep695,  # type: ignore
+        mapped_column(JSON),
+    ]
 
 
 def expect_annotation_syntax_error(name):
@@ -1379,6 +1385,23 @@ class Pep593InterpretationTests(fixtures.TestBase, testing.AssertsCompiledSQL):
             r"are resolvable by the registry",
         ):
             declare()
+
+    @testing.requires.python312
+    def test_pep593_wrapping_pep695(
+        self, decl_base: Type[DeclarativeBase], pep_593_types
+    ):
+        """test #13386"""
+
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            data_one: Mapped[_AnnotatedPep695]  # noqa: F821
+
+        table = MyClass.__table__
+        assert table is not None
+        is_(MyClass.data_one.expression.type.__class__, JSON)
 
     def test_extract_base_type_from_pep593(
         self, decl_base: Type[DeclarativeBase]
