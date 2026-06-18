@@ -343,6 +343,13 @@ def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
     # python 3.10. For sqlalchemy use cases it's fine to consider it a TAT
     # though.
     # NOTE: things seems to work also without this additional check
+
+    # Annotated types (PEP 593) wrap the inner type; __origin__ returns the
+    # first type argument (e.g. a TypeAliasType) rather than Annotated itself
+    # which would cause is_pep695 to falsely return True.  Annotated types
+    # are handled separately via is_pep593() in the caller.
+    if is_pep593(type_):
+        return False
     if is_generic(type_):
         return is_pep695(type_.__origin__)
     return isinstance(type_, _type_instances.TypeAliasType)
