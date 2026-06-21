@@ -16,6 +16,7 @@ from ...testing.provision import delete_from_all_tables
 from ...testing.provision import drop_db
 from ...testing.provision import generate_driver_url
 from ...testing.provision import temp_table_keyword_args
+from ...testing.provision import validate_follower_ident
 from ...testing.provision import upsert
 
 
@@ -61,6 +62,7 @@ def generate_driver_url(url, driver, query_str):
 
 @create_db.for_db("mysql", "mariadb")
 def _mysql_create_db(cfg, eng, ident):
+    ident = validate_follower_ident(ident)
     with eng.begin() as conn:
         try:
             _mysql_drop_db(cfg, conn, ident)
@@ -81,12 +83,14 @@ def _mysql_create_db(cfg, eng, ident):
 
 @configure_follower.for_db("mysql", "mariadb")
 def _mysql_configure_follower(config, ident):
+    ident = validate_follower_ident(ident)
     config.test_schema = "%s_test_schema" % ident
     config.test_schema_2 = "%s_test_schema_2" % ident
 
 
 @drop_db.for_db("mysql", "mariadb")
 def _mysql_drop_db(cfg, eng, ident):
+    ident = validate_follower_ident(ident)
     with eng.begin() as conn:
         conn.exec_driver_sql("DROP DATABASE %s_test_schema" % ident)
         conn.exec_driver_sql("DROP DATABASE %s_test_schema_2" % ident)

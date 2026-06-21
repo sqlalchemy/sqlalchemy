@@ -11,6 +11,7 @@ from __future__ import annotations
 import collections
 import contextlib
 import logging
+import re
 
 from . import config
 from . import engines
@@ -28,6 +29,28 @@ from ..util import decorator
 log = logging.getLogger(__name__)
 
 FOLLOWER_IDENT = None
+
+_FOLLOWER_IDENT = r"test_[0-9a-f]{12}"
+_FOLLOWER_IDENT_REGEXP = re.compile(rf"^{_FOLLOWER_IDENT}$")
+_FOLLOWER_RELATED_IDENT_REGEXP = re.compile(
+    rf"^{_FOLLOWER_IDENT}(?:_(?:test_schema|test_schema_2|ts1|ts2))?$"
+)
+
+
+def validate_follower_ident(ident, include_related=False):
+    if not isinstance(ident, str):
+        raise ValueError("SQLAlchemy test follower identifier must be a string")
+
+    regexp = (
+        _FOLLOWER_RELATED_IDENT_REGEXP
+        if include_related
+        else _FOLLOWER_IDENT_REGEXP
+    )
+    if not regexp.match(ident):
+        raise ValueError(
+            "Unsafe SQLAlchemy test follower identifier: %r" % ident
+        )
+    return ident
 
 
 class register:
@@ -73,6 +96,7 @@ class register:
 
 
 def create_follower_db(follower_ident):
+    follower_ident = validate_follower_ident(follower_ident)
     for cfg in _configs_for_db_operation():
         log.info("CREATE database %s, URI %r", follower_ident, cfg.db.url)
         create_db(cfg, cfg.db, follower_ident)
@@ -87,6 +111,7 @@ def setup_config(db_url, options, file_config, follower_ident):
     dialect.load_provisioning()
 
     if follower_ident:
+        follower_ident = validate_follower_ident(follower_ident)
         db_url = follower_url_from_main(db_url, follower_ident)
     db_opts = {}
     update_db_opts(db_url, db_opts, options)
@@ -110,6 +135,7 @@ def setup_config(db_url, options, file_config, follower_ident):
 
 
 def drop_follower_db(follower_ident):
+    follower_ident = validate_follower_ident(follower_ident)
     for cfg in _configs_for_db_operation():
         log.info("DROP database %s, URI %r", follower_ident, cfg.db.url)
         drop_db(cfg, cfg.db, follower_ident)
@@ -420,6 +446,7 @@ def follower_url_from_main(url, ident):
     :param ident: the pytest-xdist "worker identifier" to be used as the
                   database name
     """
+    ident = validate_follower_ident(ident)
     url = sa_url.make_url(url)
     return url.set(database=ident)
 
@@ -453,6 +480,7 @@ def reap_dbs(idents_file):
         for line in file_:
             line = line.strip()
             db_name, db_url = line.split(" ")
+            db_name = validate_follower_ident(db_name)
             url_obj = sa_url.make_url(db_url)
             if db_name not in dialects:
                 dialects[db_name] = url_obj.get_dialect()

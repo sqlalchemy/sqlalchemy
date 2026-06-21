@@ -21,11 +21,13 @@ from ...testing.provision import post_configure_engine
 from ...testing.provision import prepare_for_drop_tables
 from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import temp_table_keyword_args
+from ...testing.provision import validate_follower_ident
 from ...testing.provision import upsert
 
 
 @create_db.for_db("postgresql")
 def _pg_create_db(cfg, eng, ident):
+    ident = validate_follower_ident(ident)
     template_db = cfg.options.postgresql_templatedb
 
     with eng.execution_options(isolation_level="AUTOCOMMIT").begin() as conn:
@@ -61,6 +63,7 @@ def _pg_create_db(cfg, eng, ident):
 
 @drop_db.for_db("postgresql")
 def _pg_drop_db(cfg, eng, ident):
+    ident = validate_follower_ident(ident)
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         with conn.begin():
             conn.execute(

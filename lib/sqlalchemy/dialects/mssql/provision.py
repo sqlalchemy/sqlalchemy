@@ -26,6 +26,7 @@ from ...testing.provision import normalize_sequence
 from ...testing.provision import post_configure_engine
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import temp_table_keyword_args
+from ...testing.provision import validate_follower_ident
 
 
 @post_configure_engine.for_db("mssql")
@@ -61,6 +62,7 @@ def generate_driver_url(url, driver, query_str):
 
 @create_db.for_db("mssql")
 def _mssql_create_db(cfg, eng, ident):
+    ident = validate_follower_ident(ident)
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         conn.exec_driver_sql("create database %s" % ident)
         conn.exec_driver_sql(
@@ -76,11 +78,13 @@ def _mssql_create_db(cfg, eng, ident):
 
 @drop_db.for_db("mssql")
 def _mssql_drop_db(cfg, eng, ident):
+    ident = validate_follower_ident(ident)
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         _mssql_drop_ignore(conn, ident)
 
 
 def _mssql_drop_ignore(conn, ident):
+    ident = validate_follower_ident(ident)
     try:
         # typically when this happens, we can't KILL the session anyway,
         # so let the cleanup process drop the DBs
@@ -99,6 +103,7 @@ def _mssql_drop_ignore(conn, ident):
 
 @run_reap_dbs.for_db("mssql")
 def _reap_mssql_dbs(url, idents):
+    idents = {validate_follower_ident(ident) for ident in idents}
     log.info("db reaper connecting to %r", url)
     eng = create_engine(url)
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:

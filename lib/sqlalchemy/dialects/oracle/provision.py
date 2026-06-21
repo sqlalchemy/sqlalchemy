@@ -27,6 +27,7 @@ from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import stop_test_class_outside_fixtures
 from ...testing.provision import temp_table_keyword_args
 from ...testing.provision import update_db_opts
+from ...testing.provision import validate_follower_ident
 from ...testing.warnings import warn_test_suite
 
 
@@ -65,6 +66,7 @@ def _oracle_generate_driver_url(url, driver, query_str):
 
 @create_db.for_db("oracle")
 def _oracle_create_db(cfg, eng, ident):
+    ident = validate_follower_ident(ident)
     # NOTE: make sure you've run "ALTER DATABASE default tablespace users" or
     # similar, so that the default tablespace is not "system"; reflection will
     # fail otherwise
@@ -84,11 +86,13 @@ def _oracle_create_db(cfg, eng, ident):
 
 @configure_follower.for_db("oracle")
 def _oracle_configure_follower(config, ident):
+    ident = validate_follower_ident(ident)
     config.test_schema = "%s_ts1" % ident
     config.test_schema_2 = "%s_ts2" % ident
 
 
 def _ora_drop_ignore(conn, dbname):
+    dbname = validate_follower_ident(dbname, include_related=True)
     try:
         conn.exec_driver_sql("drop user %s cascade" % dbname)
         log.info("Reaped db: %s", dbname)
@@ -123,6 +127,7 @@ def _ora_drop_all_schema_objects_post_tables(cfg, eng):
 
 @drop_db.for_db("oracle")
 def _oracle_drop_db(cfg, eng, ident):
+    ident = validate_follower_ident(ident)
     with eng.begin() as conn:
         # cx_Oracle seems to occasionally leak open connections when a large
         # suite it run, even if we confirm we have zero references to
@@ -224,6 +229,7 @@ def _oracle_post_configure_engine(url, engine, follower_ident):
 
 @run_reap_dbs.for_db("oracle")
 def _reap_oracle_dbs(url, idents):
+    idents = {validate_follower_ident(ident) for ident in idents}
     log.info("db reaper connecting to %r", url)
     eng = create_engine(url)
     with eng.begin() as conn:
