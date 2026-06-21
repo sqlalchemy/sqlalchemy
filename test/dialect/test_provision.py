@@ -1,13 +1,20 @@
-from sqlalchemy.dialects.mssql import provision as mssql_provision  # noqa: F401
-from sqlalchemy.dialects.mysql import provision as mysql_provision  # noqa: F401
-from sqlalchemy.dialects.oracle import provision as oracle_provision  # noqa: F401
-from sqlalchemy.dialects.postgresql import provision as postgresql_provision  # noqa: F401
+import sqlalchemy.dialects.mssql.provision as mssql_provision
+import sqlalchemy.dialects.mysql.provision as mysql_provision
+import sqlalchemy.dialects.oracle.provision as oracle_provision
+import sqlalchemy.dialects.postgresql.provision as postgresql_provision
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.provision import create_db
 from sqlalchemy.testing.provision import drop_db
 from sqlalchemy.testing.provision import validate_follower_ident
+
+_PROVISION_MODULES = (
+    mssql_provision,
+    mysql_provision,
+    oracle_provision,
+    postgresql_provision,
+)
 
 
 class CaptureConnection:

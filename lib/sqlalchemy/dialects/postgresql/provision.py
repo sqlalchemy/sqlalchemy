@@ -21,8 +21,8 @@ from ...testing.provision import post_configure_engine
 from ...testing.provision import prepare_for_drop_tables
 from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import temp_table_keyword_args
-from ...testing.provision import validate_follower_ident
 from ...testing.provision import upsert
+from ...testing.provision import validate_follower_ident
 
 
 @create_db.for_db("postgresql")

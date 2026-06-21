@@ -16,8 +16,8 @@ from ...testing.provision import delete_from_all_tables
 from ...testing.provision import drop_db
 from ...testing.provision import generate_driver_url
 from ...testing.provision import temp_table_keyword_args
-from ...testing.provision import validate_follower_ident
 from ...testing.provision import upsert
+from ...testing.provision import validate_follower_ident
 
 
 @generate_driver_url.for_db("mysql", "mariadb")

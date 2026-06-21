@@ -39,7 +39,9 @@ _FOLLOWER_RELATED_IDENT_REGEXP = re.compile(
 
 def validate_follower_ident(ident, include_related=False):
     if not isinstance(ident, str):
-        raise ValueError("SQLAlchemy test follower identifier must be a string")
+        raise ValueError(
+            "SQLAlchemy test follower identifier must be a string"
+        )
 
     regexp = (
         _FOLLOWER_RELATED_IDENT_REGEXP
