@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 13393
+
+    Improved the regular expression used to parse index ``COMMENT`` clauses
+    in MySQL ``SHOW CREATE TABLE`` reflection to use an unambiguous
+    single-quoted-string pattern; the previous pattern was theoretically
+    subject to backtracking on malformed input, though such input is not
+    producible by MySQL itself.  Fix courtesy of Javid Khan.
