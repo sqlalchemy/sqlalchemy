@@ -5651,6 +5651,7 @@ class Index(
         unique: bool = False,
         quote: Optional[bool] = None,
         info: Optional[_InfoType] = None,
+        attach_to_table: bool = True,
         _table: Optional[Table] = None,
         _column_flag: bool = False,
         **dialect_kw: Any,
@@ -5677,6 +5678,11 @@ class Index(
         :param info=None: Optional data dictionary which will be populated
             into the :attr:`.SchemaItem.info` attribute of this object.
 
+        :param attach_to_table=True: This bool flag determines whether this
+            index gets added to Table.indexes
+
+              ..versionadded: 2.1
+
         :param \**dialect_kw: Additional keyword arguments not mentioned above
             are dialect specific, and passed in the form
             ``<dialectname>_<argname>``. See the documentation regarding an
@@ -5690,6 +5696,7 @@ class Index(
         self.unique = unique
         if info is not None:
             self.info = info
+        self.attach_to_table = attach_to_table
 
         # TODO: consider "table" argument being public, but for
         # the purpose of the fix here, it starts as private.
@@ -5722,7 +5729,8 @@ class Index(
                 f"cannot be associated with table '{table.description}'."
             )
         self.table = table
-        table.indexes.add(self)
+        if self.attach_to_table:
+            table.indexes.add(self)
 
         expressions = self.expressions
         col_expressions = self._col_expressions(table)
