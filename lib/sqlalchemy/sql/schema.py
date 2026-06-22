@@ -4566,7 +4566,8 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, (Table, Column))
         self.parent = parent
-        parent.constraints.add(self)
+        if getattr(self, "attach_to_table", True):
+            parent.constraints.add(self)
 
     @util.deprecated(
         "1.4",
@@ -5531,6 +5532,32 @@ class UniqueConstraint(ColumnCollectionConstraint):
     """
 
     __visit_name__ = "unique_constraint"
+
+    def __init__(
+        self,
+        *columns: _DDLColumnArgument,
+        name: _ConstraintNameArgument = None,
+        deferrable: Optional[bool] = None,
+        initially: Optional[str] = None,
+        info: Optional[_InfoType] = None,
+        attach_to_table: bool = True,
+        **dialect_kw: Any,
+    ) -> None:
+        r"""
+        :param attach_to_table: This flag determines whether this
+          constraint gets added to Table.constraints.
+
+            ..versionadded: 2.1
+        """
+        self.attach_to_table = attach_to_table
+        super().__init__(
+            *columns,
+            name=name,
+            deferrable=deferrable,
+            initially=initially,
+            info=info,
+            **dialect_kw,
+        )
 
 
 class Index(
