@@ -1,0 +1,9 @@
+.. change::
+  :tags: bug, mysql
+  :tickets: 13393
+
+  Fixed catastrophic regex backtracking in the MySQL reflection parser when
+  parsing an index ``COMMENT`` from ``SHOW CREATE TABLE`` output. The comment
+  sub-pattern was ambiguous on runs of single quotes, so a crafted index
+  comment could make table reflection hang. The pattern now uses the same
+  unambiguous single-quoted-string form already used for column comments.

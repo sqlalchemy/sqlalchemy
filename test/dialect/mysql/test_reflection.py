@@ -1,4 +1,5 @@
 import re
+import time
 
 from sqlalchemy import BigInteger
 from sqlalchemy import Column
@@ -1501,6 +1502,18 @@ class RawReflectionTest(fixtures.TestBase):
         m = regex.match("  PRIMARY KEY (`id`)")
         eq_(m.group("type"), "PRIMARY")
         eq_(m.group("columns"), "`id`")
+
+    def test_key_reflection_comment_no_backtracking(self):
+        # the COMMENT subpattern used to be ambiguous on runs of single
+        # quotes, which made a crafted index comment take exponential time
+        # to (fail to) match.  the line below would hang for many seconds
+        # against the old pattern; guard it with a generous timeout.
+        regex = self.parser._re_key
+        line = "  KEY (`id`) COMMENT " + ("'" * 60) + "x"
+
+        start = time.monotonic()
+        assert not regex.match(line)
+        assert time.monotonic() - start < 1.0
 
     def test_key_reflection_columns(self):
         regex = self.parser._re_key
