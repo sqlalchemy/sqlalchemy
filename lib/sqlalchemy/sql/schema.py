@@ -1521,9 +1521,12 @@ class Table(
         :class:`.AddConstraint` construct which can produce this SQL when
         invoked as an executable clause.
 
+        force_attach is used to override UniqueConstraint and Index
+        :param attach_to_table flag.
+
         """
 
-        constraint._set_parent_with_dispatch(self)
+        constraint._set_parent_with_dispatch(self, force_attach=True)
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         metadata = parent
@@ -4566,7 +4569,9 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, (Table, Column))
         self.parent = parent
-        if getattr(self, "attach_to_table", True):
+        if getattr(self, "attach_to_table", True) or kw.get(
+            "force_attach", False
+        ):
             parent.constraints.add(self)
 
     @util.deprecated(
@@ -4784,7 +4789,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, (Column, Table))
-        Constraint._set_parent(self, parent)
+        Constraint._set_parent(self, parent, **kw)
         ColumnCollectionMixin._set_parent(self, parent)
 
     def __contains__(self, x: Any) -> bool:
@@ -5729,7 +5734,7 @@ class Index(
                 f"cannot be associated with table '{table.description}'."
             )
         self.table = table
-        if self.attach_to_table:
+        if self.attach_to_table or kw.get("force_attach", False):
             table.indexes.add(self)
 
         expressions = self.expressions
