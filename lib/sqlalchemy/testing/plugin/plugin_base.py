@@ -819,6 +819,10 @@ class FixtureFunctions(abc.ABC):
     def add_to_marker(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def fixture_classmethod(self, fn) -> Any:
+        raise NotImplementedError()
+
 
 _fixture_fn_class = None
 

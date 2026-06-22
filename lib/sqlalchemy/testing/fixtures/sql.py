@@ -53,8 +53,8 @@ class TablesTest(TestBase):
     sequences = None
 
     @config.fixture(autouse=True, scope="class")
-    def _setup_tables_test_class(self):
-        cls = self.__class__
+    @config.fixture_classmethod
+    def _setup_tables_test_class(cls):
         cls._init_class()
 
         cls._setup_once_tables()

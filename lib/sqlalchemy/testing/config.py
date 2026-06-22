@@ -80,6 +80,9 @@ else:
         def async_test(self, fn):
             return fn
 
+        def fixture_classmethod(self, fn):
+            return classmethod(fn)
+
     # default fixture functions; these are replaced by plugin_base when
     # pytest runs
     _fixture_functions = _NullFixtureFunctions()
@@ -432,3 +435,7 @@ def skip_test(msg):
 
 def async_test(fn):
     return _fixture_functions.async_test(fn)
+
+
+def fixture_classmethod(fn):
+    return _fixture_functions.fixture_classmethod(fn)

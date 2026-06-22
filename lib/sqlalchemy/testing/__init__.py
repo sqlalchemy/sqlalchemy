@@ -52,6 +52,7 @@ from .config import combinations
 from .config import combinations_list
 from .config import db
 from .config import fixture
+from .config import fixture_classmethod
 from .config import requirements as requires
 from .config import skip_test
 from .config import Variation
