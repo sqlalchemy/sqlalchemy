@@ -3427,11 +3427,27 @@ class SQLCompiler(Compiled):
             and isinstance(values[0], collections_abc.Sequence)
             and not isinstance(values[0], (str, bytes))
         ):
-            if typ_dialect_impl._has_bind_expression:
-                raise NotImplementedError(
-                    "bind_expression() on TupleType not supported with "
-                    "literal_binds"
-                )
+            if typ_dialect_impl._is_tuple_type:
+
+                def _render_tuple_literal(value, typ):
+                    rendered = self.render_literal_value(value, typ)
+                    impl = typ.dialect_impl(self.dialect)
+                    if not impl._has_bind_expression:
+                        return rendered
+
+                    replacement = "__SQLA_BIND_EXPR__"
+                    bind_expression = impl.bind_expression(
+                        elements.literal_column(replacement, type_=typ)
+                    )
+                    return self.process(
+                        bind_expression, skip_bind_expression=True
+                    ).replace(replacement, rendered)
+
+                tuple_types = parameter.type.types
+
+            else:
+                _render_tuple_literal = None
+                tuple_types = ()
 
             replacement_expression = (
                 "VALUES " if self.dialect.tuple_in_values else ""
@@ -3439,10 +3455,14 @@ class SQLCompiler(Compiled):
                 "(%s)"
                 % (
                     ", ".join(
-                        self.render_literal_value(value, param_type)
-                        for value, param_type in zip(
-                            tuple_element, parameter.type.types
+                        (
+                            _render_tuple_literal(value, tuple_types[idx])
+                            if _render_tuple_literal
+                            else self.render_literal_value(
+                                value, parameter.type
+                            )
                         )
+                        for idx, value in enumerate(tuple_element)
                     )
                 )
                 for i, tuple_element in enumerate(values)
@@ -3522,6 +3542,28 @@ class SQLCompiler(Compiled):
             and not isinstance(values[0], (str, bytes))
         ):
             assert not typ_dialect_impl._is_array
+
+            if typ_dialect_impl._is_tuple_type:
+
+                def _render_tuple_bindtemplate(name, typ):
+                    impl = typ.dialect_impl(dialect)
+                    if not impl._has_bind_expression:
+                        return _render_bindtemplate(name)
+
+                    replacement = "__SQLA_BIND_EXPR__"
+                    bind_expression = impl.bind_expression(
+                        elements.literal_column(replacement, type_=typ)
+                    )
+                    return self.process(
+                        bind_expression, skip_bind_expression=True
+                    ).replace(replacement, _render_bindtemplate(name))
+
+                tuple_types = parameter.type.types
+
+            else:
+                _render_tuple_bindtemplate = None
+                tuple_types = ()
+
             to_update = [
                 ("%s_%s_%s" % (name, i, j), value)
                 for i, tuple_element in enumerate(values, 1)
@@ -3534,8 +3576,15 @@ class SQLCompiler(Compiled):
                 "(%s)"
                 % (
                     ", ".join(
-                        _render_bindtemplate(
-                            to_update[i * len(tuple_element) + j][0]
+                        (
+                            _render_tuple_bindtemplate(
+                                to_update[i * len(tuple_element) + j][0],
+                                tuple_types[j],
+                            )
+                            if _render_tuple_bindtemplate
+                            else _render_bindtemplate(
+                                to_update[i * len(tuple_element) + j][0]
+                            )
                         )
                         for j, value in enumerate(tuple_element)
                     )
