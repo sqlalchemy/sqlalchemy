@@ -1470,6 +1470,57 @@ SQLite) all handle ``visit_double()`` by rendering either ``DOUBLE`` or
 :ticket:`10300`
 
 
+.. _change_8130:
+
+Explicit USING support for DELETE (MySQL, PostgreSQL)
+------------------------------------------------------
+
+The :meth:`_sql.Delete.using` method has been added, allowing explicit
+``USING`` expressions to be specified in DELETE statements.  This is
+useful for backend-specific multiple-table DELETE forms where the secondary
+FROM clause needs to be stated explicitly, such as joined DELETE on
+MySQL/MariaDB and PostgreSQL.
+
+Previously, multi-table DELETE was supported by inferring extra FROM entries
+from the WHERE clause, which works for simple cases.  The new
+:meth:`_sql.Delete.using` method allows more complex expressions such as
+explicit joins to be stated::
+
+    from sqlalchemy import delete, table, column
+
+    user_table = table("users", column("id"), column("name"))
+    address_table = table("addresses", column("id"), column("user_id"), column("email"))
+
+    stmt = (
+        delete(user_table)
+        .using(
+            user_table.outerjoin(
+                address_table,
+                user_table.c.id == address_table.c.user_id,
+            )
+        )
+        .where(address_table.c.email == "patrick@aol.com")
+    )
+
+On MySQL/MariaDB, the above renders as:
+
+.. sourcecode:: sql
+
+    DELETE FROM users USING users LEFT OUTER JOIN addresses
+    ON users.id = addresses.user_id
+    WHERE addresses.email = %s
+
+On PostgreSQL, a similar form is rendered using the PostgreSQL-specific
+``DELETE .. USING`` syntax.
+
+.. seealso::
+
+    :ref:`tutorial_multi_table_deletes` - updated tutorial section for
+    multi-table deletes
+
+:ticket:`8130`
+
+
 PostgreSQL
 ==========
 
