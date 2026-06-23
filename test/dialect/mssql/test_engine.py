@@ -237,6 +237,11 @@ class ParseConnectTest(fixtures.TestBase):
         )
 
     @testing.combinations(
+        ("pyodbc", pyodbc, "mssql+pyodbc"),
+        argnames="dialect_mod, url_prefix",
+        id_="iaa",
+    )
+    @testing.combinations(
         (
             "original",
             (
@@ -245,11 +250,15 @@ class ParseConnectTest(fixtures.TestBase):
                 "somehost%3BPORT%3D50001",
                 "somedb%3BPORT%3D50001",
             ),
-            (
-                "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
-                "Database=somedb%3BPORT%3D50001;UID={someuser;PORT=50001};"
-                "PWD={some{strange}}pw;PORT=50001}",
-            ),
+            "driver=foob",
+            {
+                "pyodbc": (
+                    "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
+                    "Database=somedb%3BPORT%3D50001;"
+                    "UID={someuser;PORT=50001};"
+                    "PWD={some{strange}}pw;PORT=50001}",
+                ),
+            },
         ),
         (
             "issue_8062",
@@ -259,22 +268,92 @@ class ParseConnectTest(fixtures.TestBase):
                 "localhost",
                 "mydb",
             ),
-            (
-                "DRIVER={foob};Server=localhost;"
-                "Database=mydb;UID=larry;"
-                "PWD={{moe}",
-            ),
+            "driver=foob",
+            {
+                "pyodbc": (
+                    "DRIVER={foob};Server=localhost;"
+                    "Database=mydb;UID=larry;"
+                    "PWD={{moe}",
+                ),
+            },
         ),
-        argnames="tokens, connection_string",
-        id_="iaa",
+        (
+            # a driver name that starts with { and contains } looks like
+            # a complete brace-quoted token.  per the MS-ODBCSTR spec,
+            # only the right brace is escaped (doubled) within a
+            # brace-enclosed expression; the left brace is passed
+            # through as a literal character.
+            "driver_brace_open_injection",
+            (
+                "username",
+                "password",
+                "hostspec",
+                "database",
+            ),
+            "driver=%7BUID%3Devil%7D",
+            {
+                "pyodbc": (
+                    "DRIVER={{UID=evil}}};"
+                    "Server=hostspec;Database=database;"
+                    "UID=username;PWD=password",
+                ),
+            },
+        ),
+        (
+            # the driver name is always wrapped in braces in pyodbc, so a
+            # closing brace in the value has to be escaped, otherwise it
+            # ends the brace early and the remainder is read as further
+            # attributes
+            "driver_brace_injection",
+            (
+                "username",
+                "password",
+                "hostspec",
+                "database",
+            ),
+            "driver=foob%7DUID%3Devil",
+            {
+                "pyodbc": (
+                    "DRIVER={foob}}UID=evil};"
+                    "Server=hostspec;Database=database;"
+                    "UID=username;PWD=password",
+                ),
+            },
+        ),
+        (
+            # names of pass-through parameters get the same brace quoting
+            # as their values, so a semicolon in a parameter name can't be
+            # used to smuggle in an extra attribute
+            "pass_through_key_injection",
+            (
+                "username",
+                "password",
+                "hostspec",
+                "database",
+            ),
+            "driver=foob&foo%3BUID=evil",
+            {
+                "pyodbc": (
+                    "DRIVER={foob};Server=hostspec;Database=database;"
+                    "UID=username;PWD=password;{foo;UID}=evil",
+                ),
+            },
+        ),
+        argnames="tokens, query, expected",
+        id_="iaaa",
     )
-    def test_pyodbc_token_injection(self, tokens, connection_string):
-        u = url.make_url("mssql+pyodbc://%s:%s@%s/%s?driver=foob" % tokens)
-        dialect = pyodbc.dialect()
+    def test_token_injection(
+        self, dialect_mod, url_prefix, tokens, query, expected
+    ):
+        dialect_key = dialect_mod.__name__.rsplit(".", 1)[-1]
+        u = url.make_url(
+            "%s://%s:%s@%s/%s?%s" % ((url_prefix,) + tokens + (query,))
+        )
+        dialect = dialect_mod.dialect()
         connection = dialect.create_connect_args(u)
         eq_(
             (
-                connection_string,
+                expected[dialect_key],
                 {},
             ),
             connection,
