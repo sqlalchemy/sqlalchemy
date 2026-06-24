@@ -1984,12 +1984,29 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT count(DISTINCT mytable.myid) AS count_1 FROM mytable",
         )
 
+    @testing.variation("case", ["stringify", "final_froms"])
+    def test_distinct_expr_no_dep_warning_str_compiler(self, case):
+        """test for #13396"""
+
+        t = Table("foo", MetaData(), Column("bar"))
+
+        stmt = select(t).distinct(t.c.bar)
+
+        if case.stringify:
+            eq_(str(stmt), "SELECT DISTINCT foo.bar \nFROM foo")
+        elif case.final_froms:
+            eq_(stmt.get_final_froms(), [t])
+        else:
+            case.fail()
+
     def test_distinct_on(self):
         with testing.expect_deprecated(
             "DISTINCT ON is currently supported only by the PostgreSQL "
             "dialect"
         ):
-            select("*").distinct(table1.c.myid).compile()
+            self.assert_compile(
+                select("*").distinct(table1.c.myid), "SELECT DISTINCT *"
+            )
 
     def test_where_empty(self):
         self.assert_compile(
