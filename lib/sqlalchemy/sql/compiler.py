@@ -6898,6 +6898,9 @@ class StrSQLCompiler(SQLCompiler):
 
     """
 
+    def get_select_precolumns(self, select: Select[Any], **kw: Any) -> str:
+        return "DISTINCT " if select._distinct else ""
+
     def _fallback_column_name(self, column):
         return "<name unknown>"
 
