@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from collections.abc import Sequence
 import logging
+import logging.handlers
 
 import sqlalchemy as sa
 from .. import assertions
@@ -384,19 +385,32 @@ class TestBase:
 
     @config.fixture()
     def debug_logging_engine(self, testing_engine):
+        """a fixture that provides an engine which will capture log messages
+        in a buffer.
+
+        """
         log = logging.getLogger("sqlalchemy.engine")
         existing_level = log.level
 
         buf = logging.handlers.BufferingHandler(100)
         log.addHandler(buf)
 
-        def get_testing_engine(echo=None, log_level=None):
-            options = {"sqlite_share_pool": True}
+        def get_testing_engine(
+            echo=None, log_level=None, skip_initial_connect=True
+        ):
+            te = testing_engine(options={"sqlite_share_pool": True})
+
+            # perform initial connection first so that logging occurs
+            # before we begin capturing
+            if skip_initial_connect:
+                te.connect().close()
+
+            # then set up echo or logging
             if echo is not None:
-                options["echo"] = echo
+                te.echo = echo
             if log_level:
                 log.setLevel(logging.DEBUG)
-            return testing_engine(options=options)
+            return te
 
         try:
             yield get_testing_engine, buf

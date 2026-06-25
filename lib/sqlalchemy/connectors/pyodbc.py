@@ -77,9 +77,15 @@ class PyODBCConnector(Connector):
         else:
 
             def check_quote(token: str) -> str:
-                if ";" in str(token) or str(token).startswith("{"):
+                if (
+                    ";" in str(token)
+                    or "}" in str(token)
+                    or str(token).startswith("{")
+                ):
                     token = "{%s}" % token.replace("}", "}}")
                 return token
+
+            driver = keys.pop("driver", self.pyodbc_driver_name)
 
             keys = {k: check_quote(v) for k, v in keys.items()}
 
@@ -96,7 +102,6 @@ class PyODBCConnector(Connector):
                     port = ",%d" % int(keys.pop("port"))
 
                 connectors = []
-                driver = keys.pop("driver", self.pyodbc_driver_name)
                 if driver is None and keys:
                     # note if keys is empty, this is a totally blank URL
                     util.warn(
@@ -105,7 +110,9 @@ class PyODBCConnector(Connector):
                         "DSN-less connections"
                     )
                 else:
-                    connectors.append("DRIVER={%s}" % driver)
+                    connectors.append(
+                        "DRIVER={%s}" % str(driver).replace("}", "}}")
+                    )
 
                 connectors.extend(
                     [
@@ -136,7 +143,9 @@ class PyODBCConnector(Connector):
                     "AutoTranslate=%s" % keys.pop("odbc_autotranslate")
                 )
 
-            connectors.extend(["%s=%s" % (k, v) for k, v in keys.items()])
+            connectors.extend(
+                ["%s=%s" % (check_quote(k), v) for k, v in keys.items()]
+            )
 
         return ((";".join(connectors),), connect_args)
 
