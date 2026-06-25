@@ -1831,10 +1831,12 @@ class _SubqueryLoader(_PostLoader):
             q = q.params(self.params)
 
             # execute the statement directly rather than iterating the Query,
-            # which would route through Query.__iter__ -> result.unique() and
-            # build a Row object per row.  the subquery entity result does not
-            # actually require uniquing in the common case, so consume the
-            # raw tuples and group on a plain tuple slice.
+            # which (for an entity result like this one) routes through
+            # Query.__iter__ -> Query._iter() -> result.unique() and builds a
+            # Row object per row.  the dedup that unique() performs is still
+            # required, but the Row-based machinery is not: in the common case
+            # we consume the raw tuples and replicate the dedup on a plain
+            # tuple slice (see the else branch below).
             result = self.session.execute(
                 q._statement_20(),
                 q._params,
@@ -1848,12 +1850,16 @@ class _SubqueryLoader(_PostLoader):
                     tup = row._to_tuple_instance()
                     data[tup[1:]].append(tup[0])
             else:
-                # legacy Query iteration always applied result.unique();
-                # replicate that dedup on the plain processed tuples so we
-                # avoid building a Row per row.  the related object (tup[0])
-                # is keyed on identity, matching the ORM uniquing filter
-                # (use_id_for_hash), while the remaining key columns are
-                # scalar values compared by value.
+                # legacy Query iteration applied result.unique() for an entity
+                # result like this one; replicate that dedup on the plain
+                # processed tuples so we avoid building a Row per row.  the
+                # related object (tup[0]) is keyed on identity, matching the
+                # ORM uniquing filter (use_id_for_hash), while the remaining
+                # key columns are hashable scalar key values compared by value.
+                # NOTE: unlike result.unique(), a non-hashable key column here
+                # raises a plain TypeError rather than the InvalidRequestError
+                # that _create_unique_filters would raise; the key columns are
+                # the relationship's local PK/FK columns, which are hashable.
                 seen: set = set()
                 seen_add = seen.add
                 for tup in result._raw_all_tuples():

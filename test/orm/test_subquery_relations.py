@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import select
@@ -3650,6 +3651,140 @@ class SubqueryloadRawTupleTest(
         eq_([a.id for a in u7.addresses], [1])
         eq_([a.id for a in u8.addresses], [2, 3, 4])
         eq_([a.id for a in u9.addresses], [5])
+
+
+class SubqueryloadCompositeKeyRawTupleTest(fixtures.DeclarativeMappedTest):
+    """subqueryload grouping/dedup on a COMPOSITE parent key.
+
+    Every other ``SubqueryloadRawTupleTest`` fixture groups on a single
+    integer key, so the plain tuple slice that ``_SubqCollections._load``
+    groups and de-duplicates on (``tup[1:]`` / ``(id(tup[0]),) + tup[1:]``)
+    is always a 1-tuple.  Here the parent key has two columns, so the slice
+    has length 2 -- exercising the multi-column grouping and the
+    tuple-concatenation in the dedup key.  See ``orm/strategies.py``.
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Node(ComparableEntity, Base):
+            __tablename__ = "node"
+
+            pk1 = Column(Integer, primary_key=True)
+            pk2 = Column(Integer, primary_key=True)
+            data = Column(String(20))
+
+            leaves = relationship(
+                "Leaf", order_by="Leaf.id", back_populates="node"
+            )
+
+        class Leaf(ComparableEntity, Base):
+            __tablename__ = "leaf"
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            node_pk1 = Column(Integer)
+            node_pk2 = Column(Integer)
+            data = Column(String(20))
+
+            __table_args__ = (
+                ForeignKeyConstraint(
+                    ["node_pk1", "node_pk2"], ["node.pk1", "node.pk2"]
+                ),
+            )
+
+            node = relationship("Node", back_populates="leaves")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Node = cls.classes.Node
+        Leaf = cls.classes.Leaf
+
+        s = Session(connection)
+        s.add_all(
+            [
+                # (1, 1) and (1, 2) share pk1 -- if grouping used only the
+                # first key column they would be merged.
+                Node(
+                    pk1=1,
+                    pk2=1,
+                    leaves=[Leaf(id=1), Leaf(id=2)],
+                ),
+                Node(pk1=1, pk2=2, leaves=[Leaf(id=3)]),
+                Node(pk1=2, pk2=1, leaves=[Leaf(id=4), Leaf(id=5)]),
+                # a parent with no related rows -> empty collection
+                Node(pk1=2, pk2=2, leaves=[]),
+            ]
+        )
+        s.commit()
+
+    def test_composite_key_grouping(self):
+        """leaves group to the correct (pk1, pk2) parent; a parent sharing
+        only pk1 with another is not merged."""
+
+        Node = self.classes.Node
+        s = fixture_session()
+
+        q = (
+            s.query(Node)
+            .options(subqueryload(Node.leaves))
+            .order_by(Node.pk1, Node.pk2)
+        )
+
+        def go():
+            result = {
+                (n.pk1, n.pk2): [leaf.id for leaf in n.leaves] for n in q.all()
+            }
+            eq_(
+                result,
+                {
+                    (1, 1): [1, 2],
+                    (1, 2): [3],
+                    (2, 1): [4, 5],
+                    (2, 2): [],
+                },
+            )
+
+        # one query for nodes, one for the subqueryload
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_composite_key_m2o_dedup(self):
+        """scalar m2o subqueryload on a composite key with
+        ``distinct_target_key=False`` produces duplicate
+        ``(Node, pk1, pk2)`` rows that the raw-tuple dedup
+        (``(id(tup[0]),) + tup[1:]`` with a 2-element slice) must collapse,
+        otherwise ``load_scalar_from_subq`` warns on uselist=False."""
+
+        Leaf = self.classes.Leaf
+
+        # no DISTINCT -> duplicate same-key rows are actually produced
+        Leaf.node.property.distinct_target_key = False
+
+        s = fixture_session()
+        q = s.query(Leaf).options(subqueryload(Leaf.node)).order_by(Leaf.id)
+
+        def go():
+            leaves = q.all()
+            # the suite escalates the uselist=False SAWarning to an error,
+            # so a dedup failure here fails loudly.
+            eq_(
+                [(leaf.id, (leaf.node.pk1, leaf.node.pk2)) for leaf in leaves],
+                [
+                    (1, (1, 1)),
+                    (2, (1, 1)),
+                    (3, (1, 2)),
+                    (4, (2, 1)),
+                    (5, (2, 1)),
+                ],
+            )
+            # leaves 1 & 2 (and 4 & 5) resolve to the SAME Node instance
+            is_(leaves[0].node, leaves[1].node)
+            is_(leaves[3].node, leaves[4].node)
+
+        self.assert_sql_count(testing.db, go, 2)
 
 
 class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
