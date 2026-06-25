@@ -240,28 +240,16 @@ def instances(
                 else:
                     rows = [proc(row) for row in fetch]
             else:
-                batches = [
-                    getattr(proc, "_sa_row_batch", None) for proc in process
+                # the batch processor is only consulted for single-entity
+                # loads.  For a multi-entity row the per-processor results
+                # would have to be evaluated column-major and pivoted back
+                # to row tuples, which changes the order in which "load" /
+                # "loaded_as_persistent" events fire across entities and is
+                # not where the batch win is concentrated; keep the
+                # row-major per-row path here.
+                rows = [
+                    tuple([proc(row) for proc in process]) for row in fetch
                 ]
-                if any(batch is not None for batch in batches):
-                    # apply each processor across all rows, then pivot
-                    # column-major results into row tuples
-                    rows = list(
-                        zip(
-                            *[
-                                (
-                                    batch(fetch)
-                                    if batch is not None
-                                    else map(proc, fetch)
-                                )
-                                for proc, batch in zip(process, batches)
-                            ]
-                        )
-                    )
-                else:
-                    rows = [
-                        tuple([proc(row) for proc in process]) for row in fetch
-                    ]
 
             # if we are the originating load from a query, meaning we
             # aren't being called as a result of a nested "post load",
@@ -1134,6 +1122,14 @@ def _instance_processor(
 
             else:
                 # create a new instance
+                #
+                # NOTE: this new-instance branch (through the isnew
+                # full-population path below) is mirrored, with per-query
+                # constants hoisted out of the row loop, by
+                # ``_loading_cy._InstancesBatch.__call__``.  Any behavioural
+                # change here -- a new event, populator phase, or commit
+                # condition -- must be reflected there as well or the
+                # batched and per-row paths will diverge.
 
                 # check for non-NULL values in the primary key columns,
                 # else no entity is returned for the row

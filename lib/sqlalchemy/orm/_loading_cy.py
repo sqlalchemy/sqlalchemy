@@ -148,6 +148,9 @@ class _InstancesBatch:
         self.manager = manager
         self.class_ = manager.class_
         self.state_cls = state_cls
+        # derived from state_cls (non-None only for the default
+        # ClassManager / InstanceState combo); stored as its own flag so
+        # the row loop reads a bint rather than re-testing ``is not None``
         self.inline_state = state_cls is not None
         self.session_id = session_id
         self.runid = runid
@@ -167,13 +170,22 @@ class _InstancesBatch:
         self.post_load_states = post_load.states if post_load else None
         self.warn_for_runid_changed = warn_for_runid_changed
 
-        # probe single-index getters for their column positions so that
-        # the row loop can index tuple rows directly; itemgetter resolves
-        # an integer index against a range as a plain O(1) lookup
+        # probe the getters for their column positions so the row loop
+        # can index tuple rows directly.  Indexing a ``range`` reuses the
+        # getter's own positional logic without a real row: a single-column
+        # PK ``tuplegetter`` is ``itemgetter(slice(idx, idx + 1))``, so it
+        # resolves to a length-1 ``range`` whose sole element is the index;
+        # a quick ``itemgetter(int)`` resolves to a plain ``int`` index.
+        # Anything else (a multi-column PK tuplegetter -> tuple, or a
+        # non-positional getter) leaves the fast path disabled.  The catch
+        # is narrow on purpose: only the indexing-protocol errors a
+        # non-positional getter would raise disable the fast path; an
+        # unexpected error propagates rather than silently routing every
+        # load through the slow path.
         probe = range(1 << 30)
         try:
             pk_probe = primary_key_getter(probe)
-        except Exception:
+        except (TypeError, IndexError, KeyError):
             pk_probe = None
         if type(pk_probe) is range and len(pk_probe) == 1:
             self.pk_idx = pk_probe[0]
@@ -184,7 +196,7 @@ class _InstancesBatch:
         for key, getter in pop_quick:
             try:
                 idx = getter(probe)
-            except Exception:
+            except (TypeError, IndexError, KeyError):
                 quick_idx = None
                 break
             if type(idx) is int:
@@ -242,7 +254,14 @@ class _InstancesBatch:
                 row_t = row
                 pkval = row_t[pk_idx]
                 if pkval is None:
-                    # NULL primary key; no entity is returned for the row
+                    # NULL primary key; no entity is returned for the row.
+                    # this plain ``is None`` test is equivalent to the
+                    # generic ``is_not_primary_key`` check for a single
+                    # column PK because a value read straight from a result
+                    # tuple is only ever a real value or SQL NULL (None) --
+                    # never an ORM sentinel such as NEVER_SET /
+                    # PASSIVE_NO_RESULT that ``is_not_primary_key`` also
+                    # guards against.
                     out.append(None)
                     continue
                 identitykey = (identity_class, (pkval,), identity_token)

@@ -15,8 +15,12 @@ load / loaded_as_persistent events, ``populate_existing``, polymorphic
 loads (batch NOT attached), versioned mappings, and boundary cases.
 """
 
+import contextlib
+
+from sqlalchemy import and_
 from sqlalchemy import Column
 from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
@@ -24,7 +28,9 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
+from sqlalchemy.orm import _loading_cy
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import Session
@@ -32,6 +38,7 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm._loading_cy import _InstancesBatch
 from sqlalchemy.orm._loading_cy import _is_compiled
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_none
@@ -39,7 +46,43 @@ from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.util.langhelpers import load_uncompiled_module
 from . import _fixtures
+
+# the pure-Python variant of the batch processor.  On a compiled build
+# the imported ``_InstancesBatch`` is the C extension class and the
+# pure-Python ``__call__`` is otherwise never exercised; forcing this
+# class in via ``_force_python_batch`` covers it (and the structural
+# attributes that are C struct members, invisible from Python, when
+# compiled).  On an uncompiled build this is the same code that already
+# runs, so the forced variant is simply redundant rather than skipped.
+_PyInstancesBatch = load_uncompiled_module(_loading_cy)._InstancesBatch
+
+
+@contextlib.contextmanager
+def _force_python_batch():
+    """Patch ``loading._InstancesBatch`` to the pure-Python variant for
+    the duration of the block.  ``loading._instance_processor`` constructs
+    the batch by that name on every execution (it closes over per-load
+    state and is not cached), so the next load hydrates its chunk through
+    the pure-Python ``__call__``."""
+    with mock.patch.object(loading, "_InstancesBatch", _PyInstancesBatch):
+        yield
+
+
+class _BatchBothPathsFixture:
+    """Mixin: run every test in the class against both the native batch
+    (compiled when the extension is built) and the pure-Python batch, so
+    a divergence between the two ``__call__`` implementations cannot pass
+    on whichever variant happens to be built in a given environment."""
+
+    @testing.fixture(autouse=True, params=["native", "python"])
+    def _batch_variant(self, request):
+        if request.param == "python":
+            with _force_python_batch():
+                yield
+        else:
+            yield
 
 
 def _capture_processor(fn):
@@ -103,7 +146,7 @@ class BatchEngagementTest(_fixtures.FixtureTest):
         is_true(call_mock.call_count >= 1)
 
 
-class BatchFastPathTest(_fixtures.FixtureTest):
+class BatchFastPathTest(_BatchBothPathsFixture, _fixtures.FixtureTest):
     """Single-column int PK + plain columns: the ``use_idx`` tuple fast
     path (PK and quick populators read by integer position)."""
 
@@ -184,7 +227,69 @@ class BatchFastPathTest(_fixtures.FixtureTest):
         s.rollback()
 
 
-class BatchNullPkTest(_fixtures.FixtureTest):
+class BatchRepeatIdentityTest(_BatchBothPathsFixture, _fixtures.FixtureTest):
+    """The same identity appearing in multiple rows of a single fetched
+    chunk: the first row creates and identity-maps the instance, and each
+    subsequent same-PK row must delegate to ``_instance()`` (which runs
+    the existing / eager populators) rather than re-create the object."""
+
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    def test_repeat_identity_same_object(self):
+        User = self.classes.User
+        s = fixture_session()
+
+        # joining users -> addresses duplicates users with multiple
+        # addresses within one chunk (ed / id 8 has three addresses)
+        stmt = select(User).join(User.addresses).order_by(User.id)
+        users = s.scalars(stmt).all()
+
+        by_id = {}
+        for u in users:
+            by_id.setdefault(u.id, []).append(u)
+
+        # ed recurs within the chunk ...
+        is_true(len(by_id[8]) > 1)
+        # ... and every occurrence of a given identity is the same object
+        for occurrences in by_id.values():
+            for u in occurrences:
+                is_(u, occurrences[0])
+
+    def test_repeat_identity_eager_collection_fully_populated(self):
+        """contains_eager collection over the duplicated parent rows: the
+        repeat-key rows delegate to ``_instance()``, whose partial-
+        population path runs the eager populators to accumulate the
+        collection.  A regression where the delegation skipped the eager
+        populator would leave the collection incomplete."""
+        User, Address = self.classes("User", "Address")
+        s = fixture_session()
+
+        stmt = (
+            select(User)
+            .join(User.addresses)
+            .options(contains_eager(User.addresses))
+            .order_by(User.id, Address.id)
+        )
+        users = s.scalars(stmt).unique().all()
+        by_id = {u.id: u for u in users}
+
+        # ed (8) has three addresses, jack (7) one, fred (9) one
+        eq_(len(by_id[8].addresses), 3)
+        eq_(len(by_id[7].addresses), 1)
+        eq_(len(by_id[9].addresses), 1)
+        eq_(
+            sorted(a.email_address for a in by_id[8].addresses),
+            ["ed@bettyboop.com", "ed@lala.com", "ed@wood.com"],
+        )
+
+
+class BatchNullPkTest(_BatchBothPathsFixture, _fixtures.FixtureTest):
     """NULL primary key in the row -> no entity (None) for that row.
 
     A LEFT OUTER JOIN from users to addresses, selecting Address for a
@@ -250,41 +355,57 @@ class _CompositePkFixture(fixtures.DeclarativeMappedTest):
             b_id = Column(Integer, primary_key=True)
             data = Column(String(50))
 
+        # a plain driving table used to LEFT OUTER JOIN to CompositeThing
+        # so a non-matching driver row produces an all-NULL composite PK
+        class Driver(Base):
+            __tablename__ = "driver"
+            id = Column(Integer, primary_key=True)
+            a_ref = Column(Integer)
+            b_ref = Column(Integer)
+
     @classmethod
     def insert_data(cls, connection):
-        CompositeThing = cls.classes.CompositeThing
+        CompositeThing, Driver = cls.classes("CompositeThing", "Driver")
         s = Session(connection)
         s.add_all(
             [
                 CompositeThing(a_id=1, b_id=1, data="one-one"),
                 CompositeThing(a_id=1, b_id=2, data="one-two"),
                 CompositeThing(a_id=2, b_id=1, data="two-one"),
+                # matches one-one
+                Driver(id=1, a_ref=1, b_ref=1),
+                # matches nothing -> outer join yields NULL composite PK
+                Driver(id=2, a_ref=9, b_ref=9),
             ]
         )
         s.commit()
 
 
-class BatchCompositePkTest(_CompositePkFixture):
+class BatchCompositePkTest(_BatchBothPathsFixture, _CompositePkFixture):
     """Multi-column PK disables the use_idx fast path (pk_idx == -1);
     the generic primary_key_getter branch must still load correctly."""
 
     def test_pk_idx_disabled(self):
         """The batch must report no single PK index for a composite
-        PK mapping."""
+        PK mapping.
+
+        ``pk_idx`` is a C struct member, invisible from Python, on the
+        compiled batch; force the pure-Python variant so the structural
+        assertion runs in every environment rather than being skipped on
+        a compiled build.
+        """
         CompositeThing = self.classes.CompositeThing
         s = fixture_session()
 
-        _, procs = _capture_processor(
-            lambda: s.scalars(select(CompositeThing)).all()
-        )
+        with _force_python_batch():
+            _, procs = _capture_processor(
+                lambda: s.scalars(select(CompositeThing)).all()
+            )
         is_true(len(procs) >= 1)
         for proc in procs:
             batch = getattr(proc, "_sa_row_batch", None)
             is_not_none(batch)
-            # pk_idx is a C struct member when compiled and not visible
-            # from Python; only assert it on the pure-Python path
-            if not _is_compiled():
-                eq_(batch.pk_idx, -1)
+            eq_(batch.pk_idx, -1)
 
     def test_composite_pk_load(self):
         CompositeThing = self.classes.CompositeThing
@@ -309,6 +430,35 @@ class BatchCompositePkTest(_CompositePkFixture):
         second = s.scalars(select(CompositeThing)).all()
         for r in second:
             is_true(id(r) in ids)
+
+    def test_composite_null_pk_yields_none(self):
+        """A composite PK with all columns NULL (an outer-join miss)
+        exercises the generic ``is_not_primary_key`` branch -- the
+        ``use_idx`` single-column fast path is disabled for composite
+        PKs -- which must return None for the row."""
+        CompositeThing, Driver = self.classes("CompositeThing", "Driver")
+        s = fixture_session()
+
+        stmt = (
+            select(CompositeThing)
+            .select_from(Driver)
+            .outerjoin(
+                CompositeThing,
+                and_(
+                    Driver.a_ref == CompositeThing.a_id,
+                    Driver.b_ref == CompositeThing.b_id,
+                ),
+            )
+            .order_by(Driver.id)
+        )
+        rows = s.execute(stmt).scalars().all()
+
+        # driver 1 matches one-one; driver 2 matches nothing -> None
+        eq_(len(rows), 2)
+        is_not_none(rows[0])
+        is_true(isinstance(rows[0], CompositeThing))
+        eq_((rows[0].a_id, rows[0].b_id), (1, 1))
+        is_none(rows[1])
 
 
 class _DeferredFixture(fixtures.DeclarativeMappedTest):
@@ -335,7 +485,7 @@ class _DeferredFixture(fixtures.DeclarativeMappedTest):
         s.commit()
 
 
-class BatchDeferredTest(_DeferredFixture):
+class BatchDeferredTest(_BatchBothPathsFixture, _DeferredFixture):
     """THE critical regression: the inlined InstanceState must
     initialize ``expired_attributes = set()``.  A deferred column lands
     in the ``expire`` populator with set_callable=True; without the
@@ -413,7 +563,7 @@ class BatchDeferredTest(_DeferredFixture):
         eq_(obj.description, "desc-b")
 
 
-class BatchLoadEventsTest(_fixtures.FixtureTest):
+class BatchLoadEventsTest(_BatchBothPathsFixture, _fixtures.FixtureTest):
     """Load events drive the ``has_evts`` per-row branch: per-instance
     ``_add_unpresent`` plus firing of the 'load' and
     ``loaded_as_persistent`` events."""
@@ -485,7 +635,7 @@ class BatchLoadEventsTest(_fixtures.FixtureTest):
             event.remove(User, "load", on_load)
 
 
-class BatchPopulateExistingTest(_fixtures.FixtureTest):
+class BatchPopulateExistingTest(_BatchBothPathsFixture, _fixtures.FixtureTest):
     """populate_existing=True refreshes attributes from the row over
     existing instances."""
 
@@ -533,22 +683,22 @@ class BatchPopulateExistingTest(_fixtures.FixtureTest):
                 )
 
     def test_populate_existing_batch_flag(self):
+        # populate_existing is a C struct member, invisible from Python,
+        # on the compiled batch; force the pure-Python variant so the
+        # structural assertion runs in every environment.
         User = self.classes.User
         s = fixture_session()
 
-        _, procs = _capture_processor(
-            lambda: s.scalars(
-                select(User).execution_options(populate_existing=True)
-            ).all()
-        )
+        with _force_python_batch():
+            _, procs = _capture_processor(
+                lambda: s.scalars(
+                    select(User).execution_options(populate_existing=True)
+                ).all()
+            )
         for proc in procs:
             batch = getattr(proc, "_sa_row_batch", None)
             is_not_none(batch)
-            # populate_existing is a C struct member when compiled and
-            # not visible from Python; only assert on the pure-Python
-            # path
-            if not _is_compiled():
-                is_true(batch.populate_existing)
+            is_true(batch.populate_existing)
 
 
 class _PolyFixture(fixtures.DeclarativeMappedTest):
@@ -668,7 +818,7 @@ class _VersionedFixture(fixtures.DeclarativeMappedTest):
         s.commit()
 
 
-class BatchVersionedTest(_VersionedFixture):
+class BatchVersionedTest(_BatchBothPathsFixture, _VersionedFixture):
     """Versioned mapping: reloading an existing instance delegates to
     _instance(), which performs the version check.  No spurious
     StaleDataError on a plain reload."""
@@ -771,7 +921,7 @@ class _WideFixture(fixtures.DeclarativeMappedTest):
         s.commit()
 
 
-class BatchWideTableTest(_WideFixture):
+class BatchWideTableTest(_BatchBothPathsFixture, _WideFixture):
     """A wide table exercises many quick populators on the use_idx
     path."""
 
@@ -796,7 +946,9 @@ class BatchWideTableTest(_WideFixture):
         eq_(rows, [])
 
 
-class BatchKilledIdentityMapTest(_fixtures.FixtureTest):
+class BatchKilledIdentityMapTest(
+    _BatchBothPathsFixture, _fixtures.FixtureTest
+):
     """After Session.close()/expunge_all() the identity map is
     "killed" (its _add_unpresent is replaced).  The batch must detect
     this and delegate every row to _instance(), which raises
@@ -810,22 +962,47 @@ class BatchKilledIdentityMapTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         cls._setup_stock_mapping()
 
-    def test_load_after_close_within_iteration(self):
-        """Close the session from a load event handler mid-result; the
-        per-row killed-identity-map handling delegates remaining rows to
-        _instance()."""
+    def test_close_in_load_handler_raises(self):
+        """Close the session from a 'load' event handler on the first
+        loaded row; the identity map is "killed" mid-chunk and the batch's
+        per-row ``_add_unpresent`` (the ``has_evts`` path) then meets the
+        killed map and raises the informative ``InvalidRequestError``,
+        matching the per-row ``_instance()`` behaviour rather than silently
+        writing into a dead map."""
         User = self.classes.User
         s = fixture_session()
 
-        # Without an event, a normal load fully consumes before close.
-        # Verify the simpler observable: a fresh session after a close
-        # still loads correctly (the killed-map branch only triggers
-        # mid-result, which we cover via the close-in-handler path
-        # below).
+        closed = []
+
+        @event.listens_for(User, "load")
+        def on_load(target, context):
+            # close once, on the first loaded instance, so the remaining
+            # rows in the same chunk meet a killed identity map
+            if not closed:
+                closed.append(True)
+                s.close()
+
+        try:
+            with expect_raises_message(
+                sa_exc.InvalidRequestError,
+                "cannot be converted to 'persistent' state, as this "
+                "identity map is no longer valid",
+            ):
+                s.scalars(select(User).order_by(User.id)).all()
+            # the handler did fire (the kill was actually triggered)
+            eq_(closed, [True])
+        finally:
+            event.remove(User, "load", on_load)
+
+    def test_load_after_close_rebuilds_map(self):
+        """A fresh load after Session.close() builds against a new,
+        live identity map and succeeds (the killed map is replaced)."""
+        User = self.classes.User
+        s = fixture_session()
+
         users = s.scalars(select(User).order_by(User.id)).all()
         eq_(len(users), 4)
         s.close()
 
-        # new session, batch builds a fresh identity map -> normal load
         users2 = s.scalars(select(User).order_by(User.id)).all()
         eq_(len(users2), 4)
