@@ -1,0 +1,10 @@
+.. change::
+  :tags: bug, orm declarative
+  :tickets: 13386
+
+  Fixed issue where using :pep:`593` ``Annotated`` wrapping a :pep:`695`
+  ``type`` alias, such as ``Annotated[SomeTypeAlias, mapped_column()]``,
+  would crash with ``AttributeError: __value__``. The internal
+  ``is_pep695()`` check incorrectly identified the ``Annotated`` type as a
+  PEP 695 type alias due to a quirk in ``Annotated.__origin__`` returning
+  the first type argument rather than ``Annotated`` itself.

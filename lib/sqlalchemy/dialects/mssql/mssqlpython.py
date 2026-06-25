@@ -115,7 +115,11 @@ class MSDialect_mssqlpython(MSDialect):
         connectors: List[str]
 
         def check_quote(token: str) -> str:
-            if ";" in str(token) or str(token).startswith("{"):
+            if (
+                ";" in str(token)
+                or "}" in str(token)
+                or str(token).startswith("{")
+            ):
                 token = "{%s}" % token.replace("}", "}}")
             return token
 
@@ -145,7 +149,9 @@ class MSDialect_mssqlpython(MSDialect):
             if authentication:
                 connectors.append("Authentication=%s" % authentication)
 
-        connectors.extend(["%s=%s" % (k, v) for k, v in keys.items()])
+        connectors.extend(
+            ["%s=%s" % (check_quote(k), v) for k, v in keys.items()]
+        )
 
         return ((";".join(connectors),), connect_args)
 

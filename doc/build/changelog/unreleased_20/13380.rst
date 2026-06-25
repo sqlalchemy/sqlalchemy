@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 13380
+
+    Tightened the construction of the ODBC connection string in the pyodbc
+    connector (as well as the mssql-python connector in 2.1) so that the
+    driver name, the names of pass-through connection parameters, and values
+    containing ``}`` are brace-quoted.  Previously a ``}`` in the driver name
+    or in a pass-through value, or a ``;`` in the name of a pass-through
+    parameter, could close the surrounding token early and allow the
+    remainder of the string to be interpreted as additional connection
+    attributes.  Pull request courtesy dxbjavid.
