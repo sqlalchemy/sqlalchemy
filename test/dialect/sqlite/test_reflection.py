@@ -872,6 +872,23 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [{"column_names": ["some STUPID n,ame"], "name": None}],
         )
 
+    def test_unique_constraint_inline_whitespace_run(
+        self, connection, metadata
+    ):
+        # a long run of whitespace between a column type and a following
+        # clause used to make the inline-UNIQUE regex backtrack
+        # catastrophically while scanning the stored CREATE TABLE text;
+        # the ambiguous pattern was cubic on the whitespace length
+        Table("t", metadata, Column("x", Integer), Column("y", Integer))
+        connection.exec_driver_sql(
+            "CREATE TABLE t (x INTEGER" + (" " * 1000) + "NOT NULL, "
+            "y INTEGER NOT NULL UNIQUE)"
+        )
+        eq_(
+            inspect(connection).get_unique_constraints("t"),
+            [{"column_names": ["y"], "name": None}],
+        )
+
     def test_unique_constraint_unnamed_normal(self):
         inspector = inspect(testing.db)
         eq_(
