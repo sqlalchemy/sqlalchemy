@@ -122,6 +122,7 @@ jobs:
 
       - name: Upload wheels to release
         # upload the generated wheels to the github release
+        continue-on-error: true
         uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
