@@ -4,9 +4,9 @@ on:
   # run when a release has been created
   release:
     types: [created]
-  # push:
-  #   branches:
-  #     - "go_wheel_*"
+  push:
+    branches:
+      - "go_wheel_*"
 
 permissions:
   id-token: write
@@ -126,6 +126,7 @@ jobs:
         uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: rel_2_1_0b3
           files: './wheelhouse/*.whl'
 
       - name: Generate attestations
