@@ -2015,6 +2015,29 @@ A summary of ``odbc_connect`` patterns is as follows::
 :ticket:`11250`
 
 
+.. _change_8430:
+
+Improved reflection performance via native multi-table queries
+--------------------------------------------------------------
+
+The SQL Server dialect now implements native bulk reflection methods,
+including :meth:`.MSDialect.get_multi_columns`,
+:meth:`.MSDialect.get_multi_pk_constraint`,
+:meth:`.MSDialect.get_multi_foreign_keys`,
+:meth:`.MSDialect.get_multi_indexes`, and
+:meth:`.MSDialect.get_multi_table_comment`.  Previously, the SQL Server
+dialect fell back to the default implementation which calls the per-table
+single-reflection methods in a loop, resulting in one round-trip per table
+per object type.  The new implementations issue a single bulk query per
+object type against the ``sys.*`` catalog views, dramatically reducing the
+number of database round trips when reflecting large schemas.  The
+single-table reflection methods are now thin wrappers over the multi-table
+implementations, consistent with the pattern used by the PostgreSQL and Oracle
+dialects.
+
+:ticket:`8430`
+
+
 Oracle Database
 ===============
 

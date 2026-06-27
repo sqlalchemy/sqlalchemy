@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, declarative
+    :tags: bug, orm
     :tickets: 13333
 
     A warning is now emitted when a Declarative attribute name is named

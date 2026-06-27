@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, declarative
+    :tags: bug, orm
     :tickets: 13291
 
     Fixed issue where the declarative class registry would not consider
