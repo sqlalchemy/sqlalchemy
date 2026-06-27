@@ -10,7 +10,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 # env:
 #   # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
@@ -98,7 +98,6 @@ jobs:
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
-          CIBW_ENABLE: ${{ matrix.python == 'cp314t-*' && 'cpython-freethreading' || '' }}
           # setting it here does not work on linux
           # PYTHONNOUSERSITE: "1"
 
