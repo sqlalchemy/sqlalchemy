@@ -876,6 +876,10 @@
         :meth:`_orm.Session.get`, :meth:`_orm.Session.scalars`) for that session
         instance.
 
+        .. seealso::
+
+            :ref:`change_12659`
+
     .. change::
         :tags: change, postgresql
         :tickets: 10594, 12690

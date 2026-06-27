@@ -11,3 +11,7 @@
     invalidation and pool notification when exit-type exceptions are raised in
     event hooks. As part of this change, DBAPI errors raised from within these
     event hooks will now be wrapped as SQLAlchemy exceptions.
+
+    .. seealso::
+
+        :ref:`change_13381`
