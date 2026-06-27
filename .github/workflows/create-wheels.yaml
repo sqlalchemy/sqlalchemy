@@ -133,6 +133,8 @@ jobs:
         id: attestations
         continue-on-error: true
         shell: bash
+        env:
+          PYTHONUTF8: "1"
         run: |
           python -m pip install pypi-attestations
           python -m pypi_attestations sign ./wheelhouse/*
