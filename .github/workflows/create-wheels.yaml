@@ -131,6 +131,7 @@ jobs:
       - name: Generate attestations
         id: attestations
         continue-on-error: true
+        shell: bash
         run: |
           pip install pypi-attestations
           python -m pypi_attestations sign ./wheelhouse/*
