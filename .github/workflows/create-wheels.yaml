@@ -133,15 +133,15 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          pip install pypi-attestations
+          python -m pip install pypi-attestations
           python -m pypi_attestations sign ./wheelhouse/*
 
       - name: Publish wheel
         shell: bash
         run: |
-          pip install "twine>=6.2.0"
+          python -m pip install "twine>=6.2.0"
           if [[ "${{ steps.attestations.outcome }}" == "success" ]]; then
-            twine upload --skip-existing --attestations ./wheelhouse/*
+            python -m twine upload --skip-existing --attestations ./wheelhouse/*
           else
-            twine upload --skip-existing ./wheelhouse/*
+            python -m twine upload --skip-existing ./wheelhouse/*
           fi
