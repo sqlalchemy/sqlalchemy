@@ -3642,7 +3642,7 @@ class M2OWDegradeTest(
 
 
 class M2MOmitJoinTest(fixtures.TestBase, AssertsExecutionResults):
-    __backend__ = True
+    __sparse_backend__ = True
     __only_on__ = ("sqlite", "mysql", "postgresql", "mariadb")
 
     @testing.fixture
