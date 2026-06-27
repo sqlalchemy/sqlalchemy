@@ -3641,10 +3641,9 @@ class M2OWDegradeTest(
         )
 
 
-class M2MOmitJoinTest(
-    fixtures.TestBase, AssertsExecutionResults, testing.AssertsCompiledSQL
-):
-    __dialect__ = "default"
+class M2MOmitJoinTest(fixtures.TestBase, AssertsExecutionResults):
+    __backend__ = True
+    __only_on__ = ("sqlite", "mysql", "postgresql", "mariadb")
 
     @testing.fixture
     def simple_m2m(self, decl_base, connection):
@@ -3689,10 +3688,12 @@ class M2MOmitJoinTest(
         association_table = Table(
             "a_b",
             decl_base.metadata,
-            Column("a_id1", Integer, ForeignKey("a.id1")),
-            Column("a_id2", Integer, ForeignKey("a.id2")),
-            Column("b_id1", Integer, ForeignKey("b.id1")),
-            Column("b_id2", Integer, ForeignKey("b.id2")),
+            Column("a_id1", Integer),
+            Column("a_id2", Integer),
+            Column("b_id1", Integer),
+            Column("b_id2", Integer),
+            ForeignKeyConstraint(["a_id1", "a_id2"], ["a.id1", "a.id2"]),
+            ForeignKeyConstraint(["b_id1", "b_id2"], ["b.id1", "b.id2"]),
         )
 
         class B(decl_base):
@@ -3750,9 +3751,10 @@ class M2MOmitJoinTest(
         association_table = Table(
             "a_b",
             decl_base.metadata,
-            Column("a_id1", Integer, ForeignKey("a.id1")),
-            Column("a_id2", Integer, ForeignKey("a.id2")),
+            Column("a_id1", Integer),
+            Column("a_id2", Integer),
             Column("b_id", Integer, ForeignKey("b.id")),
+            ForeignKeyConstraint(["a_id1", "a_id2"], ["a.id1", "a.id2"]),
         )
 
         class A(decl_base):
@@ -3805,8 +3807,9 @@ class M2MOmitJoinTest(
             "a_b",
             decl_base.metadata,
             Column("a_id", Integer, ForeignKey("a.id")),
-            Column("b_id1", Integer, ForeignKey("b.id1")),
-            Column("b_id2", Integer, ForeignKey("b.id2")),
+            Column("b_id1", Integer),
+            Column("b_id2", Integer),
+            ForeignKeyConstraint(["b_id1", "b_id2"], ["b.id1", "b.id2"]),
         )
 
         class A(decl_base):
