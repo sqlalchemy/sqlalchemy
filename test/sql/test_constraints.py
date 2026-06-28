@@ -1443,6 +1443,84 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(constraint), "CREATE INDEX name ON tbl (a + 5)"
         )
 
+    def test_index_attach_to_table(self):
+        metadata = MetaData()
+
+        idx_x = Index("x", attach_to_table=False)
+        idx_y = Index("y", attach_to_table=True)
+        idx_z = Index("z")
+
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("z", Integer),
+            idx_x,
+            idx_y,
+            idx_z,
+        )
+
+        assert idx_x not in tbl.indexes
+        assert idx_y in tbl.indexes
+        assert idx_z in tbl.indexes
+
+    def test_index_append_to_table(self):
+        metadata = MetaData()
+
+        idx = Index("y", attach_to_table=False)
+
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("z", Integer),
+            idx,
+        )
+
+        tbl.append_constraint(idx)
+        assert idx in tbl.indexes
+
+    def test_unique_constraint_attach_to_table(self):
+        metadata = MetaData()
+
+        uc_x = UniqueConstraint("x", attach_to_table=False)
+        uc_y = UniqueConstraint("y", attach_to_table=True)
+        uc_z = UniqueConstraint("z")
+
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("z", Integer),
+            uc_x,
+            uc_y,
+            uc_z,
+        )
+
+        assert uc_x not in tbl.constraints
+        assert uc_y in tbl.constraints
+        assert uc_z in tbl.constraints
+
+    def test_unique_constraint_append_to_table(self):
+        metadata = MetaData()
+
+        uc = UniqueConstraint("x", attach_to_table=False)
+
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("z", Integer),
+            uc,
+        )
+
+        tbl.append_constraint(uc)
+        assert uc in tbl.constraints
+
 
 class ConstraintCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"

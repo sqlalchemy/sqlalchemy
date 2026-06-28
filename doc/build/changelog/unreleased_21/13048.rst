@@ -1,0 +1,15 @@
+.. change::
+  :tags: usecase, schema
+  :tickets: 13048
+
+  Added :paramref:`.UniqueConstraint.attach_to_table` that allows users
+  to determine if :class:`.UniqueConstraint` be added to
+  :attr:`_schema.Table.constraints`.
+  Added :paramref:`.Index.attach_to_table` to allowing users to determine
+  if :class:`.Index` gets added to :attr:`_schema.Table.indexes`.
+  For situations where :class:`.UniqueConstraint` or :class:`.Index` wasn't
+  added to table, users can append the information via
+  :meth:`.Table.append_constraint`. Regardless of `attach_to_table`,
+  :meth:`.Table.append_constraint` will `force_attach` to the respective
+  :attr:
+  Pull request courtesy bekapono.
