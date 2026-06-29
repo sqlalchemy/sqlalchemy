@@ -162,6 +162,9 @@ def _inspects(
                 existing_name = getattr(existing, "__name__", None)
                 existing_module = getattr(existing, "__module__", None)
 
+                # allow a new version of the same function or class, that is,
+                # a module reload; compare name/module attributes because
+                # classes may define custom __eq__ behavior.
                 if (
                     existing_name != fn_or_cls.__name__
                     or existing_module != fn_or_cls.__module__
