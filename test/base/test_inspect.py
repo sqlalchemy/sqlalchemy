@@ -74,3 +74,36 @@ class TestInspection(fixtures.TestBase):
         SomeFoo()
         eq_(inspect(SomeFoo()), 1)
         eq_(inspect(SomeSubFoo()), 2)
+
+    def test_inspects_allows_reloaded_registrar(self):
+        """test #10748"""
+
+        class SomeFoo(TestFixture):
+            pass
+
+        @inspection._inspects(SomeFoo)
+        def insp_somefoo(subject):
+            return 1
+
+        reloaded_insp_somefoo = type(insp_somefoo)(
+            insp_somefoo.__code__,
+            insp_somefoo.__globals__,
+            insp_somefoo.__name__,
+            insp_somefoo.__defaults__,
+            insp_somefoo.__closure__,
+        )
+        reloaded_insp_somefoo.__kwdefaults__ = insp_somefoo.__kwdefaults__
+
+        def insp_other_somefoo(subject):
+            return 2
+
+        assert_raises_message(
+            AssertionError,
+            "Type .* is already registered",
+            inspection._inspects(SomeFoo),
+            insp_other_somefoo,
+        )
+
+        inspection._inspects(SomeFoo)(reloaded_insp_somefoo)
+        assert inspection._registrars[SomeFoo] is reloaded_insp_somefoo
+        eq_(inspect(SomeFoo()), 1)
