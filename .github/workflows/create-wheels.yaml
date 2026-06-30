@@ -10,7 +10,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 # env:
 #   # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
@@ -98,7 +98,6 @@ jobs:
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
-          CIBW_ENABLE: ${{ matrix.python == 'cp314t-*' && 'cpython-freethreading' || '' }}
           # setting it here does not work on linux
           # PYTHONNOUSERSITE: "1"
 
@@ -123,17 +122,28 @@ jobs:
 
       - name: Upload wheels to release
         # upload the generated wheels to the github release
+        continue-on-error: true
         uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           files: './wheelhouse/*.whl'
 
       - name: Generate attestations
+        id: attestations
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONUTF8: "1"
         run: |
-          pip install pypi-attestations
+          python -m pip install pypi-attestations
           python -m pypi_attestations sign ./wheelhouse/*
 
       - name: Publish wheel
+        shell: bash
         run: |
-          pip install "twine>=6.2.0"
-          twine upload --skip-existing --attestations ./wheelhouse/*
+          python -m pip install "twine>=6.2.0"
+          if [[ "${{ steps.attestations.outcome }}" == "success" ]]; then
+            python -m twine upload --skip-existing --attestations ./wheelhouse/*
+          else
+            python -m twine upload --skip-existing ./wheelhouse/*
+          fi

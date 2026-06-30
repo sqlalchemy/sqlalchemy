@@ -106,6 +106,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -1952,6 +1953,24 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT DISTINCT mytable.myid AS mytable_myid FROM mytable",
         )
 
+    @testing.variation("case", ["stringify", "final_froms"])
+    def test_distinct_expr_no_dep_warning_str_compiler(self, case):
+        """test for #13396"""
+
+        t = Table("foo", MetaData(), Column("bar"))
+
+        with expect_deprecated(
+            "Passing expression to ``distinct`` to generate a DISTINCT ON"
+        ):
+            stmt = select(t).distinct(t.c.bar)
+
+        if case.stringify:
+            eq_(str(stmt), "SELECT DISTINCT foo.bar \nFROM foo")
+        elif case.final_froms:
+            eq_(stmt.get_final_froms(), [t])
+        else:
+            case.fail()
+
     @testing.emits_warning("Column-expression-level unary distinct")
     def test_distinct_function_6008(self):
         # the bug fixed here as part of #6008 is the same bug that's
@@ -2009,7 +2028,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "DISTINCT ON is currently supported only by the PostgreSQL "
             "dialect",
         ):
-            select("*").distinct(table1.c.myid).compile()
+            self.assert_compile(
+                select("*").distinct(table1.c.myid), "SELECT DISTINCT *"
+            )
 
     def test_where_empty(self):
         self.assert_compile(
