@@ -2868,9 +2868,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             if not isinstance(inherits, (list, tuple)):
                 inherits = (inherits,)
             table_opts.append(
-                "\n INHERITS ( "
+                "\n INHERITS ("
                 + ", ".join(self.preparer.quote(name) for name in inherits)
-                + " )"
+                + ")"
             )
 
         if pg_opts["partition_by"]:

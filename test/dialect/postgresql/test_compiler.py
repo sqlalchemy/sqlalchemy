@@ -502,7 +502,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE atable (id INTEGER) INHERITS ( i1 )",
+            "CREATE TABLE atable (id INTEGER) INHERITS (i1)",
         )
 
     def test_create_table_inherits_tuple(self):
@@ -515,7 +515,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE atable (id INTEGER) INHERITS ( i1, i2 )",
+            "CREATE TABLE atable (id INTEGER) INHERITS (i1, i2)",
         )
 
     def test_create_table_inherits_quoting(self):
@@ -529,7 +529,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE atable (id INTEGER) INHERITS "
-            '( "Quote Me", "quote Me Too" )',
+            '("Quote Me", "quote Me Too")',
         )
 
     def test_create_table_inherits_schema_qualified_quoted_name(self):
@@ -545,7 +545,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE atable (id INTEGER) "
-            "INHERITS ( my_schema.parent_table )",
+            "INHERITS (my_schema.parent_table)",
         )
 
     def test_create_table_partition_by_list(self):
