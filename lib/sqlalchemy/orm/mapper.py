@@ -3562,6 +3562,18 @@ class Mapper(
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
 
     def _state_ident_getter(self, columns, passive):
+        """Return a callable producing the identity tuple for ``columns``
+        from a state, reading present values straight from the state dict
+        and only falling back to a (potentially loading) attribute access
+        for keys that are absent.
+
+        The dict read is equivalent to the attribute lookup because
+        ``impl.get`` returns ``dict_[key]`` directly when the key is
+        present.  The ``missing`` sentinel is required precisely because
+        ``None`` is a legitimate stored value (a NULL foreign key): it
+        must be returned as-is rather than triggering the fallback, so the
+        absent-key test cannot use ``None`` to mean "not loaded".
+        """
         lookup_keys = [self._columntoproperty[col].key for col in columns]
         missing = object()
 

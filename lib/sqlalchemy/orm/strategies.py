@@ -3199,11 +3199,11 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
 
             mapper = self.parent
 
-            # attribute keys for the lookup columns; when these are
-            # present in a state's dict, reading them directly is
-            # equivalent to the PASSIVE_NO_FETCH attribute lookup below.
-            # whether or not a key is present can vary per state, e.g.
-            # individual instances may have the attribute expired or
+            # read the lookup-column identity directly from each state's
+            # dict when present; ``_state_ident_getter`` falls back to the
+            # PASSIVE_NO_FETCH attribute lookup only for keys absent from
+            # the dict.  whether or not a key is present can vary per state,
+            # e.g. individual instances may have the attribute expired or
             # deferred, so this is determined state-by-state
             get_related_ident = mapper._state_ident_getter(
                 query_info.child_lookup_cols,
