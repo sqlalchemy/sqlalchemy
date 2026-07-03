@@ -1,7 +1,5 @@
 def warn_tox():
-    """Warn Tox.
-
-    """
+    """Document warn tox."""
     print(
         "\n"
         + "=" * 80
