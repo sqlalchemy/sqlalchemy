@@ -1,4 +1,7 @@
 def warn_tox():
+    """Warn Tox.
+
+    """
     print(
         "\n"
         + "=" * 80
