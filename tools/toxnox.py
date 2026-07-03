@@ -214,6 +214,17 @@ def apply_pytest_opts(
     *,
     coverage: bool = False,
 ) -> list[str]:
+    """Apply Pytest Opts.
+
+    Args:
+        session: Description of session.
+        cov: Description of cov.
+        tokens: Description of tokens.
+
+    Returns:
+        Description of return value.
+
+    """
     posargs, opts = extract_opts(session.posargs, "generate-junit")
 
     if session.python and isinstance(session.python, str):
