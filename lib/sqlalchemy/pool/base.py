@@ -280,6 +280,7 @@ class Pool(log.Identified, event.EventTarget):
         self._creator = creator
         self._recycle = recycle
         self._invalidate_time = 0
+        self._invalidate_lock = threading.Lock()
         self._pre_ping = pre_ping
         self._reset_on_return = util.parse_user_argument_for_enum(
             reset_on_return,
@@ -403,8 +404,9 @@ class Pool(log.Identified, event.EventTarget):
         time will be recycled upon next checkout.
         """
         rec = getattr(connection, "_connection_record", None)
-        if not rec or self._invalidate_time < rec.starttime:
-            self._invalidate_time = time.time()
+        with self._invalidate_lock:
+            if not rec or self._invalidate_time < rec.starttime:
+                self._invalidate_time = time.time()
         if _checkin and getattr(connection, "is_valid", False):
             connection.invalidate(exception)
 
@@ -1028,6 +1030,8 @@ def _finalize_fairy(
                 )
                 pool.logger.error(message)
                 util.warn(message)
+            if connection_record and connection_record.fairy_ref is not None:
+                connection_record.checkin()
 
     if connection_record and connection_record.fairy_ref is not None:
         connection_record.checkin()
