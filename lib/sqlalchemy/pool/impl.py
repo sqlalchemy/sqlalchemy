@@ -180,23 +180,17 @@ class QueuePool(Pool):
             return self._do_get()
 
     def _inc_overflow(self) -> bool:
-        if self._max_overflow == -1:
-            self._overflow += 1
-            return True
         with self._overflow_lock:
-            if self._overflow < self._max_overflow:
+            if self._max_overflow == -1 or self._overflow < self._max_overflow:
                 self._overflow += 1
                 return True
             else:
                 return False
 
     def _dec_overflow(self) -> Literal[True]:
-        if self._max_overflow == -1:
-            self._overflow -= 1
-            return True
         with self._overflow_lock:
             self._overflow -= 1
-            return True
+        return True
 
     def recreate(self) -> QueuePool:
         self.logger.info("Pool recreating")
@@ -223,7 +217,8 @@ class QueuePool(Pool):
             except sqla_queue.Empty:
                 break
 
-        self._overflow = 0 - self.size()
+        with self._overflow_lock:
+            self._overflow = 0 - self.size()
         self.logger.info("Pool disposed. %s", self.status())
 
     def status(self) -> str:
@@ -363,6 +358,7 @@ class SingletonThreadPool(Pool):
         self._conn = threading.local()
         self._fairy = threading.local()
         self._all_conns: Set[ConnectionPoolEntry] = set()
+        self._all_conns_lock = threading.Lock()
         self.size = pool_size
 
     def recreate(self) -> SingletonThreadPool:
@@ -387,24 +383,30 @@ class SingletonThreadPool(Pool):
         assert not hasattr(other_singleton_pool._fairy, "current")
         self._conn = other_singleton_pool._conn
         self._all_conns = other_singleton_pool._all_conns
+        self._all_conns_lock = other_singleton_pool._all_conns_lock
 
     def dispose(self) -> None:
         """Dispose of this pool."""
 
-        for conn in self._all_conns:
-            try:
-                conn.close()
-            except Exception:
-                # pysqlite won't even let you close a conn from a thread
-                # that didn't create it
-                pass
+        with self._all_conns_lock:
+            for conn in self._all_conns:
+                try:
+                    conn.close()
+                except Exception:
+                    # pysqlite won't even let you close a conn from a thread
+                    # that didn't create it
+                    pass
 
-        self._all_conns.clear()
+            self._all_conns.clear()
 
     def _cleanup(self) -> None:
+        # caller must hold self._all_conns_lock
         while len(self._all_conns) >= self.size:
             c = self._all_conns.pop()
-            c.close()
+            try:
+                c.close()
+            except Exception:
+                pass
 
     def status(self) -> str:
         return "SingletonThreadPool id:%d size: %d" % (
@@ -430,9 +432,10 @@ class SingletonThreadPool(Pool):
             pass
         c = self._create_connection()
         self._conn.current = weakref.ref(c)
-        if len(self._all_conns) >= self.size:
-            self._cleanup()
-        self._all_conns.add(c)
+        with self._all_conns_lock:
+            if len(self._all_conns) >= self.size:
+                self._cleanup()
+            self._all_conns.add(c)
         return c
 
     def connect(self) -> PoolProxiedConnection:
@@ -460,6 +463,10 @@ class StaticPool(Pool):
     :func:`_asyncio.create_async_engine`.
 
     """
+
+    def __init__(self, *args: Any, **kw: Any) -> None:
+        Pool.__init__(self, *args, **kw)
+        self._pool_lock = threading.Lock()
 
     @util.memoized_property
     def connection(self) -> _ConnectionRecord:
@@ -508,9 +515,11 @@ class StaticPool(Pool):
     def _do_get(self) -> ConnectionPoolEntry:
         rec = self.connection
         if rec._is_hard_or_soft_invalidated():
-            del self.__dict__["connection"]
-            rec = self.connection
-
+            with self._pool_lock:
+                current = self.__dict__.get("connection")
+                if current is rec:
+                    del self.__dict__["connection"]
+                rec = self.connection
         return rec
 
 
@@ -535,16 +544,18 @@ class AssertionPool(Pool):
         self._checked_out = False
         self._store_traceback = kw.pop("store_traceback", True)
         self._checkout_traceback = None
+        self._lock = threading.Lock()
         Pool.__init__(self, *args, **kw)
 
     def status(self) -> str:
         return "AssertionPool"
 
     def _do_return_conn(self, record: ConnectionPoolEntry) -> None:
-        if not self._checked_out:
-            raise AssertionError("connection is not checked out")
-        self._checked_out = False
-        assert record is self._conn
+        with self._lock:
+            if not self._checked_out:
+                raise AssertionError("connection is not checked out")
+            self._checked_out = False
+            assert record is self._conn
 
     def dispose(self) -> None:
         self._checked_out = False
@@ -565,19 +576,22 @@ class AssertionPool(Pool):
         )
 
     def _do_get(self) -> ConnectionPoolEntry:
-        if self._checked_out:
-            if self._checkout_traceback:
-                suffix = " at:\n%s" % "".join(
-                    chop_traceback(self._checkout_traceback)
+        with self._lock:
+            if self._checked_out:
+                if self._checkout_traceback:
+                    suffix = " at:\n%s" % "".join(
+                        chop_traceback(self._checkout_traceback)
+                    )
+                else:
+                    suffix = ""
+                raise AssertionError(
+                    "connection is already checked out" + suffix
                 )
-            else:
-                suffix = ""
-            raise AssertionError("connection is already checked out" + suffix)
 
-        if not self._conn:
-            self._conn = self._create_connection()
+            if not self._conn:
+                self._conn = self._create_connection()
 
-        self._checked_out = True
-        if self._store_traceback:
-            self._checkout_traceback = traceback.format_stack()
-        return self._conn
+            self._checked_out = True
+            if self._store_traceback:
+                self._checkout_traceback = traceback.format_stack()
+            return self._conn
