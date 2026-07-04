@@ -1329,11 +1329,15 @@ class SessionTransaction(_StateChange, TransactionalContext):
                 self._prepare_impl()
 
         if self._parent is None or self.nested:
-            for conn, trans, should_commit, autoclose in set(
-                self._connections.values()
-            ):
-                if should_commit:
-                    trans.commit()
+            try:
+                for conn, trans, should_commit, autoclose in set(
+                    self._connections.values()
+                ):
+                    if should_commit:
+                        trans.commit()
+            except:
+                self.close()
+                raise
 
             self._state = SessionTransactionState.COMMITTED
             self.session.dispatch.after_commit(self.session)
@@ -1373,7 +1377,11 @@ class SessionTransaction(_StateChange, TransactionalContext):
                 if transaction._parent is None or transaction.nested:
                     try:
                         for t in set(transaction._connections.values()):
-                            t[1].rollback()
+                            try:
+                                t[1].rollback()
+                            except:
+                                if rollback_err is None:
+                                    rollback_err = sys.exc_info()
 
                         transaction._state = SessionTransactionState.DEACTIVE
                         self.session.dispatch.after_rollback(self.session)
