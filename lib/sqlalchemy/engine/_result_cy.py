@@ -277,7 +277,7 @@ class BaseResultInternal(Generic[_R]):
             # the final objects; the ORM only calls
             # _raw_all_tuples() on the underlying Result, never on a
             # ScalarResult
-            return single_scalar, many_scalars, many_scalars  # type: ignore[return-value] # noqa: E501
+            return single_scalar, many_scalars, many_scalars
 
         if flag == _FLAG_SIMPLE and proc_size == 0 and not has_log_row:
             # just build the rows
