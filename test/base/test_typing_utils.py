@@ -196,6 +196,8 @@ A_union = typing.Annotated[typing.Union[str, int], "other_meta"]
 A_null_union = typing.Annotated[
     typing.Union[str, int, None], "other_meta", "null"
 ]
+A_pep695 = typing.Annotated[TA_int, "meta"]
+A_pep695_ext = typing.Annotated[TAext_int, "meta"]
 
 
 def compare_type_by_string(a, b):
@@ -356,6 +358,12 @@ class TestTyping(fixtures.TestBase):
             eq_(sa_typing.is_pep695(t), False)
         for t in type_aliases():
             eq_(sa_typing.is_pep695(t), True)
+
+    def test_is_pep695_annotated_pep695(self):
+        """test #13386"""
+        for t in (A_pep695, A_pep695_ext):
+            eq_(sa_typing.is_pep695(t), False)
+            eq_(sa_typing.is_pep593(t), True)
 
     def test_pep695_value(self):
         eq_(sa_typing.pep695_values(int), {int})

@@ -1860,40 +1860,40 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         else:
             effective_parameters = parameters
 
-        if self._has_events or self.engine._has_events:
-            for fn in self.dispatch.before_cursor_execute:
-                str_statement, effective_parameters = fn(
-                    self,
-                    cursor,
-                    str_statement,
-                    effective_parameters,
-                    context,
-                    context.executemany,
-                )
-
-        if self._echo:
-            self._log_info(str_statement)
-
-            stats = context._get_cache_stats()
-
-            if not self.engine.hide_parameters:
-                self._log_info(
-                    "[%s] %r",
-                    stats,
-                    sql_util._repr_params(
-                        effective_parameters,
-                        batches=10,
-                        ismulti=context.executemany,
-                    ),
-                )
-            else:
-                self._log_info(
-                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
-                    stats,
-                )
-
         evt_handled: bool = False
         try:
+            if self._has_events or self.engine._has_events:
+                for fn in self.dispatch.before_cursor_execute:
+                    str_statement, effective_parameters = fn(
+                        self,
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                        context.executemany,
+                    )
+
+            if self._echo:
+                self._log_info(str_statement)
+
+                stats = context._get_cache_stats()
+
+                if not self.engine.hide_parameters:
+                    self._log_info(
+                        "[%s] %r",
+                        stats,
+                        sql_util._repr_params(
+                            effective_parameters,
+                            batches=10,
+                            ismulti=context.executemany,
+                        ),
+                    )
+                else:
+                    self._log_info(
+                        "[%s] [SQL parameters hidden due to "
+                        "hide_parameters=True]",
+                        stats,
+                    )
             if context.execute_style is ExecuteStyle.EXECUTEMANY:
                 effective_parameters = cast(
                     "_CoreMultiExecuteParams", effective_parameters
@@ -2034,54 +2034,54 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             sub_stmt = imv_batch.replaced_statement
             sub_params = imv_batch.replaced_parameters
 
-            if engine_events:
-                for fn in self.dispatch.before_cursor_execute:
-                    sub_stmt, sub_params = fn(
-                        self,
-                        cursor,
-                        sub_stmt,
-                        sub_params,
-                        context,
-                        True,
-                    )
-
-            if self._echo:
-                self._log_info(sql_util._long_statement(sub_stmt))
-
-                imv_stats = f""" {imv_batch.batchnum}/{
-                            imv_batch.total_batches
-                } ({
-                    'ordered'
-                    if imv_batch.rows_sorted else 'unordered'
-                }{
-                    '; batch not supported'
-                    if imv_batch.is_downgraded
-                    else ''
-                })"""
-
-                if imv_batch.batchnum == 1:
-                    stats += imv_stats
-                else:
-                    stats = f"insertmanyvalues{imv_stats}"
-
-                if not self.engine.hide_parameters:
-                    self._log_info(
-                        "[%s] %r",
-                        stats,
-                        sql_util._repr_params(
-                            sub_params,
-                            batches=10,
-                            ismulti=False,
-                        ),
-                    )
-                else:
-                    self._log_info(
-                        "[%s] [SQL parameters hidden due to "
-                        "hide_parameters=True]",
-                        stats,
-                    )
-
             try:
+                if engine_events:
+                    for fn in self.dispatch.before_cursor_execute:
+                        sub_stmt, sub_params = fn(
+                            self,
+                            cursor,
+                            sub_stmt,
+                            sub_params,
+                            context,
+                            True,
+                        )
+
+                if self._echo:
+                    self._log_info(sql_util._long_statement(sub_stmt))
+
+                    imv_stats = f""" {imv_batch.batchnum}/{
+                                imv_batch.total_batches
+                    } ({
+                        'ordered'
+                        if imv_batch.rows_sorted else 'unordered'
+                    }{
+                        '; batch not supported'
+                        if imv_batch.is_downgraded
+                        else ''
+                    })"""
+
+                    if imv_batch.batchnum == 1:
+                        stats += imv_stats
+                    else:
+                        stats = f"insertmanyvalues{imv_stats}"
+
+                    if not self.engine.hide_parameters:
+                        self._log_info(
+                            "[%s] %r",
+                            stats,
+                            sql_util._repr_params(
+                                sub_params,
+                                batches=10,
+                                ismulti=False,
+                            ),
+                        )
+                    else:
+                        self._log_info(
+                            "[%s] [SQL parameters hidden due to "
+                            "hide_parameters=True]",
+                            stats,
+                        )
+
                 for fn in do_execute_dispatch:
                     if fn(
                         cursor,
@@ -2097,6 +2097,16 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                         sub_params,
                         context,
                     )
+
+                if engine_events:
+                    self.dispatch.after_cursor_execute(
+                        self,
+                        cursor,
+                        sub_stmt,
+                        sub_params,
+                        context,
+                        context.executemany,
+                    )
             except BaseException as e:
                 self._handle_dbapi_exception(
                     e,
@@ -2105,16 +2115,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     cursor,
                     context,
                     is_sub_exec=True,
-                )
-
-            if engine_events:
-                self.dispatch.after_cursor_execute(
-                    self,
-                    cursor,
-                    sub_stmt,
-                    sub_params,
-                    context,
-                    context.executemany,
                 )
 
             if preserve_rowcount:
@@ -2152,16 +2152,17 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         terminates at _execute_context().
 
         """
-        if self._has_events or self.engine._has_events:
-            for fn in self.dispatch.before_cursor_execute:
-                statement, parameters = fn(
-                    self, cursor, statement, parameters, context, False
-                )
-
-        if self._echo:
-            self._log_info(statement)
-            self._log_info("[raw sql] %r", parameters)
         try:
+            if self._has_events or self.engine._has_events:
+                for fn in self.dispatch.before_cursor_execute:
+                    statement, parameters = fn(
+                        self, cursor, statement, parameters, context, False
+                    )
+
+            if self._echo:
+                self._log_info(statement)
+                self._log_info("[raw sql] %r", parameters)
+
             for fn in (
                 ()
                 if not self.dialect._has_events
@@ -2171,14 +2172,14 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     break
             else:
                 self.dialect.do_execute(cursor, statement, parameters, context)
+
+            if self._has_events or self.engine._has_events:
+                self.dispatch.after_cursor_execute(
+                    self, cursor, statement, parameters, context, False
+                )
         except BaseException as e:
             self._handle_dbapi_exception(
                 e, statement, parameters, cursor, context
-            )
-
-        if self._has_events or self.engine._has_events:
-            self.dispatch.after_cursor_execute(
-                self, cursor, statement, parameters, context, False
             )
 
     def _safe_close_cursor(self, cursor: DBAPICursor) -> None:
@@ -2243,7 +2244,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             # non-DBAPI error - if we already got a context,
             # or there's no string statement, don't wrap it
             should_wrap = isinstance(e, self.dialect.loaded_dbapi.Error) or (
-                statement is not None
+                not isinstance(e, exc.StatementError)
+                and statement is not None
                 and context is None
                 and not is_exit_exception
             )

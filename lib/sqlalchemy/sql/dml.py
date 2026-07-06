@@ -83,6 +83,7 @@ if TYPE_CHECKING:
     from ._typing import _DMLColumnArgument
     from ._typing import _DMLColumnKeyMapping
     from ._typing import _DMLTableArgument
+    from ._typing import _FromClauseArgument
     from ._typing import _T0  # noqa
     from ._typing import _T1  # noqa
     from ._typing import _T2  # noqa
@@ -212,7 +213,9 @@ class DMLState(CompileState):
         ]
 
     def _make_extra_froms(
-        self, statement: DMLWhereBase
+        self,
+        statement: DMLWhereBase,
+        explicit_froms: Sequence[FromClause] = (),
     ) -> Tuple[FromClause, List[FromClause]]:
         froms: List[FromClause] = []
 
@@ -220,15 +223,26 @@ class DMLState(CompileState):
         primary_table = all_tables[0]
         seen = {primary_table}
 
+        def _consider_from(
+            from_: FromClause, include_surface_selectables: bool = False
+        ) -> None:
+            if not seen.intersection(from_._cloned_set):
+                froms.append(from_)
+            seen.update(from_._cloned_set)
+            if include_surface_selectables:
+                for elem in sql_util.surface_selectables_only(from_):
+                    seen.update(elem._cloned_set)
+
+        for from_ in explicit_froms:
+            _consider_from(from_, include_surface_selectables=True)
+
         consider = statement._where_criteria
         if self._dict_parameters:
             consider += tuple(self._dict_parameters.values())
 
         for crit in consider:
             for item in _from_objects(crit):
-                if not seen.intersection(item._cloned_set):
-                    froms.append(item)
-                seen.update(item._cloned_set)
+                _consider_from(item)
 
         froms.extend(all_tables[1:])
         return primary_table, froms
@@ -385,7 +399,7 @@ class DeleteDMLState(DMLState):
         self.statement = statement
 
         self.isdelete = True
-        t, ef = self._make_extra_froms(statement)
+        t, ef = self._make_extra_froms(statement, statement._extra_froms)
         self._primary_table = t
         self._extra_froms = ef
         self.is_multitable = ef
@@ -1846,6 +1860,7 @@ class Delete(
     _traverse_internals = (
         [
             ("table", InternalTraversal.dp_clauseelement),
+            ("_extra_froms", InternalTraversal.dp_clauseelement_tuple),
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
@@ -1861,10 +1876,36 @@ class Delete(
         {"post_criteria": "_post_criteria_clause"}
     )
 
+    _extra_froms: Tuple[FromClause, ...] = ()
+
     def __init__(self, table: _DMLTableArgument):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
+
+    @_generative
+    def using(self, *froms: _FromClauseArgument) -> Self:
+        r"""Add one or more explicit ``USING`` expressions to this DELETE.
+
+        This method may be used for backend-specific multiple-table DELETE
+        forms where the secondary FROM expression needs to be stated
+        explicitly, such as MySQL's ``DELETE FROM table USING <join>`` form.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :ref:`tutorial_multi_table_deletes`
+
+        """
+
+        self._extra_froms += tuple(
+            coercions.expect(
+                roles.FromClauseRole, from_, apply_propagate_attrs=self
+            )
+            for from_ in froms
+        )
+        return self
 
     def _apply_syntax_extension_to_self(
         self, extension: SyntaxExtension

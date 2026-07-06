@@ -3641,10 +3641,9 @@ class M2OWDegradeTest(
         )
 
 
-class M2MOmitJoinTest(
-    fixtures.TestBase, AssertsExecutionResults, testing.AssertsCompiledSQL
-):
-    __dialect__ = "default"
+class M2MOmitJoinTest(fixtures.TestBase, AssertsExecutionResults):
+    __sparse_backend__ = True
+    __only_on__ = ("sqlite", "mysql", "postgresql", "mariadb")
 
     @testing.fixture
     def simple_m2m(self, decl_base, connection):
@@ -3689,10 +3688,12 @@ class M2MOmitJoinTest(
         association_table = Table(
             "a_b",
             decl_base.metadata,
-            Column("a_id1", Integer, ForeignKey("a.id1")),
-            Column("a_id2", Integer, ForeignKey("a.id2")),
-            Column("b_id1", Integer, ForeignKey("b.id1")),
-            Column("b_id2", Integer, ForeignKey("b.id2")),
+            Column("a_id1", Integer),
+            Column("a_id2", Integer),
+            Column("b_id1", Integer),
+            Column("b_id2", Integer),
+            ForeignKeyConstraint(["a_id1", "a_id2"], ["a.id1", "a.id2"]),
+            ForeignKeyConstraint(["b_id1", "b_id2"], ["b.id1", "b.id2"]),
         )
 
         class B(decl_base):
@@ -3750,9 +3751,10 @@ class M2MOmitJoinTest(
         association_table = Table(
             "a_b",
             decl_base.metadata,
-            Column("a_id1", Integer, ForeignKey("a.id1")),
-            Column("a_id2", Integer, ForeignKey("a.id2")),
+            Column("a_id1", Integer),
+            Column("a_id2", Integer),
             Column("b_id", Integer, ForeignKey("b.id")),
+            ForeignKeyConstraint(["a_id1", "a_id2"], ["a.id1", "a.id2"]),
         )
 
         class A(decl_base):
@@ -3805,8 +3807,9 @@ class M2MOmitJoinTest(
             "a_b",
             decl_base.metadata,
             Column("a_id", Integer, ForeignKey("a.id")),
-            Column("b_id1", Integer, ForeignKey("b.id1")),
-            Column("b_id2", Integer, ForeignKey("b.id2")),
+            Column("b_id1", Integer),
+            Column("b_id2", Integer),
+            ForeignKeyConstraint(["b_id1", "b_id2"], ["b.id1", "b.id2"]),
         )
 
         class A(decl_base):
@@ -4654,3 +4657,88 @@ class TestCompositePlusNonComposite(fixtures.DeclarativeMappedTest):
 
         eq_(a2.bs, [B2()])
         eq_(a1.bs, [B()])
+
+
+class UselistFalseMultipleRowsTest(fixtures.DeclarativeMappedTest):
+    """test the warning emitted by the selectin loader for a
+    uselist=False relationship that matches more than one row"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(ComparableEntity, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            b = relationship("B", uselist=False)
+
+        class B(ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+        s = Session(connection)
+        s.add(A(id=1))
+        s.add_all([B(id=1, a_id=1), B(id=2, a_id=1)])
+        s.commit()
+
+    def test_multiple_rows_uselist_false_warns(self):
+        A = self.classes.A
+        s = fixture_session()
+        with testing.expect_warnings(
+            "Multiple rows returned with uselist=False for "
+            "eagerly-loaded attribute 'A.b'"
+        ):
+            a1 = s.query(A).options(selectinload(A.b)).one()
+        assert a1.b is not None
+        assert a1.b.id in (1, 2)
+
+
+class SelectinM2ONoRelatedRowTest(fixtures.DeclarativeMappedTest):
+    """test many-to-one selectinload where the candidate foreign key
+    value matches no related row, or is NULL"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(ComparableEntity, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+
+        class B(ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer)
+            a = relationship("A", primaryjoin="foreign(B.a_id) == A.id")
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+        s = Session(connection)
+        s.add(A(id=1))
+        s.add_all(
+            [
+                B(id=1, a_id=1),
+                B(id=2, a_id=42),
+                B(id=3, a_id=None),
+            ]
+        )
+        s.commit()
+
+    def test_missing_and_null_fk(self):
+        A, B = self.classes("A", "B")
+        s = fixture_session()
+        bs = s.query(B).order_by(B.id).options(selectinload(B.a)).all()
+
+        with self.assert_statement_count(testing.db, 0):
+            eq_(bs[0].a, A(id=1))
+
+            # a_id value with no matching A row
+            is_(bs[1].a, None)
+
+            # NULL a_id
+            is_(bs[2].a, None)

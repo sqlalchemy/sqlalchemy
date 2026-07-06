@@ -770,6 +770,10 @@ class CoreFixtures:
             table_b.delete().with_dialect_options(sqlite_foo="some value"),
             table_b.delete().where(table_b.c.a == 5),
             table_b.delete().where(table_b.c.b == 5),
+            table_b.delete().using(table_a),
+            table_b.delete().using(
+                table_b.join(table_a, table_b.c.a == table_a.c.a)
+            ),
         ),
         lambda: (
             values(
