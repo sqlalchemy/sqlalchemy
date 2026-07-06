@@ -219,8 +219,10 @@ class BaseResultInternal(Generic[_R]):
             # allocates a second BaseRow per row.  Row logging needs
             # actual Row objects; MappingResult does not select this
             # shape when a logging fn is present — the has_log_row
-            # check here is defense in depth.
-            _Row = RowMapping
+            # check here is defense in depth.  RowMapping shares
+            # BaseRow's constructor signature, so the swap is safe at
+            # runtime; mypy sees the narrower Row type from line above.
+            _Row = RowMapping  # type: ignore[assignment]
 
         if fetch_shape == _SHAPE_SCALAR and not has_log_row:
             # ScalarResult selected the scalar shape: produce the
