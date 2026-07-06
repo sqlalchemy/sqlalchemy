@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Callable
 from typing import List
 from typing import Optional
 from weakref import ref
@@ -78,38 +79,42 @@ class _InstancesBatch:
         "warn_for_runid_changed",
     )
 
-    if cython.compiled:
-        instance_proc: object = cython.declare(object)
-        identity_class: object = cython.declare(object)
-        identity_token: object = cython.declare(object)
-        primary_key_getter: object = cython.declare(object)
-        is_not_primary_key: object = cython.declare(object)
-        identity_map: object = cython.declare(object)
-        idmap_dict: dict = cython.declare(dict)
-        idmap_wr: object = cython.declare(object)
-        manager: object = cython.declare(object)
-        class_: object = cython.declare(object)
-        state_cls: object = cython.declare(object)
-        inline_state: bool = cython.declare(cython.bint)
-        session_id: object = cython.declare(object)
-        runid: object = cython.declare(object)
-        set_load_opts: bool = cython.declare(cython.bint)
-        loader_options: object = cython.declare(object)
-        load_path: object = cython.declare(object)
-        populate_existing: bool = cython.declare(cython.bint)
-        pop_quick: list = cython.declare(list)
-        pop_quick_idx: object = cython.declare(object)
-        pk_idx: int = cython.declare(cython.Py_ssize_t)
-        pop_expire: list = cython.declare(list)
-        pop_new: list = cython.declare(list)
-        load_evt: bool = cython.declare(cython.bint)
-        persistent_evt: bool = cython.declare(cython.bint)
-        dispatch_load: object = cython.declare(object)
-        loaded_as_persistent: object = cython.declare(object)
-        context: object = cython.declare(object)
-        session: object = cython.declare(object)
-        post_load_states: object = cython.declare(object)
-        warn_for_runid_changed: object = cython.declare(object)
+    # class-level annotations double as the cython attribute
+    # declarations in pure-python mode (typing constructs map to
+    # ``object``; ``cython.bint`` / ``cython.Py_ssize_t`` map to their C
+    # types).  With ``from __future__ import annotations`` these are
+    # inert strings when running uncompiled.
+    instance_proc: Callable[[Any], Any]
+    identity_class: Any
+    identity_token: Any
+    primary_key_getter: Callable[[Any], Any]
+    is_not_primary_key: Callable[[Any], Any]
+    identity_map: Any
+    idmap_dict: dict
+    idmap_wr: Any
+    manager: Any
+    class_: Any
+    state_cls: Any
+    inline_state: cython.bint
+    session_id: Any
+    runid: Any
+    set_load_opts: cython.bint
+    loader_options: Any
+    load_path: Any
+    populate_existing: cython.bint
+    pop_quick: list
+    pop_quick_idx: Optional[List[Any]]
+    pk_idx: cython.Py_ssize_t
+    pop_expire: list
+    pop_new: list
+    load_evt: cython.bint
+    persistent_evt: cython.bint
+    dispatch_load: Any
+    loaded_as_persistent: Any
+    context: Any
+    session: Any
+    post_load_states: Optional[dict]
+    warn_for_runid_changed: Callable[[Any], Any]
 
     def __init__(
         self,
@@ -192,19 +197,20 @@ class _InstancesBatch:
         else:
             self.pk_idx = -1
 
-        quick_idx: Optional[List[Any]] = []
+        quick_idx: List[Any] = []
+        quick_idx_ok: bool = True
         for key, getter in pop_quick:
             try:
                 idx = getter(probe)
             except (TypeError, IndexError, KeyError):
-                quick_idx = None
+                quick_idx_ok = False
                 break
             if type(idx) is int:
                 quick_idx.append((key, idx))
             else:
-                quick_idx = None
+                quick_idx_ok = False
                 break
-        self.pop_quick_idx = quick_idx
+        self.pop_quick_idx = quick_idx if quick_idx_ok else None
 
     def __call__(self, fetch: List[Any]) -> List[Any]:
         out: List[Any] = []
@@ -239,14 +245,19 @@ class _InstancesBatch:
         # tuple rows allow direct indexed access for the primary key and
         # the quick (column value) populators
         pk_idx: cython.Py_ssize_t = self.pk_idx
-        pop_quick_idx = self.pop_quick_idx
+        pop_quick_idx_opt = self.pop_quick_idx
         i: cython.Py_ssize_t
         row_t: tuple
         use_idx: cython.bint = bool(
-            pop_quick_idx is not None
+            pop_quick_idx_opt is not None
             and pk_idx >= 0
             and fetch
             and type(fetch[0]) is tuple
+        )
+        # non-Optional binding for the row loop; only read when use_idx
+        # is true, which requires pop_quick_idx_opt to be non-None
+        pop_quick_idx: List[Any] = (
+            pop_quick_idx_opt if pop_quick_idx_opt is not None else []
         )
 
         for row in fetch:
