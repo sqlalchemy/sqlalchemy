@@ -180,6 +180,8 @@ class _AdaptedCollectionProtocol(Protocol):
     _sa_appender: Callable[..., Any]
     _sa_remover: Callable[..., Any]
     _sa_iterator: Callable[..., Iterable[Any]]
+    _sa_bulk_appender: Optional[Callable[..., Any]]
+    _sa_raw_appender: Optional[Callable[..., Any]]
 
 
 class collection:
@@ -960,6 +962,31 @@ def _set_collection_attributes(cls, roles, methods):
 
     cls._sa_adapter = None
 
+    # detect "trivial" built-in collections, whose elected appender is
+    # the untouched instrumentation wrapper around list.append /
+    # set.add.  For those, event-less appends performed by
+    # CollectionAdapter are exactly equivalent to the raw built-in
+    # operation, so bulk loads may use list.extend / set.update
+    # directly, skipping two Python frames per item.  Any override of
+    # the appender (subclass method, @collection.appender,
+    # @collection.internally_instrumented) removes the _sa_trivial tag
+    # and keeps the per-item loop.
+    appender = getattr(cls, roles["appender"])
+    trivial = getattr(appender, "_sa_trivial", None)
+    if trivial == "list" and issubclass(cls, list):
+        cls._sa_raw_appender = list.append
+        cls._sa_bulk_appender = list.extend
+    elif (
+        trivial == "set"
+        and issubclass(cls, set)
+        and cls.__contains__ is set.__contains__
+    ):
+        cls._sa_raw_appender = set.add
+        cls._sa_bulk_appender = set.update
+    else:
+        cls._sa_raw_appender = None
+        cls._sa_bulk_appender = None
+
     cls._sa_instrumented = id(cls)
 
 
@@ -1088,6 +1115,11 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
             fn(self, item)
 
         _tidy(append)
+        if fn is list.append:
+            # the wrapper adds no behavior over the built-in when
+            # _sa_initiator=False; CollectionAdapter may then use raw
+            # list.append / list.extend (see _set_collection_attributes)
+            append._sa_trivial = "list"
         return append
 
     def remove(fn):
@@ -1346,6 +1378,8 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
             fn(self, value)
 
         _tidy(add)
+        if fn is set.add:
+            add._sa_trivial = "set"
         return add
 
     def discard(fn):

@@ -32,7 +32,9 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.fixtures import fixture_session
@@ -3117,3 +3119,137 @@ class UnpopulatedAttrTest(fixtures.TestBase):
                 eq_(a1.bs, {None: b1})
         else:
             eq_(a1.bs, {"bar": b1})
+
+
+class TrivialAppenderGateTest(fixtures.TestBase):
+    """test the class-level gate that lets CollectionAdapter use raw
+    list.extend / set.update for un-customized built-in collections.
+
+    A collection class is "trivial" only when its elected appender is
+    the untouched generated wrapper around exactly list.append or
+    set.add.  Anything else must keep the per-item instrumented loop.
+    """
+
+    def test_list_decorator_tags_trivial_wrapper(self):
+        decs = collections._list_decorators()
+        wrapper = decs["append"](list.append)
+        eq_(wrapper._sa_trivial, "list")
+
+    def test_list_decorator_does_not_tag_custom_fn(self):
+        decs = collections._list_decorators()
+
+        def append(self, item):
+            list.append(self, item)
+
+        wrapper = decs["append"](append)
+        assert not hasattr(wrapper, "_sa_trivial")
+
+    def test_set_decorator_tags_trivial_wrapper(self):
+        decs = collections._set_decorators()
+        wrapper = decs["add"](set.add)
+        eq_(wrapper._sa_trivial, "set")
+
+    def test_set_decorator_does_not_tag_custom_fn(self):
+        decs = collections._set_decorators()
+
+        def add(self, item):
+            set.add(self, item)
+
+        wrapper = decs["add"](add)
+        assert not hasattr(wrapper, "_sa_trivial")
+
+    def test_instrumented_list_is_trivial(self):
+        is_(collections.InstrumentedList._sa_bulk_appender, list.extend)
+        is_(collections.InstrumentedList._sa_raw_appender, list.append)
+
+    def test_instrumented_set_is_trivial(self):
+        is_(collections.InstrumentedSet._sa_bulk_appender, set.update)
+        is_(collections.InstrumentedSet._sa_raw_appender, set.add)
+
+    def test_plain_list_subclass_is_trivial(self):
+        class MyList(list):
+            pass
+
+        collections._prepare_instrumentation(MyList)
+        is_(MyList._sa_bulk_appender, list.extend)
+        is_(MyList._sa_raw_appender, list.append)
+
+    def test_list_subclass_overriding_append_not_trivial(self):
+        class MyList(list):
+            def append(self, item):
+                list.append(self, item)
+
+        collections._prepare_instrumentation(MyList)
+        is_none(MyList._sa_bulk_appender)
+        is_none(MyList._sa_raw_appender)
+
+    def test_instrumented_list_subclass_override_not_trivial(self):
+        class MyList(collections.InstrumentedList):
+            def append(self, item, _sa_initiator=None):
+                list.append(self, item)
+
+        collections._prepare_instrumentation(MyList)
+        is_none(MyList._sa_bulk_appender)
+        is_none(MyList._sa_raw_appender)
+
+    def test_instrumented_list_subclass_no_override_is_trivial(self):
+        # inherits the tagged trivial wrapper -> extend is equivalent
+        class MyList(collections.InstrumentedList):
+            pass
+
+        collections._prepare_instrumentation(MyList)
+        is_(MyList._sa_bulk_appender, list.extend)
+
+    def test_internally_instrumented_append_not_trivial(self):
+        class MyList(list):
+            @collection.internally_instrumented
+            def append(self, item, _sa_initiator=None):
+                list.append(self, item)
+
+        collections._prepare_instrumentation(MyList)
+        is_none(MyList._sa_bulk_appender)
+        is_none(MyList._sa_raw_appender)
+
+    def test_custom_appender_role_not_trivial(self):
+        class MyList(list):
+            @collection.appender
+            def push(self, item):
+                list.append(self, item)
+
+        collections._prepare_instrumentation(MyList)
+        is_none(MyList._sa_bulk_appender)
+        is_none(MyList._sa_raw_appender)
+
+    def test_set_subclass_overriding_add_not_trivial(self):
+        class MySet(set):
+            def add(self, item):
+                set.add(self, item)
+
+        collections._prepare_instrumentation(MySet)
+        is_none(MySet._sa_bulk_appender)
+        is_none(MySet._sa_raw_appender)
+
+    def test_set_subclass_overriding_contains_not_trivial(self):
+        # the generated add wrapper probes ``value not in self``;
+        # a custom __contains__ must keep being called per item
+        class MySet(set):
+            def __contains__(self, item):
+                return set.__contains__(self, item)
+
+        collections._prepare_instrumentation(MySet)
+        is_none(MySet._sa_bulk_appender)
+        is_none(MySet._sa_raw_appender)
+
+    def test_keyfunc_dict_not_trivial(self):
+        from sqlalchemy.orm.mapped_collection import KeyFuncDict
+
+        is_none(KeyFuncDict._sa_bulk_appender)
+        is_none(KeyFuncDict._sa_raw_appender)
+
+    def test_ordering_list_not_trivial(self):
+        from sqlalchemy.ext.orderinglist import ordering_list
+        from sqlalchemy.ext.orderinglist import OrderingList
+
+        collections._prepare_instrumentation(ordering_list("position"))
+        is_none(OrderingList._sa_bulk_appender)
+        is_none(OrderingList._sa_raw_appender)
