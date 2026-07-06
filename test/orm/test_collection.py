@@ -3451,3 +3451,197 @@ class BulkAppendLoaderTest(fixtures.MappedTest):
             collections.InstrumentedSet._sa_appender = orig_appender
 
         eq_(calls, [])
+
+
+class BulkAppendGatingTest(fixtures.MappedTest):
+    """customized collections must NOT take the bulk fast path: their
+    own appender must be invoked once per loaded child."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "parents",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("data", String(30)),
+        )
+        Table(
+            "children",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("parent_id", Integer, ForeignKey("parents.id")),
+            Column("data", String(30)),
+            Column("position", Integer),
+        )
+
+    def _fixture(self, collection_class, order_by_position=False):
+        parents, children = self.tables.parents, self.tables.children
+
+        class Parent:
+            pass
+
+        class Child:
+            pass
+
+        self.mapper_registry.map_imperatively(
+            Parent,
+            parents,
+            properties={
+                "children": relationship(
+                    Child,
+                    collection_class=collection_class,
+                    order_by=(
+                        children.c.position
+                        if order_by_position
+                        else children.c.id
+                    ),
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Child, children)
+
+        with fixture_session() as sess:
+            sess.execute(
+                parents.insert(),
+                [{"id": i, "data": "p%d" % i} for i in range(1, 4)],
+            )
+            sess.execute(
+                children.insert(),
+                [
+                    {
+                        "id": pid * 10 + cid,
+                        "parent_id": pid,
+                        "data": "p%d_c%d" % (pid, cid),
+                        "position": cid,
+                    }
+                    for pid in range(1, 4)
+                    for cid in range(3)
+                ],
+            )
+            sess.commit()
+
+        return Parent, Child
+
+    @testing.combinations(
+        ("selectin",), ("subquery",), ("joined",), argnames="loader_name"
+    )
+    def test_list_subclass_override_append_called_per_item(self, loader_name):
+        appended = []
+
+        class TrackingList(list):
+            def append(self, item):
+                appended.append(item)
+                list.append(self, item)
+
+        Parent, Child = self._fixture(TrackingList)
+
+        loader = {
+            "selectin": selectinload,
+            "subquery": subqueryload,
+            "joined": joinedload,
+        }[loader_name]
+
+        with fixture_session() as sess:
+            result = (
+                sess.query(Parent)
+                .options(loader(Parent.children))
+                .order_by(self.tables.parents.c.id)
+                .all()
+            )
+            # instrumentation ran at first collection use; the
+            # override must have kept the class non-trivial
+            is_none(TrackingList._sa_bulk_appender)
+            eq_(
+                [[c.data for c in p.children] for p in result],
+                [
+                    ["p1_c0", "p1_c1", "p1_c2"],
+                    ["p2_c0", "p2_c1", "p2_c2"],
+                    ["p3_c0", "p3_c1", "p3_c2"],
+                ],
+            )
+
+        eq_(len(appended), 9)
+
+    def test_custom_appender_called_per_item(self):
+        appended = []
+
+        class AppenderDict(dict):
+            @collection.appender
+            def set_child(self, item):
+                appended.append(item)
+                self[item.data] = item
+
+            @collection.remover
+            def remove_child(self, item):
+                del self[item.data]
+
+            @collection.iterator
+            def itervalues(self):
+                return iter(self.values())
+
+        Parent, Child = self._fixture(AppenderDict)
+
+        with fixture_session() as sess:
+            result = (
+                sess.query(Parent)
+                .options(selectinload(Parent.children))
+                .order_by(self.tables.parents.c.id)
+                .all()
+            )
+            is_none(AppenderDict._sa_bulk_appender)
+            eq_(
+                sorted(result[0].children),
+                ["p1_c0", "p1_c1", "p1_c2"],
+            )
+
+        eq_(len(appended), 9)
+
+    def test_attribute_keyed_dict_loop_path(self):
+        Parent, Child = self._fixture(collections.attribute_keyed_dict("data"))
+
+        with fixture_session() as sess:
+            result = (
+                sess.query(Parent)
+                .options(selectinload(Parent.children))
+                .order_by(self.tables.parents.c.id)
+                .all()
+            )
+            is_none(type(result[0].children)._sa_bulk_appender)
+            eq_(
+                sorted(result[0].children),
+                ["p1_c0", "p1_c1", "p1_c2"],
+            )
+            eq_(result[0].children["p1_c1"].data, "p1_c1")
+
+    def test_ordering_list_positions_on_eager_load(self):
+        """OrderingList.append assigns position attributes; it must be
+        called per item on eager load (loop path)."""
+        from sqlalchemy.ext.orderinglist import ordering_list
+
+        Parent, Child = self._fixture(
+            ordering_list("position"), order_by_position=True
+        )
+
+        with fixture_session() as sess:
+            result = (
+                sess.query(Parent)
+                .options(selectinload(Parent.children))
+                .order_by(self.tables.parents.c.id)
+                .all()
+            )
+            is_none(type(result[0].children)._sa_bulk_appender)
+            eq_([c.position for c in result[0].children], [0, 1, 2])
+            eq_(
+                [c.data for c in result[0].children],
+                ["p1_c0", "p1_c1", "p1_c2"],
+            )
