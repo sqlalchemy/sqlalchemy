@@ -533,12 +533,22 @@ class CollectionAdapter:
         self._data()._sa_appender(item, _sa_initiator=False)
 
     def append_multiple_without_event(self, items: Iterable[Any]) -> None:
-        """Add or restore an entity to the collection, firing no events."""
+        """Add or restore multiple entities to the collection,
+        firing no events."""
         if self.empty:
             self._refuse_empty()
-        appender = self._data()._sa_appender
-        for item in items:
-            appender(item, _sa_initiator=False)
+        data = self._data()
+        bulk_appender = data._sa_bulk_appender
+        if bulk_appender is not None:
+            # trivial built-in collection; instance access binds the
+            # list.extend / set.update descriptor to ``data``.  exactly
+            # equivalent to the per-item loop with _sa_initiator=False,
+            # minus two Python frames per item.
+            bulk_appender(items)
+        else:
+            appender = data._sa_appender
+            for item in items:
+                appender(item, _sa_initiator=False)
 
     def bulk_remover(self):
         return self._data()._sa_remover

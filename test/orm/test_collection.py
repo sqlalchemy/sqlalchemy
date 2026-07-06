@@ -21,7 +21,10 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import instrumentation
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 import sqlalchemy.orm.collections as collections
 from sqlalchemy.orm.collections import collection
@@ -3253,3 +3256,198 @@ class TrivialAppenderGateTest(fixtures.TestBase):
         collections._prepare_instrumentation(ordering_list("position"))
         is_none(OrderingList._sa_bulk_appender)
         is_none(OrderingList._sa_raw_appender)
+
+
+class BulkAppendLoaderTest(fixtures.MappedTest):
+    """integration tests for the trivial-collection bulk-append fast
+    path used by _CollectionAttributeImpl.set_committed_value and the
+    eager loaders."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "parents",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("data", String(30)),
+        )
+        Table(
+            "children",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
+            ),
+            Column("parent_id", Integer, ForeignKey("parents.id")),
+            Column("data", String(30)),
+        )
+
+    def _fixture(self, collection_class):
+        """map Parent/Child with the given collection_class and insert
+        3 parents x 3 children plus one childless parent, via Core so
+        no collection appender runs during setup."""
+        parents, children = self.tables.parents, self.tables.children
+
+        class Parent:
+            pass
+
+        class Child:
+            pass
+
+        self.mapper_registry.map_imperatively(
+            Parent,
+            parents,
+            properties={
+                "children": relationship(
+                    Child,
+                    collection_class=collection_class,
+                    order_by=children.c.id,
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Child, children)
+
+        with fixture_session() as sess:
+            sess.execute(
+                parents.insert(),
+                [{"id": i, "data": "p%d" % i} for i in range(1, 5)],
+            )
+            sess.execute(
+                children.insert(),
+                [
+                    {
+                        "id": pid * 10 + cid,
+                        "parent_id": pid,
+                        "data": "p%d_c%d" % (pid, cid),
+                    }
+                    for pid in range(1, 4)
+                    for cid in range(3)
+                ],
+            )
+            sess.commit()
+
+        return Parent, Child
+
+    _loaders = {
+        "selectin": lambda P: selectinload(P.children),
+        "subquery": lambda P: subqueryload(P.children),
+        "joined": lambda P: joinedload(P.children),
+    }
+
+    @testing.combinations(
+        ("selectin",), ("subquery",), ("joined",), argnames="loader_name"
+    )
+    def test_plain_list_eager_load(self, loader_name):
+        """plain Mapped[list] relationship: contents, per-parent
+        ordering (order_by children.id), empty collection, no lazy
+        SQL afterwards, and the collection is an InstrumentedList."""
+        Parent, Child = self._fixture(list)
+
+        with fixture_session() as sess:
+            result = (
+                sess.query(Parent)
+                .options(self._loaders[loader_name](Parent))
+                .order_by(self.tables.parents.c.id)
+                .all()
+            )
+
+            def go():
+                eq_(
+                    [[c.data for c in p.children] for p in result],
+                    [
+                        ["p1_c0", "p1_c1", "p1_c2"],
+                        ["p2_c0", "p2_c1", "p2_c2"],
+                        ["p3_c0", "p3_c1", "p3_c2"],
+                        [],
+                    ],
+                )
+
+            self.assert_sql_count(testing.db, go, 0)
+            assert isinstance(result[0].children, collections.InstrumentedList)
+
+    @testing.combinations(
+        ("selectin",), ("subquery",), ("joined",), argnames="loader_name"
+    )
+    def test_set_collection_eager_load(self, loader_name):
+        Parent, Child = self._fixture(set)
+
+        with fixture_session() as sess:
+            result = (
+                sess.query(Parent)
+                .options(self._loaders[loader_name](Parent))
+                .order_by(self.tables.parents.c.id)
+                .all()
+            )
+
+            def go():
+                eq_(
+                    [sorted(c.data for c in p.children) for p in result],
+                    [
+                        ["p1_c0", "p1_c1", "p1_c2"],
+                        ["p2_c0", "p2_c1", "p2_c2"],
+                        ["p3_c0", "p3_c1", "p3_c2"],
+                        [],
+                    ],
+                )
+
+            self.assert_sql_count(testing.db, go, 0)
+            assert isinstance(result[0].children, collections.InstrumentedSet)
+
+    def test_selectin_list_uses_bulk_fast_path(self):
+        """a trivial list collection must NOT invoke the per-item
+        instrumented appender during a selectin load."""
+        Parent, Child = self._fixture(list)
+
+        calls = []
+        orig_appender = collections.InstrumentedList._sa_appender
+
+        def counting_appender(self, item, _sa_initiator=None):
+            calls.append(item)
+            orig_appender(self, item, _sa_initiator=_sa_initiator)
+
+        collections.InstrumentedList._sa_appender = counting_appender
+        try:
+            with fixture_session() as sess:
+                result = (
+                    sess.query(Parent)
+                    .options(selectinload(Parent.children))
+                    .order_by(self.tables.parents.c.id)
+                    .all()
+                )
+                eq_(sum(len(list(p.children)) for p in result), 9)
+        finally:
+            collections.InstrumentedList._sa_appender = orig_appender
+
+        eq_(calls, [])
+
+    def test_selectin_set_uses_bulk_fast_path(self):
+        Parent, Child = self._fixture(set)
+
+        calls = []
+        orig_appender = collections.InstrumentedSet._sa_appender
+
+        def counting_appender(self, item, _sa_initiator=None):
+            calls.append(item)
+            orig_appender(self, item, _sa_initiator=_sa_initiator)
+
+        collections.InstrumentedSet._sa_appender = counting_appender
+        try:
+            with fixture_session() as sess:
+                result = (
+                    sess.query(Parent)
+                    .options(selectinload(Parent.children))
+                    .order_by(self.tables.parents.c.id)
+                    .all()
+                )
+                eq_(sum(len(list(p.children)) for p in result), 9)
+        finally:
+            collections.InstrumentedSet._sa_appender = orig_appender
+
+        eq_(calls, [])
