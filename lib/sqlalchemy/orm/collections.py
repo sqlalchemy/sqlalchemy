@@ -530,7 +530,14 @@ class CollectionAdapter:
 
         if self.empty:
             self._refuse_empty()
-        self._data()._sa_appender(item, _sa_initiator=False)
+        data = self._data()
+        raw_appender = data._sa_raw_appender
+        if raw_appender is not None:
+            # trivial built-in collection; bound list.append / set.add,
+            # equivalent to _sa_appender(item, _sa_initiator=False)
+            raw_appender(item)
+        else:
+            data._sa_appender(item, _sa_initiator=False)
 
     def append_multiple_without_event(self, items: Iterable[Any]) -> None:
         """Add or restore multiple entities to the collection,

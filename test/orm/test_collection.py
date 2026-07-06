@@ -3452,6 +3452,42 @@ class BulkAppendLoaderTest(fixtures.MappedTest):
 
         eq_(calls, [])
 
+    def test_joined_list_uses_raw_append_fast_path(self):
+        """joined eager loading appends one child per row via
+        CollectionAdapter.append_without_event; a trivial list must
+        not pay the instrumented wrapper per item."""
+        Parent, Child = self._fixture(list)
+
+        calls = []
+        orig_appender = collections.InstrumentedList._sa_appender
+
+        def counting_appender(self, item, _sa_initiator=None):
+            calls.append(item)
+            orig_appender(self, item, _sa_initiator=_sa_initiator)
+
+        collections.InstrumentedList._sa_appender = counting_appender
+        try:
+            with fixture_session() as sess:
+                result = (
+                    sess.query(Parent)
+                    .options(joinedload(Parent.children))
+                    .order_by(self.tables.parents.c.id)
+                    .all()
+                )
+                eq_(
+                    [[c.data for c in p.children] for p in result],
+                    [
+                        ["p1_c0", "p1_c1", "p1_c2"],
+                        ["p2_c0", "p2_c1", "p2_c2"],
+                        ["p3_c0", "p3_c1", "p3_c2"],
+                        [],
+                    ],
+                )
+        finally:
+            collections.InstrumentedList._sa_appender = orig_appender
+
+        eq_(calls, [])
+
 
 class BulkAppendGatingTest(fixtures.MappedTest):
     """customized collections must NOT take the bulk fast path: their
