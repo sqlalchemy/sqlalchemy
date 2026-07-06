@@ -9,6 +9,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises
@@ -1398,3 +1399,146 @@ class OnlyScalarsTest(fixtures.TestBase):
         )
 
         eq_(get(r), 1)
+
+
+class RowShapeElisionTest(fixtures.TestBase):
+    """Fast row shapes for ScalarResult / MappingResult (perf T1.4).
+
+    ``.scalars()`` produces raw column values directly from the row
+    getter (no throwaway one-column Row unwrapped by itemgetter(0));
+    ``.mappings()`` produces RowMapping directly (no throwaway Row
+    plus a second BaseRow via attrgetter("_mapping")).
+
+    Fallback to the legacy Row-building configuration is required
+    when: a ``_row_logging_fn`` is present (echo="debug"), a
+    caller-supplied ``unique(strategy)`` is used, or (scalars)
+    metadata-supplied ``_create_unique_filters`` exist.
+    """
+
+    def _fixture(self, data=None, num_rows=None, default_filters=None):
+        if data is None:
+            data = [(1, 1, 1), (2, 1, 2), (1, 3, 2), (4, 1, 2)]
+        if num_rows is not None:
+            data = data[:num_rows]
+        res = result.IteratorResult(
+            result.SimpleResultMetaData(["a", "b", "c"]), iter(data)
+        )
+        if default_filters:
+            res._metadata._create_unique_filters = (
+                lambda result: default_filters
+            )
+        return res
+
+    def _proc_fixture(self, data=None):
+        """two-column result with a result processor on column 'b'"""
+        if data is None:
+            data = [(1, "x"), (2, "y"), (3, "z")]
+        metadata = result.SimpleResultMetaData(
+            ["a", "b"], _processors=[None, lambda raw: raw.upper()]
+        )
+        return result.IteratorResult(metadata, iter(data))
+
+    # --- scalars: elision assertions (fail before implementation) ---
+
+    def test_scalars_elides_row(self):
+        s1 = self._fixture().scalars(1)
+        is_none(s1._post_creational_filter)
+        make_row = s1._row_getter[0]
+        value = make_row((10, 20, 30))
+        # NOTE: result.Row, not a module-level Row import;
+        # test_serialize_cy_py_cy leaks a ``global Row`` into this
+        # module's namespace
+        assert not isinstance(value, result.Row)
+        eq_(value, 20)
+
+    def test_scalars_many_getter_elides_row(self):
+        s1 = self._fixture().scalars(1)
+        many_rows = s1._row_getter[1]
+        eq_(many_rows([(10, 20, 30), (40, 50, 60)]), [20, 50])
+
+    def test_scalars_processor_elides_row(self):
+        s1 = self._proc_fixture().scalars("b")
+        is_none(s1._post_creational_filter)
+        make_row = s1._row_getter[0]
+        eq_(make_row((7, "q")), "Q")
+
+    # --- scalars: behavior parity (pass before AND after) ---
+
+    def test_scalars_values(self):
+        eq_(self._fixture().scalars(1).all(), [1, 1, 3, 1])
+
+    def test_scalars_iterate(self):
+        eq_(list(self._fixture().scalars()), [1, 2, 1, 4])
+
+    def test_scalars_processor_all(self):
+        eq_(self._proc_fixture().scalars("b").all(), ["X", "Y", "Z"])
+
+    def test_scalars_processor_first(self):
+        eq_(self._proc_fixture().scalars("b").first(), "X")
+
+    def test_scalars_processor_one(self):
+        eq_(self._proc_fixture(data=[(1, "x")]).scalars(1).one(), "X")
+
+    def test_scalars_one_raises_multiple(self):
+        with expect_raises(exc.MultipleResultsFound):
+            self._fixture().scalars().one()
+
+    def test_scalars_one_raises_none(self):
+        with expect_raises(exc.NoResultFound):
+            self._fixture(data=[]).scalars().one()
+
+    def test_scalars_unique_values(self):
+        eq_(self._fixture().scalars(0).unique().all(), [1, 2, 4])
+
+    def test_scalars_unique_custom_strategy_falls_back(self):
+        s1 = self._fixture().scalars(0).unique(strategy=lambda obj: obj[0] % 2)
+        # the caller-supplied strategy must keep receiving the
+        # one-column Row (obj[0] on an int would raise TypeError)
+        assert s1._post_creational_filter is not None
+        eq_(s1.all(), [1, 2])
+
+    def test_scalars_unique_default_filters_falls_back(self):
+        r1 = self._fixture(
+            default_filters=[
+                lambda elem: elem is not None,
+                lambda elem: elem is not None,
+                lambda elem: elem is not None,
+            ]
+        )
+        s1 = r1.scalars(1).unique()
+        # metadata-supplied filters run through
+        # Row._filter_on_values, requiring Row objects; the hash
+        # filter collapses every non-None value of column b
+        assert s1._post_creational_filter is not None
+        eq_(s1.all(), [1])
+
+    def test_scalars_row_logging_falls_back(self):
+        logged = []
+
+        def log_row(row):
+            logged.append(row)
+            return row
+
+        r1 = self._fixture(num_rows=2)
+        r1._row_logging_fn = log_row
+        s1 = r1.scalars(1)
+        assert s1._post_creational_filter is not None
+        eq_(s1.all(), [1, 1])
+        eq_(len(logged), 2)
+        assert all(isinstance(row, result.Row) for row in logged)
+
+    def test_scalars_empty(self):
+        eq_(self._fixture(data=[]).scalars().all(), [])
+
+    def test_scalars_partitions(self):
+        s1 = self._fixture().scalars(0)
+        eq_(list(s1.partitions(2)), [[1, 2], [1, 4]])
+
+    def test_scalars_yield_per_partitions(self):
+        s1 = self._fixture().scalars(0).yield_per(3)
+        eq_(list(s1.partitions()), [[1, 2, 1], [4]])
+
+    def test_scalars_freeze_roundtrip(self):
+        frozen = self._fixture().freeze()
+        eq_(frozen().scalars(1).all(), [1, 1, 3, 1])
+        eq_(frozen().scalars(1).unique().all(), [1, 3])

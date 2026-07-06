@@ -35,6 +35,9 @@ from ._result_cy import _InterimRowType
 from ._result_cy import _NO_ROW as _NO_ROW
 from ._result_cy import _R as _R
 from ._result_cy import _RowData
+from ._result_cy import _SHAPE_MAPPING
+from ._result_cy import _SHAPE_ROW
+from ._result_cy import _SHAPE_SCALAR
 from ._result_cy import _T
 from ._result_cy import _UniqueFilterType as _UniqueFilterType
 from ._result_cy import BaseResultInternal
@@ -1290,6 +1293,79 @@ class FilterResult(ResultInternal[_R]):
         return self._real_result._fetchmany_impl(size=size)
 
 
+def _configure_scalar_row_shape(filter_result: FilterResult[Any]) -> None:
+    """Select between the direct-scalar row shape and the legacy
+    Row-then-itemgetter(0) configuration for a :class:`.ScalarResult`
+    or :class:`_asyncio.AsyncScalarResult` over a non-scalar-source
+    result.
+
+    The scalar fast path has :attr:`._row_getter` produce
+    ``raw_row[index]`` directly (with the column's result processor
+    applied), no :class:`.Row` construction and no post-creational
+    filter.  It must NOT be used when:
+
+    * the real result has a ``_row_logging_fn`` (engine
+      echo="debug"): logging must receive real :class:`.Row` objects;
+
+    * uniquing is active with a caller-supplied strategy (the
+      strategy callable receives the row object), or with
+      metadata-supplied ``_create_unique_filters`` (ORM-sourced
+      results), which build a ``Row._filter_on_values``
+      methodcaller.  Default value-based uniquing is equivalent:
+      Row hash/eq delegate to the data tuple, so dedup on the raw
+      value matches dedup on the one-column Row.
+
+    Called from ``__init__`` and from ``unique()`` — the only points
+    that mutate ``_unique_filter_state`` before fetching begins — so
+    the configuration is always settled before ``_row_getter`` is
+    memoized on first fetch.
+    """
+    ufs = filter_result._unique_filter_state
+    if filter_result._real_result._row_logging_fn is None and (
+        ufs is None
+        or (
+            ufs[1] is None
+            and filter_result._metadata._create_unique_filters is None
+        )
+    ):
+        filter_result._fetch_shape = _SHAPE_SCALAR
+        filter_result._post_creational_filter = None
+    else:
+        filter_result._fetch_shape = _SHAPE_ROW
+        filter_result._post_creational_filter = operator.itemgetter(0)
+
+
+def _configure_mapping_row_shape(filter_result: FilterResult[Any]) -> None:
+    """Select between the direct-RowMapping row shape and the legacy
+    Row-then-attrgetter("_mapping") configuration for a
+    :class:`.MappingResult` or :class:`_asyncio.AsyncMappingResult`.
+
+    The mapping fast path has :attr:`._row_getter` construct
+    :class:`.RowMapping` directly, skipping the intermediate
+    :class:`.Row` (a second BaseRow allocation per row via the
+    ``Row._mapping`` property).  It must NOT be used when:
+
+    * the real result has a ``_row_logging_fn`` (engine
+      echo="debug"): logging must receive real :class:`.Row` objects;
+
+    * uniquing is active in any form: uniquing strategies operate on
+      the objects produced by the row getter, which historically are
+      :class:`.Row` objects, and :class:`.RowMapping` inherits
+      ``Mapping`` equality rather than Row data-tuple equality.
+
+    Called from ``__init__`` and from ``unique()``.
+    """
+    if (
+        filter_result._real_result._row_logging_fn is None
+        and filter_result._unique_filter_state is None
+    ):
+        filter_result._fetch_shape = _SHAPE_MAPPING
+        filter_result._post_creational_filter = None
+    else:
+        filter_result._fetch_shape = _SHAPE_ROW
+        filter_result._post_creational_filter = operator.attrgetter("_mapping")
+
+
 class ScalarResult(FilterResult[_R]):
     """A wrapper for a :class:`_engine.Result` that returns scalar values
     rather than :class:`_row.Row` values.
@@ -1322,9 +1398,11 @@ class ScalarResult(FilterResult[_R]):
             self._post_creational_filter = None
         else:
             self._metadata = real_result._metadata._reduce([index])
-            self._post_creational_filter = operator.itemgetter(0)
 
         self._unique_filter_state = real_result._unique_filter_state
+
+        if not real_result._source_supports_scalars:
+            _configure_scalar_row_shape(self)
 
     def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
         """Apply unique filtering to the objects returned by this
@@ -1334,6 +1412,8 @@ class ScalarResult(FilterResult[_R]):
 
         """
         self._unique_filter_state = (set(), strategy)
+        if not self._real_result._source_supports_scalars:
+            _configure_scalar_row_shape(self)
         return self
 
     def partitions(self, size: Optional[int] = None) -> Iterator[Sequence[_R]]:
