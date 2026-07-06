@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
-import operator
 from typing import Any
 from typing import AsyncIterator
 from typing import Literal
@@ -20,6 +19,8 @@ from typing import TypeVar
 from . import exc as async_exc
 from ... import util
 from ...engine import Result
+from ...engine.result import _configure_mapping_row_shape
+from ...engine.result import _configure_scalar_row_shape
 from ...engine.result import _NO_ROW
 from ...engine.result import _R
 from ...engine.result import _WithKeys
@@ -542,9 +543,11 @@ class AsyncScalarResult(AsyncCommon[_R]):
             self._post_creational_filter = None
         else:
             self._metadata = real_result._metadata._reduce([index])
-            self._post_creational_filter = operator.itemgetter(0)
 
         self._unique_filter_state = real_result._unique_filter_state
+
+        if not real_result._source_supports_scalars:
+            _configure_scalar_row_shape(self)
 
     def unique(
         self,
@@ -557,6 +560,8 @@ class AsyncScalarResult(AsyncCommon[_R]):
 
         """
         self._unique_filter_state = (set(), strategy)
+        if not self._real_result._source_supports_scalars:
+            _configure_scalar_row_shape(self)
         return self
 
     async def partitions(
@@ -663,14 +668,13 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
 
     _generate_rows = True
 
-    _post_creational_filter = operator.attrgetter("_mapping")
-
     def __init__(self, result: Result[Unpack[TupleAny]]):
         self._real_result = result
         self._unique_filter_state = result._unique_filter_state
         self._metadata = result._metadata
         if result._source_supports_scalars:
             self._metadata = self._metadata._reduce([0])
+        _configure_mapping_row_shape(self)
 
     def unique(
         self,
@@ -683,6 +687,7 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
 
         """
         self._unique_filter_state = (set(), strategy)
+        _configure_mapping_row_shape(self)
         return self
 
     def columns(self, *col_expressions: _KeyIndexType) -> Self:

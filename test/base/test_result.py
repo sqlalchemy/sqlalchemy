@@ -1677,3 +1677,34 @@ class RowShapeElisionTest(fixtures.TestBase):
             [{"a": 1, "b": 1, "c": 1}, {"a": 2, "b": 1, "c": 2}],
         )
         eq_(frozen().scalars(1).all(), [1, 1])
+
+    # --- asyncio twins configure the same shapes ---
+
+    @testing.requires.greenlet
+    def test_async_scalars_elides_row(self):
+        from sqlalchemy.ext.asyncio.result import AsyncScalarResult
+
+        r1 = self._fixture()
+        s1 = AsyncScalarResult(r1, 1)
+        is_none(s1._post_creational_filter)
+        eq_(s1._allrows(), [1, 1, 3, 1])
+
+    @testing.requires.greenlet
+    def test_async_scalars_unique_custom_strategy_falls_back(self):
+        from sqlalchemy.ext.asyncio.result import AsyncScalarResult
+
+        r1 = self._fixture()
+        s1 = AsyncScalarResult(r1, 0).unique(strategy=lambda obj: obj[0] % 2)
+        assert s1._post_creational_filter is not None
+        eq_(s1._allrows(), [1, 2])
+
+    @testing.requires.greenlet
+    def test_async_mappings_elides_row(self):
+        from sqlalchemy.ext.asyncio.result import AsyncMappingResult
+
+        r1 = self._fixture(num_rows=1)
+        m1 = AsyncMappingResult(r1)
+        is_none(m1._post_creational_filter)
+        made = m1._allrows()
+        assert isinstance(made[0], result.RowMapping)
+        eq_([dict(m) for m in made], [{"a": 1, "b": 1, "c": 1}])
