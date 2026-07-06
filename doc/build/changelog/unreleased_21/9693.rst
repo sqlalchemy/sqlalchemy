@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, schema, postgresql
+    :tickets: 9693
+
+    Adjusted string type collation rendering to use the dialect identifier
+    preparer rather than unconditional quoting. This allows PostgreSQL
+    schema-qualified collation names to be passed using
+    :class:`.quoted_name` with ``quote=False``.
