@@ -1136,7 +1136,7 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
             # the wrapper adds no behavior over the built-in when
             # _sa_initiator=False; CollectionAdapter may then use raw
             # list.append / list.extend (see _set_collection_attributes)
-            append._sa_trivial = "list"
+            append._sa_trivial = "list"  # type: ignore[attr-defined]
         return append
 
     def remove(fn):
@@ -1396,7 +1396,7 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
 
         _tidy(add)
         if fn is set.add:
-            add._sa_trivial = "set"
+            add._sa_trivial = "set"  # type: ignore[attr-defined]
         return add
 
     def discard(fn):
