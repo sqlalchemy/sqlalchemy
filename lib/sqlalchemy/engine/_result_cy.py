@@ -442,6 +442,9 @@ class BaseResultInternal(Generic[_R]):
         """
         assert self._unique_filter_state is None
         assert self._post_creational_filter is None
+        # derived-shape results (ScalarResult / MappingResult fast
+        # paths) produce final objects, not interim tuples
+        assert self._fetch_shape == _SHAPE_ROW
         interim_rows = self._row_getter[2]
         assert interim_rows is not None
         rows = self._fetchall_impl()

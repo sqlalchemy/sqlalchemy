@@ -1679,14 +1679,13 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
     _generate_rows = True
 
-    _post_creational_filter = operator.attrgetter("_mapping")
-
     def __init__(self, result: Result[Unpack[TupleAny]]):
         self._real_result = result
         self._unique_filter_state = result._unique_filter_state
         self._metadata = result._metadata
         if result._source_supports_scalars:
             self._metadata = self._metadata._reduce([0])
+        _configure_mapping_row_shape(self)
 
     def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
         """Apply unique filtering to the objects returned by this
@@ -1696,6 +1695,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
         """
         self._unique_filter_state = (set(), strategy)
+        _configure_mapping_row_shape(self)
         return self
 
     def columns(self, *col_expressions: _KeyIndexType) -> Self:
