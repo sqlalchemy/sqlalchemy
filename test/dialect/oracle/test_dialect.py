@@ -29,6 +29,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import async_test
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -41,6 +42,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.suite import test_select
+from sqlalchemy.util import greenlet_spawn
 
 
 class CxOracleDialectTest(fixtures.TestBase):
@@ -94,6 +96,18 @@ class OracleDbDialectTest(fixtures.TestBase):
         dialect = oracledb.OracleDialect_oracledb(dbapi=Mock(version="7.1.0"))
         eq_(dialect.oracledb_ver, (7, 1, 0))
 
+    def test_async_minimum_version(self):
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"oracledb version \(2, 0, 1\) and above are supported",
+        ):
+            oracledb.OracleDialectAsync_oracledb(dbapi=Mock(version="2.0.0"))
+
+        dialect = oracledb.OracleDialectAsync_oracledb(
+            dbapi=Mock(version="2.0.1")
+        )
+        eq_(dialect.oracledb_ver, (2, 0, 1))
+
     def test_get_dialect(self):
         u = url.URL.create("oracle://")
         d = oracledb.OracleDialect_oracledb.get_dialect_cls(u)
@@ -108,6 +122,34 @@ class OracleDbDialectTest(fixtures.TestBase):
     def test_async_version(self):
         e = create_engine("oracle+oracledb_async://")
         is_true(isinstance(e.dialect, oracledb.OracleDialectAsync_oracledb))
+
+    @async_test
+    async def test_async_cursor_enters_asynchronously(self):
+        """test #13420"""
+
+        adapt_connection = Mock()
+
+        underlying_cursor = Mock()
+
+        async def aenter(*arg, **kw):
+            return underlying_cursor
+
+        underlying_cursor.__aenter__ = Mock(side_effect=aenter)
+        underlying_cursor.__enter__ = Mock(
+            side_effect=AssertionError("sync __enter__ should not be called")
+        )
+
+        adapt_connection._connection.cursor = Mock(
+            return_value=underlying_cursor
+        )
+
+        cursor = await greenlet_spawn(
+            oracledb.AsyncAdapt_oracledb_cursor, adapt_connection
+        )
+
+        is_(cursor._cursor, underlying_cursor)
+        underlying_cursor.__aenter__.assert_called_once()
+        underlying_cursor.__enter__.assert_not_called()
 
 
 class OracledbMode(fixtures.TestBase):
