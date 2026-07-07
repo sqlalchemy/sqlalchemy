@@ -3417,15 +3417,15 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
     ):
         uselist = self.uselist
         n_pk = query_info.n_pk
+        zero_idx = query_info.zero_idx
 
-        # this sort is really for the benefit of the unit tests
-        our_keys = sorted(our_states)
+        # historically this used sorted instead of list to add determinism in
+        # tests. Since dicts are now ordered it's likely no longer needed
+        our_keys = list(our_states)
         while our_keys:
             chunk = our_keys[0:chunksize]
             our_keys = our_keys[chunksize:]
-            primary_keys = [
-                key[0] if query_info.zero_idx else key for key in chunk
-            ]
+            primary_keys = [key[0] if zero_idx else key for key in chunk]
             result = context.session.execute(
                 q,
                 params={"primary_keys": primary_keys},
@@ -3467,6 +3467,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
     ):
         uselist = self.uselist
         n_pk = query_info.n_pk
+        zero_idx = query_info.zero_idx
         _empty_result = () if uselist else None
 
         while our_states:
@@ -3474,8 +3475,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             our_states = our_states[chunksize:]
 
             primary_keys = [
-                key[0] if query_info.zero_idx else key
-                for key, state, state_dict, overwrite in chunk
+                item[0][0] if zero_idx else item[0] for item in chunk
             ]
 
             result = context.session.execute(
