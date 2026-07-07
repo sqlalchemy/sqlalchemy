@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 13420
+
+    Fixed issue where the oracledb async dialect's cursor wrapper entered
+    the underlying driver cursor using the synchronous ``__enter__()``
+    method rather than the asynchronous ``__aenter__()`` method. This
+    silently bypassed third-party async cursor wrappers, such as those used
+    by instrumentation libraries, that implement only the async context
+    manager protocol. The dialect now relies on the base async cursor
+    implementation, which correctly awaits ``__aenter__()``. As
+    ``__aenter__()`` was added to oracledb's ``AsyncCursor`` in oracledb
+    2.0.1, the minimum oracledb version supported by the async dialect has
+    been raised from 2.0.0 to 2.0.1.
