@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import random
+import re
 from typing import Optional
 from typing import TYPE_CHECKING
 
@@ -30,6 +31,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_warnings
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -2243,6 +2245,33 @@ class ContextManagerPlusFutureTest(FixtureTest):
                     u1.name = "newname"
                 elif check_operation == "delete":
                     session.delete(u1)
+
+    def test_rollback_exception_in_ctxmanager_error_message(self):
+        """test that when a flush-level exception causes the transaction to
+        be rolled back inside a context manager, subsequent session use raises
+        an error that includes the original exception. #11297"""
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+
+        with expect_raises(sa_exc.DBAPIError):
+            with sess.begin():
+                sess.add(User())  # name can't be null
+                try:
+                    sess.flush()
+                except sa_exc.DBAPIError as flush_err:
+                    with expect_raises_message(
+                        sa_exc.InvalidRequestError,
+                        "Can't operate on closed transaction inside context "
+                        "manager.  The transaction was rolled back due to "
+                        f"an exception: {re.escape(str(flush_err))}.  "
+                        "Please complete the context manager before "
+                        "emitting further commands.",
+                    ):
+                        sess.connection()
+                    raise
 
 
 class TransactionFlagsTest(fixtures.TestBase):

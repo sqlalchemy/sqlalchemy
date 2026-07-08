@@ -56,6 +56,7 @@ class TransactionalContext:
     __slots__ = ("_outer_trans_ctx", "_trans_subject", "__weakref__")
 
     _trans_subject: Optional[_TConsSubject]
+    _rollback_exception: Optional[BaseException] = None
 
     def _transaction_is_active(self) -> bool:
         raise NotImplementedError()
@@ -95,13 +96,20 @@ class TransactionalContext:
     @classmethod
     def _trans_ctx_check(cls, subject: _TConsSubject) -> None:
         trans_context = subject._trans_context_manager
-        if trans_context:
-            if not trans_context._transaction_is_active():
-                raise exc.InvalidRequestError(
-                    "Can't operate on closed transaction inside context "
-                    "manager.  Please complete the context manager "
-                    "before emitting further commands."
+        if trans_context and not trans_context._transaction_is_active():
+            rollback_exc = trans_context._rollback_exception
+            raise exc.InvalidRequestError(
+                "Can't operate on closed transaction inside context "
+                "manager.  "
+                + (
+                    "The transaction was rolled back due to an "
+                    f"exception: {rollback_exc}.  "
+                    if rollback_exc is not None
+                    else ""
                 )
+                + "Please complete the context manager before "
+                "emitting further commands."
+            )
 
     def __enter__(self) -> Self:
         subject = self._get_subject()
