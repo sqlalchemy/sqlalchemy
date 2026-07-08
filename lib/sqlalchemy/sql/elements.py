@@ -5748,7 +5748,7 @@ class quoted_name(util.MemoizedSlots, str):
         else:
             return quoted_name(value, quote)
 
-    def __new__(cls, value: str, quote: Optional[bool]) -> quoted_name:
+    def __new__(cls, value: str, quote: Optional[bool]) -> Self:
         assert (
             value is not None
         ), "use quoted_name.construct() for None passthrough"
@@ -5894,7 +5894,7 @@ class _truncated_label(quoted_name):
 
     __slots__ = ()
 
-    def __new__(cls, value: str, quote: Optional[bool] = None) -> Any:
+    def __new__(cls, value: str, quote: Optional[bool] = None) -> Self:
         quote = getattr(value, "quote", quote)
         # return super(_truncated_label, cls).__new__(cls, value, quote, True)
         return super().__new__(cls, value, quote)

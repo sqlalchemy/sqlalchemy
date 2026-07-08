@@ -3896,7 +3896,7 @@ class Session(_SessionClassMethods, EventTarget):
         # takes precedence over execution_options
         if populate_existing is not None:
             execution_options = {
-                **execution_options,  # type: ignore[typeddict-item]
+                **execution_options,
                 "populate_existing": populate_existing,
             }
         else:
