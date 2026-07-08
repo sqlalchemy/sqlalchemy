@@ -2774,7 +2774,7 @@ class SQLiteDialect(default.DefaultDialect):
             )
             INLINE_UNIQUE_PATTERN = (
                 r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?)[\t ]'
-                r"+[a-z0-9_ ]+?[\t ]+UNIQUE"
+                r"+[a-z0-9_]+(?:[\t ]+[a-z0-9_]+)*?[\t ]+UNIQUE"
             )
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):
