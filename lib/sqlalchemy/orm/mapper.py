@@ -4357,6 +4357,21 @@ def validates(
     modify or replace the value before proceeding. The function should
     otherwise return the given value.
 
+    When a subclass overrides a validator for the same attribute using
+    the same method name, only the subclass validator is invoked.  The
+    subclass validator may call ``super()`` to also invoke the parent
+    class validator.
+
+    A subclass that overrides a validator using the same method name
+    as the parent now replaces the parent validator entirely, rather
+    than the parent validator being invoked unconditionally.  The
+    subclass validator may opt in to the parent's behavior by calling
+    ``super()``.  See :ref:`validators_subclass_override` for
+    background on this change.
+
+    .. versionchanged:: 2.1 Added support for overriding of validators
+       on subclasses.
+
     Note that a validator for a collection **cannot** issue a load of that
     collection within the validation routine - this usage raises
     an assertion to avoid recursion overflows.  This is a reentrant
@@ -4380,6 +4395,9 @@ def validates(
     .. seealso::
 
       :ref:`simple_validators` - usage examples for :func:`.validates`
+
+      :ref:`validators_subclass_override` - overriding validators in
+      subclasses
 
     """
 

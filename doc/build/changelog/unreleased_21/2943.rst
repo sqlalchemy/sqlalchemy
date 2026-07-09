@@ -1,0 +1,15 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 2943
+
+    When a subclass overrides a :func:`_orm.validates` method using the
+    same method name as the parent class, only the subclass validator is
+    now invoked for instances of the subclass.  The subclass validator
+    may call ``super()`` to also invoke the parent class validator.
+    Previously, the parent validator was always used regardless of
+    whether the subclass provided an override.  Pull request courtesy
+    Indivar Mishra.
+
+    .. seealso::
+
+        :ref:`validators_subclass_override`

@@ -79,30 +79,32 @@ def _register_attribute(
     default_scalar_value=None,
     **kw,
 ):
-    listen_hooks = []
+
+    # event-hook registration functions organized into "pre validate" and "post
+    # validate" collections.  Each hook registration function generates a new
+    # AttributeEvents registration for this attribute.  What we are controlling
+    # here is the order in which these attribute events are established. Hook
+    # registration functions invoked in the order of first pre-validate, then
+    # user-specific validation i.e. `@validates`, then post-validate.
+    # within `@validates` we are scanning for hooks from child-most classes
+    # first (this suits the feature added in #2943).
+    pre_validate_hooks = []
+    post_validate_hooks = []
 
     uselist = useobject and prop.uselist
 
     if useobject and prop.single_parent:
-        listen_hooks.append(_single_parent_validator)
-
-    if prop.key in prop.parent.validators:
-        fn, opts = prop.parent.validators[prop.key]
-        listen_hooks.append(
-            lambda desc, prop: orm_util._validator_events(
-                desc, prop.key, fn, **opts
-            )
-        )
+        pre_validate_hooks.append(_single_parent_validator)
 
     if useobject:
-        listen_hooks.append(unitofwork._track_cascade_events)
+        post_validate_hooks.append(unitofwork._track_cascade_events)
 
     # need to assemble backref listeners
     # after the singleparentvalidator, mapper validator
     if useobject:
         backref = prop.back_populates
         if backref and prop._effective_sync_backref:
-            listen_hooks.append(
+            post_validate_hooks.append(
                 lambda desc, prop: attributes._backref_listeners(
                     desc, backref, uselist
                 )
@@ -145,7 +147,16 @@ def _register_attribute(
                 **kw,
             )
 
-            for hook in listen_hooks:
+            for hook in pre_validate_hooks:
+                hook(desc, prop)
+
+            for super_m in m.iterate_to_root():
+                if prop.key in super_m.validators:
+                    fn, opts = super_m.validators[prop.key]
+                    orm_util._validator_events(desc, prop.key, fn, **opts)
+                    break
+
+            for hook in post_validate_hooks:
                 hook(desc, prop)
 
 

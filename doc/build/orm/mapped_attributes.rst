@@ -107,6 +107,63 @@ described at :class:`~.AttributeEvents`.
 
 .. autofunction:: validates
 
+.. _validators_subclass_override:
+
+Overriding Validators in Subclasses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 2.1
+
+A subclass may override a validator defined on its parent class by
+applying the :func:`.validates` decorator to a method that uses the same
+name as the parent's validator.  When this is the case, only the subclass
+validator is invoked for instances of the subclass; the parent's
+validator is **not** called automatically.
+
+This allows the subclass to fully replace the parent's validation
+behavior.  If the subclass wishes to combine its own behavior with that
+of the parent, it may call ``super()`` within the overriding method to
+also invoke the parent validator::
+
+    from sqlalchemy.orm import validates
+
+
+    class User(Base):
+        __tablename__ = "user"
+
+        id = mapped_column(Integer, primary_key=True)
+        email = mapped_column(String)
+
+        @validates("email")
+        def validate_email(self, key, address):
+            if "@" not in address:
+                raise ValueError("failed simple email validation")
+            return address
+
+
+    class VerifiedUser(User):
+        @validates("email")
+        def validate_email(self, key, address):
+            # call the parent validator first
+            address = super().validate_email(key, address)
+            if not address.endswith("@example.com"):
+                raise ValueError("only example.com addresses allowed")
+            return address
+
+Above, assigning to ``VerifiedUser.email`` invokes
+``VerifiedUser.validate_email`` only; the call to ``super()`` is what
+causes ``User.validate_email`` to run as well.  Without that
+``super()`` call, the parent's validator would be skipped entirely.
+
+.. versionchanged:: 2.1
+
+   A subclass overriding a parent's validator using the same method name
+   now replaces the parent validator rather than the parent validator
+   running unconditionally.  Previously, the parent validator would
+   always run even when the subclass provided an override, which made it
+   difficult for a subclass to alter or replace the parent's validation
+   behavior.
+
 Using Custom Datatypes at the Core Level
 -----------------------------------------
 
