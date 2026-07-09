@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13424
+
+    Fixed an issue in :class:`.Numeric` where the
+    :paramref:`.Numeric.decimal_return_scale` parameter was ignored when the
+    DBAPI does not support native decimal objects (i.e.
+    ``dialect.supports_native_decimal`` is ``False``).  In this path the result
+    processor was computing the conversion scale from
+    :paramref:`.Numeric.scale` directly, bypassing
+    :paramref:`.Numeric.decimal_return_scale` entirely.  The behavior now
+    matches :class:`.Float`, which already used the correct
+    ``_effective_decimal_return_scale`` property. Pull request courtesy Kadir
+    Can Ozden.
