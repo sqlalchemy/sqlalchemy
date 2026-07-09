@@ -4170,6 +4170,105 @@ class NumericRawSQLTest(fixtures.TestBase):
         eq_(val, 46.583)
 
 
+class NumericDecimalReturnScaleTest(fixtures.TestBase):
+    """Test that Numeric and Float honour decimal_return_scale when the DBAPI
+    does not return native Decimal objects (supports_native_decimal=False).
+
+    issue #13424
+
+    """
+
+    # TODO: re-add when supports_native_decimal is fixed
+    # __sparse_driver_backend__ = True
+
+    numeric_cases = testing.combinations(
+        # Numeric: decimal_return_scale overrides scale
+        (
+            Numeric(10, 2, decimal_return_scale=5),
+            1.23456789,
+            decimal.Decimal("1.23457"),
+        ),
+        # Numeric: falls back to scale when decimal_return_scale not set
+        (Numeric(10, 2), 1.23456789, decimal.Decimal("1.23")),
+        # Numeric: falls back to _default_decimal_return_scale (10)
+        # when neither scale nor decimal_return_scale is set
+        (
+            Numeric(asdecimal=True),
+            1.23456789012345,
+            decimal.Decimal("1.2345678901"),
+        ),
+        # Float: decimal_return_scale (pre-existing behavior, for contrast);
+        # cases 1 and 4 returning the same value asserts consistency
+        (
+            Float(decimal_return_scale=5, asdecimal=True),
+            1.23456789,
+            decimal.Decimal("1.23457"),
+        ),
+        (
+            Float(asdecimal=True),
+            1.23456789012345,
+            decimal.Decimal("1.2345678901"),
+        ),
+        id_="nnn",
+        argnames="typ,value,expected",
+    )
+
+    @numeric_cases
+    def test_result_processor_decimal_return_scale(self, typ, value, expected):
+        """result_processor honours decimal_return_scale."""
+        proc = typ.result_processor(
+            mock.Mock(supports_native_decimal=False), None
+        )
+        eq_(proc(value), expected)
+
+    # TODO: make this a more general requirement, however for the moment
+    # the supports_native_decimal flag seems to not be correctly set for
+    # some dialects such as psycopg
+    @testing.only_on("sqlite")
+    @testing.combinations(
+        (
+            Numeric(10, 5, decimal_return_scale=3),
+            decimal.Decimal("1.12345"),
+            decimal.Decimal("1.123"),
+        ),
+        (
+            Float(decimal_return_scale=3, asdecimal=True),
+            1.12345,
+            decimal.Decimal("1.123"),
+        ),
+        id_="nnn",
+        argnames="typ,value,expected",
+    )
+    def test_decimal_return_scale_roundtrip(
+        self, connection, metadata, typ, value, expected
+    ):
+        """Numeric and Float both honour decimal_return_scale
+        end-to-end.
+
+        Only runs on SQLite where the DBAPI truly returns floats for
+        NUMERIC/FLOAT columns.  Other backends like psycopg return
+        native Decimal objects despite supports_native_decimal=False,
+        which bypasses the result processor being tested here.
+        """
+
+        t = Table(
+            "t",
+            metadata,
+            Column(
+                "numeric_val",
+                typ,
+            ),
+        )
+        t.create(connection)
+
+        connection.execute(
+            t.insert(),
+            {"numeric_val": value},
+        )
+
+        eq_(connection.scalar(select(t.c.numeric_val)), expected)
+
+
 class IntervalTest(fixtures.TablesTest, AssertsExecutionResults):
     __sparse_driver_backend__ = True
 
