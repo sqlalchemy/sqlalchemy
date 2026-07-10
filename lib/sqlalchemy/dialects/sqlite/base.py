@@ -2884,7 +2884,7 @@ class SQLiteDialect(default.DefaultDialect):
             # character of the constraint body.
             close = util.find_matching_paren(table_data, match.end() - 1)
             if close != -1:
-                sqltext = table_data[match.end():close].strip()
+                sqltext = table_data[match.end() : close].strip()
                 cks.append({"sqltext": sqltext, "name": constraint_name})
 
         cks.sort(key=lambda d: d["name"] or "~")  # sort None as last
