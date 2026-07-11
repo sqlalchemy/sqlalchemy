@@ -1604,6 +1604,41 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(stmt, expected_sql, dialect=dialect)
 
+    @testing.variation("version", ["mysql8", "all_others"])
+    def test_from_select_with_join(self, version: Variation):
+        """Test INSERT FROM SELECT with ON DUPLICATE KEY UPDATE works with joins.
+        
+        Regression test for #10675: MySQL was generating invalid SQL with
+        'AS new' alias for from_select inserts with joins.
+        """
+        other_table = Table(
+            "other",
+            self.table.metadata,
+            Column("key", String(10)),
+            Column("value", String(10)),
+        )
+        
+        stmt = insert(self.table).from_select(
+            ["id", "bar"],
+            select(
+                self.table.c.id,
+                other_table.c.value.label("bar"),
+            ).select_from(
+                self.table.join(other_table, self.table.c.bar == other_table.c.key)
+            ),
+        )
+        stmt = stmt.on_duplicate_key_update(
+            bar=stmt.inserted.bar
+        )
+
+        expected_sql = (
+            "INSERT INTO foos (id, bar) "
+            "SELECT foos.id, other.value AS bar "
+            "FROM foos INNER JOIN other ON foos.bar = other.`key` "
+            "ON DUPLICATE KEY UPDATE bar = VALUES(bar)"
+        )
+        self.assert_compile(stmt, expected_sql)
+
     def test_from_literal(self):
         stmt = insert(self.table).values(
             [{"id": 1, "bar": "ab"}, {"id": 2, "bar": "b"}]
