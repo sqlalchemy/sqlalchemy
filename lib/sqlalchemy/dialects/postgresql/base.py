@@ -1773,6 +1773,46 @@ itself:
 
 .. versionadded:: 1.4.0b2
 
+.. _postgresql_collation:
+
+Schema-Qualified Collation Names
+---------------------------------
+
+.. versionchanged:: 2.1  String type collation rendering now uses the
+   dialect's identifier preparer rather than surrounding the collation
+   name with double quotes unconditionally.  Simple lowercase names are
+   rendered unquoted; mixed-case or special-character names are quoted
+   automatically.  :class:`.quoted_name` with ``quote=True`` or
+   ``quote=False`` is now also interpreted.
+
+PostgreSQL supports collations that are qualified by a schema name, such as
+``pg_catalog.default`` or ``myschema.my_collation``.  When passing a
+schema-qualified collation to the :paramref:`.String.collation` parameter,
+use :class:`.quoted_name` with ``quote=False`` so that the dot separator
+is not quoted as part of the identifier::
+
+    from sqlalchemy import Column, Text
+    from sqlalchemy.sql import quoted_name
+
+    Table(
+        "my_table",
+        metadata,
+        Column(
+            "data",
+            Text(collation=quoted_name("pg_catalog.default", False)),
+        ),
+    )
+
+The above will render the column type as
+``TEXT COLLATE pg_catalog.default``.  Without :class:`.quoted_name`, the
+collation string would be quoted as a single identifier, producing
+``TEXT COLLATE "pg_catalog.default"``, which PostgreSQL would reject.
+
+.. seealso::
+
+    :class:`.quoted_name`
+
+    :paramref:`.String.collation`
 
 
 """  # noqa: E501
