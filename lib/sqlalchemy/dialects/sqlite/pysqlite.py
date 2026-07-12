@@ -299,9 +299,7 @@ database.  This is enabled by using a ``file:`` URI with
 ``cache=shared`` and passing ``uri=true`` in the query
 string::
 
-    engine = create_engine(
-        "sqlite:///file::memory:?cache=shared&uri=true"
-    )
+    engine = create_engine("sqlite:///file::memory:?cache=shared&uri=true")
 
 For async use with aiosqlite, use
 :func:`_asyncio.create_async_engine`::
