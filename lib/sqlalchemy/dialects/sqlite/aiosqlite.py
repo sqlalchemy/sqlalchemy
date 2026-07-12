@@ -76,6 +76,36 @@ based on the kind of SQLite database that's requested:
     may be used by specifying it via the
     :paramref:`_sa.create_engine.poolclass` parameter.
 
+.. _aiosqlite_memory:
+
+Using a Memory Database with Multiple Coroutines
+-------------------------------------------------
+
+The default :class:`.StaticPool` used for ``:memory:`` databases forces all
+coroutines to share a single DBAPI connection.  Because SQLite maintains only
+one transaction state per connection, concurrent coroutines can interfere
+with each other — a ``ROLLBACK`` in one coroutine will also discard
+uncommitted work from any other coroutine using the same engine.
+
+For async workloads where multiple :class:`.AsyncSession` or
+:class:`.AsyncConnection` objects may be active simultaneously, use SQLite's
+shared-cache URI mode instead.  This gives each checkout its own DBAPI
+connection with independent transaction state while still sharing one
+in-memory database::
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///file::memory:?cache=shared&uri=true"
+    )
+
+Because this URL form is treated as a file-based database by the dialect,
+:class:`.AsyncAdaptedQueuePool` is used automatically and no additional
+configuration is needed.
+
+See the pysqlite documentation at
+:ref:`pysqlite_uri_shared_cache` for full details on shared-cache memory
+databases, including how to use named databases to maintain multiple
+independent in-memory databases within the same process.
+
 """  # noqa
 
 from __future__ import annotations
