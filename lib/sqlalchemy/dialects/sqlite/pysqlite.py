@@ -207,8 +207,8 @@ processing.
 
 .. _pysqlite_threading_pooling:
 
-Threading/Pooling Behavior
----------------------------
+Concurrency/Threading/Pooling Behavior
+--------------------------------------
 
 The ``sqlite3`` DBAPI by default prohibits the use of a particular connection
 in a thread which is not the one in which it was created.  As SQLite has
@@ -259,15 +259,84 @@ connection reuse implemented by :class:`.QueuePool`.  However, it still
 may be beneficial to use this class if the application is experiencing
 issues with files being locked.
 
-Using a Memory Database in Multiple Threads
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Using a Memory Database in Multiple Threads or Coroutines
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To use a ``:memory:`` database in a multithreaded scenario, the same
-connection object must be shared among threads, since the database exists
-only within the scope of that connection.   The
-:class:`.StaticPool` implementation will maintain a single connection
-globally, and the ``check_same_thread`` flag can be passed to Pysqlite
-as ``False``::
+A ``:memory:`` SQLite database exists only within the scope of a single
+DBAPI connection.  It is not possible for two separate ``sqlite3``
+connection objects to access the same ``:memory:`` database unless SQLite's
+shared-cache feature is enabled.  Without shared cache, each connection
+creates its own independent in-memory database.
+
+This means a ``:memory:`` database is **not suitable** for use with
+multiple concurrent threads or coroutines unless either:
+
+* All workers are fully serialized (mutexed) against each other
+  such that only one is using the database at a time, or
+* SQLite's shared-cache URI feature is used to allow multiple
+  independent connections to access the same in-memory database.
+
+The same considerations apply when using the :ref:`aiosqlite <aiosqlite>`
+dialect, which wraps ``pysqlite`` connections in an async interface —
+without shared cache, each connection still creates its own independent
+in-memory database.
+
+The recommended approach for multithreaded or async in-memory
+use is the shared-cache URI feature, described below.
+
+.. _pysqlite_uri_shared_cache:
+
+Using a Shared-Cache Memory Database
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SQLite's
+`URI shared-cache <https://www.sqlite.org/sharedcache.html>`_
+mode allows multiple independent DBAPI connections, each with
+their own transaction state, to access the same in-memory
+database.  This is enabled by using a ``file:`` URI with
+``cache=shared`` and passing ``uri=true`` in the query
+string::
+
+    engine = create_engine(
+        "sqlite:///file::memory:?cache=shared&uri=true"
+    )
+
+For async use with aiosqlite, use
+:func:`_asyncio.create_async_engine`::
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///file::memory:?cache=shared&uri=true"
+    )
+
+Because this URL form is treated as a file-based database by the
+dialect, :class:`.QueuePool` is used automatically and
+``check_same_thread`` defaults to ``False``, so no additional pool
+or connect_args configuration is needed.  Each checkout from the
+pool is a distinct DBAPI connection with its own transaction state,
+and the in-memory database persists as long as at least one
+connection remains open.
+
+The shared-cache database is scoped by the filename component of
+the URI.  ``file::memory:`` (empty name) is process-global — all
+engines in the process that use this URI share the same database.
+To maintain multiple independent in-memory databases within the
+same process, supply a distinct name for each::
+
+    engine_a = create_engine(
+        "sqlite:///file:db_a?mode=memory&cache=shared&uri=true"
+    )
+    engine_b = create_engine(
+        "sqlite:///file:db_b?mode=memory&cache=shared&uri=true"
+    )
+
+Using StaticPool for Single-Connection Memory Databases
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An older approach for sharing a ``:memory:`` database among threads
+is to force all checkouts to return the same DBAPI connection using
+:class:`.StaticPool`.  **This approach does not support any form of
+concurrency** and is only useful when all access to the engine is
+fully serialized, such as in single-threaded test suites::
 
     from sqlalchemy.pool import StaticPool
 
@@ -277,8 +346,18 @@ as ``False``::
         poolclass=StaticPool,
     )
 
-Note that using a ``:memory:`` database in multiple threads requires a recent
-version of SQLite.
+.. warning::
+
+    Because :class:`.StaticPool` maintains a single DBAPI connection,
+    all :class:`.Session` or :class:`.Connection` objects that use
+    this engine share that one underlying connection and its single
+    SQLite transaction state.  A ``ROLLBACK`` issued by one session
+    (e.g. during error handling) will also roll back uncommitted work
+    from any other session, and concurrent ``COMMIT`` / ``ROLLBACK``
+    calls can interfere with each other unpredictably.  This approach
+    is only appropriate when access to the engine is fully serialized,
+    such as in single-threaded test suites.  For concurrent workloads,
+    use the shared-cache URI approach described above.
 
 Using Temporary Tables with SQLite
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
