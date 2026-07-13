@@ -1324,7 +1324,7 @@ list within the ``WITH`` clause. For example::
         Column("id", Integer, primary_key=True),
         postgresql_with={
             "fillfactor": 70,
-            "autovacuum_enabled": "false",
+            "autovacuum_enabled": False,
             "toast.vacuum_truncate": True,
         },
     )
@@ -1336,9 +1336,11 @@ This will generate DDL similar to:
     CREATE TABLE mytable (
         id INTEGER NOT NULL,
         PRIMARY KEY (id)
-    ) WITH (fillfactor = 70, autovacuum_enabled = false, toast.vacuum_truncate = True)
+    ) WITH (fillfactor = 70, autovacuum_enabled = false, toast.vacuum_truncate = true)
 
-The values in the dictionary can be integers, strings, or boolean values.
+The values in the dictionary can be integers, strings, boolean values, or
+``None``. Boolean values are rendered as lowercase ``true``/``false``.
+A ``None`` value renders the parameter name only, without an ``=`` value.
 Parameter names can include dots to specify parameters for associated objects
 like toast tables (e.g., ``toast.vacuum_truncate``).
 
@@ -1371,6 +1373,40 @@ in modern PostgreSQL versions).
 ::
 
     Table("some_table", metadata, ..., postgresql_with_oids=False)
+
+.. _postgresql_view_options:
+
+PostgreSQL View Options
+-----------------------
+
+The following sections indicate options which are supported by the PostgreSQL
+dialect in conjunction with :class:`.CreateView`.
+
+``WITH``
+^^^^^^^^
+
+Specifies view-level options for :class:`.CreateView` using the ``WITH``
+clause::
+
+    from sqlalchemy import CreateView, select
+
+    CreateView(
+        select(my_table),
+        "my_view",
+        postgresql_with={"security_invoker": True},
+    )
+
+This generates:
+
+.. sourcecode:: sql
+
+    CREATE VIEW my_view WITH (security_invoker = true) AS SELECT ...
+
+The same formatting rules that apply to :ref:`postgresql_table_options_with`
+apply here: booleans render as lowercase ``true``/``false``, ``None``
+renders as the parameter name only, and other values render as-is.
+
+.. versionadded:: 2.1
 
 .. _postgresql_constraint_options:
 
@@ -2710,6 +2746,26 @@ class PGDDLCompiler(compiler.DDLCompiler):
         domain = drop.element
         return f"DROP DOMAIN {self.preparer.format_type(domain)}"
 
+    def _prepare_withclause_opts(self, withclause):
+        with_opts = []
+        for param, value in withclause.items():
+            if value is None:
+                with_opts.append(param)
+            elif isinstance(value, bool):
+                with_opts.append(
+                    "%s = %s" % (param, "true" if value else "false")
+                )
+            else:
+                with_opts.append("%s = %s" % (param, value))
+        return ", ".join(with_opts)
+
+    def create_table_select_suffixes(self, element, type_, **kw):
+        if type_ == "view":
+            withclause = element.dialect_options["postgresql"]["with"]
+            if withclause:
+                return "WITH (%s)" % self._prepare_withclause_opts(withclause)
+        return ""
+
     def visit_create_index(self, create, **kw):
         preparer = self.preparer
         index = create.element
@@ -2775,14 +2831,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         withclause = index.dialect_options["postgresql"]["with"]
         if withclause:
-            text += " WITH (%s)" % (
-                ", ".join(
-                    [
-                        "%s = %s" % storage_parameter
-                        for storage_parameter in withclause.items()
-                    ]
-                )
-            )
+            text += " WITH (%s)" % self._prepare_withclause_opts(withclause)
 
         tablespace_name = index.dialect_options["postgresql"]["tablespace"]
         if tablespace_name:
@@ -2880,8 +2929,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             table_opts.append("\n USING %s" % pg_opts["using"])
 
         if pg_opts["with"]:
-            storage_params = (f"{k} = {v}" for k, v in pg_opts["with"].items())
-            table_opts.append(f" WITH ({', '.join(storage_params)})")
+            table_opts.append(
+                "\n WITH (%s)" % self._prepare_withclause_opts(pg_opts["with"])
+            )
 
         if pg_opts["with_oids"] is True:
             table_opts.append("\n WITH OIDS")
@@ -3554,6 +3604,12 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
             {
                 "include": None,
                 "nulls_not_distinct": None,
+            },
+        ),
+        (
+            schema.CreateView,
+            {
+                "with": None,
             },
         ),
     ]

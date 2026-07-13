@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 11122, 13432
+
+    Added ``postgresql_with`` support to :class:`.CreateView` for specifying
+    PostgreSQL view options such as ``security_invoker``, ``security_barrier``,
+    and ``check_option``, rendered as a ``WITH (...)`` clause between the view
+    name and the ``AS`` keyword. Additionally, the ``postgresql_with`` parameter
+    accepted by :class:`_schema.Table` and :class:`_schema.Index` now correctly
+    renders Python boolean values as ``true``/``false`` (lowercase), and
+    ``None`` values as the parameter name alone without an ``= value`` portion.
+    Pull request courtesy alphavector.
