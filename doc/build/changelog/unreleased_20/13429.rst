@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13429
+
+    Fixed quoting in the PostgreSQL ``nextval()`` rendering used for sequence
+    default expressions and for server-side autoincrement pre-execution, so
+    that a single quote occurring in a sequence, table or schema name is
+    escaped rather than terminating the surrounding string literal.  In
+    particular :meth:`_engine.Connection.execution_options` with a
+    ``schema_translate_map`` supplying such a schema name, or an explicit
+    :class:`.Sequence` whose name carries a quote, previously produced a
+    malformed statement in which the remainder of the name was interpreted as
+    SQL.  ``get_insert_default`` now also routes the sequence name through the
+    identifier preparer, matching the sibling ``fire_sequence`` method.  Pull
+    request courtesy dxbjavid.

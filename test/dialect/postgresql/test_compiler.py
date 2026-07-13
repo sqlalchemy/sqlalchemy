@@ -124,6 +124,20 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
+    def test_nextval_quote_escaping(self):
+        # a single quote in a sequence or schema name must be escaped so it
+        # can't terminate the nextval() string literal early
+        self.assert_compile(
+            Sequence("some'seq").next_value(),
+            "nextval('\"some''seq\"')",
+            dialect=postgresql.dialect(),
+        )
+        self.assert_compile(
+            Sequence("some'seq", schema="my'schema").next_value(),
+            "nextval('\"my''schema\".\"some''seq\"')",
+            dialect=postgresql.dialect(),
+        )
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()

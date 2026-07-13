@@ -2295,7 +2295,9 @@ class PGCompiler(compiler.SQLCompiler):
         return f"power{self.function_argspec(fn)}"
 
     def visit_sequence(self, seq, **kw):
-        return "nextval('%s')" % self.preparer.format_sequence(seq)
+        return "nextval('%s')" % self.preparer.format_sequence(seq).replace(
+            "'", "''"
+        )
 
     def limit_clause(self, select, **kw):
         text = ""
@@ -3359,7 +3361,9 @@ class PGExecutionContext(default.DefaultExecutionContext):
         return self._execute_scalar(
             (
                 "select nextval('%s')"
-                % self.identifier_preparer.format_sequence(seq)
+                % self.identifier_preparer.format_sequence(seq).replace(
+                    "'", "''"
+                )
             ),
             type_,
         )
@@ -3397,12 +3401,16 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     effective_schema = None
 
                 if effective_schema is not None:
-                    exc = 'select nextval(\'"%s"."%s"\')' % (
-                        effective_schema,
-                        seq_name,
+                    ident = "%s.%s" % (
+                        self.identifier_preparer.quote_identifier(
+                            effective_schema
+                        ),
+                        self.identifier_preparer.quote_identifier(seq_name),
                     )
                 else:
-                    exc = "select nextval('\"%s\"')" % (seq_name,)
+                    ident = self.identifier_preparer.quote_identifier(seq_name)
+
+                exc = "select nextval('%s')" % ident.replace("'", "''")
 
                 return self._execute_scalar(exc, column.type)
 
