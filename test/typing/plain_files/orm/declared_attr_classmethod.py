@@ -6,7 +6,6 @@ from typing import assert_type
 
 import sqlalchemy as sa
 from sqlalchemy import Index
-from sqlalchemy.orm import declarative_mixin
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import Mapped
@@ -17,7 +16,6 @@ class Base(DeclarativeBase):
     pass
 
 
-@declarative_mixin
 class _Rhyme:
     __tablename__: str
 
