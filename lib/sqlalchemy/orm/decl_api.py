@@ -400,16 +400,33 @@ class declared_attr(interfaces._MappedAttribute[_T_co], _declared_attr_common):
         class Engineer(Employee):
             pass
 
+    :class:`_orm.declared_attr` can also be applied to non-directive
+    attributes such as :func:`_orm.column_property`::
+
+        class SomethingMixin:
+            x: Mapped[int]
+            y: Mapped[int]
+
+            @declared_attr
+            @classmethod
+            def x_plus_y(cls) -> Mapped[int]:
+                return column_property(cls.x + cls.y)
+
     .. tip::
 
        The examples above also apply the ``@classmethod`` decorator.  This is
        not required at runtime, however :pep:`484` typing tools have no way to
        recognize ``def foo(cls)`` as a classmethod unless ``@classmethod`` is
-       present.  Adding ``@classmethod`` allows typing tools to correctly infer
-       the ``cls`` parameter as the class, which is important when accessing
-       mapped attributes such as ``cls.ph1`` inside the body of the method.
-       :class:`_orm.declared_attr` supports both ``@declared_attr`` and
-       ``@declared_attr.directive`` being combined with ``@classmethod``.
+       present.  Adding ``@classmethod`` allows typing tools to correctly
+       infer the ``cls`` parameter as the class, which is important when
+       accessing mapped attributes such as ``cls.ph1`` inside the body of
+       the method.  :class:`_orm.declared_attr` supports both
+       ``@declared_attr`` and ``@declared_attr.directive`` being combined
+       with ``@classmethod``.
+
+    .. versionadded:: 2.0 - :class:`_orm.declared_attr` can accommodate a
+       function decorated with ``@classmethod`` to help with :pep:`484`
+       integration where needed.
 
 
     .. seealso::
