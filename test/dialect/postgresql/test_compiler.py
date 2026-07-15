@@ -12,6 +12,7 @@ from sqlalchemy import cast
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import Computed
+from sqlalchemy import CreateView
 from sqlalchemy import Date
 from sqlalchemy import delete
 from sqlalchemy import Enum
@@ -633,7 +634,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(tbl3),
             "CREATE TABLE atable3 () "
-            "WITH (user_catalog_table = False, parallel_workers = 15)",
+            "WITH (user_catalog_table = false, parallel_workers = 15)",
+        )
+
+        tbl4 = Table(
+            "atable4",
+            m,
+            Column("id", Integer),
+            postgresql_with={
+                "autovacuum_enabled": True,
+                "autovacuum_analyze_scale_factor": 0.2,
+                "vacuum_index_cleanup": "auto",
+                "vacuum_truncate": None,
+            },
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl4),
+            "CREATE TABLE atable4 (id INTEGER) "
+            "WITH (autovacuum_enabled = true, "
+            "autovacuum_analyze_scale_factor = 0.2, "
+            "vacuum_index_cleanup = auto, "
+            "vacuum_truncate)",
         )
 
     def test_create_table_with_oncommit_option(self):
@@ -674,6 +696,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(tbl),
             "CREATE TABLE atable (id INTEGER) USING heap WITHOUT OIDS "
             "ON COMMIT PRESERVE ROWS TABLESPACE sometablespace",
+        )
+
+    def test_create_view_with_options(self):
+        src = table("src", column("id"), column("name"))
+
+        stmt = CreateView(
+            select(src.c.id, src.c.name),
+            "my_view",
+            postgresql_with={"security_invoker": True},
+        )
+        self.assert_compile(
+            stmt,
+            "CREATE VIEW my_view WITH (security_invoker = true) "
+            "AS SELECT src.id, src.name FROM src",
+        )
+
+        stmt2 = CreateView(
+            select(src.c.id),
+            "other_view",
+            postgresql_with={
+                "security_barrier": True,
+                "check_option": "local",
+            },
+        )
+        self.assert_compile(
+            stmt2,
+            "CREATE VIEW other_view "
+            "WITH (security_barrier = true, check_option = local) "
+            "AS SELECT src.id FROM src",
         )
 
     def test_create_partial_index(self):
@@ -1022,6 +1073,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql_with={"buffering": "off"},
         )
 
+        idx4 = Index(
+            "test_idx4",
+            tbl.c.data,
+            postgresql_using="gin",
+            postgresql_with={
+                "fastupdate": False,
+                "gin_pending_list_limit": 4096,
+            },
+        )
+
+        idx5 = Index(
+            "test_idx5",
+            tbl.c.data,
+            postgresql_using="brin",
+            postgresql_with={
+                "pages_per_range": 1,
+                "autosummarize": None,
+            },
+        )
+
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl (data)",
@@ -1035,6 +1106,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX test_idx3 ON testtbl "
             "USING gist (data) "
             "WITH (buffering = off)",
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx4),
+            "CREATE INDEX test_idx4 ON testtbl "
+            "USING gin (data) "
+            "WITH (fastupdate = false, gin_pending_list_limit = 4096)",
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx5),
+            "CREATE INDEX test_idx5 ON testtbl "
+            "USING brin (data) "
+            "WITH (pages_per_range = 1, autosummarize)",
         )
 
     def test_create_index_with_using_unusual_conditions(self):

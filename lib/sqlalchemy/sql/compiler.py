@@ -7116,6 +7116,14 @@ class DDLCompiler(Compiled):
     def visit_create_table_as(self, element: CreateTableAs, **kw: Any) -> str:
         return self._generate_table_select(element, "create_table_as", **kw)
 
+    def create_table_select_suffixes(
+        self,
+        element: _TableViaSelect,
+        type_: str,
+        **kw: Any,
+    ) -> str:
+        return ""
+
     def _generate_table_select(
         self,
         element: _TableViaSelect,
@@ -7136,7 +7144,7 @@ class DDLCompiler(Compiled):
             else element.if_not_exists
         )
 
-        parts = [
+        parts: List[Optional[str]] = [
             "CREATE",
             "OR REPLACE" if getattr(element, "or_replace", False) else None,
             "TEMPORARY" if element.temporary else None,
@@ -7147,9 +7155,11 @@ class DDLCompiler(Compiled):
             ),
             "IF NOT EXISTS" if use_if_not_exists else None,
             prep.format_table(element.table),
-            "AS",
-            select_sql,
         ]
+        suffixes = self.create_table_select_suffixes(element, type_, **kw)
+        if suffixes:
+            parts.append(suffixes)
+        parts += ["AS", select_sql]
         return " ".join(p for p in parts if p)
 
     def visit_create_column(self, create, first_pk=False, **kw):
