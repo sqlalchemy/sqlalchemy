@@ -27,6 +27,7 @@ from typing import Union
 from . import base as orm_base
 from ._typing import insp_is_mapper_property
 from .. import exc
+from .. import inspection
 from .. import util
 from ..sql import visitors
 from ..sql.cache_key import HasCacheKey
@@ -86,6 +87,7 @@ _WILDCARD_TOKEN: _LiteralStar = "*"
 _DEFAULT_TOKEN = "_sa_default"
 
 
+@inspection._self_inspects
 class PathRegistry(HasCacheKey):
     """Represent query load paths and registry functions.
 
@@ -351,6 +353,39 @@ class PathRegistry(HasCacheKey):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.path!r})"
 
+    def path_string(self) -> str:
+        """Return a user-facing string representation of this path,
+        e.g. ``"User.orders -> Order.items"``.
+
+        """
+
+        raw = self.path
+        parts = []
+        lraw = len(raw)
+        for i in range(0, lraw - 1, 2):
+            entity = raw[i]
+            prop = raw[i + 1]
+            prop_key = getattr(prop, "key", str(prop))
+
+            if (
+                i < lraw - 2
+                and cast(
+                    "_InternalEntityType[Any]", raw[i + 2]
+                ).is_aliased_class
+            ):
+                parts.append(
+                    f"{orm_base.entity_str(entity)}.{prop_key}."
+                    f"of_type({orm_base.entity_str(raw[i + 2])})"
+                )
+            else:
+                parts.append(f"{orm_base.entity_str(entity)}.{prop_key}")
+
+        return (
+            " -> ".join(parts)
+            if parts
+            else orm_base.entity_str(self.path[0]) if self.path else ""
+        )
+
 
 class _CreatesToken(PathRegistry):
     __slots__ = ()
@@ -539,6 +574,7 @@ class _PropRegistry(PathRegistry):
     prop: StrategizedProperty[Any]
     mapper: Optional[Mapper[Any]]
     entity: Optional[_InternalEntityType[Any]]
+    parent: _AbstractEntityRegistry
 
     def __init__(
         self, parent: _AbstractEntityRegistry, prop: StrategizedProperty[Any]

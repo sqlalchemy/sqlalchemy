@@ -98,6 +98,10 @@ OrmExecuteOptionsParameter = Union[
 ]
 
 
+class _HasPathString(Protocol):
+    def path_string(self) -> str: ...
+
+
 class _ORMAdapterProto(Protocol):
     """protocol for the :class:`.AliasedInsp._orm_adapt_element` method
     which is a synonym for :class:`.AliasedInsp._adapt_element`.

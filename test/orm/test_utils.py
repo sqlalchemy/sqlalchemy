@@ -1043,6 +1043,113 @@ class PathRegistryTest(_fixtures.FixtureTest):
         )
         eq_(PathRegistry.deserialize([(User, "addresses")]), p3)
 
+    @testing.combinations(
+        (
+            lambda umapper: PathRegistry.coerce(
+                (umapper, umapper.attrs.addresses)
+            ),
+            "User.addresses",
+        ),
+        (
+            lambda umapper: PathRegistry.coerce((umapper,)),
+            "User",
+        ),
+        (
+            lambda ualias: PathRegistry.coerce((ualias,)),
+            "aliased(User)",
+        ),
+        (
+            lambda umapper, amapper: PathRegistry.coerce(
+                (umapper, umapper.attrs.addresses, amapper)
+            ),
+            "User.addresses",
+        ),
+        (
+            lambda ualias, umapper, amapper: PathRegistry.coerce(
+                (ualias, umapper.attrs.addresses, amapper)
+            ),
+            "aliased(User).addresses",
+        ),
+        (
+            lambda umapper, aalias: PathRegistry.coerce(
+                (umapper, umapper.attrs.addresses, aalias)
+            ),
+            "User.addresses.of_type(aliased(Address))",
+        ),
+        (
+            lambda: RootRegistry(),
+            "",
+        ),
+        (
+            lambda umapper, omapper, imapper: PathRegistry.coerce(
+                (
+                    umapper,
+                    umapper.attrs.orders,
+                    omapper,
+                    omapper.attrs["items"],
+                    imapper,
+                )
+            ),
+            "User.orders -> Order.items",
+        ),
+        (
+            lambda umapper, omapper, oalias, imapper: PathRegistry.coerce(
+                (
+                    umapper,
+                    umapper.attrs.orders,
+                    oalias,
+                    omapper.attrs["items"],
+                    imapper,
+                )
+            ),
+            "User.orders.of_type(aliased(Order)) -> aliased(Order).items",
+        ),
+        (
+            lambda umapper, omapper, owpoly, imapper: PathRegistry.coerce(
+                (
+                    umapper,
+                    umapper.attrs.orders,
+                    owpoly,
+                    omapper.attrs["items"],
+                    imapper,
+                )
+            ),
+            "User.orders.of_type(with_polymorphic(Order, []))"
+            " -> with_polymorphic(Order, []).items",
+        ),
+        argnames="path_reg,expected",
+    )
+    def test_path_string(self, path_reg, expected):
+        umapper = inspect(self.classes.User)
+        amapper = inspect(self.classes.Address)
+        omapper = inspect(self.classes.Order)
+        imapper = inspect(self.classes.Item)
+        auser = aliased(self.classes.User)
+        ualias = inspect(auser)
+        aaddress = aliased(self.classes.Address)
+        aorder = aliased(self.classes.Order)
+        aalias = inspect(aaddress)
+        oalias = inspect(aorder)
+
+        # this is a "fake" with_polymorphic but we expect it to trip the
+        # _is_with_polymorphic flag.  if this changes, then we need to bring
+        # in the full polymorphic fixture
+        wpolyorder = with_polymorphic(self.classes.Order, [self.classes.Order])
+        owpoly = inspect(wpolyorder)
+
+        p1 = testing.resolve_lambda(
+            path_reg,
+            umapper=umapper,
+            amapper=amapper,
+            ualias=ualias,
+            aalias=aalias,
+            oalias=oalias,
+            owpoly=owpoly,
+            omapper=omapper,
+            imapper=imapper,
+        )
+        eq_(p1.path_string(), expected)
+
 
 class PathRegistryInhTest(_poly_fixtures._Polymorphic):
     run_setup_mappers = "once"

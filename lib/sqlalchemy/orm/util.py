@@ -1302,6 +1302,13 @@ class AliasedInsp(
         )
 
     def __str__(self):
+        return self.path_string()
+
+    def path_string(self) -> str:
+        """Return a user-facing name for this :class:`.AliasedInsp`,
+        for use in a :class:`_orm.PathRegistry` string representation.
+
+        """
         if self._is_with_polymorphic:
             return "with_polymorphic(%s, [%s])" % (
                 self._target.__name__,

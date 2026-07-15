@@ -14,6 +14,7 @@ import operator
 import typing
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import Dict
 from typing import Generic
 from typing import Literal
@@ -27,6 +28,7 @@ from typing import TypeVar
 from typing import Union
 
 from . import exc
+from ._typing import _HasPathString
 from ._typing import _O
 from ._typing import insp_is_mapper
 from .. import exc as sa_exc
@@ -383,6 +385,19 @@ def attribute_str(instance: object, attribute: str) -> str:
 
 def state_attribute_str(state: InstanceState[Any], attribute: str) -> str:
     return state_str(state) + "." + attribute
+
+
+def entity_str(entity: Any) -> str:
+    """Return a user-facing string for a mapped entity, such as a mapped
+    class, :class:`_orm.Mapper`, or :func:`_orm.aliased` construct.
+
+    Also accepts a :class:`_orm.PathRegistry` directly, which is itself
+    ``inspect()``-able and implements ``path_string()``; in that case
+    this is equivalent to calling
+    :meth:`_orm.PathRegistry.path_string` directly.
+
+    """
+    return cast(_HasPathString, inspection.inspect(entity)).path_string()
 
 
 def object_mapper(instance: _T) -> Mapper[_T]:

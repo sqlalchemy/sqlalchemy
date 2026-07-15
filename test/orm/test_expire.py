@@ -855,7 +855,8 @@ class ExpireTest(_fixtures.FixtureTest):
             # for up front
             with expect_raises_message(
                 sa.exc.ArgumentError,
-                r"Mapped class Mapper\[User\(users\)\] does not apply to "
+                r"Mapped class User referenced in option "
+                r"joinedload\(User.addresses\) does not apply to "
                 "any of the root entities in this query",
             ):
                 row = sess.execute(
