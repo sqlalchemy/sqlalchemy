@@ -244,7 +244,7 @@ else:
     _NOT_PROVIDED = object()
     from collections.abc import AsyncIterator
 
-    async def anext_(async_iterator, default=_NOT_PROVIDED):
+    async def anext_(async_iterator, default=_NOT_PROVIDED):  # type: ignore[misc]  # noqa: E501
         """vendored from https://github.com/python/cpython/pull/8895"""
 
         if not isinstance(async_iterator, AsyncIterator):
