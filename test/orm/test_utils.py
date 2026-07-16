@@ -9,7 +9,9 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import union
 from sqlalchemy.engine import result
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
@@ -28,6 +30,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -581,6 +584,50 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         is_(
             pa.x.__clause_element__()._annotations["parentmapper"],
             inspect(Point),
+        )
+
+    def test_aliased_select_raises(self):
+        """test for #6274"""
+
+        class Point:
+            pass
+
+        self._fixture(Point)
+
+        with expect_raises_message(
+            ArgumentError, r"use the \.subquery\(\) method"
+        ):
+            aliased(select(Point.x).filter(Point.id == 1))
+
+    def test_aliased_compound_select_raises(self):
+        """test for #6274"""
+
+        class Point:
+            pass
+
+        self._fixture(Point)
+
+        q1 = select(Point.x).filter(Point.id == 1)
+        q2 = select(Point.y).filter(Point.id == 2)
+        with expect_raises_message(
+            ArgumentError, r"use the \.subquery\(\) method"
+        ):
+            aliased(union(q1, q2))
+
+    def test_aliased_select_subquery(self):
+        """test for #6274"""
+
+        class Point:
+            pass
+
+        self._fixture(Point)
+
+        subq = select(Point.x).filter(Point.id == 1).subquery()
+        q1 = aliased(subq, name="point_alias")
+        self.assert_compile(
+            select(q1),
+            "SELECT point_alias.x FROM (SELECT point.x AS x "
+            "FROM point WHERE point.id = :id_1) AS point_alias",
         )
 
 
