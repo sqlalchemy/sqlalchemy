@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import union
 from sqlalchemy.engine import default
 from sqlalchemy.engine import result_tuple
 from sqlalchemy.orm import aliased
@@ -522,6 +523,36 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 "AS email_address FROM addresses) AS anon_1 "
                 "ON users.id = anon_1.user_id",
             )
+
+    def test_aliased_select_deprecated(self):
+        """test #6274"""
+
+        User = self.classes.User
+
+        with self._expect_implicit_subquery():
+            q1 = aliased(select(User.id, User.name))
+
+        self.assert_compile(
+            select(q1),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+        )
+
+    def test_aliased_compound_select_deprecated(self):
+        """test #6274"""
+
+        User = self.classes.User
+
+        s1 = select(User.id)
+        s2 = select(User.name)
+        with self._expect_implicit_subquery():
+            q1 = aliased(union(s1, s2))
+
+        self.assert_compile(
+            select(q1),
+            "SELECT anon_1.id FROM (SELECT users.id AS id FROM users "
+            "UNION SELECT users.name AS name FROM users) AS anon_1",
+        )
 
     def test_invalid_column(self):
         User = self.classes.User

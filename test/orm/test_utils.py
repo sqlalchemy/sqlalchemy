@@ -583,6 +583,22 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
             inspect(Point),
         )
 
+    def test_aliased_select_subquery(self):
+        """test for #6274"""
+
+        class Point:
+            pass
+
+        self._fixture(Point)
+
+        subq = select(Point.x).filter(Point.id == 1).subquery()
+        q1 = aliased(subq, name="point_alias")
+        self.assert_compile(
+            select(q1),
+            "SELECT point_alias.x FROM (SELECT point.x AS x "
+            "FROM point WHERE point.id = :id_1) AS point_alias",
+        )
+
 
 class IdentityKeyTest(_fixtures.FixtureTest):
     run_inserts = None
