@@ -111,6 +111,39 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             == '"Some_Schema"."My_Seq"'
         )
 
+    def test_visit_sequence_escapes_single_quotes(self):
+        """Test that visit_sequence escapes single quotes in sequence names.
+
+        Regression test for: postgresql nextval() rendering does not escape
+        single quotes in sequence/schema names, allowing SQL injection via
+        crafted sequence names containing single quotes.
+
+        References: #13429
+        """
+        # Single quote in sequence name should be escaped
+        seq = Sequence("s')")
+        self.assert_compile(
+            seq.next_value(),
+            "nextval('\"s'')\"')",
+            dialect=postgresql.dialect(),
+        )
+
+        # More complex injection attempt
+        seq = Sequence("s') UNION SELECT current_setting('is_superuser'); --")
+        compiled = str(
+            seq.next_value().compile(dialect=postgresql.dialect())
+        )
+        # The compiled SQL should be a valid nextval() call
+        assert compiled.startswith("nextval('")
+        assert compiled.endswith("')")
+        # Count unescaped single quotes (should be exactly 2: opening and closing)
+        # Escaped quotes ('') don't count as unescaped
+        inner = compiled[9:-2]  # strip nextval(' and ')
+        unescaped_count = inner.replace("''", "").count("'")
+        assert unescaped_count == 0, (
+            f"Unescaped single quotes found in: {compiled}"
+        )
+
     @testing.combinations(
         (None, ""),
         (Integer, "AS INTEGER "),
