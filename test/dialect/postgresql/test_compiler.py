@@ -111,6 +111,16 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             == '"Some_Schema"."My_Seq"'
         )
 
+    def test_nextval_escapes_single_quotes_in_name(self):
+        """nextval('...') must escape ' in the formatted identifier literal."""
+        seq = Sequence("s') UNION SELECT current_setting('is_superuser'); --")
+        self.assert_compile(
+            seq.next_value(),
+            "nextval('\"s'') UNION SELECT current_setting(''is_superuser''); "
+            "--\"')",
+        )
+        self.assert_compile(Sequence("my_seq").next_value(), "nextval('my_seq')")
+
     @testing.combinations(
         (None, ""),
         (Integer, "AS INTEGER "),
