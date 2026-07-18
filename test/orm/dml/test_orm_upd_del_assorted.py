@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
+from sqlalchemy.engine.interfaces import CacheStats
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
@@ -431,3 +432,117 @@ class PGIssue11849Test(fixtures.DeclarativeMappedTest):
 
         # synchronizes on load
         eq_(obj.test_field, {"test1": 1, "test2": "2", "test3": {"test4": 4}})
+
+
+class CacheAdaptReturningOrderTest(fixtures.DeclarativeMappedTest):
+    """test for #13439"""
+
+    __sparse_driver_backend__ = True
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class T(Base):
+            __tablename__ = "t"
+
+            # declared column order: id, b, a   (deliberately != the
+            # .returning() order below, which is id, a, b)
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            b: Mapped[int] = mapped_column(Integer)
+            a: Mapped[int] = mapped_column(Integer)
+
+    @classmethod
+    def insert_data(cls, connection):
+        t = cls.classes.T.__table__
+        connection.execute(
+            t.insert(),
+            [dict(id=i, a=i * 10, b=i * 100) for i in range(1, 5)],
+        )
+
+    @testing.variation(
+        "dml",
+        [
+            ("update", testing.requires.update_returning),
+            ("delete", testing.requires.delete_returning),
+        ],
+    )
+    def test_returning_keymap_stable_across_cache_hit(
+        self, dml: testing.Variation, connection
+    ):
+        T = self.classes.T
+
+        # returning order id, a, b deliberately != mapper order (id, b, a)
+        def stmt(ident):
+            if dml.update:
+                return (
+                    update(T)
+                    .where(T.id == ident)
+                    .values(b=999)
+                    .returning(T.id, T.a, T.b)
+                )
+            elif dml.delete:
+                return delete(T).where(T.id == ident).returning(T.id, T.a, T.b)
+            else:
+                dml.fail()
+
+        opts = {"synchronize_session": "fetch"}
+
+        # execute twice with different parameter values: the first call
+        # populates the compiled cache, the second is a cache hit (same
+        # statement shape, new statement object).  assert both the cache
+        # status and the cursor keymap on each call.
+        for n, ident in enumerate((1, 2), 1):
+            with Session(connection) as sess:
+                result = sess.execute(stmt(ident), execution_options=opts)
+
+                is_hit = n > 1
+                eq_(
+                    result.raw.context.cache_hit,
+                    (
+                        CacheStats.CACHE_HIT
+                        if is_hit
+                        else CacheStats.CACHE_MISS
+                    ),
+                    f"execution {n} expected cache "
+                    f"{'HIT' if is_hit else 'MISS'}",
+                )
+
+                # the cursor-level result metadata must map each requested
+                # returning column to the same physical index whether it
+                # is looked up by Column object or by string name; a
+                # divergence means Column-object row access (row[T.a])
+                # would read a different column's value than string access
+                # (row["a"]).  the cursor keymap is keyed by the raw
+                # ``Column`` objects of the mapped table, so use those
+                # rather than the mapped ``InstrumentedAttribute``s.
+                raw_meta = result.raw._metadata
+                tc = T.__table__.c
+                for col, name in [
+                    (tc.id, "id"),
+                    (tc.a, "a"),
+                    (tc.b, "b"),
+                ]:
+                    by_obj = raw_meta._index_for_key(col, False)
+                    by_name = raw_meta._index_for_key(name, False)
+                    eq_(
+                        by_obj,
+                        by_name,
+                        f"execution {n} (cache "
+                        f"{'HIT' if is_hit else 'MISS'}): column "
+                        f"{name!r} resolves to index {by_obj} by Column "
+                        f"object but {by_name} by string name",
+                    )
+
+                # end-to-end: values must be correct for both string and
+                # Column-object access.  for UPDATE, b was set to 999;
+                # for DELETE, RETURNING yields the original row value.
+                expected_b = 999 if dml.update else ident * 100
+                row = result.mappings().first()
+                assert row
+                eq_(row["id"], ident)
+                eq_(row[T.id], ident)
+                eq_(row["a"], ident * 10)
+                eq_(row[T.a], ident * 10)
+                eq_(row["b"], expected_b)
+                eq_(row[T.b], expected_b)
