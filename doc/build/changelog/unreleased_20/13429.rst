@@ -10,6 +10,8 @@
     ``schema_translate_map`` supplying such a schema name, or an explicit
     :class:`.Sequence` whose name carries a quote, previously produced a
     malformed statement in which the remainder of the name was interpreted as
-    SQL.  ``get_insert_default`` now also routes the sequence name through the
-    identifier preparer, matching the sibling ``fire_sequence`` method.  Pull
-    request courtesy dxbjavid.
+    SQL.  The sequence name for an implicit SERIAL sequence, which has no
+    :class:`.Sequence` object behind it, is now rendered through the identifier
+    preparer as well, matching the sibling ``fire_sequence`` method; as a
+    result an ordinary lower case name is no longer redundantly double quoted.
+    Pull request courtesy dxbjavid.

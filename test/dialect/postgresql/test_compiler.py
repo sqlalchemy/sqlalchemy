@@ -60,6 +60,7 @@ from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.dialects.postgresql import TSRANGE
+from sqlalchemy.dialects.postgresql.base import _CompilerSequence
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.postgresql.ranges import MultiRange
@@ -136,6 +137,35 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             Sequence("some'seq", schema="my'schema").next_value(),
             "nextval('\"my''schema\".\"some''seq\"')",
             dialect=postgresql.dialect(),
+        )
+
+    @testing.combinations(
+        ("my_seq", None, "'my_seq'"),
+        ("my_seq", "my_schema", "'my_schema.my_seq'"),
+        ("My_Seq", "Some_Schema", '\'"Some_Schema"."My_Seq"\''),
+        ("some'seq", "my'schema", "'\"my''schema\".\"some''seq\"'"),
+    )
+    def test_format_sequence_string_literal(self, name, schema_, expected):
+        # the implicit sequence of a SERIAL column has no Sequence object,
+        # so it goes through _CompilerSequence
+        preparer = postgresql.dialect().identifier_preparer
+        eq_(
+            preparer.format_sequence_string_literal(
+                _CompilerSequence(name, schema_)
+            ),
+            expected,
+        )
+
+    def test_compiler_sequence_ignores_schema_translate(self):
+        # the schema is resolved by the execution context before it reaches
+        # _CompilerSequence, so it must not be translated a second time
+        preparer = postgresql.dialect().identifier_preparer
+        preparer = preparer._with_schema_translate({"foo": "bar"})
+        eq_(
+            preparer.format_sequence_string_literal(
+                _CompilerSequence("my_seq", "bar")
+            ),
+            "'bar.my_seq'",
         )
 
 

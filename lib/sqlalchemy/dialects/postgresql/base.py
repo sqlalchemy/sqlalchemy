@@ -2295,8 +2295,8 @@ class PGCompiler(compiler.SQLCompiler):
         return f"power{self.function_argspec(fn)}"
 
     def visit_sequence(self, seq, **kw):
-        return "nextval('%s')" % self.preparer.format_sequence(seq).replace(
-            "'", "''"
+        return "nextval(%s)" % self.preparer.format_sequence_string_literal(
+            seq
         )
 
     def limit_clause(self, select, **kw):
@@ -3156,8 +3156,42 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return "JSONPATH"
 
 
+class _CompilerSequence:
+    """Minimal stand-in for :class:`.Sequence`.
+
+    Used for the implicit sequence behind a SERIAL column, where no
+    :class:`.Sequence` object exists but a name still has to be rendered
+    through :meth:`.IdentifierPreparer.format_sequence`.
+
+    """
+
+    __slots__ = ("name", "schema")
+
+    # the schema handed to us has already been resolved against the
+    # schema translate map, so don't let format_sequence() translate it
+    # a second time
+    _use_schema_map = False
+
+    def __init__(self, name, schema=None):
+        self.name = name
+        self.schema = schema
+
+
 class PGIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS
+
+    def format_sequence_string_literal(self, sequence, use_schema=True):
+        """Render a sequence name as a SQL string literal.
+
+        ``nextval()`` and friends take the sequence as a string rather than
+        as an identifier, so the quoted identifier produced by
+        :meth:`.format_sequence` has to be escaped a second time for the
+        enclosing literal.
+
+        """
+        return "'%s'" % self.format_sequence(sequence, use_schema).replace(
+            "'", "''"
+        )
 
     def _unquote_identifier(self, value):
         if value[0] == self.initial_quote:
@@ -3360,10 +3394,8 @@ class PGExecutionContext(default.DefaultExecutionContext):
     def fire_sequence(self, seq, type_):
         return self._execute_scalar(
             (
-                "select nextval('%s')"
-                % self.identifier_preparer.format_sequence(seq).replace(
-                    "'", "''"
-                )
+                "select nextval(%s)"
+                % self.identifier_preparer.format_sequence_string_literal(seq)
             ),
             type_,
         )
@@ -3400,17 +3432,12 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 else:
                     effective_schema = None
 
-                if effective_schema is not None:
-                    ident = "%s.%s" % (
-                        self.identifier_preparer.quote_identifier(
-                            effective_schema
-                        ),
-                        self.identifier_preparer.quote_identifier(seq_name),
+                exc = (
+                    "select nextval(%s)"
+                    % self.identifier_preparer.format_sequence_string_literal(
+                        _CompilerSequence(seq_name, effective_schema)
                     )
-                else:
-                    ident = self.identifier_preparer.quote_identifier(seq_name)
-
-                exc = "select nextval('%s')" % ident.replace("'", "''")
+                )
 
                 return self._execute_scalar(exc, column.type)
 
