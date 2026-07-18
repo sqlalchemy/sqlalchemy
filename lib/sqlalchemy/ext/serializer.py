@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 """Serializer/Deserializer objects for usage with SQLAlchemy query structures,
 allowing "contextual" deserialization.
@@ -68,12 +67,20 @@ needed for:
 
 """
 
+from __future__ import annotations
+
 from io import BytesIO
 import pickle
 import re
+from typing import Any
+from typing import cast
+from typing import IO
+from typing import Mapping
+from typing import Protocol
 
 from .. import Column
 from .. import Table
+from ..engine import Connection
 from ..engine import Engine
 from ..orm import class_mapper
 from ..orm.interfaces import MapperProperty
@@ -85,9 +92,27 @@ from ..util import b64encode
 __all__ = ["Serializer", "Deserializer", "dumps", "loads"]
 
 
+class _HasTables(Protocol):
+    @property
+    def tables(self) -> Mapping[str, Table]: ...
+
+
+class _HasBind(Protocol):
+    @property
+    def bind(self) -> Engine | Connection | None: ...
+
+
+class _ScopedSession(Protocol):
+    def __call__(self) -> _HasBind: ...
+
+
+class _HasClauseElement(Protocol):
+    def __clause_element__(self) -> object: ...
+
+
 class Serializer(pickle.Pickler):
 
-    def persistent_id(self, obj):
+    def persistent_id(self, obj: object) -> str | None:
         # print "serializing:", repr(obj)
         if isinstance(obj, Mapper):
             id_ = "mapper:" + b64encode(pickle.dumps(obj.class_))
@@ -124,21 +149,27 @@ our_ids = re.compile(
 
 class Deserializer(pickle.Unpickler):
 
-    def __init__(self, file, metadata=None, scoped_session=None, engine=None):
+    def __init__(
+        self,
+        file: IO[bytes],
+        metadata: _HasTables | None = None,
+        scoped_session: _ScopedSession | None = None,
+        engine: Engine | None = None,
+    ) -> None:
         super().__init__(file)
         self.metadata = metadata
         self.scoped_session = scoped_session
         self.engine = engine
 
-    def get_engine(self):
-        if self.engine:
+    def get_engine(self) -> Engine | Connection | None:
+        if self.engine is not None:
             return self.engine
-        elif self.scoped_session and self.scoped_session().bind:
+        elif self.scoped_session is not None:
             return self.scoped_session().bind
         else:
             return None
 
-    def persistent_load(self, id_):
+    def persistent_load(self, id_: object) -> object:
         m = our_ids.match(str(id_))
         if not m:
             return None
@@ -146,39 +177,51 @@ class Deserializer(pickle.Unpickler):
             type_, args = m.group(1, 2)
             if type_ == "attribute":
                 key, clsarg = args.split(":")
-                cls = pickle.loads(b64decode(clsarg))
+                cls = cast(type[object], pickle.loads(b64decode(clsarg)))
                 return getattr(cls, key)
             elif type_ == "mapper":
-                cls = pickle.loads(b64decode(args))
+                cls = cast(type[object], pickle.loads(b64decode(args)))
                 return class_mapper(cls)
             elif type_ == "mapper_selectable":
-                cls = pickle.loads(b64decode(args))
-                return class_mapper(cls).__clause_element__()
+                cls = cast(type[object], pickle.loads(b64decode(args)))
+                return cast(
+                    _HasClauseElement, class_mapper(cls)
+                ).__clause_element__()
             elif type_ == "mapperprop":
                 mapper, keyname = args.split(":")
-                cls = pickle.loads(b64decode(mapper))
+                cls = cast(type[object], pickle.loads(b64decode(mapper)))
                 return class_mapper(cls).attrs[keyname]
             elif type_ == "table":
-                return self.metadata.tables[args]
+                metadata = cast(_HasTables, self.metadata)
+                return metadata.tables[args]
             elif type_ == "column":
+                metadata = cast(_HasTables, self.metadata)
                 table, colname = args.split(":")
-                return self.metadata.tables[table].c[colname]
+                return metadata.tables[table].c[colname]
             elif type_ == "session":
-                return self.scoped_session()
+                session_factory = cast(_ScopedSession, self.scoped_session)
+                return session_factory()
             elif type_ == "engine":
                 return self.get_engine()
             else:
                 raise Exception("Unknown token: %s" % type_)
 
 
-def dumps(obj, protocol=pickle.HIGHEST_PROTOCOL):
+def dumps(
+    obj: object, protocol: int | None = pickle.HIGHEST_PROTOCOL
+) -> bytes:
     buf = BytesIO()
     pickler = Serializer(buf, protocol)
     pickler.dump(obj)
     return buf.getvalue()
 
 
-def loads(data, metadata=None, scoped_session=None, engine=None):
+def loads(
+    data: bytes,
+    metadata: _HasTables | None = None,
+    scoped_session: _ScopedSession | None = None,
+    engine: Engine | None = None,
+) -> Any:
     buf = BytesIO(data)
     unpickler = Deserializer(buf, metadata, scoped_session, engine)
     return unpickler.load()
