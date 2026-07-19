@@ -804,6 +804,22 @@ class _BulkUDCompileState(_ORMDMLState):
                 }
             )
 
+            # disable result-level adapt_to_context.  ORM UPDATE/DELETE with
+            # RETURNING uses a "two level" statement: the invoked ORM statement
+            # holds the user's returning() columns while the cached Core
+            # statement returns primary key + supplemental columns, so the two
+            # are not positionally aligned.  adapt_to_context() would remap
+            # result keys positionally between them and mislabel columns on a
+            # cache hit; the ORM instead interprets rows via its own
+            # from_statement context, so the Core adaptation would interfere
+            # here.
+            if not execution_options:
+                execution_options = context._orm_load_exec_options
+            else:
+                execution_options = execution_options.union(
+                    context._orm_load_exec_options
+                )
+
         return (
             statement,
             util.immutabledict(execution_options).union(
