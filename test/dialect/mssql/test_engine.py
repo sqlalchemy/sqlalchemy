@@ -533,6 +533,76 @@ class ParseConnectTest(fixtures.TestBase):
             False,
         )
 
+    def test_mssqlpython_disconnect(self):
+        dialect = mssqlpython.dialect()
+
+        class MockDBAPIError(Exception):
+            def __init__(self, driver_error, ddbc_error=""):
+                self.driver_error = driver_error
+                self.ddbc_error = ddbc_error
+                super().__init__(
+                    f"Driver Error: {driver_error}; "
+                    f"DDBC Error: {ddbc_error}"
+                )
+
+        class MockOperationalError(MockDBAPIError):
+            pass
+
+        class MockProgrammingError(MockDBAPIError):
+            pass
+
+        class MockInterfaceError(MockDBAPIError):
+            pass
+
+        dialect.dbapi = Mock(
+            Error=MockDBAPIError,
+            OperationalError=MockOperationalError,
+            ProgrammingError=MockProgrammingError,
+            InterfaceError=MockInterfaceError,
+        )
+
+        for driver_error in [
+            "Disconnect error",
+            "Client unable to establish connection",
+            "Connection not open",
+            "Connection failure during transaction",
+            "Communication link failure",
+            "An error occurred with SQLSTATE code: 08S02",
+            "An error occurred with SQLSTATE code: 10054",
+            "Timeout expired",
+            "Function sequence error",
+        ]:
+            eq_(
+                dialect.is_disconnect(
+                    MockOperationalError(driver_error), None, None
+                ),
+                True,
+            )
+
+        for error in [
+            MockProgrammingError(
+                "The cursor's connection has been closed."
+            ),
+            MockProgrammingError("Attempt to use a closed connection."),
+            MockProgrammingError(
+                "Driver Error: Operation cannot be performed"
+            ),
+            MockInterfaceError("Cannot rollback on a closed connection"),
+        ]:
+            eq_(dialect.is_disconnect(error, None, None), True)
+
+        eq_(
+            dialect.is_disconnect(
+                MockOperationalError(
+                    "Syntax error or access violation",
+                    "Communication link failure in query text",
+                ),
+                None,
+                None,
+            ),
+            False,
+        )
+
 
 class FastExecutemanyTest(fixtures.TestBase):
     __only_on__ = "mssql"
