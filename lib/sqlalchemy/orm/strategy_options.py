@@ -27,11 +27,11 @@ from typing import TypeVar
 from typing import Union
 
 from . import util as orm_util
-from ._typing import insp_is_aliased_class
 from ._typing import insp_is_attribute
 from ._typing import insp_is_mapper
 from ._typing import insp_is_mapper_property
 from .attributes import QueryableAttribute
+from .base import entity_str
 from .base import InspectionAttr
 from .interfaces import LoaderOption
 from .path_registry import _AbstractEntityRegistry
@@ -83,6 +83,10 @@ _WildcardKeyType = Literal["relationship", "column"]
 _StrategySpec = Dict[str, Any]
 _OptsType = Dict[str, Any]
 _AttrGroupType = Tuple[_AttrType, ...]
+
+# maps _StrategyKey tuples to the user-facing loader function name,
+# populated by the @_strategy_labels() decorator below
+_STRATEGY_FN_LABELS: Dict[Any, str] = {}
 
 
 class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
@@ -1019,7 +1023,7 @@ class Load(_AbstractLoad):
         self.additional_source_entities = ()
 
     def __str__(self) -> str:
-        return f"Load({self.path[0]})"
+        return f"Load({entity_str(self.path[0])})"
 
     @classmethod
     def _construct_for_existing_path(
@@ -1619,16 +1623,17 @@ class _LoadElement(
         if not found_entities:
             raise sa_exc.ArgumentError(
                 "Query has only expression-based entities; "
-                f"attribute loader options for {path[0]} can't "
-                "be applied here."
+                f"attribute loader option {self._to_option_method_string()} "
+                "can't be applied here."
             )
         else:
             raise sa_exc.ArgumentError(
-                f"Mapped class {path[0]} does not apply to any of the "
-                f"root entities in this query, e.g. "
+                f"Mapped class {entity_str(path[0])} referenced in "
+                f"option {self._to_option_method_string()} does not apply "
+                f"to any of the root entities in this query, e.g. "
                 f"""{
                     ", ".join(
-                        str(x.entity_zero)
+                        entity_str(x.entity_zero)
                         for x in mapper_entities if x.entity_zero
                     )}. Please """
                 "specify the full path "
@@ -1801,7 +1806,7 @@ class _LoadElement(
         ):
             raise sa_exc.ArgumentError(
                 f'Attribute "{self.path[1]}" does not link '
-                f'from element "{parent.path[-1]}".'
+                f'from element "{entity_str(parent.path[-1])}".'
             )
 
         return self._prepend_path(parent.path)
@@ -1871,8 +1876,33 @@ class _LoadElement(
             return replacement
 
         raise sa_exc.InvalidRequestError(
-            f"Loader strategies for {replacement.path} conflict"
+            f"Loader strategy replacement "
+            f"{replacement._to_option_method_string()} is in conflict "
+            f"with existing strategy {existing._to_option_method_string()}"
         )
+
+    def _to_option_method_string(self) -> str:
+        """Return a string representation of this :class:`._LoadElement`
+        as it would be written as a loader option method call, e.g.
+        ``"joinedload(User.orders)"``.
+
+        """
+        assert (
+            self.strategy is not None
+        ), "to_option_method_string() requires a strategy to be set"
+
+        for opt_key in self.local_opts:
+            fn = _STRATEGY_FN_LABELS.get((self.strategy, opt_key))
+            if fn:
+                break
+        else:
+            fn = _STRATEGY_FN_LABELS.get((self.strategy, None))
+
+        assert (
+            fn is not None
+        ), f"No _STRATEGY_FN_LABELS entry for strategy {self.strategy!r}"
+
+        return f"{fn}({self.path.path_string()})"
 
 
 class _AttributeStrategyLoad(_LoadElement):
@@ -2394,6 +2424,30 @@ def _parse_attr_argument(
     return insp, lead_entity, prop
 
 
+def _strategy_labels(
+    *strategy_keys: "Any",
+    discriminating_opt: Optional[str] = None,
+) -> Callable[[_FN], _FN]:
+    """Decorator that registers strategy key(s) -> function name in
+    ``_STRATEGY_FN_LABELS``.  Apply below ``@loader_unbound_fn`` so that
+    ``fn.__name__`` is still the original function name when the decorator
+    runs.
+
+    :param discriminating_opt: optional local_opts key that distinguishes
+     this function from another function with the same strategy key.
+     When set, the entry is stored under ``(strategy_key, opt_key)``
+     instead of ``(strategy_key, None)``, and ``__str__`` will use this
+     function name when that opt is present in ``local_opts``.
+    """
+
+    def decorator(fn: _FN) -> _FN:
+        for key in strategy_keys:
+            _STRATEGY_FN_LABELS[(key, discriminating_opt)] = fn.__name__
+        return fn
+
+    return decorator
+
+
 def loader_unbound_fn(fn: _FN) -> _FN:
     """decorator that applies docstrings between standalone loader functions
     and the loader methods on :class:`._AbstractLoad`.
@@ -2434,6 +2488,7 @@ def _expand_column_strategy_attrs(
 
 
 @loader_unbound_fn
+@_strategy_labels((("lazy", "joined"),), discriminating_opt="eager_from_alias")
 def contains_eager(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
     return _generate_from_keys(Load.contains_eager, keys, True, kw)
 
@@ -2448,16 +2503,19 @@ def load_only(*attrs: _AttrType, raiseload: bool = False) -> _AbstractLoad:
 
 
 @loader_unbound_fn
+@_strategy_labels((("lazy", "joined"),))
 def joinedload(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
     return _generate_from_keys(Load.joinedload, keys, False, kw)
 
 
 @loader_unbound_fn
+@_strategy_labels((("lazy", "subquery"),))
 def subqueryload(*keys: _AttrType) -> _AbstractLoad:
     return _generate_from_keys(Load.subqueryload, keys, False, {})
 
 
 @loader_unbound_fn
+@_strategy_labels((("lazy", "selectin"),))
 def selectinload(
     *keys: _AttrType,
     recursion_depth: Optional[int] = None,
@@ -2472,11 +2530,13 @@ def selectinload(
 
 
 @loader_unbound_fn
+@_strategy_labels((("lazy", "select"),))
 def lazyload(*keys: _AttrType) -> _AbstractLoad:
     return _generate_from_keys(Load.lazyload, keys, False, {})
 
 
 @loader_unbound_fn
+@_strategy_labels((("lazy", "immediate"),))
 def immediateload(
     *keys: _AttrType, recursion_depth: Optional[int] = None
 ) -> _AbstractLoad:
@@ -2486,11 +2546,13 @@ def immediateload(
 
 
 @loader_unbound_fn
+@_strategy_labels((("lazy", "noload"),))
 def noload(*keys: _AttrType) -> _AbstractLoad:
     return _generate_from_keys(Load.noload, keys, False, {})
 
 
 @loader_unbound_fn
+@_strategy_labels((("lazy", "raise"),), (("lazy", "raise_on_sql"),))
 def raiseload(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
     return _generate_from_keys(Load.raiseload, keys, False, kw)
 
@@ -2501,6 +2563,10 @@ def defaultload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
+@_strategy_labels(
+    (("deferred", True), ("instrument", True)),
+    (("deferred", True), ("instrument", True), ("raiseload", True)),
+)
 def defer(key: _AttrType, *, raiseload: bool = False) -> _AbstractLoad:
     if raiseload:
         kw = {"raiseload": raiseload}
@@ -2511,6 +2577,7 @@ def defer(key: _AttrType, *, raiseload: bool = False) -> _AbstractLoad:
 
 
 @loader_unbound_fn
+@_strategy_labels((("deferred", False), ("instrument", True)))
 def undefer(key: _AttrType) -> _AbstractLoad:
     return _generate_from_keys(Load.undefer, (key,), False, {})
 
@@ -2522,6 +2589,7 @@ def undefer_group(name: str) -> _AbstractLoad:
 
 
 @loader_unbound_fn
+@_strategy_labels((("query_expression", True),))
 def with_expression(
     key: _AttrType, expression: _ColumnExpressionArgument[Any]
 ) -> _AbstractLoad:
@@ -2531,6 +2599,7 @@ def with_expression(
 
 
 @loader_unbound_fn
+@_strategy_labels((("selectinload_polymorphic", True),))
 def selectin_polymorphic(
     base_cls: _EntityType[Any], classes: Iterable[Type[Any]]
 ) -> _AbstractLoad:
@@ -2541,22 +2610,23 @@ def selectin_polymorphic(
 def _raise_for_does_not_link(path, attrname, parent_entity):
     if len(path) > 1:
         path_is_of_type = path[-1].entity is not path[-2].mapper.class_
-        if insp_is_aliased_class(parent_entity):
-            parent_entity_str = str(parent_entity)
-        else:
-            parent_entity_str = parent_entity.class_.__name__
 
         raise sa_exc.ArgumentError(
             f'ORM mapped entity or attribute "{attrname}" does not '
-            f'link from relationship "{path[-2]}%s".%s'
+            f'link from relationship "{entity_str(path[-2])}%s".%s'
             % (
-                f".of_type({path[-1]})" if path_is_of_type else "",
+                (
+                    f".of_type({entity_str(path[-1])})"
+                    if path_is_of_type
+                    else ""
+                ),
                 (
                     "  Did you mean to use "
-                    f'"{path[-2]}'
-                    f'.of_type({parent_entity_str})" or "loadopt.options('
+                    f'"{entity_str(path[-2])}'
+                    f'.of_type({entity_str(parent_entity)})" or '
+                    '"loadopt.options('
                     f"selectin_polymorphic({path[-2].mapper.class_.__name__}, "
-                    f'[{parent_entity_str}]), ...)" ?'
+                    f'[{entity_str(parent_entity)}]), ...)" ?'
                     if not path_is_of_type
                     and not path[-1].is_aliased_class
                     and orm_util._entity_corresponds_to(
@@ -2569,5 +2639,5 @@ def _raise_for_does_not_link(path, attrname, parent_entity):
     else:
         raise sa_exc.ArgumentError(
             f'ORM mapped attribute "{attrname}" does not '
-            f'link mapped class "{path[-1]}"'
+            f'link mapped class "{entity_str(path[-1])}"'
         )

@@ -534,8 +534,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         q2 = q.options(undefer(Order.user_id))
         with expect_raises_message(
             sa.exc.InvalidRequestError,
-            r"Loader strategies for ORM Path\[Mapper\[Order\(orders\)\] -> "
-            r"Order.user_id\] conflict",
+            r"Loader strategy replacement undefer\(Order.user_id\) "
+            r"is in conflict with existing strategy defer\(Order.user_id\)",
         ):
             q2.all()
 
@@ -2116,7 +2116,8 @@ class InheritanceTest(_Polymorphic):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            r"Mapped class Mapper\[Manager\(managers\)\] does not apply to "
+            r"Mapped class Manager referenced in option "
+            r"undefer\(Manager.status\) does not apply to "
             "any of the root entities in this query, e.g. "
             r"with_polymorphic\(Person, \[Manager\]\).",
             s.query(wp).options(load_only(Manager.status))._compile_context,

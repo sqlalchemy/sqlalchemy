@@ -2422,6 +2422,13 @@ class Mapper(
             ),
         )
 
+    def path_string(self) -> str:
+        """Return a user-facing name for this :class:`_orm.Mapper`,
+        for use in a :class:`_orm.PathRegistry` string representation.
+
+        """
+        return self.class_.__name__
+
     def _is_orphan(self, state: InstanceState[_O]) -> bool:
         orphan_possible = False
         for mapper in self.iterate_to_root():

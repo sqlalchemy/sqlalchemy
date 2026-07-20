@@ -758,6 +758,13 @@ class MapperProperty(
             getattr(self, "key", "no key"),
         )
 
+    def path_string(self) -> str:
+        """Return a user-facing name for this :class:`.MapperProperty`,
+        for use in a :class:`_orm.PathRegistry` string representation.
+
+        """
+        return f"{self.parent.class_.__name__}.{self.key}"
+
 
 @inspection._self_inspects
 class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):

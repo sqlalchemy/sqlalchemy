@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 12398
+
+    Improved error messages raised when ORM loader strategy options cannot be
+    applied to a query.  Messages now render the offending option in a
+    user-friendly form such as ``joinedload(User.orders)`` rather than exposing
+    internal class and path representations, and the "does not apply to root
+    entities" message now includes the option that triggered the error.  The
+    same user-friendly rendering is also applied to the "conflicting loader
+    strategy" message and to the ``of_type()`` representation in "does not
+    link" messages.  Originating pull request courtesy Jan Vollmer.
