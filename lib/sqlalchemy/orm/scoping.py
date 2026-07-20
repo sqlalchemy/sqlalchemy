@@ -310,7 +310,7 @@ class scoped_session(Generic[_S]):
             def __get__(s, instance: Any, owner: Type[_O]) -> Query[_O]:
                 if query_cls:
                     # custom query class
-                    return query_cls(owner, session=self.registry())  # type: ignore  # noqa: E501
+                    return query_cls(owner, session=self.registry())  # type: ignore[return-value]  # noqa: E501
                 else:
                     # session's configured query class
                     return self.registry().query(owner)

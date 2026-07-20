@@ -580,7 +580,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             return pool.SingletonThreadPool
 
     def _get_server_version_info(self, connection: Any) -> VersionInfoType:
-        return self.dbapi.sqlite_version_info  # type: ignore
+        return self.dbapi.sqlite_version_info  # type: ignore[no-any-return, union-attr]  # noqa: E501
 
     _isolation_lookup = SQLiteDialect._isolation_lookup.union(
         {

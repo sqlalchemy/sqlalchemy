@@ -376,7 +376,7 @@ class BaseResultInternal(Generic[_R]):
                 made_rows, [], uniques, strategy
             )
         else:
-            interim_rows = made_rows  # type: ignore
+            interim_rows = made_rows  # type: ignore[assignment]
 
         if post_creational_filter is not None:
             interim_rows = [
@@ -411,7 +411,7 @@ class BaseResultInternal(Generic[_R]):
                         uniques.add(hashed)
                         if post_creational_filter is not None:
                             obj = post_creational_filter(obj)
-                        return obj  # type: ignore
+                        return obj  # type: ignore[return-value]
 
         else:
 
@@ -425,7 +425,7 @@ class BaseResultInternal(Generic[_R]):
                     )
                     if post_creational_filter is not None:
                         interim_row = post_creational_filter(interim_row)
-                    return interim_row  # type: ignore
+                    return interim_row  # type: ignore[return-value]
 
         return onerow
 
@@ -612,9 +612,9 @@ class BaseResultInternal(Generic[_R]):
                 row = post_creational_filter(row)
 
         if scalar and make_row is not None:
-            return row[0]  # type: ignore
+            return row[0]  # type: ignore[no-any-return]
         else:
-            return row  # type: ignore
+            return row  # type: ignore[return-value]
 
     def _iter_impl(self) -> Iterator[_R]:
         return self._iterator_getter()

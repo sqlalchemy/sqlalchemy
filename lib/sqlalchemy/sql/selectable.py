@@ -674,7 +674,7 @@ class FromClause(
 
         At runtime returns self unchanged, without performing any validation.
         """
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     @overload
     def select(
@@ -963,8 +963,8 @@ class FromClause(
             # assigning these three collections separately is not itself
             # atomic, but greatly reduces the surface for problems
             self._columns = _columns
-            self.primary_key = primary_key  # type: ignore
-            self.foreign_keys = foreign_keys  # type: ignore
+            self.primary_key = primary_key  # type: ignore[misc]
+            self.foreign_keys = foreign_keys  # type: ignore[assignment, misc]
 
     @util.ro_non_memoized_property
     def entity_namespace(self) -> _EntityNamespace:
@@ -1392,10 +1392,10 @@ class Join(roles.DMLTableRole, FromClause[_KeyColCC_co]):
             )
         )
         columns._populate_separate_keys(
-            (col._tq_key_label, col) for col in _columns  # type: ignore
+            (col._tq_key_label, col) for col in _columns  # type: ignore[misc]
         )
         foreign_keys.update(
-            itertools.chain(*[col.foreign_keys for col in _columns])  # type: ignore  # noqa: E501
+            itertools.chain(*[col.foreign_keys for col in _columns])  # type: ignore[arg-type]  # noqa: E501
         )
 
     def _copy_internals(
@@ -1811,7 +1811,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause[_KeyColCC_co]):
 
     @util.ro_non_memoized_property
     def implicit_returning(self) -> bool:
-        return self.element.implicit_returning  # type: ignore
+        return self.element.implicit_returning  # type: ignore[attr-defined, no-any-return]  # noqa: E501
 
     @property
     def original(self) -> ReturnsRows:
@@ -3216,8 +3216,8 @@ class TableClause(
         super().__init__()
         self.name = name
         self._columns = DedupeColumnCollection()  # type: ignore[unused-ignore]
-        self.primary_key = ColumnSet()  # type: ignore
-        self.foreign_keys = set()  # type: ignore
+        self.primary_key = ColumnSet()  # type: ignore[misc]
+        self.foreign_keys = set()  # type: ignore[misc]
         for c in columns:
             self.append_column(c)
 
@@ -5130,7 +5130,7 @@ class SelectState(util.MemoizedSlots, CompileState):
             if c._allow_label_resolve
         }
         only_froms: Dict[str, ColumnElement[Any]] = {
-            c.key: c  # type: ignore
+            c.key: c  # type: ignore[misc]
             for c in _select_iterables(self.froms)
             if c._allow_label_resolve
         }
@@ -6455,7 +6455,7 @@ class Select(
         self._assert_no_memoizations()
 
         if maintain_column_froms:
-            self.select_from.non_generative(  # type: ignore
+            self.select_from.non_generative(  # type: ignore[attr-defined]
                 self, *self.columns_clause_froms
             )
 
@@ -7513,14 +7513,14 @@ class AnnotatedFromClause(Annotated):
         # cases. in other cases such as plain visitors.cloned_traverse(), we
         # expect this to happen. see issue #12915
         if not _annotations_traversal:
-            ee = self._Annotated__element  # type: ignore
+            ee = self._Annotated__element  # type: ignore[attr-defined]
             ee._copy_internals(**kw)
 
         if ind_cols_on_fromclause:
             # passed from annotations._deep_annotate().  See that function
             # for notes
-            ee = self._Annotated__element  # type: ignore
-            self.c = ee.__class__.c.fget(self)  # type: ignore
+            ee = self._Annotated__element  # type: ignore[attr-defined]
+            self.c = ee.__class__.c.fget(self)  # type: ignore[misc]
 
     @util.ro_memoized_property
     def c(self) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
@@ -7538,5 +7538,5 @@ class AnnotatedFromClause(Annotated):
         See test_selectable->test_annotated_corresponding_column
 
         """
-        ee = self._Annotated__element  # type: ignore
-        return ee.c  # type: ignore
+        ee = self._Annotated__element  # type: ignore[attr-defined]
+        return ee.c  # type: ignore[no-any-return]

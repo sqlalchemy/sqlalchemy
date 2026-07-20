@@ -258,7 +258,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             except (AttributeError, ImportError):
                 return None
             else:
-                return CLIENT_FLAGS.FOUND_ROWS  # type: ignore
+                return CLIENT_FLAGS.FOUND_ROWS  # type: ignore[no-any-return]
         else:
             return None
 

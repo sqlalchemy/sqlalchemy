@@ -163,7 +163,7 @@ def de_stringify_annotation(
             # will always be Type.
             # the element here will be either ForwardRef or
             # Optional[ForwardRef]
-            return original_annotation  # type: ignore
+            return original_annotation  # type: ignore[return-value]
         else:
             _already_seen.add(annotation)
 
@@ -182,7 +182,7 @@ def de_stringify_annotation(
 
         return _copy_generic_annotation_with(annotation, elements)
 
-    return annotation  # type: ignore
+    return annotation  # type: ignore[return-value]
 
 
 def fixup_container_fwd_refs(
@@ -215,7 +215,7 @@ def fixup_container_fwd_refs(
         )
     ):
         # compat with py3.10 and earlier
-        return get_origin(type_).__class_getitem__(  # type: ignore
+        return get_origin(type_).__class_getitem__(  # type: ignore[no-any-return, union-attr]  # noqa: E501
             tuple(
                 [
                     ForwardRef(elem) if isinstance(elem, str) else elem
@@ -231,10 +231,10 @@ def _copy_generic_annotation_with(
 ) -> Type[_T]:
     if hasattr(annotation, "copy_with"):
         # List, Dict, etc. real generics
-        return annotation.copy_with(elements)  # type: ignore
+        return annotation.copy_with(elements)  # type: ignore[no-any-return]
     else:
         # Python builtins list, dict, etc.
-        return annotation.__origin__[elements]  # type: ignore
+        return annotation.__origin__[elements]  # type: ignore[no-any-return]
 
 
 def eval_expression(
@@ -534,7 +534,7 @@ def _de_optionalize_fwd_ref_union_types(
 def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
     """Make a Union type."""
 
-    return Union[types]  # type: ignore
+    return Union[types]  # type: ignore[return-value]
 
 
 def includes_none(type_: Any) -> bool:

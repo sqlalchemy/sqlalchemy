@@ -158,7 +158,7 @@ class PathRegistry(HasCacheKey):
         return self.path
 
     def odd_element(self, index: int) -> _InternalEntityType[Any]:
-        return self.path[index]  # type: ignore
+        return self.path[index]  # type: ignore[return-value]
 
     def set(self, attributes: Dict[Any, Any], key: Any, value: Any) -> None:
         log.debug("set '%s' on path '%s' to '%s'", key, self, value)
@@ -339,7 +339,7 @@ class PathRegistry(HasCacheKey):
             return prev[next_]
 
         # can't quite get mypy to appreciate this one :)
-        return reduce(_red, raw, cls.root)  # type: ignore
+        return reduce(_red, raw, cls.root)  # type: ignore[arg-type]
 
     def __add__(self, other: PathRegistry) -> PathRegistry:
         def _red(prev: PathRegistry, next_: _PathElementType) -> PathRegistry:
@@ -427,7 +427,7 @@ class RootRegistry(_CreatesToken):
             return _TokenRegistry(self, PathToken._intern[entity])
         else:
             try:
-                return entity._path_registry  # type: ignore
+                return entity._path_registry  # type: ignore[no-any-return]
             except AttributeError:
                 raise IndexError(
                     f"invalid argument for RootRegistry.__getitem__: {entity}"
@@ -590,14 +590,14 @@ class _PropRegistry(PathRegistry):
             parent.mapper.inherits
         )
 
-        if not insp.is_aliased_class or insp._use_mapper_path:  # type: ignore
+        if not insp.is_aliased_class or insp._use_mapper_path:  # type: ignore[union-attr]  # noqa: E501
             parent = natural_parent = parent.parent[prop.parent]
         elif (
             insp.is_aliased_class
             and insp.with_polymorphic_mappers
             and prop.parent in insp.with_polymorphic_mappers
         ):
-            subclass_entity: _InternalEntityType[Any] = parent[-1]._entity_for_mapper(prop.parent)  # type: ignore  # noqa: E501
+            subclass_entity: _InternalEntityType[Any] = parent[-1]._entity_for_mapper(prop.parent)  # type: ignore[union-attr]  # noqa: E501
             parent = parent.parent[subclass_entity]
 
             # when building a path where with_polymorphic() is in use,
@@ -675,7 +675,7 @@ class _PropRegistry(PathRegistry):
         if earliest is None:
             return self
         else:
-            return self.coerce(self.path[0 : -(earliest + 1)])  # type: ignore
+            return self.coerce(self.path[0 : -(earliest + 1)])  # type: ignore[return-value]  # noqa: E501
 
     @property
     def entity_path(self) -> _AbstractEntityRegistry:
@@ -746,8 +746,8 @@ class _AbstractEntityRegistry(_CreatesToken):
             parent_natural_entity = parent.natural_path[-1]
 
             if entity.mapper.isa(
-                parent_natural_entity.mapper  # type: ignore
-            ) or parent_natural_entity.mapper.isa(  # type: ignore
+                parent_natural_entity.mapper  # type: ignore[union-attr]
+            ) or parent_natural_entity.mapper.isa(  # type: ignore[union-attr]
                 entity.mapper
             ):
                 # when the entity mapper and parent mapper are in an
@@ -761,7 +761,7 @@ class _AbstractEntityRegistry(_CreatesToken):
                 self.natural_path = parent.natural_path + (entity.mapper,)
             else:
                 self.natural_path = parent.natural_path + (
-                    parent_natural_entity.entity,  # type: ignore
+                    parent_natural_entity.entity,  # type: ignore[operator, union-attr]  # noqa: E501
                 )
         # it seems to make sense that since these paths get mixed up
         # with statements that are cached or not, we should make

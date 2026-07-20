@@ -104,7 +104,7 @@ class AsyncAdapt_aiomysql_connection(
         await_(self._connection.autocommit(value))
 
     def get_autocommit(self) -> bool:
-        return self._connection.get_autocommit()  # type: ignore
+        return self._connection.get_autocommit()  # type: ignore[no-any-return]
 
     def close(self) -> None:
         await_(self._connection.ensure_closed())
@@ -238,7 +238,7 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
             return "not connected" in str_e
 
     def _found_rows_client_flag(self) -> int:
-        from pymysql.constants import CLIENT  # type: ignore
+        from pymysql.constants import CLIENT  # type: ignore[import-untyped]
 
         return CLIENT.FOUND_ROWS  # type: ignore[no-any-return]
 

@@ -609,7 +609,7 @@ class _TableViaSelect(TableCreateDDL, ExecutableDDLElement):
         self._gen_table()
 
     @property
-    def element(self):  # type: ignore
+    def element(self):  # type: ignore[override]
         return self.table
 
     def to_metadata(self, metadata: MetaData, table: Table) -> Self:
@@ -1777,7 +1777,7 @@ def sort_tables(
                 return None
 
     else:
-        _skip_fn = None  # type: ignore
+        _skip_fn = None  # type: ignore[assignment]
 
     return [
         t
