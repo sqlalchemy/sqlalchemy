@@ -385,7 +385,7 @@ def collate(
 
     """
     if isinstance(expression, operators.ColumnOperators):
-        return expression.collate(collation)  # type: ignore
+        return expression.collate(collation)  # type: ignore[return-value]
     else:
         return CollationClause._create_collation_expression(
             expression, collation

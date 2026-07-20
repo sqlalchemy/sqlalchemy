@@ -168,7 +168,7 @@ class HSTORE(
             )
 
         def _setup_getitem(self, index: Any) -> Any:
-            return GETITEM, index, self.type.text_type  # type: ignore
+            return GETITEM, index, self.type.text_type  # type: ignore[attr-defined]  # noqa: E501
 
         def defined(self, key: Any) -> Any:
             """Boolean expression.  Test for presence of a non-NULL value for

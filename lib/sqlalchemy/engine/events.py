@@ -163,7 +163,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
             if identifier == "before_execute":
                 orig_fn = fn
 
-                def wrap_before_execute(  # type: ignore
+                def wrap_before_execute(  # type: ignore[no-untyped-def]
                     conn, clauseelement, multiparams, params, execution_options
                 ):
                     orig_fn(
@@ -179,7 +179,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
             elif identifier == "before_cursor_execute":
                 orig_fn = fn
 
-                def wrap_before_cursor_execute(  # type: ignore
+                def wrap_before_cursor_execute(  # type: ignore[no-untyped-def]
                     conn, cursor, statement, parameters, context, executemany
                 ):
                     orig_fn(

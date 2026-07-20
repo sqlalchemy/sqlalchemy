@@ -1562,7 +1562,7 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                 continue
             elif isinstance(value, Column):
                 _undefer_column_name(
-                    k, self.column_copies.get(value, value)  # type: ignore
+                    k, self.column_copies.get(value, value)  # type: ignore[arg-type]  # noqa: E501
                 )
             else:
                 if isinstance(value, _IntrospectsAnnotations):
@@ -1756,7 +1756,7 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
             if hasattr(cls, "__table_cls__"):
                 table_cls = cast(
                     Type[Table],
-                    util.unbound_method_to_callable(cls.__table_cls__),  # type: ignore  # noqa: E501
+                    util.unbound_method_to_callable(cls.__table_cls__),  # type: ignore[no-untyped-call]  # noqa: E501
                 )
             else:
                 table_cls = Table
@@ -2009,7 +2009,7 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
             mapper_cls = cast(
                 "Type[Mapper[Any]]",
                 util.unbound_method_to_callable(
-                    self.cls.__mapper_cls__  # type: ignore
+                    self.cls.__mapper_cls__  # type: ignore[no-untyped-call]
                 ),
             )
         else:
@@ -2137,7 +2137,7 @@ class _DeferredDeclarativeConfig(_DeclarativeMapperConfig):
 
     @property
     def cls(self) -> Type[Any]:
-        return self._cls()  # type: ignore
+        return self._cls()  # type: ignore[return-value]
 
     @cls.setter
     def cls(self, class_: Type[Any]) -> None:
