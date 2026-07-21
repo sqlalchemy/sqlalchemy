@@ -237,11 +237,6 @@ class String(Concatenable, TypeEngine[str]):
             >>> print(select(cast("some string", String(collation="utf8"))))
             {printsql}SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
-          For backends that support qualified collation names, a
-          :class:`.quoted_name` with ``quote=False`` may be used to render the
-          qualified name without applying quotes to the separator.  See
-          :ref:`postgresql_collation` for a PostgreSQL example.
-
           .. note::
 
             In most cases, the :class:`.Unicode` or :class:`.UnicodeText`
