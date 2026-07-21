@@ -55,6 +55,7 @@ from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.dialects.postgresql import TSRANGE
+from sqlalchemy.dialects.postgresql.base import _CompilerSequence
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.postgresql.ranges import MultiRange
@@ -115,6 +116,53 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateSequence(s),
             f"CREATE SEQUENCE s1 {text}".strip(),
             dialect=postgresql.dialect(),
+        )
+
+    def test_nextval_quote_escaping(self):
+        """test for #13429"""
+
+        # a single quote in a sequence or schema name must be escaped so it
+        # can't terminate the nextval() string literal early
+        self.assert_compile(
+            Sequence("some'seq").next_value(),
+            "nextval('\"some''seq\"')",
+            dialect=postgresql.dialect(),
+        )
+        self.assert_compile(
+            Sequence("some'seq", schema="my'schema").next_value(),
+            "nextval('\"my''schema\".\"some''seq\"')",
+            dialect=postgresql.dialect(),
+        )
+
+    @testing.combinations(
+        ("my_seq", None, "'my_seq'"),
+        ("my_seq", "my_schema", "'my_schema.my_seq'"),
+        ("My_Seq", "Some_Schema", '\'"Some_Schema"."My_Seq"\''),
+        ("some'seq", "my'schema", "'\"my''schema\".\"some''seq\"'"),
+    )
+    def test_format_sequence_string_literal(self, name, schema_, expected):
+        """test for #13429"""
+
+        preparer = postgresql.dialect().identifier_preparer
+        eq_(
+            preparer._format_sequence_string_literal(
+                _CompilerSequence(name, schema_)
+            ),
+            expected,
+        )
+
+    def test_compiler_sequence_ignores_schema_translate(self):
+        """test for #13429"""
+
+        # the schema is resolved by the execution context before it reaches
+        # _CompilerSequence, so it must not be translated a second time
+        preparer = postgresql.dialect().identifier_preparer
+        preparer = preparer._with_schema_translate({"bar": "foo"})
+        eq_(
+            preparer._format_sequence_string_literal(
+                _CompilerSequence("my_seq", "bar")
+            ),
+            "'bar.my_seq'",
         )
 
 

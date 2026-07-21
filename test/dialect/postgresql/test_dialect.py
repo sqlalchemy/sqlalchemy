@@ -15,6 +15,7 @@ from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import extract
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import MetaData
@@ -40,6 +41,7 @@ from sqlalchemy.dialects.postgresql.psycopg2 import (
     EXECUTEMANY_VALUES_PLUS_BATCH,
 )
 from sqlalchemy.engine import url
+from sqlalchemy.schema import CreateSequence
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
@@ -1357,13 +1359,26 @@ $$ LANGUAGE plpgsql;
             ).scalar()
             eq_(r, exp)
 
-    @testing.provide_metadata
-    def test_checksfor_sequence(self, connection):
-        meta1 = self.metadata
-        seq = Sequence("fooseq")
-        t = Table("mytable", meta1, Column("col1", Integer, seq))
+    @testing.combinations(
+        ("fooseq", None),
+        ("foo'seq", None),
+        ("fooseq", config.test_schema),
+        ("foo'seq", config.test_schema),
+        argnames="seqname,schema",
+    )
+    def test_checksfor_sequence(self, connection, metadata, seqname, schema):
+        """an old sequence test updated with new test names for #13429"""
+        meta1 = metadata
+        seq = Sequence(seqname, schema=schema)
+        t = Table(
+            "mytable", meta1, Column("col1", Integer, seq), schema=schema
+        )
         seq.drop(connection)
-        connection.execute(text("CREATE SEQUENCE fooseq"))
+        assert seqname not in inspect(connection).get_sequence_names(
+            schema=schema
+        )
+        connection.execute(CreateSequence(seq))
+        assert seqname in inspect(connection).get_sequence_names(schema=schema)
         t.create(connection, checkfirst=True)
 
     @testing.combinations(True, False, argnames="implicit_returning")
