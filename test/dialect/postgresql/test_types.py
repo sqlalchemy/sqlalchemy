@@ -673,6 +673,7 @@ class NamedTypeTest(
                             }
                         ],
                         "collation": "default",
+                        "collation_schema": None,
                     }
                 ],
             )

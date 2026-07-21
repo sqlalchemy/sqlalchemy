@@ -516,6 +516,28 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         connection.exec_driver_sql('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
 
     @testing.fixture
+    def some_collation(self, connection, some_schema):
+        connection.exec_driver_sql(
+            'CREATE COLLATION "SomeSchema"."SomeCollation" '
+            "(LOCALE = 'C.utf8')"
+        )
+        yield
+        connection.exec_driver_sql(
+            'DROP COLLATION "SomeSchema"."SomeCollation"'
+        )
+
+    @testing.fixture
+    def schema_collation_domain(self, connection, some_collation):
+        connection.exec_driver_sql(
+            'CREATE DOMAIN "SomeSchema".domain_with_collation AS TEXT '
+            'COLLATE "SomeSchema"."SomeCollation"'
+        )
+        yield
+        connection.exec_driver_sql(
+            'DROP DOMAIN "SomeSchema".domain_with_collation'
+        )
+
+    @testing.fixture
     def int_domain(self, connection):
         connection.exec_driver_sql(
             "CREATE DOMAIN my_int AS int CONSTRAINT b_my_int_one CHECK "
@@ -707,6 +729,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         int_domain,
         testdomain,
         testdomain_schema,
+        schema_collation_domain,
     ):
         return {
             "public": [
@@ -719,6 +742,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -729,6 +753,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -739,6 +764,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -749,6 +775,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -764,6 +791,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                         {"check": "VALUE <> 22", "name": "my_int_check"},
                     ],
                     "collation": None,
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -774,6 +802,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": None,
                     "constraints": [],
                     "collation": "default",
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -791,6 +820,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                         }
                     ],
                     "collation": "C",
+                    "collation_schema": None,
                 },
                 {
                     "visible": True,
@@ -801,6 +831,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": "42",
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 },
             ],
             "test_schema": [
@@ -813,6 +844,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": "0",
                     "constraints": [],
                     "collation": None,
+                    "collation_schema": None,
                 }
             ],
             "SomeSchema": [
@@ -825,7 +857,19 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "default": "0",
                     "constraints": [],
                     "collation": None,
-                }
+                    "collation_schema": None,
+                },
+                {
+                    "visible": False,
+                    "name": "domain_with_collation",
+                    "schema": "SomeSchema",
+                    "nullable": True,
+                    "type": "text",
+                    "default": None,
+                    "constraints": [],
+                    "collation": "SomeCollation",
+                    "collation_schema": "SomeSchema",
+                },
             ],
         }
 
@@ -1278,6 +1322,57 @@ class ReflectionTest(
             if c.name == "fktable_tid_fk_id_del_set_default_fkey"
         )
         eq_(fkey_set_default.ondelete, "SET DEFAULT (fk_id_del_set_default)")
+
+    def test_column_collation_reflection_with_schema(
+        self, connection, metadata
+    ):
+        """test #6511
+
+        schema-qualified collations are a PostgreSQL-only concept; this
+        test lives here rather than in the cross-dialect reflection suite
+        since no other backend supports the feature.
+
+        """
+        connection.exec_driver_sql('CREATE SCHEMA IF NOT EXISTS "SomeSchema"')
+        connection.exec_driver_sql(
+            'CREATE COLLATION IF NOT EXISTS "SomeSchema"."SomeCollation" '
+            "(LOCALE = 'C.utf8')"
+        )
+        Table(
+            "t",
+            metadata,
+            Column(
+                "collated",
+                String(
+                    collation="SomeCollation", collation_schema="SomeSchema"
+                ),
+            ),
+            Column("not_collated", String()),
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+        t2 = Table("t", m2, autoload_with=connection)
+
+        eq_(
+            (
+                t2.c.collated.type.collation,
+                t2.c.collated.type.collation_schema,
+            ),
+            ("SomeCollation", "SomeSchema"),
+        )
+        is_(t2.c.not_collated.type.collation, None)
+
+        insp = inspect(connection)
+        collated, not_collated = insp.get_columns("t")
+        eq_(
+            (
+                collated["type"].collation,
+                collated["type"].collation_schema,
+            ),
+            ("SomeCollation", "SomeSchema"),
+        )
+        is_(not_collated["type"].collation, None)
 
     def test_pg_weirdchar_reflection(self, metadata, connection):
         meta1 = metadata
@@ -3004,10 +3099,13 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             self.domains = domains
 
     class CustomType:
-        def __init__(self, arg1=None, arg2=None, collation=None):
+        def __init__(
+            self, arg1=None, arg2=None, collation=None, collation_schema=None
+        ):
             self.arg1 = arg1
             self.arg2 = arg2
             self.collation = collation
+            self.collation_schema = collation_schema
 
     ischema_names = None
 
@@ -3027,13 +3125,17 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             ("my_custom_type(ARG1)", ("ARG1", None)),
             ("my_custom_type(ARG1, ARG2)", ("ARG1", "ARG2")),
         ]:
+            if sch == "my_custom_type()":
+                collation = {"name": "cc", "schema": "myschema"}
+            else:
+                collation = None
             row_dict = {
                 "name": "colname",
                 "table_name": "tblname",
                 "format_type": sch,
                 "default": None,
                 "not_null": False,
-                "collation": "cc" if sch == "my_custom_type()" else None,
+                "collation": collation,
                 "comment": None,
                 "generated": "",
                 "identity_options": None,
@@ -3050,8 +3152,10 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             eq_(column_info["type"].arg2, args[1])
             if sch == "my_custom_type()":
                 eq_(column_info["type"].collation, "cc")
+                eq_(column_info["type"].collation_schema, "myschema")
             else:
                 eq_(column_info["type"].collation, None)
+                eq_(column_info["type"].collation_schema, None)
 
     def test_clslevel(self):
         postgresql.PGDialect.ischema_names["my_custom_type"] = self.CustomType
