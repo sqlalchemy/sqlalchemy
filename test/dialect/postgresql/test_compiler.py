@@ -160,7 +160,7 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
         # the schema is resolved by the execution context before it reaches
         # _CompilerSequence, so it must not be translated a second time
         preparer = postgresql.dialect().identifier_preparer
-        preparer = preparer._with_schema_translate({"foo": "bar"})
+        preparer = preparer._with_schema_translate({"bar": "foo"})
         eq_(
             preparer.format_sequence_string_literal(
                 _CompilerSequence("my_seq", "bar")
