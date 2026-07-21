@@ -3492,7 +3492,7 @@ class ExpressionTest(
         (lambda c1: c1.like("qpr"), "q LIKE :q_1->BINDCAST->[TEXT]"),
         (
             lambda c2: c2.like("qpr"),
-            'q LIKE :q_1->BINDCAST->[TEXT COLLATE "xyz"]',
+            "q LIKE :q_1->BINDCAST->[TEXT COLLATE xyz]",
         ),
         (
             # new behavior, a type with no collation passed into collate()
@@ -3500,11 +3500,11 @@ class ExpressionTest(
             # on the right side bind-cast. previous to #11576 we'd only
             # get TEXT for the bindcast.
             lambda c1: collate(c1, "abc").like("qpr"),
-            '(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE "abc"]',
+            "(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE abc]",
         ),
         (
             lambda c2: collate(c2, "abc").like("qpr"),
-            '(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE "abc"]',
+            "(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE abc]",
         ),
         argnames="testcase,expected",
     )
@@ -3549,7 +3549,7 @@ class ExpressionTest(
         )
         self.assert_compile(
             c2.like("qpr"),
-            'q LIKE :q_1->BINDCAST->[TEXT COLLATE "xyz"]',
+            "q LIKE :q_1->BINDCAST->[TEXT COLLATE xyz]",
             dialect=renders_bind_cast,
         )
 
@@ -4011,6 +4011,31 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_string_collation(self):
         self.assert_compile(
             String(50, collation="FOO"), 'VARCHAR(50) COLLATE "FOO"'
+        )
+
+    def test_string_collation_lowercase_unquoted(self):
+        """simple lowercase collation names no longer render with
+        unconditional quoting now that this renders via
+        format_collation(). #9693"""
+        self.assert_compile(
+            String(50, collation="foo"), "VARCHAR(50) COLLATE foo"
+        )
+
+    def test_string_collation_schema(self):
+        self.assert_compile(
+            String(50, collation="foo", collation_schema="MySchema"),
+            'VARCHAR(50) COLLATE "MySchema".foo',
+            dialect="postgresql",
+        )
+
+    def test_string_collation_schema_requires_collation(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            "the 'collation_schema' parameter of String requires "
+            "the 'collation' parameter to also be present",
+            String,
+            50,
+            collation_schema="myschema",
         )
 
     def test_char_plain(self):

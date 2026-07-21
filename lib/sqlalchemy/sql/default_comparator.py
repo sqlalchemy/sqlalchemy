@@ -364,9 +364,15 @@ def _pow_impl(
 
 
 def _collate_impl(
-    expr: ColumnElement[str], op: OperatorType, collation: str, **kw: Any
+    expr: ColumnElement[str],
+    op: OperatorType,
+    collation: str,
+    collation_schema: Optional[str] = None,
+    **kw: Any,
 ) -> ColumnElement[str]:
-    return CollationClause._create_collation_expression(expr, collation)
+    return CollationClause._create_collation_expression(
+        expr, collation, collation_schema
+    )
 
 
 def _regexp_match_impl(

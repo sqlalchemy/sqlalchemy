@@ -1113,7 +1113,9 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
 
         def nullslast(self) -> UnaryExpression[_T_co]: ...
 
-        def collate(self, collation: str) -> CollationClause: ...
+        def collate(
+            self, collation: str, collation_schema: Optional[str] = None
+        ) -> CollationClause: ...
 
         def between(
             self, cleft: Any, cright: Any, symmetric: bool = False
@@ -5627,13 +5629,17 @@ class CollationClause(ColumnElement[str]):
     __visit_name__ = "collation"
 
     _traverse_internals: _TraverseInternalsType = [
-        ("collation", InternalTraversal.dp_string)
+        ("collation", InternalTraversal.dp_string),
+        ("collation_schema", InternalTraversal.dp_string),
     ]
 
     @classmethod
     @util.preload_module("sqlalchemy.sql.sqltypes")
     def _create_collation_expression(
-        cls, expression: _ColumnExpressionArgument[str], collation: str
+        cls,
+        expression: _ColumnExpressionArgument[str],
+        collation: str,
+        collation_schema: Optional[str] = None,
     ) -> BinaryExpression[str]:
 
         sqltypes = util.preloaded.sql_sqltypes
@@ -5641,19 +5647,22 @@ class CollationClause(ColumnElement[str]):
         expr = coercions.expect(roles.ExpressionElementRole[str], expression)
 
         if expr.type._type_affinity is sqltypes.String:
-            collate_type = expr.type._with_collation(collation)
+            collate_type = expr.type._with_collation(
+                collation, collation_schema
+            )
         else:
             collate_type = expr.type
 
         return BinaryExpression(
             expr,
-            CollationClause(collation),
+            CollationClause(collation, collation_schema),
             operators.collate,
             type_=collate_type,
         )
 
-    def __init__(self, collation):
+    def __init__(self, collation, collation_schema=None):
         self.collation = collation
+        self.collation_schema = collation_schema
 
 
 class _IdentifiedClause(Executable, ClauseElement):

@@ -967,6 +967,12 @@ class CoreFixtures:
             column("z", MyType1()) == column("x", MyType2()),
             column("z", MyType1()) == column("x", MyType3("x")),
             column("z", MyType1()) == column("x", MyType3("y")),
+            column("z", String(50, collation="x"))
+            == column("x", String(50, collation="x")),
+            column("z", String(50, collation="x"))
+            == column("x", String(50, collation="x", collation_schema="a")),
+            column("z", String(50, collation="x", collation_schema="a"))
+            == column("x", String(50, collation="x", collation_schema="b")),
         )
     ]
 

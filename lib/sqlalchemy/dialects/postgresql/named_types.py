@@ -15,6 +15,7 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import Union
 
+from ... import exc
 from ... import schema
 from ... import util
 from ...sql import coercions
@@ -443,6 +444,7 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         data_type: _TypeEngineArgument[Any],
         *,
         collation: Optional[str] = None,
+        collation_schema: Optional[str] = None,
         default: Union[elements.TextClause, str, None] = None,
         constraint_name: Optional[str] = None,
         not_null: Optional[bool] = None,
@@ -460,6 +462,12 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
           If no collation is specified, the underlying data type's default
           collation is used. The underlying type must be collatable if
           ``collation`` is specified.
+        :param collation_schema: Optional, the name of the schema in which
+          :paramref:`.DOMAIN.collation` is defined.  Requires that
+          :paramref:`.DOMAIN.collation` is also present.
+
+          .. versionadded:: 2.1
+
         :param default: The DEFAULT clause specifies a default value for
           columns of the domain data type. The default should be a string
           or a :func:`_expression.text` value.
@@ -489,6 +497,12 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         self.data_type = type_api.to_instance(data_type)
         self.default = default
         self.collation = collation
+        if collation_schema is not None and collation is None:
+            raise exc.ArgumentError(
+                "the 'collation_schema' parameter of DOMAIN requires "
+                "the 'collation' parameter to also be present"
+            )
+        self.collation_schema = collation_schema
         self.constraint_name = constraint_name
         self.not_null = bool(not_null)
         if check is not None:
