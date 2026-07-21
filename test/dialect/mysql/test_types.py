@@ -202,6 +202,26 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(eval("mysql.%r" % type_inst), res)
 
     @testing.combinations(
+        (mysql.DOUBLE, {"precision": 17}),
+        (mysql.DOUBLE, {"scale": 7}),
+        (mysql.REAL, {"precision": 17}),
+        (mysql.REAL, {"scale": 7}),
+        argnames="type_, kw",
+    )
+    def test_double_real_requires_both_precision_and_scale(self, type_, kw):
+        """test #11132"""
+        assert_raises_message(
+            exc.ArgumentError,
+            r"You must specify both precision and scale or omit both "
+            r"altogether\. The DOUBLE\(M,D\), REAL\(M,D\) and FLOAT\(M,D\) "
+            r"syntaxes are non-standard MySQL extensions which are "
+            r"deprecated by MySQL; omitting precision and scale is "
+            r"recommended\.",
+            type_,
+            **kw,
+        )
+
+    @testing.combinations(
         (mysql.MSChar, [1], {}, "CHAR(1)"),
         (mysql.NCHAR, [1], {}, "NATIONAL CHAR(1)"),
         (mysql.MSChar, [1], {"binary": True}, "CHAR(1) BINARY"),
