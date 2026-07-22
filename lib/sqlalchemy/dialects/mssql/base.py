@@ -1561,7 +1561,7 @@ class MSUUid(sqltypes.Uuid):
         if self.native_uuid:
 
             def process(value):
-                return f"""'{str(value).replace("''", "'")}'"""
+                return f"""'{str(value).replace("'", "''")}'"""
 
             return process
         else:
