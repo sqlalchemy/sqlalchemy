@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13448
+
+    Added auditing to the test suite which exercises the literal execute
+    processors across all datatypes and dialects to ensure that string input is
+    either appropriately rejected or correctly escaped.  Literal execute
+    processors are invoked when the :paramref:`.bindparam.literal_execute`
+    parameter is used with an explicit :func:`.bindparam` object, which
+    overrides DBAPI-native bind handling to render the value inline with the
+    statement instead. Datatypes that were updated include the originally
+    reported SQL Server ``Uuid`` / ``UNIQUEIDENTIFIER`` rendering which now
+    escapes properly, the :class:`.JSONPATH` type that's currently
+    PostgreSQL-only, and a full family of numeric types stemming from the
+    :class:`_types.Float` and :class:`_types.Numeric` bases which now coerce
+    the value to a number, rejecting non-numeric input.  Thanks to Javid Khan
+    for helping to identify the issue.

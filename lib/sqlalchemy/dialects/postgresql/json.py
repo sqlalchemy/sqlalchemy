@@ -49,6 +49,9 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
             if isinstance(value, str):
                 # If it's already a string assume that it's in json path
                 # format. This allows using cast with json paths literals
+                # Still need to process through super_proc for proper escaping
+                if super_proc:
+                    value = super_proc(value)
                 return value
             elif value:
                 # If it's already a string assume that it's in json path
