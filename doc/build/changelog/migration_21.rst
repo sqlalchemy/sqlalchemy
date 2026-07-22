@@ -1612,7 +1612,7 @@ Examples to summarize the change are as follows::
     engine = create_engine("postgresql+psycopg2://user:pass@host/dbname")
 
 The ``psycopg`` DBAPI driver itself can be installed either directly
-or via the ``sqlalchemy[postgresql]`` extra::
+or via the ``sqlalchemy[postgresql]`` extra:
 
 .. sourcecode:: txt
 
