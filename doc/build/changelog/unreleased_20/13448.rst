@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 13448
+
+    Fixed quoting bug in the SQL Server implementation of the
+    :class:`_sqltypes.Uuid` datatype, where the literal renderer used for the
+    native ``UNIQUEIDENTIFIER`` form collapsed doubled single quotes into a
+    single quote rather than escaping single quotes.  As the value passed to
+    the renderer is an ordinary string when ``as_uuid=False`` is in use, a
+    quote within it would end the rendered literal early; this applies to
+    ``literal_binds`` compilation as well as to parameters marked
+    ``literal_execute=True``.  Quotes are now escaped in the same way as for
+    the generic :class:`_sqltypes.Uuid` datatype.  Pull request courtesy
+    dxbjavid.

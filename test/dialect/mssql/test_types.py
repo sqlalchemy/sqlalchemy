@@ -2,6 +2,7 @@ import codecs
 import datetime
 import decimal
 import os
+import uuid
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean
@@ -1465,6 +1466,25 @@ class StringRoundTripTest(fixtures.TestBase):
         else:
             fetchtype.fail()
         eq_(received, data)
+
+
+class UuidLiteralTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mssql.dialect()
+
+    def test_uuid_literal(self):
+        value = uuid.UUID("1e4fbb1b-7e37-4e0f-9e2b-1e6bb0d0f0a1")
+        self.assert_compile(
+            column("x", sa.Uuid()) == value,
+            "x = '1e4fbb1b-7e37-4e0f-9e2b-1e6bb0d0f0a1'",
+            literal_binds=True,
+        )
+
+    def test_uuid_string_literal_escapes_quote(self):
+        self.assert_compile(
+            column("x", sa.Uuid(as_uuid=False)) == "a'b",
+            "x = 'a''b'",
+            literal_binds=True,
+        )
 
 
 class UniqueIdentifierTest(test_types.UuidTest):
