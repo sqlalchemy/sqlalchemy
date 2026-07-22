@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13429
+
+    Fixed bug in the PostgreSQL dialect where a single quote in a sequence,
+    table, or schema name, such as one supplied via a ``schema_translate_map``
+    or an explicit :class:`.Sequence`, could result in a malformed
+    ``nextval()`` statement. The quote is now properly escaped. Pull request
+    courtesy dxbjavid.
