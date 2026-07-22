@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, postgresql, reflection
+    :tickets: 13157
+
+    Fixed reflection of PostgreSQL CHECK constraints where an expression made
+    up of multiple parenthesized sub-expressions, such as ``(x IS NULL OR y IS
+    NULL) AND (x IS NULL OR y IS NULL)``, would have its leading and trailing
+    parentheses incorrectly stripped, producing an unbalanced and
+    syntactically invalid reflected expression.  The removal of the single
+    layer of enclosing parentheses that PostgreSQL adds around the constraint
+    text is now performed using quote-aware, balanced parenthesis matching,
+    and only strips the outer parentheses when they actually enclose the
+    entire expression.  The underlying parenthesis-matching helper is now
+    shared with the SQLite dialect, which performed the same style of parsing.

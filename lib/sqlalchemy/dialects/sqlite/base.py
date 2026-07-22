@@ -2878,32 +2878,14 @@ class SQLiteDialect(default.DefaultDialect):
                     flags=re.DOTALL,
                 )
 
-            # Find the matching closing parenthesis by counting balanced parens
-            # Must track string context to ignore parens inside string literals
-            start = match.end()  # Position after 'CHECK ('
-            paren_count = 1
-            in_single_quote = False
-            in_double_quote = False
-
-            for pos, char in enumerate(table_data[start:], start):
-                # Track string literal context
-                if char == "'" and not in_double_quote:
-                    in_single_quote = not in_single_quote
-                elif char == '"' and not in_single_quote:
-                    in_double_quote = not in_double_quote
-                # Only count parens when not inside a string literal
-                elif not in_single_quote and not in_double_quote:
-                    if char == "(":
-                        paren_count += 1
-                    elif char == ")":
-                        paren_count -= 1
-                        if paren_count == 0:
-                            # Successfully found matching closing parenthesis
-                            sqltext = table_data[start:pos].strip()
-                            cks.append(
-                                {"sqltext": sqltext, "name": constraint_name}
-                            )
-                            break
+            # Find the matching closing parenthesis with quote-aware paren
+            # counting. ``match.end() - 1`` is the position of the ``(``
+            # that opened the CHECK clause; ``match.end()`` is the first
+            # character of the constraint body.
+            close = util.find_matching_paren(table_data, match.end() - 1)
+            if close != -1:
+                sqltext = table_data[match.end() : close].strip()
+                cks.append({"sqltext": sqltext, "name": constraint_name})
 
         cks.sort(key=lambda d: d["name"] or "~")  # sort None as last
         if cks:

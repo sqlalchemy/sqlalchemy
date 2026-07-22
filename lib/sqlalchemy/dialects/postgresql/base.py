@@ -5527,9 +5527,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = re.compile(
-                    r"^[\s\n]*\((.+)\)[\s\n]*$", flags=re.DOTALL
-                ).sub(r"\1", m.group(1))
+                sqltext = util.strip_outer_parens(m.group(1))
             entry = {
                 "name": check_name,
                 "sqltext": sqltext,

@@ -3561,6 +3561,64 @@ class QuotedTokenParserTest(fixtures.TestBase):
         self._test('"na.me"', ["na.me"])
 
 
+class FindMatchingParenTest(fixtures.TestBase):
+    @testing.combinations(
+        ("(a + b)", 0, 6),
+        ("((a)(b))", 0, 7),
+        ("(a IS NULL OR b IS NULL)", 0, 23),
+        # Sibling parens, not nested -- depth returns to 0 before the end.
+        ("(a) AND (b)", 0, 2),
+        # Parens inside single-quoted literal must not affect the count.
+        ("(a = '(' AND b = ')')", 0, 20),
+        # Doubled single-quote inside a quoted literal is a single-quote
+        # escape; the literal continues until the next unescaped ``'``.
+        ("(a = 'it''s')", 0, 12),
+        # Parens inside double-quoted identifier must not affect the count.
+        ('("col(1)" IS NOT NULL)', 0, 21),
+        # ``start`` other than 0.
+        ("xx(a)yy", 2, 4),
+        argnames="text, start, expected",
+    )
+    def test_balanced(self, text, start, expected):
+        eq_(langhelpers.find_matching_paren(text, start), expected)
+
+    def test_unbalanced(self):
+        eq_(langhelpers.find_matching_paren("(a + b", 0), -1)
+        eq_(langhelpers.find_matching_paren("(a + b'", 0), -1)
+
+
+class StripOuterParensTest(fixtures.TestBase):
+    @testing.combinations(
+        ("(a IS NOT NULL)", "a IS NOT NULL"),
+        ("((a > 1) AND (a < 5))", "(a > 1) AND (a < 5)"),
+        # Multiply-wrapped: strip only the outer layer.
+        ("(((a > 1) AND (a < 5)))", "((a > 1) AND (a < 5))"),
+        # Already unwrapped -- no change.
+        ("a NOT NULL", "a NOT NULL"),
+        # Sibling parens, NOT a single wrap -- must not strip.
+        (
+            "(x IS NULL OR y IS NULL) AND (x IS NULL OR y IS NULL)",
+            "(x IS NULL OR y IS NULL) AND (x IS NULL OR y IS NULL)",
+        ),
+        # Parens inside literals must not throw off the depth counter.
+        ("(a = '(' AND b = ')')", "a = '(' AND b = ')'"),
+        ("a = '(' AND b = ')'", "a = '(' AND b = ')'"),
+        # Whitespace is preserved on the unstripped portion.
+        (
+            "(\n(a < 1)\n OR\n (a >= 5)\n)",
+            "\n(a < 1)\n OR\n (a >= 5)\n",
+        ),
+        # Empty / pathological inputs.
+        ("", ""),
+        ("()", ""),
+        ("(", "("),
+        (")", ")"),
+        argnames="src, expected",
+    )
+    def test_strip(self, src, expected):
+        eq_(langhelpers.strip_outer_parens(src), expected)
+
+
 class BackslashReplaceTest(fixtures.TestBase):
     def test_ascii_to_utf8(self):
         eq_(
