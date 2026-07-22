@@ -96,7 +96,7 @@ class MSDialect_mssqlpython(MSDialect):
             # dedicated driver error yet.
             "An error occurred with SQLSTATE code: 08S02",
             "An error occurred with SQLSTATE code: 10054",
-            "Timeout expired",  # HYT00
+            "Connection timeout expired",  # HYT01
             "Function sequence error",  # HY010
         }
     )
@@ -181,25 +181,25 @@ class MSDialect_mssqlpython(MSDialect):
         ],
         cursor: Optional[interfaces.DBAPICursor],
     ) -> bool:
-        if isinstance(e, self.loaded_dbapi.Error) and (
-            getattr(e, "driver_error", None)
-            in self._disconnect_driver_errors
-        ):
+        if not isinstance(e, self.loaded_dbapi.Error):
+            return False
+
+        if getattr(e, "driver_error", None) in self._disconnect_driver_errors:
             return True
+
         if isinstance(e, self.loaded_dbapi.ProgrammingError):
             return (
                 "The cursor's connection has been closed." in str(e)
                 or "Attempt to use a closed connection." in str(e)
                 or "Driver Error: Operation cannot be performed" in str(e)
             )
-        elif isinstance(e, self.loaded_dbapi.InterfaceError):
+
+        if isinstance(e, self.loaded_dbapi.InterfaceError):
             return bool(
-                re.search(
-                    r"Cannot .* on (?:a )?closed connection", str(e)
-                )
+                re.search(r"Cannot .* on (?:a )?closed connection", str(e))
             )
-        else:
-            return False
+
+        return False
 
     def _dbapi_version(self) -> interfaces.VersionInfoType:
         if not self.dbapi:

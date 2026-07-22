@@ -569,7 +569,7 @@ class ParseConnectTest(fixtures.TestBase):
             "Communication link failure",
             "An error occurred with SQLSTATE code: 08S02",
             "An error occurred with SQLSTATE code: 10054",
-            "Timeout expired",
+            "Connection timeout expired",
             "Function sequence error",
         ]:
             eq_(
@@ -580,9 +580,7 @@ class ParseConnectTest(fixtures.TestBase):
             )
 
         for error in [
-            MockProgrammingError(
-                "The cursor's connection has been closed."
-            ),
+            MockProgrammingError("The cursor's connection has been closed."),
             MockProgrammingError("Attempt to use a closed connection."),
             MockProgrammingError(
                 "Driver Error: Operation cannot be performed"
@@ -599,6 +597,12 @@ class ParseConnectTest(fixtures.TestBase):
                 ),
                 None,
                 None,
+            ),
+            False,
+        )
+        eq_(
+            dialect.is_disconnect(
+                MockOperationalError("Timeout expired"), None, None
             ),
             False,
         )
