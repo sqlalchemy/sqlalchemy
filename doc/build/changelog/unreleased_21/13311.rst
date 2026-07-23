@@ -1,0 +1,15 @@
+.. change::
+    :tags: feature, reflection, performance
+    :tickets: 13311
+
+    Created new reflection method :meth:`_engine.Inspector.has_multi_table`
+    to check the existence of multiple tables at once, allowing for
+    better performance when checking many tables. Like the other "multi"
+    reflection methods, the default dialect offers a default implementation
+    that just call the single method in a loop. Backends that wish to take
+    advantage of this new method can implement it in their dialects.
+    The PostgreSQL, Oracle and SQL Server dialects have been updated to use
+    this new method.
+    The implementation of :meth:`_schema.MetaData.create_all` has been updated
+    to make use of this new method to check the existence of the tables,
+    reducing the number of round trips to the database when creating many tables.

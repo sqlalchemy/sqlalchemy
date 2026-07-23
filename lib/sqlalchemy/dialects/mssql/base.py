@@ -3373,11 +3373,29 @@ class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
         else:
             return self.schema_name
 
+    @reflection.cache
     @_db_plus_owner
     def has_table(self, connection, tablename, dbname, owner, schema, **kw):
         self._ensure_has_table_connection(connection)
 
-        return self._internal_has_table(connection, tablename, owner, **kw)
+        return self._internal_has_multi_table(
+            connection, [tablename], owner, schema, **kw
+        )[schema, tablename]
+
+    def has_multi_table(self, connection, table_names, schema=None, **kw):
+        # this does not really matche the signature of _db_plus_owner_multi
+        # so manually do the unpacking here
+        dbname, owner = _owner_plus_db(self, schema)
+        return _switch_db(
+            dbname,
+            connection,
+            self._internal_has_multi_table,
+            connection,
+            table_names,
+            owner,
+            schema,
+            **kw,
+        ).items()
 
     @reflection.cache
     @_db_plus_owner
@@ -3452,37 +3470,38 @@ class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
         view_names = [r[0] for r in connection.execute(s)]
         return view_names
 
-    @reflection.cache
-    def _internal_has_table(self, connection, tablename, owner, **kw):
-        if tablename.startswith("#"):  # temporary table
+    def _internal_has_multi_table(
+        self, connection, table_names, owner, schema, **kw
+    ):
+        regular_names, multi_object_names, temp_names = (
+            self._partition_filter_names(
+                connection, owner, table_names, ObjectScope.ANY, ObjectKind.ANY
+            )
+        )
+
+        result = {}
+        if multi_object_names:
+            # in multi_object_names we already have the names that exist in
+            # the database, no need to do another query here
+            name_map = self._multi_name_map(regular_names)
+            for server_name in multi_object_names:
+                result[(schema, name_map(server_name))] = True
+
+        if temp_names:
             # mssql does not support temporary views
-            # SQL Error [4103] [S0001]: "#v": Temporary views are not allowed
-            return bool(
-                connection.scalar(
-                    # U filters on user tables only.
-                    text("SELECT object_id(:table_name, 'U')"),
-                    {"table_name": f"tempdb.dbo.[{tablename}]"},
+            # U filters on user tables only.
+            query = text("SELECT object_id(:table_name, 'U')")
+            for temp_name in temp_names:
+                result[(schema, temp_name)] = bool(
+                    connection.scalar(
+                        query,
+                        {"table_name": f"tempdb..[{temp_name}]"},
+                    )
                 )
-            )
-        else:
-            tables = ischema.tables
 
-            s = sql.select(tables.c.table_name).where(
-                sql.and_(
-                    sql.or_(
-                        tables.c.table_type == "BASE TABLE",
-                        tables.c.table_type == "VIEW",
-                    ),
-                    tables.c.table_name == tablename,
-                )
-            )
-
-            if owner:
-                s = s.where(tables.c.table_schema == owner)
-
-            c = connection.execute(s)
-
-            return c.first() is not None
+        for name in table_names:
+            result.setdefault((schema, name), False)
+        return result
 
     @reflection.cache
     @_db_plus_owner
@@ -3853,6 +3872,34 @@ index_info AS (
 
     # --- multi-reflection API ---
 
+    @lru_cache
+    def _partition_filter_names_query(self, add_filter_names: bool):
+        sys_objects = ischema.sys_objects
+        sys_schemas = ischema.sys_schemas
+
+        s = (
+            sql.select(sys_objects.c.name)
+            .select_from(sys_objects)
+            .join(
+                sys_schemas,
+                onclause=sys_objects.c.schema_id == sys_schemas.c.schema_id,
+            )
+            .where(
+                sys_schemas.c.name == sql.bindparam("schema"),
+                sys_objects.c.type.in_(
+                    sql.bindparam("type_filter", expanding=True)
+                ),
+            )
+        )
+        if add_filter_names:
+            s = s.where(
+                sys_objects.c.name.in_(
+                    sql.bindparam("filter_names", expanding=True)
+                )
+            )
+
+        return s
+
     def _partition_filter_names(
         self, connection, owner, filter_names, scope, kind
     ):
@@ -3914,29 +3961,20 @@ index_info AS (
 
         type_filter = []
         if ObjectKind.TABLE in kind:
-            type_filter.append("'U'")
+            type_filter.append("U")
         if ObjectKind.VIEW in kind:
-            type_filter.append("'V'")
+            type_filter.append("V")
         # SQL Server does not support materialized views, so ignore them
         if not type_filter:
             return (regular_names, [], temp_names)
 
-        query = (
-            "SELECT o.name "
-            "FROM sys.objects o "
-            "JOIN sys.schemas s ON o.schema_id = s.schema_id "
-            "WHERE s.name = :owner "
-            "AND o.type IN (%s)" % ", ".join(type_filter)
-        )
-        params = [sql.bindparam("owner", owner, ischema.CoerceUnicode())]
-        if regular_names:
-            query += " AND o.name IN :filter_names"
-            params.append(
-                sql.bindparam("filter_names", regular_names, expanding=True)
-            )
+        has_regular_names = bool(regular_names)
+        query = self._partition_filter_names_query(has_regular_names)
+        params = {"schema": owner, "type_filter": type_filter}
+        if has_regular_names:
+            params["filter_names"] = regular_names
 
-        rp = connection.execute(sql.text(query).bindparams(*params))
-        multi_object_names = [row[0] for row in rp]
+        multi_object_names = connection.scalars(query, params).all()
 
         return (regular_names, multi_object_names, temp_names)
 
@@ -4305,9 +4343,13 @@ index_info AS (
         # return empty foreign_keys for temp tables that exist. We
         # preserve that here by checking existence and returning the
         # default (empty) reflection for each temp that is reachable.
+        has_temp_tables = self._internal_has_multi_table(
+            connection, temp_names, owner="dbo", schema=schema, **kw
+        )
         for name in temp_names:
-            if self._internal_has_table(connection, name, owner="dbo"):
-                final[(schema, name)] = ReflectionDefaults.foreign_keys()
+            key = (schema, name)
+            if has_temp_tables.get(key):
+                final[key] = ReflectionDefaults.foreign_keys()
 
         return final.items()
 

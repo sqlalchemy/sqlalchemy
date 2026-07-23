@@ -194,6 +194,7 @@ def _single_test(
     table_names,
     timing,
     mode,
+    multi_needs_table_names=False,
 ):
     single = None
     if "single" in mode:
@@ -220,7 +221,10 @@ def _single_test(
         insp = sa.inspect(engine)
         multi_fn = getattr(Inspector, multi_fn_name)
         with timing(multi_fn.__name__):
-            multi = multi_fn(insp, schema=schema_name)
+            if multi_needs_table_names:
+                multi = multi_fn(insp, table_names, schema=schema_name)
+            else:
+                multi = multi_fn(insp, schema=schema_name)
     return (multi, single)
 
 
@@ -387,6 +391,22 @@ def reflect_unique_constraints(
     )
     if not ignore_diff:
         verify_dict(multi, single)
+
+
+@define_test
+def has_tables(engine, schema_name, table_names, timing, mode, ignore_diff):
+    multi, single = _single_test(
+        "has_table",
+        "has_multi_table",
+        engine,
+        schema_name,
+        table_names,
+        timing,
+        mode,
+        multi_needs_table_names=True,
+    )
+    if not ignore_diff:
+        verify_dict(multi, single, str_compare=True)
 
 
 def _apply_events(engine):
