@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 13451
+
+    Fixed reflection of ``TEXT``, ``NTEXT``, and ``IMAGE`` columns on SQL
+    Server assigning a spurious ``length`` derived from the in-row LOB pointer
+    size reported by ``sys.columns.max_length`` (16 bytes).  These unlengthed
+    LOB types now correctly reflect with ``length=None``, which prevents
+    invalid DDL such as ``TEXT(16)`` from being emitted during a
+    reflect-then-create round trip.

@@ -1567,3 +1567,87 @@ class AliasTypeReflectionTest(fixtures.TestBase):
             insp = inspect(connection)
             cols = {c["name"]: c for c in insp.get_columns("clr_t")}
         assert isinstance(cols["data"]["type"], sqltypes.NullType)
+
+
+class LOBTypeReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
+    """TEXT, NTEXT, and IMAGE are unlengthed LOB types.
+
+    sys.columns.max_length reports 16 for these (the in-row LOB pointer
+    size), which must not leak into the reflected type as a character
+    length.
+
+    issue #13451
+    """
+
+    __dialect__ = "mssql"
+
+    @testing.combinations(
+        ("text", mssql.TEXT, 16, None),
+        ("ntext", mssql.NTEXT, 16, None),
+        ("image", mssql.IMAGE, 16, None),
+        argnames="type_name,expected_cls,maxlen,expected_length",
+    )
+    def test_parse_column_info_lob_no_length(
+        self, type_name, expected_cls, maxlen, expected_length
+    ):
+        dialect = mssql.dialect()
+        result = dialect._parse_column_info(
+            name="col",
+            type_=type_name,
+            nullable=True,
+            maxlen=maxlen,
+            numericprec=None,
+            numericscale=None,
+            default=None,
+            collation=None,
+            definition=None,
+            is_persisted=None,
+            is_identity=None,
+            identity_start=None,
+            identity_increment=None,
+            comment=None,
+        )
+        assert isinstance(result["type"], expected_cls)
+        is_(result["type"].length, expected_length)
+
+    @testing.combinations(
+        ("varchar", mssql.VARCHAR, 50, 50),
+        ("nvarchar", mssql.NVARCHAR, 100, 50),
+        ("char", mssql.CHAR, 10, 10),
+        ("nchar", mssql.NCHAR, 20, 10),
+        argnames="type_name,expected_cls,maxlen,expected_length",
+    )
+    def test_parse_column_info_bounded_types_keep_length(
+        self, type_name, expected_cls, maxlen, expected_length
+    ):
+        dialect = mssql.dialect()
+        result = dialect._parse_column_info(
+            name="col",
+            type_=type_name,
+            nullable=True,
+            maxlen=maxlen,
+            numericprec=None,
+            numericscale=None,
+            default=None,
+            collation=None,
+            definition=None,
+            is_persisted=None,
+            is_identity=None,
+            identity_start=None,
+            identity_increment=None,
+            comment=None,
+        )
+        assert isinstance(result["type"], expected_cls)
+        eq_(result["type"].length, expected_length)
+
+    @testing.combinations(
+        (mssql.TEXT(), "TEXT"),
+        (mssql.NTEXT(), "NTEXT"),
+        argnames="type_obj,expected_ddl",
+    )
+    def test_lob_roundtrip_ddl_no_length(self, type_obj, expected_ddl):
+        table = Table("t", MetaData(), Column("x", type_obj))
+        self.assert_compile(
+            schema.CreateTable(table),
+            "CREATE TABLE t (x %s NULL)" % expected_ddl,
+        )

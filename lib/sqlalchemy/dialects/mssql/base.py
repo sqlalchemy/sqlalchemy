@@ -3587,13 +3587,19 @@ class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
             coltype = self.ischema_names.get(base_type, None)
         kwargs = {}
 
-        if coltype in (MSBinary, MSVarBinary, sqltypes.LargeBinary):
+        if coltype in (MSBinary, MSVarBinary):
             kwargs["length"] = maxlen if maxlen != -1 else None
-        elif coltype in (MSString, MSChar, MSText):
+        elif coltype in (sqltypes.LargeBinary, MSImage, MSText, MSNText):
+            # TEXT, NTEXT, and IMAGE are unlengthed LOB types.
+            # sys.columns.max_length reports 16 (the in-row pointer),
+            # not a usable character/byte length.
+            if collation and coltype in (MSText, MSNText):
+                kwargs["collation"] = collation
+        elif coltype in (MSString, MSChar):
             kwargs["length"] = maxlen if maxlen != -1 else None
             if collation:
                 kwargs["collation"] = collation
-        elif coltype in (MSNVarchar, MSNChar, MSNText):
+        elif coltype in (MSNVarchar, MSNChar):
             kwargs["length"] = maxlen // 2 if maxlen != -1 else None
             if collation:
                 kwargs["collation"] = collation
