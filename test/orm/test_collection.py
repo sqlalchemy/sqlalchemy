@@ -3133,49 +3133,61 @@ class TrivialAppenderGateTest(fixtures.TestBase):
     set.add.  Anything else must keep the per-item instrumented loop.
     """
 
-    def test_list_decorator_tags_trivial_wrapper(self):
+    def _assert_trivial_list(self, cls):
+        is_(cls._sa_bulk_append_without_event, list.extend)
+        is_(cls._sa_raw_append, list.append)
+
+    def _assert_trivial_set(self, cls):
+        is_(cls._sa_bulk_append_without_event, set.update)
+        is_(cls._sa_raw_append, set.add)
+
+    def _assert_not_trivial(self, cls):
+        is_(
+            cls._sa_bulk_append_without_event,
+            collections._bulk_append_via_appender,
+        )
+        is_none(cls._sa_raw_append)
+
+    def test_list_decorator_registers_trivial_wrapper(self):
         decs = collections._list_decorators()
         wrapper = decs["append"](list.append)
-        eq_(wrapper._sa_trivial, "list")
+        assert wrapper in collections._trivial_list_appenders
 
-    def test_list_decorator_does_not_tag_custom_fn(self):
+    def test_list_decorator_does_not_register_custom_fn(self):
         decs = collections._list_decorators()
 
         def append(self, item):
             list.append(self, item)
 
         wrapper = decs["append"](append)
-        assert not hasattr(wrapper, "_sa_trivial")
+        assert wrapper not in collections._trivial_list_appenders
 
-    def test_set_decorator_tags_trivial_wrapper(self):
+    def test_set_decorator_registers_trivial_wrapper(self):
         decs = collections._set_decorators()
         wrapper = decs["add"](set.add)
-        eq_(wrapper._sa_trivial, "set")
+        assert wrapper in collections._trivial_set_appenders
 
-    def test_set_decorator_does_not_tag_custom_fn(self):
+    def test_set_decorator_does_not_register_custom_fn(self):
         decs = collections._set_decorators()
 
         def add(self, item):
             set.add(self, item)
 
         wrapper = decs["add"](add)
-        assert not hasattr(wrapper, "_sa_trivial")
+        assert wrapper not in collections._trivial_set_appenders
 
     def test_instrumented_list_is_trivial(self):
-        is_(collections.InstrumentedList._sa_bulk_appender, list.extend)
-        is_(collections.InstrumentedList._sa_raw_appender, list.append)
+        self._assert_trivial_list(collections.InstrumentedList)
 
     def test_instrumented_set_is_trivial(self):
-        is_(collections.InstrumentedSet._sa_bulk_appender, set.update)
-        is_(collections.InstrumentedSet._sa_raw_appender, set.add)
+        self._assert_trivial_set(collections.InstrumentedSet)
 
     def test_plain_list_subclass_is_trivial(self):
         class MyList(list):
             pass
 
         collections._prepare_instrumentation(MyList)
-        is_(MyList._sa_bulk_appender, list.extend)
-        is_(MyList._sa_raw_appender, list.append)
+        self._assert_trivial_list(MyList)
 
     def test_list_subclass_overriding_append_not_trivial(self):
         class MyList(list):
@@ -3183,8 +3195,7 @@ class TrivialAppenderGateTest(fixtures.TestBase):
                 list.append(self, item)
 
         collections._prepare_instrumentation(MyList)
-        is_none(MyList._sa_bulk_appender)
-        is_none(MyList._sa_raw_appender)
+        self._assert_not_trivial(MyList)
 
     def test_instrumented_list_subclass_override_not_trivial(self):
         class MyList(collections.InstrumentedList):
@@ -3192,16 +3203,50 @@ class TrivialAppenderGateTest(fixtures.TestBase):
                 list.append(self, item)
 
         collections._prepare_instrumentation(MyList)
-        is_none(MyList._sa_bulk_appender)
-        is_none(MyList._sa_raw_appender)
+        self._assert_not_trivial(MyList)
+
+    def test_wraps_decorated_list_override_not_trivial(self):
+        """functools.wraps copies the wrapped function's __dict__ onto
+        the override; identity-based gating must not be fooled by the
+        copied attributes."""
+
+        import functools
+
+        collections._prepare_instrumentation(collections.InstrumentedList)
+
+        class MyList(collections.InstrumentedList):
+            @functools.wraps(collections.InstrumentedList.append)
+            def append(self, item, _sa_initiator=None):
+                collections.InstrumentedList.append(
+                    self, item, _sa_initiator=_sa_initiator
+                )
+
+        collections._prepare_instrumentation(MyList)
+        self._assert_not_trivial(MyList)
+
+    def test_wraps_decorated_set_override_not_trivial(self):
+        import functools
+
+        collections._prepare_instrumentation(collections.InstrumentedSet)
+
+        class MySet(collections.InstrumentedSet):
+            @functools.wraps(collections.InstrumentedSet.add)
+            def add(self, item, _sa_initiator=None):
+                collections.InstrumentedSet.add(
+                    self, item, _sa_initiator=_sa_initiator
+                )
+
+        collections._prepare_instrumentation(MySet)
+        self._assert_not_trivial(MySet)
 
     def test_instrumented_list_subclass_no_override_is_trivial(self):
-        # inherits the tagged trivial wrapper -> extend is equivalent
+        # inherits the registered trivial wrapper -> extend is
+        # state-equivalent
         class MyList(collections.InstrumentedList):
             pass
 
         collections._prepare_instrumentation(MyList)
-        is_(MyList._sa_bulk_appender, list.extend)
+        self._assert_trivial_list(MyList)
 
     def test_internally_instrumented_append_not_trivial(self):
         class MyList(list):
@@ -3210,8 +3255,7 @@ class TrivialAppenderGateTest(fixtures.TestBase):
                 list.append(self, item)
 
         collections._prepare_instrumentation(MyList)
-        is_none(MyList._sa_bulk_appender)
-        is_none(MyList._sa_raw_appender)
+        self._assert_not_trivial(MyList)
 
     def test_custom_appender_role_not_trivial(self):
         class MyList(list):
@@ -3220,8 +3264,7 @@ class TrivialAppenderGateTest(fixtures.TestBase):
                 list.append(self, item)
 
         collections._prepare_instrumentation(MyList)
-        is_none(MyList._sa_bulk_appender)
-        is_none(MyList._sa_raw_appender)
+        self._assert_not_trivial(MyList)
 
     def test_set_subclass_overriding_add_not_trivial(self):
         class MySet(set):
@@ -3229,8 +3272,7 @@ class TrivialAppenderGateTest(fixtures.TestBase):
                 set.add(self, item)
 
         collections._prepare_instrumentation(MySet)
-        is_none(MySet._sa_bulk_appender)
-        is_none(MySet._sa_raw_appender)
+        self._assert_not_trivial(MySet)
 
     def test_set_subclass_overriding_contains_not_trivial(self):
         # the generated add wrapper probes ``value not in self``;
@@ -3240,22 +3282,19 @@ class TrivialAppenderGateTest(fixtures.TestBase):
                 return set.__contains__(self, item)
 
         collections._prepare_instrumentation(MySet)
-        is_none(MySet._sa_bulk_appender)
-        is_none(MySet._sa_raw_appender)
+        self._assert_not_trivial(MySet)
 
     def test_keyfunc_dict_not_trivial(self):
         from sqlalchemy.orm.mapped_collection import KeyFuncDict
 
-        is_none(KeyFuncDict._sa_bulk_appender)
-        is_none(KeyFuncDict._sa_raw_appender)
+        self._assert_not_trivial(KeyFuncDict)
 
     def test_ordering_list_not_trivial(self):
         from sqlalchemy.ext.orderinglist import ordering_list
         from sqlalchemy.ext.orderinglist import OrderingList
 
         collections._prepare_instrumentation(ordering_list("position"))
-        is_none(OrderingList._sa_bulk_appender)
-        is_none(OrderingList._sa_raw_appender)
+        self._assert_not_trivial(OrderingList)
 
 
 class BulkAppendLoaderTest(fixtures.MappedTest):
@@ -3339,10 +3378,28 @@ class BulkAppendLoaderTest(fixtures.MappedTest):
         "selectin": lambda P: selectinload(P.children),
         "subquery": lambda P: subqueryload(P.children),
         "joined": lambda P: joinedload(P.children),
+        "lazy": None,
     }
 
+    def _load_parents(self, sess, Parent, loader_name):
+        q = sess.query(Parent).order_by(self.tables.parents.c.id)
+        loader = self._loaders[loader_name]
+        if loader is not None:
+            q = q.options(loader(Parent))
+        result = q.all()
+        if loader is None:
+            # populate the collections via lazy loads up front; the
+            # content assertions below then run under a zero-SQL check
+            for p in result:
+                p.children
+        return result
+
     @testing.combinations(
-        ("selectin",), ("subquery",), ("joined",), argnames="loader_name"
+        ("selectin",),
+        ("subquery",),
+        ("joined",),
+        ("lazy",),
+        argnames="loader_name",
     )
     def test_plain_list_eager_load(self, loader_name):
         """plain Mapped[list] relationship: contents, per-parent
@@ -3351,12 +3408,7 @@ class BulkAppendLoaderTest(fixtures.MappedTest):
         Parent, Child = self._fixture(list)
 
         with fixture_session() as sess:
-            result = (
-                sess.query(Parent)
-                .options(self._loaders[loader_name](Parent))
-                .order_by(self.tables.parents.c.id)
-                .all()
-            )
+            result = self._load_parents(sess, Parent, loader_name)
 
             def go():
                 eq_(
@@ -3373,18 +3425,17 @@ class BulkAppendLoaderTest(fixtures.MappedTest):
             assert isinstance(result[0].children, collections.InstrumentedList)
 
     @testing.combinations(
-        ("selectin",), ("subquery",), ("joined",), argnames="loader_name"
+        ("selectin",),
+        ("subquery",),
+        ("joined",),
+        ("lazy",),
+        argnames="loader_name",
     )
     def test_set_collection_eager_load(self, loader_name):
         Parent, Child = self._fixture(set)
 
         with fixture_session() as sess:
-            result = (
-                sess.query(Parent)
-                .options(self._loaders[loader_name](Parent))
-                .order_by(self.tables.parents.c.id)
-                .all()
-            )
+            result = self._load_parents(sess, Parent, loader_name)
 
             def go():
                 eq_(
@@ -3488,6 +3539,31 @@ class BulkAppendLoaderTest(fixtures.MappedTest):
 
         eq_(calls, [])
 
+    def test_lazy_list_uses_bulk_fast_path(self):
+        """lazy loading populates the collection via
+        set_committed_value -> append_multiple_without_event; a trivial
+        list must take the bulk fast path there too."""
+        Parent, Child = self._fixture(list)
+
+        calls = []
+        orig_appender = collections.InstrumentedList._sa_appender
+
+        def counting_appender(self, item, _sa_initiator=None):
+            calls.append(item)
+            orig_appender(self, item, _sa_initiator=_sa_initiator)
+
+        collections.InstrumentedList._sa_appender = counting_appender
+        try:
+            with fixture_session() as sess:
+                result = (
+                    sess.query(Parent).order_by(self.tables.parents.c.id).all()
+                )
+                eq_(sum(len(list(p.children)) for p in result), 9)
+        finally:
+            collections.InstrumentedList._sa_appender = orig_appender
+
+        eq_(calls, [])
+
 
 class BulkAppendGatingTest(fixtures.MappedTest):
     """customized collections must NOT take the bulk fast path: their
@@ -3520,7 +3596,7 @@ class BulkAppendGatingTest(fixtures.MappedTest):
             Column("position", Integer),
         )
 
-    def _fixture(self, collection_class, order_by_position=False):
+    def _fixture(self, collection_class, null_positions=False):
         parents, children = self.tables.parents, self.tables.children
 
         class Parent:
@@ -3536,11 +3612,7 @@ class BulkAppendGatingTest(fixtures.MappedTest):
                 "children": relationship(
                     Child,
                     collection_class=collection_class,
-                    order_by=(
-                        children.c.position
-                        if order_by_position
-                        else children.c.id
-                    ),
+                    order_by=children.c.id,
                 )
             },
         )
@@ -3558,7 +3630,7 @@ class BulkAppendGatingTest(fixtures.MappedTest):
                         "id": pid * 10 + cid,
                         "parent_id": pid,
                         "data": "p%d_c%d" % (pid, cid),
-                        "position": cid,
+                        "position": None if null_positions else cid,
                     }
                     for pid in range(1, 4)
                     for cid in range(3)
@@ -3568,8 +3640,39 @@ class BulkAppendGatingTest(fixtures.MappedTest):
 
         return Parent, Child
 
+    _loaders = {
+        "selectin": selectinload,
+        "subquery": subqueryload,
+        "joined": joinedload,
+        "lazy": None,
+    }
+
+    def _load_parents(self, sess, Parent, loader_name):
+        q = sess.query(Parent).order_by(self.tables.parents.c.id)
+        loader = self._loaders[loader_name]
+        if loader is not None:
+            q = q.options(loader(Parent.children))
+        result = q.all()
+        if loader is None:
+            for p in result:
+                p.children
+        return result
+
+    def _assert_loop_path(self, cls):
+        # instrumentation ran at first collection use; the customization
+        # must have kept the class on the per-item loop path
+        is_(
+            cls._sa_bulk_append_without_event,
+            collections._bulk_append_via_appender,
+        )
+        is_none(cls._sa_raw_append)
+
     @testing.combinations(
-        ("selectin",), ("subquery",), ("joined",), argnames="loader_name"
+        ("selectin",),
+        ("subquery",),
+        ("joined",),
+        ("lazy",),
+        argnames="loader_name",
     )
     def test_list_subclass_override_append_called_per_item(self, loader_name):
         appended = []
@@ -3581,22 +3684,51 @@ class BulkAppendGatingTest(fixtures.MappedTest):
 
         Parent, Child = self._fixture(TrackingList)
 
-        loader = {
-            "selectin": selectinload,
-            "subquery": subqueryload,
-            "joined": joinedload,
-        }[loader_name]
+        with fixture_session() as sess:
+            result = self._load_parents(sess, Parent, loader_name)
+            self._assert_loop_path(TrackingList)
+            eq_(
+                [[c.data for c in p.children] for p in result],
+                [
+                    ["p1_c0", "p1_c1", "p1_c2"],
+                    ["p2_c0", "p2_c1", "p2_c2"],
+                    ["p3_c0", "p3_c1", "p3_c2"],
+                ],
+            )
+
+        eq_(len(appended), 9)
+
+    @testing.combinations(
+        ("selectin",),
+        ("subquery",),
+        ("joined",),
+        ("lazy",),
+        argnames="loader_name",
+    )
+    def test_wraps_decorated_override_called_per_item(self, loader_name):
+        """a subclass override decorated with functools.wraps copies the
+        wrapped instrumented function's __dict__; the copied attributes
+        must not qualify the class for the bulk fast path."""
+
+        import functools
+
+        collections._instrument_class(collections.InstrumentedList)
+
+        appended = []
+
+        class TrackingList(collections.InstrumentedList):
+            @functools.wraps(collections.InstrumentedList.append)
+            def append(self, item, _sa_initiator=None):
+                appended.append(item)
+                collections.InstrumentedList.append(
+                    self, item, _sa_initiator=_sa_initiator
+                )
+
+        Parent, Child = self._fixture(TrackingList)
 
         with fixture_session() as sess:
-            result = (
-                sess.query(Parent)
-                .options(loader(Parent.children))
-                .order_by(self.tables.parents.c.id)
-                .all()
-            )
-            # instrumentation ran at first collection use; the
-            # override must have kept the class non-trivial
-            is_none(TrackingList._sa_bulk_appender)
+            result = self._load_parents(sess, Parent, loader_name)
+            self._assert_loop_path(TrackingList)
             eq_(
                 [[c.data for c in p.children] for p in result],
                 [
@@ -3634,7 +3766,7 @@ class BulkAppendGatingTest(fixtures.MappedTest):
                 .order_by(self.tables.parents.c.id)
                 .all()
             )
-            is_none(AppenderDict._sa_bulk_appender)
+            self._assert_loop_path(AppenderDict)
             eq_(
                 sorted(result[0].children),
                 ["p1_c0", "p1_c1", "p1_c2"],
@@ -3652,7 +3784,7 @@ class BulkAppendGatingTest(fixtures.MappedTest):
                 .order_by(self.tables.parents.c.id)
                 .all()
             )
-            is_none(type(result[0].children)._sa_bulk_appender)
+            self._assert_loop_path(type(result[0].children))
             eq_(
                 sorted(result[0].children),
                 ["p1_c0", "p1_c1", "p1_c2"],
@@ -3661,11 +3793,17 @@ class BulkAppendGatingTest(fixtures.MappedTest):
 
     def test_ordering_list_positions_on_eager_load(self):
         """OrderingList.append assigns position attributes; it must be
-        called per item on eager load (loop path)."""
+        called per item on eager load (loop path).
+
+        positions are NULL in the database, so the [0, 1, 2] assertion
+        below holds only if OrderingList.append actually ran per item;
+        a bulk extend would leave them None.  children load in id
+        order, which determines the assigned positions.
+        """
         from sqlalchemy.ext.orderinglist import ordering_list
 
         Parent, Child = self._fixture(
-            ordering_list("position"), order_by_position=True
+            ordering_list("position"), null_positions=True
         )
 
         with fixture_session() as sess:
@@ -3675,7 +3813,7 @@ class BulkAppendGatingTest(fixtures.MappedTest):
                 .order_by(self.tables.parents.c.id)
                 .all()
             )
-            is_none(type(result[0].children)._sa_bulk_appender)
+            self._assert_loop_path(type(result[0].children))
             eq_([c.position for c in result[0].children], [0, 1, 2])
             eq_(
                 [c.data for c in result[0].children],
