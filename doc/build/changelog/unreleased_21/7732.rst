@@ -1,0 +1,7 @@
+.. change::
+    :tags: feature, engine
+    :tickets: 7732
+
+    Added the :paramref:`_engine.Connection.execution_options.log_note`
+    execution option, which adds an arbitrary bracketed note adjacent to the
+    cache statistics badge in SQL statement log output.

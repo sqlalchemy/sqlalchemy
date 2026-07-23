@@ -284,6 +284,7 @@ IsolationLevel = Literal[
 class _CoreKnownExecutionOptions(TypedDict, total=False):
     compiled_cache: Optional[CompiledCacheType]
     logging_token: str
+    log_note: str
     isolation_level: IsolationLevel
     no_parameters: bool
     stream_results: bool
@@ -3164,6 +3165,9 @@ class ExecutionContext:
         raise NotImplementedError()
 
     def _get_cache_stats(self) -> str:
+        raise NotImplementedError()
+
+    def _get_log_note(self) -> str:
         raise NotImplementedError()
 
     def _setup_result_proxy(self) -> CursorResult[Any]:

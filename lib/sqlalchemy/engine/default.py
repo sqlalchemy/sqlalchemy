@@ -1802,6 +1802,13 @@ class DefaultExecutionContext(ExecutionContext):
         else:
             return "unknown"
 
+    def _get_log_note(self) -> str:
+        log_note = self.execution_options.get("log_note")
+        if log_note:
+            return " [%s]" % (log_note,)
+        else:
+            return ""
+
     @property
     def executemany(self):  # type: ignore[override]
         return self.execute_style in (
