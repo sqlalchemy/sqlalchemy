@@ -70,8 +70,27 @@ from sqlalchemy.util.langhelpers import format_argspec_plus
 from sqlalchemy.util.langhelpers import inject_docstring_text
 from sqlalchemy.util.tool_support import code_writer_cmd
 
-is_posix = os.name == "posix"
+# Additional async-specific notes to append to certain proxied methods'
+# docstrings, since these methods behave differently when called through
+# an async proxy (e.g. AsyncSession) versus their sync original.
+ASYNC_METHOD_NOTES: Dict[str, str] = {
+    "expire_all": (
+        ".. tip:: Accessing an expired attribute on an AsyncSession-managed "
+        "object will attempt to follow the lazy loading path, which is not "
+        "supported implicitly under asyncio. See :ref:`asyncio_orm_avoid_lazyloads` "
+        "for background, and consider using :meth:`_asyncio.AsyncSession.refresh` "
+        "or the :class:`_asyncio.AsyncAttrs` mixin instead."
+    ),
+    "expire": (
+        ".. tip:: Accessing an expired attribute on an AsyncSession-managed "
+        "object will attempt to follow the lazy loading path, which is not "
+        "supported implicitly under asyncio. See :ref:`asyncio_orm_avoid_lazyloads` "
+        "for background, and consider using :meth:`_asyncio.AsyncSession.refresh` "
+        "or the :class:`_asyncio.AsyncAttrs` mixin instead."
+    ),
+}
 
+is_posix = os.name == "posix"
 
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -185,6 +204,7 @@ def process_class(
     attributes: Iterable[str],
     use_intermediate_variable: Iterable[str],
     cls: Type[Any],
+    is_async: bool = False,
 ):
     sphinx_symbol_match = re.match(r":class:`(.+)`", target_cls_sphinx_name)
     if not sphinx_symbol_match:
@@ -239,6 +259,9 @@ def process_class(
 
         caller_argspec = format_argspec_plus(spec, grouped=False)
 
+
+        extra_note = ASYNC_METHOD_NOTES.get(name, "") if is_async else ""
+
         metadata = {
             "name": fn.__name__,
             "async": "async " if iscoroutine else "",
@@ -256,7 +279,8 @@ def process_class(
                         f"    Proxied for the {target_cls_sphinx_name} "
                         "class on \n"
                         f"    behalf of the {proxy_cls_sphinx_name} "
-                        "class.",
+                        "class."
+                        + (f"\n\n{extra_note}" if extra_note else ""),
                         "    ",
                     ),
                     1,
@@ -264,7 +288,6 @@ def process_class(
                 "    ",
             ).lstrip(),
         }
-
         if fn.__name__ in require_intermediate:
             metadata["line_prefix"] = "result ="
             metadata["after_line"] = "return result\n"
@@ -403,7 +426,7 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
                     f" tools/{os.path.basename(__file__)}\n\n"
                 )
 
-                process_class(buf, *args)
+                process_class(buf, *args, is_async="asyncio" in modname)
             if line.startswith(f"    # END PROXY METHODS {current_clsname}"):
                 in_block = False
 

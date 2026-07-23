@@ -1220,6 +1220,8 @@ class AsyncSession(ReversibleProxy[Session]):
             Proxied for the :class:`_orm.Session` class on
             behalf of the :class:`_asyncio.AsyncSession` class.
 
+        .. tip:: Accessing an expired attribute on an AsyncSession-managed object will attempt to follow the lazy loading path, which is not supported implicitly under asyncio. See :ref:`asyncio_orm_avoid_lazyloads` for background, and consider using :meth:`_asyncio.AsyncSession.refresh` or the :class:`_asyncio.AsyncAttrs` mixin instead.
+
         Marks the attributes of an instance as out of date. When an expired
         attribute is next accessed, a query will be issued to the
         :class:`.Session` object's current transactional context in order to
@@ -1265,6 +1267,8 @@ class AsyncSession(ReversibleProxy[Session]):
 
             Proxied for the :class:`_orm.Session` class on
             behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. tip:: Accessing an expired attribute on an AsyncSession-managed object will attempt to follow the lazy loading path, which is not supported implicitly under asyncio. See :ref:`asyncio_orm_avoid_lazyloads` for background, and consider using :meth:`_asyncio.AsyncSession.refresh` or the :class:`_asyncio.AsyncAttrs` mixin instead.
 
         When any attributes on a persistent instance is next accessed,
         a query will be issued using the
