@@ -118,6 +118,43 @@ def _all_dialects():
     return [d.base.dialect() for d in _all_dialect_modules()]
 
 
+def _dialect_family(module_name):
+    """Return the dialect family (e.g. "mysql", "postgresql") for a module
+    name, or None if the module is not part of a specific dialect.
+
+    """
+    prefix = "sqlalchemy.dialects."
+    if module_name.startswith(prefix):
+        return module_name[len(prefix) :].split(".")[0]
+    return None
+
+
+def _all_dialect_impls():
+    """Yield all specific dialect implementation classes.
+
+    This includes each DBAPI-specific dialect like psycopg2, asyncpg,
+    pymssql, cx_oracle, etc., not just the base dialects.
+    """
+    seen = set()
+    for dialect_mod in _all_dialect_modules():
+        for attr in dir(dialect_mod):
+            if attr.startswith("_") or attr == "base":
+                continue
+            try:
+                submod = getattr(dialect_mod, attr)
+                if (
+                    hasattr(submod, "__name__")
+                    and submod.__name__.startswith("sqlalchemy.dialects.")
+                    and hasattr(submod, "dialect")
+                ):
+                    dialect_cls = submod.dialect
+                    if dialect_cls not in seen:
+                        seen.add(dialect_cls)
+                        yield dialect_cls
+            except Exception:
+                pass
+
+
 def _types_for_mod(mod):
     for key in dir(mod):
         typ = getattr(mod, key)
@@ -159,12 +196,70 @@ def _all_types_w_their_dialect(omit_special_types=False):
             continue
         seen.add(typ)
         yield typ, default.DefaultDialect
+
     for dialect in _all_dialect_modules():
         for typ in _types_for_mod(dialect):
             if typ in seen:
                 continue
             seen.add(typ)
             yield typ, dialect.dialect
+
+
+def _all_types_w_all_dialect_impls(omit_special_types=False):
+    """Yield each type with every applicable dialect implementation.
+
+    Core types (defined in ``sqlalchemy.sql.sqltypes``) are paired with
+    :class:`.DefaultDialect` plus every dialect implementation (asyncpg,
+    psycopg2, pymssql, cx_oracle, etc.).
+
+    Dialect-specific types (e.g. ``mysql.SET``, ``postgresql.INET``) are only
+    paired with the dialect implementations that belong to the same backend
+    family (e.g. ``mysql.SET`` is not yielded with the PostgreSQL dialects).
+    """
+    core_types = set()
+    for typ in _types_for_mod(types):
+        if omit_special_types and (
+            typ
+            in (
+                TypeEngine,
+                type_api.TypeEngineMixin,
+                types.Variant,
+                types.TypeDecorator,
+                types.PickleType,
+            )
+            or type_api.TypeEngineMixin in typ.__bases__
+        ):
+            continue
+
+        if typ in core_types:
+            continue
+        core_types.add(typ)
+        yield typ, default.DefaultDialect
+
+    # Collect dialect-specific types grouped by their backend family.  The
+    # family is taken from the type's defining module so that a type only
+    # travels with the dialects that actually implement it.
+    types_by_family = {}
+    for dialect_mod in _all_dialect_modules():
+        for typ in _types_for_mod(dialect_mod):
+            if typ in core_types:
+                continue
+            family = _dialect_family(typ.__module__)
+            if family is None:
+                # a non-dialect type re-exported from a dialect module;
+                # treat it as a core type applicable to all dialects
+                core_types.add(typ)
+            else:
+                types_by_family.setdefault(family, set()).add(typ)
+
+    # Yield each type with every specific dialect implementation, respecting
+    # the family boundary for dialect-specific types.
+    for dialect_cls in _all_dialect_impls():
+        family = _dialect_family(dialect_cls.__module__)
+        for typ in core_types:
+            yield typ, dialect_cls
+        for typ in types_by_family.get(family, ()):
+            yield typ, dialect_cls
 
 
 def _get_instance(type_):
@@ -410,6 +505,68 @@ class AdaptTest(fixtures.TestBase):
             is_true(issubclass(typ, sqltypes._AbstractInterval))
         else:
             is_true(issubclass(typ, impl._type_affinity))
+
+
+class LiteralExecuteTest(fixtures.TestBase):
+    # base classes that carry a boolean variant flag which selects between
+    # distinct literal_processor code paths (e.g. native vs. string
+    # rendering); both variants of each such type must be tested.
+    _variant_bases = [
+        (sqltypes.Uuid, "as_uuid"),
+        (sqltypes.NumericCommon, "asdecimal"),
+    ]
+
+    @testing.combinations(
+        *[
+            (t, d)
+            for t, d in _all_types_w_all_dialect_impls(omit_special_types=True)
+        ]
+    )
+    def test_safestr_literal_execute(self, typ, dialect_cls):
+        """test for #13448"""
+
+        if issubclass(typ, ARRAY):
+            insts = [typ(Integer)]
+        elif issubclass(typ, pg.ENUM):
+            insts = [typ(name="my_enum")]
+        elif issubclass(typ, pg.DOMAIN):
+            insts = [typ(name="my_domain", data_type=Integer)]
+        elif issubclass(typ, mysql.SET):
+            insts = [typ("a", "b", "c")]
+        else:
+            for base, flag in self._variant_bases:
+                if issubclass(typ, base):
+                    insts = [typ(**{flag: True}), typ(**{flag: False})]
+                    break
+            else:
+                # instantiate plain.  if this fails for a particular type,
+                # *do not* add an except: clause here, add an instantiator
+                # above for it.  every type must be tested!
+                insts = [typ()]
+
+        # note the payload deliberately avoids characters that a legitimate
+        # processor may strip (e.g. the ``Uuid(as_uuid=False)`` renderer
+        # removes ``-``); the single quote is the escape-critical character.
+        value = "z' OR 1=1"
+
+        dialect = dialect_cls()
+
+        for inst in insts:
+            stmt = bindparam("u", type_=inst, literal_execute=True)
+
+            try:
+                result = stmt.compile(
+                    dialect=dialect
+                )._process_parameters_for_postcompile({"u": value})
+            except exc.CompileError:
+                # it's good, invalid data was rejected
+                continue
+            else:
+                # rendering a literal must never require the DBAPI to be
+                # present; if a particular type/dialect can't do so, that is a
+                # bug to fix rather than skip.  every rendered literal must
+                # escape the quote.
+                assert "z'' OR 1=1" in result.statement
 
 
 class TypeAffinityTest(fixtures.TestBase):
