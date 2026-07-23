@@ -98,6 +98,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     @testing.combinations(
         (mssql.XML, "XML"),
         (mssql.IMAGE, "IMAGE"),
+        (mssql.TEXT, "TEXT"),
+        (mssql.NTEXT, "NTEXT"),
         (mssql.MONEY, "MONEY"),
         (mssql.NUMERIC(10, 2), "NUMERIC(10, 2)"),
         (mssql.FLOAT, "FLOAT(53)"),
@@ -116,6 +118,27 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             schema.CreateTable(table2),
             "CREATE TABLE type_test (col1 %s NULL)" % ddl,
         )
+
+    @testing.combinations(
+        ("text", mssql.TEXT),
+        ("ntext", mssql.NTEXT),
+        ("image", mssql.IMAGE),
+        argnames="type_name,expected_cls",
+    )
+    def test_lob_types_reflect_without_length(
+        self, metadata, connection, type_name, expected_cls
+    ):
+        """issue #13451"""
+        connection.exec_driver_sql(
+            "create table lob_t (id integer primary key, "
+            "data %s)" % type_name
+        )
+        connection.commit()
+
+        insp = inspect(connection)
+        cols = {c["name"]: c for c in insp.get_columns("lob_t")}
+        assert isinstance(cols["data"]["type"], expected_cls)
+        is_(cols["data"]["type"].length, None)
 
     def test_identity(self, metadata, connection):
         table = Table(
