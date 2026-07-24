@@ -1,0 +1,10 @@
+.. change::
+    :tags: documentation, typing
+    :tickets: 9213
+
+    Updated the :class:`_orm.declared_attr` documentation to illustrate the
+    use of ``@classmethod`` in all examples, and added a tip explaining that
+    :pep:`484` typing tools require ``@classmethod`` to recognize
+    ``def foo(cls)`` as a classmethod.  Documented how to resolve typing
+    errors such as those occurring when referring to mapped attributes like
+    ``cls.ph1`` in ``__table_args__``.
