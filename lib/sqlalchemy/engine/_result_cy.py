@@ -80,6 +80,14 @@ _FLAG_SIMPLE = cython.declare(cython.char, 0)
 _FLAG_SCALAR_TO_TUPLE = cython.declare(cython.char, 1)
 _FLAG_TUPLE_FILTER = cython.declare(cython.char, 2)
 
+# row "shape" selected by derived result objects (ScalarResult /
+# MappingResult).  NOTE: plain Python ints, NOT cython.declare()
+# module vars, so that result.py can import them from the compiled
+# module.
+_SHAPE_ROW = 0
+_SHAPE_SCALAR = 1
+_SHAPE_MAPPING = 2
+
 
 # a symbol that indicates to internal Result methods that
 # "no row is returned".  We can't use None for those cases where a scalar
@@ -100,6 +108,18 @@ class BaseResultInternal(Generic[_R]):
 
     _unique_filter_state: _UniqueFilterStateType | None = None
     _post_creational_filter: Callable[[Any], Any] | None = None
+
+    _fetch_shape: int = _SHAPE_ROW
+    """shape of objects produced by :attr:`._row_getter`.
+
+    ``_SHAPE_ROW`` produces :class:`.Row`; ``_SHAPE_SCALAR`` produces
+    raw single-column values (selected by ``ScalarResult`` when no
+    Row is observable); ``_SHAPE_MAPPING`` produces
+    :class:`.RowMapping` directly (selected by ``MappingResult``).
+    Derived results set this together with
+    ``_post_creational_filter``; see the ``_configure_*_row_shape``
+    helpers in ``result.py``.
+    """
 
     _metadata: ResultMetaData
 
@@ -147,6 +167,11 @@ class BaseResultInternal(Generic[_R]):
         :class:`.Row` construction, falling back to ``many_rows`` when
         Row objects are required (row logging, scalar sources).
 
+        When the owning result selects a non-default ``_fetch_shape``,
+        ``single_row`` / ``many_rows`` produce raw column values
+        (``_SHAPE_SCALAR``) or :class:`.RowMapping` objects
+        (``_SHAPE_MAPPING``) instead.
+
         """
         real_result = self if self._real_result is None else self._real_result
 
@@ -183,7 +208,76 @@ class BaseResultInternal(Generic[_R]):
         has_log_row: cython.bint = log_row is not None
 
         key_to_index = metadata._key_to_index
+
+        fetch_shape: cython.int = self._fetch_shape
+
         _Row = Row
+        if fetch_shape == _SHAPE_MAPPING and not has_log_row:
+            # MappingResult selected the mapping shape: build
+            # RowMapping directly rather than Row plus an
+            # attrgetter("_mapping") post-creational filter that
+            # allocates a second BaseRow per row.  Row logging needs
+            # actual Row objects; MappingResult does not select this
+            # shape when a logging fn is present — the has_log_row
+            # check here is defense in depth.  RowMapping shares
+            # BaseRow's constructor signature, so the swap is safe at
+            # runtime; mypy sees the narrower Row type from line above.
+            _Row = RowMapping  # type: ignore[assignment]
+
+        if fetch_shape == _SHAPE_SCALAR and not has_log_row:
+            # ScalarResult selected the scalar shape: produce the
+            # single selected column directly from the raw row with
+            # its processor hoisted; no Row construction and no
+            # itemgetter(0) post-creational filter.  ScalarResult
+            # only selects this shape for non-scalar-source results,
+            # whose _metadata is always a single-column _reduce()
+            # (tuplefilter + translated indexes set by construction).
+            assert flag == _FLAG_TUPLE_FILTER
+            translated = metadata._translated_indexes
+            assert translated is not None and len(translated) == 1
+            scalar_index: cython.Py_ssize_t = translated[0]
+            scalar_proc = processors[0] if proc_size != 0 else None
+
+            if scalar_proc is not None:
+
+                def single_scalar(input_row: Sequence[Any], /) -> Any:
+                    return scalar_proc(input_row[scalar_index])
+
+            else:
+
+                def single_scalar(input_row: Sequence[Any], /) -> Any:
+                    return input_row[scalar_index]
+
+            if cython.compiled:
+
+                def many_scalars(rows: Sequence[Any], /) -> list[Any]:
+                    size: cython.Py_hash_t = len(rows)
+                    i: cython.Py_ssize_t
+                    result: list = PyList_New(size)
+                    for i in range(size):
+                        value: object = rows[i][scalar_index]
+                        if scalar_proc is not None:
+                            value = scalar_proc(value)
+                        Py_INCREF(value)
+                        PyList_SET_ITEM(result, i, value)
+                    return result
+
+            else:
+                if scalar_proc is not None:
+
+                    def many_scalars(rows: Sequence[Any], /) -> list[Any]:
+                        return [scalar_proc(row[scalar_index]) for row in rows]
+
+                else:
+
+                    def many_scalars(rows: Sequence[Any], /) -> list[Any]:
+                        return [row[scalar_index] for row in rows]
+
+            # like the scalar-source case, interim rows fall back to
+            # the final objects; the ORM only calls
+            # _raw_all_tuples() on the underlying Result, never on a
+            # ScalarResult
+            return single_scalar, many_scalars, many_scalars
 
         if flag == _FLAG_SIMPLE and proc_size == 0 and not has_log_row:
             # just build the rows
@@ -350,6 +444,9 @@ class BaseResultInternal(Generic[_R]):
         """
         assert self._unique_filter_state is None
         assert self._post_creational_filter is None
+        # derived-shape results (ScalarResult / MappingResult fast
+        # paths) produce final objects, not interim tuples
+        assert self._fetch_shape == _SHAPE_ROW
         interim_rows = self._row_getter[2]
         assert interim_rows is not None
         rows = self._fetchall_impl()
