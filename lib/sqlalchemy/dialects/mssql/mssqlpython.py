@@ -83,6 +83,24 @@ class MSDialect_mssqlpython(MSDialect):
 
     supports_native_decimal = True
 
+    _disconnect_driver_errors = frozenset(
+        {
+            # mssql-python converts the originating SQLSTATE into these
+            # values and exposes them on ``Exception.driver_error``.
+            "Disconnect error",  # 01002
+            "Client unable to establish connection",  # 08001
+            "Connection not open",  # 08003
+            "Connection failure during transaction",  # 08007
+            "Communication link failure",  # 08S01
+            # mssql-python does not map these SQLSTATE values to a
+            # dedicated driver error yet.
+            "An error occurred with SQLSTATE code: 08S02",
+            "An error occurred with SQLSTATE code: 10054",
+            "Connection timeout expired",  # HYT01
+            "Function sequence error",  # HY010
+        }
+    )
+
     # used by pyodbc _ms_numeric_pyodbc class
     _need_decimal_fix = True
 
@@ -163,16 +181,25 @@ class MSDialect_mssqlpython(MSDialect):
         ],
         cursor: Optional[interfaces.DBAPICursor],
     ) -> bool:
+        if not isinstance(e, self.loaded_dbapi.Error):
+            return False
+
+        if getattr(e, "driver_error", None) in self._disconnect_driver_errors:
+            return True
+
         if isinstance(e, self.loaded_dbapi.ProgrammingError):
             return (
                 "The cursor's connection has been closed." in str(e)
                 or "Attempt to use a closed connection." in str(e)
                 or "Driver Error: Operation cannot be performed" in str(e)
             )
-        elif isinstance(e, self.loaded_dbapi.InterfaceError):
-            return bool(re.search(r"Cannot .* on closed connection", str(e)))
-        else:
-            return False
+
+        if isinstance(e, self.loaded_dbapi.InterfaceError):
+            return bool(
+                re.search(r"Cannot .* on (?:a )?closed connection", str(e))
+            )
+
+        return False
 
     def _dbapi_version(self) -> interfaces.VersionInfoType:
         if not self.dbapi:
