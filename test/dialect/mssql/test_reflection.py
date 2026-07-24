@@ -135,10 +135,13 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         )
         connection.commit()
 
-        insp = inspect(connection)
-        cols = {c["name"]: c for c in insp.get_columns("lob_t")}
-        assert isinstance(cols["data"]["type"], expected_cls)
-        is_(cols["data"]["type"].length, None)
+        try:
+            insp = inspect(connection)
+            cols = {c["name"]: c for c in insp.get_columns("lob_t")}
+            assert isinstance(cols["data"]["type"], expected_cls)
+            is_(cols["data"]["type"].length, None)
+        finally:
+            connection.exec_driver_sql("drop table lob_t")
 
     def test_identity(self, metadata, connection):
         table = Table(
