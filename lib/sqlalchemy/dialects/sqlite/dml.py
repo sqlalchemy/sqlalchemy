@@ -110,7 +110,6 @@ class Insert(StandardInsert):
         },
     )
 
-    @_on_conflict_exclusive
     def on_conflict_do_update(
         self,
         index_elements: _OnConflictIndexElementsT = None,
@@ -161,7 +160,6 @@ class Insert(StandardInsert):
             OnConflictDoUpdate(index_elements, index_where, set_, where)
         )
 
-    @_on_conflict_exclusive
     def on_conflict_do_nothing(
         self,
         index_elements: _OnConflictIndexElementsT = None,
@@ -222,7 +220,7 @@ class OnConflictClause(SyntaxExtension, ClauseElement):
 
     def apply_to_insert(self, insert_stmt: StandardInsert) -> None:
         insert_stmt.apply_syntax_extension_point(
-            self.append_replacing_same_type, "post_values"
+            lambda ex: [*ex, self], "post_values"
         )
 
 

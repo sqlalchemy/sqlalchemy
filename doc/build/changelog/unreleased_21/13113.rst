@@ -1,0 +1,7 @@
+.. change::
+    :tags: dml, sqlite, usecase
+    :tickets: 13113
+
+    Add support for multiple on-conflict clauses in inserts for sqlite database.
+    Now you can use two or more `on conflict do update` or `on conflict do nothing`
+    clauses in a single statement

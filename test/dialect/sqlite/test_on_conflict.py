@@ -81,26 +81,6 @@ class OnConflictTest(fixtures.TablesTest):
         with expect_raises(ValueError):
             insert(self.tables.users).on_conflict_do_update()
 
-    def test_on_conflict_do_no_call_twice(self):
-        users = self.tables.users
-
-        for stmt in (
-            insert(users).on_conflict_do_nothing(),
-            insert(users).on_conflict_do_update(
-                index_elements=[users.c.id], set_=dict(name="foo")
-            ),
-        ):
-            for meth in (
-                stmt.on_conflict_do_nothing,
-                stmt.on_conflict_do_update,
-            ):
-                with testing.expect_raises_message(
-                    exc.InvalidRequestError,
-                    "This Insert construct already has an "
-                    "ON CONFLICT clause established",
-                ):
-                    meth()
-
     def test_on_conflict_do_nothing(self, connection):
         users = self.tables.users
 
@@ -771,4 +751,87 @@ class OnConflictTest(fixtures.TablesTest):
                 sql.select(t.c.name, t.c.data).order_by(t.c.name)
             ).fetchall(),
             expected_updated,
+        )
+
+    def test_on_conflict_do_update_multiple_clauses(self, connection):
+        users = self.tables.users_xtra
+
+        self._exotic_targets_fixture(connection)
+
+        i = (
+            insert(users)
+            .on_conflict_do_update(
+                index_elements=["login_email"],
+                set_=dict(login_email="nord1@gmail.com"),
+            )
+            .on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_=dict(name="name3"),
+            )
+            .values()
+        )
+
+        connection.execute(
+            i,
+            [
+                dict(
+                    id=1,
+                    name="name1",
+                    login_email="name1@gmail.com",
+                    lets_index_this="not",
+                ),
+                dict(
+                    id=2,
+                    name="name2",
+                    login_email="name3@gmail.com",
+                    lets_index_this="not",
+                ),
+            ],
+        )
+        eq_(
+            connection.execute(users.select()).fetchall(),
+            [
+                (1, "name1", "nord1@gmail.com", "not"),
+                (2, "name3", "name2@gmail.com", "not"),
+            ],
+        )
+
+    def test_on_conflict_do_nothing_multiple_clauses(self, connection):
+        users = self.tables.users_xtra
+
+        self._exotic_targets_fixture(connection)
+
+        i = (
+            insert(users)
+            .on_conflict_do_update(
+                index_elements=["login_email"],
+                set_=dict(login_email="nord1@gmail.com"),
+            )
+            .on_conflict_do_nothing(index_elements=[users.c.id])
+            .values()
+        )
+
+        connection.execute(
+            i,
+            [
+                dict(
+                    id=1,
+                    name="name1",
+                    login_email="name1@gmail.com",
+                    lets_index_this="not",
+                ),
+                dict(
+                    id=2,
+                    name="name2",
+                    login_email="name3@gmail.com",
+                    lets_index_this="not",
+                ),
+            ],
+        )
+        eq_(
+            connection.execute(users.select()).fetchall(),
+            [
+                (1, "name1", "nord1@gmail.com", "not"),
+                (2, "name2", "name2@gmail.com", "not"),
+            ],
         )
