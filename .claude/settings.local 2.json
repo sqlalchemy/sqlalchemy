@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue *)",
+      "Bash(uv sync *)",
+      "Bash(uv pip *)",
+      "Bash(uv venv *)",
+      "Bash(.venv/bin/python -m ensurepip --version)",
+      "Bash(.venv/bin/python -m ensurepip --upgrade)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/pip3 install *)",
+      "Bash(sysctl -n hw.ncpu)"
+    ]
+  }
+}

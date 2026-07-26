@@ -44,6 +44,7 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
 from sqlalchemy import VARCHAR
+from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
@@ -1295,6 +1296,162 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl (data)",
             dialect=dialect_8_1,
+        )
+
+    # ------------------------------------------------------------------
+    # postgresql_unnamed dialect kwarg (issue #4289 follow-up).
+    #
+    # NOT IMPLEMENTED YET. Until "unnamed" is registered in
+    # PGDialect.construct_arguments for schema.Index (postgresql/base.py),
+    # every Index(..., postgresql_unnamed=True) call below raises
+    # sqlalchemy.exc.ArgumentError at construction time:
+    #   "Argument 'postgresql_unnamed' is not accepted by dialect
+    #   'postgresql' on behalf of <class '...Index'>"
+    # That is the expected failure mode right now -- these tests pin down
+    # the contract the future implementation must satisfy, not something
+    # that should pass yet.
+    #
+    # Message contract for the two CompileError cases (T9, T10): the
+    # raised message must mention both conflicting tokens by name so a
+    # user hitting it doesn't need to read the source to understand the
+    # conflict. The patterns below accept either token order since the
+    # exact wording is an implementation choice, not fixed here.
+    # ------------------------------------------------------------------
+
+    def test_create_index_unnamed(self):
+        # T1: bare postgresql_unnamed=True renders CREATE INDEX with no
+        # name at all.
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX ON testtbl (data)",
+        )
+
+    def test_create_index_unnamed_unique(self):
+        # T2: UNIQUE keyword ordering is unaffected by the omitted name.
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index(None, tbl.c.data, unique=True, postgresql_unnamed=True)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE UNIQUE INDEX ON testtbl (data)",
+        )
+
+    def test_create_index_unnamed_concurrently(self):
+        # T3: CONCURRENTLY still renders, and still ordered before the
+        # (now omitted) name position.
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index(
+            None,
+            tbl.c.data,
+            postgresql_unnamed=True,
+            postgresql_concurrently=True,
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX CONCURRENTLY ON testtbl (data)",
+        )
+
+    def test_create_index_unnamed_noop_on_other_dialect(self):
+        # T5: postgresql_unnamed is inert when compiled for a dialect that
+        # never reads dialect_options["postgresql"]. The index still gets
+        # its ordinary naming-convention name (ix_testtbl_data, verified
+        # against the current naming.py behavior) and renders exactly as
+        # if the kwarg had never been passed.
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX ix_testtbl_data ON testtbl (data)",
+            dialect=mysql.dialect(),
+        )
+
+    def test_create_index_unnamed_kwarg_defaults_false(self):
+        # T6: an ordinary Index with zero postgresql_* kwargs still has a
+        # well-defined, safe default for the new key -- confirms
+        # dialect_options["postgresql"]["unnamed"] is readable from
+        # generic code without any per-Index opt-in (needed for the T8
+        # checkfirst bypass, which reads this from sql/ddl.py).
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index("plain_idx", tbl.c.data)
+        is_(idx.dialect_options["postgresql"]["unnamed"], False)
+
+    def test_create_index_unnamed_construction_does_not_raise(self):
+        # T9c / T10a: both conflicts (if_not_exists, explicit name) are
+        # properties of DDL emission, not of the Index object itself --
+        # constructing it must always succeed regardless of what it will
+        # later be compiled with.
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        Index(None, tbl.c.data, postgresql_unnamed=True)
+        Index("idx1", tbl.c.data, postgresql_unnamed=True)
+
+    def test_create_index_unnamed_with_if_not_exists_raises(self):
+        # T9a
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
+        assert_raises_message(
+            exc.CompileError,
+            r"(?:.*postgresql_unnamed.*if_not_exists.*"
+            r"|.*if_not_exists.*postgresql_unnamed.*)",
+            schema.CreateIndex(idx, if_not_exists=True).compile,
+            dialect=postgresql.dialect(),
+        )
+
+    def test_create_index_unnamed_with_if_not_exists_noop_on_other_dialect(
+        self,
+    ):
+        # T9d: the guard lives in PGDDLCompiler, so the same Index +
+        # if_not_exists=True combination must compile cleanly (no raise)
+        # against a dialect that doesn't know about postgresql_unnamed.
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
+        self.assert_compile(
+            schema.CreateIndex(idx, if_not_exists=True),
+            "CREATE INDEX IF NOT EXISTS ix_testtbl_data ON testtbl (data)",
+            dialect=mysql.dialect(),
+        )
+
+    def test_create_index_unnamed_with_explicit_name_raises(self):
+        # T10: explicit name + postgresql_unnamed=True is the same class
+        # of contradiction as T9, raised the same way.
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index("idx1", tbl.c.data, postgresql_unnamed=True)
+        assert_raises_message(
+            exc.CompileError,
+            r"(?:.*postgresql_unnamed.*idx1.*|.*idx1.*postgresql_unnamed.*)",
+            schema.CreateIndex(idx).compile,
+            dialect=postgresql.dialect(),
+        )
+
+    def test_create_index_named_without_unnamed_is_unaffected(self):
+        # T10b (control): an explicitly named index with no
+        # postgresql_unnamed kwarg at all compiles exactly as before --
+        # the new guard must not fire when the flag isn't set.
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index("idx1", tbl.c.data)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX idx1 ON testtbl (data)",
         )
 
     def test_drop_index_concurrently(self):

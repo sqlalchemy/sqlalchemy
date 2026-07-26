@@ -1421,14 +1421,26 @@ class SchemaGenerator(InvokeCreateDDLBase, _SchemaTableReflector):
         effective_schema = self.connection.schema_for_object(index.table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return (
-            not self.checkfirst & CheckFirst.INDEXES
-            or not self.dialect.has_index(
-                self.connection,
-                index.table.name,
-                index.name,
-                schema=effective_schema,
+
+        if not self.checkfirst & CheckFirst.INDEXES:
+            return True
+
+        if index.dialect_options["postgresql"]["unnamed"]:
+            util.warn(
+                "Can't check for an existing index when "
+                "postgresql_unnamed=True; the real name assigned by the "
+                "server is unknown to SQLAlchemy, so checkfirst can't be "
+                "honored for this index and CREATE INDEX will always be "
+                "attempted -- repeated create_all() calls will create "
+                "duplicate indexes"
             )
+            return True
+
+        return not self.dialect.has_index(
+            self.connection,
+            index.table.name,
+            index.name,
+            schema=effective_schema,
         )
 
     def _can_create_sequence(self, sequence):
