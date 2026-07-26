@@ -2889,6 +2889,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_drop_index(self, drop, **kw):
         index = drop.element
 
+        if index.dialect_options["postgresql"]["unnamed"]:
+            raise exc.CompileError(
+                "Can't drop an index created with postgresql_unnamed=True "
+                "by name; the real name assigned by the server is unknown "
+                "to SQLAlchemy"
+            )
+
         text = "\nDROP INDEX "
 
         if self.dialect._supports_drop_index_concurrently:

@@ -1434,6 +1434,39 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.DropIndex(idx1), "DROP INDEX test_idx1", dialect=dialect_9_1
         )
 
+    def test_drop_index_unnamed_raises(self):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
+        assert_raises_message(
+            exc.CompileError,
+            r".*postgresql_unnamed.*",
+            schema.DropIndex(idx).compile,
+            dialect=postgresql.dialect(),
+        )
+
+    def test_drop_index_named_without_unnamed_is_unaffected(self):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index("idx1", tbl.c.data)
+        self.assert_compile(
+            schema.DropIndex(idx),
+            "DROP INDEX idx1",
+        )
+
+    def test_drop_index_unnamed_noop_on_other_dialect(self):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String))
+
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
+        self.assert_compile(
+            schema.DropIndex(idx),
+            "DROP INDEX ix_testtbl_data ON testtbl",
+            dialect=mysql.dialect(),
+        )
+
     def test_create_check_constraint_not_valid(self):
         m = MetaData()
 

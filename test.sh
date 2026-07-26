@@ -34,6 +34,9 @@ case "$MODE" in
       "test/dialect/postgresql/test_compiler.py::CompileTest::test_create_index_unnamed_with_explicit_name_raises" \
       "test/dialect/postgresql/test_compiler.py::CompileTest::test_create_index_named_without_unnamed_is_unaffected" \
       "test/dialect/postgresql/test_compiler.py::CompileTest::test_create_index_none_name_without_unnamed_still_autonames" \
+      "test/dialect/postgresql/test_compiler.py::CompileTest::test_drop_index_unnamed_raises" \
+      "test/dialect/postgresql/test_compiler.py::CompileTest::test_drop_index_named_without_unnamed_is_unaffected" \
+      "test/dialect/postgresql/test_compiler.py::CompileTest::test_drop_index_unnamed_noop_on_other_dialect" \
       -v \
       ${OUTPUT_PATH:+--junitxml="$OUTPUT_PATH"}
     ;;
