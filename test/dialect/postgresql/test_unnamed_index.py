@@ -57,11 +57,30 @@ class UnnamedIndexCreateTest(fixtures.TestBase):
 
 
 class UnnamedIndexCheckfirstTest(fixtures.TestBase):
-    """T8: interaction between postgresql_unnamed and checkfirst."""
+    """T8: interaction between postgresql_unnamed and checkfirst.
+
+    IMPORTANT (discovered while running these against a real server):
+    ``metadata.create_all()`` never reaches ``_can_create_index`` for a
+    table's own indexes -- ``SchemaGenerator.visit_table`` traverses them
+    with ``create_ok=True`` unconditionally (sql/ddl.py:1530-1531), since
+    the checkfirst gate for the whole operation already happened one
+    level up, at the *table* (``_can_create_table``). A table that
+    already exists is skipped entirely -- its indexes are never
+    revisited, named or unnamed. So calling ``create_all()`` twice in a
+    row is not the scenario that exercises checkfirst-for-indexes at
+    all.
+
+    The code path that actually reaches ``_can_create_index`` with
+    ``create_ok=False`` is a *direct* ``Index.create(bind,
+    checkfirst=...)`` call against an index attached to a table that
+    already exists -- e.g. an idempotent migration script, or Alembic
+    re-running ``create_index`` defensively. All tests below use that
+    call directly instead of ``create_all()``.
+    """
 
     __only_on__ = "postgresql"
 
-    def test_checkfirst_true_bypassed_causes_duplicate_on_second_call(
+    def test_direct_create_checkfirst_true_bypassed_causes_duplicate(
         self, metadata, connection
     ):
         # T8a + T8b
@@ -70,34 +89,34 @@ class UnnamedIndexCheckfirstTest(fixtures.TestBase):
             metadata,
             Column("data", Integer),
         )
-        Index(None, tbl.c.data, postgresql_unnamed=True)
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
 
+        # table + its index created once, normally, via create_all()
+        metadata.create_all(connection)
+        assert len(inspect(connection).get_indexes("unnamed_idx_t8a")) == 1
+
+        # first *direct* checkfirst=True call: must warn, and must still
+        # attempt (and succeed at) creating a second physical index,
+        # since checkfirst can't verify an unnamed index's existence.
         with assertions.expect_warnings(
             r".*postgresql_unnamed.*checkfirst.*"
             r"|.*checkfirst.*postgresql_unnamed.*"
         ):
-            metadata.create_all(connection, checkfirst=True)
+            idx.create(connection, checkfirst=True)
 
-        indexes_after_first = inspect(connection).get_indexes(
-            "unnamed_idx_t8a"
-        )
-        assert len(indexes_after_first) == 1
+        assert len(inspect(connection).get_indexes("unnamed_idx_t8a")) == 2
 
-        # second call: must NOT raise, and -- per the documented
-        # trade-off -- is expected to create a second physical index,
-        # since checkfirst cannot verify an unnamed index's existence.
+        # second direct call: must NOT raise, and -- per the documented
+        # trade-off -- creates yet another duplicate.
         with assertions.expect_warnings(
             r".*postgresql_unnamed.*checkfirst.*"
             r"|.*checkfirst.*postgresql_unnamed.*"
         ):
-            metadata.create_all(connection, checkfirst=True)
+            idx.create(connection, checkfirst=True)
 
-        indexes_after_second = inspect(connection).get_indexes(
-            "unnamed_idx_t8a"
-        )
-        assert len(indexes_after_second) == 2
+        assert len(inspect(connection).get_indexes("unnamed_idx_t8a")) == 3
 
-    def test_checkfirst_true_named_index_is_not_duplicated(
+    def test_direct_create_checkfirst_true_named_index_is_not_duplicated(
         self, metadata, connection
     ):
         # T8c (control / regression guard)
@@ -106,32 +125,39 @@ class UnnamedIndexCheckfirstTest(fixtures.TestBase):
             metadata,
             Column("data", Integer),
         )
-        Index("named_idx_t8c", tbl.c.data)
+        idx = Index("named_idx_t8c", tbl.c.data)
 
-        metadata.create_all(connection, checkfirst=True)
-        metadata.create_all(connection, checkfirst=True)
+        metadata.create_all(connection)
+        assert len(inspect(connection).get_indexes("unnamed_idx_t8c")) == 1
 
-        indexes = inspect(connection).get_indexes("unnamed_idx_t8c")
-        assert len(indexes) == 1
+        # named index CAN be looked up by has_index -- checkfirst
+        # correctly prevents the duplicate, unlike the unnamed case.
+        idx.create(connection, checkfirst=True)
+        idx.create(connection, checkfirst=True)
 
-    def test_checkfirst_false_emits_no_warning(self, metadata, connection):
+        assert len(inspect(connection).get_indexes("unnamed_idx_t8c")) == 1
+
+    def test_direct_create_checkfirst_false_emits_no_warning(
+        self, metadata, connection
+    ):
         # T8d
         tbl = Table(
             "unnamed_idx_t8d",
             metadata,
             Column("data", Integer),
         )
-        Index(None, tbl.c.data, postgresql_unnamed=True)
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
+        metadata.create_all(connection)
 
         with warnings.catch_warnings(record=True) as recorded:
             warnings.simplefilter("always")
-            metadata.create_all(connection, checkfirst=False)
+            idx.create(connection, checkfirst=False)
 
         assert not any(
             "postgresql_unnamed" in str(w.message) for w in recorded
         )
 
-    def test_checkfirst_true_never_calls_has_index_for_unnamed(
+    def test_direct_create_checkfirst_true_never_calls_has_index_for_unnamed(
         self, metadata, connection
     ):
         # T8e: pins down that the bypass skips calling has_index
@@ -141,13 +167,44 @@ class UnnamedIndexCheckfirstTest(fixtures.TestBase):
             metadata,
             Column("data", Integer),
         )
-        Index(None, tbl.c.data, postgresql_unnamed=True)
+        idx = Index(None, tbl.c.data, postgresql_unnamed=True)
+        metadata.create_all(connection)
+
+        with (
+            assertions.expect_warnings(
+                r".*postgresql_unnamed.*checkfirst.*"
+                r"|.*checkfirst.*postgresql_unnamed.*"
+            ),
+            mock.patch.object(
+                connection.dialect,
+                "has_index",
+                wraps=connection.dialect.has_index,
+            ) as has_index,
+        ):
+            idx.create(connection, checkfirst=True)
+
+        has_index.assert_not_called()
+
+    def test_direct_create_checkfirst_true_calls_has_index_for_named(
+        self, metadata, connection
+    ):
+        # positive control for T8e: proves the mock actually observes a
+        # has_index call when the index *does* have a name, so T8e's
+        # "not called" result is meaningful and not just an artifact of
+        # this code path never calling has_index at all.
+        tbl = Table(
+            "unnamed_idx_t8e_control",
+            metadata,
+            Column("data", Integer),
+        )
+        idx = Index("named_idx_t8e_control", tbl.c.data)
+        metadata.create_all(connection)
 
         with mock.patch.object(
             connection.dialect,
             "has_index",
             wraps=connection.dialect.has_index,
         ) as has_index:
-            metadata.create_all(connection, checkfirst=True)
+            idx.create(connection, checkfirst=True)
 
-        has_index.assert_not_called()
+        has_index.assert_called_once()

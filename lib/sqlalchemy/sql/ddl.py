@@ -1428,11 +1428,10 @@ class SchemaGenerator(InvokeCreateDDLBase, _SchemaTableReflector):
         if index.dialect_options["postgresql"]["unnamed"]:
             util.warn(
                 "Can't check for an existing index when "
-                "postgresql_unnamed=True; the real name assigned by the "
-                "server is unknown to SQLAlchemy, so checkfirst can't be "
-                "honored for this index and CREATE INDEX will always be "
-                "attempted -- repeated create_all() calls will create "
-                "duplicate indexes"
+                "postgresql_unnamed=True; checkfirst can't be honored, "
+                "so a direct Index.create(bind, checkfirst=True) call "
+                "(e.g. from a migration script) against an index whose "
+                "table already exists will create a duplicate"
             )
             return True
 
