@@ -338,6 +338,25 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(type_, expected)
 
     @testing.combinations(
+        (mysql.ENUM("a", "b\\"), "ENUM('a','b\\\\')"),
+        (mysql.SET("a\\", "b"), "SET('a\\\\','b')"),
+        (mysql.ENUM("O'Brien", "x\\y"), "ENUM('O''Brien','x\\\\y')"),
+        argnames="type_, expected",
+    )
+    def test_enum_set_backslash_escaping(self, type_, expected):
+        # values containing a backslash must be escaped the same way
+        # render_literal_value escapes them; a trailing backslash otherwise
+        # escapes the closing quote and breaks out of the literal under the
+        # default sql_mode (backslash escapes on)
+        self.assert_compile(type_, expected)
+
+    def test_enum_no_backslash_escapes(self):
+        # NO_BACKSLASH_ESCAPES: backslash is an ordinary character, leave it
+        dialect = mysql.MySQLDialect()
+        dialect._backslash_escapes = False
+        self.assert_compile(mysql.ENUM("b\\"), "ENUM('b\\')", dialect=dialect)
+
+    @testing.combinations(
         (BOOLEAN(), "BOOL"),
         (Boolean(), "BOOL"),
         (mysql.TINYINT(1), "TINYINT(1)"),
