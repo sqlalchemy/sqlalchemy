@@ -3354,33 +3354,33 @@ class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
 
             @declared_attr
-            def users(self) -> Mapped[List[User]]:
+            def users(cls) -> Mapped[List[User]]:
                 return relationship(User)
 
             if use_directive:
                 if use_annotation:
 
                     @declared_attr.directive
-                    def user_ids(self) -> AssociationProxy[List[int]]:
+                    def user_ids(cls) -> AssociationProxy[List[int]]:
                         return association_proxy("users", "id")
 
                 else:
 
                     @declared_attr.directive
-                    def user_ids(self):
+                    def user_ids(cls):
                         return association_proxy("users", "id")
 
             else:
                 if use_annotation:
 
                     @declared_attr
-                    def user_ids(self) -> AssociationProxy[List[int]]:
+                    def user_ids(cls) -> AssociationProxy[List[int]]:
                         return association_proxy("users", "id")
 
                 else:
 
                     @declared_attr
-                    def user_ids(self):
+                    def user_ids(cls):
                         return association_proxy("users", "id")
 
         class Thing(Mixin, decl_base):
