@@ -1080,7 +1080,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = "test"
 
             @declared_attr
-            def __table_args__(self):
+            def __table_args__(cls):
                 info = {}
                 args = dict(info=info)
                 info.update(MyMixin1.__table_args__["info"])
@@ -1221,7 +1221,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 return {"mysql_engine": "InnoDB"}
 
             @declared_attr
-            def id(self):
+            def id(cls):
                 return Column(Integer, primary_key=True)
 
         Base = declarative_base(cls=Base)
@@ -1549,7 +1549,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_honor_class_mro_one(self):
         class HasXMixin:
             @declared_attr
-            def x(self):
+            def x(cls):
                 return Column(Integer)
 
         class Parent(HasXMixin, Base):
@@ -1565,7 +1565,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_honor_class_mro_two(self):
         class HasXMixin:
             @declared_attr
-            def x(self):
+            def x(cls):
                 return Column(Integer)
 
         class Parent(HasXMixin, Base):

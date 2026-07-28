@@ -51,7 +51,7 @@ An example of some commonly mixed-in idioms is below::
         log_record_id: Mapped[int] = mapped_column(ForeignKey("logrecord.id"))
 
         @declared_attr
-        def log_record(self) -> Mapped["LogRecord"]:
+        def log_record(cls) -> Mapped["LogRecord"]:
             return relationship("LogRecord")
 
 
@@ -184,7 +184,7 @@ below illustrates some of the previous section's example in terms of the
         log_record_id: Mapped[int] = mapped_column(ForeignKey("logrecord.id"))
 
         @declared_attr
-        def log_record(self) -> Mapped["LogRecord"]:
+        def log_record(cls) -> Mapped["LogRecord"]:
             return relationship("LogRecord")
 
 
@@ -239,7 +239,7 @@ example below::
         log_record_id = mapped_column(ForeignKey("logrecord.id"))
 
         @declared_attr
-        def log_record(self):
+        def log_record(cls):
             return relationship("LogRecord")
 
 
