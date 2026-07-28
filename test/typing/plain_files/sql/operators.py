@@ -4,6 +4,8 @@ from typing import Any
 from typing import assert_type
 from typing import List
 
+from sqlalchemy import all_ as all_fn
+from sqlalchemy import any_ as any_fn
 from sqlalchemy import ARRAY
 from sqlalchemy import BigInteger
 from sqlalchemy import column
@@ -138,6 +140,13 @@ nulls_first: "ColumnElement[int]" = A.id.nulls_first()
 nulls_last: "ColumnElement[int]" = A.id.nulls_last()
 collate: "ColumnElement[str]" = A.string.collate("somelang")
 distinct: "ColumnElement[int]" = A.id.distinct()
+
+# any_()/all_() functions also accept plain literal sequences, which get
+# coerced to a bind parameter at runtime (not just column expressions)
+any_fn_col: "ColumnElement[bool]" = A.string == any_fn(A.arr)
+any_fn_list: "ColumnElement[bool]" = A.string == any_fn(["a", "b"])
+all_fn_col: "ColumnElement[bool]" = A.string == all_fn(A.arr)
+all_fn_list: "ColumnElement[bool]" = A.string == all_fn(["a", "b"])
 
 
 # custom ops
