@@ -139,7 +139,7 @@ class _BackendsMultiReflection(Dialect):
         **kw: Any,
     ) -> bool:
         # NOTE: assume it's a subclass of DefaultDialect
-        self._ensure_has_table_connection(connection)  # type: ignore
+        self._ensure_has_table_connection(connection)  # type: ignore[attr-defined] # noqa: E501
         multi_res = self.has_multi_table(
             connection,
             table_names=[table_name],
