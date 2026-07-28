@@ -21,7 +21,6 @@ from ...sql import coercions
 from ...sql import roles
 from ...sql import schema
 from ...sql._typing import _DMLTableArgument
-from ...sql.base import _exclusive_against
 from ...sql.base import ColumnCollection
 from ...sql.base import ReadOnlyColumnCollection
 from ...sql.base import SyntaxExtension
@@ -102,14 +101,6 @@ class Insert(StandardInsert):
         """
         return alias(self.table, name="excluded").columns
 
-    _on_conflict_exclusive = _exclusive_against(
-        "_post_values_clause",
-        msgs={
-            "_post_values_clause": "This Insert construct already has "
-            "an ON CONFLICT clause established"
-        },
-    )
-
     def on_conflict_do_update(
         self,
         index_elements: _OnConflictIndexElementsT = None,
@@ -119,6 +110,8 @@ class Insert(StandardInsert):
     ) -> Self:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
+
+        Multiple clauses can be added, and they are evaluated in order
 
         :param index_elements:
          A sequence consisting of string column names, :class:`_schema.Column`
@@ -167,6 +160,10 @@ class Insert(StandardInsert):
     ) -> Self:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
+
+        This clause may be used together with :func:`on_conflict_do_update()`
+        but only one :func:`on_conflict_do_nothing()` may be specified,
+        and it must be the last one
 
         :param index_elements:
          A sequence consisting of string column names, :class:`_schema.Column`
