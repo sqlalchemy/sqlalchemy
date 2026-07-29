@@ -4491,6 +4491,7 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
         deferrable: Optional[bool] = None,
         initially: Optional[str] = None,
         info: Optional[_InfoType] = None,
+        attach_to_table: bool = True,
         comment: Optional[str] = None,
         _create_rule: Optional[Any] = None,
         _type_bound: bool = False,
@@ -4511,6 +4512,11 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
+
+        :param attach_to_table: This flag determines whether this
+          constraint gets added to Table.constraints.
+
+            ..versionadded: 2.1
 
         :param comment: Optional string that will render an SQL comment on
           foreign key constraint creation.
@@ -4536,6 +4542,7 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
         self.initially = initially
         if info:
             self.info = info
+        self.attach_to_table = attach_to_table
         self._create_rule = _create_rule
         self._type_bound = _type_bound
         util.set_creation_order(self)
@@ -5222,7 +5229,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         assert isinstance(table, Table)
         Constraint._set_parent(self, table)
 
-        ColumnCollectionConstraint._set_parent(self, table)
+        ColumnCollectionConstraint._set_parent(self, table, **kw)
 
         for col, fk in zip(self._columns, self.elements):
             if not hasattr(fk, "parent") or fk.parent is not col:
@@ -5371,12 +5378,13 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         table = parent
         assert isinstance(table, Table)
-        super()._set_parent(table)
+        super()._set_parent(table, **kw)
 
         if table.primary_key is not self:
             table.constraints.discard(table.primary_key)
             table.primary_key = self  # type: ignore
-            table.constraints.add(self)
+            if self.attach_to_table:
+                table.constraints.add(self)
 
         table_pks = [c for c in table.c if c.primary_key]
         if (
@@ -5537,32 +5545,6 @@ class UniqueConstraint(ColumnCollectionConstraint):
     """
 
     __visit_name__ = "unique_constraint"
-
-    def __init__(
-        self,
-        *columns: _DDLColumnArgument,
-        name: _ConstraintNameArgument = None,
-        deferrable: Optional[bool] = None,
-        initially: Optional[str] = None,
-        info: Optional[_InfoType] = None,
-        attach_to_table: bool = True,
-        **dialect_kw: Any,
-    ) -> None:
-        r"""
-        :param attach_to_table: This flag determines whether this
-          constraint gets added to Table.constraints.
-
-            ..versionadded: 2.1
-        """
-        self.attach_to_table = attach_to_table
-        super().__init__(
-            *columns,
-            name=name,
-            deferrable=deferrable,
-            initially=initially,
-            info=info,
-            **dialect_kw,
-        )
 
 
 class Index(

@@ -1443,83 +1443,97 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(constraint), "CREATE INDEX name ON tbl (a + 5)"
         )
 
-    def test_index_attach_to_table(self):
+    @testing.combinations(
+        (Index, "indexes"),
+        (PrimaryKeyConstraint, "constraints"),
+        (UniqueConstraint, "constraints"),
+        (CheckConstraint, "constraints"),
+        argnames="constraint,table_arg",
+    )
+    @testing.variation("attach_to_table", [True, False])
+    def test_constraints_attach_to_table(
+        self, constraint, table_arg, attach_to_table
+    ):
         metadata = MetaData()
 
-        idx_x = Index("x", attach_to_table=False)
-        idx_y = Index("y", attach_to_table=True)
-        idx_z = Index("z")
+        c = constraint("x", attach_to_table=attach_to_table)
 
         tbl = Table(
             "test",
             metadata,
             Column("x", Integer),
-            Column("y", Integer),
-            Column("z", Integer),
-            idx_x,
-            idx_y,
-            idx_z,
+            c,
         )
 
-        assert idx_x not in tbl.indexes
-        assert idx_y in tbl.indexes
-        assert idx_z in tbl.indexes
+        info = getattr(tbl, table_arg)
+        if attach_to_table:
+            assert c in info
+        else:
+            assert c not in info
 
-    def test_index_append_to_table(self):
+    @testing.combinations(
+        (Index, "indexes"),
+        (PrimaryKeyConstraint, "constraints"),
+        (UniqueConstraint, "constraints"),
+        (CheckConstraint, "constraints"),
+        argnames="constraint,table_arg",
+    )
+    def test_constraints_append_to_table(self, constraint, table_arg):
         metadata = MetaData()
 
-        idx = Index("y", attach_to_table=False)
+        c = constraint("x", attach_to_table=False)
 
         tbl = Table(
             "test",
             metadata,
             Column("x", Integer),
-            Column("y", Integer),
-            Column("z", Integer),
-            idx,
+            c,
         )
 
-        tbl.append_constraint(idx)
-        assert idx in tbl.indexes
+        tbl.append_constraint(c)
+        info = getattr(tbl, table_arg)
+        assert c in info
 
-    def test_unique_constraint_attach_to_table(self):
+    @testing.variation("attach_to_table", [True, False])
+    def test_foreign_key_constraint_attach_to_table(self, attach_to_table):
         metadata = MetaData()
 
-        uc_x = UniqueConstraint("x", attach_to_table=False)
-        uc_y = UniqueConstraint("y", attach_to_table=True)
-        uc_z = UniqueConstraint("z")
+        c = ForeignKeyConstraint(
+            ["x"],
+            ["test2.xid"],
+            attach_to_table=attach_to_table,
+        )
 
         tbl = Table(
             "test",
             metadata,
             Column("x", Integer),
-            Column("y", Integer),
-            Column("z", Integer),
-            uc_x,
-            uc_y,
-            uc_z,
+            c,
         )
 
-        assert uc_x not in tbl.constraints
-        assert uc_y in tbl.constraints
-        assert uc_z in tbl.constraints
+        if attach_to_table:
+            assert c in tbl.constraints
+        else:
+            assert c not in tbl.constraints
 
-    def test_unique_constraint_append_to_table(self):
+    def test_foreign_key_constraint_append_to_table(self):
         metadata = MetaData()
 
-        uc = UniqueConstraint("x", attach_to_table=False)
+        c = ForeignKeyConstraint(
+            ["x"],
+            ["test2.xid"],
+            attach_to_table=False,
+        )
 
         tbl = Table(
             "test",
             metadata,
             Column("x", Integer),
-            Column("y", Integer),
-            Column("z", Integer),
-            uc,
+            c,
         )
 
-        tbl.append_constraint(uc)
-        assert uc in tbl.constraints
+        tbl.append_constraint(c)
+        assert c in tbl.constraints
 
 
 class ConstraintCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
