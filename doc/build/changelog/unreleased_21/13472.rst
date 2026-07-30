@@ -1,6 +1,6 @@
 .. change::
     :tags: bug, postgresql
-    :tickets: 13472, 13471
+    :tickets: 13472
 
     Fixed bug in :meth:`_reflection.Inspector.get_schema_names` for
     PostgreSQL where the query used to exclude system schemas relied on
