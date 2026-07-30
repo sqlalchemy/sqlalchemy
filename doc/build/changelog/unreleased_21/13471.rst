@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13471
+
+    Fixed bug in :meth:`_reflection.Inspector.get_schema_names` for
+    PostgreSQL where the query used to exclude system schemas relied on
+    ``NOT LIKE 'pg_%'``, which treats the underscore as a SQL ``LIKE``
+    wildcard rather than a literal character. This caused user-created
+    schemas that happen to start with "pg" followed by any other
+    character, such as ``pgsql`` or ``pgstats``, to be silently excluded
+    along with actual system schemas like ``pg_catalog``.
