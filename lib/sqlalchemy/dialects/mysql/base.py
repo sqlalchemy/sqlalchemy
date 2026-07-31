@@ -1317,6 +1317,22 @@ class MySQLCompiler(
 
         return ""
 
+    def _render_values(self, element, **kw):
+        return self.dialect._dispatch_for_vendor(
+            self._mysql_render_values,
+            super()._render_values,
+            element,
+            **kw,
+        )
+
+    def _mysql_render_values(self, element, **kw):
+        kw["_mysql_values_row"] = True
+        return super()._render_values(element, **kw)
+
+    def visit_tuple(self, clauselist, **kw):
+        prefix = "ROW" if kw.pop("_mysql_values_row", False) else ""
+        return prefix + super().visit_tuple(clauselist, **kw)
+
     def visit_random_func(self, fn: random, **kw: Any) -> str:
         return "rand%s" % self.function_argspec(fn)
 
