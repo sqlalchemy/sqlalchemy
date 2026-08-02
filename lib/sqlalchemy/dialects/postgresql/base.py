@@ -5538,9 +5538,21 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 util.warn("Could not parse CHECK constraint text: %r" % src)
                 sqltext = ""
             else:
-                sqltext = re.compile(
-                    r"^[\s\n]*\((.+)\)[\s\n]*$", flags=re.DOTALL
-                ).sub(r"\1", m.group(1))
+                check_body = m.group(1).strip()
+                if check_body.startswith("(") and check_body.endswith(")"):
+                    depth = 0
+                    matched = True
+                    for i, ch in enumerate(check_body):
+                        if ch == "(":
+                            depth += 1
+                        elif ch == ")":
+                            depth -= 1
+                        if depth == 0 and i < len(check_body) - 1:
+                            matched = False
+                            break
+                    if matched:
+                        check_body = check_body[1:-1].strip()
+                sqltext = check_body
             entry = {
                 "name": check_name,
                 "sqltext": sqltext,
