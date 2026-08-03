@@ -1240,6 +1240,20 @@ class _ClassScanMapperConfig(_MapperConfig):
                 "documentation for additional information.",
                 code="dcte",
             ) from ex
+        else:
+            # as of Python 3.15, dataclasses no longer renders the
+            # auto-generated class docstring immediately; it instead installs
+            # a descriptor that renders the ``__init__`` signature the first
+            # time ``__doc__`` is accessed (see
+            # ``dataclasses._AutoDocstring``).  As the ``finally:`` block
+            # below puts the class' original annotations back, that deferred
+            # render would no longer see the dataclass-oriented annotations
+            # applied above, and would omit them from the docstring entirely.
+            # Read the attribute now, while those annotations are still in
+            # place, so the docstring we generate is the same on every Python
+            # version.
+            klass.__doc__
+
         finally:
             # restore original annotations outside of the dataclasses
             # process; for mixins and __abstract__ superclasses, SQLAlchemy
