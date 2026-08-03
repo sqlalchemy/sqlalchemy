@@ -19,6 +19,7 @@ def _all_cython_modules():
     from ..engine import _result_cy
     from ..engine import _row_cy
     from ..engine import _util_cy as engine_util
+    from ..orm import _loading_cy
     from ..sql import _util_cy as sql_util
 
     return (
@@ -28,6 +29,7 @@ def _all_cython_modules():
         _result_cy,
         _row_cy,
         engine_util,
+        _loading_cy,
         sql_util,
     )
 
