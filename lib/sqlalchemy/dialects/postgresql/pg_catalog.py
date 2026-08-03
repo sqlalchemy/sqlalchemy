@@ -74,6 +74,7 @@ _pg_cat = func.pg_catalog
 quote_ident = _pg_cat.quote_ident
 pg_table_is_visible = _pg_cat.pg_table_is_visible
 pg_type_is_visible = _pg_cat.pg_type_is_visible
+pg_collation_is_visible = _pg_cat.pg_collation_is_visible
 pg_get_viewdef = _pg_cat.pg_get_viewdef
 pg_get_serial_sequence = _pg_cat.pg_get_serial_sequence
 format_type = _pg_cat.format_type

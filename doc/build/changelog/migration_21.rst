@@ -1945,11 +1945,20 @@ hand-quoting code paths that existed previously.  As a side effect, simple
 lowercase collation names such as ``"utf8"`` are no longer unconditionally
 quoted in generated DDL, as this quoting was never necessary for such names.
 
+Additionally, reflection of columns and :class:`_postgresql.DOMAIN` objects
+now populates :paramref:`.String.collation_schema` /
+:paramref:`_postgresql.DOMAIN.collation_schema` when the underlying
+collation is schema-qualified, so that reflected DDL round-trips exactly.
+The schema is omitted from the reflected value when the collation is
+visible on the current ``search_path`` without qualification.
+
 .. seealso::
 
     :ref:`postgresql_collation`
 
 :ticket:`9693`
+
+:ticket:`6511`
 
 
 Microsoft SQL Server

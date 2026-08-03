@@ -1,0 +1,15 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 6511
+
+    The PostgreSQL dialect now reflects the schema of a schema-qualified
+    column or :class:`_postgresql.DOMAIN` collation, populating the new
+    :paramref:`.String.collation_schema` /
+    :paramref:`_postgresql.DOMAIN.collation_schema` parameters so that
+    reflected DDL round-trips exactly.  The schema is omitted from the
+    reflected value when the collation is visible on the current
+    ``search_path`` without qualification.
+
+    .. seealso::
+
+        :ref:`postgresql_collation`
