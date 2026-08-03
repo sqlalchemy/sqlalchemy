@@ -1810,6 +1810,36 @@ itself:
 .. versionadded:: 1.4.0b2
 
 
+.. _postgresql_collation:
+
+Schema-Qualified Collations
+----------------------------
+
+PostgreSQL supports collations that are qualified by a schema name, such as
+``CREATE COLLATION my_schema.my_collation (...)``.  To refer to such a
+collation, use the :paramref:`.String.collation_schema` parameter (or
+:paramref:`_postgresql.DOMAIN.collation_schema` for a :class:`_postgresql.DOMAIN`)
+in conjunction with :paramref:`.String.collation`, rather than attempting to
+embed the schema name inside the ``collation`` string itself::
+
+    Column(
+        "data",
+        String(collation="my_collation", collation_schema="my_schema"),
+    )
+
+The above renders DDL similar to:
+
+.. sourcecode:: sql
+
+    data VARCHAR COLLATE "my_schema"."my_collation"
+
+.. versionadded:: 2.1
+
+.. seealso::
+
+    :paramref:`.String.collation`
+
+    :paramref:`.String.collation_schema`
 
 """  # noqa: E501
 
@@ -2721,7 +2751,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         options = []
         if domain.collation is not None:
-            options.append(f"COLLATE {self.preparer.quote(domain.collation)}")
+            collation = self.preparer.format_collation(
+                domain.collation, domain.collation_schema
+            )
+            options.append(f"COLLATE {collation}")
         if domain.default is not None:
             default = self.render_default_string(domain.default)
             options.append(f"DEFAULT {default}")

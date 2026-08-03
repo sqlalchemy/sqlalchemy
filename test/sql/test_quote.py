@@ -587,6 +587,19 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="mssql",
         )
 
+    def test_collate_schema(self):
+        self.assert_compile(
+            column("foo").collate("fr_FR", collation_schema="MySchema"),
+            'foo COLLATE "MySchema"."fr_FR"',
+            dialect="postgresql",
+        )
+
+        self.assert_compile(
+            column("foo").collate("fr_fr", collation_schema="myschema"),
+            "foo COLLATE myschema.fr_fr",
+            dialect="postgresql",
+        )
+
     def test_join(self):
         # Lower case names, should not quote
         metadata = MetaData()

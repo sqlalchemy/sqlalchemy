@@ -214,6 +214,7 @@ class String(Concatenable, TypeEngine[str]):
         self,
         length: Optional[int] = None,
         collation: Optional[str] = None,
+        collation_schema: Optional[str] = None,
     ):
         """
         Create a string-holding type.
@@ -244,14 +245,45 @@ class String(Concatenable, TypeEngine[str]):
             to store non-ascii data. These datatypes will ensure that the
             correct types are used on the database.
 
-        """
+        :param collation_schema: Optional, the name of the schema in which
+          :paramref:`.String.collation` is defined, for use with database
+          backends that support schema-qualified collations. This is
+          currently known to be supported in PostgreSQL.  Requires that
+          :paramref:`.String.collation` is also present.  E.g.:
+
+          .. sourcecode:: pycon+sql
+
+            >>> from sqlalchemy import cast, select, String
+            >>> print(
+            ...     select(
+            ...         cast(
+            ...             "some string",
+            ...             String(
+            ...                 collation="my_collation",
+            ...                 collation_schema="my_schema",
+            ...             ),
+            ...         )
+            ...     )
+            ... )
+            {printsql}SELECT CAST(:param_1 AS VARCHAR COLLATE "my_schema"."my_collation") AS anon_1
+
+          .. versionadded:: 2.1
+
+        """  # noqa: E501
 
         self.length = length
         self.collation = collation
+        if collation_schema is not None and collation is None:
+            raise exc.ArgumentError(
+                "the 'collation_schema' parameter of String requires "
+                "the 'collation' parameter to also be present"
+            )
+        self.collation_schema = collation_schema
 
-    def _with_collation(self, collation):
+    def _with_collation(self, collation, collation_schema=None):
         new_type = self.copy()
         new_type.collation = collation
+        new_type.collation_schema = collation_schema
         return new_type
 
     def _resolve_for_literal(self, value):
@@ -3836,6 +3868,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
     length: Optional[int] = None
     collation: Optional[str] = None
+    collation_schema: Optional[str] = None
 
     @overload
     def __init__(

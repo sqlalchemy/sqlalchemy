@@ -448,6 +448,31 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CONSTRAINT no_bar NOT NULL CHECK (VALUE != 'bar')",
         )
 
+    def test_domain_collation_schema(self):
+        """test #9693"""
+        self.assert_compile(
+            postgresql.CreateDomainType(
+                DOMAIN(
+                    "foo",
+                    Text,
+                    collation="my-coll",
+                    collation_schema="CollSchema",
+                )
+            ),
+            'CREATE DOMAIN foo AS TEXT COLLATE "CollSchema"."my-coll"',
+        )
+
+    def test_domain_collation_schema_requires_collation(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            "the 'collation_schema' parameter of DOMAIN requires "
+            "the 'collation' parameter to also be present",
+            DOMAIN,
+            "foo",
+            Text,
+            collation_schema="CollSchema",
+        )
+
     def test_cast_domain_schema(self):
         """test #6739"""
         d1 = DOMAIN("somename", Integer)

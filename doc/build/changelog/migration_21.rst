@@ -1908,6 +1908,49 @@ server-side function calls).
 
 :ticket:`13014`
 
+.. _change_9693_postgresql:
+
+Schema-Qualified Collation Names
+---------------------------------
+
+PostgreSQL collations are schema-qualified catalog objects (e.g.
+``CREATE COLLATION my_schema.my_collation (...)``).  Previously, there was
+no way to correctly indicate a schema-qualified collation using the
+:paramref:`.String.collation` parameter; a value such as
+``collation="my_schema.my_collation"`` would render as a single,
+incorrectly-quoted identifier.
+
+A new parameter :paramref:`.String.collation_schema` is added, used
+in conjunction with :paramref:`.String.collation`, to indicate the schema
+in which the collation is defined.  The same parameter is also added to
+:class:`_postgresql.DOMAIN` as :paramref:`_postgresql.DOMAIN.collation_schema`,
+as well as to :func:`_sql.collate` and :meth:`.ColumnOperators.collate` as
+``collation_schema``::
+
+    Column(
+        "data",
+        String(collation="my_collation", collation_schema="my_schema"),
+    )
+
+The above renders DDL similar to:
+
+.. sourcecode:: sql
+
+    data VARCHAR COLLATE "my_schema"."my_collation"
+
+As part of this change, all collation-name rendering across DDL and the
+:func:`_sql.collate` construct now consistently uses the dialect's
+identifier preparer for quoting, rather than several separate, inconsistent
+hand-quoting code paths that existed previously.  As a side effect, simple
+lowercase collation names such as ``"utf8"`` are no longer unconditionally
+quoted in generated DDL, as this quoting was never necessary for such names.
+
+.. seealso::
+
+    :ref:`postgresql_collation`
+
+:ticket:`9693`
+
 
 Microsoft SQL Server
 ====================

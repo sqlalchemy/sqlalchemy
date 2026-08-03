@@ -2372,6 +2372,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT x ORDER BY x COLLATE bar",
         )
 
+        # columns clause, schema-qualified collation
+        self.assert_compile(
+            select(column("x").collate("bar", collation_schema="myschema")),
+            "SELECT x COLLATE myschema.bar AS anon_1",
+            dialect=postgresql.dialect(),
+        )
+
     def test_literal(self):
         self.assert_compile(
             select(literal("foo")), "SELECT :param_1 AS anon_1"
@@ -3046,40 +3053,61 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         (
             "default",
             None,
+            None,
             "SELECT CAST(t1.txt AS VARCHAR(10)) AS txt FROM t1",
             None,
         ),
         (
             "explicit_mssql",
             "Latin1_General_CI_AS",
+            None,
             "SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE Latin1_General_CI_AS AS txt FROM t1",  # noqa
             mssql.dialect(),
         ),
         (
             "explicit_mysql",
             "utf8mb4_unicode_ci",
+            None,
             "SELECT CAST(t1.txt AS CHAR(10)) AS txt FROM t1",
             mysql.dialect(),
         ),
         (
             "explicit_postgresql",
             "en_US",
+            None,
             'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE "en_US" AS txt FROM t1',  # noqa
+            postgresql.dialect(),
+        ),
+        (
+            "explicit_postgresql_schema",
+            "en_US",
+            "myschema",
+            'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE myschema."en_US" AS txt FROM t1',  # noqa
             postgresql.dialect(),
         ),
         (
             "explicit_sqlite",
             "NOCASE",
+            None,
             'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE "NOCASE" AS txt FROM t1',  # noqa
             sqlite.dialect(),
         ),
-        id_="iaaa",
+        id_="iaaaa",
     )
-    def test_cast_with_collate(self, collation_name, expected_sql, dialect):
+    def test_cast_with_collate(
+        self, collation_name, collation_schema, expected_sql, dialect
+    ):
         t1 = Table(
             "t1",
             MetaData(),
-            Column("txt", String(10, collation=collation_name)),
+            Column(
+                "txt",
+                String(
+                    10,
+                    collation=collation_name,
+                    collation_schema=collation_schema,
+                ),
+            ),
         )
         stmt = select(func.cast(t1.c.txt, t1.c.txt.type))
         self.assert_compile(stmt, expected_sql, dialect=dialect)
