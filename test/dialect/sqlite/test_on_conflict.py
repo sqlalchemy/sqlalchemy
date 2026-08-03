@@ -3,6 +3,7 @@
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import exc
+from sqlalchemy import MetaData
 from sqlalchemy import schema
 from sqlalchemy import sql
 from sqlalchemy import Table
@@ -11,6 +12,7 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
@@ -80,26 +82,6 @@ class OnConflictTest(fixtures.TablesTest):
     def test_bad_args(self):
         with expect_raises(ValueError):
             insert(self.tables.users).on_conflict_do_update()
-
-    def test_on_conflict_do_no_call_twice(self):
-        users = self.tables.users
-
-        for stmt in (
-            insert(users).on_conflict_do_nothing(),
-            insert(users).on_conflict_do_update(
-                index_elements=[users.c.id], set_=dict(name="foo")
-            ),
-        ):
-            for meth in (
-                stmt.on_conflict_do_nothing,
-                stmt.on_conflict_do_update,
-            ):
-                with testing.expect_raises_message(
-                    exc.InvalidRequestError,
-                    "This Insert construct already has an "
-                    "ON CONFLICT clause established",
-                ):
-                    meth()
 
     def test_on_conflict_do_nothing(self, connection):
         users = self.tables.users
@@ -772,3 +754,198 @@ class OnConflictTest(fixtures.TablesTest):
             ).fetchall(),
             expected_updated,
         )
+
+    def _multiple_clauses_data(self):
+        """rows which conflict against the ``users_xtra`` rows set up by
+        :meth:`._exotic_targets_fixture`.
+
+        the first row conflicts on both ``id`` and ``login_email``, so that
+        which ON CONFLICT clause fires for it depends on the order in which
+        the clauses were established; the second row conflicts on ``id``
+        only.
+
+        """
+        return [
+            dict(
+                id=1,
+                name="name1",
+                login_email="name1@gmail.com",
+                lets_index_this="not",
+            ),
+            dict(
+                id=2,
+                name="name2",
+                login_email="name3@gmail.com",
+                lets_index_this="not",
+            ),
+        ]
+
+    @testing.variation("email_clause_first", [True, False])
+    def test_on_conflict_do_update_multiple_clauses(
+        self, connection, email_clause_first
+    ):
+        """test #13113, where the first clause with a matching conflict
+        target is the one that fires for a given row.
+
+        """
+        users = self.tables.users_xtra
+
+        self._exotic_targets_fixture(connection)
+
+        stmt = insert(users)
+
+        if email_clause_first:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["login_email"],
+                set_=dict(login_email="nord1@gmail.com"),
+            ).on_conflict_do_update(
+                index_elements=[users.c.id], set_=dict(name="name3")
+            )
+        else:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[users.c.id], set_=dict(name="name3")
+            ).on_conflict_do_update(
+                index_elements=["login_email"],
+                set_=dict(login_email="nord1@gmail.com"),
+            )
+
+        connection.execute(stmt, self._multiple_clauses_data())
+
+        eq_(
+            connection.execute(users.select()).fetchall(),
+            (
+                [
+                    (1, "name1", "nord1@gmail.com", "not"),
+                    (2, "name3", "name2@gmail.com", "not"),
+                ]
+                if email_clause_first
+                else [
+                    (1, "name3", "name1@gmail.com", "not"),
+                    (2, "name3", "name2@gmail.com", "not"),
+                ]
+            ),
+        )
+
+    def test_on_conflict_do_update_and_do_nothing(self, connection):
+        """test #13113, mixing DO UPDATE and DO NOTHING clauses."""
+
+        users = self.tables.users_xtra
+
+        self._exotic_targets_fixture(connection)
+
+        stmt = (
+            insert(users)
+            .on_conflict_do_update(
+                index_elements=["login_email"],
+                set_=dict(login_email="nord1@gmail.com"),
+            )
+            .on_conflict_do_nothing(index_elements=[users.c.id])
+        )
+
+        connection.execute(stmt, self._multiple_clauses_data())
+
+        eq_(
+            connection.execute(users.select()).fetchall(),
+            [
+                (1, "name1", "nord1@gmail.com", "not"),
+                (2, "name2", "name2@gmail.com", "not"),
+            ],
+        )
+
+    def test_on_conflict_untargeted_do_nothing_last(self, connection):
+        """test #13113, a DO NOTHING clause with no conflict target is
+        legal as the last clause of the statement.
+
+        """
+        users = self.tables.users_xtra
+
+        self._exotic_targets_fixture(connection)
+
+        stmt = (
+            insert(users)
+            .on_conflict_do_update(
+                index_elements=["login_email"],
+                set_=dict(login_email="nord1@gmail.com"),
+            )
+            .on_conflict_do_nothing()
+        )
+
+        connection.execute(stmt, self._multiple_clauses_data())
+
+        eq_(
+            connection.execute(users.select()).fetchall(),
+            [
+                (1, "name1", "nord1@gmail.com", "not"),
+                (2, "name2", "name2@gmail.com", "not"),
+            ],
+        )
+
+
+class OnConflictCompileTest(fixtures.TestBase, AssertsCompiledSQL):
+    """test #13113, multiple ON CONFLICT clauses on a single statement."""
+
+    __dialect__ = "sqlite"
+
+    @testing.fixture
+    def users(self):
+        return Table(
+            "users",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+            Column("login_email", String(50)),
+        )
+
+    def test_multiple_clauses_render_in_order(self, users):
+        stmt = (
+            insert(users)
+            .on_conflict_do_update(
+                index_elements=[users.c.id], set_=dict(name="name1")
+            )
+            .on_conflict_do_nothing(index_elements=[users.c.login_email])
+            .on_conflict_do_update(
+                index_elements=[users.c.name], set_=dict(name="name2")
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (id, name, login_email) VALUES (?, ?, ?) "
+            "ON CONFLICT (id) DO UPDATE SET name = ? "
+            "ON CONFLICT (login_email) DO NOTHING "
+            "ON CONFLICT (name) DO UPDATE SET name = ?",
+        )
+
+    def test_untargeted_do_nothing_renders_last(self, users):
+        stmt = (
+            insert(users)
+            .on_conflict_do_update(
+                index_elements=[users.c.id], set_=dict(name="name1")
+            )
+            .on_conflict_do_nothing()
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (id, name, login_email) VALUES (?, ?, ?) "
+            "ON CONFLICT (id) DO UPDATE SET name = ? "
+            "ON CONFLICT DO NOTHING",
+        )
+
+    def test_untargeted_clause_must_be_last(self, users):
+        stmt = insert(users).on_conflict_do_nothing()
+
+        for add_clause in (
+            lambda: stmt.on_conflict_do_nothing(),
+            lambda: stmt.on_conflict_do_nothing(index_elements=[users.c.id]),
+            lambda: stmt.on_conflict_do_update(
+                index_elements=[users.c.id], set_=dict(name="name2")
+            ),
+        ):
+            with testing.expect_raises_message(
+                exc.InvalidRequestError,
+                "This Insert construct already has an ON CONFLICT clause "
+                "that omits a conflict target; such a clause must be the "
+                "last ON CONFLICT clause in the statement",
+            ):
+                add_clause()

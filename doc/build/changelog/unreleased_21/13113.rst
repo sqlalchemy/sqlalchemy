@@ -1,0 +1,17 @@
+.. change::
+    :tags: usecase, sqlite, dml
+    :tickets: 13113
+
+    Added support for multiple ``ON CONFLICT`` clauses within a single
+    statement for the SQLite :func:`_sqlite.insert` construct; the
+    :meth:`_sqlite.Insert.on_conflict_do_update` and
+    :meth:`_sqlite.Insert.on_conflict_do_nothing` methods may now each be
+    invoked more than once against the same construct, where the clauses
+    render in the order in which they were established and are evaluated by
+    SQLite in that order.  As SQLite allows only the last ``ON CONFLICT``
+    clause to omit its conflict target, a
+    :meth:`_sqlite.Insert.on_conflict_do_nothing` call that omits
+    :paramref:`_sqlite.Insert.on_conflict_do_nothing.index_elements` must be
+    the last clause established.  Documentation is added at
+    :ref:`sqlite_on_conflict_multiple`.  Pull request courtesy Diemid
+    Berozkin.

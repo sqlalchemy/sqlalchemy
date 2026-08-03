@@ -744,6 +744,54 @@ occurs:
     >>> print(stmt)
     {printsql}INSERT INTO my_table (id, data) VALUES (?, ?) ON CONFLICT DO NOTHING
 
+.. _sqlite_on_conflict_multiple:
+
+Specifying Multiple ON CONFLICT Clauses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLite accepts more than one ``ON CONFLICT`` clause within a single INSERT
+statement.  The :meth:`_sqlite.Insert.on_conflict_do_update` and
+:meth:`_sqlite.Insert.on_conflict_do_nothing` methods may therefore be
+invoked repeatedly against the same construct, and may be combined with each
+other; each clause renders in the order in which it was established:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = insert(my_table).values(id="some_id", data="inserted value")
+    >>> stmt = stmt.on_conflict_do_update(
+    ...     index_elements=["id"], set_=dict(data="updated value")
+    ... ).on_conflict_do_nothing(index_elements=["data"])
+    >>> print(stmt)
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
+    ON CONFLICT (id) DO UPDATE SET data = ?
+    ON CONFLICT (data) DO NOTHING
+
+SQLite tests the clauses in the order given, and applies at most one of them
+to any particular row, that being the first clause whose conflict target
+matches the constraint that was violated.
+
+Only the last ``ON CONFLICT`` clause of a statement may omit its conflict
+target, in which case it fires for any unique violation not already captured
+by a preceding clause.  A :meth:`_sqlite.Insert.on_conflict_do_nothing` call
+that omits
+:paramref:`_sqlite.Insert.on_conflict_do_nothing.index_elements` must
+therefore be the last clause established, else
+:class:`.InvalidRequestError` is raised:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = insert(my_table).values(id="some_id", data="inserted value")
+    >>> stmt = stmt.on_conflict_do_update(
+    ...     index_elements=["id"], set_=dict(data="updated value")
+    ... ).on_conflict_do_nothing()
+    >>> print(stmt)
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
+    ON CONFLICT (id) DO UPDATE SET data = ?
+    ON CONFLICT DO NOTHING
+
+.. versionadded:: 2.1  Multiple ``ON CONFLICT`` clauses may be established
+   on a single :class:`_sqlite.Insert` construct.
+
 .. _sqlite_type_reflection:
 
 Type Reflection
