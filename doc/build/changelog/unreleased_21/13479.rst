@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 13479
+
+    Fixed issue in the Oracle dialects where a :class:`_types.JSON` value would
+    be returned as an undecoded string for any JSON expression that is not a
+    JSON column, such as a bound parameter, as well as for textual constructs
+    with positional columns, such as :func:`_expression.text` combined with
+    :meth:`_expression.TextClause.columns`.
