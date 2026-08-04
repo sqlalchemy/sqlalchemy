@@ -109,6 +109,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
+          # needed for python versions that are not yet released, e.g. 3.15
+          allow-prereleases: true
 
       - name: Install dependencies
         run: |
