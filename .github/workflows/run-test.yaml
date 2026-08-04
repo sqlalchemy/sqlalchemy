@@ -38,6 +38,7 @@ jobs:
           - "3.13"
           - "3.14"
           - "3.14t"
+          - "3.15"
         build-type:
           # builds greenlet, runs asyncio tests.  includes aiosqlite driver
           - "cext-greenlet"
