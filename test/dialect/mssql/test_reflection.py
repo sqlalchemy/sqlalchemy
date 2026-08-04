@@ -142,6 +142,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             is_(cols["data"]["type"].length, None)
         finally:
             connection.exec_driver_sql("drop table lob_t")
+            connection.commit()
 
     def test_identity(self, metadata, connection):
         table = Table(

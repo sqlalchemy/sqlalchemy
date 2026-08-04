@@ -3593,8 +3593,7 @@ class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
             # TEXT, NTEXT, and IMAGE are unlengthed LOB types.
             # sys.columns.max_length reports 16 (the in-row pointer),
             # not a usable character/byte length.
-            if collation and coltype in (MSText, MSNText):
-                kwargs["collation"] = collation
+            pass
         elif coltype in (MSString, MSChar):
             kwargs["length"] = maxlen if maxlen != -1 else None
             if collation:
