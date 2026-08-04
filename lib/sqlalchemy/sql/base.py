@@ -151,7 +151,7 @@ class _DefaultDescriptionTuple(NamedTuple):
     ) -> _DefaultDescriptionTuple:
         return (
             _DefaultDescriptionTuple(
-                default.arg,  # type: ignore
+                default.arg,  # type: ignore[attr-defined]
                 default.is_scalar,
                 default.is_callable,
                 default.is_sentinel,
@@ -236,7 +236,7 @@ class SingletonConstant(Immutable):
     @classmethod
     def _create_singleton(cls) -> None:
         obj = object.__new__(cls)
-        obj.__init__()  # type: ignore
+        obj.__init__()  # type: ignore[misc]
 
         # for a long time this was an empty frozenset, meaning
         # a SingletonConstant would never be a "corresponding column" in
@@ -298,7 +298,7 @@ def _generative(fn: _Fn) -> _Fn:
         return self
 
     decorated = _generative(fn)
-    decorated.non_generative = fn  # type: ignore
+    decorated.non_generative = fn  # type: ignore[attr-defined]
     return decorated
 
 
@@ -1103,7 +1103,7 @@ class ExecutableOption(HasCopyInternals):
     def _clone(self, **kw):
         """Create a shallow copy of this ExecutableOption."""
         c = self.__class__.__new__(self.__class__)
-        c.__dict__ = dict(self.__dict__)  # type: ignore
+        c.__dict__ = dict(self.__dict__)  # type: ignore[misc]
         return c
 
 
@@ -2011,7 +2011,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         )
 
     # https://github.com/python/mypy/issues/4266
-    __hash__: Optional[int] = None  # type: ignore
+    __hash__: Optional[int] = None  # type: ignore[assignment]
 
     def contains_column(self, col: ColumnElement[Any]) -> bool:
         """Checks if a column object exists in this collection"""
@@ -2154,7 +2154,7 @@ class WriteableColumnCollection(ColumnCollection[_COLKEY, _COL_co]):
         colkey: _COLKEY
 
         if key is None:
-            colkey = column.key  # type: ignore
+            colkey = column.key  # type: ignore[assignment]
         else:
             colkey = key
 
@@ -2545,7 +2545,7 @@ class ReadOnlyColumnCollection(
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         parent = state["_parent"]
-        self.__init__(parent)  # type: ignore
+        self.__init__(parent)  # type: ignore[misc]
 
     def corresponding_column(
         self, column: _COL, require_embedded: bool = False
@@ -2644,7 +2644,7 @@ def _entity_namespace_key(
         if default is not NO_ARG:
             return getattr(ns, key, default)
         else:
-            return getattr(ns, key)  # type: ignore
+            return getattr(ns, key)  # type: ignore[no-any-return]
     except AttributeError as err:
         raise exc.InvalidRequestError(
             'Entity namespace for "%s" has no property "%s"' % (entity, key)

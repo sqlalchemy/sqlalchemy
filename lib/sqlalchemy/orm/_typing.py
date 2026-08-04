@@ -98,6 +98,10 @@ OrmExecuteOptionsParameter = Union[
 ]
 
 
+class _HasPathString(Protocol):
+    def path_string(self) -> str: ...
+
+
 class _ORMAdapterProto(Protocol):
     """protocol for the :class:`.AliasedInsp._orm_adapt_element` method
     which is a synonym for :class:`.AliasedInsp._adapt_element`.
@@ -123,7 +127,7 @@ def is_orm_option(
 def is_user_defined_option(
     opt: ExecutableOption,
 ) -> TypeGuard[UserDefinedOption]:
-    return not opt._is_core and opt._is_user_defined  # type: ignore
+    return not opt._is_core and opt._is_user_defined  # type: ignore[attr-defined]  # noqa: E501
 
 
 def is_composite_class(obj: Any) -> bool:

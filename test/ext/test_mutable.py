@@ -1078,7 +1078,8 @@ class _MutableSetTestBase(_MutableSetTestFixture):
 
 class _MutableNoHashFixture:
     @testing.fixture(autouse=True, scope="class")
-    def set_class(self):
+    @classmethod
+    def set_class(cls):
         global Foo
 
         _replace_foo = Foo

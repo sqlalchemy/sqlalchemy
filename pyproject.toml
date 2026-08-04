@@ -45,7 +45,7 @@ Discussions = "https://github.com/sqlalchemy/sqlalchemy/discussions"
 [project.optional-dependencies]
 asyncio = ["greenlet>=1"]
 mypy = [
-    "mypy >= 2",
+    "mypy >= 2.3",
     "types-greenlet >= 2",
 ]
 mssql = ["pyodbc"]
@@ -55,9 +55,9 @@ mssql-python = ["mssql-python>=1.9.0"]
 mysql = ["mysqlclient>=1.4.0"]
 mysql-connector = ["mysql-connector-python"]
 mariadb-connector = ["mariadb>=1.0.1,!=1.1.2,!=1.1.5,!=1.1.10"]
-oracle = ["oracledb>=1.0.1"]
+oracle = ["oracledb>=2.0.1"]
 oracle-cxoracle = ["cx_oracle>=8"]
-oracle-oracledb = ["oracledb>=1.0.1"]
+oracle-oracledb = ["oracledb>=2.0.1"]
 postgresql = ["psycopg>=3.0.7,!=3.1.15"]
 postgresql-pg8000 = ["pg8000>=1.29.3"]
 postgresql-asyncpg = [
@@ -333,8 +333,7 @@ reportTypedDictNotRequiredAccess = "warning"
 mypy_path = "./lib/"
 show_error_codes = true
 incremental = true
-# would be nice to enable this but too many error are surfaceds
-# enable_error_code = "ignore-without-code"
+enable_error_code = "ignore-without-code"
 
 [[tool.mypy.overrides]]
 

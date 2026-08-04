@@ -2311,7 +2311,7 @@ class OracleDialect(default._BackendsMultiReflection, default.DefaultDialect):
         )
 
     @util.memoized_property
-    def _has_table_query(self):
+    def _has_multi_table_query(self):
         # materialized views are returned by all_tables
         tables = (
             select(
@@ -2328,33 +2328,35 @@ class OracleDialect(default._BackendsMultiReflection, default.DefaultDialect):
         )
 
         query = select(tables.c.table_name).where(
-            tables.c.table_name == bindparam("table_name"),
+            tables.c.table_name.in_(bindparam("table_names")),
             tables.c.owner == bindparam("owner"),
         )
         return query
 
-    @reflection.cache
-    def has_table(
-        self, connection, table_name, schema=None, dblink=None, **kw
+    def has_multi_table(
+        self, connection, table_names, schema=None, dblink=None, **kw
     ):
         """Supported kw arguments are: ``dblink`` to reflect via a db link."""
-        self._ensure_has_table_connection(connection)
 
-        if not schema:
-            schema = self.default_schema_name
-
+        owner = schema or self.default_schema_name
+        db_tns = [self.denormalize_name(tn) for tn in table_names]
         params = {
-            "table_name": self.denormalize_name(table_name),
-            "owner": self.denormalize_schema_name(schema),
+            "table_names": db_tns,
+            "owner": self.denormalize_schema_name(owner),
         }
         cursor = self._execute_reflection(
             connection,
-            self._has_table_query,
+            self._has_multi_table_query,
             dblink,
             returns_long=False,
             params=params,
         )
-        return bool(cursor.scalar())
+        existing = set(cursor.scalars().all())
+        retval = {
+            (schema, table): db_tn in existing
+            for table, db_tn in zip(table_names, db_tns)
+        }
+        return retval.items()
 
     @reflection.cache
     def has_sequence(

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, general
+    :tickets: 10748
+
+    Allowed the inspection registry to replace an existing registration with a
+    reloaded callable from the same module and name. This avoids an assertion
+    failure for tooling that unloads and reloads SQLAlchemy modules while still
+    rejecting conflicting registrations. Pull request courtersy w-Jessamine.

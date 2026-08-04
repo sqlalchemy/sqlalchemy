@@ -22,6 +22,9 @@ from sqlalchemy.testing import is_
 
 class EmitDDLTest(fixtures.TestBase):
     def _mock_connection(self, item_exists):
+        def has_many_item(connection, names, schema):
+            return [((schema, name), item_exists(name)) for name in names]
+
         def has_item(connection, name, schema):
             return item_exists(name)
 
@@ -31,12 +34,13 @@ class EmitDDLTest(fixtures.TestBase):
         return Mock(
             dialect=Mock(
                 supports_sequences=True,
-                has_table=Mock(side_effect=has_item),
+                has_multi_table=Mock(side_effect=has_many_item),
                 has_sequence=Mock(side_effect=has_item),
                 has_index=Mock(side_effect=has_index),
                 supports_comments=True,
                 inline_comments=False,
             ),
+            schema_for_object=lambda t: t.schema,
             _schema_translate_map=None,
         )
 
@@ -71,17 +75,28 @@ class EmitDDLTest(fixtures.TestBase):
             Table("t%d" % i, m, Column("x", Integer)) for i in range(1, 6)
         )
 
-    def _table_and_view_fixture(self):
+    def _table_and_view_fixture(self, multi_schema=False):
         m = MetaData()
 
         tables = [
-            Table("t%d" % i, m, Column("x", Integer)) for i in range(1, 4)
+            Table(
+                "t%d" % i,
+                m,
+                Column("x", Integer),
+                schema="s1" if multi_schema and i > 1 else None,
+            )
+            for i in range(1, 4)
         ]
 
         t1, t2, t3 = tables
         views = [
             CreateView(select(t1), "v1", metadata=m).table,
-            CreateView(select(t3), "v2", metadata=m).table,
+            CreateView(
+                select(t3),
+                "v2",
+                metadata=m,
+                schema="s1" if multi_schema else None,
+            ).table,
         ]
         return (m,) + tuple(tables) + tuple(views)
 
@@ -456,6 +471,22 @@ class EmitDDLTest(fixtures.TestBase):
 
         self._assert_drop_tables([t1, t2, t3, v1, v2], generator, m, False)
 
+    def test_create_metadata_wviews_many_schema(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture(multi_schema=True)
+        generator = self._mock_create_fixture(
+            True, None, item_exists=lambda t: t not in ("t2", "v2")
+        )
+
+        self._assert_create_tables([t2, v2], generator, m, True)
+
+    def test_drop_metadata_wviews_many_schema(self):
+        m, t1, t2, t3, v1, v2 = self._table_and_view_fixture(multi_schema=True)
+        generator = self._mock_drop_fixture(
+            True, None, item_exists=lambda t: t in ("t2", "v2")
+        )
+
+        self._assert_drop_tables([t2, v2], generator, m, True)
+
     def test_create_metadata_auto_alter_fk(self):
         m, t1, t2 = self._use_alter_fixture_one()
         generator = self._mock_create_fixture(False, [t1, t2])
@@ -478,6 +509,27 @@ class EmitDDLTest(fixtures.TestBase):
             m,
         )
 
+    def _check_mock(self, generator, tables, views):
+        if tables or views:
+            tbs = {}
+            for t in tables:
+                tbs.setdefault(t.schema, []).append(t.name)
+            vbs = {}
+            for t in views:
+                vbs.setdefault(t.schema, []).append(t.name)
+
+            calls = [
+                mock.call(mock.ANY, names, schema=schema)
+                for data in (tbs, vbs)
+                for schema, names in data.items()
+            ]
+            eq_(generator.dialect.has_multi_table.mock_calls, calls)
+        else:
+            eq_(
+                generator.dialect.has_multi_table.mock_calls,
+                [],
+            )
+
     def _assert_create_tables(self, elements, generator, argument, checkfirst):
         self._assert_ddl(
             (schema.CreateTable, schema.CreateView),
@@ -486,7 +538,7 @@ class EmitDDLTest(fixtures.TestBase):
             argument,
         )
 
-        tables = []
+        tables, views = [], []
         if CheckFirst(checkfirst) & CheckFirst.TABLES:
             if generator.tables is not None:
                 tables.extend([t for t in generator.tables if not t.is_view])
@@ -499,34 +551,22 @@ class EmitDDLTest(fixtures.TestBase):
 
         if CheckFirst(checkfirst) & CheckFirst.VIEWS:
             if generator.tables is not None:
-                tables.extend([t for t in generator.tables if t.is_view])
+                views.extend([t for t in generator.tables if t.is_view])
             elif isinstance(argument, MetaData):
-                tables.extend(
+                views.extend(
                     [t for t in argument.tables.values() if t.is_view]
                 )
             else:
                 assert False, "don't know what views we are checking"
 
-        if tables:
-            eq_(
-                generator.dialect.has_table.mock_calls,
-                [
-                    mock.call(mock.ANY, tablename, schema=mock.ANY)
-                    for tablename in [t.name for t in tables]
-                ],
-            )
-        else:
-            eq_(
-                generator.dialect.has_index.mock_calls,
-                [],
-            )
+        self._check_mock(generator, tables, views)
 
     def _assert_drop_tables(self, elements, generator, argument, checkfirst):
         self._assert_ddl(
             (schema.DropTable, schema.DropView), elements, generator, argument
         )
 
-        tables = []
+        tables, views = [], []
         if CheckFirst(checkfirst) & CheckFirst.TABLES:
             if generator.tables is not None:
                 tables.extend([t for t in generator.tables if not t.is_view])
@@ -539,27 +579,14 @@ class EmitDDLTest(fixtures.TestBase):
 
         if CheckFirst(checkfirst) & CheckFirst.VIEWS:
             if generator.tables is not None:
-                tables.extend([t for t in generator.tables if t.is_view])
+                views.extend([t for t in generator.tables if t.is_view])
             elif isinstance(argument, MetaData):
-                tables.extend(
+                views.extend(
                     [t for t in argument.tables.values() if t.is_view]
                 )
             else:
                 assert False, "don't know what views we are checking"
-
-        if tables:
-            eq_(
-                generator.dialect.has_table.mock_calls,
-                [
-                    mock.call(mock.ANY, tablename, schema=mock.ANY)
-                    for tablename in [t.name for t in tables]
-                ],
-            )
-        else:
-            eq_(
-                generator.dialect.has_index.mock_calls,
-                [],
-            )
+        self._check_mock(generator, tables, views)
 
     def _assert_create(self, elements, generator, argument):
         self._assert_ddl(

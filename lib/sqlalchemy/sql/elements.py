@@ -419,7 +419,7 @@ class ClauseElement(
 
     def _default_compiler(self) -> SQLCompiler:
         dialect = self._default_dialect()
-        return dialect.statement_compiler(dialect, self)  # type: ignore
+        return dialect.statement_compiler(dialect, self)  # type: ignore[no-any-return]  # noqa: E501
 
     def _clone(self, **kw: Any) -> Self:
         """Create a shallow copy of this ClauseElement.
@@ -1113,7 +1113,9 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
 
         def nullslast(self) -> UnaryExpression[_T_co]: ...
 
-        def collate(self, collation: str) -> CollationClause: ...
+        def collate(
+            self, collation: str, collation_schema: Optional[str] = None
+        ) -> CollationClause: ...
 
         def between(
             self, cleft: Any, cright: Any, symmetric: bool = False
@@ -2182,7 +2184,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         """
         if self.callable:
             # TODO: set up protocol for bind parameter callable
-            return self.callable()  # type: ignore
+            return self.callable()  # type: ignore[no-any-return]
         else:
             return self.value
 
@@ -2373,7 +2375,7 @@ class AbstractTextClause(
 
     @property
     def comparator(self):
-        return self.type.comparator_factory(self)  # type: ignore
+        return self.type.comparator_factory(self)  # type: ignore[arg-type]
 
     def self_group(
         self, against: Optional[OperatorType] = None
@@ -2723,7 +2725,7 @@ class TextClause(AbstractTextClause, inspection.Inspectable["TextClause"]):
     def comparator(self):
         # TODO: this seems wrong, it seems like we might not
         # be using this method.
-        return self.type.comparator_factory(self)  # type: ignore
+        return self.type.comparator_factory(self)  # type: ignore[arg-type]
 
     def self_group(
         self, against: Optional[OperatorType] = None
@@ -3236,7 +3238,7 @@ class ExpressionClauseList(OperatorExpression[_T]):
             for clause in clauses
         )
         self._is_implicitly_boolean = operators.is_boolean(self.operator)
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
     @property
     def _flattened_operator_clauses(
@@ -3397,7 +3399,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
                 for to_flat in convert_clauses
             )
 
-            return cls._construct_raw(operator, flattened_clauses)  # type: ignore # noqa: E501
+            return cls._construct_raw(operator, flattened_clauses)  # type: ignore[arg-type] # noqa: E501
         else:
             assert lcc
             # just one element.  return it as a single boolean element,
@@ -3929,7 +3931,7 @@ class UnaryExpression(ColumnElement[_T]):
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
     def _wraps_unnamed_column(self):
         ungrouped = self.element._ungroup()
@@ -4236,7 +4238,7 @@ class BinaryExpression(OperatorExpression[_T]):
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
         self.negate = negate
         self._is_implicitly_boolean = operators.is_boolean(operator)
@@ -4286,7 +4288,7 @@ class BinaryExpression(OperatorExpression[_T]):
             # this is using the eq/ne operator given int hash values,
             # rather than Operator, so that "bool" can be based on
             # identity
-            return self.operator(*self._orig)  # type: ignore
+            return self.operator(*self._orig)  # type: ignore[call-overload]
         else:
             raise TypeError("Boolean value of this clause is not defined")
 
@@ -4406,7 +4408,7 @@ class Grouping(GroupedElement, ColumnElement[_T]):
         self.element = element
 
         # nulltype assignment issue
-        self.type = getattr(element, "type", type_api.NULLTYPE)  # type: ignore
+        self.type = getattr(element, "type", type_api.NULLTYPE)  # type: ignore[arg-type]  # noqa: E501
         self._propagate_attrs = element._propagate_attrs
 
     def _with_binary_element_type(self, type_):
@@ -4930,7 +4932,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
         *criterion: _ColumnExpressionArgument[bool],
     ):
         self.func = func
-        self.filter.non_generative(self, *criterion)  # type: ignore
+        self.filter.non_generative(self, *criterion)  # type: ignore[attr-defined]  # noqa: E501
 
     @_generative
     def filter(self, *criterion: _ColumnExpressionArgument[bool]) -> Self:
@@ -5420,7 +5422,7 @@ class ColumnClause(
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
         self.is_literal = is_literal
 
@@ -5627,13 +5629,17 @@ class CollationClause(ColumnElement[str]):
     __visit_name__ = "collation"
 
     _traverse_internals: _TraverseInternalsType = [
-        ("collation", InternalTraversal.dp_string)
+        ("collation", InternalTraversal.dp_string),
+        ("collation_schema", InternalTraversal.dp_string),
     ]
 
     @classmethod
     @util.preload_module("sqlalchemy.sql.sqltypes")
     def _create_collation_expression(
-        cls, expression: _ColumnExpressionArgument[str], collation: str
+        cls,
+        expression: _ColumnExpressionArgument[str],
+        collation: str,
+        collation_schema: Optional[str] = None,
     ) -> BinaryExpression[str]:
 
         sqltypes = util.preloaded.sql_sqltypes
@@ -5641,19 +5647,22 @@ class CollationClause(ColumnElement[str]):
         expr = coercions.expect(roles.ExpressionElementRole[str], expression)
 
         if expr.type._type_affinity is sqltypes.String:
-            collate_type = expr.type._with_collation(collation)
+            collate_type = expr.type._with_collation(
+                collation, collation_schema
+            )
         else:
             collate_type = expr.type
 
         return BinaryExpression(
             expr,
-            CollationClause(collation),
+            CollationClause(collation, collation_schema),
             operators.collate,
             type_=collate_type,
         )
 
-    def __init__(self, collation):
+    def __init__(self, collation, collation_schema=None):
         self.collation = collation
+        self.collation_schema = collation_schema
 
 
 class _IdentifiedClause(Executable, ClauseElement):
@@ -5748,7 +5757,7 @@ class quoted_name(util.MemoizedSlots, str):
         else:
             return quoted_name(value, quote)
 
-    def __new__(cls, value: str, quote: Optional[bool]) -> quoted_name:
+    def __new__(cls, value: str, quote: Optional[bool]) -> Self:
         assert (
             value is not None
         ), "use quoted_name.construct() for None passthrough"
@@ -5788,7 +5797,7 @@ def _type_from_args(args: Sequence[ColumnElement[_T]]) -> TypeEngine[_T]:
         if not a.type._isnull:
             return a.type
     else:
-        return type_api.NULLTYPE  # type: ignore
+        return type_api.NULLTYPE  # type: ignore[return-value]
 
 
 def _corresponding_column_or_error(fromclause, column, require_embedded=False):
@@ -5894,7 +5903,7 @@ class _truncated_label(quoted_name):
 
     __slots__ = ()
 
-    def __new__(cls, value: str, quote: Optional[bool] = None) -> Any:
+    def __new__(cls, value: str, quote: Optional[bool] = None) -> Self:
         quote = getattr(value, "quote", quote)
         # return super(_truncated_label, cls).__new__(cls, value, quote, True)
         return super().__new__(cls, value, quote)

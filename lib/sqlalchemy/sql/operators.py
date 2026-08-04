@@ -583,9 +583,9 @@ class custom_op(OperatorType, Generic[_T]):
         **kwargs: Any,
     ) -> Operators:
         if hasattr(left, "__sa_operate__"):
-            return left.operate(self, right, *other, **kwargs)  # type: ignore
+            return left.operate(self, right, *other, **kwargs)  # type: ignore[no-any-return]  # noqa: E501
         elif self.python_impl:
-            return self.python_impl(left, right, *other, **kwargs)  # type: ignore  # noqa: E501
+            return self.python_impl(left, right, *other, **kwargs)  # type: ignore[no-any-return]  # noqa: E501
         else:
             raise exc.InvalidRequestError(
                 f"Custom operator {self.opstring!r} can't be used with "
@@ -1926,16 +1926,28 @@ class ColumnOperators(OrderingOperators):
             flags=flags,
         )
 
-    def collate(self, collation: str) -> ColumnOperators:
+    def collate(
+        self, collation: str, collation_schema: Optional[str] = None
+    ) -> ColumnOperators:
         """Produce a :func:`_expression.collate` clause against
         the parent object, given the collation string.
+
+        :param collation: the name of the collation.
+
+        :param collation_schema: optional, the name of the schema in which
+          the collation is defined, for use with database backends that
+          support schema-qualified collations, currently PostgreSQL.
+
+          .. versionadded:: 2.1
 
         .. seealso::
 
             :func:`_expression.collate`
 
         """
-        return self.operate(collate, collation)
+        return self.operate(
+            collate, collation, collation_schema=collation_schema
+        )
 
     def __radd__(self, other: Any) -> ColumnOperators:
         """Implement the ``+`` operator in reverse.
@@ -2230,8 +2242,8 @@ else:
 
 
 @_operator_fn
-def collate(a: Any, b: Any) -> Any:
-    return a.collate(b)
+def collate(a: Any, b: Any, collation_schema: Optional[str] = None) -> Any:
+    return a.collate(b, collation_schema=collation_schema)
 
 
 @_operator_fn

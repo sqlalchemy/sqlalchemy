@@ -747,12 +747,6 @@ class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
     def setinputsizes(self, *args: Any, **kwargs: Any) -> Any:
         return self._cursor.setinputsizes(*args, **kwargs)
 
-    def _aenter_cursor(self, cursor: AsyncCursor) -> AsyncCursor:
-        try:
-            return cursor.__enter__()
-        except Exception as error:
-            self._adapt_connection._handle_exception(error)
-
     async def _execute_async(self, operation, parameters):
         # override to not use mutex, oracledb already has a mutex
 
@@ -893,7 +887,7 @@ class OracleDialectAsync_oracledb(OracleDialect_oracledb):
     supports_statement_cache = True
     execution_ctx_cls = OracleExecutionContextAsync_oracledb
 
-    _min_version = (2,)
+    _min_version = (2, 0, 1)
 
     # thick_mode mode is not supported by asyncio, oracledb will raise
     @classmethod

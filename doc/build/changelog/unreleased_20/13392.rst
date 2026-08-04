@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 13392
+
+    Fixed class-scoped pytest fixtures that were defined as instance methods
+    using ``self``, which is deprecated as of pytest 9.1 and will be removed in
+    pytest 10. Fixtures are now decorated with a compatibility ``@classmethod``
+    decorator and use ``cls`` as the first parameter.

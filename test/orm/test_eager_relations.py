@@ -6822,9 +6822,10 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            r"Mapped class Mapper\[Order\(orders\)\] does not apply to any of "
-            "the "
-            r"root entities in this query, e.g. Mapper\[User\(users\)\]. "
+            r"Mapped class Order referenced in option "
+            r"joinedload\(Order.items\) "
+            r"does not apply to any of the root entities in this query, "
+            r"e.g. User. "
             "Please specify the full path from one of the root entities "
             "to the target attribute.",
             sess.query(User)

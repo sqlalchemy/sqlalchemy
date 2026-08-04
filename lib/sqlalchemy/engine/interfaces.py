@@ -1913,6 +1913,30 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
+    def has_multi_table(
+        self,
+        connection: Connection,
+        table_names: Sequence[str],
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> Iterable[Tuple[TableKey, bool]]:
+        """For internal dialect use, check the existence of a particular list
+        of tables or views in the database.
+
+        This is an internal dialect method. Applications should use
+        :meth:`.Inspector.has_multi_table`.
+
+        .. note:: The :class:`_engine.DefaultDialect` provides a default
+          implementation that will call the single table method for
+          each table name provided. Dialects that want to support a faster
+          implementation should implement this method.
+
+        .. versionadded:: 2.1
+
+        """
+
+        raise NotImplementedError()
+
     def has_index(
         self,
         connection: Connection,

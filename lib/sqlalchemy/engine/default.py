@@ -27,6 +27,7 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import Final
+from typing import Iterable
 from typing import List
 from typing import Literal
 from typing import Mapping
@@ -88,6 +89,7 @@ if typing.TYPE_CHECKING:
     from .interfaces import DBAPIModule
     from .interfaces import DBAPIType
     from .interfaces import IsolationLevel
+    from .interfaces import TableKey
     from .row import Row
     from .url import URL
     from ..event import _ListenerFnType
@@ -127,6 +129,26 @@ class _BackendsMultiReflection(Dialect):
     Used by dialects that implement native multi-table reflection
     (PostgreSQL, Oracle, MSSQL).
     """
+
+    @reflection.cache
+    def has_table(
+        self,
+        connection: Connection,
+        table_name: str,
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> bool:
+        # NOTE: assume it's a subclass of DefaultDialect
+        self._ensure_has_table_connection(connection)  # type: ignore[attr-defined] # noqa: E501
+        multi_res = self.has_multi_table(
+            connection,
+            table_names=[table_name],
+            schema=schema,
+            **kw,
+        )
+        # has_multi_table returns all the input table names so it's not
+        # possible for the key to be missing
+        return dict(multi_res)[(schema, table_name)]
 
     def _value_or_raise(self, data, table, schema):
         try:
@@ -433,7 +455,7 @@ class DefaultDialect(Dialect):
         use_insertmanyvalues: Optional[bool] = None,
         # util.deprecated_params decorator cannot render the
         # Linting.NO_LINTING constant
-        compiler_linting: Linting = int(compiler.NO_LINTING),  # type: ignore
+        compiler_linting: Linting = int(compiler.NO_LINTING),  # type: ignore[assignment]  # noqa: E501
         server_side_cursors: bool = False,
         skip_autocommit_rollback: bool = False,
         **kwargs: Any,
@@ -1273,6 +1295,17 @@ class DefaultDialect(Dialect):
                 except exc.NoSuchTableError:
                     pass
 
+    def has_multi_table(
+        self,
+        connection: Connection,
+        table_names: Sequence[str],
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> Iterable[tuple[TableKey, bool]]:
+        for table_name in table_names:
+            exist = self.has_table(connection, table_name, schema=schema, **kw)
+            yield (schema, table_name), exist
+
     def get_multi_table_options(self, connection, **kw):
         return self._default_multi_reflect(
             self.get_table_options, connection, **kw
@@ -1481,7 +1514,7 @@ class DefaultExecutionContext(ExecutionContext):
         self.is_text = compiled.isplaintext
 
         if ii or iu or id_:
-            dml_statement = compiled.compile_state.statement  # type: ignore
+            dml_statement = compiled.compile_state.statement  # type: ignore[union-attr]  # noqa: E501
             if TYPE_CHECKING:
                 assert isinstance(dml_statement, UpdateBase)
             self.is_crud = True
@@ -1595,7 +1628,7 @@ class DefaultExecutionContext(ExecutionContext):
 
             self._expanded_parameters = expanded_state.parameter_expansion
 
-            flattened_processors = dict(processors)  # type: ignore
+            flattened_processors = dict(processors)  # type: ignore[arg-type]
             flattened_processors.update(expanded_state.processors)
             positiontup = expanded_state.positiontup
         elif compiled.positional:
@@ -2341,7 +2374,7 @@ class DefaultExecutionContext(ExecutionContext):
             parameters = self.dialect.execute_sequence_format(
                 [
                     (
-                        processors[key](compiled_params[key])  # type: ignore
+                        processors[key](compiled_params[key])  # type: ignore[operator]  # noqa: E501
                         if key in processors
                         else compiled_params[key]
                     )
@@ -2351,7 +2384,7 @@ class DefaultExecutionContext(ExecutionContext):
         else:
             parameters = {
                 key: (
-                    processors[key](compiled_params[key])  # type: ignore
+                    processors[key](compiled_params[key])  # type: ignore[assignment, operator]  # noqa: E501
                     if key in processors
                     else compiled_params[key]
                 )

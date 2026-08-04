@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 13420
+
+    Updated the oracledb async dialect where the async cursor adapter invoked
+    ``__enter__()`` rather than ``__aenter__()`` on the underlying cursor.
+    While these are equivalent in oracledb itself, the correct async form is
+    now used for correctness. As ``AsyncCursor.__aenter__()`` was added in
+    oracledb 2.0.1, the minimum supported oracledb version is now 2.0.1,
+    declared via the ``oracle-oracledb`` extra.  Pull request courtesy AVRC26.

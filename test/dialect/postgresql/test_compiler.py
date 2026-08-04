@@ -12,6 +12,7 @@ from sqlalchemy import cast
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import Computed
+from sqlalchemy import CreateView
 from sqlalchemy import Date
 from sqlalchemy import delete
 from sqlalchemy import Enum
@@ -60,6 +61,7 @@ from sqlalchemy.dialects.postgresql import Range
 from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.dialects.postgresql import TSRANGE
+from sqlalchemy.dialects.postgresql.base import _CompilerSequence
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.postgresql.ranges import MultiRange
@@ -122,6 +124,53 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateSequence(s),
             f"CREATE SEQUENCE s1 {text}".strip(),
             dialect=postgresql.dialect(),
+        )
+
+    def test_nextval_quote_escaping(self):
+        """test for #13429"""
+
+        # a single quote in a sequence or schema name must be escaped so it
+        # can't terminate the nextval() string literal early
+        self.assert_compile(
+            Sequence("some'seq").next_value(),
+            "nextval('\"some''seq\"')",
+            dialect=postgresql.dialect(),
+        )
+        self.assert_compile(
+            Sequence("some'seq", schema="my'schema").next_value(),
+            "nextval('\"my''schema\".\"some''seq\"')",
+            dialect=postgresql.dialect(),
+        )
+
+    @testing.combinations(
+        ("my_seq", None, "'my_seq'"),
+        ("my_seq", "my_schema", "'my_schema.my_seq'"),
+        ("My_Seq", "Some_Schema", '\'"Some_Schema"."My_Seq"\''),
+        ("some'seq", "my'schema", "'\"my''schema\".\"some''seq\"'"),
+    )
+    def test_format_sequence_string_literal(self, name, schema_, expected):
+        """test for #13429"""
+
+        preparer = postgresql.dialect().identifier_preparer
+        eq_(
+            preparer._format_sequence_string_literal(
+                _CompilerSequence(name, schema_)
+            ),
+            expected,
+        )
+
+    def test_compiler_sequence_ignores_schema_translate(self):
+        """test for #13429"""
+
+        # the schema is resolved by the execution context before it reaches
+        # _CompilerSequence, so it must not be translated a second time
+        preparer = postgresql.dialect().identifier_preparer
+        preparer = preparer._with_schema_translate({"bar": "foo"})
+        eq_(
+            preparer._format_sequence_string_literal(
+                _CompilerSequence("my_seq", "bar")
+            ),
+            "'bar.my_seq'",
         )
 
 
@@ -399,6 +448,31 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CONSTRAINT no_bar NOT NULL CHECK (VALUE != 'bar')",
         )
 
+    def test_domain_collation_schema(self):
+        """test #9693"""
+        self.assert_compile(
+            postgresql.CreateDomainType(
+                DOMAIN(
+                    "foo",
+                    Text,
+                    collation="my-coll",
+                    collation_schema="CollSchema",
+                )
+            ),
+            'CREATE DOMAIN foo AS TEXT COLLATE "CollSchema"."my-coll"',
+        )
+
+    def test_domain_collation_schema_requires_collation(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            "the 'collation_schema' parameter of DOMAIN requires "
+            "the 'collation' parameter to also be present",
+            DOMAIN,
+            "foo",
+            Text,
+            collation_schema="CollSchema",
+        )
+
     def test_cast_domain_schema(self):
         """test #6739"""
         d1 = DOMAIN("somename", Integer)
@@ -502,7 +576,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE atable (id INTEGER) INHERITS ( i1 )",
+            "CREATE TABLE atable (id INTEGER) INHERITS (i1)",
         )
 
     def test_create_table_inherits_tuple(self):
@@ -515,7 +589,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE atable (id INTEGER) INHERITS ( i1, i2 )",
+            "CREATE TABLE atable (id INTEGER) INHERITS (i1, i2)",
         )
 
     def test_create_table_inherits_quoting(self):
@@ -529,7 +603,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE atable (id INTEGER) INHERITS "
-            '( "Quote Me", "quote Me Too" )',
+            '("Quote Me", "quote Me Too")',
         )
 
     def test_create_table_inherits_schema_qualified_quoted_name(self):
@@ -545,7 +619,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE atable (id INTEGER) "
-            "INHERITS ( my_schema.parent_table )",
+            "INHERITS (my_schema.parent_table)",
         )
 
     def test_create_table_partition_by_list(self):
@@ -633,7 +707,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(tbl3),
             "CREATE TABLE atable3 () "
-            "WITH (user_catalog_table = False, parallel_workers = 15)",
+            "WITH (user_catalog_table = false, parallel_workers = 15)",
+        )
+
+        tbl4 = Table(
+            "atable4",
+            m,
+            Column("id", Integer),
+            postgresql_with={
+                "autovacuum_enabled": True,
+                "autovacuum_analyze_scale_factor": 0.2,
+                "vacuum_index_cleanup": "auto",
+                "vacuum_truncate": None,
+            },
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl4),
+            "CREATE TABLE atable4 (id INTEGER) "
+            "WITH (autovacuum_enabled = true, "
+            "autovacuum_analyze_scale_factor = 0.2, "
+            "vacuum_index_cleanup = auto, "
+            "vacuum_truncate)",
         )
 
     def test_create_table_with_oncommit_option(self):
@@ -674,6 +769,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(tbl),
             "CREATE TABLE atable (id INTEGER) USING heap WITHOUT OIDS "
             "ON COMMIT PRESERVE ROWS TABLESPACE sometablespace",
+        )
+
+    def test_create_view_with_options(self):
+        src = table("src", column("id"), column("name"))
+
+        stmt = CreateView(
+            select(src.c.id, src.c.name),
+            "my_view",
+            postgresql_with={"security_invoker": True},
+        )
+        self.assert_compile(
+            stmt,
+            "CREATE VIEW my_view WITH (security_invoker = true) "
+            "AS SELECT src.id, src.name FROM src",
+        )
+
+        stmt2 = CreateView(
+            select(src.c.id),
+            "other_view",
+            postgresql_with={
+                "security_barrier": True,
+                "check_option": "local",
+            },
+        )
+        self.assert_compile(
+            stmt2,
+            "CREATE VIEW other_view "
+            "WITH (security_barrier = true, check_option = local) "
+            "AS SELECT src.id FROM src",
         )
 
     def test_create_partial_index(self):
@@ -1022,6 +1146,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql_with={"buffering": "off"},
         )
 
+        idx4 = Index(
+            "test_idx4",
+            tbl.c.data,
+            postgresql_using="gin",
+            postgresql_with={
+                "fastupdate": False,
+                "gin_pending_list_limit": 4096,
+            },
+        )
+
+        idx5 = Index(
+            "test_idx5",
+            tbl.c.data,
+            postgresql_using="brin",
+            postgresql_with={
+                "pages_per_range": 1,
+                "autosummarize": None,
+            },
+        )
+
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl (data)",
@@ -1035,6 +1179,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX test_idx3 ON testtbl "
             "USING gist (data) "
             "WITH (buffering = off)",
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx4),
+            "CREATE INDEX test_idx4 ON testtbl "
+            "USING gin (data) "
+            "WITH (fastupdate = false, gin_pending_list_limit = 4096)",
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx5),
+            "CREATE INDEX test_idx5 ON testtbl "
+            "USING brin (data) "
+            "WITH (pages_per_range = 1, autosummarize)",
         )
 
     def test_create_index_with_using_unusual_conditions(self):

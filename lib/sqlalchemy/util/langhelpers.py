@@ -340,7 +340,7 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
             _exec_code_in_env(code, env, fn.__name__),
         )
         decorated.__defaults__ = fn.__defaults__
-        decorated.__kwdefaults__ = fn.__kwdefaults__  # type: ignore
+        decorated.__kwdefaults__ = fn.__kwdefaults__  # type: ignore[union-attr]  # noqa: E501
         return update_wrapper(decorated, fn)  # type: ignore[return-value]
 
     return update_wrapper(decorate, target)  # type: ignore[return-value]
@@ -1268,7 +1268,7 @@ def memoized_instancemethod(fn: _F) -> _F:
         self.__dict__[fn.__name__] = memo
         return result
 
-    return update_wrapper(oneshot, fn)  # type: ignore
+    return update_wrapper(oneshot, fn)  # type: ignore[return-value]
 
 
 class HasMemoized:
@@ -1345,7 +1345,7 @@ class HasMemoized:
             self._memoized_keys |= {fn.__name__}
             return result
 
-        return update_wrapper(oneshot, fn)  # type: ignore
+        return update_wrapper(oneshot, fn)  # type: ignore[return-value]
 
 
 if TYPE_CHECKING:
@@ -1518,7 +1518,7 @@ def duck_type_collection(
         ):
             return set
         else:
-            return specimen.__emulates__  # type: ignore
+            return specimen.__emulates__  # type: ignore[no-any-return]
 
     isa = issubclass if isinstance(specimen, type) else isinstance
     if isa(specimen, list):

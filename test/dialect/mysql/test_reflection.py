@@ -1502,6 +1502,22 @@ class RawReflectionTest(fixtures.TestBase):
         eq_(m.group("type"), "PRIMARY")
         eq_(m.group("columns"), "`id`")
 
+    @testing.combinations(
+        # 60 single quotes is a valid SQL string (29 '' pairs inside outer
+        # quotes); the previous ambiguous pattern backtracked on this input
+        ("  KEY (`id`) COMMENT " + ("'" * 60), "'" * 60),
+        # odd quotes followed by a non-quote: uncloseable, should not match
+        ("  KEY (`id`) COMMENT " + ("'" * 59) + "x", None),
+        argnames="line,expected_comment",
+    )
+    def test_key_reflection_comment_many_quotes(self, line, expected_comment):
+        regex = self.parser._re_key
+        m = regex.match(line)
+        eq_(
+            m.group("comment") if m is not None else None,
+            expected_comment,
+        )
+
     def test_key_reflection_columns(self):
         regex = self.parser._re_key
         exprs = self.parser._re_keyexprs

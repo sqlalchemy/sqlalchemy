@@ -125,7 +125,7 @@ class _SerializableColumnGetterV2(_PlainColumnGetter[_KT]):
             if not isinstance(c.table, expression.TableClause):
                 return None
             else:
-                return c.table.key  # type: ignore
+                return c.table.key  # type: ignore[attr-defined, no-any-return]
 
         colkeys = [(c.key, _table_key(c)) for c in cols]
         return _SerializableColumnGetterV2, (colkeys,)
@@ -135,7 +135,7 @@ class _SerializableColumnGetterV2(_PlainColumnGetter[_KT]):
         metadata = getattr(mapper.local_table, "metadata", None)
         for ckey, tkey in self.colkeys:
             if tkey is None or metadata is None or tkey not in metadata:
-                cols.append(mapper.local_table.c[ckey])  # type: ignore
+                cols.append(mapper.local_table.c[ckey])  # type: ignore[index]
             else:
                 cols.append(metadata.tables[tkey].c[ckey])
         return cols

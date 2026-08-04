@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 11297
+
+    Improved the error message raised when a :class:`.Session` is used
+    inside a context manager after the transaction has been rolled back due
+    to an exception. The ``InvalidRequestError`` now includes the original
+    exception that triggered the rollback, making it clearer why the
+    transaction is no longer active. Pull request courtesy Ilan Keshet.

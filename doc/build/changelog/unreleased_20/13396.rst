@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13396
+
+    Fixed issue where :meth:`_sql.Select.get_final_froms` would emit a
+    deprecation warning when the statement made use of the PostgreSQL-specific
+    expression argument to :meth:`_sql.Select.distinct`; the same spurious
+    warning would be emitted when stringifying such a statement without
+    explicitly using a PostgreSQL dialect.  The fix ensures that this 1.4-era
+    warning is suppressed under both 2.0 and 2.1.
+
+    Note that under SQLAlchemy 2.1, passing an expression to
+    :meth:`_sql.Select.distinct` is deprecated overall, and is replaced by a
+    new PostgreSQL-specific construct (see :ticket:`12342`).

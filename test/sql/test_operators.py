@@ -316,8 +316,18 @@ class DefaultColumnComparatorTest(
     def test_collate(self):
         left = column("left")
         right = "some collation"
-        left.comparator.operate(operators.collate, right).compare(
+        assert left.comparator.operate(operators.collate, right).compare(
             collate(left, right)
+        )
+
+    def test_collate_schema(self):
+        left = column("left")
+        right = "some collation"
+        assert left.comparator.operate(
+            operators.collate, right, collation_schema="some schema"
+        ).compare(collate(left, right, collation_schema="some schema"))
+        assert left.collate(right, collation_schema="some schema").compare(
+            collate(left, right, collation_schema="some schema")
         )
 
     def test_default_adapt(self):

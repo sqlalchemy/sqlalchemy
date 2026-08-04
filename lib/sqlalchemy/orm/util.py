@@ -88,6 +88,7 @@ from ..sql.elements import ColumnElement
 from ..sql.elements import KeyedColumnElement
 from ..sql.schema import MetaData
 from ..sql.selectable import FromClause
+from ..sql.selectable import GenerativeSelect
 from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation as _de_stringify_annotation
 from ..util.typing import eval_name_only as _eval_name_only
@@ -212,7 +213,7 @@ class CascadeOptions(FrozenSet[str]):
         cls, value_list: Optional[Union[Iterable[str], str]]
     ) -> CascadeOptions:
         if isinstance(value_list, str) or value_list is None:
-            return cls.from_string(value_list)  # type: ignore
+            return cls.from_string(value_list)  # type: ignore[no-any-return]
         values = set(value_list)
         if values.difference(cls._allowed_cascades):
             raise sa_exc.ArgumentError(
@@ -1025,7 +1026,9 @@ class AliasedInsp(
         flat: bool = False,
         adapt_on_names: bool = False,
     ) -> Union[AliasedClass[_O], FromClause]:
-        if isinstance(element, FromClause):
+        if isinstance(element, GenerativeSelect):
+            return coercions.expect(roles.FromClauseRole, element, flat=flat)
+        elif isinstance(element, FromClause):
             if adapt_on_names:
                 raise sa_exc.ArgumentError(
                     "adapt_on_names only applies to ORM elements"
@@ -1149,7 +1152,7 @@ class AliasedInsp(
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
-        self.__init__(  # type: ignore
+        self.__init__(  # type: ignore[misc]
             state["entity"],
             state["mapper"],
             state["alias"],
@@ -1302,6 +1305,13 @@ class AliasedInsp(
         )
 
     def __str__(self):
+        return self.path_string()
+
+    def path_string(self) -> str:
+        """Return a user-facing name for this :class:`.AliasedInsp`,
+        for use in a :class:`_orm.PathRegistry` string representation.
+
+        """
         if self._is_with_polymorphic:
             return "with_polymorphic(%s, [%s])" % (
                 self._target.__name__,
@@ -1489,7 +1499,7 @@ class LoaderCriteriaOption(CriteriaOption):
                 self.where_criteria._resolve_with_args(ext_info.entity),
             )
         else:
-            crit = self.where_criteria  # type: ignore
+            crit = self.where_criteria  # type: ignore[assignment]
         assert isinstance(crit, ColumnElement)
         return sql_util._deep_annotate(
             crit,
@@ -1940,7 +1950,7 @@ class _ORMJoin(expression.Join):
         if (
             not prop
             and getattr(right_info, "mapper", None)
-            and right_info.mapper.single  # type: ignore
+            and right_info.mapper.single  # type: ignore[union-attr]
         ):
             right_info = cast("_InternalEntityType[Any]", right_info)
             # if single inheritance target and we are using a manual
@@ -2380,14 +2390,14 @@ def _extract_mapped_subtype(
             "module level. See chained stack trace for more hints."
         ) from ce
     except NameError as ne:
-        if raiseerr and "Mapped[" in raw_annotation:  # type: ignore
+        if raiseerr and "Mapped[" in raw_annotation:  # type: ignore[operator]
             raise orm_exc.MappedAnnotationError(
                 f"Could not interpret annotation {raw_annotation}.  "
                 "Check that it uses names that are correctly imported at the "
                 "module level. See chained stack trace for more hints."
             ) from ne
 
-        annotated = raw_annotation  # type: ignore
+        annotated = raw_annotation  # type: ignore[assignment]
 
     if is_dataclass_field:
         return annotated, None

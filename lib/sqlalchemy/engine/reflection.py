@@ -188,6 +188,13 @@ class Inspector(inspection.Inspectable["Inspector"]):
     consistent interface as well as caching support for previously
     fetched metadata.
 
+    The caching behavior is dialect-specific: as a general rule single table
+    reflection methods should cache their result, while multi-table reflection
+    methods should not, but behavior may vary.
+    Following DDL operations on the database, it is recommended to either
+    create a new :class:`_reflection.Inspector` instance or to clear the cache
+    of existing instances using the :meth:`.Inspector.clear_cache` method.
+
     A :class:`_reflection.Inspector` object is usually created via the
     :func:`_sa.inspect` function, which may be passed an
     :class:`_engine.Engine`
@@ -268,7 +275,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         self.info_cache = {}
 
     def clear_cache(self) -> None:
-        """reset the cache for this :class:`.Inspector`.
+        """Reset the cache for this :class:`.Inspector`.
 
         Inspection methods that have data cached will emit SQL queries
         when next called to get new data.
@@ -439,6 +446,33 @@ class Inspector(inspection.Inspectable["Inspector"]):
         with self._operation_context() as conn:
             return self.dialect.has_table(
                 conn, table_name, schema, info_cache=self.info_cache, **kw
+            )
+
+    def has_multi_table(
+        self,
+        table_names: Sequence[str],
+        schema: Optional[str] = None,
+        **kw: Any,
+    ) -> Dict[TableKey, bool]:
+        r"""Return a dict indicating for each table name whether the backend
+        has a table, view, or temporary table with the given name.
+
+        :param table_names: sequence of table names to check.
+        :param schema: schema name to query, if not the default schema.
+        :param \**kw: Additional keyword argument to pass to the dialect
+         specific implementation. See the documentation of the dialect
+         in use for more information.
+
+        .. versionadded:: 2.1
+
+        .. seealso:: :meth:`Inspector.has_table`
+
+        """
+        with self._operation_context() as conn:
+            return dict(
+                self.dialect.has_multi_table(
+                    conn, table_names, schema, info_cache=self.info_cache, **kw
+                )
             )
 
     def has_sequence(

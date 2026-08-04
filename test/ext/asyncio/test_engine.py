@@ -1082,6 +1082,42 @@ class AsyncEventTest(EngineFixture):
                 )
 
 
+class AsyncCursorEventCancelledErrorTest(fixtures.TestBase):
+    """tests for #13381"""
+
+    __requires__ = ("async_dialect",)
+    __backend__ = True
+
+    @testing.fixture
+    def async_engine(self):
+        return engines.testing_engine(asyncio=True)
+
+    @combinations(
+        "before_cursor_execute",
+        "after_cursor_execute",
+        argnames="event_name",
+    )
+    @async_test
+    async def test_cancelled_error_invalidates(self, async_engine, event_name):
+        @event.listens_for(async_engine.sync_engine, event_name)
+        def handler(
+            conn,
+            cursor,
+            statement,
+            parameters,
+            context,
+            executemany,
+        ):
+            raise asyncio.CancelledError()
+
+        conn = await async_engine.connect()
+        with expect_raises(asyncio.CancelledError):
+            await conn.execute(select(1))
+
+        is_true(conn.invalidated)
+        await conn.close()
+
+
 class AsyncInspection(EngineFixture):
     __backend__ = True
 

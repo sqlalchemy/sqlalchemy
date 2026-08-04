@@ -770,6 +770,10 @@ class CoreFixtures:
             table_b.delete().with_dialect_options(sqlite_foo="some value"),
             table_b.delete().where(table_b.c.a == 5),
             table_b.delete().where(table_b.c.b == 5),
+            table_b.delete().using(table_a),
+            table_b.delete().using(
+                table_b.join(table_a, table_b.c.a == table_a.c.a)
+            ),
         ),
         lambda: (
             values(
@@ -963,6 +967,12 @@ class CoreFixtures:
             column("z", MyType1()) == column("x", MyType2()),
             column("z", MyType1()) == column("x", MyType3("x")),
             column("z", MyType1()) == column("x", MyType3("y")),
+            column("z", String(50, collation="x"))
+            == column("x", String(50, collation="x")),
+            column("z", String(50, collation="x"))
+            == column("x", String(50, collation="x", collation_schema="a")),
+            column("z", String(50, collation="x", collation_schema="a"))
+            == column("x", String(50, collation="x", collation_schema="b")),
         )
     ]
 

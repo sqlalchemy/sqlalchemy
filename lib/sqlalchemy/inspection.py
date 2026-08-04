@@ -158,7 +158,20 @@ def _inspects(
     def decorate(fn_or_cls: _F) -> _F:
         for type_ in types:
             if type_ in _registrars:
-                raise AssertionError("Type %s is already registered" % type_)
+                existing = _registrars[type_]
+                existing_name = getattr(existing, "__name__", None)
+                existing_module = getattr(existing, "__module__", None)
+
+                # allow a new version of the same function or class, that is,
+                # a module reload; compare name/module attributes because
+                # classes may define custom __eq__ behavior.
+                if (
+                    existing_name != fn_or_cls.__name__
+                    or existing_module != fn_or_cls.__module__
+                ):
+                    raise AssertionError(
+                        "Type %s is already registered" % type_
+                    )
             _registrars[type_] = fn_or_cls
         return fn_or_cls
 

@@ -1,9 +1,0 @@
-.. change::
-  :tags: usecase, orm
-  :tickets: 10610
-
-  The ``populate_existing`` execution option is now honored when passed in the
-  :paramref:`.Session.get.execution_options` dict by the method
-  :meth:`.Session.get` and analogous in other session kinds. The current
-  :paramref:`.Session.get.populate_existing` parameter will takes precedence if
-  specified, overriding the value of the execution options.

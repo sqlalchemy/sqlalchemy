@@ -9,8 +9,274 @@
 
 
 .. changelog::
-    :version: 2.1.0b3
+    :version: 2.1.0b4
     :include_notes_from: unreleased_21
+
+.. changelog::
+    :version: 2.1.0b3
+    :released: June 27, 2026
+
+    .. change::
+      :tags: usecase, orm
+      :tickets: 10610
+
+      The ``populate_existing`` execution option is now honored when passed in the
+      :paramref:`.Session.get.execution_options` dict by the method
+      :meth:`.Session.get` and analogous in other session kinds. The current
+      :paramref:`.Session.get.populate_existing` parameter will takes precedence if
+      specified, overriding the value of the execution options.
+
+    .. change::
+      :tags: feature, orm
+      :tickets: 11450
+
+      Added :paramref:`.selectinload.chunksize` parameter to :func:`.selectinload`
+      allowing users to configure the number of primary keys sent per IN clause
+      when loading relationships. Pull request courtesy bekapono.
+
+    .. change::
+      :tags: feature, sqlite
+      :tickets: 13260
+
+      Added :class:`_sqlite.JSONB` type for SQLite's binary JSON storage
+      format, available as of SQLite version 3.45.0. Values are stored via
+      the ``jsonb()`` SQL function and retrieved via ``json()``, while the
+      Python-side behavior remains identical to :class:`_sqlite.JSON`.
+      Pull request courtesy Shamil Abdulaev.
+
+      .. seealso::
+
+        :class:`_sqlite.JSONB`
+
+    .. change::
+      :tags: postgresql, usecase
+      :tickets: 13268
+
+      Changed the default backslash escape value in the PostgreSQL dialect to
+      ``False`` to align it with the default value of
+      ``standard_conforming_strings=on``. This change should not affect most users
+      since the value is set at driver initialization on first connect.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13291
+
+        Fixed issue where the declarative class registry would not consider
+        class-level :class:`.MetaData` objects set on abstract mixin classes when
+        resolving string-based table references in :func:`.relationship`
+        configurations. The registry now uses the same metadata resolution logic
+        as table creation, first checking for a class-specific ``metadata``
+        attribute before falling back to :attr:`.registry.metadata`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13293
+
+        Fixed issue where the :meth:`_engine.Result.unique` filter was not properly
+        validated against the :meth:`_engine.Result.yield_per` method when both
+        were called as methods on the result object, such as
+        ``result.unique().yield_per(N)`` or ``result.yield_per(N).unique()``. The
+        uniquing filter was previously only checked when ``yield_per`` was set via
+        :paramref:`_engine.Connection.execution_options.yield_per`. Since these two
+        features are fundamentally incompatible for ORM results, an
+        :class:`.InvalidRequestError` is now raised in all cases.
+
+    .. change::
+        :tags: orm, usecase
+        :tickets: 13309
+
+        Updated the attribute :attr:`_orm.ORMExecuteState.user_defined_options` to
+        include options that were added to the statement before calling
+        :meth:`.Select.with_only_columns` or :meth:`_orm.Query.with_entities`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13333
+
+        A warning is now emitted when a Declarative attribute name is named
+        ``metadata`` or ``registry``.  Previously, no warning was emitted for
+        ``registry``, and using the name ``metadata`` would raise an
+        InvalidRequestError.   Since these names can be used for attributes
+        that are mapped as backrefs or using imperative mappings, usage
+        under Declarative has been relaxed for ``metadata`` but also warns
+        for both names as they may have unintended interactions with the
+        Declarative reserved names.
+
+    .. change::
+        :tags: usecase, orm, performance
+        :tickets: 13339
+
+        Optimized :func:`_orm.selectinload` to skip the ``.unique()`` call on inner
+        result sets when no nested :func:`_orm.joinedload` on a collection is
+        present.  The uniquing pass is only required when a joined eager load
+        inflates rows due to a one-to-many or many-to-many JOIN; in the common case
+        of a leaf selectin load, rows are already unique by construction and the
+        per-row hashing overhead can be avoided. As a side effect, ``yield_per``
+        set in a ``do_orm_execute`` event for a :func:`_orm.selectinload`
+        relationship load no longer raises ``InvalidRequestError`` when no nested
+        collection joinedload is in effect, since ``.unique()`` is no longer called
+        in that path. Pull request courtesy Oliver Parker.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13343
+
+        Fixed issue where negation of comparison expressions involving
+        ``func.any()``, ``func.all()``, and ``func.some()`` SQL functions would
+        incorrectly flip the comparison operator (e.g. ``=`` to ``!=``) rather
+        than wrapping the expression with ``NOT``. These functions are now
+        registered as collection aggregate functions that prevent operator
+        flipping on negation, consistent with the behavior of the standalone
+        :func:`_expression.any_` and :func:`_expression.all_` constructs.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 13346
+
+        Session level :paramref:`_orm.Session.execution_options` now take
+        effect for Core level SQL emitted by unit of work operations, in
+        addition to their existing use within ORM statement executions.
+        This is to provide for Core options such as
+        :paramref:`_engine.Connection.execution_options.schema_translate_map`
+        to be applicable to a :class:`.Session` overall.
+
+        .. seealso::
+
+            :ref:`change_13346`
+
+    .. change::
+        :tags: engine, reflection
+        :tickets: 13350
+
+        Removed the legacy ``include_columns`` key from the dictionary returned
+        by the index reflection methods of some dialects.
+        This information is now part of the ``dialect_options`` dictionary under the key
+        ``{dialect_name}_include``, such as ``postgresql_include`` or ``mssql_include``.
+
+    .. change::
+        :tags: performance, orm
+        :tickets: 13363
+
+        ORM result row fetching now processes rows as plain tuples rather than
+        constructing :class:`.Row` objects, as ORM loaders use position-based
+        access and do not require the :class:`.Row` interface. :class:`.Row`
+        construction is still used when engine-level debug logging is enabled so
+        that individual rows can be logged. Benchmarks show a 3-16% improvement in
+        ORM entity load times depending on query shape.  Pull request courtesy
+        Oliver Parker.
+
+    .. change::
+        :tags: performance, orm
+        :tickets: 13363
+
+        Improved performance of :func:`_orm.selectinload` and
+        :func:`_orm.subqueryload` result handling:
+
+        * in selectinloader, the primary key columns used to correlate related
+          rows are now selected directly rather than being wrapped in a
+          :class:`.Bundle`, and are read from positional slices of each result
+          row.  This removes the per-row :class:`.Row` construction that the
+          :class:`.Bundle` introduced, including for the common single-column
+          primary key case.
+
+        * removed use of ``groupby()`` + ``lambda`` against :class:`.Row` objects
+          in subqueryloader; rows are converted to plain tuples and the result
+          lists are built via ``append()``.
+
+        * many-to-one selectinload reads foreign key values directly from the
+          parent instance dictionary when present, falling back to attribute-level
+          access only for expired or deferred attributes.
+
+        Pull request courtesy Oliver Parker.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 13381
+
+        Expanded try/except error handling to encompass the
+        :meth:`_events.ConnectionEvents.before_cursor_execute` and
+        :meth:`_events.ConnectionEvents.after_cursor_execute` event hooks, so that
+        exceptions raised within these hooks, including ``BaseException``
+        subclasses such as ``asyncio.CancelledError``, are properly handled via the
+        error handling path used for DBAPI errors. This ensures proper connection
+        invalidation and pool notification when exit-type exceptions are raised in
+        event hooks. As part of this change, DBAPI errors raised from within these
+        event hooks will now be wrapped as SQLAlchemy exceptions.
+
+        .. seealso::
+
+            :ref:`change_13381`
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 13393
+
+        Improved the regular expression used to parse index ``COMMENT`` clauses
+        in MySQL ``SHOW CREATE TABLE`` reflection to use an unambiguous
+        single-quoted-string pattern; the previous pattern was theoretically
+        subject to backtracking on malformed input, though such input is not
+        producible by MySQL itself.  Fix courtesy of Javid Khan.
+
+    .. change::
+      :tags: orm, performance
+      :tickets: 5987
+
+      The :func:`.selectinload` loader strategy now selects the ``omit_join``
+      optimization for many-to-many non-self-referential relationships, reducing
+      the number of joins in the secondary SELECT by selecting from the secondary
+      table directly rather than joining back to the parent entity. ``omit_join``
+      is enabled automatically when the join condition determines that the
+      secondary table's foreign keys fully cover the parent's primary key. As
+      always, ``omit_join`` can be disabled by setting
+      :paramref:`.relationship.omit_join` to ``False``. Pull request courtesy
+      bekapono.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 8068
+
+        Fixed issue where the declarative class resolver would not consider
+        the :paramref:`.MetaData.schema` default schema when resolving a
+        string table name for the :paramref:`.relationship.secondary` parameter
+        as well as within string-based
+        :paramref:`.relationship.primaryjoin` and
+        :paramref:`.relationship.secondaryjoin` expressions. The resolution now
+        matches the behavior of :class:`.ForeignKey`, where an unqualified
+        table name is implicitly resolved under the default schema. A
+        deprecation warning is emitted when an unqualified name resolves to a
+        :data:`.BLANK_SCHEMA` table in a :class:`.MetaData` that has a default
+        schema set, as this implicit resolution will change in a future version.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 8130
+
+        Added :meth:`_sql.Delete.using`, allowing explicit FROM expressions such as
+        joins to be rendered in backend-specific multiple-table DELETE forms
+        including MySQL/MariaDB ``DELETE .. USING``.  Pull request courtesy
+        cjc0013.
+
+        .. seealso::
+
+            :ref:`change_8130`
+
+    .. change::
+        :tags: performance, mssql, reflection
+        :tickets: 8430
+
+        Implemented native multi-table reflection methods for the SQL Server
+        dialect, providing :meth:`.MSDialect.get_multi_columns`,
+        :meth:`.MSDialect.get_multi_pk_constraint`,
+        :meth:`.MSDialect.get_multi_foreign_keys`,
+        :meth:`.MSDialect.get_multi_indexes` and
+        :meth:`.MSDialect.get_multi_table_comment`.  Previously the SQL Server
+        dialect relied on the default dialect default implementation
+        which calls the per-table methods in a loop; the new implementations
+        issue a single bulk query per object type against the ``sys.*``
+        catalog views, avoiding the per-table round trips.  The single-table
+        reflection methods are now thin wrappers over the multi-table ones,
+        matching the pattern used by the PostgreSQL and Oracle dialects.
+        Pull request courtesy Gaurav Sharma.
 
 .. changelog::
     :version: 2.1.0b2
@@ -875,6 +1141,10 @@
         to all explicit query executions (e.g. using :meth:`_orm.Session.execute`,
         :meth:`_orm.Session.get`, :meth:`_orm.Session.scalars`) for that session
         instance.
+
+        .. seealso::
+
+            :ref:`change_12659`
 
     .. change::
         :tags: change, postgresql

@@ -1251,6 +1251,33 @@ identifier::
         ),
     )
 
+SQLAlchemy does not automatically copy the columns from the inherited tables
+mentioned in the ``postgresql_inherits`` argument into the new
+:class:`_schema.Table`. To populate the new table columns reflection may be
+used, or a function similar to the following one::
+
+    def get_parent_columns(tbl: sa.Table) -> list[sa.Column]:
+        return [
+            sa.Column(
+                c.name,
+                c.type,
+                key=c.key,
+                nullable=c.nullable,
+                # Set system=true to omit from the CREATE TABLE statement
+                system=True,
+            )
+            for c in tbl.columns
+        ]
+
+
+    documents = Table(
+        "some_table",
+        metadata,
+        *get_parent_columns(some_supertable),
+        # ... # add other columns here normally if needed
+        postgresql_inherits="some_supertable",
+    )
+
 ``ON COMMIT``
 ^^^^^^^^^^^^^
 
@@ -1324,7 +1351,7 @@ list within the ``WITH`` clause. For example::
         Column("id", Integer, primary_key=True),
         postgresql_with={
             "fillfactor": 70,
-            "autovacuum_enabled": "false",
+            "autovacuum_enabled": False,
             "toast.vacuum_truncate": True,
         },
     )
@@ -1336,9 +1363,11 @@ This will generate DDL similar to:
     CREATE TABLE mytable (
         id INTEGER NOT NULL,
         PRIMARY KEY (id)
-    ) WITH (fillfactor = 70, autovacuum_enabled = false, toast.vacuum_truncate = True)
+    ) WITH (fillfactor = 70, autovacuum_enabled = false, toast.vacuum_truncate = true)
 
-The values in the dictionary can be integers, strings, or boolean values.
+The values in the dictionary can be integers, strings, boolean values, or
+``None``. Boolean values are rendered as lowercase ``true``/``false``.
+A ``None`` value renders the parameter name only, without an ``=`` value.
 Parameter names can include dots to specify parameters for associated objects
 like toast tables (e.g., ``toast.vacuum_truncate``).
 
@@ -1371,6 +1400,40 @@ in modern PostgreSQL versions).
 ::
 
     Table("some_table", metadata, ..., postgresql_with_oids=False)
+
+.. _postgresql_view_options:
+
+PostgreSQL View Options
+-----------------------
+
+The following sections indicate options which are supported by the PostgreSQL
+dialect in conjunction with :class:`.CreateView`.
+
+``WITH``
+^^^^^^^^
+
+Specifies view-level options for :class:`.CreateView` using the ``WITH``
+clause::
+
+    from sqlalchemy import CreateView, select
+
+    CreateView(
+        select(my_table),
+        "my_view",
+        postgresql_with={"security_invoker": True},
+    )
+
+This generates:
+
+.. sourcecode:: sql
+
+    CREATE VIEW my_view WITH (security_invoker = true) AS SELECT ...
+
+The same formatting rules that apply to :ref:`postgresql_table_options_with`
+apply here: booleans render as lowercase ``true``/``false``, ``None``
+renders as the parameter name only, and other values render as-is.
+
+.. versionadded:: 2.1
 
 .. _postgresql_constraint_options:
 
@@ -1774,6 +1837,36 @@ itself:
 .. versionadded:: 1.4.0b2
 
 
+.. _postgresql_collation:
+
+Schema-Qualified Collations
+----------------------------
+
+PostgreSQL supports collations that are qualified by a schema name, such as
+``CREATE COLLATION my_schema.my_collation (...)``.  To refer to such a
+collation, use the :paramref:`.String.collation_schema` parameter (or
+:paramref:`_postgresql.DOMAIN.collation_schema` for a :class:`_postgresql.DOMAIN`)
+in conjunction with :paramref:`.String.collation`, rather than attempting to
+embed the schema name inside the ``collation`` string itself::
+
+    Column(
+        "data",
+        String(collation="my_collation", collation_schema="my_schema"),
+    )
+
+The above renders DDL similar to:
+
+.. sourcecode:: sql
+
+    data VARCHAR COLLATE "my_schema"."my_collation"
+
+.. versionadded:: 2.1
+
+.. seealso::
+
+    :paramref:`.String.collation`
+
+    :paramref:`.String.collation_schema`
 
 """  # noqa: E501
 
@@ -2295,7 +2388,9 @@ class PGCompiler(compiler.SQLCompiler):
         return f"power{self.function_argspec(fn)}"
 
     def visit_sequence(self, seq, **kw):
-        return "nextval('%s')" % self.preparer.format_sequence(seq)
+        return "nextval(%s)" % self.preparer._format_sequence_string_literal(
+            seq
+        )
 
     def limit_clause(self, select, **kw):
         text = ""
@@ -2683,7 +2778,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         options = []
         if domain.collation is not None:
-            options.append(f"COLLATE {self.preparer.quote(domain.collation)}")
+            collation = self.preparer.format_collation(
+                domain.collation, domain.collation_schema
+            )
+            options.append(f"COLLATE {collation}")
         if domain.default is not None:
             default = self.render_default_string(domain.default)
             options.append(f"DEFAULT {default}")
@@ -2709,6 +2807,26 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_drop_domain_type(self, drop, **kw):
         domain = drop.element
         return f"DROP DOMAIN {self.preparer.format_type(domain)}"
+
+    def _prepare_withclause_opts(self, withclause):
+        with_opts = []
+        for param, value in withclause.items():
+            if value is None:
+                with_opts.append(param)
+            elif isinstance(value, bool):
+                with_opts.append(
+                    "%s = %s" % (param, "true" if value else "false")
+                )
+            else:
+                with_opts.append("%s = %s" % (param, value))
+        return ", ".join(with_opts)
+
+    def create_table_select_suffixes(self, element, type_, **kw):
+        if type_ == "view":
+            withclause = element.dialect_options["postgresql"]["with"]
+            if withclause:
+                return "WITH (%s)" % self._prepare_withclause_opts(withclause)
+        return ""
 
     def visit_create_index(self, create, **kw):
         preparer = self.preparer
@@ -2775,14 +2893,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         withclause = index.dialect_options["postgresql"]["with"]
         if withclause:
-            text += " WITH (%s)" % (
-                ", ".join(
-                    [
-                        "%s = %s" % storage_parameter
-                        for storage_parameter in withclause.items()
-                    ]
-                )
-            )
+            text += " WITH (%s)" % self._prepare_withclause_opts(withclause)
 
         tablespace_name = index.dialect_options["postgresql"]["tablespace"]
         if tablespace_name:
@@ -2868,9 +2979,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             if not isinstance(inherits, (list, tuple)):
                 inherits = (inherits,)
             table_opts.append(
-                "\n INHERITS ( "
+                "\n INHERITS ("
                 + ", ".join(self.preparer.quote(name) for name in inherits)
-                + " )"
+                + ")"
             )
 
         if pg_opts["partition_by"]:
@@ -2880,8 +2991,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             table_opts.append("\n USING %s" % pg_opts["using"])
 
         if pg_opts["with"]:
-            storage_params = (f"{k} = {v}" for k, v in pg_opts["with"].items())
-            table_opts.append(f" WITH ({', '.join(storage_params)})")
+            table_opts.append(
+                "\n WITH (%s)" % self._prepare_withclause_opts(pg_opts["with"])
+            )
 
         if pg_opts["with_oids"] is True:
             table_opts.append("\n WITH OIDS")
@@ -3154,8 +3266,42 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return "JSONPATH"
 
 
+class _CompilerSequence:
+    """Minimal stand-in for :class:`.Sequence`.
+
+    Used for the implicit sequence behind a SERIAL column, where no
+    :class:`.Sequence` object exists but a name still has to be rendered
+    through :meth:`.IdentifierPreparer.format_sequence`.
+
+    """
+
+    __slots__ = ("name", "schema")
+
+    # the schema handed to us has already been resolved against the
+    # schema translate map, so don't let format_sequence() translate it
+    # a second time
+    _use_schema_map = False
+
+    def __init__(self, name, schema=None):
+        self.name = name
+        self.schema = schema
+
+
 class PGIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS
+
+    def _format_sequence_string_literal(self, sequence):
+        """Render a sequence name as a SQL string literal.
+
+        ``nextval()`` and friends take the sequence as a string rather than
+        as an identifier, so the quoted identifier produced by
+        :meth:`.format_sequence` has to be escaped a second time for the
+        enclosing literal.
+
+        """
+        return "'%s'" % self.format_sequence(
+            sequence, use_schema=True
+        ).replace("'", "''")
 
     def _unquote_identifier(self, value):
         if value[0] == self.initial_quote:
@@ -3235,6 +3381,9 @@ class ReflectedDomain(ReflectedNamedType):
     """
     collation: Optional[str]
     """The collation for the domain."""
+    collation_schema: Optional[str]
+    """The schema of the collation for the domain, if the collation is not
+    visible on the current search_path."""
 
 
 class ReflectedEnum(ReflectedNamedType):
@@ -3358,8 +3507,8 @@ class PGExecutionContext(default.DefaultExecutionContext):
     def fire_sequence(self, seq, type_):
         return self._execute_scalar(
             (
-                "select nextval('%s')"
-                % self.identifier_preparer.format_sequence(seq)
+                "select nextval(%s)"
+                % self.identifier_preparer._format_sequence_string_literal(seq)
             ),
             type_,
         )
@@ -3396,13 +3545,12 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 else:
                     effective_schema = None
 
-                if effective_schema is not None:
-                    exc = 'select nextval(\'"%s"."%s"\')' % (
-                        effective_schema,
-                        seq_name,
+                exc = (
+                    "select nextval(%s)"
+                    % self.identifier_preparer._format_sequence_string_literal(
+                        _CompilerSequence(seq_name, effective_schema)
                     )
-                else:
-                    exc = "select nextval('\"%s\"')" % (seq_name,)
+                )
 
                 return self._execute_scalar(exc, column.type)
 
@@ -3554,6 +3702,12 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
             {
                 "include": None,
                 "nulls_not_distinct": None,
+            },
+        ),
+        (
+            schema.CreateView,
+            {
+                "with": None,
             },
         ),
     ]
@@ -3815,9 +3969,11 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
         return pg_class_table.c.relkind == sql.any_(_array.array(relkinds))
 
     @lru_cache()
-    def _has_table_query(self, schema):
+    def _has_multi_table_query(self, schema):
         query = select(pg_catalog.pg_class.c.relname).where(
-            pg_catalog.pg_class.c.relname == bindparam("table_name"),
+            pg_catalog.pg_class.c.relname.in_(
+                bindparam("table_names", expanding=True)
+            ),
             self._pg_class_relkind_condition(
                 pg_catalog.RELKINDS_ALL_TABLE_LIKE
             ),
@@ -3828,9 +3984,18 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
 
     @reflection.cache
     def has_table(self, connection, table_name, schema=None, **kw):
+        # NOTE: it's not worth calling into the multi table since the query
+        # is compatible also with this single case.
         self._ensure_has_table_connection(connection)
-        query = self._has_table_query(schema)
-        return bool(connection.scalar(query, {"table_name": table_name}))
+        query = self._has_multi_table_query(schema)
+        return bool(connection.scalar(query, {"table_names": [table_name]}))
+
+    def has_multi_table(self, connection, table_names, schema=None, **kw):
+        query = self._has_multi_table_query(schema)
+        params = {"table_names": table_names}
+        existing = set(connection.scalars(query, params).all())
+        retval = {(schema, table): table in existing for table in table_names}
+        return retval.items()
 
     @reflection.cache
     def has_sequence(self, connection, sequence_name, schema=None, **kw):
@@ -4216,7 +4381,9 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
             else_=sql.null(),
         ).label("default")
 
-        # get the name of the collate when it's different from the default one
+        # get the name and schema of the collate when it's different from
+        # the default one; the schema is only included when the collation
+        # is not visible on the current search_path
         collate = sql.case(
             (
                 sql.and_(
@@ -4230,7 +4397,29 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                     .scalar_subquery()
                     != pg_catalog.pg_attribute.c.attcollation,
                 ),
-                select(pg_catalog.pg_collation.c.collname)
+                select(
+                    sql.func.json_build_object(
+                        "name",
+                        pg_catalog.pg_collation.c.collname,
+                        "schema",
+                        sql.case(
+                            (
+                                pg_catalog.pg_collation_is_visible(
+                                    pg_catalog.pg_collation.c.oid
+                                ),
+                                sql.null(),
+                            ),
+                            else_=pg_catalog.pg_namespace.c.nspname,
+                        ),
+                        type_=sqltypes.JSON(),
+                    )
+                )
+                .select_from(pg_catalog.pg_collation)
+                .join(
+                    pg_catalog.pg_namespace,
+                    pg_catalog.pg_namespace.c.oid
+                    == pg_catalog.pg_collation.c.collnamespace,
+                )
                 .where(
                     pg_catalog.pg_collation.c.oid
                     == pg_catalog.pg_attribute.c.attcollation
@@ -4313,6 +4502,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
         named_type_loader: _NamedTypeLoader,
         type_description: str,
         collation: Optional[str],
+        collation_schema: Optional[str] = None,
     ) -> sqltypes.TypeEngine[Any]:
         """
         Attempts to reconstruct a column type defined in ischema_names based
@@ -4419,10 +4609,12 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                     named_type_loader,
                     type_description="DOMAIN '%s'" % domain["name"],
                     collation=domain["collation"],
+                    collation_schema=domain["collation_schema"],
                 )
                 args = (domain["name"], data_type)
 
                 kwargs["collation"] = domain["collation"]
+                kwargs["collation_schema"] = domain["collation_schema"]
                 kwargs["default"] = domain["default"]
                 kwargs["not_null"] = not domain["nullable"]
                 kwargs["create_type"] = False
@@ -4453,6 +4645,8 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
 
         if collation is not None:
             kwargs["collation"] = collation
+            if collation_schema is not None:
+                kwargs["collation_schema"] = collation_schema
 
         data_type = schema_type(*args, **kwargs)
         if array_dim >= 1:
@@ -4472,13 +4666,19 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 continue
             table_cols = columns[(schema, row_dict["table_name"])]
 
-            collation = row_dict["collation"]
+            collation_info = row_dict["collation"]
+            if collation_info is not None:
+                collation = collation_info["name"]
+                collation_schema = collation_info["schema"]
+            else:
+                collation = collation_schema = None
 
             coltype = self._reflect_type(
                 row_dict["format_type"],
                 named_type_loader,
                 type_description="column '%s'" % row_dict["name"],
                 collation=collation,
+                collation_schema=collation_schema,
             )
 
             default = row_dict["default"]
@@ -5551,6 +5751,10 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
             .subquery("domain_constraints")
         )
 
+        collation_namespace = pg_catalog.pg_namespace.alias(
+            "collation_namespace"
+        )
+
         query = (
             select(
                 pg_catalog.pg_type.c.typname.label("name"),
@@ -5567,6 +5771,19 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 con_sq.c.condefs,
                 con_sq.c.connames,
                 pg_catalog.pg_collation.c.collname,
+                sql.case(
+                    (
+                        pg_catalog.pg_collation.c.oid.is_(None),
+                        sql.null(),
+                    ),
+                    (
+                        pg_catalog.pg_collation_is_visible(
+                            pg_catalog.pg_collation.c.oid
+                        ),
+                        sql.null(),
+                    ),
+                    else_=collation_namespace.c.nspname,
+                ).label("collation_schema"),
             )
             .join(
                 pg_catalog.pg_namespace,
@@ -5577,6 +5794,11 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 pg_catalog.pg_collation,
                 pg_catalog.pg_type.c.typcollation
                 == pg_catalog.pg_collation.c.oid,
+            )
+            .outerjoin(
+                collation_namespace,
+                collation_namespace.c.oid
+                == pg_catalog.pg_collation.c.collnamespace,
             )
             .outerjoin(
                 con_sq,
@@ -5621,6 +5843,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 "default": domain["default"],
                 "constraints": constraints,
                 "collation": domain["collname"],
+                "collation_schema": domain["collation_schema"],
             }
             domains.append(domain_rec)
 

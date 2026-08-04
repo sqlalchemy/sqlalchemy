@@ -1,0 +1,19 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 9693
+
+    Added a new parameter :paramref:`.String.collation_schema`, as well as
+    :paramref:`_postgresql.DOMAIN.collation_schema` and
+    :paramref:`.ColumnOperators.collate.collation_schema`, allowing a
+    PostgreSQL schema-qualified collation name to be specified explicitly,
+    rather than embedding the schema name within the ``collation`` string
+    itself, which previously rendered incorrectly.  As part of this change,
+    collation name rendering across DDL and the :func:`_sql.collate`
+    construct now consistently uses the dialect's identifier preparer for
+    quoting, rather than several separate, inconsistent hand-quoting code
+    paths; as a side effect, simple lowercase collation names such as
+    ``"utf8"`` are no longer unconditionally quoted in generated DDL.
+
+    .. seealso::
+
+        :ref:`postgresql_collation`

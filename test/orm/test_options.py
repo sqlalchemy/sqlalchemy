@@ -16,16 +16,23 @@ from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import loading
+from sqlalchemy.orm import noload
+from sqlalchemy.orm import query_expression
+from sqlalchemy.orm import raiseload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import util as orm_util
+from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not
@@ -115,7 +122,7 @@ class LoadTest(PathTest, QueryTest):
         result = Load(User)
         eq_(
             str(result),
-            "Load(Mapper[User(users)])",
+            "Load(User)",
         )
 
         result = Load(aliased(User))
@@ -478,7 +485,8 @@ class OptionsTest(PathTest, QueryTest):
 
         with expect_raises_message(
             sa.exc.ArgumentError,
-            r"Mapped class Mapper\[User\(users\)\] does not apply to any "
+            r"Mapped class User referenced in option "
+            r"contains_eager\(User.addresses\) does not apply to any "
             "of the root entities in this query",
         ):
             self._assert_path_result(opt, q, [])
@@ -902,7 +910,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             Item.id,
             Item.keywords,
             r"Query has only expression-based entities; attribute loader "
-            r"options for Mapper\[Item\(items\)\] can't be applied here.",
+            r"option joinedload\(Item.keywords\) can't be applied here.",
         )
 
     def test_option_against_nonexistent_PropComparator(self):
@@ -911,10 +919,10 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_entity_exception(
             [Keyword],
             (joinedload(Item.keywords),),
-            r"Mapped class Mapper\[Item\(items\)\] does not apply to any of "
-            "the root entities in this query, e.g. "
-            r"Mapper\[Keyword\(keywords\)\]. "
-            "Please specify the full path from one of "
+            r"Mapped class Item referenced in option "
+            r"joinedload\(Item.keywords\) "
+            "does not apply to any of the root entities in this query, e.g. "
+            r"Keyword. Please specify the full path from one of "
             "the root entities to the target attribute. ",
         )
 
@@ -969,8 +977,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             [Keyword.id, Item.id],
             lambda: (joinedload(Keyword.keywords),),
             r"Query has only expression-based entities; attribute loader "
-            r"options for Mapper\[Keyword\(keywords\)\] can't be applied "
-            "here.",
+            r"option joinedload\(Keyword.keywords\) can't be applied here.",
         )
 
     @testing.combinations(True, False, argnames="first_element")
@@ -1150,9 +1157,9 @@ class OptionsNoPropTestInh(_Polymorphic):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            r"Mapped class Mapper\[Manager\(managers\)\] does not apply to "
-            "any of "
-            r"the root entities in this query, e.g. "
+            r"Mapped class Manager referenced in option "
+            r"undefer\(Manager.status\) does not apply to "
+            r"any of the root entities in this query, e.g. "
             r"with_polymorphic\(Person, \[Manager\]\).",
             s.query(wp).options(load_only(Manager.status))._compile_state,
         )
@@ -1183,8 +1190,7 @@ class OptionsNoPropTestInh(_Polymorphic):
             sa.exc.ArgumentError,
             r'ORM mapped entity or attribute "Manager.manager_name" does '
             r"not link from "
-            r'relationship "Company.employees.'
-            r'of_type\(Mapper\[Engineer\(engineers\)\]\)".$',
+            r'relationship "Company.employees.of_type\(Engineer\)".$',
             lambda: s.query(Company)
             .options(
                 joinedload(Company.employees.of_type(Engineer)).load_only(
@@ -1203,8 +1209,7 @@ class OptionsNoPropTestInh(_Polymorphic):
             sa.exc.ArgumentError,
             r'ORM mapped entity or attribute "Manager.status" does '
             r"not link from "
-            r'relationship "Company.employees.'
-            r'of_type\(Mapper\[Engineer\(engineers\)\]\)".$',
+            r'relationship "Company.employees.of_type\(Engineer\)".$',
             lambda: s.query(Company)
             .options(
                 joinedload(Company.employees.of_type(Engineer)).load_only(
@@ -1908,8 +1913,9 @@ class MapperOptionsTest(_fixtures.FixtureTest):
                 joinedload(User.orders),
                 contains_eager(User.orders),
             ),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.orders -> Mapper\[Order\(orders\)\]\] conflict",
+            r"Loader strategy replacement contains_eager\(User.orders\) "
+            r"is in conflict with existing strategy "
+            r"joinedload\(User.orders\)",
         ),
         (
             lambda User, Order: (
@@ -1925,13 +1931,15 @@ class MapperOptionsTest(_fixtures.FixtureTest):
                     Order.items
                 ),
             ),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.orders -> Mapper\[Order\(orders\)\]\] conflict",
+            r"Loader strategy replacement "
+            r"joinedload\(User.orders\) "
+            r"is in conflict with existing strategy "
+            r"joinedload\(User.orders\)",
         ),
         (
             lambda User: (defer(User.name), undefer(User.name)),
-            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
-            r"User.name\] conflict",
+            r"Loader strategy replacement undefer\(User.name\) "
+            r"is in conflict with existing strategy defer\(User.name\)",
         ),
     )
     def test_conflicts(self, make_opt, errmsg):
@@ -1972,3 +1980,90 @@ class MapperOptionsTest(_fixtures.FixtureTest):
                 sess.query(User).options(opt)._compile_context()
         else:
             sess.query(User).options(opt)._compile_context()
+
+    @testing.combinations(
+        (
+            lambda User: joinedload(User.addresses),
+            "joinedload(User.addresses)",
+        ),
+        (
+            lambda User: contains_eager(User.addresses),
+            "contains_eager(User.addresses)",
+        ),
+        (
+            lambda User: subqueryload(User.addresses),
+            "subqueryload(User.addresses)",
+        ),
+        (
+            lambda User: selectinload(User.addresses),
+            "selectinload(User.addresses)",
+        ),
+        (
+            # rendering of of_type() is also tested in
+            # test_utils.py::PathRegistryTest but do a spot check here too
+            lambda User: selectinload(
+                User.addresses.of_type(aliased(Address))
+            ),
+            "selectinload(User.addresses.of_type(aliased(Address)))",
+        ),
+        (
+            lambda User: lazyload(User.addresses),
+            "lazyload(User.addresses)",
+        ),
+        (
+            lambda User: immediateload(User.addresses),
+            "immediateload(User.addresses)",
+        ),
+        (
+            lambda User: noload(User.addresses),
+            "noload(User.addresses)",
+        ),
+        (
+            lambda User: raiseload(User.addresses),
+            "raiseload(User.addresses)",
+        ),
+        (
+            lambda User: raiseload(User.addresses, sql_only=True),
+            "raiseload(User.addresses)",
+        ),
+        (
+            lambda User: defer(User.name),
+            "defer(User.name)",
+        ),
+        (
+            lambda User: defer(User.name, raiseload=True),
+            "defer(User.name)",
+        ),
+        (
+            lambda User: undefer(User.name),
+            "undefer(User.name)",
+        ),
+        (
+            lambda User: with_expression(User.expr_col, User.name),
+            "with_expression(User.expr_col)",
+        ),
+    )
+    @testing.emits_warning
+    def test_strategy_labels_str(self, make_opt, expected_str):
+        users, addresses, User, Address = (
+            self.tables.users,
+            self.tables.addresses,
+            self.classes.User,
+            self.classes.Address,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses)
+                ),
+                "expr_col": query_expression(),
+            },
+        )
+
+        opt = testing.resolve_lambda(make_opt, User=User)
+
+        elements = [el for el in opt.context if el.strategy is not None]
+        eq_(str(elements[0]), expected_str)

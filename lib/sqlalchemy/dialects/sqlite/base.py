@@ -1128,7 +1128,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
             storage_format=(
                 "%(year)04d/%(month)02d/%(day)02d %(hour)02d:%(minute)02d:%(second)02d"
             ),
-            regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)",
+            regexp=r"(\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+)",
         )
 
     :param truncate_microseconds: when ``True`` microseconds will be truncated
@@ -2787,7 +2787,7 @@ class SQLiteDialect(default.DefaultDialect):
             )
             INLINE_UNIQUE_PATTERN = (
                 r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?)[\t ]'
-                r"+[a-z0-9_ ]+?[\t ]+UNIQUE"
+                r"+[a-z0-9_]+(?:[\t ]+[a-z0-9_]+)*?[\t ]+UNIQUE"
             )
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):

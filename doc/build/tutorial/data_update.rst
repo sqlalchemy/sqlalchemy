@@ -261,6 +261,28 @@ syntaxes, such as ``DELETE FROM..USING`` on MySQL::
   {printsql}DELETE FROM user_account USING user_account, address
   WHERE user_account.id = address.user_id AND address.email_address = %s
 
+For backends that support a full FROM expression in the ``USING`` clause,
+the :meth:`_sql.Delete.using` method may be used to state that expression
+explicitly, such as a MySQL joined DELETE::
+
+  >>> delete_stmt = (
+  ...     delete(user_table)
+  ...     .using(
+  ...         user_table.outerjoin(
+  ...             address_table,
+  ...             user_table.c.id == address_table.c.user_id,
+  ...         )
+  ...     )
+  ...     .where(address_table.c.email_address == "patrick@aol.com")
+  ... )
+  >>> print(delete_stmt.compile(dialect=mysql.dialect()))
+  {printsql}DELETE FROM user_account USING user_account LEFT OUTER JOIN address
+  ON user_account.id = address.user_id
+  WHERE address.email_address = %s
+
+.. versionadded:: 2.1 Added :meth:`_sql.Delete.using` to support explicit
+   USING for DELETE statements on supported backends
+
 .. _tutorial_update_delete_rowcount:
 
 Getting Affected Row Count from UPDATE, DELETE

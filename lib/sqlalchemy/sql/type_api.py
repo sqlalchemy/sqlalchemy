@@ -836,7 +836,9 @@ class TypeEngine(Visitable, Generic[_T]):
 
         return self
 
-    def _with_collation(self, collation: str) -> Self:
+    def _with_collation(
+        self, collation: str, collation_schema: Optional[str] = None
+    ) -> Self:
         """set up error handling for the collate expression"""
         raise NotImplementedError("this datatype does not support collation")
 
@@ -1153,7 +1155,7 @@ class TypeEngine(Visitable, Generic[_T]):
         # dmypy / mypy seems to sporadically keep thinking this line is
         # returning Any, which seems to be caused by the @deprecated_params
         # decorator on the DefaultDialect constructor
-        return default.StrCompileDialect()  # type: ignore
+        return default.StrCompileDialect()  # type: ignore[no-any-return]
 
     def __str__(self) -> str:
         return str(self.compile())
@@ -1574,7 +1576,7 @@ class NativeForEmulated(TypeEngineMixin):
         """
 
         # dmypy seems to crash on this
-        return cls(**kw)  # type: ignore
+        return cls(**kw)  # type: ignore[return-value]
 
     # dmypy seems to crash with this, on repeated runs with changes
     # if TYPE_CHECKING:
@@ -1741,7 +1743,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
     # impl_instance.
     @util.memoized_property
     def impl_instance(self) -> TypeEngine[Any]:
-        return self.impl  # type: ignore
+        return self.impl  # type: ignore[return-value]
 
     def __init__(self, *args: Any, **kwargs: Any):
         """Construct a :class:`.TypeDecorator`.
@@ -1838,15 +1840,15 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
         return type(
             "TDComparator",
-            (TypeDecorator.Comparator, impl.comparator_factory),  # type: ignore # noqa: E501
+            (TypeDecorator.Comparator, impl.comparator_factory),  # type: ignore[arg-type, return-value] # noqa: E501
             {"__reduce__": __reduce__},
         )
 
     @property
-    def comparator_factory(  # type: ignore  # mypy properties bug
+    def comparator_factory(  # type: ignore[override]  # mypy properties bug
         self,
     ) -> _ComparatorFactory[Any]:
-        if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:  # type: ignore # noqa: E501
+        if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:  # type: ignore[attr-defined] # noqa: E501
             return self.impl_instance.comparator_factory
         else:
             # reconcile the Comparator class on the impl with that
@@ -1883,10 +1885,12 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         tt.impl = tt.impl_instance = typedesc
         return tt
 
-    def _with_collation(self, collation: str) -> Self:
+    def _with_collation(
+        self, collation: str, collation_schema: Optional[str] = None
+    ) -> Self:
         tt = self._copy_with_check()
         tt.impl = tt.impl_instance = self.impl_instance._with_collation(
-            collation
+            collation, collation_schema
         )
         return tt
 
@@ -2370,7 +2374,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     # mypy property bug
     @property
-    def sort_key_function(self) -> Optional[Callable[[Any], Any]]:  # type: ignore # noqa: E501
+    def sort_key_function(self) -> Optional[Callable[[Any], Any]]:  # type: ignore[override] # noqa: E501
         return self.impl_instance.sort_key_function
 
     def repr_struct(self) -> util.GenericRepr:

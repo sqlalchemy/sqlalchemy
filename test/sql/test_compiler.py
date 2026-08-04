@@ -106,6 +106,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -1952,6 +1953,24 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT DISTINCT mytable.myid AS mytable_myid FROM mytable",
         )
 
+    @testing.variation("case", ["stringify", "final_froms"])
+    def test_distinct_expr_no_dep_warning_str_compiler(self, case):
+        """test for #13396"""
+
+        t = Table("foo", MetaData(), Column("bar"))
+
+        with expect_deprecated(
+            "Passing expression to ``distinct`` to generate a DISTINCT ON"
+        ):
+            stmt = select(t).distinct(t.c.bar)
+
+        if case.stringify:
+            eq_(str(stmt), "SELECT DISTINCT foo.bar \nFROM foo")
+        elif case.final_froms:
+            eq_(stmt.get_final_froms(), [t])
+        else:
+            case.fail()
+
     @testing.emits_warning("Column-expression-level unary distinct")
     def test_distinct_function_6008(self):
         # the bug fixed here as part of #6008 is the same bug that's
@@ -2009,7 +2028,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "DISTINCT ON is currently supported only by the PostgreSQL "
             "dialect",
         ):
-            select("*").distinct(table1.c.myid).compile()
+            self.assert_compile(
+                select("*").distinct(table1.c.myid), "SELECT DISTINCT *"
+            )
 
     def test_where_empty(self):
         self.assert_compile(
@@ -2349,6 +2370,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(column("x")).order_by(column("x").collate("bar")),
             "SELECT x ORDER BY x COLLATE bar",
+        )
+
+        # columns clause, schema-qualified collation
+        self.assert_compile(
+            select(column("x").collate("bar", collation_schema="myschema")),
+            "SELECT x COLLATE myschema.bar AS anon_1",
+            dialect=postgresql.dialect(),
         )
 
     def test_literal(self):
@@ -3025,40 +3053,61 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         (
             "default",
             None,
+            None,
             "SELECT CAST(t1.txt AS VARCHAR(10)) AS txt FROM t1",
             None,
         ),
         (
             "explicit_mssql",
             "Latin1_General_CI_AS",
+            None,
             "SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE Latin1_General_CI_AS AS txt FROM t1",  # noqa
             mssql.dialect(),
         ),
         (
             "explicit_mysql",
             "utf8mb4_unicode_ci",
+            None,
             "SELECT CAST(t1.txt AS CHAR(10)) AS txt FROM t1",
             mysql.dialect(),
         ),
         (
             "explicit_postgresql",
             "en_US",
+            None,
             'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE "en_US" AS txt FROM t1',  # noqa
+            postgresql.dialect(),
+        ),
+        (
+            "explicit_postgresql_schema",
+            "en_US",
+            "myschema",
+            'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE myschema."en_US" AS txt FROM t1',  # noqa
             postgresql.dialect(),
         ),
         (
             "explicit_sqlite",
             "NOCASE",
+            None,
             'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE "NOCASE" AS txt FROM t1',  # noqa
             sqlite.dialect(),
         ),
-        id_="iaaa",
+        id_="iaaaa",
     )
-    def test_cast_with_collate(self, collation_name, expected_sql, dialect):
+    def test_cast_with_collate(
+        self, collation_name, collation_schema, expected_sql, dialect
+    ):
         t1 = Table(
             "t1",
             MetaData(),
-            Column("txt", String(10, collation=collation_name)),
+            Column(
+                "txt",
+                String(
+                    10,
+                    collation=collation_name,
+                    collation_schema=collation_schema,
+                ),
+            ),
         )
         stmt = select(func.cast(t1.c.txt, t1.c.txt.type))
         self.assert_compile(stmt, expected_sql, dialect=dialect)

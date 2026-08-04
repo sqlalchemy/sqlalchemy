@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13439
+
+    Fixed a result-column misalignment bug in ORM-enabled UPDATE statements
+    where ``synchronize_session="fetch"`` is in use, either explicitly or
+    because the statement uses constructs such as CTEs that implicitly select
+    for it.  Columns in rows returned by ``.returning()`` could be returned
+    under incorrect keys (e.g. ``row[SomeClass.a]`` returning the value of
+    a different column), a problem most likely to manifest under concurrent
+    workloads.  ORM DELETE statements were not affected.

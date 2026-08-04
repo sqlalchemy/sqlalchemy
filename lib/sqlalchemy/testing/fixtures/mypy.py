@@ -39,10 +39,12 @@ class MypyTest(TestBase):
         yield from self._cachedir()
 
     @config.fixture(scope="class")
-    def cachedir(self):
-        yield from self._cachedir()
+    @classmethod
+    def cachedir(cls):
+        yield from cls._cachedir()
 
-    def _cachedir(self):
+    @classmethod
+    def _cachedir(cls):
         # as of mypy 0.971 i think we need to keep mypy_path empty
         mypy_path = ""
 

@@ -190,7 +190,7 @@ def extract_opts(posargs: list[str], *args: str) -> tuple[list[str], Any]:
 
     """
     underscore_args = [arg.replace("-", "_") for arg in args]
-    return_tuple = collections.namedtuple("options", underscore_args)  # type: ignore  # noqa: E501
+    return_tuple = collections.namedtuple("options", underscore_args)  # type: ignore[misc]  # noqa: E501
 
     look_for_args = {f"--{arg}": idx for idx, arg in enumerate(args)}
     return_args = [False for arg in args]

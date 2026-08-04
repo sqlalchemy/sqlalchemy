@@ -43,7 +43,7 @@ def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
             module: Any = __import__(
                 "sqlalchemy.dialects.mysql.mariadb"
             ).dialects.mysql.mariadb
-            return module.loader(driver)  # type: ignore
+            return module.loader(driver)  # type: ignore[no-any-return]
         else:
             module = __import__("sqlalchemy.dialects.%s" % (dialect,)).dialects
             module = getattr(module, dialect)

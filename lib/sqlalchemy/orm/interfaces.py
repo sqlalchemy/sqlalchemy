@@ -709,7 +709,7 @@ class MapperProperty(
 
         """
 
-        return getattr(self.parent.class_, self.key)  # type: ignore
+        return getattr(self.parent.class_, self.key)  # type: ignore[no-any-return]  # noqa: E501
 
     def do_init(self) -> None:
         """Perform subclass-specific initialization post-mapper-creation
@@ -757,6 +757,13 @@ class MapperProperty(
             id(self),
             getattr(self, "key", "no key"),
         )
+
+    def path_string(self) -> str:
+        """Return a user-facing name for this :class:`.MapperProperty`,
+        for use in a :class:`_orm.PathRegistry` string representation.
+
+        """
+        return f"{self.parent.class_.__name__}.{self.key}"
 
 
 @inspection._self_inspects
@@ -997,7 +1004,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         """
 
-        return self.operate(PropComparator.of_type_op, class_)  # type: ignore
+        return self.operate(PropComparator.of_type_op, class_)  # type: ignore[return-value]  # noqa: E501
 
     def and_(
         self, *criteria: _ColumnExpressionArgument[bool]
@@ -1027,7 +1034,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
             :func:`.with_loader_criteria`
 
         """
-        return self.operate(operators.and_, *criteria)  # type: ignore
+        return self.operate(operators.and_, *criteria)  # type: ignore[return-value]  # noqa: E501
 
     def any(
         self,

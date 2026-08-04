@@ -34,6 +34,7 @@ from sqlalchemy.connectors.asyncio import AsyncAdapt_dbapi_module
 from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.engine.interfaces import ExecuteStyle
 from sqlalchemy.pool import AsyncAdaptedQueuePool
 from sqlalchemy.pool import NullPool
 from sqlalchemy.pool import QueuePool
@@ -3361,6 +3362,223 @@ class HandleErrorTest(fixtures.TestBase):
         assert not conn.closed
 
         conn.close()
+
+
+class CursorEventErrorTest(fixtures.RemovesEvents, fixtures.TestBase):
+    """tests for #13381"""
+
+    __sparse_driver_backend__ = True
+
+    @testing.fixture
+    def imv_table(self, metadata):
+        t = Table(
+            "t_imv",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50)),
+        )
+        t.create(testing.db)
+        return t
+
+    @testing.fixture
+    def cursor_execute_table(self, metadata):
+        t = Table(
+            "t_ce",
+            metadata,
+            Column(
+                "x",
+                Integer,
+                normalize_sequence(config, Sequence("t_ce_id_seq")),
+                primary_key=True,
+            ),
+            implicit_returning=False,
+        )
+        metadata.create_all(testing.db)
+        return t
+
+    @testing.combinations(
+        "before_cursor_execute",
+        "after_cursor_execute",
+        argnames="event_name",
+    )
+    def test_dbapi_error_exec_single(self, event_name, connection):
+        def handler(
+            conn,
+            cursor,
+            statement,
+            parameters,
+            context,
+            executemany,
+        ):
+            raise connection.dialect.dbapi.OperationalError("error in event")
+
+        self.event_listen(connection, event_name, handler)
+
+        with expect_raises_message(
+            tsa.exc.OperationalError,
+            "error in event",
+        ):
+            connection.exec_driver_sql("select 1")
+
+    @testing.combinations(
+        "before_cursor_execute",
+        "after_cursor_execute",
+        argnames="event_name",
+    )
+    def test_base_exception_invalidates_exec_single(self, event_name):
+        with testing.db.connect() as conn:
+
+            def handler(
+                conn,
+                cursor,
+                statement,
+                parameters,
+                context,
+                executemany,
+            ):
+                raise BaseException("exit-like error")
+
+            self.event_listen(conn, event_name, handler)
+
+            with expect_raises_message(BaseException, "exit-like error"):
+                conn.exec_driver_sql("select 1")
+
+            is_true(conn.invalidated)
+
+    @testing.requires.insertmanyvalues
+    @testing.combinations(
+        "before_cursor_execute",
+        "after_cursor_execute",
+        argnames="event_name",
+    )
+    def test_dbapi_error_insertmanyvalues(
+        self, event_name, imv_table, connection
+    ):
+        def handler(
+            conn,
+            cursor,
+            statement,
+            parameters,
+            context,
+            executemany,
+        ):
+            if context.execute_style is ExecuteStyle.INSERTMANYVALUES:
+                raise connection.dialect.dbapi.OperationalError(
+                    "error in event"
+                )
+
+        self.event_listen(connection, event_name, handler)
+
+        with expect_raises_message(
+            tsa.exc.OperationalError,
+            "error in event",
+        ):
+            connection.execute(
+                imv_table.insert().returning(
+                    imv_table.c.id,
+                    sort_by_parameter_order=True,
+                ),
+                [{"data": f"d{i}"} for i in range(10)],
+            )
+
+    @testing.requires.insertmanyvalues
+    @testing.combinations(
+        "before_cursor_execute",
+        "after_cursor_execute",
+        argnames="event_name",
+    )
+    def test_base_exception_invalidates_insertmanyvalues(
+        self, event_name, imv_table
+    ):
+        with testing.db.connect() as conn:
+
+            def handler(
+                conn,
+                cursor,
+                statement,
+                parameters,
+                context,
+                executemany,
+            ):
+                if context.execute_style is ExecuteStyle.INSERTMANYVALUES:
+                    raise BaseException("exit-like error")
+
+            self.event_listen(conn, event_name, handler)
+
+            with expect_raises_message(BaseException, "exit-like error"):
+                conn.execute(
+                    imv_table.insert().returning(
+                        imv_table.c.id,
+                        sort_by_parameter_order=True,
+                    ),
+                    [{"data": f"d{i}"} for i in range(10)],
+                )
+
+            is_true(conn.invalidated)
+
+        # release lingering cursor refs so sqlite file lock clears
+        gc_collect()
+
+    @testing.requires.sequences
+    @testing.combinations(
+        "before_cursor_execute",
+        "after_cursor_execute",
+        argnames="event_name",
+    )
+    def test_dbapi_error_cursor_execute(
+        self, event_name, cursor_execute_table, connection
+    ):
+        def handler(
+            conn,
+            cursor,
+            statement,
+            parameters,
+            context,
+            executemany,
+        ):
+            if "t_ce_id_seq" in str(statement):
+                raise connection.dialect.dbapi.OperationalError(
+                    "error in event"
+                )
+
+        self.event_listen(connection, event_name, handler)
+
+        with expect_raises_message(
+            tsa.exc.OperationalError,
+            "error in event",
+        ):
+            connection.execute(cursor_execute_table.insert())
+
+    @testing.requires.sequences
+    @testing.combinations(
+        "before_cursor_execute",
+        "after_cursor_execute",
+        argnames="event_name",
+    )
+    def test_base_exception_invalidates_cursor_execute(
+        self, event_name, cursor_execute_table
+    ):
+        with testing.db.connect() as conn:
+
+            def handler(
+                conn,
+                cursor,
+                statement,
+                parameters,
+                context,
+                executemany,
+            ):
+                if "t_ce_id_seq" in str(statement):
+                    raise BaseException("exit-like error")
+
+            self.event_listen(conn, event_name, handler)
+
+            with expect_raises_message(BaseException, "exit-like error"):
+                conn.execute(cursor_execute_table.insert())
+
+            is_true(conn.invalidated)
+
+        gc_collect()
 
 
 class OnConnectTest(fixtures.TestBase):

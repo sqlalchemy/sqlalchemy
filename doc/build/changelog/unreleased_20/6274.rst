@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6274
+
+    Calling :func:`_orm.aliased` against a :func:`_sql.select` or
+    :func:`_sql.union` / :class:`_sql.CompoundSelect` construct, which
+    previously failed with an obscure ``AttributeError`` regarding a missing
+    ``.mapper`` attribute, now raises when using SQLAlchemy 2.1, and emits a
+    deprecation warning under SQLAlchemy 2.0 as it coerces the construct into a
+    subquery instead.  This matches the behavior of other similar implicit
+    SELECT-to-FROM coercions.  Pull request courtesy Rens Groothuijsen.

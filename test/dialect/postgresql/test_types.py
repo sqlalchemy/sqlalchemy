@@ -673,6 +673,7 @@ class NamedTypeTest(
                             }
                         ],
                         "collation": "default",
+                        "collation_schema": None,
                     }
                 ],
             )
@@ -2055,6 +2056,15 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         self.assert_compile(
             postgresql.ARRAY(Unicode(30, collation="en_US")),
             'VARCHAR(30)[] COLLATE "en_US"',
+        )
+
+    def test_array_type_render_str_collate_schema(self):
+        """test #9693"""
+        self.assert_compile(
+            postgresql.ARRAY(
+                Unicode(30, collation="en_US", collation_schema="pg_catalog")
+            ),
+            'VARCHAR(30)[] COLLATE pg_catalog."en_US"',
         )
 
     def test_array_type_render_str_multidim(self):

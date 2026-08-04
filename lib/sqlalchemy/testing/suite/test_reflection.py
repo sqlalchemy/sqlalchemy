@@ -156,6 +156,20 @@ class HasTableTest(OneConnectionTablesTest):
             is_false(config.db.dialect.has_table(conn, "test_table_s"))
             is_false(config.db.dialect.has_table(conn, "nonexistent_table"))
 
+    def test_has_multi_table(self):
+        with config.db.begin() as conn:
+            res = dict(
+                config.db.dialect.has_multi_table(
+                    conn, ["test_table", "test_table_s", "nonexistent_table"]
+                )
+            )
+        exp = {
+            (None, "test_table"): True,
+            (None, "test_table_s"): False,
+            (None, "nonexistent_table"): False,
+        }
+        eq_(res, exp)
+
     def test_has_table_cache(self, metadata):
         insp = inspect(config.db)
         is_true(insp.has_table("test_table"))
@@ -189,12 +203,38 @@ class HasTableTest(OneConnectionTablesTest):
             )
 
     @testing.requires.schemas
+    def test_has_multi_table_schema(self):
+
+        with config.db.begin() as conn:
+            res = dict(
+                config.db.dialect.has_multi_table(
+                    conn,
+                    ["test_table", "test_table_s", "nonexistent_table"],
+                    schema=config.test_schema,
+                )
+            )
+        exp = {
+            (config.test_schema, "test_table"): False,
+            (config.test_schema, "test_table_s"): True,
+            (config.test_schema, "nonexistent_table"): False,
+        }
+        eq_(res, exp)
+
+    @testing.requires.schemas
     def test_has_table_nonexistent_schema(self):
         with config.db.begin() as conn:
             is_false(
                 config.db.dialect.has_table(
                     conn, "test_table", schema="nonexistent_schema"
                 )
+            )
+            eq_(
+                dict(
+                    config.db.dialect.has_multi_table(
+                        conn, ["test_table"], schema="nonexistent_schema"
+                    )
+                ),
+                {("nonexistent_schema", "test_table"): False},
             )
 
     @testing.requires.views

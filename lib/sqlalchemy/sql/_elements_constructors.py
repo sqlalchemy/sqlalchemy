@@ -84,6 +84,12 @@ def all_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         # '5 = ALL (SELECT value FROM table)'
         expr = 5 == all_(select(table.c.value))
 
+    When using a Python sequence with PostgreSQL, wrap it with
+    :func:`_sql.literal` to produce a SQL expression.  Whether the sequence
+    can be adapted to an array parameter is DBAPI-specific::
+
+        expr = 5 == all_(literal([1, 2, 3]))
+
     Comparison to NULL may work using ``None``::
 
         None == all_(mytable.c.somearray)
@@ -267,6 +273,12 @@ def any_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
         # '5 = ANY (SELECT value FROM table)'
         expr = 5 == any_(select(table.c.value))
 
+    When using a Python sequence with PostgreSQL, wrap it with
+    :func:`_sql.literal` to produce a SQL expression.  Whether the sequence
+    can be adapted to an array parameter is DBAPI-specific::
+
+        expr = 5 == any_(literal([1, 2, 3]))
+
     Comparison to NULL may work using ``None`` or :func:`_sql.null`::
 
         None == any_(mytable.c.somearray)
@@ -366,7 +378,9 @@ def asc(
 
 
 def collate(
-    expression: _ColumnExpressionArgument[str], collation: str
+    expression: _ColumnExpressionArgument[str],
+    collation: str,
+    collation_schema: Optional[str] = None,
 ) -> BinaryExpression[str]:
     """Return the clause ``expression COLLATE collation``.
 
@@ -383,12 +397,24 @@ def collate(
     The collation expression is also quoted if it is a case sensitive
     identifier, e.g. contains uppercase characters.
 
+    :param expression: the column expression to apply a collation to.
+
+    :param collation: the name of the collation.
+
+    :param collation_schema: optional, the name of the schema in which the
+      collation is defined, for use with database backends that support
+      schema-qualified collations, currently PostgreSQL.
+
+      .. versionadded:: 2.1
+
     """
     if isinstance(expression, operators.ColumnOperators):
-        return expression.collate(collation)  # type: ignore
+        return expression.collate(  # type: ignore[return-value]
+            collation, collation_schema=collation_schema
+        )
     else:
         return CollationClause._create_collation_expression(
-            expression, collation
+            expression, collation, collation_schema
         )
 
 

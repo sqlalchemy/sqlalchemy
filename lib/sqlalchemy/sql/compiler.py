@@ -1806,7 +1806,7 @@ class SQLCompiler(Compiled):
             ):
                 # set to None to just mark the in positiontup, it will not
                 # be replaced below.
-                param_pos[bind_name] = None  # type: ignore
+                param_pos[bind_name] = None  # type: ignore[assignment]
             else:
                 ph = f"{self._numeric_binds_identifier_char}{num}"
                 num += 1
@@ -1856,7 +1856,7 @@ class SQLCompiler(Compiled):
         # mypy is not able to see the two value types as the above Union,
         # it just sees "object".  don't know how to resolve
         return {
-            key: value  # type: ignore
+            key: value  # type: ignore[misc]
             for key, value in (
                 (
                     self.bind_names[bindparam],
@@ -1872,6 +1872,13 @@ class SQLCompiler(Compiled):
                     ),
                 )
                 for bindparam in self.bind_names
+                # literal_execute parameters are rendered into the SQL string
+                # via their literal_processor and never bound as values, so
+                # they do not need a bind processor.  Skipping them also avoids
+                # invoking bind-processor construction that may require the
+                # DBAPI to be present (see asyncpg, psycopgcffi cases),
+                # facilitating testing.
+                if bindparam not in self.literal_execute_params
             )
             if value is not None
         }
@@ -2736,7 +2743,9 @@ class SQLCompiler(Compiled):
             return schema_prefix + self.preparer.quote(tablename) + "." + name
 
     def visit_collation(self, element, **kw):
-        return self.preparer.format_collation(element.collation)
+        return self.preparer.format_collation(
+            element.collation, element.collation_schema
+        )
 
     def visit_fromclause(self, fromclause, **kwargs):
         return fromclause.name
@@ -6898,6 +6907,9 @@ class StrSQLCompiler(SQLCompiler):
 
     """
 
+    def get_select_precolumns(self, select: Select[Any], **kw: Any) -> str:
+        return "DISTINCT " if select._distinct else ""
+
     def _fallback_column_name(self, column):
         return "<name unknown>"
 
@@ -7113,6 +7125,14 @@ class DDLCompiler(Compiled):
     def visit_create_table_as(self, element: CreateTableAs, **kw: Any) -> str:
         return self._generate_table_select(element, "create_table_as", **kw)
 
+    def create_table_select_suffixes(
+        self,
+        element: _TableViaSelect,
+        type_: str,
+        **kw: Any,
+    ) -> str:
+        return ""
+
     def _generate_table_select(
         self,
         element: _TableViaSelect,
@@ -7133,7 +7153,7 @@ class DDLCompiler(Compiled):
             else element.if_not_exists
         )
 
-        parts = [
+        parts: List[Optional[str]] = [
             "CREATE",
             "OR REPLACE" if getattr(element, "or_replace", False) else None,
             "TEMPORARY" if element.temporary else None,
@@ -7144,9 +7164,11 @@ class DDLCompiler(Compiled):
             ),
             "IF NOT EXISTS" if use_if_not_exists else None,
             prep.format_table(element.table),
-            "AS",
-            select_sql,
         ]
+        suffixes = self.create_table_select_suffixes(element, type_, **kw)
+        if suffixes:
+            parts.append(suffixes)
+        parts += ["AS", select_sql]
         return " ".join(p for p in parts if p)
 
     def visit_create_column(self, create, first_pk=False, **kw):
@@ -7678,33 +7700,69 @@ class GenericTypeCompiler(TypeCompiler):
         return "NCLOB"
 
     def _render_string_type(
-        self, name: str, length: Optional[int], collation: Optional[str]
+        self,
+        name: str,
+        length: Optional[int],
+        collation: Optional[str],
+        collation_schema: Optional[str] = None,
+        identifier_preparer: Optional[IdentifierPreparer] = None,
+        **kw: Any,
     ) -> str:
         text = name
         if length:
             text += f"({length})"
         if collation:
-            text += f' COLLATE "{collation}"'
+            if identifier_preparer is None:
+                identifier_preparer = self.dialect.identifier_preparer
+            text += " COLLATE " + identifier_preparer.format_collation(
+                collation, collation_schema
+            )
         return text
 
     def visit_CHAR(self, type_: sqltypes.CHAR, **kw: Any) -> str:
-        return self._render_string_type("CHAR", type_.length, type_.collation)
+        return self._render_string_type(
+            "CHAR",
+            type_.length,
+            type_.collation,
+            type_.collation_schema,
+            **kw,
+        )
 
     def visit_NCHAR(self, type_: sqltypes.NCHAR, **kw: Any) -> str:
-        return self._render_string_type("NCHAR", type_.length, type_.collation)
+        return self._render_string_type(
+            "NCHAR",
+            type_.length,
+            type_.collation,
+            type_.collation_schema,
+            **kw,
+        )
 
     def visit_VARCHAR(self, type_: sqltypes.String, **kw: Any) -> str:
         return self._render_string_type(
-            "VARCHAR", type_.length, type_.collation
+            "VARCHAR",
+            type_.length,
+            type_.collation,
+            type_.collation_schema,
+            **kw,
         )
 
     def visit_NVARCHAR(self, type_: sqltypes.NVARCHAR, **kw: Any) -> str:
         return self._render_string_type(
-            "NVARCHAR", type_.length, type_.collation
+            "NVARCHAR",
+            type_.length,
+            type_.collation,
+            type_.collation_schema,
+            **kw,
         )
 
     def visit_TEXT(self, type_: sqltypes.Text, **kw: Any) -> str:
-        return self._render_string_type("TEXT", type_.length, type_.collation)
+        return self._render_string_type(
+            "TEXT",
+            type_.length,
+            type_.collation,
+            type_.collation_schema,
+            **kw,
+        )
 
     def visit_UUID(self, type_: sqltypes.Uuid[Any], **kw: Any) -> str:
         return "UUID"
@@ -7723,7 +7781,13 @@ class GenericTypeCompiler(TypeCompiler):
 
     def visit_uuid(self, type_: sqltypes.Uuid[Any], **kw: Any) -> str:
         if not type_.native_uuid or not self.dialect.supports_native_uuid:
-            return self._render_string_type("CHAR", length=32, collation=None)
+            return self._render_string_type(
+                "CHAR",
+                length=32,
+                collation=None,
+                collation_schema=None,
+                **kw,
+            )
         else:
             return self.visit_UUID(type_, **kw)
 
@@ -8082,11 +8146,16 @@ class IdentifierPreparer:
         else:
             return ident
 
-    def format_collation(self, collation_name):
+    def format_collation(self, collation_name, collation_schema=None):
         if self.quote_case_sensitive_collations:
-            return self.quote(collation_name)
+            name = self.quote(collation_name)
         else:
-            return collation_name
+            name = collation_name
+
+        if collation_schema is not None:
+            return f"{self.quote_schema(collation_schema)}.{name}"
+        else:
+            return name
 
     def format_sequence(
         self, sequence: schema.Sequence, use_schema: bool = True

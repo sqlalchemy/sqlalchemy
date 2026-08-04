@@ -862,9 +862,16 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
         # now apply wrappers to the function, including fixture itself
 
         def wrap(fn):
+            is_classmethod = isinstance(fn, classmethod)
+            if is_classmethod:
+                fn = fn.__func__
+
             if config.any_async:
                 fn = asyncio._maybe_async_wrapper(fn)
             # other wrappers may be added here
+
+            if is_classmethod:
+                fn = classmethod(fn)
 
             # now apply FixtureFunctionMarker
             fn = fixture(fn)

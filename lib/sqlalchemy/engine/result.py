@@ -344,7 +344,7 @@ class SimpleResultMetaData(ResultMetaData):
             _tuplefilter = tuplegetter(*_translated_indexes)
         else:
             _translated_indexes = _tuplefilter = None
-        self.__init__(  # type: ignore
+        self.__init__(  # type: ignore[misc]
             state["_keys"],
             _translated_indexes=_translated_indexes,
             _tuplefilter=_tuplefilter,
@@ -808,7 +808,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             workaround for SQLAlchemy 2.1.
 
         """
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     @deprecated(
         "2.1.0",
@@ -842,7 +842,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
         """
 
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     def _raw_row_iterator(self) -> Iterator[_RowData]:
         """Return a safe iterator that yields raw row data.
@@ -1959,7 +1959,7 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
 
     def _soft_close(self, hard: bool = False, **kw: Any) -> None:
         super()._soft_close(hard=hard, **kw)
-        self.chunks = lambda size: []  # type: ignore
+        self.chunks = lambda size: []  # type: ignore[assignment, return-value]
 
     def _fetchmany_impl(
         self, size: Optional[int] = None

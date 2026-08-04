@@ -401,7 +401,7 @@ class CursorResultMetaData(ResultMetaData):
                 result_columns = tuplefilter(result_columns)
             num_ctx_cols = len(result_columns)
         else:
-            result_columns = cols_are_ordered = (  # type: ignore
+            result_columns = cols_are_ordered = (  # type: ignore[assignment]
                 num_ctx_cols
             ) = ad_hoc_textual = loose_column_name_matching = (
                 textual_ordered
@@ -1785,7 +1785,7 @@ class CursorResult(Result[Unpack[_Ts]]):
 
         if not self._soft_closed:
             cursor = self.cursor
-            self.cursor = None  # type: ignore
+            self.cursor = None  # type: ignore[assignment]
             self.connection._safe_close_cursor(cursor)
             self._soft_closed = True
 

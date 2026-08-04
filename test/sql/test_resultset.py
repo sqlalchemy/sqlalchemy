@@ -37,6 +37,7 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.engine import Row
+from sqlalchemy.engine.result import IteratorResult
 from sqlalchemy.engine.result import SimpleResultMetaData
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import ColumnElement
@@ -3934,3 +3935,115 @@ class GenerativeResultTest(fixtures.TablesTest):
             start += 20
 
         assert result._soft_closed
+
+
+class AllTuplesTest(fixtures.TablesTest):
+    """test Result._raw_all_tuples(), which ORM loading uses to fetch
+    processed rows without constructing Row objects."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        class UpperString(TypeDecorator):
+            impl = String(50)
+            cache_ok = True
+
+            def process_result_value(self, value, dialect):
+                return value.upper() if value is not None else None
+
+        Table(
+            "interim",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("plain", String(50)),
+            Column("upper", UpperString()),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.interim.insert(),
+            [
+                {"id": 1, "plain": "p1", "upper": "u1"},
+                {"id": 2, "plain": "p2", "upper": None},
+            ],
+        )
+
+    def test_processors_applied(self, connection):
+        """rows are plain tuples with result processors applied"""
+        t = self.tables.interim
+        result = connection.execute(select(t).order_by(t.c.id))
+        rows = result._raw_all_tuples()
+        eq_(list(rows), [(1, "p1", "U1"), (2, "p2", None)])
+        for r in rows:
+            is_(type(r), tuple)
+
+    def test_no_processors(self, connection):
+        """rows with no result processors in play are plain tuples"""
+        t = self.tables.interim
+        result = connection.execute(select(t.c.id, t.c.plain).order_by(t.c.id))
+        rows = result._raw_all_tuples()
+        eq_(list(rows), [(1, "p1"), (2, "p2")])
+        for r in rows:
+            is_(type(r), tuple)
+
+    def test_empty_result(self, connection):
+        t = self.tables.interim
+        result = connection.execute(select(t).where(t.c.id == -1))
+        eq_(list(result._raw_all_tuples()), [])
+
+    def test_rejects_unique_filter(self, connection):
+        """_raw_all_tuples() does not apply uniquing, so asserts it's not
+        present"""
+        t = self.tables.interim
+        result = connection.execute(select(t).order_by(t.c.id))
+        with expect_raises(AssertionError):
+            result.unique()._raw_all_tuples()
+        result.close()
+
+    def test_rejects_post_creational_filter(self, connection):
+        """_raw_all_tuples() does not apply post-creational filters such as
+        the one used by mappings(), so asserts it's not present"""
+        t = self.tables.interim
+        result = connection.execute(select(t).order_by(t.c.id))
+        with expect_raises(AssertionError):
+            result.mappings()._raw_all_tuples()
+        result.close()
+
+    def test_rejects_scalar_source(self):
+        """_raw_all_tuples() asserts that interim_rows is not None, which
+        excludes results whose source delivers scalars without row
+        construction"""
+        result = IteratorResult(
+            SimpleResultMetaData(["a"]),
+            iter([(1,), (2,)]),
+            _source_supports_scalars=True,
+        )
+        result._generate_rows = False
+        with expect_raises(AssertionError):
+            result._raw_all_tuples()
+
+    def test_row_logging_falls_back_to_rows(self, debug_logging_engine):
+        """with debug-level engine logging established, Row objects are
+        built so that each row can be logged"""
+        t = self.tables.interim
+        testing_engine, buf = debug_logging_engine
+
+        engine = testing_engine(echo="debug")
+        with engine.connect() as conn:
+            result = conn.execute(select(t).order_by(t.c.id))
+            rows = result._raw_all_tuples()
+
+        eq_(len(rows), 2)
+        for r in rows:
+            is_true(isinstance(r, Row))
+        eq_(tuple(rows[0]), (1, "p1", "U1"))
+
+        row_messages = [
+            rec.getMessage()
+            for rec in buf.buffer
+            if rec.getMessage().startswith("Row ")
+        ]
+        eq_(
+            row_messages,
+            ["Row (1, 'p1', 'U1')", "Row (2, 'p2', None)"],
+        )

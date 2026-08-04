@@ -214,6 +214,7 @@ class String(Concatenable, TypeEngine[str]):
         self,
         length: Optional[int] = None,
         collation: Optional[str] = None,
+        collation_schema: Optional[str] = None,
     ):
         """
         Create a string-holding type.
@@ -244,14 +245,45 @@ class String(Concatenable, TypeEngine[str]):
             to store non-ascii data. These datatypes will ensure that the
             correct types are used on the database.
 
-        """
+        :param collation_schema: Optional, the name of the schema in which
+          :paramref:`.String.collation` is defined, for use with database
+          backends that support schema-qualified collations. This is
+          currently known to be supported in PostgreSQL.  Requires that
+          :paramref:`.String.collation` is also present.  E.g.:
+
+          .. sourcecode:: pycon+sql
+
+            >>> from sqlalchemy import cast, select, String
+            >>> print(
+            ...     select(
+            ...         cast(
+            ...             "some string",
+            ...             String(
+            ...                 collation="my_collation",
+            ...                 collation_schema="my_schema",
+            ...             ),
+            ...         )
+            ...     )
+            ... )
+            {printsql}SELECT CAST(:param_1 AS VARCHAR COLLATE "my_schema"."my_collation") AS anon_1
+
+          .. versionadded:: 2.1
+
+        """  # noqa: E501
 
         self.length = length
         self.collation = collation
+        if collation_schema is not None and collation is None:
+            raise exc.ArgumentError(
+                "the 'collation_schema' parameter of String requires "
+                "the 'collation' parameter to also be present"
+            )
+        self.collation_schema = collation_schema
 
-    def _with_collation(self, collation):
+    def _with_collation(self, collation, collation_schema=None):
         new_type = self.copy()
         new_type.collation = collation
+        new_type.collation_schema = collation_schema
         return new_type
 
     def _resolve_for_literal(self, value):
@@ -491,6 +523,14 @@ class NumericCommon(HasExpressionLookup, TypeEngineMixin, Generic[_N]):
 
     def literal_processor(self, dialect):
         def process(value):
+            # the value is rendered into the SQL string directly and
+            # unquoted; the database's native parsing does the numeric
+            # conversion.  don't convert to a Decimal or float here, as that
+            # would alter the rendered representation (e.g. "1.0000" -> "1.0").
+            # instead validate that the value parses as a number, so that a
+            # non-numeric string can't be injected for a literal_execute
+            # parameter, but render the original string form unchanged.
+            decimal.Decimal(value)
             return str(value)
 
         return process
@@ -656,11 +696,7 @@ class Numeric(NumericCommon[_N], TypeEngine[_N]):
                 # we're a "numeric", DBAPI returns floats, convert.
                 return processors.to_decimal_processor_factory(
                     decimal.Decimal,
-                    (
-                        self.scale
-                        if self.scale is not None
-                        else self._default_decimal_return_scale
-                    ),
+                    self._effective_decimal_return_scale,
                 )
         else:
             if dialect.supports_native_decimal:
@@ -1769,7 +1805,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         kw["length"] = NO_ARG if self.length == 0 else self.length
         return cast(
             Enum,
-            self._generic_type_affinity(_enums=enum_args, **kw),  # type: ignore  # noqa: E501
+            self._generic_type_affinity(_enums=enum_args, **kw),  # type: ignore[call-arg]  # noqa: E501
         )
 
     def _setup_for_values(
@@ -2035,7 +2071,7 @@ class PickleType(TypeDecorator[object]):
         if impl:
             # custom impl is not necessarily a LargeBinary subclass.
             # make an exception to typing for this
-            self.impl = to_instance(impl)  # type: ignore
+            self.impl = to_instance(impl)  # type: ignore[assignment]
 
     def __reduce__(self):
         return PickleType, (self.protocol, None, self.comparator)
@@ -2374,7 +2410,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
             def process(value: Any) -> Optional[dt.timedelta]:
                 if value is None:
                     return None
-                return value - epoch  # type: ignore
+                return value - epoch  # type: ignore[no-any-return]
 
         return process
 
@@ -3832,6 +3868,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
     length: Optional[int] = None
     collation: Optional[str] = None
+    collation_schema: Optional[str] = None
 
     @overload
     def __init__(

@@ -1236,6 +1236,19 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         'ERROR:  column "users.name" must appear in the GROUP BY clause'
         " or be used in an aggregate function",
     )
+    @testing.fails_on(
+        "postgresql+psycopg",
+        "psycopg3 uses server-side cursors (via yield_per) which send the "
+        "query to PostgreSQL with distinct positional parameters per "
+        "expression occurrence; PostgreSQL cannot determine that the LIKE "
+        "expression in SELECT and GROUP BY are equivalent.  Fails with "
+        'ERROR:  column "users.name" must appear in the GROUP BY clause'
+        " or be used in an aggregate function",
+    )
+    @testing.fails_on(
+        "postgresql+psycopg_async",
+        "same issue as postgresql+psycopg",
+    )
     def test_values_with_boolean_selects(self):
         """Tests a values clause that works with select boolean
         evaluations"""

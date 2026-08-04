@@ -2243,7 +2243,7 @@ def generate_lambda_stmt(wanted):
         for thread in threads:
             thread.start()
         for thread in threads:
-            thread.join(timeout=10)
+            thread.join(timeout=20)
         for conn in conns:
             conn.close()
 

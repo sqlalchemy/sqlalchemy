@@ -778,7 +778,7 @@ class Mapper(
         # interim - polymorphic_on is further refined in
         # _configure_polymorphic_setter
         self.polymorphic_on = (
-            coercions.expect(  # type: ignore
+            coercions.expect(  # type: ignore[assignment]
                 roles.ColumnArgumentOrKeyRole,
                 polymorphic_on,
                 argname="polymorphic_on",
@@ -1528,12 +1528,12 @@ class Mapper(
             if fc.primary_key and pk_cols.issuperset(fc.primary_key):
                 # ordering is important since it determines the ordering of
                 # mapper.primary_key (and therefore query.get())
-                self._pks_by_table[fc] = util.ordered_column_set(  # type: ignore  # noqa: E501
+                self._pks_by_table[fc] = util.ordered_column_set(  # type: ignore[assignment]  # noqa: E501
                     fc.primary_key
                 ).intersection(
                     pk_cols
                 )
-            self._cols_by_table[fc] = util.ordered_column_set(fc.c).intersection(  # type: ignore  # noqa: E501
+            self._cols_by_table[fc] = util.ordered_column_set(fc.c).intersection(  # type: ignore[assignment]  # noqa: E501
                 all_cols
             )
 
@@ -2287,7 +2287,7 @@ class Mapper(
             "in properties.ColumnProperty %s",
             key,
         )
-        return new_prop  # type: ignore
+        return new_prop  # type: ignore[no-any-return]
 
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def _property_from_column(
@@ -2421,6 +2421,13 @@ class Mapper(
                 else self.persist_selectable.description
             ),
         )
+
+    def path_string(self) -> str:
+        """Return a user-facing name for this :class:`_orm.Mapper`,
+        for use in a :class:`_orm.PathRegistry` string representation.
+
+        """
+        return self.class_.__name__
 
     def _is_orphan(self, state: InstanceState[_O]) -> bool:
         orphan_possible = False
@@ -3561,6 +3568,24 @@ class Mapper(
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
 
+    def _state_ident_getter(self, columns, passive):
+        lookup_keys = [self._columntoproperty[col].key for col in columns]
+        missing = object()
+
+        def get_ident(state, state_dict):
+            return tuple(
+                (
+                    v
+                    if (v := state_dict.get(lk, missing)) is not missing
+                    else self._get_state_attr_by_column(
+                        state, state_dict, col, passive=passive
+                    )
+                )
+                for lk, col in zip(lookup_keys, columns)
+            )
+
+        return get_ident
+
     def _set_committed_state_attr_by_column(self, state, dict_, column, value):
         prop = self._columntoproperty[column]
         state.manager[prop.key].impl.set_committed_value(state, dict_, value)
@@ -4185,7 +4210,7 @@ def _configure_registries(
             else:
                 return
 
-            Mapper.dispatch._for_class(Mapper).before_configured()  # type: ignore # noqa: E501
+            Mapper.dispatch._for_class(Mapper).before_configured()  # type: ignore[arg-type, call-arg, misc] # noqa: E501
 
             # initialize properties on all mappers
             # note that _mapper_registry is unordered, which
@@ -4200,7 +4225,7 @@ def _configure_registries(
             _already_compiling = False
     for reg in registries_configured:
         reg.dispatch.after_configured(reg)
-    Mapper.dispatch._for_class(Mapper).after_configured()  # type: ignore
+    Mapper.dispatch._for_class(Mapper).after_configured()  # type: ignore[arg-type, call-arg, misc]  # noqa: E501
 
 
 @util.preload_module("sqlalchemy.orm.decl_api")
@@ -4236,7 +4261,7 @@ def _do_configure_registries(
                     "Original exception was: %s"
                     % (mapper, mapper._configure_failed)
                 )
-                e._configure_failed = mapper._configure_failed  # type: ignore
+                e._configure_failed = mapper._configure_failed  # type: ignore[attr-defined]  # noqa: E501
                 raise e
 
             if not mapper.configured:
@@ -4339,6 +4364,21 @@ def validates(
     modify or replace the value before proceeding. The function should
     otherwise return the given value.
 
+    When a subclass overrides a validator for the same attribute using
+    the same method name, only the subclass validator is invoked.  The
+    subclass validator may call ``super()`` to also invoke the parent
+    class validator.
+
+    A subclass that overrides a validator using the same method name
+    as the parent now replaces the parent validator entirely, rather
+    than the parent validator being invoked unconditionally.  The
+    subclass validator may opt in to the parent's behavior by calling
+    ``super()``.  See :ref:`validators_subclass_override` for
+    background on this change.
+
+    .. versionchanged:: 2.1 Added support for overriding of validators
+       on subclasses.
+
     Note that a validator for a collection **cannot** issue a load of that
     collection within the validation routine - this usage raises
     an assertion to avoid recursion overflows.  This is a reentrant
@@ -4362,6 +4402,9 @@ def validates(
     .. seealso::
 
       :ref:`simple_validators` - usage examples for :func:`.validates`
+
+      :ref:`validators_subclass_override` - overriding validators in
+      subclasses
 
     """
 
