@@ -1251,6 +1251,33 @@ identifier::
         ),
     )
 
+SQLAlchemy does not automatically copy the columns from the inherited tables
+mentioned in the ``postgresql_inherits`` argument into the new
+:class:`_schema.Table`. To populate the new table columns reflection may be
+used, or a function similar to the following one::
+
+    def get_parent_columns(tbl: sa.Table) -> list[sa.Column]:
+        return [
+            sa.Column(
+                c.name,
+                c.type,
+                key=c.key,
+                nullable=c.nullable,
+                # Set system=true to omit from the CREATE TABLE statement
+                system=True,
+            )
+            for c in tbl.columns
+        ]
+
+
+    documents = Table(
+        "some_table",
+        metadata,
+        *get_parent_columns(some_supertable),
+        # ... # add other columns here normally if needed
+        postgresql_inherits="some_supertable",
+    )
+
 ``ON COMMIT``
 ^^^^^^^^^^^^^
 
