@@ -120,7 +120,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade nox setuptools
+          # argcomplete 3.7.1 (a nox dependency) declares requires-python
+          # >=3.8 but uses py3.10+ only syntax, breaking nox on 3.8 / 3.9
+          pip install --upgrade nox setuptools "argcomplete!=3.7.1"
           pip list
 
       - name: Run tests
@@ -158,7 +160,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade nox setuptools
+          # argcomplete 3.7.1 (a nox dependency) declares requires-python
+          # >=3.8 but uses py3.10+ only syntax, breaking nox on 3.8 / 3.9
+          pip install --upgrade nox setuptools "argcomplete!=3.7.1"
           pip list
 
       - name: Run nox
