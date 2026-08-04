@@ -33,6 +33,7 @@ PYTHON_VERSIONS = [
     "3.13",
     "3.14",
     "3.14t",
+    "3.15",
 ]
 DATABASES = ["sqlite", "sqlite_file", "postgresql", "mysql", "oracle", "mssql"]
 CEXT = ["_auto", "cext", "nocext"]

@@ -158,6 +158,33 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             ),
         )
 
+        # the docstring dataclasses generates for us should carry the
+        # annotation for every field.  the exact rendering of each annotation
+        # varies by Python version and by whether or not future annotations
+        # mode is in use, so match only on their presence.  as of Python 3.15
+        # this docstring is rendered lazily upon first access rather than when
+        # the dataclass is created, which is the case #13477 addresses.
+        #
+        # this assertion is present in the 2.1 series in this same test, as
+        # DCTransformsTest.test_basic_constructor_repr_base_cls; it is
+        # written more specifically there, as that series supports Python
+        # 3.10 and above only and renders the annotations differently due to
+        # #12168 and #13021.  it's included here in a version-agnostic form
+        # so that the fix for #13477 has coverage on this branch as well
+        if compat.py39:
+            eq_regex(
+                A.__doc__, r"A\(data: .+, x: .+ = None, bs: .+ = <factory>\)"
+            )
+            eq_regex(B.__doc__, r"B\(data: .+, x: .+ = None\)")
+        else:
+            # on Python 3.8 and earlier, ``typing.Generic`` still defines
+            # ``__new__``; as declarative classes are ``Generic`` subclasses,
+            # the ``inspect.signature()`` call dataclasses uses to render
+            # this docstring reports that ``__new__`` rather than the
+            # generated ``__init__``, so there are no annotations to test
+            eq_(A.__doc__, "A(*args, **kwds)")
+            eq_(B.__doc__, "B(*args, **kwds)")
+
         a2 = A("10", x=5, bs=[B("data1"), B("data2", x=12)])
         eq_(
             repr(a2),
