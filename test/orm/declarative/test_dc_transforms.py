@@ -35,6 +35,7 @@ from sqlalchemy.orm import composite
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import DynamicMapped
 from sqlalchemy.orm import interfaces
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_as_dataclass
@@ -48,6 +49,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import unmapped_dataclass
+from sqlalchemy.orm import WriteOnlyMapped
 from sqlalchemy.orm.attributes import LoaderCallableStatus
 from sqlalchemy.orm.base import _DeclarativeMapped
 from sqlalchemy.orm.base import _is_mapped_class
@@ -1137,6 +1139,93 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
                     )
                 else:
                     collection_type.fail()
+
+    @testing.variation("collection_type", ["write_only", "dynamic"])
+    def test_no_funny_business_write_only(
+        self,
+        dc_decl_base: Type[MappedAsDataclass],
+        collection_type: testing.Variation,
+    ):
+        """test #13227"""
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "For relationship A.bs using dataclass options, "
+            "default_factory must be exactly <class 'list'>",
+        ):
+
+            class A(dc_decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+                if collection_type.write_only:
+                    bs: WriteOnlyMapped["B"] = relationship(  # noqa: F821
+                        default_factory=set
+                    )
+                elif collection_type.dynamic:
+                    bs: DynamicMapped["B"] = relationship(  # noqa: F821
+                        default_factory=set
+                    )
+                else:
+                    collection_type.fail()
+
+    @testing.variation("collection_type", ["write_only", "dynamic"])
+    def test_write_only_default_factory(
+        self, registry: _RegistryType, collection_type: testing.Variation
+    ):
+        """test #13227
+
+        ``default_factory=list`` for a write only / dynamic relationship
+        is accepted and leaves the collection empty, in the same way that
+        ``default_factory=list`` works for a normal collection.
+
+        """
+
+        @mapped_as_dataclass(registry)
+        class A:
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str]
+
+            if collection_type.write_only:
+                bs: WriteOnlyMapped["B"] = relationship(  # noqa: F821
+                    default_factory=list
+                )
+            elif collection_type.dynamic:
+                bs: DynamicMapped["B"] = relationship(  # noqa: F821
+                    default_factory=list
+                )
+            else:
+                collection_type.fail()
+
+        @mapped_as_dataclass(registry)
+        class B:
+            __tablename__ = "b"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"), init=False)
+            data: Mapped[str]
+
+        registry.metadata.create_all(testing.db)
+
+        with Session(testing.db) as sess:
+            a1 = A("a1")
+            a2 = A("a2", [B("b1"), B("b2")])
+
+            sess.add_all([a1, a2])
+            sess.commit()
+
+            if collection_type.write_only:
+                a1_bs = sess.scalars(a1.bs.select()).all()
+                a2_bs = sess.scalars(a2.bs.select()).all()
+            else:
+                a1_bs = a1.bs.all()
+                a2_bs = a2.bs.all()
+
+            eq_(a1_bs, [])
+            eq_([b.data for b in a2_bs], ["b1", "b2"])
 
     def test_one_to_one_example(self, dc_decl_base: Type[MappedAsDataclass]):
         """test example in the relationship docs will derive uselist=False

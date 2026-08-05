@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13227
+
+    Fixed regression caused by the dataclasses change in :ticket:`12168` where
+    passing :paramref:`_orm.relationship.default_factory` as ``list`` to a
+    relationship that used the :class:`_orm.WriteOnlyMapped` or
+    :class:`_orm.DynamicMapped` annotation would raise an error at mapper
+    configuration time, as these relationships have no ``collection_class``.
+    ``list`` is now accepted for these relationships, which behave the same
+    as ordinary collections in this regard; the factory itself is never
+    invoked, and a newly constructed object begins with an empty
+    collection. Documentation is added at :ref:`write_only_dataclasses`
+    illustrating the use of write only and dynamic relationships with ORM
+    mapped dataclasses.
