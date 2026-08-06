@@ -47,21 +47,26 @@ from sqlalchemy.util import greenlet_spawn
 
 class CxOracleDialectTest(fixtures.TestBase):
     def test_cx_oracle_version_parse(self):
-        dialect = cx_oracle.OracleDialect_cx_oracle()
-
         def check(version):
-            dbapi = Mock(version=version)
-            dialect._load_version(dbapi)
+            # a new dialect per version; dbapi_version is memoized
+            dialect = cx_oracle.OracleDialect_cx_oracle(
+                dbapi=Mock(version=version)
+            )
             return dialect.cx_oracle_ver
 
         eq_(check("8.2"), (8, 2))
         eq_(check("8.0.1"), (8, 0, 1))
-        eq_(check("9.0b1"), (9, 0))
+
+        # a pre-release sorts before the release it qualifies
+        beta = check("9.0b1")
+        eq_(tuple(beta), (9, 0))
+        is_true(beta < (9, 0))
 
     def test_minimum_version(self):
         with expect_raises_message(
             exc.InvalidRequestError,
-            "cx_Oracle version 8 and above are supported",
+            r"Dialect oracle\+cx_oracle requires version 8 or greater of "
+            r"the cx_oracle DBAPI; version 5.1.5 is installed",
         ):
             cx_oracle.OracleDialect_cx_oracle(dbapi=Mock(version="5.1.5"))
 
@@ -75,21 +80,26 @@ class OracleDbDialectTest(fixtures.TestBase):
     __only_on__ = "oracle+oracledb"
 
     def test_oracledb_version_parse(self):
-        dialect = oracledb.OracleDialect_oracledb()
-
         def check(version):
-            dbapi = Mock(version=version)
-            dialect._load_version(dbapi)
+            # a new dialect per version; dbapi_version is memoized
+            dialect = oracledb.OracleDialect_oracledb(
+                dbapi=Mock(version=version)
+            )
             return dialect.oracledb_ver
 
         eq_(check("7.2"), (7, 2))
         eq_(check("7.0.1"), (7, 0, 1))
-        eq_(check("9.0b1"), (9, 0))
+
+        # a pre-release sorts before the release it qualifies
+        beta = check("9.0b1")
+        eq_(tuple(beta), (9, 0))
+        is_true(beta < (9, 0))
 
     def test_minimum_version(self):
         with expect_raises_message(
             exc.InvalidRequestError,
-            r"oracledb version \(1,\) and above are supported",
+            r"Dialect oracle\+oracledb requires version 1 or greater of "
+            r"the oracledb DBAPI; version 0.1.5 is installed",
         ):
             oracledb.OracleDialect_oracledb(dbapi=Mock(version="0.1.5"))
 
@@ -99,7 +109,8 @@ class OracleDbDialectTest(fixtures.TestBase):
     def test_async_minimum_version(self):
         with expect_raises_message(
             exc.InvalidRequestError,
-            r"oracledb version \(2, 0, 1\) and above are supported",
+            r"Dialect oracle\+oracledb requires version 2.0.1 or greater "
+            r"of the oracledb DBAPI; version 2.0.0 is installed",
         ):
             oracledb.OracleDialectAsync_oracledb(dbapi=Mock(version="2.0.0"))
 
@@ -713,7 +724,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         dialect = oracle.dialect(
             dbapi=Mock(
-                version="0.0.0",
+                version="2.4.0",
                 paramstyle="named",
             ),
             **kw,

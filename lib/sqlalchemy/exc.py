@@ -347,6 +347,20 @@ class NoInspectionAvailable(InvalidRequestError):
     no context for inspection."""
 
 
+class NoDBAPILoaded(InvalidRequestError):
+    """A DBAPI-level attribute was requested from a dialect which has no
+    DBAPI module loaded, or whose DBAPI does not publish the attribute.
+
+    This is not an error on the part of the dialect; a dialect which is
+    used only to compile statements, rather than to interact with a
+    database, has no DBAPI established, and a DBAPI module is not obliged
+    to publish a version number of its own.
+
+    .. versionadded:: 2.1
+
+    """
+
+
 class PendingRollbackError(InvalidRequestError):
     """A transaction has failed and needs to be rolled back before
     continuing.

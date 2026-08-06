@@ -1843,7 +1843,7 @@ class DefaultRequirements(SuiteRequirements):
                 config, "mssql+aioodbc"
             ):
                 return False
-            if config.db.dialect._dbapi_version() < (4, 0, 19):
+            if config.db.dialect.dbapi_version < (4, 0, 19):
                 return False
             with config.db.connect() as conn:
                 driver_connection = conn.connection.driver_connection

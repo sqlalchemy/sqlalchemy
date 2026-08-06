@@ -1,6 +1,8 @@
 import copy
 from decimal import Decimal
+import importlib.metadata
 import inspect
+import operator
 from pathlib import Path
 import pickle
 import sys
@@ -3559,6 +3561,170 @@ class QuotedTokenParserTest(fixtures.TestBase):
 
     def test_quoted_single_w_dot_middle(self):
         self._test('"na.me"', ["na.me"])
+
+
+class ParseVersionStringTest(fixtures.TestBase):
+    @combinations(
+        ("2.1.8", (2, 1, 8), None, None, None),
+        ("10.15.17", (10, 15, 17), None, None, None),
+        ("v1.2.3", (1, 2, 3), None, None, None),
+        ("1.4", (1, 4), None, None, None),
+        # pyodbc style, with a prefix and a spelled out pre-release
+        ("py3-3.0.1-beta4", (3, 0, 1), ("b", 4), None, None),
+        ("py3-4.0.19", (4, 0, 19), None, None, None),
+        # psycopg2 style, with trailing information
+        ("2.9.10 (dt dec pq3 ext lo64)", (2, 9, 10), None, None, None),
+        # pep 484 pre-release, post-release, developmental release
+        ("2.0.0a1", (2, 0, 0), ("a", 1), None, None),
+        ("2.0.0b1", (2, 0, 0), ("b", 1), None, None),
+        ("2.0.0rc1", (2, 0, 0), ("rc", 1), None, None),
+        ("2.0.0c1", (2, 0, 0), ("rc", 1), None, None),
+        ("2.0.0-alpha", (2, 0, 0), ("a", 0), None, None),
+        ("2.0.0.post2", (2, 0, 0), None, 2, None),
+        ("2.0.0.dev3", (2, 0, 0), None, None, 3),
+        ("2.0.0b1.dev3", (2, 0, 0), ("b", 1), None, 3),
+        # no version at all
+        ("crap.crap.crap", (), None, None, None),
+        ("", (), None, None, None),
+        (None, (), None, None, None),
+        argnames="version, release, pre, post, dev",
+    )
+    def test_parse(self, version, release, pre, post, dev):
+        parsed = util.parse_version_string(version)
+        eq_(
+            (
+                tuple(parsed),
+                parsed.pre,
+                parsed.post,
+                parsed.dev,
+                parsed.string,
+            ),
+            (release, pre, post, dev, version),
+        )
+
+    @combinations(
+        # a VersionInfo compares equal to the plain tuple of its release
+        # segment when it has no pre / post / dev qualifiers
+        ("2.0.0", "==", (2, 0, 0)),
+        ("2.0.0", "<", (2, 0, 1)),
+        ("2.0.0", ">", (1, 9, 9)),
+        ("0.2.12", "<", (0, 2, 13)),
+        ("0.2.13", "==", (0, 2, 13)),
+        # pre-releases precede the release they qualify, including when
+        # compared against a plain tuple
+        ("2.0.0b1", "<", (2, 0, 0)),
+        ("0.2.13rc1", "<", (0, 2, 13)),
+        ("2.0.0.dev1", "<", (2, 0, 0)),
+        # post-releases follow it
+        ("2.0.0.post1", ">", (2, 0, 0)),
+        argnames="version, op, other",
+    )
+    def test_compare_to_tuple(self, version, op, other):
+        """all six comparisons consult the sort key.
+
+        ``tuple`` implements every one of them, so an operator which
+        VersionInfo fails to state explicitly silently compares as a plain
+        tuple and gets the pre-release cases wrong.
+
+        """
+
+        parsed = util.parse_version_string(version)
+        eq_(
+            (
+                parsed < other,
+                parsed <= other,
+                parsed == other,
+                parsed != other,
+                parsed >= other,
+                parsed > other,
+            ),
+            (
+                op == "<",
+                op in ("<", "=="),
+                op == "==",
+                op != "==",
+                op in (">", "=="),
+                op == ">",
+            ),
+        )
+
+    def test_reflected_comparison_to_tuple(self):
+        """a plain tuple on the left still gets VersionInfo semantics.
+
+        VersionInfo is a tuple subclass, so Python tries its reflected
+        operation first.
+
+        """
+
+        parsed = util.parse_version_string("2.0.0rc1")
+
+        # (2, 0, 0) is greater than 2.0.0rc1
+        eq_(
+            (
+                (2, 0, 0) < parsed,
+                (2, 0, 0) <= parsed,
+                (2, 0, 0) == parsed,
+                (2, 0, 0) != parsed,
+                (2, 0, 0) >= parsed,
+                (2, 0, 0) > parsed,
+            ),
+            (False, False, False, True, True, True),
+        )
+
+    @combinations("<", "<=", ">=", ">", argnames="op")
+    def test_not_comparable(self, op):
+        oper = {
+            "<": operator.lt,
+            "<=": operator.le,
+            ">=": operator.ge,
+            ">": operator.gt,
+        }[op]
+
+        with expect_raises(TypeError):
+            oper(util.parse_version_string("2.0.0"), "2.0.0")
+
+    def test_pep440_ordering(self):
+        """dev < alpha < beta < rc < final < post"""
+
+        versions = [
+            "2.0.0.dev1",
+            "2.0.0a1",
+            "2.0.0a2",
+            "2.0.0b1",
+            "2.0.0rc1",
+            "2.0.0",
+            "2.0.0.post1",
+            "2.0.1",
+        ]
+        parsed = [util.parse_version_string(v) for v in versions]
+        eq_(sorted(reversed(parsed)), parsed)
+
+    def test_hash(self):
+        eq_(
+            {util.parse_version_string("2.0.0b1")},
+            {util.parse_version_string("2.0.0b1")},
+        )
+        ne_(
+            hash(util.parse_version_string("2.0.0b1")),
+            hash(util.parse_version_string("2.0.0")),
+        )
+
+    def test_compare_to_non_tuple(self):
+        parsed = util.parse_version_string("2.0.0")
+        is_false(parsed == "2.0.0")
+        with expect_raises(TypeError):
+            parsed < "2.0.0"
+
+    def test_from_metadata(self):
+        # pytest is necessarily installed for this test to be running at
+        # all; greenlet and the like are optional
+        eq_(
+            util.parse_version_from_metadata("pytest"),
+            util.parse_version_string(importlib.metadata.version("pytest")),
+        )
+
+    def test_from_metadata_not_installed(self):
+        eq_(util.parse_version_from_metadata("no_such_distribution"), ())
 
 
 class BackslashReplaceTest(fixtures.TestBase):

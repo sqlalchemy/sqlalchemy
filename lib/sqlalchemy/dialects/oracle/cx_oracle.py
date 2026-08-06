@@ -1221,6 +1221,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
+    minimum_dbapi_version = util.VersionInfo((8,))
+
     driver = "cx_oracle"
 
     colspecs = util.update_copy(
@@ -1282,7 +1284,6 @@ class OracleDialect_cx_oracle(OracleDialect):
             self.colspecs[sqltypes.UnicodeText] = _OracleUnicodeTextNCLOB
 
         dbapi_module = self.dbapi
-        self._load_version(dbapi_module)
 
         if dbapi_module is not None:
             # these constants will first be seen in SQLAlchemy datatypes
@@ -1312,19 +1313,19 @@ class OracleDialect_cx_oracle(OracleDialect):
 
             self._paramval = lambda value: value.getvalue()
 
-    def _load_version(self, dbapi_module):
-        version = (0, 0, 0)
-        if dbapi_module is not None:
-            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", dbapi_module.version)
-            if m:
-                version = tuple(
-                    int(x) for x in m.group(1, 2, 3) if x is not None
-                )
-        self.cx_oracle_ver = version
-        if self.cx_oracle_ver < (8,) and self.cx_oracle_ver > (0, 0, 0):
-            raise exc.InvalidRequestError(
-                "cx_Oracle version 8 and above are supported"
-            )
+    def retrieve_dbapi_version(self, dbapi):
+        return util.parse_version_string(getattr(dbapi, "version", None))
+
+    @property
+    def cx_oracle_ver(self):
+        """Legacy accessor for :attr:`.Dialect.dbapi_version`.
+
+        Retained for backwards compatibility; ``(0, 0, 0)`` is returned
+        when no version can be determined.
+
+        """
+        version = self._dbapi_version_or_none
+        return version if version is not None else util.VersionInfo((0, 0, 0))
 
     @classmethod
     def import_dbapi(cls):

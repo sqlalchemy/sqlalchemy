@@ -100,6 +100,7 @@ time, at the expense of slower startup time for new connections.
 
 from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
+from ... import util
 
 
 class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
@@ -120,6 +121,11 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
         from pysqlcipher3 import dbapi2 as sqlcipher
 
         return sqlcipher
+
+    def retrieve_dbapi_version(self, dbapi):
+        # the version of sqlcipher3 / pysqlcipher3, rather than the Python
+        # version reported by the pysqlite dialect
+        return util.parse_version_string(getattr(dbapi, "version", None))
 
     @classmethod
     def get_pool_class(cls, url):

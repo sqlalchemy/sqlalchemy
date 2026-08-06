@@ -473,6 +473,7 @@ from __future__ import annotations
 import math
 import os
 import re
+import sys
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -497,7 +498,7 @@ if TYPE_CHECKING:
     from ...engine.interfaces import DBAPICursor
     from ...engine.interfaces import DBAPIModule
     from ...engine.interfaces import IsolationLevel
-    from ...engine.interfaces import VersionInfoType
+    from ...engine.interfaces import ServerVersionInfoType
     from ...engine.url import URL
     from ...pool.base import PoolProxiedConnection
     from ...sql.type_api import _BindProcessorType
@@ -579,8 +580,19 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         else:
             return pool.SingletonThreadPool
 
-    def _get_server_version_info(self, connection: Any) -> VersionInfoType:
+    def _get_server_version_info(
+        self, connection: Any
+    ) -> ServerVersionInfoType:
         return self.dbapi.sqlite_version_info  # type: ignore[no-any-return, union-attr]  # noqa: E501
+
+    def retrieve_dbapi_version(self, dbapi: DBAPIModule) -> util.VersionInfo:
+        # the ``sqlite3`` module ships with CPython and has no version of
+        # its own (the legacy ``sqlite3.version`` attribute was frozen at
+        # 2.6.0 and removed in Python 3.14), so the Python version is used
+        # here, which is what its feature set actually tracks.  The version
+        # of the SQLite library itself is available as
+        # :attr:`.Dialect.server_version_info`.
+        return util.VersionInfo(sys.version_info[:3])
 
     _isolation_lookup = SQLiteDialect._isolation_lookup.union(
         {

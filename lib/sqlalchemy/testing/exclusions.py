@@ -273,6 +273,30 @@ class BooleanPredicate(Predicate):
 
 
 class SpecPredicate(Predicate):
+    """Predicate against a database and optional version.
+
+    The ``db`` string is of the form ``<backend>``, ``<backend>+<driver>``
+    or ``+<driver>``, optionally followed by a comparison operator and a
+    dotted version number.
+
+    When a version comparison is present, it applies to the **server**
+    version when no driver is named, and to the **DBAPI** version, i.e.
+    :attr:`.Dialect.dbapi_version`, when a driver is named::
+
+        # server is older than PostgreSQL 12
+        "postgresql<12"
+
+        # the asyncmy DBAPI is older than 0.2.13
+        "+asyncmy<0.2.13"
+
+    Versions with pre-release qualifiers sort as expected, so that
+    ``0.2.13rc1`` matches ``+asyncmy<0.2.13``.
+
+    .. versionadded:: 2.1  Version comparison against a named driver, which
+       previously raised an assertion error.
+
+    """
+
     def __init__(self, db, op=None, spec=None, description=None):
         self.db = db
         self.op = op
@@ -307,9 +331,10 @@ class SpecPredicate(Predicate):
             return False
 
         if self.op is not None:
-            assert driver is None, "DBAPI version specs not supported yet"
-
-            version = _server_version(engine)
+            if driver is not None:
+                version = engine.dialect.dbapi_version
+            else:
+                version = _server_version(engine)
             oper = (
                 hasattr(self.op, "__call__") and self.op or self._ops[self.op]
             )

@@ -527,6 +527,8 @@ class DefaultDialect(Dialect):
         if insertmanyvalues_page_size is not _NoArg.NO_ARG:
             self.insertmanyvalues_page_size = insertmanyvalues_page_size
 
+        self._check_minimum_dbapi_version()
+
     @property
     @util.deprecated(
         "2.0",
@@ -584,11 +586,85 @@ class DefaultDialect(Dialect):
     @util.memoized_property
     def loaded_dbapi(self) -> DBAPIModule:
         if self.dbapi is None:
-            raise exc.InvalidRequestError(
+            raise exc.NoDBAPILoaded(
                 f"Dialect {self} does not have a Python DBAPI established "
                 "and cannot be used for actual database interaction"
             )
         return self.dbapi
+
+    @util.memoized_property
+    def dbapi_version(self) -> util.VersionInfo:
+        # memoization applies to a successfully determined version only;
+        # memoized_property does not cache when the function raises, so a
+        # DBAPI which is established after this dialect was constructed is
+        # still picked up
+        if self.dbapi is None:
+            raise exc.NoDBAPILoaded(
+                f"Dialect {self.name}+{self.driver} has no DBAPI module "
+                "loaded; no DBAPI version is available"
+            )
+
+        try:
+            version = self.retrieve_dbapi_version(self.dbapi)
+        except NotImplementedError as ne:
+            raise NotImplementedError(
+                f"Dialect {self.name}+{self.driver} does not implement "
+                "retrieve_dbapi_version(); no DBAPI version is available"
+            ) from ne
+
+        if not version:
+            # the DBAPI is loaded but publishes no version of its own; as
+            # with a DBAPI that isn't loaded, this is not an error on the
+            # part of the dialect
+            # asyncio dialects have a wrapper object here rather than a
+            # module, which has no __name__
+            dbapi_name = getattr(self.dbapi, "__name__", self.driver)
+            raise exc.NoDBAPILoaded(
+                f"Dialect {self.name}+{self.driver} could not determine a "
+                f"version for its DBAPI module {dbapi_name!r}"
+            )
+
+        return version
+
+    @property
+    def _dbapi_version_or_none(self) -> Optional[util.VersionInfo]:
+        """:attr:`.Dialect.dbapi_version`, or None if it can't be
+        determined.
+
+        For use by dialect startup checks, which run before a DBAPI is
+        necessarily present and which must not fail when no version is
+        available.  Only :class:`.exc.NoDBAPILoaded` is accommodated;
+        ``NotImplementedError``, indicating a dialect which does not
+        implement :meth:`.Dialect.retrieve_dbapi_version` at all, is a bug
+        in that dialect and is allowed to propagate.  Deliberately not
+        memoized itself; the underlying :attr:`.Dialect.dbapi_version`
+        memoizes the success case.
+
+        """
+        try:
+            return self.dbapi_version
+        except exc.NoDBAPILoaded:
+            return None
+
+    def _check_minimum_dbapi_version(self) -> None:
+        """Enforce :attr:`.Dialect.minimum_dbapi_version`, if present.
+
+        Takes place as the dialect is constructed.  No check occurs when
+        the version of the DBAPI is not available at all.
+
+        """
+        minimum = self.minimum_dbapi_version
+        if minimum is None:
+            return
+
+        version = self._dbapi_version_or_none
+        if version is not None and version < minimum:
+            dbapi_name = getattr(self.dbapi, "__name__", self.driver)
+            raise exc.InvalidRequestError(
+                f"Dialect {self.name}+{self.driver} requires version "
+                f"{minimum} or greater of the {dbapi_name} DBAPI; "
+                f"version {version} is installed"
+            )
 
     @util.memoized_property
     def _bind_typing_render_casts(self):

@@ -58,6 +58,7 @@ from typing import TYPE_CHECKING
 from typing import Union
 
 from .mysqldb import MySQLDialect_mysqldb
+from ... import util
 from ...util import langhelpers
 
 if TYPE_CHECKING:
@@ -100,6 +101,15 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     supports_statement_cache = True
 
     description_encoding = None
+
+    def retrieve_dbapi_version(self, dbapi: DBAPIModule) -> util.VersionInfo:
+        # pymysql publishes its own version as ``VERSION_STRING``; the
+        # ``__version__`` and ``version_info`` attributes it also publishes
+        # are mysqlclient compatibility values, e.g. ``"2.2.8"`` for a
+        # pymysql that is itself version 1.2.0
+        return util.parse_version_string(
+            getattr(dbapi, "VERSION_STRING", None)
+        )
 
     @langhelpers.memoized_property
     def supports_server_side_cursors(self) -> bool:

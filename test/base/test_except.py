@@ -453,6 +453,7 @@ ALL_EXC = [
             sa_exceptions.TimeoutError,
             sa_exceptions.InvalidRequestError,
             sa_exceptions.IllegalStateChangeError,
+            sa_exceptions.NoDBAPILoaded,
             sa_exceptions.NoInspectionAvailable,
             sa_exceptions.PendingRollbackError,
             sa_exceptions.ResourceClosedError,

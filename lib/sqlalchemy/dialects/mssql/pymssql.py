@@ -61,11 +61,14 @@ class MSDialect_pymssql(MSDialect):
         {sqltypes.Numeric: _MSNumeric_pymssql, sqltypes.Float: sqltypes.Float},
     )
 
+    def retrieve_dbapi_version(self, dbapi):
+        return util.parse_version_string(getattr(dbapi, "__version__", None))
+
     @classmethod
     def import_dbapi(cls):
         module = __import__("pymssql")
         # pymmsql < 2.1.1 doesn't have a Binary method.  we use string
-        client_ver = tuple(int(x) for x in module.__version__.split("."))
+        client_ver = util.parse_version_string(module.__version__)
         if client_ver < (2, 1, 1):
             # TODO: monkeypatching here is less than ideal
             module.Binary = lambda x: x if hasattr(x, "decode") else str(x)

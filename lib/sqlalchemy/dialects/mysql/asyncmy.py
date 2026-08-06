@@ -200,6 +200,11 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
     def import_dbapi(cls) -> DBAPIModule:
         return AsyncAdapt_asyncmy_dbapi(__import__("asyncmy"))
 
+    def retrieve_dbapi_version(self, dbapi: DBAPIModule) -> util.VersionInfo:
+        # asyncmy publishes no version of its own within the module, so
+        # the installed distribution is consulted
+        return util.parse_version_from_metadata("asyncmy")
+
     def do_terminate(self, dbapi_connection: DBAPIConnection) -> None:
         dbapi_connection.terminate()
 

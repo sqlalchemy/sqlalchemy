@@ -636,7 +636,18 @@ class BindTyping(Enum):
     """
 
 
-VersionInfoType = Tuple[Union[int, str], ...]
+ServerVersionInfoType = Tuple[Union[int, str], ...]
+"""The type of :attr:`.Dialect.server_version_info`.
+
+.. versionadded:: 2.1  Renamed from ``VersionInfoType``, which remains
+   present as a synonym.  The version of the DBAPI, as opposed to that of
+   the database server, is instead a ``sqlalchemy.util.VersionInfo``; see
+   :attr:`.Dialect.dbapi_version`.
+
+"""
+
+VersionInfoType = ServerVersionInfoType
+
 TableKey = Tuple[Optional[str], str]
 
 
@@ -757,12 +768,118 @@ class Dialect(EventTarget):
 
     """
 
-    server_version_info: Optional[Tuple[Any, ...]]
+    server_version_info: Optional[ServerVersionInfoType]
     """a tuple containing a version number for the DB backend in use.
 
     This value is only available for supporting dialects, and is
     typically populated during the initial connection to the database.
     """
+
+    minimum_dbapi_version: Optional[util.VersionInfo] = None
+    """The minimum version of the DBAPI which this dialect supports.
+
+    When present, :class:`.DefaultDialect` compares this against
+    :attr:`.Dialect.dbapi_version` as the dialect is constructed, raising
+    :class:`.exc.InvalidRequestError` if the DBAPI in use is older.  A
+    dialect therefore does not need to implement this check itself::
+
+        class MyDialect(DefaultDialect):
+            minimum_dbapi_version = util.VersionInfo((2, 5))
+
+    No check takes place if the version of the DBAPI is not available, as
+    described at :attr:`.Dialect.dbapi_version`.
+
+    .. versionadded:: 2.1
+
+    """
+
+    @property
+    def dbapi_version(self) -> util.VersionInfo:
+        """the version number of the DBAPI in use.
+
+        In contrast to :attr:`.Dialect.server_version_info`, which refers to
+        the database server itself, this attribute refers to the version of
+        the Python DBAPI module which the dialect makes use of, and is
+        available without any database connection being established.
+
+        The value is a ``sqlalchemy.util.VersionInfo``, a tuple of integers
+        which additionally sorts pre-release versions such as ``2.0.0rc1``
+        as preceding the final release ``(2, 0, 0)``.  It may be compared
+        against a plain tuple of integers directly::
+
+            if dialect.dbapi_version >= (2, 5):
+                ...
+
+        Dialects should implement
+        :meth:`.Dialect.retrieve_dbapi_version` only in order to provide
+        this value; this method in turn is used by the
+        :class:`.DefaultDialect` implementation of
+        :attr:`.DefaultDialect.dbapi_version`.
+
+        Two distinct conditions prevent a version from being available:
+
+        * :class:`.exc.NoDBAPILoaded` is raised if the dialect has no DBAPI
+          module loaded, as is the case for a dialect used only to compile
+          statements, or if its DBAPI publishes no version of its own.
+          Neither is an error on the part of the dialect.
+
+        * ``NotImplementedError`` is raised if the dialect does not
+          implement :meth:`.Dialect.retrieve_dbapi_version` at all.  This
+          indicates the dialect itself needs to be fixed.
+
+        Consuming code which tolerates a dialect that has not loaded a
+        DBAPI should accommodate the former only, so that a dialect in need
+        of fixing continues to make itself known::
+
+            try:
+                dbapi_version = dialect.dbapi_version
+            except exc.NoDBAPILoaded:
+                dbapi_version = None
+
+        Note that ``hasattr()`` may **not** be used to test for support, as
+        it does not intercept ``NotImplementedError``.  Note also that
+        reading this attribute does not cause a DBAPI module to be
+        imported; it reports upon the module already in use, if any.
+
+        A version, once determined, is memoized.  As no memoization takes
+        place while the version remains unavailable, a DBAPI which is
+        established after the dialect was constructed is still detected.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :meth:`.Dialect.retrieve_dbapi_version`
+
+        """
+        raise NotImplementedError()
+
+    def retrieve_dbapi_version(self, dbapi: DBAPIModule) -> util.VersionInfo:
+        """Return the version of the given DBAPI module.
+
+        This is the dialect-implemented hook behind
+        :attr:`.Dialect.dbapi_version`.  A dialect is responsible only for
+        locating where its particular DBAPI publishes a version and parsing
+        it, typically using ``sqlalchemy.util.parse_version_string()``::
+
+            def retrieve_dbapi_version(self, dbapi):
+                return util.parse_version_string(dbapi.__version__)
+
+        The ``dbapi`` argument is the module returned by
+        :meth:`.Dialect.import_dbapi`, which for asyncio dialects is
+        typically a wrapper object rather than the driver module itself.
+
+        This method is only invoked with a DBAPI actually loaded, and only
+        until a version has been determined; the surrounding conditions,
+        including memoization, are handled by :class:`.DefaultDialect`.  An
+        empty version may be returned to indicate that no version could be
+        located, which :attr:`.Dialect.dbapi_version` translates into
+        :class:`.exc.NoDBAPILoaded`.
+
+        .. versionadded:: 2.1
+
+        """
+        raise NotImplementedError()
 
     default_schema_name: Optional[str]
     """the name of the default schema.  This value is only available for

@@ -173,7 +173,6 @@ from __future__ import annotations
 
 import collections
 import logging
-import re
 from types import NoneType
 from typing import cast
 from typing import TYPE_CHECKING
@@ -368,6 +367,8 @@ def _log_notices(diagnostic):
 class PGDialect_psycopg(_PGDialect_common_psycopg):
     driver = "psycopg"
 
+    minimum_dbapi_version = util.VersionInfo((3, 0, 2))
+
     supports_statement_cache = True
     supports_server_side_cursors = True
     default_paramstyle = "pyformat"
@@ -380,7 +381,6 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
     execution_ctx_cls = PGExecutionContext_psycopg
     statement_compiler = PGCompiler_psycopg
     preparer = PGIdentifierPreparer_psycopg
-    psycopg_version = (0, 0)
 
     _has_native_hstore = True
     _psycopg_adapters_map = None
@@ -410,21 +410,21 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
         },
     )
 
+    @property
+    def psycopg_version(self):
+        """Legacy accessor for :attr:`.Dialect.dbapi_version`.
+
+        Retained for backwards compatibility; ``(0, 0)`` is returned when
+        no version can be determined.
+
+        """
+        version = self._dbapi_version_or_none
+        return version if version is not None else (0, 0)
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         if self.dbapi:
-            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
-            if m:
-                self.psycopg_version = tuple(
-                    int(x) for x in m.group(1, 2, 3) if x is not None
-                )
-
-            if self.psycopg_version < (3, 0, 2):
-                raise ImportError(
-                    "psycopg version 3.0.2 or higher is required."
-                )
-
             from psycopg.adapt import AdaptersMap
 
             self._psycopg_adapters_map = adapters_map = AdaptersMap(

@@ -124,6 +124,7 @@ from typing import Union
 from .base import SQLiteExecutionContext
 from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
+from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_module
@@ -314,6 +315,14 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
     def import_dbapi(cls) -> AsyncAdapt_aiosqlite_dbapi:
         return AsyncAdapt_aiosqlite_dbapi(
             __import__("aiosqlite"), __import__("sqlite3")
+        )
+
+    def retrieve_dbapi_version(self, dbapi: DBAPIModule) -> util.VersionInfo:
+        # the version of aiosqlite, rather than the Python version
+        # reported by the pysqlite dialect
+        aiosqlite = getattr(dbapi, "aiosqlite", None)
+        return util.parse_version_string(
+            getattr(aiosqlite, "__version__", None)
         )
 
     @classmethod

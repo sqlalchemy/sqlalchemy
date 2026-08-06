@@ -174,21 +174,10 @@ class MSDialect_mssqlpython(MSDialect):
         else:
             return False
 
-    def _dbapi_version(self) -> interfaces.VersionInfoType:
-        if not self.dbapi:
-            return ()
-        return self._parse_dbapi_version(self.dbapi.version)
-
-    def _parse_dbapi_version(self, vers: str) -> interfaces.VersionInfoType:
-        m = re.match(r"(?:py.*-)?([\d\.]+)(?:-(\w+))?", vers)
-        if not m:
-            return ()
-        vers_tuple: interfaces.VersionInfoType = tuple(
-            [int(x) for x in m.group(1).split(".")]
-        )
-        if m.group(2):
-            vers_tuple += (m.group(2),)
-        return vers_tuple
+    def retrieve_dbapi_version(
+        self, dbapi: interfaces.DBAPIModule
+    ) -> util.VersionInfo:
+        return util.parse_version_string(dbapi.version)
 
     def _get_server_version_info(self, connection):
         vers = connection.exec_driver_sql("select @@version").scalar()

@@ -97,7 +97,6 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 """  # noqa
 
 import decimal
-import re
 
 from . import ranges
 from .array import ARRAY as PGARRAY
@@ -405,6 +404,8 @@ class PGDialect_pg8000(PGDialect):
     driver = "pg8000"
     supports_statement_cache = True
 
+    minimum_dbapi_version = util.VersionInfo((1, 16, 6))
+
     supports_unicode_statements = True
 
     supports_unicode_binds = True
@@ -473,9 +474,6 @@ class PGDialect_pg8000(PGDialect):
         PGDialect.__init__(self, **kwargs)
         self.client_encoding = client_encoding
 
-        if self._dbapi_version < (1, 16, 6):
-            raise NotImplementedError("pg8000 1.16.6 or greater is required")
-
         if self._native_inet_types:
             raise NotImplementedError(
                 "The pg8000 dialect does not fully implement "
@@ -483,19 +481,8 @@ class PGDialect_pg8000(PGDialect):
                 "CIDR is not"
             )
 
-    @util.memoized_property
-    def _dbapi_version(self):
-        if self.dbapi and hasattr(self.dbapi, "__version__"):
-            return tuple(
-                [
-                    int(x)
-                    for x in re.findall(
-                        r"(\d+)(?:[-\.]?|$)", self.dbapi.__version__
-                    )
-                ]
-            )
-        else:
-            return (99, 99, 99)
+    def retrieve_dbapi_version(self, dbapi):
+        return util.parse_version_string(getattr(dbapi, "__version__", None))
 
     @classmethod
     def import_dbapi(cls):

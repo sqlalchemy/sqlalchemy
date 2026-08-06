@@ -12,6 +12,8 @@ from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects.mysql import mysqldb
+from sqlalchemy.dialects.mysql import pymysql
 from sqlalchemy.dialects.mysql.pymysql import _connection_ping_reconnects_true
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import assert_raises_message
@@ -511,6 +513,51 @@ class DialectTest(fixtures.TestBase):
 
         detected = conn.dialect._connection_charset
         eq_(detected, "utf8mb4")
+
+
+class DBAPIVersionTest(fixtures.TestBase):
+    """test :meth:`.Dialect.retrieve_dbapi_version` for the mysqldb family
+    of dialects."""
+
+    def test_mysqlclient(self):
+        """mysqlclient publishes version_info only"""
+
+        dbapi = mock.Mock(spec=["version_info", "paramstyle"])
+        dbapi.version_info = (2, 2, 7, "final", 0)
+        dbapi.paramstyle = "format"
+
+        dialect = mysqldb.MySQLDialect_mysqldb(dbapi=dbapi)
+        eq_(dialect.dbapi_version, (2, 2, 7))
+
+    def test_mysql_python(self):
+        """the legacy MySQL-python published __version__"""
+
+        dbapi = mock.Mock(spec=["__version__", "paramstyle"])
+        dbapi.__version__ = "1.2.5"
+        dbapi.paramstyle = "format"
+
+        dialect = mysqldb.MySQLDialect_mysqldb(dbapi=dbapi)
+        eq_(dialect.dbapi_version, (1, 2, 5))
+
+    def test_pymysql(self):
+        """pymysql's __version__ / version_info are mysqlclient
+        compatibility values; VERSION_STRING is its own"""
+
+        dbapi = mock.Mock(
+            spec=[
+                "VERSION_STRING",
+                "__version__",
+                "version_info",
+                "paramstyle",
+            ]
+        )
+        dbapi.VERSION_STRING = "1.2.0"
+        dbapi.__version__ = "2.2.8"
+        dbapi.version_info = (2, 2, 8, "final", 1)
+        dbapi.paramstyle = "format"
+
+        dialect = pymysql.MySQLDialect_pymysql(dbapi=dbapi)
+        eq_(dialect.dbapi_version, (1, 2, 0))
 
 
 class ParseVersionTest(fixtures.TestBase):

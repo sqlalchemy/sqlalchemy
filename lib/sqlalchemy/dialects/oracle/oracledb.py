@@ -591,12 +591,11 @@ behavioral changes particularly when using the native JSON datatype.  See
 from __future__ import annotations
 
 import collections
-import re
 from typing import Any
 from typing import TYPE_CHECKING
 
 from . import cx_oracle as _cx_oracle
-from ... import exc
+from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_module
@@ -620,7 +619,8 @@ class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
     execution_ctx_cls = OracleExecutionContext_oracledb
 
     driver = "oracledb"
-    _min_version = (1,)
+
+    minimum_dbapi_version = util.VersionInfo((1,))
 
     def __init__(
         self,
@@ -659,22 +659,16 @@ class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
     def get_async_dialect_cls(cls, url):
         return OracleDialectAsync_oracledb
 
-    def _load_version(self, dbapi_module):
-        version = (0, 0, 0)
-        if dbapi_module is not None:
-            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", dbapi_module.version)
-            if m:
-                version = tuple(
-                    int(x) for x in m.group(1, 2, 3) if x is not None
-                )
-        self.oracledb_ver = version
-        if (
-            self.oracledb_ver > (0, 0, 0)
-            and self.oracledb_ver < self._min_version
-        ):
-            raise exc.InvalidRequestError(
-                f"oracledb version {self._min_version} and above are supported"
-            )
+    @property
+    def oracledb_ver(self):
+        """Legacy accessor for :attr:`.Dialect.dbapi_version`.
+
+        Retained for backwards compatibility; ``(0, 0, 0)`` is returned
+        when no version can be determined.
+
+        """
+        version = self._dbapi_version_or_none
+        return version if version is not None else util.VersionInfo((0, 0, 0))
 
     def do_begin_twophase(self, connection, xid):
         conn_xis = connection.connection.xid(*xid)
@@ -720,7 +714,7 @@ class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
         ]
 
     def _check_max_identifier_length(self, connection):
-        if self.oracledb_ver >= (2, 5):
+        if self.dbapi_version >= (2, 5):
             max_len = connection.connection.max_identifier_length
             if max_len is not None:
                 return max_len
@@ -887,7 +881,7 @@ class OracleDialectAsync_oracledb(OracleDialect_oracledb):
     supports_statement_cache = True
     execution_ctx_cls = OracleExecutionContextAsync_oracledb
 
-    _min_version = (2, 0, 1)
+    minimum_dbapi_version = util.VersionInfo((2, 0, 1))
 
     # thick_mode mode is not supported by asyncio, oracledb will raise
     @classmethod

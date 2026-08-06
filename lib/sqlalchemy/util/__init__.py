@@ -135,6 +135,10 @@ from .langhelpers import only_once as only_once
 from .langhelpers import (
     parse_user_argument_for_enum as parse_user_argument_for_enum,
 )
+from .langhelpers import (
+    parse_version_from_metadata as parse_version_from_metadata,
+)
+from .langhelpers import parse_version_string as parse_version_string
 from .langhelpers import PluginLoader as PluginLoader
 from .langhelpers import quoted_token_parser as quoted_token_parser
 from .langhelpers import restore_annotations as restore_annotations
@@ -149,6 +153,7 @@ from .langhelpers import TypingOnly as TypingOnly
 from .langhelpers import (
     unbound_method_to_callable as unbound_method_to_callable,
 )
+from .langhelpers import VersionInfo as VersionInfo
 from .langhelpers import walk_subclasses as walk_subclasses
 from .langhelpers import warn as warn
 from .langhelpers import warn_exception as warn_exception

@@ -87,7 +87,7 @@ The mysqldb dialect supports server-side cursors. See :ref:`mysql_ss_cursors`.
 
 from __future__ import annotations
 
-import re
+import itertools
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -137,20 +137,25 @@ class MySQLDialect_mysqldb(MySQLDialect):
     preparer = MySQLIdentifierPreparer
     server_version_info: tuple[int, ...]
 
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-        self._mysql_dbapi_version = (
-            self._parse_dbapi_version(self.dbapi.__version__)
-            if self.dbapi is not None and hasattr(self.dbapi, "__version__")
-            else (0, 0, 0)
-        )
-
-    def _parse_dbapi_version(self, version: str) -> tuple[int, ...]:
-        m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", version)
-        if m:
-            return tuple(int(x) for x in m.group(1, 2, 3) if x is not None)
-        else:
-            return (0, 0, 0)
+    def retrieve_dbapi_version(self, dbapi: DBAPIModule) -> util.VersionInfo:
+        # mysqlclient publishes ``version_info``, a tuple in the style of
+        # ``sys.version_info`` such as ``(2, 2, 7, "final", 0)``, and no
+        # version string of its own; MySQL-python published
+        # ``__version__``.  cymysql, which subclasses this dialect, also
+        # publishes ``__version__``.  pymysql publishes both of these as
+        # mysqlclient compatibility values rather than as its own version,
+        # so that dialect overrides this method; the asyncio dialects
+        # likewise override as their DBAPI is a wrapper module.
+        version_info = getattr(dbapi, "version_info", None)
+        if version_info is not None:
+            return util.VersionInfo(
+                tuple(
+                    itertools.takewhile(
+                        lambda part: isinstance(part, int), version_info
+                    )
+                )
+            )
+        return util.parse_version_string(getattr(dbapi, "__version__", None))
 
     @util.langhelpers.memoized_property
     def supports_server_side_cursors(self) -> bool:

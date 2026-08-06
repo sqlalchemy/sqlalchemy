@@ -121,6 +121,9 @@ class _PGDialect_common_psycopg(PGDialect):
         },
     )
 
+    def retrieve_dbapi_version(self, dbapi):
+        return util.parse_version_string(getattr(dbapi, "__version__", None))
+
     def __init__(
         self,
         client_encoding=None,

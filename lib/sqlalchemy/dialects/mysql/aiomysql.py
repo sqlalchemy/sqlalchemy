@@ -39,6 +39,7 @@ from typing import Union
 
 from .pymysql import _connection_ping_reconnects_true
 from .pymysql import MySQLDialect_pymysql
+from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_module
@@ -213,6 +214,14 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
     def import_dbapi(cls) -> AsyncAdapt_aiomysql_dbapi:
         return AsyncAdapt_aiomysql_dbapi(
             __import__("aiomysql"), __import__("pymysql")
+        )
+
+    def retrieve_dbapi_version(self, dbapi: DBAPIModule) -> util.VersionInfo:
+        # the version of aiomysql itself, rather than that of the pymysql
+        # module it makes use of
+        aiomysql = getattr(dbapi, "aiomysql", None)
+        return util.parse_version_string(
+            getattr(aiomysql, "__version__", None)
         )
 
     def do_terminate(self, dbapi_connection: DBAPIConnection) -> None:

@@ -48,7 +48,6 @@ charset/collation will allow connectivity.
 
 from __future__ import annotations
 
-import re
 from typing import Any
 from typing import cast
 from typing import Optional
@@ -212,13 +211,8 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
 
         return [], opts
 
-    @util.memoized_property
-    def _mysqlconnector_version_info(self) -> Optional[tuple[int, ...]]:
-        if self.dbapi and hasattr(self.dbapi, "__version__"):
-            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
-            if m:
-                return tuple(int(x) for x in m.group(1, 2, 3) if x is not None)
-        return None
+    def retrieve_dbapi_version(self, dbapi: DBAPIModule) -> util.VersionInfo:
+        return util.parse_version_string(getattr(dbapi, "__version__", None))
 
     def _detect_charset(self, connection: Connection) -> str:
         return connection.connection.charset  # type: ignore[no-any-return]

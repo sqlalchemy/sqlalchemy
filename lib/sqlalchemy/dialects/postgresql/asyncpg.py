@@ -1127,19 +1127,11 @@ class PGDialect_asyncpg(PGDialect):
     def _invalidate_schema_cache(self):
         self._invalidate_schema_cache_asof = time.time()
 
-    @util.memoized_property
-    def _dbapi_version(self):
-        if self.dbapi and hasattr(self.dbapi, "__version__"):
-            return tuple(
-                [
-                    int(x)
-                    for x in re.findall(
-                        r"(\d+)(?:[-\.]?|$)", self.dbapi.__version__
-                    )
-                ]
-            )
-        else:
-            return (99, 99, 99)
+    def retrieve_dbapi_version(self, dbapi):
+        # dbapi is the AsyncAdapt_asyncpg_dbapi wrapper; the version is on
+        # the asyncpg module itself, which is ``.driver``
+        driver = getattr(dbapi, "driver", None)
+        return util.parse_version_string(getattr(driver, "__version__", None))
 
     @classmethod
     def import_dbapi(cls):

@@ -606,10 +606,10 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             and self.dbapi
             and hasattr(self.dbapi.Cursor, "nextset")
         )
-        self._need_decimal_fix = self.dbapi and self._dbapi_version() < (
-            2,
-            1,
-            8,
+        # a version which can't be determined is assumed to be an old one
+        version = self._dbapi_version_or_none
+        self._need_decimal_fix = bool(self.dbapi) and (
+            version is None or version < (2, 1, 8)
         )
         self.fast_executemany = fast_executemany
         if fast_executemany:

@@ -488,7 +488,6 @@ from __future__ import annotations
 
 import collections.abc as collections_abc
 import logging
-import re
 from typing import cast
 
 from . import ranges
@@ -605,6 +604,8 @@ class ExecutemanyMode(FastIntFlag):
 class PGDialect_psycopg2(_PGDialect_common_psycopg):
     driver = "psycopg2"
 
+    minimum_dbapi_version = util.VersionInfo((2, 7))
+
     supports_statement_cache = True
     supports_server_side_cursors = True
 
@@ -613,7 +614,6 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_psycopg2
     preparer = PGIdentifierPreparer_psycopg2
-    psycopg2_version = (0, 0)
     use_insertmanyvalues_wo_returning = True
 
     returns_native_bytes = False
@@ -663,17 +663,16 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
 
         self.executemany_batch_page_size = executemany_batch_page_size
 
-        if self.dbapi and hasattr(self.dbapi, "__version__"):
-            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
-            if m:
-                self.psycopg2_version = tuple(
-                    int(x) for x in m.group(1, 2, 3) if x is not None
-                )
+    @property
+    def psycopg2_version(self):
+        """Legacy accessor for :attr:`.Dialect.dbapi_version`.
 
-            if self.psycopg2_version < (2, 7):
-                raise ImportError(
-                    "psycopg2 version 2.7 or higher is required."
-                )
+        Retained for backwards compatibility; ``(0, 0)`` is returned when
+        no version can be determined.
+
+        """
+        version = self._dbapi_version_or_none
+        return version if version is not None else (0, 0)
 
     def initialize(self, connection):
         super().initialize(connection)
