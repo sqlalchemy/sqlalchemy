@@ -81,7 +81,7 @@ aioodbc = [
 ]
 asyncmy = [
     "sqlalchemy[asyncio]",
-    "asyncmy>=0.2.3,!=0.2.4,!=0.2.6",
+    "asyncmy>=0.2.12",
 ]
 aiosqlite = [
     "sqlalchemy[asyncio]",
