@@ -70,6 +70,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import Variation
@@ -883,6 +884,52 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
 
 class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
+
+    def test_defaults_are_copied(self):
+        table = Table(
+            "t",
+            MetaData(),
+            Column(
+                "x",
+                Integer,
+                default=1,
+                onupdate=2,
+                server_default="3",
+                server_onupdate="4",
+            ),
+        )
+
+        copied = table.to_metadata(MetaData())
+
+        for attr in (
+            "default",
+            "onupdate",
+            "server_default",
+            "server_onupdate",
+        ):
+            original_default = getattr(table.c.x, attr)
+            copied_default = getattr(copied.c.x, attr)
+
+            is_not_(original_default, copied_default)
+            is_(original_default.column, table.c.x)
+            is_(copied_default.column, copied.c.x)
+
+    def test_sequence_default_is_copied(self):
+        metadata = MetaData()
+        sequence = Sequence("x_seq")
+        table = Table("t", metadata, Column("x", Integer, sequence))
+
+        copied_metadata = MetaData()
+        copied = table.to_metadata(copied_metadata)
+        copied_sequence = copied.c.x.default
+
+        is_not_(sequence, copied_sequence)
+        is_(sequence.column, table.c.x)
+        is_(sequence.metadata, metadata)
+        is_(metadata._sequences["x_seq"], sequence)
+        is_(copied_sequence.column, copied.c.x)
+        is_(copied_sequence.metadata, copied_metadata)
+        is_(copied_metadata._sequences["x_seq"], copied_sequence)
 
     @testing.fixture
     def copy_fixture(self, metadata):
@@ -4856,10 +4903,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
                 is_(default.column, col)
             elif isinstance(value, Sequence):
                 default = col.default
-
-                # TODO: sequence mutated in place
-                is_(default.column, target_copy)
-
+                is_(default.column, col)
                 assert isinstance(default, type(value))
 
             elif paramname in (
@@ -4870,11 +4914,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             ):
                 default = getattr(col, paramname)
                 is_(default.arg, value)
-
-                # TODO: _copy() seems to note that it isn't copying
-                # server defaults or defaults outside of Computed, Identity,
-                # so here it's getting mutated in place.   this is a bug
-                is_(default.column, target_copy)
+                is_(default.column, col)
 
             elif paramname in ("info",):
                 eq_(col.info, value)
