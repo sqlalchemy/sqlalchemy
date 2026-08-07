@@ -527,6 +527,12 @@ of :paramref:`_orm.relationship.default_factory` or
 :paramref:`_orm.relationship.default` is what determines if the parameter is
 to be required or optional when rendered into the ``__init__()`` method.
 
+.. seealso::
+
+    :ref:`write_only_dataclasses` - dataclass configuration for
+    relationships that use the :class:`_orm.WriteOnlyMapped` and
+    :class:`_orm.DynamicMapped` annotations
+
 .. _orm_declarative_native_dataclasses_non_mapped_fields:
 
 Using Non-Mapped Dataclass Fields

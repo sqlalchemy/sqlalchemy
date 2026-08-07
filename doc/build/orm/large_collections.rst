@@ -128,6 +128,7 @@ are deleted, as well as when ``AccountTransaction`` objects are removed from the
 
 .. versionadded:: 2.0  Added "Write only" relationship loaders.
 
+.. _write_only_relationship_creating:
 
 Creating and Persisting New Write Only Collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -180,6 +181,8 @@ loaded into memory in order to reconcile the old entries with the new ones::
     ...
     sqlalchemy.exc.InvalidRequestError: Collection "Account.account_transactions" does not
     support implicit iteration; collection replacement operations can't be used
+
+.. _write_only_relationship_adding:
 
 Adding New Items to an Existing Collection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -528,6 +531,96 @@ produce a :term:`scalar subquery`::
     [...] (' (audited)', 1)
     <...>
 
+.. _write_only_dataclasses:
+
+Using Write Only Relationships with ORM Dataclasses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When the mapped class is also an ORM mapped dataclass, described at
+:ref:`orm_declarative_native_dataclasses`, a write only relationship takes
+part in the dataclass process in the same way as an ordinary collection,
+where :paramref:`_orm.relationship.default_factory` is passed as ``list``
+in order for the attribute to be optional within the ``__init__()``
+method:
+
+.. sourcecode:: python
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import MappedAsDataclass
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm import WriteOnlyMapped
+
+
+    class Base(MappedAsDataclass, DeclarativeBase):
+        pass
+
+
+    class Account(Base):
+        __tablename__ = "account"
+
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        identifier: Mapped[str]
+
+        account_transactions: WriteOnlyMapped["AccountTransaction"] = relationship(
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+            order_by="AccountTransaction.timestamp",
+            default_factory=list,
+        )
+
+As a write only relationship has no in-memory collection, ``list`` is the
+only value accepted for :paramref:`_orm.relationship.default_factory`, and
+the factory is not actually invoked; constructing ``Account()`` without
+passing ``account_transactions`` leaves the collection empty.  As
+described at :ref:`write_only_relationship_creating`, a sequence of objects
+may still be passed to the constructor of a new object:
+
+.. sourcecode:: python
+
+    account = Account(
+        identifier="account_01",
+        account_transactions=[
+            AccountTransaction(description="initial deposit", amount=Decimal("500.00")),
+        ],
+    )
+
+The :paramref:`_orm.relationship.init` parameter may alternatively be set to
+``False``, which omits the attribute from the ``__init__()`` method
+altogether:
+
+.. sourcecode:: python
+
+    class Account(Base):
+        __tablename__ = "account"
+
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        identifier: Mapped[str]
+
+        account_transactions: WriteOnlyMapped["AccountTransaction"] = relationship(
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+            order_by="AccountTransaction.timestamp",
+            init=False,
+        )
+
+With the above mapping, items are added to the collection after the object
+is constructed, using the :meth:`_orm.WriteOnlyCollection.add` and
+:meth:`_orm.WriteOnlyCollection.add_all` methods described at
+:ref:`write_only_relationship_adding`:
+
+.. sourcecode:: python
+
+    account = Account(identifier="account_01")
+    account.account_transactions.add(
+        AccountTransaction(description="initial deposit", amount=Decimal("500.00"))
+    )
+
+The same configurations apply to :ref:`dynamic relationships
+<dynamic_relationship>`, substituting :class:`_orm.DynamicMapped` for
+:class:`_orm.WriteOnlyMapped`.
+
 Write Only Collections - API Documentation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -616,6 +709,12 @@ until the data has been flushed.  However, as long as "autoflush" is
 enabled on the :class:`.Session` in use, this will occur
 automatically each time the collection is about to emit a
 query.
+
+.. seealso::
+
+    :ref:`write_only_dataclasses` - dataclass configuration, which applies
+    equally to relationships using the :class:`_orm.DynamicMapped`
+    annotation
 
 
 Dynamic Relationship Loaders - API

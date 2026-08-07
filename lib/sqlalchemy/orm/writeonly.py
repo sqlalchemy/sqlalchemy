@@ -41,6 +41,7 @@ from . import interfaces
 from . import relationships
 from . import strategies
 from .base import ATTR_EMPTY
+from .base import DONT_SET
 from .base import NEVER_SET
 from .base import object_mapper
 from .base import PassiveFlag
@@ -312,6 +313,12 @@ class _WriteOnlyAttributeImpl(
             return
 
         if pop and value is None:
+            return
+
+        if value is DONT_SET:
+            # dataclasses default_factory for a write only collection
+            # sends DONT_SET; there's no collection to initialize so
+            # this is a no-op
             return
 
         iterable = value
