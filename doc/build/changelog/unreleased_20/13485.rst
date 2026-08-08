@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13485
+
+    Fixed issue where a :meth:`_orm.Session.bulk_save_objects`,
+    :meth:`_orm.Session.bulk_insert_mappings` or
+    :meth:`_orm.Session.bulk_update_mappings` call made while the
+    :class:`_orm.Session`'s transaction was not active would leave the
+    ``Session`` permanently in the "flushing" state, so that every subsequent
+    :meth:`_orm.Session.flush` raised ``Session is already flushing``.  The
+    flag was set before the transaction was begun but the ``finally:`` block
+    that resets it only covered the statements after that point, and neither
+    :meth:`_orm.Session.rollback` nor :meth:`_orm.Session.close` clears it, so
+    the ``Session`` could not be recovered.

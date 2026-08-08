@@ -36,6 +36,7 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.config import Variation
@@ -1026,6 +1027,32 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
                 "was:",
                 sess.commit,
             )
+        sess.rollback()
+        sess.add(User(id=5, name="some name"))
+        sess.commit()
+
+    @testing.combinations(
+        "bulk_update_mappings", "bulk_insert_mappings", argnames="meth"
+    )
+    def test_bulk_failure_resets_flushing_flag(self, meth):
+        """a bulk_* call that raises before it can begin must not leave the
+        Session stuck in the flushing state.
+
+        """
+        User = self.classes.User
+
+        sess, u1 = self._inactive_flushed_session_fixture()
+        is_false(sess._flushing)
+
+        assert_raises(
+            sa_exc.PendingRollbackError,
+            getattr(sess, meth),
+            User,
+            [{"id": 1, "name": "u2"}],
+        )
+        is_false(sess._flushing)
+
+        # the documented recovery works again
         sess.rollback()
         sess.add(User(id=5, name="some name"))
         sess.commit()

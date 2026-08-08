@@ -4902,32 +4902,35 @@ class Session(_SessionClassMethods, EventTarget):
         render_nulls: bool,
     ) -> None:
         mapper = _class_to_mapper(mapper)
+
+        # the flag has to be set before _begin(), as SessionTransaction
+        # autoflushes when it is not set, which would recurse back into here
         self._flushing = True
-
-        transaction = self._autobegin_t()._begin()
         try:
-            if isupdate:
-                bulk_persistence._bulk_update(
-                    mapper,
-                    mappings,
-                    transaction,
-                    isstates=isstates,
-                    update_changed_only=update_changed_only,
-                )
-            else:
-                bulk_persistence._bulk_insert(
-                    mapper,
-                    mappings,
-                    transaction,
-                    isstates=isstates,
-                    return_defaults=return_defaults,
-                    render_nulls=render_nulls,
-                )
-            transaction.commit()
+            transaction = self._autobegin_t()._begin()
+            try:
+                if isupdate:
+                    bulk_persistence._bulk_update(
+                        mapper,
+                        mappings,
+                        transaction,
+                        isstates=isstates,
+                        update_changed_only=update_changed_only,
+                    )
+                else:
+                    bulk_persistence._bulk_insert(
+                        mapper,
+                        mappings,
+                        transaction,
+                        isstates=isstates,
+                        return_defaults=return_defaults,
+                        render_nulls=render_nulls,
+                    )
+                transaction.commit()
 
-        except:
-            with util.safe_reraise():
-                transaction.rollback(_capture_exception=True)
+            except:
+                with util.safe_reraise():
+                    transaction.rollback(_capture_exception=True)
         finally:
             self._flushing = False
 
