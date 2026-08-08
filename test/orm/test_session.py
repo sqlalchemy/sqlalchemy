@@ -763,6 +763,44 @@ class SessionStateTest(_fixtures.FixtureTest):
         s4 = maker2(info={"s4": 8})
         eq_(s4.info, {"s4": 8})
 
+    def test_bulk_save_mappings_resets_flushing_on_pending_rollback(self):
+        """A bulk_* call that raises PendingRollbackError because the
+        transaction needs a rollback must still reset Session._flushing,
+        the same way flush() does. #13485
+        """
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        s = fixture_session()
+        s.add(User(id=1, name="original"))
+        s.commit()
+
+        # Leave the transaction needing a rollback without rolling back yet,
+        # matching the issue's exact repro.
+        s.add(User(id=2, name=None))
+        assert_raises(exc.IntegrityError, s.flush)
+        eq_(s._flushing, False)
+
+        assert_raises(
+            exc.PendingRollbackError,
+            s.bulk_update_mappings,
+            User,
+            [{"id": 1, "name": "updated"}],
+        )
+        eq_(
+            s._flushing,
+            False,
+            "_flushing must be reset even when the transaction-begin "
+            "raises before the bulk operation's own try block runs",
+        )
+
+        # the session must actually be usable again, not just report the
+        # flag correctly -- this is what broke before the fix.
+        s.rollback()
+        s.bulk_update_mappings(User, [{"id": 1, "name": "updated"}])
+        s.commit()
+        eq_(s.get(User, 1).name, "updated")
+
     @testing.variation("session_type", ["plain", "sessionmaker"])
     @testing.variation("merge", [True, False])
     @testing.variation(
