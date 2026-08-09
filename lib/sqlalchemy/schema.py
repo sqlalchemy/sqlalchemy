@@ -44,6 +44,7 @@ from .sql.ddl import (
     sort_tables_and_constraints as sort_tables_and_constraints,
 )
 from .sql.naming import conv as conv
+from .sql.naming import f as f
 from .sql.schema import _get_table_key as _get_table_key
 from .sql.schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .sql.schema import CheckConstraint as CheckConstraint

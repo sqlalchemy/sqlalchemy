@@ -15,6 +15,19 @@ import re
 from . import events  # noqa
 from .base import _NONE_NAME
 from .elements import conv as conv
+
+
+def f(name: str | conv | None) -> conv | None:
+    """Mark a constraint or index name as pre-formatted for naming conventions.
+
+    This function indicates that the given name is pre-formatted and should not
+    be subject to further naming convention formatting.
+    """
+    if name is None:
+        return None
+    if isinstance(name, conv):
+        return name
+    return conv(name)
 from .schema import CheckConstraint
 from .schema import Column
 from .schema import Constraint
