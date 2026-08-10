@@ -2483,22 +2483,26 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                     dialect_option_value
                 )
 
+        default = self.default
+        if default is not None:
+            default = default._copy()
+        onupdate = self.onupdate
+        if onupdate is not None:
+            onupdate = onupdate._copy()
         server_default = self.server_default
         server_onupdate = self.server_onupdate
         if isinstance(server_default, (Computed, Identity)):
-            # TODO: likely should be copied in all cases
-            # TODO: if a Sequence, we would need to transfer the Sequence
-            # .metadata as well
             args.append(server_default._copy(**kw))
             server_default = server_onupdate = None
+        else:
+            if server_default is not None:
+                server_default = server_default._copy()
+            if server_onupdate is not None:
+                server_onupdate = server_onupdate._copy()
 
         type_ = self.type
         if isinstance(type_, SchemaEventTarget):
             type_ = type_.copy(**kw)
-
-        # TODO: DefaultGenerator is not copied here!  it's just used again
-        # with _set_parent() pointing to the old column.  see the new
-        # use of _copy() in the new _merge() method
 
         c = self._constructor(
             name=self.name,
@@ -2510,9 +2514,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             # quote=self.quote,  # disabled 2013-08-27 (commit 031ef080)
             index=self.index,
             autoincrement=self.autoincrement,
-            default=self.default,
+            default=default,
             server_default=server_default,
-            onupdate=self.onupdate,
+            onupdate=onupdate,
             server_onupdate=server_onupdate,
             doc=self.doc,
             comment=self.comment,
@@ -3951,7 +3955,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
             order=self.order,
             data_type=self.data_type,
             optional=self.optional,
-            metadata=self.metadata,
+            metadata=None,
             for_update=self.for_update,
         )
 
@@ -4019,8 +4023,8 @@ class FetchedValue(SchemaEventTarget):
         else:
             return self._clone(for_update)
 
-    def _copy(self) -> FetchedValue:
-        return FetchedValue(self.for_update)
+    def _copy(self) -> Self:
+        return self._clone(self.for_update)
 
     def _clone(self, for_update: bool) -> Self:
         n = self.__class__.__new__(self.__class__)
@@ -4076,11 +4080,6 @@ class DefaultClause(FetchedValue):
         super().__init__(for_update)
         self.arg = arg
         self.reflected = _reflected
-
-    def _copy(self) -> DefaultClause:
-        return DefaultClause(
-            arg=self.arg, for_update=self.for_update, _reflected=self.reflected
-        )
 
     def __repr__(self) -> str:
         return "DefaultClause(%r, for_update=%r)" % (self.arg, self.for_update)
