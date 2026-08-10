@@ -1,6 +1,8 @@
 SQLAlchemy
 ==========
 
+this is ai test PR
+
 |PyPI| |Python| |Downloads|
 
 .. |PyPI| image:: https://img.shields.io/pypi/v/sqlalchemy
@@ -103,7 +105,7 @@ SQLAlchemy's philosophy:
   queries, including how joins are organized,
   how subqueries and correlation is used, what
   columns are requested.  Everything SQLAlchemy
-  does is ultimately the result of a developer-initiated 
+  does is ultimately the result of a developer-initiated
   decision.
 * Don't use an ORM if the problem doesn't need one.
   SQLAlchemy consists of a Core and separate ORM
