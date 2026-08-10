@@ -2681,6 +2681,8 @@ class MySQLTypeCompiler(
         for e in enumerated_values:
             if self.dialect.identifier_preparer._double_percents:
                 e = e.replace("%", "%%")
+            if self.dialect._backslash_escapes:
+                e = e.replace("\\", "\\\\")
             quoted_enums.append("'%s'" % e.replace("'", "''"))
         return self._extend_string(
             type_, {}, "%s(%s)" % (name, ",".join(quoted_enums))

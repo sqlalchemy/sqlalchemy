@@ -993,6 +993,40 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL, CacheKeyFixture):
             dialect=dialect,
         )
 
+    def test_enum_set_backslash_escaping(self):
+        t1 = Table(
+            "sometable",
+            MetaData(),
+            Column("e1", mysql.ENUM("a\\b", "c\\")),
+            Column("s1", mysql.SET("a\\b", "c\\")),
+        )
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE sometable ("
+            "e1 ENUM('a\\\\b','c\\\\'), "
+            "s1 SET('a\\\\b','c\\\\')"
+            ")",
+        )
+
+    def test_enum_set_backslash_escaping_disabled(self):
+        dialect = mysql.dialect()
+        dialect._backslash_escapes = False
+
+        t1 = Table(
+            "sometable",
+            MetaData(),
+            Column("e1", mysql.ENUM("a\\b", "c\\")),
+            Column("s1", mysql.SET("a\\b", "c\\")),
+        )
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE sometable ("
+            "e1 ENUM('a\\b','c\\'), "
+            "s1 SET('a\\b','c\\')"
+            ")",
+            dialect=dialect,
+        )
+
     def test_limit(self):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
