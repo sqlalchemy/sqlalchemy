@@ -35,4 +35,13 @@ body:
 
   - type: markdown
     attributes:
+      value: "
+**Thinking of submitting a pull request for this?**  Please wait until a
+maintainer has added the `open for pull requests` label to this issue.  Pull
+requests that don't reference an issue carrying that label are closed
+automatically.
+"
+
+  - type: markdown
+    attributes:
       value: "**Have a nice day!**"

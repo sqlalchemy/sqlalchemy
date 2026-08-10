@@ -1,27 +1,33 @@
 <!-- Provide a general summary of your proposed changes in the Title field above -->
 
+**This project accepts pull requests only for issues that a maintainer has
+marked with the `open for pull requests` label.**
+
+A pull request that doesn't reference such an issue **is closed
+automatically**. That isn't a judgment on your change: it's how we settle on
+an approach before anyone spends time writing code, and how we keep two
+people from doing the same work at once.
+
+The issue you reference has to be:
+
+* in this repository,
+* open,
+* labeled `open for pull requests`, and
+* not already labeled `code review in progress`, which means someone is
+  working on it already.
+
+If there's no such issue yet, open one describing the problem or the feature,
+including a complete, runnable example, and wait for a maintainer to add the
+label. Please don't open a pull request first and ask for the label
+afterwards.
+
+### Fixes
+
+<!-- Put the issue number after the "#" below, e.g. "Fixes: #1234".
+     Leaving this blank means this pull request will be closed. -->
+
+Fixes: #
+
 ### Description
-<!-- Describe your changes in detail -->
 
-### Checklist
-<!-- go over following points. check them with an `x` if they do apply, (they turn into clickable checkboxes once the PR is submitted, so no need to do everything at once)
-
--->
-
-This pull request is:
-
-- [ ] A documentation / typographical / small typing error fix
-	- Good to go, no issue or tests are needed
-- [ ] A short code fix
-	- please include the issue number, and create an issue if none exists, which
-	  must include a complete example of the issue.  one line code fixes without an
-	  issue and demonstration will not be accepted.
-	- Please include: `Fixes: #<issue number>` in the commit message
-	- please include tests.   one line code fixes without tests will not be accepted.
-- [ ] A new feature implementation
-	- please include the issue number, and create an issue if none exists, which must
-	  include a complete example of how the feature would look.
-	- Please include: `Fixes: #<issue number>` in the commit message
-	- please include tests.
-
-**Have a nice day!**
+<!-- Describe your changes in detail. -->
