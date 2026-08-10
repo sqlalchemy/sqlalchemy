@@ -107,6 +107,7 @@ _CT_JSON = TypeVar(
 _CT = TypeVar("_CT", bound=Any)
 _TE = TypeVar("_TE", bound=TypeEngine[Any])
 _P = TypeVar("_P")
+_TEE = TypeVar("_TEE", bound=Union[str, enum.Enum])
 
 
 class HasExpressionLookup(TypeEngineMixin):
@@ -1400,7 +1401,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
 _EnumTupleArg = Union[Sequence[enum.Enum], Sequence[str]]
 
 
-class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
+class Enum(String, SchemaType, Emulated, TypeEngine[_TEE]):
     """Generic Enum Type.
 
     The :class:`.Enum` type provides a set of possible string values
@@ -1734,7 +1735,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             or other._type_affinity is String
         )
 
-    def _resolve_for_literal(self, value: Any) -> Enum:
+    def _resolve_for_literal(self, value: Any) -> Enum[Any]:
         tv = type(value)
         typ = self._resolve_for_python_type(tv, tv, tv)
         assert typ is not None
@@ -1745,7 +1746,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         python_type: Type[Any],
         matched_on: _MatchedOnType,
         matched_on_flattened: Type[Any],
-    ) -> Optional[Enum]:
+    ) -> Optional[Enum[Any]]:
         # "generic form" indicates we were placed in a type map
         # as ``sqlalchemy.Enum(enum.Enum)`` which indicates we need to
         # get enumerated values from the datatype
@@ -1804,7 +1805,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
         kw["length"] = NO_ARG if self.length == 0 else self.length
         return cast(
-            Enum,
+            Enum[Any],
             self._generic_type_affinity(_enums=enum_args, **kw),  # type: ignore[call-arg]  # noqa: E501
         )
 
