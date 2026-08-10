@@ -430,6 +430,9 @@ class OptionsTest(PathTest, QueryTest):
         lambda: defer("name"),
         lambda Address: joinedload("addresses").joinedload(Address.dingaling),
         lambda: joinedload("addresses"),
+        # #13493 - a trailing "*" doesn't make a string acceptable
+        lambda: joinedload("addresses.*"),
+        lambda: defer("name.*"),
     )
     def test_error_for_string_names_unbound(self, test_case):
         User, Address = self.classes("User", "Address")
@@ -448,6 +451,13 @@ class OptionsTest(PathTest, QueryTest):
         .joinedload("addresses")
         .joinedload(Address.dingaling),
         lambda User: Load(User).joinedload("addresses"),
+        # #13493 - a trailing "*" doesn't make a string acceptable.  these
+        # were formerly accepted and built a path that matched nothing
+        lambda User: Load(User).joinedload("addresses.*"),
+        lambda User: Load(User).defer("name.*"),
+        lambda User: Load(User).defer("foo:*"),
+        lambda User: Load(User).lazyload("foo:*"),
+        lambda User: Load(User).defer("foo:_sa_default"),
     )
     def test_error_for_string_names_bound(self, test_case):
         User, Address = self.classes("User", "Address")
