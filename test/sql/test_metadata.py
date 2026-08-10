@@ -901,18 +901,57 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
 
         copied = table.to_metadata(MetaData())
 
-        for attr in (
-            "default",
-            "onupdate",
-            "server_default",
-            "server_onupdate",
-        ):
-            original_default = getattr(table.c.x, attr)
-            copied_default = getattr(copied.c.x, attr)
+        is_not_(table.c.x.default, copied.c.x.default)
+        is_(table.c.x.default.column, table.c.x)
+        is_(copied.c.x.default.column, copied.c.x)
+        is_not_(table.c.x.onupdate, copied.c.x.onupdate)
+        is_(table.c.x.onupdate.column, table.c.x)
+        is_(copied.c.x.onupdate.column, copied.c.x)
+        is_not_(table.c.x.server_default, copied.c.x.server_default)
+        is_(table.c.x.server_default.column, table.c.x)
+        is_(copied.c.x.server_default.column, copied.c.x)
+        is_not_(table.c.x.server_onupdate, copied.c.x.server_onupdate)
+        is_(table.c.x.server_onupdate.column, table.c.x)
+        is_(copied.c.x.server_onupdate.column, copied.c.x)
 
-            is_not_(original_default, copied_default)
-            is_(original_default.column, table.c.x)
-            is_(copied_default.column, copied.c.x)
+    def test_callable_and_expression_defaults_are_copied(self):
+        def default_value():
+            return 1
+
+        table = Table(
+            "t",
+            MetaData(),
+            Column("callable", Integer, default=default_value),
+            Column("expression", Integer, default=func.some_default()),
+        )
+
+        copied = table.to_metadata(MetaData())
+
+        is_not_(table.c.callable.default, copied.c.callable.default)
+        is_(table.c.callable.default.column, table.c.callable)
+        is_(copied.c.callable.default.column, copied.c.callable)
+        is_not_(table.c.expression.default, copied.c.expression.default)
+        is_(table.c.expression.default.column, table.c.expression)
+        is_(copied.c.expression.default.column, copied.c.expression)
+
+    def test_fetched_value_subclass_is_copied(self):
+        class MyFetchedValue(schema.FetchedValue):
+            def __init__(self, tag, for_update=False):
+                super().__init__(for_update)
+                self.tag = tag
+
+        table = Table(
+            "t",
+            MetaData(),
+            Column("x", Integer, server_default=MyFetchedValue("custom")),
+        )
+
+        copied = table.to_metadata(MetaData())
+
+        assert isinstance(copied.c.x.server_default, MyFetchedValue)
+        eq_(copied.c.x.server_default.tag, "custom")
+        is_(table.c.x.server_default.column, table.c.x)
+        is_(copied.c.x.server_default.column, copied.c.x)
 
     def test_sequence_default_is_copied(self):
         metadata = MetaData()
@@ -930,6 +969,57 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
         is_(copied_sequence.column, copied.c.x)
         is_(copied_sequence.metadata, copied_metadata)
         is_(copied_metadata._sequences["x_seq"], copied_sequence)
+
+    def test_sequence_schema_is_preserved(self):
+        table = Table(
+            "t",
+            MetaData(),
+            Column("x", Integer, Sequence("x_seq", schema="foo")),
+            schema="foo",
+        )
+
+        copied_metadata = MetaData()
+        copied = table.to_metadata(copied_metadata, schema="bar")
+
+        eq_(copied.c.x.default.schema, "foo")
+        is_(copied.c.x.default.metadata, copied_metadata)
+        is_(copied_metadata._sequences["foo.x_seq"], copied.c.x.default)
+
+    def test_shared_sequence_is_copied_per_table(self):
+        metadata = MetaData()
+        sequence = Sequence("shared_seq")
+        table_one = Table("t1", metadata, Column("x", Integer, sequence))
+        table_two = Table("t2", metadata, Column("y", Integer, sequence))
+
+        copied_metadata = MetaData()
+        copied_one = table_one.to_metadata(copied_metadata)
+        copied_two = table_two.to_metadata(copied_metadata)
+
+        is_not_(copied_one.c.x.default, copied_two.c.y.default)
+        is_(copied_one.c.x.default.metadata, copied_metadata)
+        is_(copied_two.c.y.default.metadata, copied_metadata)
+        is_(
+            copied_metadata._sequences["shared_seq"],
+            copied_two.c.y.default,
+        )
+
+    def test_merge_sequence_registers_with_target_metadata(self):
+        source_metadata = MetaData()
+        source_sequence = Sequence("x_seq")
+        source = Table(
+            "source",
+            source_metadata,
+            Column("x", Integer, source_sequence),
+        )
+        target_column = Column("x", Integer)
+
+        source.c.x._merge(target_column)
+        target_metadata = MetaData()
+        target = Table("target", target_metadata, target_column)
+
+        is_(source_metadata._sequences["x_seq"], source_sequence)
+        is_(target.c.x.default.metadata, target_metadata)
+        is_(target_metadata._sequences["x_seq"], target.c.x.default)
 
     @testing.fixture
     def copy_fixture(self, metadata):

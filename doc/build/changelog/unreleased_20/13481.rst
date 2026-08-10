@@ -6,4 +6,6 @@
     default and on-update objects, causing the defaults on the original
     columns to refer to the copied columns. Default generators, including
     sequences, and server-side defaults are now copied and remain associated
-    with their respective columns and metadata collections.
+    with their respective columns and metadata collections. Applications that
+    inspected these objects will now see distinct defaults on the copied table
+    instead of the objects owned by the original table.

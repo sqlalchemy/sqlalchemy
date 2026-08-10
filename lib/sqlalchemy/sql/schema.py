@@ -2760,18 +2760,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T], Named[_T]):
 
         default = self.default
         if default is not None:
-            default = (
-                default._copy(**kw)
-                if isinstance(default, Sequence)
-                else default._copy()
-            )
+            default = default._copy()
         onupdate = self.onupdate
         if onupdate is not None:
-            onupdate = (
-                onupdate._copy(**kw)
-                if isinstance(onupdate, Sequence)
-                else onupdate._copy()
-            )
+            onupdate = onupdate._copy()
         server_default = self.server_default
         server_onupdate = self.server_onupdate
         if isinstance(server_default, (Computed, Identity)):
@@ -4310,17 +4302,13 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
         """
         return util.preloaded.sql_functions.func.next_value(self)
 
-    def _copy(
-        self, *, _to_metadata: Optional[MetaData] = None, **kw: Any
-    ) -> Sequence:
+    def _copy(self) -> Sequence:
         return Sequence(
             name=self.name,
             schema=self.schema,
             data_type=self.data_type,
             optional=self.optional,
-            metadata=(
-                _to_metadata if _to_metadata is not None else self.metadata
-            ),
+            metadata=None,
             for_update=self.for_update,
             **self._as_dict(),
             **self.dialect_kwargs,
@@ -4405,8 +4393,8 @@ class FetchedValue(SchemaEventTarget):
         else:
             return self._clone(for_update)
 
-    def _copy(self) -> FetchedValue:
-        return FetchedValue(self.for_update)
+    def _copy(self) -> Self:
+        return self._clone(self.for_update)
 
     def _clone(self, for_update: bool) -> Self:
         n = self.__class__.__new__(self.__class__)
@@ -4470,11 +4458,6 @@ class DefaultClause(FetchedValue):
         return (
             isinstance(self.arg, functions.FunctionElement)
             and self.arg.monotonic
-        )
-
-    def _copy(self) -> DefaultClause:
-        return DefaultClause(
-            arg=self.arg, for_update=self.for_update, _reflected=self.reflected
         )
 
     def __repr__(self) -> str:
