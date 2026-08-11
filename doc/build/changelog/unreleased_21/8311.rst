@@ -1,0 +1,6 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 8311
+
+    Added :meth:`_sql.Exists.with_hint`, allowing table hints to be applied to
+    the SELECT statement contained by an :class:`_sql.Exists` construct.

@@ -7316,6 +7316,35 @@ class Exists(UnaryExpression[bool]):
         e.element = self._regroup(lambda element: element.select_from(*froms))
         return e
 
+    def with_hint(
+        self,
+        selectable: _FromClauseArgument,
+        text: str,
+        dialect_name: str = "*",
+    ) -> Self:
+        r"""Return a new :class:`_expression.Exists` construct with a
+        table hint applied to its contained SELECT statement.
+
+        This method mirrors the :meth:`_sql.Select.with_hint` method of the
+        underlying :class:`_sql.Select`. For example::
+
+            stmt = exists(1).select_from(table).with_hint(
+                table, "WITH (NOLOCK)", "mssql"
+            )
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :meth:`_sql.Select.with_hint`
+
+        """
+        e = self._clone()
+        e.element = self._regroup(
+            lambda element: element.with_hint(selectable, text, dialect_name)
+        )
+        return e
+
     def where(self, *clause: _ColumnExpressionArgument[bool]) -> Self:
         """Return a new :func:`_expression.exists` construct with the
         given expression added to
