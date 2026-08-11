@@ -17,6 +17,7 @@ from typing import cast
 from typing import Dict
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -30,6 +31,8 @@ from .. import exc
 from .. import util
 from ..sql import visitors
 from ..sql.cache_key import HasCacheKey
+from ..util.typing import Final
+from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ._typing import _InternalEntityType
@@ -81,6 +84,40 @@ def _unreduce_path(path: _SerializedPath) -> PathRegistry:
 
 _WILDCARD_TOKEN: _LiteralStar = "*"
 _DEFAULT_TOKEN = "_sa_default"
+
+_RELATIONSHIP_TOKEN: Final[Literal["relationship"]] = "relationship"
+_COLUMN_TOKEN: Final[Literal["column"]] = "column"
+
+_UNPREFIXED_TOKENS = frozenset([_WILDCARD_TOKEN, _DEFAULT_TOKEN])
+"""the wildcard strings accepted from the user in a loader option.
+
+these are prefixed with the target property's ``strategy_wildcard_key`` to
+form the tokens in :data:`._PATH_TOKENS`, and are not themselves valid as an
+element of a path.
+
+"""
+
+_PATH_TOKENS = frozenset(
+    f"{wildcard_key}:{suffix}"
+    for wildcard_key in (_RELATIONSHIP_TOKEN, _COLUMN_TOKEN)
+    for suffix in (_WILDCARD_TOKEN, _DEFAULT_TOKEN)
+)
+"""the complete set of tokens which may appear within a path.
+
+:attr:`.PathToken._intern` is populated from this collection at module import
+time, so that a token is present in every process, including one which has
+not yet run any query.
+
+"""
+
+_ACCEPTED_TOKENS = _UNPREFIXED_TOKENS | _PATH_TOKENS
+"""every string a loader option may accept in place of an attribute name.
+
+this is the union of the bare wildcards the user writes and the prefixed
+tokens which the loader option internals hand back to themselves; only the
+latter may appear in a path.
+
+"""
 
 
 class PathRegistry(HasCacheKey):
@@ -356,12 +393,12 @@ class CreatesToken(PathRegistry):
     is_root: bool
 
     def token(self, token: _StrPathToken) -> TokenRegistry:
-        if token.endswith(f":{_WILDCARD_TOKEN}"):
-            return TokenRegistry(self, token)
-        elif token.endswith(f":{_DEFAULT_TOKEN}"):
-            return TokenRegistry(self.root, token)
-        else:
+        if token not in PathToken._intern:
             raise exc.ArgumentError(f"invalid token: {token}")
+        elif token.endswith(f":{_WILDCARD_TOKEN}"):
+            return TokenRegistry(self, token)
+        else:
+            return TokenRegistry(self.root, token)
 
 
 class RootRegistry(CreatesToken):
@@ -408,7 +445,17 @@ PathRegistry.root = RootRegistry()
 class PathToken(orm_base.InspectionAttr, HasCacheKey, str):
     """cacheable string token"""
 
-    _intern: Dict[str, PathToken] = {}
+    _intern: Mapping[str, PathToken]
+    """the :class:`.PathToken` for each of :data:`._PATH_TOKENS`.
+
+    this collection is fully populated below at module import time and is
+    never added to afterwards; it's typed as :class:`.Mapping` so that a
+    mutation is flagged by type checkers.
+    :meth:`.PathRegistry._deserialize_path` relies on it being complete,
+    distinguishing a token from a mapped attribute key by testing
+    membership here.
+
+    """
 
     def _gen_cache_key(
         self, anon_map: anon_map, bindparams: List[BindParameter[Any]]
@@ -419,13 +466,8 @@ class PathToken(orm_base.InspectionAttr, HasCacheKey, str):
     def _path_for_compare(self) -> Optional[_PathRepresentation]:
         return None
 
-    @classmethod
-    def intern(cls, strvalue: str) -> PathToken:
-        if strvalue in cls._intern:
-            return cls._intern[strvalue]
-        else:
-            cls._intern[strvalue] = result = PathToken(strvalue)
-            return result
+
+PathToken._intern = {token: PathToken(token) for token in _PATH_TOKENS}
 
 
 class TokenRegistry(PathRegistry):
@@ -437,7 +479,7 @@ class TokenRegistry(PathRegistry):
     parent: CreatesToken
 
     def __init__(self, parent: CreatesToken, token: _StrPathToken):
-        token = PathToken.intern(token)
+        token = PathToken._intern[token]
 
         self.token = token
         self.parent = parent

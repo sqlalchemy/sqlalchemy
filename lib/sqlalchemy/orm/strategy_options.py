@@ -32,7 +32,10 @@ from ._typing import insp_is_mapper_property
 from .attributes import QueryableAttribute
 from .base import InspectionAttr
 from .interfaces import LoaderOption
+from .path_registry import _ACCEPTED_TOKENS
+from .path_registry import _COLUMN_TOKEN
 from .path_registry import _DEFAULT_TOKEN
+from .path_registry import _RELATIONSHIP_TOKEN
 from .path_registry import _StrPathToken
 from .path_registry import _WILDCARD_TOKEN
 from .path_registry import AbstractEntityRegistry
@@ -51,12 +54,8 @@ from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
 from ..sql.base import _generative
-from ..util.typing import Final
 from ..util.typing import Literal
 from ..util.typing import Self
-
-_RELATIONSHIP_TOKEN: Final[Literal["relationship"]] = "relationship"
-_COLUMN_TOKEN: Final[Literal["column"]] = "column"
 
 _FN = TypeVar("_FN", bound="Callable[..., Any]")
 
@@ -2173,8 +2172,14 @@ class _TokenStrategyLoad(_LoadElement):
     ):
         # assert isinstance(attr, str) or attr is None
         if attr is not None:
-            default_token = attr.endswith(_DEFAULT_TOKEN)
-            if attr.endswith(_WILDCARD_TOKEN) or default_token:
+            # the only strings accepted here are the wildcard and default
+            # tokens, either bare or already prefixed with a wildcard key.
+            # anything else is a leftover from the string based loader
+            # option API removed in 2.0 and gets the same error as any
+            # other string.  note that testing only for a trailing "*",
+            # as was formerly the case, lets a name like "addresses.*"
+            # through to build a loader path that matches nothing
+            if attr in _ACCEPTED_TOKENS:
                 if wildcard_key:
                     attr = f"{wildcard_key}:{attr}"
 

@@ -29,7 +29,6 @@ from typing import Union
 
 from . import attributes
 from . import exc as orm_exc
-from . import strategy_options
 from .base import _DeclarativeMapped
 from .base import class_mapper
 from .descriptor_props import CompositeProperty
@@ -42,6 +41,7 @@ from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
+from .path_registry import _COLUMN_TOKEN
 from .relationships import RelationshipProperty
 from .util import de_stringify_annotation
 from .. import exc as sa_exc
@@ -108,7 +108,7 @@ class ColumnProperty(
 
     """
 
-    strategy_wildcard_key = strategy_options._COLUMN_TOKEN
+    strategy_wildcard_key = _COLUMN_TOKEN
     inherit_cache = True
     """:meta private:"""
 

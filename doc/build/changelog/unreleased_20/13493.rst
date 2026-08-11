@@ -1,0 +1,27 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13493
+
+    Fixed issue where unpickling an ORM object that were loaded using loader
+    options making use of wildcard tokens, such as :func:`_orm.load_only` or
+    :func:`_orm.raiseload` with ``"*"``, would fail with ``KeyError`` or
+    ``IndexError`` if the process doing the unpickling had not yet constructed
+    a loader path making use of that same token.  This would typically be
+    observed when the object were unpickled in a separate process, such as
+    with the ``spawn`` or ``forkserver`` multiprocessing start methods, the
+    latter of which became the default on POSIX platforms as of Python 3.14.
+    The internal collection of these tokens is now established up front, so
+    that it is identical in every process.
+
+.. change::
+    :tags: bug, orm
+    :tickets: 13493
+
+    Fixed issue where a string ending in ``"*"`` passed to a
+    :class:`_orm.Load` strategy method, such as
+    ``Load(A).joinedload("bs.*")``, would bypass the check which rejects
+    string attribute names in loader options, silently producing a loader
+    path that matched nothing.  Such a string now raises
+    :class:`.ArgumentError` with the same message given for any other
+    string attribute name.  The bare wildcard ``"*"``, as in
+    ``Load(A).lazyload("*")``, continues to be accepted.

@@ -752,12 +752,12 @@ class PathRegistryTest(_fixtures.FixtureTest):
                 umapper,
                 umapper.attrs.addresses,
                 amapper,
-                PathToken.intern(":*"),
+                PathToken._intern["relationship:*"],
             )
         )
         is_true(path.is_token)
         eq_(path[1], umapper.attrs.addresses)
-        eq_(path[3], ":*")
+        eq_(path[3], "relationship:*")
 
         with expect_raises(IndexError):
             path[amapper]
@@ -770,7 +770,7 @@ class PathRegistryTest(_fixtures.FixtureTest):
                 umapper,
                 umapper.attrs.addresses,
                 amapper,
-                PathToken.intern(":*"),
+                PathToken._intern["relationship:*"],
             )
         )
         is_true(path.is_token)
@@ -890,7 +890,7 @@ class PathRegistryTest(_fixtures.FixtureTest):
         p2 = PathRegistry.coerce((umapper, umapper.attrs.addresses))
         p3 = PathRegistry.coerce((u_alias, umapper.attrs.addresses))
         p4 = PathRegistry.coerce((u_alias, umapper.attrs.addresses, amapper))
-        p5 = PathRegistry.coerce((u_alias,)).token(":*")
+        p5 = PathRegistry.coerce((u_alias,)).token("relationship:*")
 
         non_object = 54.1432
 
