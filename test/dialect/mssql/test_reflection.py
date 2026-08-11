@@ -142,6 +142,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             "CREATE TABLE type_test (col1 %s NULL)" % ddl,
         )
 
+    def test_identity(self, metadata, connection):
         table = Table(
             "identity_test",
             metadata,
