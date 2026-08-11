@@ -732,6 +732,40 @@ class SessionStateTest(_fixtures.FixtureTest):
         s4 = maker2(info={"s4": 8})
         eq_(s4.info, {"s4": 8})
 
+    def test_bulk_save_mappings_resets_flushing_on_pending_rollback(self):
+        """a bulk_* call that fails before it can begin its transaction
+        must still reset Session._flushing, the same way flush() does.
+
+        """
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        s = fixture_session()
+        s.add(User(id=1, name="original"))
+        s.commit()
+
+        # leave the transaction needing a rollback, without rolling back
+        s.add(User(id=2, name=None))
+        assert_raises(exc.IntegrityError, s.flush)
+        is_false(s._flushing)
+
+        # PendingRollbackError is raised by _begin(), before the bulk
+        # operation's own try block is reached
+        assert_raises(
+            exc.PendingRollbackError,
+            s.bulk_update_mappings,
+            User,
+            [{"id": 1, "name": "updated"}],
+        )
+        is_false(s._flushing)
+
+        # the Session is usable again, rather than raising
+        # "Session is already flushing" indefinitely
+        s.rollback()
+        s.bulk_update_mappings(User, [{"id": 1, "name": "updated"}])
+        s.commit()
+        eq_(s.get(User, 1).name, "updated")
+
     def test_autocommit_kw_accepted_but_must_be_false(self):
         Session(autocommit=False)
 
