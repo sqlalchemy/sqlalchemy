@@ -3615,6 +3615,13 @@ class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 kwargs["precision"] = numericprec
                 if not issubclass(coltype, sqltypes.Float):
                     kwargs["scale"] = numericscale
+            elif coltype in (DATETIME2, DATETIMEOFFSET, TIME):
+                # sys.columns.precision holds the fractional-seconds
+                # precision for datetime2/datetimeoffset/time; reflect it so
+                # e.g. DATETIME2(3) round-trips instead of losing the precision
+                # (legacy DATETIME / SMALLDATETIME have a fixed precision and
+                # accept no precision argument)
+                kwargs["precision"] = numericprec
             coltype = coltype(**kwargs)
 
         cdict = {
