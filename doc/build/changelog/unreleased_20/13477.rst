@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, platform
-    :tickets: 13477
-
-    Python 3.15 support has been added and tested, including minimal changes
-    for full compatibility.
