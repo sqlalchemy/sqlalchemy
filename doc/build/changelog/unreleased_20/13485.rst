@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13485
+
+    Fixed bug where a failed :meth:`_orm.Session.bulk_insert_mappings`,
+    :meth:`_orm.Session.bulk_update_mappings` or
+    :meth:`_orm.Session.bulk_save_objects` call could leave the
+    :class:`_orm.Session` permanently in a "flushing" state, such as when the
+    transaction could not be begun because a previous flush had left it
+    needing a rollback.  Unlike :meth:`_orm.Session.flush`, the bulk methods
+    set the internal flushing flag and began the transaction outside of the
+    ``try``/``finally`` block that resets it, so that neither
+    :meth:`_orm.Session.rollback` nor :meth:`_orm.Session.close` would clear
+    it, and every subsequent flush would raise ``InvalidRequestError: Session
+    is already flushing``.  Pull request courtesy Hamody We.
