@@ -85,6 +85,7 @@ from .util import rowset
 from .util import run_as_contextmanager
 from .util import skip_if_timeout
 from .util import teardown_events
+from .util import unpickle_in_subprocess
 from .warnings import assert_warnings
 from .warnings import warn_test_suite
 

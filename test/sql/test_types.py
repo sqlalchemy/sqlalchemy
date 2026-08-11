@@ -3,10 +3,6 @@ import decimal
 import importlib
 import operator
 import os
-import pickle
-import subprocess
-import sys
-from tempfile import mkstemp
 import uuid
 
 import sqlalchemy as sa
@@ -97,6 +93,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
+from sqlalchemy.testing import unpickle_in_subprocess
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
@@ -778,27 +775,12 @@ class PickleTypesTest(fixtures.TestBase):
         meta = MetaData()
         Table("foo", meta, column_type)
 
+        code = (
+            "import sqlalchemy; import pickle; import sys; "
+            "pickle.load(open(sys.argv[1], 'rb'))"
+        )
         for target in column_type, meta:
-            f, name = mkstemp("pkl")
-            with os.fdopen(f, "wb") as f:
-                pickle.dump(target, f)
-
-            name = name.replace(os.sep, "/")
-            code = (
-                "import sqlalchemy; import pickle; "
-                f"pickle.load(open('''{name}''', 'rb'))"
-            )
-            parts = list(sys.path)
-            if os.environ.get("PYTHONPATH"):
-                parts.append(os.environ["PYTHONPATH"])
-            pythonpath = os.pathsep.join(parts)
-            proc = subprocess.run(
-                [sys.executable, "-c", code],
-                env={**os.environ, "PYTHONPATH": pythonpath},
-                stderr=subprocess.PIPE,
-            )
-            eq_(proc.returncode, 0, proc.stderr.decode(errors="replace"))
-            os.unlink(name)
+            unpickle_in_subprocess(target, code)
 
 
 class _UserDefinedTypeFixture:
