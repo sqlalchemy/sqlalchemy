@@ -115,6 +115,37 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             "CREATE TABLE type_test (col1 %s NULL)" % ddl,
         )
 
+    def test_lob_types_no_length(self, metadata, connection):
+        """TEXT / NTEXT / IMAGE are unlengthed, and a reflected version of
+        such a table must remain creatable.
+
+        issue #13451
+
+        """
+        Table(
+            "lob_type_test",
+            metadata,
+            Column("id", types.Integer, primary_key=True),
+            Column("t", mssql.TEXT),
+            Column("nt", mssql.NTEXT),
+            Column("img", mssql.IMAGE),
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+        table2 = Table("lob_type_test", m2, autoload_with=connection)
+        eq_(
+            {c.name: c.type.length for c in table2.c if c.name != "id"},
+            {"t": None, "nt": None, "img": None},
+        )
+
+        # the reflected types round trip back into valid DDL; a length
+        # here would be rejected with "Cannot specify a column width on
+        # data type text"
+        Table(
+            "lob_type_test_2", metadata, *[c._copy() for c in table2.c]
+        ).create(connection)
+
     def test_identity(self, metadata, connection):
         table = Table(
             "identity_test",

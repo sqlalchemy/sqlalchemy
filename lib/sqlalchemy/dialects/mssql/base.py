@@ -3780,7 +3780,6 @@ order by
             elif coltype in (
                 MSString,
                 MSChar,
-                MSText,
             ):
                 kwargs["length"] = maxlen if maxlen != -1 else None
                 if collation:
@@ -3788,9 +3787,18 @@ order by
             elif coltype in (
                 MSNVarchar,
                 MSNChar,
-                MSNText,
             ):
                 kwargs["length"] = maxlen // 2 if maxlen != -1 else None
+                if collation:
+                    kwargs["collation"] = collation
+            elif coltype in (
+                MSText,
+                MSNText,
+            ):
+                # TEXT / NTEXT are unlengthed LOB types.
+                # sys.columns.max_length reports 16 for these, which is the
+                # size of the in-row LOB pointer and not a character length,
+                # so no length is applied.
                 if collation:
                     kwargs["collation"] = collation
 
