@@ -3589,12 +3589,18 @@ class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
 
         if coltype in (MSBinary, MSVarBinary, sqltypes.LargeBinary):
             kwargs["length"] = maxlen if maxlen != -1 else None
-        elif coltype in (MSString, MSChar, MSText):
+        elif coltype in (MSString, MSChar):
             kwargs["length"] = maxlen if maxlen != -1 else None
             if collation:
                 kwargs["collation"] = collation
-        elif coltype in (MSNVarchar, MSNChar, MSNText):
+        elif coltype in (MSNVarchar, MSNChar):
             kwargs["length"] = maxlen // 2 if maxlen != -1 else None
+            if collation:
+                kwargs["collation"] = collation
+        elif coltype in (MSText, MSNText):
+            # TEXT / NTEXT are unlengthed LOB types.  sys.columns.max_length
+            # reports 16 for these, which is the size of the in-row LOB
+            # pointer and not a character length, so no length is applied.
             if collation:
                 kwargs["collation"] = collation
 
