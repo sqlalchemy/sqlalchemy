@@ -117,6 +117,37 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             "CREATE TABLE type_test (col1 %s NULL)" % ddl,
         )
 
+    def test_lob_types_no_length(self, metadata, connection):
+        """TEXT / NTEXT / IMAGE are unlengthed, and a reflected version of
+        such a table must remain creatable.
+
+        issue #13451
+
+        """
+        Table(
+            "lob_type_test",
+            metadata,
+            Column("id", types.Integer, primary_key=True),
+            Column("t", mssql.TEXT),
+            Column("nt", mssql.NTEXT),
+            Column("img", mssql.IMAGE),
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+        table2 = Table("lob_type_test", m2, autoload_with=connection)
+        eq_(
+            {c.name: c.type.length for c in table2.c if c.name != "id"},
+            {"t": None, "nt": None, "img": None},
+        )
+
+        # the reflected types round trip back into valid DDL; a length
+        # here would be rejected with "Cannot specify a column width on
+        # data type text"
+        Table(
+            "lob_type_test_2", metadata, *[c._copy() for c in table2.c]
+        ).create(connection)
+
     def test_identity(self, metadata, connection):
         table = Table(
             "identity_test",
@@ -1261,6 +1292,74 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 "bar": "comment_bar",
             },
         )
+
+
+class ParseColumnInfoTest(fixtures.TestBase):
+    """test translation of ``sys.columns.max_length`` into type lengths.
+
+    issue #13451
+
+    """
+
+    @testing.combinations(
+        ("varchar", 30, "VARCHAR(30)", 30),
+        ("varchar", -1, "VARCHAR(max)", None),
+        ("char", 10, "CHAR(10)", 10),
+        ("nvarchar", 60, "NVARCHAR(30)", 30),
+        ("nvarchar", -1, "NVARCHAR(max)", None),
+        ("nchar", 20, "NCHAR(10)", 10),
+        ("text", 16, "TEXT", None),
+        ("ntext", 16, "NTEXT", None),
+        ("image", 16, "IMAGE", None),
+        ("varbinary", 20, "VARBINARY(20)", 20),
+        ("varbinary", -1, "VARBINARY(max)", None),
+        ("binary", 10, "BINARY(10)", 10),
+        argnames="type_name, max_length, expected_ddl, expected_length",
+    )
+    def test_length_from_max_length(
+        self, type_name, max_length, expected_ddl, expected_length
+    ):
+        """``max_length`` is 16 for the LOB types text, ntext and image,
+        that being the size of the in-row LOB pointer rather than a
+        character length.
+
+        """
+        dialect = mssql.dialect()
+        type_ = self._parse_type(dialect, type_name, max_length, None)
+        eq_(
+            (type_.compile(dialect=dialect), type_.length),
+            (expected_ddl, expected_length),
+        )
+
+    @testing.combinations("text", "ntext", argnames="type_name")
+    def test_lob_types_retain_collation(self, type_name):
+        """dropping the bogus length must not drop the collation."""
+
+        dialect = mssql.dialect()
+        type_ = self._parse_type(
+            dialect, type_name, 16, "Latin1_General_CI_AS"
+        )
+        eq_(type_.collation, "Latin1_General_CI_AS")
+
+    def _parse_type(self, dialect, type_name, max_length, collation):
+        cdict = dialect._parse_column_info(
+            name="data",
+            type_=type_name,
+            base_type=type_name,
+            nullable=True,
+            maxlen=max_length,
+            numericprec=0,
+            numericscale=0,
+            default=None,
+            collation=collation,
+            definition=None,
+            is_persisted=None,
+            is_identity=None,
+            identity_start=None,
+            identity_increment=None,
+            comment=None,
+        )
+        return cdict["type"]
 
 
 class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
