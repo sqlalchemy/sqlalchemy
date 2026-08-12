@@ -7328,8 +7328,8 @@ class Exists(UnaryExpression[bool]):
         This method mirrors the :meth:`_sql.Select.with_hint` method of the
         underlying :class:`_sql.Select`. For example::
 
-            stmt = exists(1).select_from(table).with_hint(
-                table, "WITH (NOLOCK)", "mssql"
+            stmt = (
+                exists(1).select_from(table).with_hint(table, "WITH (NOLOCK)", "mssql")
             )
 
         .. versionadded:: 2.1
