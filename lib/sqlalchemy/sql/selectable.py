@@ -7329,7 +7329,13 @@ class Exists(UnaryExpression[bool]):
         underlying :class:`_sql.Select`. For example::
 
             stmt = (
-                exists(1).select_from(table).with_hint(table, "WITH (NOLOCK)", "mssql")
+                exists(1)
+                .select_from(table)
+                .with_hint(
+                    table,
+                    "WITH (NOLOCK)",
+                    "mssql",
+                )
             )
 
         .. versionadded:: 2.1
