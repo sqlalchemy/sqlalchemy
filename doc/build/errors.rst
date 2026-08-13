@@ -246,6 +246,95 @@ in the 2.x series of SQLAlchemy when any SQL statements are emitted.  When a con
 that was in progress is now in an invalid state, and must be explicitly rolled
 back in order to remove it from the :class:`_engine.Connection`.
 
+.. _error_sqmp:
+
+Selection of the <pool> pool class based on the 'mode=memory' query string argument is deprecated
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The SQLite dialects select a connection pool class automatically, based on
+whether the URL refers to a file database or to a memory database.  A memory
+database is indicated by the database name ``:memory:``, or by an empty
+database name, and receives a single-connection pool class, being
+:class:`.SingletonThreadPool` for pysqlite or :class:`.StaticPool` for
+aiosqlite.  All other database names receive :class:`.QueuePool` or, for
+aiosqlite, :class:`.AsyncAdaptedQueuePool`.
+
+Historically, a URL that includes ``mode=memory`` within the query string
+also received a single-connection pool class.  This behavior is deprecated
+as of SQLAlchemy 2.1 and will be removed in a future release, as it requires
+that the dialect make assumptions regarding whether or not the resulting
+database can be shared among multiple connections, based on query string
+arguments whose meaning is determined by SQLite rather than by SQLAlchemy.
+
+The behavior is notably incorrect for the shared cache form::
+
+    # a shared cache database supports multiple concurrent connections,
+    # however a single-connection pool is presently selected
+    engine = create_engine("sqlite:///file:mydb?mode=memory&cache=shared&uri=true")
+
+For this URL, :class:`.QueuePool` is the appropriate pool class, as each
+connection to a shared cache database has its own transaction state.  A
+single-connection pool instead causes all :class:`.Session` or
+:class:`_engine.Connection` objects to share one transaction state, so that a
+``ROLLBACK`` emitted by one will discard uncommitted work belonging to
+another.
+
+To resolve the warning, indicate the intended pool class explicitly, which
+also disables automatic selection entirely::
+
+    from sqlalchemy.pool import QueuePool
+
+    engine = create_engine(
+        "sqlite:///file:mydb?mode=memory&cache=shared&uri=true",
+        poolclass=QueuePool,
+    )
+
+For a single-connection memory database, the plain ``:memory:`` form may be
+used instead, which continues to select a single-connection pool::
+
+    engine = create_engine("sqlite://")
+
+.. seealso::
+
+    :ref:`pysqlite_threading_pooling`
+
+    :ref:`pysqlite_uri_shared_cache`
+
+    :ref:`pysqlite_shared_cache_lifespan`
+
+.. _error_squa:
+
+Query string argument(s) <names> are not accepted by the pysqlite driver and are being ignored
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SQLite accepts a range of options within the database name itself, using a
+`URI filename <https://www.sqlite.org/uri.html>`_ such as
+``file:mydb?mode=ro``.  These options are interpreted by SQLite only when URI
+filenames are enabled, which for the ``sqlite3`` driver requires that
+``uri=true`` be passed to its ``connect()`` function.
+
+Within a SQLAlchemy URL, query string arguments are delivered to the
+``sqlite3`` driver, with those not recognized by the driver being appended to
+the SQLite URI filename.  This latter step takes place only when ``uri=true``
+is also present; otherwise the database name is treated as an ordinary
+filename and the remaining arguments have no effect at all::
+
+    # 'mode' has no effect; connects to a file named "file:mydb"
+    engine = create_engine("sqlite:///file:mydb?mode=memory")
+
+    # 'mode' is passed to SQLite as part of the URI filename
+    engine = create_engine("sqlite:///file:mydb?mode=memory&uri=true")
+
+The warning indicates arguments that fall into the first case above.  To
+resolve it, add ``uri=true`` to the URL if the arguments are intended for
+SQLite, or remove them if they are not.  Arguments intended for the
+``sqlite3`` driver itself may alternatively be passed using the
+:paramref:`_sa.create_engine.connect_args` parameter.
+
+.. seealso::
+
+    :ref:`pysqlite_uri_connections`
+
 .. _error_dbapi:
 
 DBAPI Errors

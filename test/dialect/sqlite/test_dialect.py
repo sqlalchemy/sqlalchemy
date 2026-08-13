@@ -22,6 +22,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.sqlite import aiosqlite as aiosqlite_dialect
 from sqlalchemy.dialects.sqlite import base as sqlite
 from sqlalchemy.dialects.sqlite import pysqlite as pysqlite_dialect
 from sqlalchemy.engine.url import make_url
@@ -33,6 +34,7 @@ from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -331,21 +333,108 @@ class DialectTest(
         assert "méil" in result.keys()
         assert "\u6e2c\u8a66" in result.keys()
 
-    def test_pool_class(self):
-        e = create_engine("sqlite+pysqlite://")
-        assert e.pool.__class__ is pool.SingletonThreadPool
-
-        e = create_engine("sqlite+pysqlite:///:memory:")
-        assert e.pool.__class__ is pool.SingletonThreadPool
-
-        e = create_engine(
-            "sqlite+pysqlite:///file:foo.db?mode=memory&uri=true"
-        )
-        assert e.pool.__class__ is pool.SingletonThreadPool
-
-        e = create_engine("sqlite+pysqlite:///foo.db")
+    @combinations(
+        ("sqlite+pysqlite://", pool.SingletonThreadPool),
+        ("sqlite+pysqlite:///:memory:", pool.SingletonThreadPool),
         # changed as of 2.0 #7490
-        assert e.pool.__class__ is pool.QueuePool
+        ("sqlite+pysqlite:///foo.db", pool.QueuePool),
+        ("sqlite+pysqlite:///file:foo.db?uri=true", pool.QueuePool),
+        ("sqlite+pysqlite:///file:foo.db?mode=rwc&uri=true", pool.QueuePool),
+        (
+            "sqlite+pysqlite:///file::memory:?cache=shared&uri=true",
+            pool.QueuePool,
+        ),
+        argnames="url, expected",
+    )
+    def test_pool_class(self, url, expected):
+        e = create_engine(url)
+        assert e.pool.__class__ is expected
+
+    @combinations(
+        (
+            "sqlite+pysqlite:///file:foo.db?mode=memory&uri=true",
+            pysqlite_dialect.dialect,
+            "SingletonThreadPool",
+            "QueuePool",
+        ),
+        (
+            "sqlite+pysqlite:///file:foo.db?"
+            "mode=memory&cache=shared&uri=true",
+            pysqlite_dialect.dialect,
+            "SingletonThreadPool",
+            "QueuePool",
+        ),
+        (
+            "sqlite+aiosqlite:///file:foo.db?"
+            "mode=memory&cache=shared&uri=true",
+            aiosqlite_dialect.dialect,
+            "StaticPool",
+            "AsyncAdaptedQueuePool",
+        ),
+        argnames="url, dialect_cls, current_pool, future_pool",
+    )
+    def test_memory_mode_pool_deprecated(
+        self, url, dialect_cls, current_pool, future_pool
+    ):
+        """test #13433
+
+        the ``mode=memory`` query string argument selecting a
+        single-connection pool class is deprecated, including for a
+        shared cache database, where the queue pool is in fact the
+        appropriate class.
+
+        """
+
+        with expect_deprecated(
+            "Selection of the %s pool class based on the 'mode=memory' "
+            "query string argument is deprecated; a future release will "
+            "use %s for this URL." % (current_pool, future_pool)
+        ):
+            pool_cls = dialect_cls.get_pool_class(make_url(url))
+
+        eq_(pool_cls.__name__, current_pool)
+
+    def test_memory_mode_pool_deprecated_no_uri(self):
+        """test #13433
+
+        without ``uri=true``, the ``mode`` argument is not passed to the
+        driver at all, so that both warnings are emitted.
+
+        """
+
+        with (
+            expect_warnings(
+                "Query string argument\\(s\\) 'mode' are not accepted by "
+                "the pysqlite driver and are being ignored"
+            ),
+            expect_deprecated(
+                "Selection of the SingletonThreadPool pool class based on "
+                "the 'mode=memory' query string argument is deprecated"
+            ),
+        ):
+            e = create_engine("sqlite+pysqlite:///file:foo.db?mode=memory")
+
+        assert e.pool.__class__ is pool.SingletonThreadPool
+
+    @combinations(
+        ("sqlite:///foo.db?charset=utf8", "'charset'"),
+        ("sqlite:///foo.db?cache=shared&nolock=1", "'cache', 'nolock'"),
+        argnames="url, expected",
+    )
+    def test_connect_args_ignored(self, url, expected):
+        """test #13433
+
+        query string arguments that are not accepted by the driver are
+        silently discarded when ``uri=true`` is not present; warn instead.
+
+        """
+
+        d = pysqlite_dialect.dialect()
+        with expect_warnings(
+            "Query string argument\\(s\\) %s are not accepted by the "
+            "pysqlite driver and are being ignored" % expected
+        ):
+            d.create_connect_args(make_url(url))
 
     @combinations(
         (
