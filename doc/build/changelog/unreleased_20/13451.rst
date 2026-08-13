@@ -10,4 +10,4 @@
     :class:`_mssql.TEXT` and :class:`_mssql.NTEXT` types now have a ``length``
     of ``None``, so that a reflected table emits valid DDL when re-created,
     which previously failed with "Cannot specify a column width on data type
-    text".
+    text".  Pull request courtesy Sam Debruyn.
