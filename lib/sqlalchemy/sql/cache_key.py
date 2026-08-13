@@ -11,7 +11,7 @@ import enum
 from itertools import zip_longest
 import typing
 from typing import Any
-from typing import Callable
+from typing import cast
 from typing import Dict
 from typing import Final
 from typing import Iterable
@@ -24,6 +24,7 @@ from typing import Optional
 from typing import Protocol
 from typing import Sequence
 from typing import Tuple
+from typing import Type
 from typing import Union
 
 from .visitors import anon_map
@@ -34,19 +35,26 @@ from .visitors import prefix_anon_map
 from .. import util
 from ..inspection import inspect
 from ..util import HasMemoized
+from ..util import langhelpers
 
 if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .elements import ClauseElement
     from .elements import ColumnElement
+    from .visitors import _InternalTraversalDispatchType
     from .visitors import _TraverseInternalsType
     from ..engine.interfaces import _CoreSingleExecuteParams
 
 
 class _CacheKeyTraversalDispatchType(Protocol):
     def __call__(
-        s, self: HasCacheKey, visitor: _CacheKeyTraversal
-    ) -> _CacheKeyTraversalDispatchTypeReturn: ...
+        s,
+        self: HasCacheKey,
+        anon_map: anon_map,
+        bindparams: List[BindParameter[Any]],
+        id_: int,
+        cls: Type[HasCacheKey],
+    ) -> Optional[Tuple[Any, ...]]: ...
 
 
 class CacheConst(enum.Enum):
@@ -77,18 +85,6 @@ class CacheTraverseTarget(enum.Enum):
     PROPAGATE_ATTRS,
     ANON_NAME,
 ) = tuple(CacheTraverseTarget)
-
-_CacheKeyTraversalDispatchTypeReturn = Sequence[
-    Tuple[
-        str,
-        Any,
-        Union[
-            Callable[..., Tuple[Any, ...]],
-            CacheTraverseTarget,
-            InternalTraversal,
-        ],
-    ]
-]
 
 
 class HasCacheKey:
@@ -180,10 +176,13 @@ class HasCacheKey:
             # we'd generate for the superclass that has it.   this is a little
             # more complicated, so for the moment this is a little less
             # efficient on startup but simpler.
-            return _cache_key_traversal_visitor.generate_dispatch(
-                cls,
-                _cache_key_traversal,
-                "_generated_cache_key_traversal",
+            return cast(
+                _CacheKeyTraversalDispatchType,
+                _cache_key_traversal_visitor.generate_dispatch(
+                    cls,
+                    _cache_key_traversal,
+                    "_generated_cache_key_traversal",
+                ),
             )
         else:
             _cache_key_traversal = cls.__dict__.get(
@@ -214,13 +213,15 @@ class HasCacheKey:
                         )
                     return NO_CACHE
 
-            return _cache_key_traversal_visitor.generate_dispatch(
-                cls,
-                _cache_key_traversal,
-                "_generated_cache_key_traversal",
+            return cast(
+                _CacheKeyTraversalDispatchType,
+                _cache_key_traversal_visitor.generate_dispatch(
+                    cls,
+                    _cache_key_traversal,
+                    "_generated_cache_key_traversal",
+                ),
             )
 
-    @util.preload_module("sqlalchemy.sql.elements")
     def _gen_cache_key(
         self, anon_map: anon_map, bindparams: List[BindParameter[Any]]
     ) -> Optional[Tuple[Any, ...]]:
@@ -267,84 +268,11 @@ class HasCacheKey:
             anon_map[NO_CACHE] = True
             return None
 
-        result: Tuple[Any, ...] = (id_, cls)
-
-        # inline of _cache_key_traversal_visitor.run_generated_dispatch()
-
-        for attrname, obj, meth in dispatcher(
-            self, _cache_key_traversal_visitor
-        ):
-            if obj is not None:
-                # TODO: see if C code can help here as Python lacks an
-                # efficient switch construct
-
-                if meth is STATIC_CACHE_KEY:
-                    sck = obj._static_cache_key
-                    if sck is NO_CACHE:
-                        anon_map[NO_CACHE] = True
-                        return None
-                    result += (attrname, sck)
-                elif meth is ANON_NAME:
-                    elements = util.preloaded.sql_elements
-                    if isinstance(obj, elements._anonymous_label):
-                        obj = obj.apply_map(anon_map)  # type: ignore[arg-type]
-                    result += (attrname, obj)
-                elif meth is CALL_GEN_CACHE_KEY:
-                    result += (
-                        attrname,
-                        obj._gen_cache_key(anon_map, bindparams),
-                    )
-
-                # remaining cache functions are against
-                # Python tuples, dicts, lists, etc. so we can skip
-                # if they are empty
-                elif obj:
-                    if meth is CACHE_IN_PLACE:
-                        result += (attrname, obj)
-                    elif meth is PROPAGATE_ATTRS:
-                        result += (
-                            attrname,
-                            obj["compile_state_plugin"],
-                            (
-                                obj["plugin_subject"]._gen_cache_key(
-                                    anon_map, bindparams
-                                )
-                                if obj["plugin_subject"]
-                                else None
-                            ),
-                        )
-                    elif meth is InternalTraversal.dp_annotations_key:
-                        # obj is here is the _annotations dict.  Table uses
-                        # a memoized version of it.  however in other cases,
-                        # we generate it given anon_map as we may be from a
-                        # Join, Aliased, etc.
-                        # see #8790
-
-                        if self._gen_static_annotations_cache_key:  # type: ignore[attr-defined]  # noqa: E501
-                            result += self._annotations_cache_key  # type: ignore[attr-defined]  # noqa: E501
-                        else:
-                            result += self._gen_annotations_cache_key(anon_map)  # type: ignore[attr-defined]  # noqa: E501
-
-                    elif (
-                        meth is InternalTraversal.dp_clauseelement_list
-                        or meth is InternalTraversal.dp_clauseelement_tuple
-                        or meth
-                        is InternalTraversal.dp_memoized_select_entities
-                    ):
-                        result += (
-                            attrname,
-                            tuple(
-                                [
-                                    elem._gen_cache_key(anon_map, bindparams)
-                                    for elem in obj
-                                ]
-                            ),
-                        )
-                    else:
-                        result += meth(  # type: ignore[misc, operator]
-                            attrname, obj, self, anon_map, bindparams
-                        )
-        return result
+        # the dispatcher is a function generated specifically for this class
+        # by _CacheKeyTraversal._generate_dispatcher(); it contains the
+        # whole traversal for the class inline and returns the completed
+        # cache key tuple, or None to indicate NO_CACHE.
+        return dispatcher(self, anon_map, bindparams, id_, cls)
 
     def _generate_cache_key(self) -> Optional[CacheKey]:
         """return a cache key.
@@ -602,8 +530,10 @@ def _ad_hoc_cache_key_from_args(
 
 
 class _CacheKeyTraversal(HasTraversalDispatch):
-    # very common elements are inlined into the main _get_cache_key() method
-    # to produce a dramatic savings in Python function call overhead
+    # the dispatch symbols below are resolved at class setup time by
+    # _generate_dispatcher(), which emits a traversal function containing the
+    # logic for each of them inline; only the symbols that don't have an
+    # inline form are left as actual methods on this class
 
     visit_has_cache_key = visit_clauseelement = CALL_GEN_CACHE_KEY
     visit_clauseelement_list = InternalTraversal.dp_clauseelement_list
@@ -621,6 +551,146 @@ class _CacheKeyTraversal(HasTraversalDispatch):
     visit_anon_name = ANON_NAME
 
     visit_propagate_attrs = PROPAGATE_ATTRS
+
+    @util.preload_module("sqlalchemy.sql.elements")
+    def _generate_dispatcher(
+        self, internal_dispatch: _TraverseInternalsType, method_name: str
+    ) -> _InternalTraversalDispatchType:
+        """Generate the cache key traversal function for a single class.
+
+        In contrast to :meth:`.HasTraversalDispatch._generate_dispatcher`,
+        which emits a function returning a list of
+        ``(attrname, value, handler)`` triples that a runtime loop then has to
+        interpret, the function generated here contains the traversal logic
+        for every attribute of the target class inline.   Which handler
+        applies to which attribute is a fact that's constant for the class, so
+        it's resolved once here rather than being rediscovered by a chain of
+        ``is`` comparisons on every cache key generation.
+
+        The generated function returns either the completed cache key tuple or
+        ``None``, the latter indicating that :data:`.NO_CACHE` was encountered
+        and has been placed into ``anon_map``.
+
+        """
+
+        env: Dict[str, Any] = {"NO_CACHE": NO_CACHE}
+
+        code: List[str] = []
+        code.append(f"""\
+def {method_name}(self, anon_map, bindparams, id_, cls):
+    result = (id_, cls)
+""")
+
+        meth: Any
+
+        for attrname, visit_sym in internal_dispatch:
+            meth = self.dispatch(visit_sym)
+            if meth is None:
+                continue
+
+            code.append(f"    obj = self.{attrname}\n")
+
+            if meth is CALL_GEN_CACHE_KEY:
+                code.append(f"""\
+    if obj is not None:
+        result += (
+            {attrname!r},
+            obj._gen_cache_key(anon_map, bindparams),
+        )
+""")
+            elif meth is STATIC_CACHE_KEY:
+                code.append(f"""\
+    if obj is not None:
+        sck = obj._static_cache_key
+        if sck is NO_CACHE:
+            anon_map[NO_CACHE] = True
+            return None
+        result += ({attrname!r}, sck)
+""")
+            elif meth is ANON_NAME:
+                env["_anonymous_label"] = (
+                    util.preloaded.sql_elements._anonymous_label
+                )
+                code.append(f"""\
+    if obj is not None:
+        if isinstance(obj, _anonymous_label):
+            obj = obj.apply_map(anon_map)
+        result += ({attrname!r}, obj)
+""")
+
+            # the remaining handlers are against Python tuples, dicts, lists,
+            # etc. so we can skip if they are empty.   "if obj" is equivalent
+            # to the "obj is not None and obj" that the runtime loop applied,
+            # as None is itself falsy.
+            elif meth is CACHE_IN_PLACE:
+                code.append(f"""\
+    if obj:
+        result += ({attrname!r}, obj)
+""")
+            elif meth is PROPAGATE_ATTRS:
+                code.append(f"""\
+    if obj:
+        plugin_subject = obj['plugin_subject']
+        result += (
+            {attrname!r},
+            obj['compile_state_plugin'],
+            plugin_subject._gen_cache_key(anon_map, bindparams)
+            if plugin_subject
+            else None,
+        )
+""")
+            elif meth is InternalTraversal.dp_annotations_key:
+                # obj is here is the _annotations dict.  Table uses
+                # a memoized version of it.  however in other cases,
+                # we generate it given anon_map as we may be from a
+                # Join, Aliased, etc.
+                # see #8790
+                code.append("""\
+    if obj:
+        if self._gen_static_annotations_cache_key:
+            result += self._annotations_cache_key
+        else:
+            result += self._gen_annotations_cache_key(anon_map)
+""")
+            elif (
+                meth is InternalTraversal.dp_clauseelement_list
+                or meth is InternalTraversal.dp_clauseelement_tuple
+                or meth is InternalTraversal.dp_memoized_select_entities
+            ):
+                code.append(f"""\
+    if obj:
+        result += (
+            {attrname!r},
+            tuple([
+                elem._gen_cache_key(anon_map, bindparams)
+                for elem in obj
+            ]),
+        )
+""")
+            elif isinstance(meth, (CacheTraverseTarget, InternalTraversal)):
+                raise NotImplementedError(
+                    "No cache key traversal generation rule for symbol "
+                    f"{meth!r}, used by attribute {attrname!r}"
+                )
+            else:
+                # handlers that remain as methods on this class are bound
+                # into the generated function's globals here, so that the
+                # per-call attribute lookup goes away as well
+                fn_name = f"_{meth.__name__}"
+                env[fn_name] = meth
+                code.append(f"""\
+    if obj:
+        result += {fn_name}(
+            {attrname!r}, obj, self, anon_map, bindparams
+        )
+""")
+
+        code.append("    return result\n")
+
+        return cast(
+            "_InternalTraversalDispatchType",
+            langhelpers._exec_code_in_env("".join(code), env, method_name),
+        )
 
     def visit_compile_state_funcs(
         self,
