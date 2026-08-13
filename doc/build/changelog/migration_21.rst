@@ -1106,6 +1106,58 @@ raise an error, directing users to use :class:`_sql.FrameClause` instead.
 
 :ticket:`12596`
 
+.. _change_13507:
+
+Loader options from a deeper path no longer apply to an object loaded at the top
+---------------------------------------------------------------------------------
+
+The same object can be loaded more than once within a single query.  Given
+``A.b`` referring to ``B``, ``B.a`` referring back to ``A``, and ``A.c``
+referring to ``C``, the query below loads ``A`` twice: once as the entity
+being selected, and again underneath ``A.b -> B.a``::
+
+    stmt = select(A).options(
+        joinedload(A.b).joinedload(B.a).raiseload("*"),
+        joinedload(A.c),
+    )
+
+    a = session.scalars(stmt).unique().one()
+
+SQLAlchemy remembers which of those two paths an object was loaded under, and
+applies the loader options from that path whenever more SQL is emitted for the
+object later on::
+
+    session.expire(a)
+
+    a.value  # refresh, emitting SELECT for the "a" row
+
+    a.c  # 2.0: raises InvalidRequestError; 2.1: loads normally
+
+In 2.0 it was difficult to predict which of the paths would be the one
+remembered, as it varied with the loader strategy in use, so the
+``raiseload("*")`` written for ``A.b -> B.a`` could end up applied to ``a``
+itself.  In 2.1 the shallowest path is favored, a deterministic rule rather
+than one based on which loader strategy within the query happened to see the
+object first.
+
+This applies to all forms of :term:`lazy loading`, such as when expired
+attributes are unexpired, deferred columns are loaded, or unloaded
+relationships are loaded::
+
+    stmt = select(A).options(
+        joinedload(A.b).joinedload(B.a).lazyload(A.c).joinedload(C.d),
+    )
+
+    a = session.scalars(stmt).unique().one()
+
+    a.c  # 2.0: SELECT from "c" with a JOIN to "d"; 2.1: SELECT from "c"
+
+Code that relies on complex interactions of overlapping paths may need
+adjustment, as the behavior should now be consistent across the different
+kinds of loader option.
+
+:ticket:`13507`
+
 
 Core - Behavioral Changes and Improvements
 ==========================================

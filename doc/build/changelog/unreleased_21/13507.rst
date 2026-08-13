@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13507
+
+    Fixed long-standing issue where an object that was loaded at more than one
+    path within a single query, such as when a chain of :func:`_orm.joinedload`
+    options leads back to an entity that was also loaded at the top level of
+    the query, would retain the loader options of whichever path the query
+    happened to see last, which varied with the loader strategy in use.  The
+    options an object retains are applied to all forms of :term:`lazy loading`
+    for that object, so an otherwise identical set of options could behave
+    differently depending on the loader strategy.  The shallowest path is now
+    favored, which is deterministic.
+
+    .. seealso::
+
+        :ref:`change_13507`
