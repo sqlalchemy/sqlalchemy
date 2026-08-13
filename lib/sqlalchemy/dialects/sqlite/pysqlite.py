@@ -242,6 +242,23 @@ based on the kind of SQLite database that's requested:
     may be used by specifying it via the
     :paramref:`_sa.create_engine.poolclass` parameter.
 
+This selection is made based on the database name alone.  Where a
+particular pool class is desired, it should be stated explicitly using the
+:paramref:`_sa.create_engine.poolclass` parameter, in which case no
+selection takes place at all.
+
+.. deprecated:: 2.1
+
+    A URL that passes ``mode=memory`` in the query string is currently also
+    given a single-connection pool class.  This behavior is deprecated and
+    will be removed in a future release, at which point such URLs will
+    receive :class:`.QueuePool` like any other.  This affects URLs such as
+    ``sqlite:///file:mydb?mode=memory&cache=shared&uri=true``, for which
+    :class:`.QueuePool` is in fact the appropriate class, as a shared cache
+    database supports multiple concurrent connections; see
+    :ref:`pysqlite_uri_shared_cache`.  Applications relying on the present
+    behavior should state the pool class explicitly.
+
 Disabling Connection Pooling for File Databases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -310,22 +327,75 @@ Because this URL form is treated as a file-based database by the
 dialect, :class:`.QueuePool` is used automatically and
 ``check_same_thread`` defaults to ``False``, so no additional pool
 or connect_args configuration is needed.  Each checkout from the
-pool is a distinct DBAPI connection with its own transaction state,
-and the in-memory database persists as long as at least one
-connection remains open.
+pool is a distinct DBAPI connection with its own transaction state.
 
 The shared-cache database is scoped by the filename component of
 the URI.  ``file::memory:`` (empty name) is process-global — all
 engines in the process that use this URI share the same database.
 To maintain multiple independent in-memory databases within the
-same process, supply a distinct name for each::
+same process, supply a distinct name for each.  A named database of
+this kind requires ``mode=memory``, which presently causes a
+single-connection pool to be selected; :class:`.QueuePool` should
+therefore be requested explicitly::
+
+    from sqlalchemy.pool import QueuePool
 
     engine_a = create_engine(
-        "sqlite:///file:db_a?mode=memory&cache=shared&uri=true"
+        "sqlite:///file:db_a?mode=memory&cache=shared&uri=true",
+        poolclass=QueuePool,
     )
     engine_b = create_engine(
-        "sqlite:///file:db_b?mode=memory&cache=shared&uri=true"
+        "sqlite:///file:db_b?mode=memory&cache=shared&uri=true",
+        poolclass=QueuePool,
     )
+
+For :func:`_asyncio.create_async_engine`, use
+:class:`.AsyncAdaptedQueuePool` in the same way.
+
+.. deprecated:: 2.1
+
+    Selection of a single-connection pool class based on ``mode=memory``
+    is deprecated; a future release will use :class:`.QueuePool` for these
+    URLs, at which point stating
+    :paramref:`_sa.create_engine.poolclass` explicitly will no longer be
+    necessary.  See :ref:`pysqlite_threading_pooling`.
+
+.. _pysqlite_shared_cache_lifespan:
+
+Lifespan of a Shared-Cache Memory Database
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A shared-cache in-memory database exists only for as long as at least one
+connection to it remains open; when the last connection is closed, the
+database and all of its contents are discarded.  A subsequent connection
+using the same URI then opens a new, empty database, which typically
+surfaces as ``no such table`` errors.
+
+:class:`.QueuePool` retains connections that have been returned to it, so
+in a default configuration the database will normally persist once the
+first connection has been established.  This is a consequence of pool
+behavior rather than a guarantee, however, and the database will be
+discarded by ordinary pool operations including:
+
+* :meth:`_engine.Engine.dispose`, which closes all connections currently
+  in the pool
+* :paramref:`_sa.create_engine.pool_recycle`, as a recycled connection is
+  closed before its replacement is opened
+* connection invalidation, including that performed by
+  :paramref:`_sa.create_engine.pool_pre_ping`
+* use of :class:`.NullPool`, which closes each connection as it is
+  returned
+
+Where the database must survive independently of pool activity, hold a
+single connection open for as long as the database is needed::
+
+    engine = create_engine("sqlite:///file::memory:?cache=shared&uri=true")
+
+    # keep the database alive for the lifetime of the engine
+    keepalive = engine.connect()
+
+The same consideration applies to the :ref:`aiosqlite <aiosqlite>`
+dialect, using :meth:`_asyncio.AsyncEngine.connect`.
 
 Using StaticPool for Single-Connection Memory Databases
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -574,10 +644,39 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             return False
 
     @classmethod
+    def _warn_memory_mode_pool_selection(
+        cls,
+        url: URL,
+        current_pool: type[pool.Pool],
+        future_pool: type[pool.Pool],
+    ) -> None:
+        """Warn when the ``mode=memory`` query string argument is what
+        caused a single-connection pool class to be selected.
+
+        See :ticket:`13433`.
+
+        """
+        if url.query.get("mode", None) != "memory":
+            return
+
+        util.warn_deprecated(
+            "Selection of the %s pool class based on the 'mode=memory' "
+            "query string argument is deprecated; a future release will "
+            "use %s for this URL.  Indicate the intended pool class "
+            "using the create_engine.poolclass parameter."
+            % (current_pool.__name__, future_pool.__name__),
+            "2.1",
+            code="sqmp",
+        )
+
+    @classmethod
     def get_pool_class(cls, url: URL) -> type[pool.Pool]:
         if cls._is_url_file_db(url):
             return pool.QueuePool
         else:
+            cls._warn_memory_mode_pool_selection(
+                url, pool.SingletonThreadPool, pool.QueuePool
+            )
             return pool.SingletonThreadPool
 
     def _get_server_version_info(
@@ -701,6 +800,22 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                     )
                 )
         else:
+            # without uri=True, the SQLite URI query string is not in
+            # play at all, so anything left over here is silently
+            # discarded; warn rather than have it appear to take effect
+            ignored = sorted(
+                set(opts).difference(key for key, _ in pysqlite_args)
+            )
+            if ignored:
+                util.warn(
+                    "Query string argument(s) %s are not accepted by the "
+                    "pysqlite driver and are being ignored; SQLite URI "
+                    "arguments require that 'uri=true' also be present "
+                    "in the URL."
+                    % (", ".join("'%s'" % key for key in ignored),),
+                    code="squa",
+                )
+
             filename = url.database or ":memory:"
             if filename != ":memory:":
                 filename = os.path.abspath(filename)

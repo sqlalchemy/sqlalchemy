@@ -76,6 +76,11 @@ based on the kind of SQLite database that's requested:
     may be used by specifying it via the
     :paramref:`_sa.create_engine.poolclass` parameter.
 
+As with the pysqlite dialect, this selection is made based on the database
+name alone, and the ``mode=memory`` query string argument is deprecated as
+a means of influencing it; see :ref:`pysqlite_threading_pooling` for
+background.
+
 .. _aiosqlite_memory:
 
 Using a Memory Database with Multiple Coroutines
@@ -100,6 +105,12 @@ in-memory database::
 Because this URL form is treated as a file-based database by the dialect,
 :class:`.AsyncAdaptedQueuePool` is used automatically and no additional
 configuration is needed.
+
+Note that a shared-cache database is discarded once its last connection is
+closed, so that operations such as :meth:`_asyncio.AsyncEngine.dispose` or
+the use of :paramref:`_sa.create_engine.pool_recycle` will destroy its
+contents; see :ref:`pysqlite_shared_cache_lifespan` for background and for
+how to hold such a database open.
 
 See the pysqlite documentation at
 :ref:`pysqlite_uri_shared_cache` for full details on shared-cache memory
@@ -330,6 +341,9 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
         if cls._is_url_file_db(url):
             return pool.AsyncAdaptedQueuePool
         else:
+            cls._warn_memory_mode_pool_selection(
+                url, pool.StaticPool, pool.AsyncAdaptedQueuePool
+            )
             return pool.StaticPool
 
     def is_disconnect(
