@@ -146,6 +146,56 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert t1r.c.t2id.references(t2r.c.id)
         assert t1r.c.t3id.references(t3r.c.id)
 
+    def test_reflect_fk_duplicate_source_columns_skipped(
+        self, connection, metadata
+    ):
+        """reflection should skip an FK that names the same source column
+        twice, rather than failing the whole table (issue #13509)"""
+
+        meta = metadata
+        Table(
+            "profile_merges",
+            meta,
+            Column("profile_id", sa.String, primary_key=True),
+            Column("canonical_profile_id", sa.String, nullable=False),
+        )
+        Table(
+            "other",
+            meta,
+            Column("id", sa.Integer, primary_key=True),
+        )
+        meta.create_all(connection)
+
+        schema_name = None
+        fake_fks = {
+            (schema_name, "other"): [
+                {
+                    "name": "dup_fk",
+                    "constrained_columns": ["id", "id"],
+                    "referred_schema": None,
+                    "referred_table": "profile_merges",
+                    "referred_columns": [
+                        "profile_id",
+                        "canonical_profile_id",
+                    ],
+                    "options": {},
+                }
+            ]
+        }
+
+        with mock.patch.object(
+            Inspector, "get_multi_foreign_keys", return_value=fake_fks
+        ):
+            m2 = MetaData()
+            with expect_warnings(
+                r"On reflected table other, skipping reflection of foreign "
+                r"key constraint dup_fk; one or more subject columns within "
+                r"name\(s\) id, id are reflected more than once, which is "
+                r"not supported"
+            ):
+                t2 = Table("other", m2, autoload_with=connection)
+        eq_(t2.foreign_keys, set())
+
     def test_resolve_fks_false_table(self, connection, metadata):
         meta = metadata
         Table(

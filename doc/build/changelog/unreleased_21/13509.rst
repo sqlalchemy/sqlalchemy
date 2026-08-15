@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, schema, reflection
+    :tickets: 13509
+
+    Fixed reflection so that a foreign key constraint which references the
+    same source column more than once is skipped with a warning rather than
+    raising :class:`.ArgumentError`, which previously prevented the rest of
+    the table from being reflected. Such constraints are legal in some
+    backends (e.g. PostgreSQL) but are not supported by
+    :class:`.ForeignKeyConstraint`; per the documented limitations of
+    reflection, unsupported structures should be skipped or partially
+    reflected rather than being fatal.
