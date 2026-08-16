@@ -146,6 +146,65 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert t1r.c.t2id.references(t2r.c.id)
         assert t1r.c.t3id.references(t3r.c.id)
 
+    def test_fk_reflection_duplicate_constrained_columns(
+        self, connection, metadata
+    ):
+        """A reflected foreign key whose constrained columns list contains
+        a duplicate column name (as can happen with certain PostgreSQL FK
+        definitions) should be skipped with a warning rather than raising
+        ArgumentError and aborting reflection of the whole table.
+
+        .. seealso:: #13509
+
+        """
+        Table(
+            "dup_fk_parent",
+            metadata,
+            Column("id", sa.Integer, primary_key=True),
+            Column("other", sa.Integer),
+        )
+        Table(
+            "dup_fk_child",
+            metadata,
+            Column("a", sa.Integer),
+            Column("b", sa.Integer),
+        )
+        metadata.create_all(connection)
+
+        def fake_get_multi_foreign_keys(self, schema=None, **kw):
+            return {
+                (schema, "dup_fk_child"): [
+                    {
+                        "name": "fk_dup_cols",
+                        "constrained_columns": ["a", "a"],
+                        "referred_schema": None,
+                        "referred_table": "dup_fk_parent",
+                        "referred_columns": ["id", "other"],
+                        "options": {},
+                    }
+                ],
+                (schema, "dup_fk_parent"): [],
+            }
+
+        meta2 = MetaData()
+        with mock.patch.object(
+            Inspector,
+            "get_multi_foreign_keys",
+            fake_get_multi_foreign_keys,
+        ):
+            with expect_warnings(
+                r"On reflected table dup_fk_child, skipping reflection of "
+                r"foreign key constraint fk_dup_cols; the constrained "
+                r"columns list \['a', 'a'\] contains duplicate column "
+                r"names, which is not supported"
+            ):
+                meta2.reflect(connection)
+
+        child = meta2.tables["dup_fk_child"]
+        eq_(list(child.foreign_key_constraints), [])
+        in_("a", child.c)
+        in_("b", child.c)
+
     def test_resolve_fks_false_table(self, connection, metadata):
         meta = metadata
         Table(

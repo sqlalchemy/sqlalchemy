@@ -1780,6 +1780,16 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 for c in fkey_d["constrained_columns"]
             ]
 
+            if len(set(constrained_columns)) != len(constrained_columns):
+                util.warn(
+                    f"On reflected table {table.name}, skipping reflection "
+                    "of foreign key constraint "
+                    f"{conname}; the constrained columns list "
+                    f"{constrained_columns!r} contains duplicate column "
+                    "names, which is not supported"
+                )
+                continue
+
             if (
                 exclude_columns
                 and set(constrained_columns).intersection(exclude_columns)

@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, reflection
+    :tickets: 13509
+
+    Fixed issue in table reflection where a reflected foreign key constraint
+    whose list of constrained columns contained a duplicate column name, as
+    can occur with certain foreign key definitions on PostgreSQL, would raise
+    ``ArgumentError`` and abort reflection of the entire table. Such foreign
+    key constraints are now skipped, with a warning emitted, allowing the
+    rest of the table to reflect normally.
