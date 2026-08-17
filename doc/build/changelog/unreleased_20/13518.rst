@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, installation
+    :tickets: 13518
+
+    Added the ``AUTHORS`` file to the set of license files included in the
+    built wheel, where previously only the ``LICENSE`` file was present. As
+    the text of ``LICENSE`` refers to ``AUTHORS`` for the list of copyright
+    holders, the reference would not resolve for tools that inspect an
+    installed distribution.

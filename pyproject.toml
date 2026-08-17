@@ -12,7 +12,7 @@ description = "Database Abstraction Library"
 readme = "README.rst"
 authors = [{name = "Mike Bayer", email = "mike_mp@zzzcomputing.com"}]
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "AUTHORS"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
