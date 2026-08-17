@@ -3990,6 +3990,8 @@ class ResultMapTest(fixtures.TestBase):
         lambda e, t: e.correlate(t),
         lambda e, t: e.correlate_except(t),
         lambda e, t: e.select_from(t),
+        lambda e, t: e.with_hint(t, "hint", "mssql"),
+        lambda e, t: e.with_statement_hint("hint", "mssql"),
         lambda e, t: e.where(t.c.y == 5),
         argnames="testcase",
     )

@@ -1359,6 +1359,36 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "HAVING count(myothertable.otherid) > :count_2)",
         )
 
+    def test_exists_with_hint(self):
+        stmt = table1.select().where(
+            exists(1)
+            .select_from(table2)
+            .with_hint(table2, "WITH (NOLOCK)", "mssql")
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable "
+            "WITH (NOLOCK))",
+            dialect=mssql.dialect(),
+        )
+
+    def test_exists_with_statement_hint(self):
+        stmt = table1.select().where(
+            exists(1)
+            .select_from(table2)
+            .with_statement_hint("WITH (NOLOCK)", "mssql")
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable "
+            "WITH (NOLOCK))",
+            dialect=mssql.dialect(),
+        )
+
     def test_where_subquery(self):
         s = (
             select(addresses.c.street)

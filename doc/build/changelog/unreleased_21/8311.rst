@@ -1,0 +1,13 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 8311
+
+    Added new methods :meth:`_sql.Exists.with_hint` and
+    :meth:`_sql.Exists.with_statement_hint`, which apply a table hint or a
+    statement hint to the SELECT statement that's enclosed by the EXISTS
+    expression, in the same way as :meth:`_sql.Select.with_hint` and
+    :meth:`_sql.Select.with_statement_hint`.  As ORM constructs such as
+    :meth:`_orm.PropComparator.any` and :meth:`_orm.PropComparator.has`
+    produce an :class:`_sql.Exists` object, hints may now be applied to the
+    subqueries which these constructs generate.  Pull request courtesy
+    Abhinav Gorrepati.
