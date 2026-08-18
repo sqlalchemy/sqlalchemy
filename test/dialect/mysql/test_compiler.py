@@ -1482,18 +1482,62 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL, CacheKeyFixture):
             "id INTEGER NOT NULL AUTO_INCREMENT, "
             "PRIMARY KEY (id))"
         )
-        try:
-            self.assert_compile(
-                schema.CreateTable(t1),
-                first_part
-                + "ENGINE=InnoDB CHARSET=utf8 COLLATE utf8_icelandic_ci",
+        self.assert_compile(
+            schema.CreateTable(t1),
+            first_part
+            + "ENGINE=InnoDB CHARSET=utf8 COLLATE utf8_icelandic_ci",
+        )
+
+    def test_create_table_options_in_kwarg_order(self):
+        """test #13523
+
+        the table options render in the order in which they were passed;
+        the same options given in a different order render in that other
+        order.  A plain set() would render both of the statements below
+        in the same order, whichever order the current hash seed happens
+        to dictate, so at least one of the two assertions would fail.
+
+        """
+
+        def create_table(**kw):
+            return schema.CreateTable(
+                Table(
+                    "testtable",
+                    MetaData(),
+                    Column(
+                        "id", Integer(), primary_key=True, autoincrement=True
+                    ),
+                    **kw,
+                )
             )
-        except AssertionError:
-            self.assert_compile(
-                schema.CreateTable(t1),
-                first_part
-                + "CHARSET=utf8 ENGINE=InnoDB COLLATE utf8_icelandic_ci",
-            )
+
+        first_part = (
+            "CREATE TABLE testtable ("
+            "id INTEGER NOT NULL AUTO_INCREMENT, "
+            "PRIMARY KEY (id))"
+        )
+
+        self.assert_compile(
+            create_table(
+                mysql_engine="InnoDB",
+                mysql_charset="utf8",
+                mysql_row_format="DYNAMIC",
+                mysql_key_block_size="1024",
+            ),
+            first_part + "ENGINE=InnoDB CHARSET=utf8 "
+            "ROW_FORMAT=DYNAMIC KEY_BLOCK_SIZE=1024",
+        )
+
+        self.assert_compile(
+            create_table(
+                mysql_key_block_size="1024",
+                mysql_row_format="DYNAMIC",
+                mysql_charset="utf8",
+                mysql_engine="InnoDB",
+            ),
+            first_part + "KEY_BLOCK_SIZE=1024 ROW_FORMAT=DYNAMIC "
+            "CHARSET=utf8 ENGINE=InnoDB",
+        )
 
     def test_inner_join(self):
         t1 = table("t1", column("x"))

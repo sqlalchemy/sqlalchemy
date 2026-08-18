@@ -1149,6 +1149,7 @@ from ...types import DATE
 from ...types import LargeBinary
 from ...types import UUID
 from ...types import VARBINARY
+from ...util import OrderedSet
 from ...util import topological
 
 if TYPE_CHECKING:
@@ -2135,8 +2136,8 @@ class MySQLDDLCompiler(
             "SUBPARTITION_BY",
         ]
 
-        nonpart_options = set(opts).difference(partition_options)
-        part_options = set(opts).intersection(partition_options)
+        nonpart_options = OrderedSet(opts).difference(partition_options)
+        part_options = OrderedSet(opts).intersection(partition_options)
 
         for opt in topological.sort(
             [
