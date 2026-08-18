@@ -2902,11 +2902,11 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         )
 
     def _cc_by_name(self, reflected, name):
-        """return the lower cased sqltext for the named CHECK constraint."""
+        """return the sqltext for the named CHECK constraint."""
 
         for rec in reflected:
             if rec["name"] == name:
-                return rec["sqltext"].lower()
+                return rec["sqltext"]
 
         assert False, (
             f"No CHECK constraint named {name!r} in "
