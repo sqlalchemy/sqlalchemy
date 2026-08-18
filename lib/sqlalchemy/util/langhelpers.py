@@ -265,9 +265,19 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         if inspect.iscoroutinefunction(fn):
             metadata["prefix"] = "async "
             metadata["target_prefix"] = "await "
+            metadata["target_suffix"] = ""
+        elif inspect.isgeneratorfunction(fn):
+            # a generator function has to remain a generator function
+            # after decoration; tools such as pytest fixtures test for
+            # inspect.isgeneratorfunction() and will otherwise never
+            # iterate the function at all
+            metadata["prefix"] = ""
+            metadata["target_prefix"] = "(yield from "
+            metadata["target_suffix"] = ")"
         else:
             metadata["prefix"] = ""
             metadata["target_prefix"] = ""
+            metadata["target_suffix"] = ""
 
         # look for __ positional arguments.  This is a convention in
         # SQLAlchemy that arguments should be passed positionally
@@ -280,12 +290,12 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         if "__" in repr(spec[0]):
             code = """\
 %(prefix)sdef %(name)s%(grouped_args)s:
-    return %(target_prefix)s%(target)s(%(fn)s, %(apply_pos)s)
+    return %(target_prefix)s%(target)s(%(fn)s, %(apply_pos)s)%(target_suffix)s
 """ % metadata
         else:
             code = """\
 %(prefix)sdef %(name)s%(grouped_args)s:
-    return %(target_prefix)s%(target)s(%(fn)s, %(apply_kw)s)
+    return %(target_prefix)s%(target)s(%(fn)s, %(apply_kw)s)%(target_suffix)s
 """ % metadata
 
         env: Dict[str, Any] = {

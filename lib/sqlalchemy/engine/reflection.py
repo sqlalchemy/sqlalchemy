@@ -1758,6 +1758,15 @@ class Inspector(inspection.Inspectable["Inspector"]):
             ):
                 continue
 
+            if len(set(constrained_columns)) != len(constrained_columns):
+                util.warn(
+                    f"On reflected table {table.name}, skipping reflection of "
+                    f"foreign key constraint {conname}; duplicate source "
+                    f"columns within name(s) {', '.join(constrained_columns)} "
+                    "are not supported"
+                )
+                continue
+
             referred_schema = fkey_d["referred_schema"]
             referred_table = fkey_d["referred_table"]
             referred_columns = fkey_d["referred_columns"]

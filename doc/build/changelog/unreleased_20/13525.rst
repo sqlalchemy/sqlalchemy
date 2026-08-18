@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, reflection
+    :tickets: 13525
+
+    Fixed issue where reflecting a table with a foreign key constraint that
+    names the same source column more than once, such as ``FOREIGN KEY (a, a)
+    REFERENCES r (b, c)`` which is accepted by backends such as PostgreSQL,
+    would raise :class:`.ArgumentError` and fail the reflection of the entire
+    table.  As :class:`.ForeignKeyConstraint` has no representation for this
+    form, the constraint is now skipped with a warning, in the same way as one
+    that names columns which are not present in the table, so that the
+    remainder of the table is still reflected.
