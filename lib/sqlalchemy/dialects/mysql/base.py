@@ -2105,8 +2105,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             "SUBPARTITION_BY",
         ]
 
-        nonpart_options = set(opts).difference(partition_options)
-        part_options = set(opts).intersection(partition_options)
+        nonpart_options = util.OrderedSet(opts).difference(partition_options)
+        part_options = util.OrderedSet(opts).intersection(partition_options)
 
         for opt in topological.sort(
             [

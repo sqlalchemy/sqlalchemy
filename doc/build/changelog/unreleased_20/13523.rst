@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 13523
+
+    Ensure that CREATE TABLE DDL statements for MySQL and MariaDB dialects
+    render the table options in a deterministic order. Previously the order
+    could change depending on the Python seed.
