@@ -1,0 +1,14 @@
+.. change::
+    :tags: performance, sql
+    :tickets: 13506
+
+    Improved the performance of SQL cache key generation by generating the
+    whole traversal for a particular construct as inline code at class setup
+    time, rather than generating a list of dispatch symbols that a runtime
+    loop then had to interpret on every cache key generation.  As which
+    handler applies to which attribute is constant for a given class, the
+    chain of identity comparisons that formerly rediscovered this per
+    attribute, per cache key is now resolved once, when the class' traversal
+    function is first generated.  Benchmarks against a range of Core and ORM
+    statements show cache key generation running approximately 1.3 to 1.8
+    times faster, with the generated cache keys themselves unchanged.
