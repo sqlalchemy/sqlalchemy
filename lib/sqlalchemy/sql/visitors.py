@@ -406,10 +406,6 @@ class InternalTraversal(Enum):
 
     """
 
-    dp_inspectable_list = "IL"
-    """Visit a list of inspectable objects which upon inspection are
-    HasCacheKey objects."""
-
     dp_params = "PM"
     """Visit the _params collection of ExecutableStatement"""
 

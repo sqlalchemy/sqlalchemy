@@ -39,6 +39,7 @@ CYTHON_MODULES = (
     "engine._row_cy",
     "engine._result_cy",
     "engine._util_cy",
+    "sql._cache_key_cy",
     "sql._util_cy",
     "util._collections_cy",
     "util._immutabledict_cy",

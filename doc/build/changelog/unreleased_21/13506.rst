@@ -1,0 +1,15 @@
+.. change::
+    :tags: performance, sql
+    :tickets: 13506
+
+    Improved the performance of SQL cache key generation by moving the
+    traversal into the Cython extension modules.  The set of attributes that
+    participate in the cache key for a particular construct, along with the
+    handler that applies to each one, is now resolved once at class setup
+    time into a structure that the compiled traversal consumes directly, so
+    that the chain of identity comparisons that formerly rediscovered this
+    per attribute, per cache key is no longer run at all.  Benchmarks against
+    a range of Core and ORM statements show cache key generation running
+    approximately 1.5 to 2.2 times faster in a build with the Cython
+    extensions compiled, and approximately 1.05 to 1.2 times faster in a
+    pure Python build, with the generated cache keys themselves unchanged.

@@ -1076,7 +1076,11 @@ class CacheableOptions(Options, HasCacheKey):
     def _gen_cache_key_inst(
         self, anon_map: Any, bindparams: List[BindParameter[Any]]
     ) -> Optional[Tuple[Any]]:
-        return HasCacheKey._gen_cache_key(self, anon_map, bindparams)
+        # _gen_cache_key is a compiled function in _cache_key_cy; its
+        # cython directives make mypy see it as untyped
+        return HasCacheKey._gen_cache_key(  # type: ignore[no-any-return]  # noqa: E501
+            self, anon_map, bindparams
+        )
 
     @_gen_cache_key_inst.classlevel
     def _gen_cache_key(

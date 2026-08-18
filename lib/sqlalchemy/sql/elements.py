@@ -4504,7 +4504,9 @@ class _OverrideBinds(Grouping[_T]):
             for bp in existing_bps
         )
 
-        return ck
+        # ck derives from _gen_cache_key, a compiled function in
+        # _cache_key_cy that mypy sees as untyped
+        return ck  # type: ignore[no-any-return]
 
 
 _FrameIntTuple = tuple[int | None, int | None]
