@@ -162,4 +162,6 @@ jobs:
           pip list
 
       - name: Run nox
+        env:
+          ZIZMOR_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: nox -v -e ${{ matrix.nox-env }} ${{ matrix.pytest-args }}
