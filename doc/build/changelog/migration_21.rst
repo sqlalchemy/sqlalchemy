@@ -1383,6 +1383,52 @@ In most cases, this change is expected to make
 
 :ticket:`8601`
 
+.. _change_13526:
+
+Foreign key constraints may name the same local column more than once
+----------------------------------------------------------------------
+
+:class:`.ForeignKeyConstraint` now accepts a constraint which names the same
+local column in more than one position, such as ``FOREIGN KEY (a, a)
+REFERENCES r (b, c)``.  Previously this raised :class:`.ArgumentError`.
+
+A self-referential example, which constrains a "merge" pointer so that it may
+only ever target a canonical row::
+
+    profile_merges = Table(
+        "profile_merges",
+        metadata,
+        Column("profile_id", String(50), primary_key=True),
+        Column("canonical_profile_id", String(50), nullable=False),
+        UniqueConstraint("profile_id", "canonical_profile_id"),
+        ForeignKeyConstraint(
+            ["canonical_profile_id", "canonical_profile_id"],
+            ["profile_merges.profile_id", "profile_merges.canonical_profile_id"],
+        ),
+    )
+
+Such a constraint now emits in DDL and is reflected like any other composite
+foreign key.
+
+A column may likewise be named more than once on the referenced side, such as
+``FOREIGN KEY (a, b) REFERENCES r (c, c)``, which constrains the local row so
+that its ``a`` and ``b`` values are equal.  This form has always been accepted
+by :class:`.ForeignKeyConstraint` and is likewise emitted in DDL and reflected;
+support for it is unchanged, and the two forms may be combined.  Backends vary
+in whether they accept either form, as a foreign key requires a unique
+constraint on the referenced columns.
+
+Additionally, the check that the number of constrained columns matches the
+number of referenced columns has been fixed; a genuine mismatch such as::
+
+    ForeignKeyConstraint(["x", "x"], ["r.b"])  # two local, one remote
+
+was formerly accepted, rendering ``FOREIGN KEY(x) REFERENCES r (b)`` and
+silently dropping a column.  It now raises :class:`.ArgumentError`.
+
+:ticket:`13526`
+
+
 .. _change_13381:
 
 Error handling extended to DBAPI cursor operations in before_cursor_execute/after_cursor_execute event hooks

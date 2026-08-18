@@ -1403,7 +1403,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
     @testing.fixture
     @testing.requires.repeated_column_foreign_keys
-    def fk_repeated_col_fixture(self, connection):
+    def fk_repeated_source_col_fixture(self, connection):
         connection.exec_driver_sql("""
             CREATE TABLE rep_fk_t (
                 id INTEGER NOT NULL,
@@ -1415,28 +1415,61 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         yield
         connection.exec_driver_sql("DROP TABLE rep_fk_t")
 
+    @testing.fixture
+    @testing.requires.repeated_remote_col_foreign_keys
+    def fk_repeated_remote_col_fixture(self, connection):
+        connection.exec_driver_sql("""
+            CREATE TABLE rem_fk_t (
+                id INTEGER NOT NULL,
+                cid INTEGER NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE (id, cid),
+                FOREIGN KEY (id, cid) REFERENCES rem_fk_t (id, id)
+            )""")
+        yield
+        connection.exec_driver_sql("DROP TABLE rem_fk_t")
+
     @testing.requires.foreign_key_constraint_reflection
-    def test_fk_repeated_source_cols_skipped(
-        self, connection, fk_repeated_col_fixture
+    def test_fk_repeated_source_cols(
+        self, connection, fk_repeated_source_col_fixture
     ):
         """a foreign key which names the same source column more than once
-        can't be represented by ForeignKeyConstraint; it's skipped with a
-        warning rather than failing reflection of the whole table.
+        reflects into a ForeignKeyConstraint naming that column once per
+        position.
 
-        Fixes: #13525
+        Fixes: #13526
 
         """
 
-        with expect_warnings(
-            "On reflected table rep_fk_t, skipping reflection of foreign "
-            "key constraint .*duplicate source columns within "
-            r"name\(s\) cid, cid are not supported"
-        ):
-            t = Table("rep_fk_t", MetaData(), autoload_with=connection)
+        t = Table("rep_fk_t", MetaData(), autoload_with=connection)
 
-        # the constraint is gone, the rest of the table is intact
-        eq_(t.foreign_keys, set())
-        eq_({c.name for c in t.c}, {"id", "cid"})
+        fkc = list(t.foreign_key_constraints)[0]
+        eq_(fkc.column_keys, ["cid", "cid"])
+        eq_(
+            [(fk.parent, fk.column) for fk in fkc.elements],
+            [(t.c.cid, t.c.id), (t.c.cid, t.c.cid)],
+        )
+
+    @testing.requires.foreign_key_constraint_reflection
+    def test_fk_repeated_remote_cols(
+        self, connection, fk_repeated_remote_col_fixture
+    ):
+        """a foreign key which names the same remote column more than once
+        reflects into a ForeignKeyConstraint naming that column once per
+        position.
+
+        Fixes: #13526
+
+        """
+
+        t = Table("rem_fk_t", MetaData(), autoload_with=connection)
+
+        fkc = list(t.foreign_key_constraints)[0]
+        eq_(fkc.column_keys, ["id", "cid"])
+        eq_(
+            [(fk.parent, fk.column) for fk in fkc.elements],
+            [(t.c.id, t.c.id), (t.c.cid, t.c.id)],
+        )
 
     def test_index_reflection_expression_not_found(self, connection, metadata):
         t = Table("x", metadata, Column("a", Integer), Column("b", Integer))
