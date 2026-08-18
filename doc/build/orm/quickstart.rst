@@ -177,7 +177,7 @@ in our target SQLite database, using a method called :meth:`_schema.MetaData.cre
     COMMIT
 
 A lot just happened from that bit of Python code we wrote.  For a complete
-overview of what's going on on with Table metadata, proceed in the
+overview of what's going on with Table metadata, proceed in the
 Tutorial at :ref:`tutorial_working_with_metadata`.
 
 Create Objects and Persist
