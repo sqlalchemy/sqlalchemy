@@ -3662,6 +3662,56 @@ class CompositeKeyReflectionTest(fixtures.TablesTest):
         eq_(fkey1.get("referred_columns"), ["name", "id", "attr"])
         eq_(fkey1.get("constrained_columns"), ["pname", "pid", "pattr"])
 
+    @testing.fixture
+    @testing.requires.repeated_column_foreign_keys
+    def fk_repeated_col_fixture(self, connection):
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE rep_fk_t (
+                id INTEGER NOT NULL,
+                cid INTEGER NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE (id, cid),
+                CONSTRAINT rem_fk_cons FOREIGN KEY (cid, cid) REFERENCES rep_fk_t (id, cid)
+            )"""  # noqa: E501  # can't put a line break in the FOREIGN KEY yet
+        )
+        yield
+        connection.exec_driver_sql("DROP TABLE rep_fk_t")
+
+    def _exp_fk(self, entry):
+        """normalize an inspect.get_foreign_keys() entry across dialects."""
+        if testing.requires.comment_reflection.enabled:
+            entry["comment"] = None
+        return entry
+
+    @testing.requires.foreign_key_constraint_reflection
+    def test_fk_repeated_source_cols_reported_by_inspector(
+        self, connection, fk_repeated_col_fixture
+    ):
+        """test the inspector can retrieve foreign keys with repeated
+        source columns.
+
+        See issue #13525 which addressed this on the schema construction
+        side.
+
+        """
+
+        eq_(
+            inspect(connection).get_foreign_keys("rep_fk_t"),
+            [
+                self._exp_fk(
+                    {
+                        "name": "rem_fk_cons",
+                        "constrained_columns": ["cid", "cid"],
+                        "referred_schema": None,
+                        "referred_table": "rep_fk_t",
+                        "referred_columns": ["id", "cid"],
+                        "options": {},
+                    }
+                )
+            ],
+        )
+
 
 __all__ = (
     "ComponentReflectionTest",

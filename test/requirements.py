@@ -78,6 +78,19 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(no_support("mssql", "not supported"))
 
     @property
+    def repeated_column_foreign_keys(self):
+        """Target database must support a FOREIGN KEY constraint which names
+        the same local column more than once, e.g.
+        ``FOREIGN KEY (a, a) REFERENCES r (b, c)``.
+
+        """
+
+        return only_on(
+            ["postgresql", "sqlite"],
+            "not supported by database",
+        )
+
+    @property
     def foreign_keys_reflect_as_index(self):
         return only_on(["mysql", "mariadb"])
 

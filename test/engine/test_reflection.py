@@ -1401,6 +1401,43 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         eq_(list(t.indexes)[0].columns, [t.c.b])
 
+    @testing.fixture
+    @testing.requires.repeated_column_foreign_keys
+    def fk_repeated_col_fixture(self, connection):
+        connection.exec_driver_sql("""
+            CREATE TABLE rep_fk_t (
+                id INTEGER NOT NULL,
+                cid INTEGER NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE (id, cid),
+                FOREIGN KEY (cid, cid) REFERENCES rep_fk_t (id, cid)
+            )""")
+        yield
+        connection.exec_driver_sql("DROP TABLE rep_fk_t")
+
+    @testing.requires.foreign_key_constraint_reflection
+    def test_fk_repeated_source_cols_skipped(
+        self, connection, fk_repeated_col_fixture
+    ):
+        """a foreign key which names the same source column more than once
+        can't be represented by ForeignKeyConstraint; it's skipped with a
+        warning rather than failing reflection of the whole table.
+
+        Fixes: #13525
+
+        """
+
+        with expect_warnings(
+            "On reflected table rep_fk_t, skipping reflection of foreign "
+            "key constraint .*duplicate source columns within "
+            r"name\(s\) cid, cid are not supported"
+        ):
+            t = Table("rep_fk_t", MetaData(), autoload_with=connection)
+
+        # the constraint is gone, the rest of the table is intact
+        eq_(t.foreign_keys, set())
+        eq_({c.name for c in t.c}, {"id", "cid"})
+
     def test_index_reflection_expression_not_found(self, connection, metadata):
         t = Table("x", metadata, Column("a", Integer), Column("b", Integer))
         sa.Index("x_ix", t.c.a)
