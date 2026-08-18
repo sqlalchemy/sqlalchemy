@@ -136,6 +136,7 @@ jobs:
           - mypy
           - pep484
           - pep8
+          - zizmor
 
       fail-fast: false
 

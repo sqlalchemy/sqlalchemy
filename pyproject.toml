@@ -199,6 +199,10 @@ mypy = [
     "types-greenlet",
 ]
 
+zizmor = [
+    "zizmor>=1.22.0",
+]
+
 
 [tool.coverage.paths]
 source=["lib/"]

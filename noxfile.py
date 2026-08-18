@@ -17,6 +17,8 @@ if sys.version_info > (3, 12):
     nox.needs_version = ">=2025.10.16"
 
 nox.options.default_venv_backend = "venv"
+nox.options.reuse_venv = "yes"
+
 
 if True:
     sys.path.insert(0, ".")
@@ -397,3 +399,14 @@ def test_pep8(session: nox.Session) -> None:
 
     if failed:
         session.error(f"failed with {len(failed)} errors")
+
+
+@nox.session(python="3.14")
+def zizmor(session: nox.Session) -> None:
+    """Run zizmor security analysis. Pass --fix=all to try and fix issues. \
+Automatically uses the github token if present.
+    """
+
+    session.install(*nox.project.dependency_groups(pyproject, "zizmor"))
+    session.env
+    session.run("zizmor", ".", *session.posargs)
