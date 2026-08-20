@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sqlite, reflection
+    :tickets: 13528
+
+    Fixed issue in SQLite reflection where the name of a ``PRIMARY KEY``,
+    ``UNIQUE`` or ``FOREIGN KEY`` constraint would be reflected as ``None`` if
+    the ``CONSTRAINT <name>`` clause were separated from the keyword that
+    follows it by a newline rather than by spaces.  As SQLite stores the
+    ``CREATE TABLE`` statement as it was originally typed, this affected
+    tables created from hand-written DDL that spans multiple lines.  The
+    regular expressions used to recover constraint names, as well as the
+    ``ON UPDATE`` / ``ON DELETE``, ``DEFERRABLE`` and ``INITIALLY`` options of
+    a foreign key constraint, now accept any whitespace between tokens.
