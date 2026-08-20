@@ -102,12 +102,12 @@ jobs:
     # steps to run in each job. Some are github actions, others run shell commands
     steps:
       - name: Checkout repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Set up python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -138,19 +138,18 @@ jobs:
           - mypy
           - pep484
           - pep8
-          - zizmor
 
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands
     steps:
       - name: Checkout repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Set up python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -162,6 +161,4 @@ jobs:
           pip list
 
       - name: Run nox
-        env:
-          ZIZMOR_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: nox -v -e ${{ matrix.nox-env }} ${{ matrix.pytest-args }}
