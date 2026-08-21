@@ -404,7 +404,7 @@ class Pool(log.Identified, event.EventTarget):
         """
         rec = getattr(connection, "_connection_record", None)
         if not rec or self._invalidate_time < rec.starttime:
-            self._invalidate_time = time.time()
+            self._invalidate_time = time.monotonic()
         if _checkin and getattr(connection, "is_valid", False):
             connection.invalidate(exception)
 
@@ -809,7 +809,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
             )
 
         if soft:
-            self._soft_invalidate_time = time.time()
+            self._soft_invalidate_time = time.monotonic()
         else:
             self.__close(terminate=True)
             self.dbapi_connection = None
@@ -817,25 +817,20 @@ class _ConnectionRecord(ConnectionPoolEntry):
     def get_connection(self) -> DBAPIConnection:
         recycle = False
 
-        # NOTE: the various comparisons here are assuming that measurable time
-        # passes between these state changes.  however, time.time() is not
-        # guaranteed to have sub-second precision.  comparisons of
-        # "invalidation time" to "starttime" should perhaps use >= so that the
-        # state change can take place assuming no measurable  time has passed,
-        # however this does not guarantee correct behavior here as if time
-        # continues to not pass, it will try to reconnect repeatedly until
-        # these timestamps diverge, so in that sense using > is safer.  Per
-        # https://stackoverflow.com/a/1938096/34549, Windows time.time() may be
-        # within 16 milliseconds accuracy, so unit tests for connection
-        # invalidation need a sleep of at least this long between initial start
-        # time and invalidation for the logic below to work reliably.
+        # NOTE: the various comparisons here compare time.monotonic()
+        # values which are guaranteed to be monotonic and have
+        # sub-millisecond precision across all platforms. This resolves
+        # the issue where time.time() could have ~16 ms granularity
+        # on Windows, causing comparisons like _soft_invalidate_time >
+        # starttime to fail when both timestamps were captured within
+        # the same timer quantum.
 
         if self.dbapi_connection is None:
             self.info.clear()
             self.__connect()
         elif (
             self.__pool._recycle > -1
-            and time.time() - self.starttime > self.__pool._recycle
+            and time.monotonic() - self.starttime > self.__pool._recycle
         ):
             self.__pool.logger.info(
                 "Connection %r exceeded timeout; recycling",
@@ -890,7 +885,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
         # creator fails, this attribute stays None
         self.dbapi_connection = None
         try:
-            self.starttime = time.time()
+            self.starttime = time.monotonic()
             self.dbapi_connection = connection = pool._invoke_creator(self)
             pool.logger.debug("Created new connection %r", connection)
             self.fresh = True
