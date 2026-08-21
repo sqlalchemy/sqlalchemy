@@ -390,6 +390,15 @@ class MySQLTableDefinitionParser:
                     line.append(default)
                 else:
                     line.append("DEFAULT")
+                    # Escape backslashes first (only when the dialect's
+                    # ``sql_mode`` treats backslash as an escape character)
+                    # and then double single quotes, so a reflected
+                    # ``DEFAULT`` value containing a backslash (or one ending
+                    # in a backslash, which would otherwise escape the
+                    # closing quote) re-emits as valid DDL (#13469). The old
+                    # ``.replace("'", "''")`` only doubled single quotes.
+                    if self.dialect._backslash_escapes:
+                        default = default.replace("\\", "\\\\")
                     line.append("'%s'" % default.replace("'", "''"))
             if extra:
                 line.append(extra)

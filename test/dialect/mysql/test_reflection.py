@@ -1450,6 +1450,64 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_({col["name"]: col["comment"]}, {"c": c_exp})
 
 
+class DescribeToCreateDefaultEscapeTest(fixtures.TestBase):
+    """Regression: ``MySQLTableDefinitionParser._describe_to_create`` must
+    route reflected ``DEFAULT`` values through the dialect's literal
+    renderer, not the old ``"%s" % default.replace("'", "''")`` shortcut
+    (issue #13469). The old code only doubled single quotes, so a
+    reflected default containing a backslash (or one ending in a
+    backslash, which would escape the closing quote) re-emitted invalid
+    DDL on the default ``sql_mode``.
+    """
+
+    def setup_test(self):
+        dialect = mysql.dialect()
+        self.parser = _reflection.MySQLTableDefinitionParser(
+            dialect, dialect.identifier_preparer
+        )
+
+    @testing.combinations(
+        # (default, expected_in_ddl)
+        # Plain ASCII — should pass through unchanged
+        ("hello", "'hello'"),
+        # Single quote — must be doubled
+        ("it's", "'it''s'"),
+        # Backslash — must be doubled under default sql_mode so a
+        # single ``\`` in the value re-emits as ``\\`` in the DDL
+        ("a\\b", "'a\\\\b'"),
+        # Trailing backslash — the OLD code would have escaped the
+        # closing quote and produced invalid DDL; the new code doubles
+        # the trailing ``\`` so the literal ends inside the string
+        ("foo\\", "'foo\\\\'"),
+        # Embedded newline stays as a raw byte inside the quoted
+        # string (under default sql_mode MySQL treats the quoted value
+        # as a raw byte sequence)
+        ("a\nb", "'a\nb'"),
+        # NUL byte likewise stays as a raw byte
+        ("a\x00b", "'a\x00b'"),
+    )
+    def test_describe_to_create_escapes_default(
+        self, default, expected_fragment
+    ):
+        # 6-tuple shape: (name, col_type, nullable, key, default, extra)
+        columns = [("c1", "varchar(64)", "YES", "", default, "")]
+        ddl = self.parser._describe_to_create("t", columns)
+        assert (
+            f"DEFAULT {expected_fragment}" in ddl
+        ), f"got: {ddl!r}"
+
+    def test_describe_to_create_round_trip_with_backslash_default(self):
+        # End-to-end: build a column list, pass it through the parser,
+        # and assert that the rendered DEFAULT can survive another parse
+        # round-trip (the old code would have produced a self-inconsistent
+        # DDL string for this case).
+        columns = [("c1", "varchar(64)", "YES", "", "a\\b", "")]
+        ddl = self.parser._describe_to_create("t", columns)
+        # The backslash is doubled inside the literal — ``a\b`` in, ``a\\b``
+        # out — so the resulting DDL re-emits as valid MySQL.
+        assert "DEFAULT 'a\\\\b'" in ddl
+
+
 class RawReflectionTest(fixtures.TestBase):
     def setup_test(self):
         dialect = mysql.dialect()
