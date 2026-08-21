@@ -2678,11 +2678,12 @@ class MySQLTypeCompiler(
     def _visit_enumerated_values(
         self, name: str, type_: _StringType, enumerated_values: Sequence[str]
     ) -> str:
+        preparer = self.dialect.identifier_preparer
         quoted_enums = []
         for e in enumerated_values:
-            if self.dialect.identifier_preparer._double_percents:
+            if preparer._double_percents:
                 e = e.replace("%", "%%")
-            quoted_enums.append("'%s'" % e.replace("'", "''"))
+            quoted_enums.append(preparer._format_string_literal(e))
         return self._extend_string(
             type_, {}, "%s(%s)" % (name, ",".join(quoted_enums))
         )
@@ -2719,6 +2720,21 @@ class MySQLIdentifierPreparer(
         """Unilaterally identifier-quote any number of strings."""
 
         return tuple([self.quote_identifier(i) for i in ids if i is not None])
+
+    def _format_string_literal(self, value: str) -> str:
+        """Render a plain string value as a SQL string literal.
+
+        Used for places such as ENUM and SET member values that are emitted
+        into DDL as string literals rather than identifiers. Single quotes are
+        doubled and, unless the server runs with ``NO_BACKSLASH_ESCAPES``,
+        backslashes are escaped as well, matching the handling in
+        :meth:`.MySQLCompiler.render_literal_value`.
+
+        """
+        value = value.replace("'", "''")
+        if self.dialect._backslash_escapes:
+            value = value.replace("\\", "\\\\")
+        return "'%s'" % value
 
 
 class MySQLDialect(_mariadb_shim.MariaDBShim, default.DefaultDialect):
