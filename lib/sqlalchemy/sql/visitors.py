@@ -555,7 +555,7 @@ class HasTraversalDispatch:
         meth_text = ("def %s(self, visitor):\n" % method_name) + code + "\n"
         return cast(
             _InternalTraversalDispatchType,
-            langhelpers._exec_code_in_env(meth_text, {}, method_name),
+            langhelpers.exec_code_in_env(meth_text, {}, method_name),
         )
 
 

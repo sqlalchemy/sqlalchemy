@@ -732,8 +732,12 @@ def __init__(%(apply_pos)s):
 
     env = locals().copy()
     env["__name__"] = __name__
-    exec(func_text, env)
-    __init__ = env["__init__"]
+    __init__: Any = util.exec_code_in_env(
+        func_text,
+        env,
+        "__init__",
+        f"__init__ for class {class_.__module__}.{class_.__qualname__}",
+    )
     __init__.__doc__ = original_init.__doc__
     __init__._sa_original_init = original_init
 

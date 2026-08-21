@@ -100,6 +100,7 @@ from .langhelpers import dictlike_iteritems as dictlike_iteritems
 from .langhelpers import duck_type_collection as duck_type_collection
 from .langhelpers import ellipses_string as ellipses_string
 from .langhelpers import EnsureKWArg as EnsureKWArg
+from .langhelpers import exec_code_in_env as exec_code_in_env
 from .langhelpers import FastIntFlag as FastIntFlag
 from .langhelpers import find_matching_paren as find_matching_paren
 from .langhelpers import format_argspec_init as format_argspec_init
