@@ -2549,7 +2549,7 @@ class SQLiteDialect(default.DefaultDialect):
         constraint_name = None
         table_data = self._get_table_sql(connection, table_name, schema=schema)
         if table_data:
-            PK_PATTERN = r'CONSTRAINT +(?:"(.+?)"|(\w+)) +PRIMARY KEY'
+            PK_PATTERN = r'CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+PRIMARY\s+KEY'
             result = re.search(PK_PATTERN, table_data, re.I)
             if result:
                 constraint_name = result.group(1) or result.group(2)
@@ -2654,13 +2654,14 @@ class SQLiteDialect(default.DefaultDialect):
             # so parsing the columns is really about matching it up to what
             # we already have.
             FK_PATTERN = (
-                r'(?:CONSTRAINT +(?:"(.+?)"|(\w+)) +)?'
-                r"FOREIGN KEY *\( *(.+?) *\) +"
-                r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\( *((?:(?:"[^"]+"|[a-z0-9_]+) *(?:, *)?)+)\) *'  # noqa: E501
-                r"((?:ON (?:DELETE|UPDATE) "
-                r"(?:SET NULL|SET DEFAULT|CASCADE|RESTRICT|NO ACTION) *)*)"
-                r"((?:NOT +)?DEFERRABLE)?"
-                r"(?: +INITIALLY +(DEFERRED|IMMEDIATE))?"
+                r'(?:CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+)?'
+                r"FOREIGN\s+KEY\s*\(\s*(.+?)\s*\)\s+"
+                r'REFERENCES\s+(?:(?:"(.+?)")|([a-z0-9_]+))\s*\(\s*((?:(?:"[^"]+"|[a-z0-9_]+)\s*(?:,\s*)?)+)\)\s*'  # noqa: E501
+                r"((?:ON\s+(?:DELETE|UPDATE)\s+"
+                r"(?:SET\s+NULL|SET\s+DEFAULT|CASCADE|RESTRICT|"
+                r"NO\s+ACTION)\s*)*)"
+                r"((?:NOT\s+)?DEFERRABLE)?"
+                r"(?:\s+INITIALLY\s+(DEFERRED|IMMEDIATE))?"
             )
             for match in re.finditer(FK_PATTERN, table_data, re.I):
                 (
@@ -2687,7 +2688,13 @@ class SQLiteDialect(default.DefaultDialect):
                 referred_name = referred_quoted_name or referred_name
                 options = {}
 
-                for token in re.split(r" *\bON\b *", onupdatedelete.upper()):
+                # a newline may separate the words of an
+                # ON DELETE / ON UPDATE clause; normalize to single
+                # spaces so the tokens below compare correctly
+                onupdatedelete = re.sub(
+                    r"\s+", " ", onupdatedelete.upper()
+                ).strip()
+                for token in re.split(r" *\bON\b *", onupdatedelete):
                     if token.startswith("DELETE"):
                         ondelete = token[6:].strip()
                         if ondelete and ondelete != "NO ACTION":
@@ -2770,7 +2777,7 @@ class SQLiteDialect(default.DefaultDialect):
             if table_data is None:
                 return
             UNIQUE_PATTERN = (
-                r'(?:CONSTRAINT +(?:"(.+?)"|(\w+)) +)?UNIQUE *\((.+?)\)'
+                r'(?:CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+)?UNIQUE\s*\((.+?)\)'
             )
             INLINE_UNIQUE_PATTERN = (
                 r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?)[\t ]'

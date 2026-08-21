@@ -889,6 +889,64 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [{"column_names": ["y"], "name": None}],
         )
 
+    def test_constraint_names_multiline(self, connection, metadata):
+        """test #13528
+
+        SQLite stores the CREATE TABLE text as it was typed, so a constraint
+        name placed on a line of its own has to be located across the
+        newline.
+
+        """
+
+        Table("t", metadata, Column("id", Integer), Column("x", Integer))
+        connection.exec_driver_sql("""CREATE TABLE t (
+    id INTEGER NOT NULL,
+    x INTEGER,
+    CONSTRAINT my_pk
+        PRIMARY KEY (id),
+    CONSTRAINT my_uq
+        UNIQUE (x),
+    CONSTRAINT my_ck
+        CHECK (x > 0),
+    CONSTRAINT my_fk
+        FOREIGN KEY (x)
+        REFERENCES a1 (id)
+        ON DELETE CASCADE
+        DEFERRABLE
+        INITIALLY DEFERRED
+)""")
+
+        inspector = inspect(connection)
+        eq_(
+            inspector.get_pk_constraint("t"),
+            {"constrained_columns": ["id"], "name": "my_pk"},
+        )
+        eq_(
+            inspector.get_unique_constraints("t"),
+            [{"column_names": ["x"], "name": "my_uq"}],
+        )
+        eq_(
+            inspector.get_check_constraints("t"),
+            [{"sqltext": "x > 0", "name": "my_ck"}],
+        )
+        eq_(
+            inspector.get_foreign_keys("t"),
+            [
+                {
+                    "referred_table": "a1",
+                    "referred_columns": ["id"],
+                    "referred_schema": None,
+                    "name": "my_fk",
+                    "constrained_columns": ["x"],
+                    "options": {
+                        "ondelete": "CASCADE",
+                        "deferrable": True,
+                        "initially": "DEFERRED",
+                    },
+                }
+            ],
+        )
+
     def test_unique_constraint_unnamed_normal(self):
         inspector = inspect(testing.db)
         eq_(
