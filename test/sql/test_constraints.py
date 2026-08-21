@@ -1443,6 +1443,98 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(constraint), "CREATE INDEX name ON tbl (a + 5)"
         )
 
+    @testing.combinations(
+        (Index, "indexes"),
+        (PrimaryKeyConstraint, "constraints"),
+        (UniqueConstraint, "constraints"),
+        (CheckConstraint, "constraints"),
+        argnames="constraint,table_arg",
+    )
+    @testing.variation("attach_to_table", [True, False])
+    def test_constraints_attach_to_table(
+        self, constraint, table_arg, attach_to_table
+    ):
+        metadata = MetaData()
+
+        c = constraint("x", attach_to_table=attach_to_table)
+
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            c,
+        )
+
+        info = getattr(tbl, table_arg)
+        if attach_to_table:
+            assert c in info
+        else:
+            assert c not in info
+
+    @testing.combinations(
+        (Index, "indexes"),
+        (PrimaryKeyConstraint, "constraints"),
+        (UniqueConstraint, "constraints"),
+        (CheckConstraint, "constraints"),
+        argnames="constraint,table_arg",
+    )
+    def test_constraints_append_to_table(self, constraint, table_arg):
+        metadata = MetaData()
+
+        c = constraint("x", attach_to_table=False)
+
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            c,
+        )
+
+        tbl.append_constraint(c)
+        info = getattr(tbl, table_arg)
+        assert c in info
+
+    @testing.variation("attach_to_table", [True, False])
+    def test_foreign_key_constraint_attach_to_table(self, attach_to_table):
+        metadata = MetaData()
+
+        c = ForeignKeyConstraint(
+            ["x"],
+            ["test2.xid"],
+            attach_to_table=attach_to_table,
+        )
+
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            c,
+        )
+
+        if attach_to_table:
+            assert c in tbl.constraints
+        else:
+            assert c not in tbl.constraints
+
+    def test_foreign_key_constraint_append_to_table(self):
+        metadata = MetaData()
+
+        c = ForeignKeyConstraint(
+            ["x"],
+            ["test2.xid"],
+            attach_to_table=False,
+        )
+
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            c,
+        )
+
+        tbl.append_constraint(c)
+        assert c in tbl.constraints
+
 
 class ConstraintCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
