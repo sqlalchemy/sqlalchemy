@@ -54,6 +54,7 @@ from sqlalchemy import TIMESTAMP
 from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
+from sqlalchemy import values
 from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import insert
@@ -177,6 +178,61 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
         eq_ignore_whitespace(
             str(stmt.compile(dialect=mysql.dialect())),
             "INSERT INTO t (description) VALUES (lower(%s))",
+        )
+
+    def test_values(self):
+        value_expr = values(
+            column("col1", String),
+            column("col2", Integer),
+            name="temp_1",
+        ).data([("a", 2), ("b", 3)])
+
+        self.assert_compile(
+            select(value_expr),
+            "SELECT temp_1.col1, temp_1.col2 "
+            "FROM (VALUES ROW(%s, %s), ROW(%s, %s)) "
+            "AS temp_1 (col1, col2)",
+            checkpositional=("a", 2, "b", 3),
+        )
+        self.assert_compile(
+            select(value_expr),
+            "SELECT temp_1.col1, temp_1.col2 "
+            "FROM (VALUES ROW('a', 2), ROW('b', 3)) "
+            "AS temp_1 (col1, col2)",
+            literal_binds=True,
+        )
+
+    def test_values_mariadb(self):
+        value_expr = values(
+            column("col1", String),
+            column("col2", Integer),
+            name="temp_1",
+            literal_binds=True,
+        ).data([("a", 2), ("b", 3)])
+
+        self.assert_compile(
+            select(value_expr),
+            "SELECT temp_1.col1, temp_1.col2 "
+            "FROM (VALUES ('a', 2), ('b', 3)) "
+            "AS temp_1 (col1, col2)",
+            dialect=mysql.dialect(is_mariadb=True),
+        )
+
+    @testing.combinations(
+        ("mysql", "(VALUES ROW(%s), ROW(%s))"),
+        ("mariadb", "(VALUES (%s), (%s))"),
+        argnames="dialect, expected",
+    )
+    def test_scalar_values(self, dialect, expected):
+        value_expr = (
+            values(column("col1", Integer)).data([(1,), (2,)]).scalar_values()
+        )
+
+        self.assert_compile(
+            value_expr,
+            expected,
+            dialect=dialect,
+            checkpositional=(1, 2),
         )
 
     def test_create_index_simple(self):
