@@ -3250,6 +3250,24 @@ class GenericReprTest(fixtures.TestBase):
             "Bar(b='b', c='c', a='a')",
         )
 
+    def test_multi_kw_secondary_no_defaults(self):
+        # a secondary inspected class with no default arguments must still
+        # have its arguments included in the repr; previously they were
+        # dropped because spec.args[1:-0] evaluates to []
+        class Foo:
+            def __init__(self, a):
+                self.a = a
+
+        class Bar(Foo):
+            def __init__(self, b=2, **kw):
+                self.b = b
+                super().__init__(**kw)
+
+        eq_(
+            util.generic_repr(Bar(a="a", b="b"), to_inspect=[Bar, Foo]),
+            "Bar(b='b', a='a')",
+        )
+
     def test_discard_vargs(self):
         class Foo:
             def __init__(self, a, b, *args):
