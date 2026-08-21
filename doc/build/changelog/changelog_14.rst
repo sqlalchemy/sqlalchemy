@@ -2382,7 +2382,7 @@ This document details individual issue-level changes made throughout
         Fixed issue in joined-inheritance load of additional attributes
         functionality in deep multi-level inheritance where an intermediary table
         that contained no columns would not be included in the tables joined,
-        instead linking those tables to their primary key identifiers. While this
+        instead linking those tables to their identity keys. While this
         works fine, it nonetheless in 1.4 began producing the cartesian product
         compiler warning. The logic has been changed so that these intermediary
         tables are included regardless. While this does include additional tables
