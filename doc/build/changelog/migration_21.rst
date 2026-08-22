@@ -23,6 +23,22 @@ potentially backwards-incompatible changes in behavior.
 General
 =======
 
+.. _change_python_versions:
+
+Python version compatibility starts at version 3.11
+---------------------------------------------------
+
+In order to give the 2.1 series the most runway for maintaining Python version
+compatibility while still remaining up to date with current released Python
+versions, Python 3.10 is dropped as of August, 2026 in preparation for Python
+3.10 EOL in October of 2026.   The goal is that no Python versions would need
+to be dropped throughout the release span of the 2.1 series, just as it's been
+with every other SQLAlchemy major release series.   The 1.4 and 2.0 series
+of SQLAlchemy each had four year lifespans which meant they needed to support
+a very long series of Python releases (3.7 through 3.15 for SQLAlchemy 2.0).
+It's hoped that the 2.1 series will have a little less of a span to support
+by the time it reaches EOL.
+
 .. _change_10197:
 
 Asyncio "greenlet" dependency no longer installs by default

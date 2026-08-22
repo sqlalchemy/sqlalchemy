@@ -32,7 +32,6 @@ jobs:
           - "windows-11-arm"
           - "macos-latest"
         python-version:
-          - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
@@ -87,8 +86,6 @@ jobs:
             architecture: x86
           - os: "macos-latest"
             architecture: x64
-          - os: "windows-11-arm"
-            python-version: "3.10"
           - os: "windows-11-arm"
             architecture: x86
           - os: "windows-11-arm"

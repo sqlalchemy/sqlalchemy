@@ -63,7 +63,6 @@ from .compat import is64bit as is64bit
 from .compat import local_dataclass_fields as local_dataclass_fields
 from .compat import mini_gil as mini_gil
 from .compat import osx as osx
-from .compat import py311 as py311
 from .compat import py312 as py312
 from .compat import py313 as py313
 from .compat import py314 as py314

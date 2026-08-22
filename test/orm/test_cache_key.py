@@ -1162,10 +1162,8 @@ class EmbeddedSubqTest(
 
             if util.py312:
                 testing.skip_test("python platform not available")
-            elif util.py311:
-                int_within_variance(39996, total_size(ck), 0.05)
             else:
-                int_within_variance(29796, total_size(ck), 0.05)
+                int_within_variance(39996, total_size(ck), 0.05)
 
 
 class WithExpresionLoaderOptTest(DeclarativeMappedTest):

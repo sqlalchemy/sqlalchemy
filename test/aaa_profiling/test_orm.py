@@ -554,7 +554,7 @@ class SessionTest(NoCache, fixtures.MappedTest):
         sess.add_all(obj)
         sess.flush()
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=2)
         def go():
             sess.expire_all()
 

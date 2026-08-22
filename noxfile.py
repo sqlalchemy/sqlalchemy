@@ -24,7 +24,7 @@ if True:
     from tools.toxnox import tox_parameters
 
 
-PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14", "3.14t", "3.15"]
+PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14", "3.14t", "3.15"]
 DATABASES = ["sqlite", "sqlite_file", "postgresql", "mysql", "oracle", "mssql"]
 CEXT = ["_auto", "cext", "nocext"]
 GREENLET = ["_greenlet", "nogreenlet"]

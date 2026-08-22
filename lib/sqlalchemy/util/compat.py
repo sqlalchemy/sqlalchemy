@@ -36,7 +36,6 @@ py314b1 = sys.version_info >= (3, 14, 0, "beta", 1)
 py314 = sys.version_info >= (3, 14)
 py313 = sys.version_info >= (3, 13)
 py312 = sys.version_info >= (3, 12)
-py311 = sys.version_info >= (3, 11)
 pypy = platform.python_implementation() == "PyPy"
 cpython = platform.python_implementation() == "CPython"
 freethreading = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
