@@ -1,0 +1,20 @@
+.. change::
+    :tags: usecase, schema
+    :tickets: 13526
+
+    :class:`.ForeignKeyConstraint` now accepts a constraint which names the
+    same local column more than once, such as ``FOREIGN KEY (a, a) REFERENCES
+    r (b, c)``.  This form is valid SQL and constrains the referenced row so
+    that two of its columns are equal; it previously raised
+    :class:`.ArgumentError`.  Such a constraint now emits and reflects like any
+    other composite foreign key; the workaround added in 2.0 for
+    :ticket:`13525`, which skipped such a constraint during reflection, is
+    removed as it is no longer needed.  As part of this change, the check that
+    the number of constrained columns matches the number of referenced columns
+    no longer counts distinct column names, so that a genuine mismatch such as
+    ``ForeignKeyConstraint(["x", "x"], ["r.b"])``, which was formerly accepted
+    and silently dropped a column, is now rejected.
+
+    .. seealso::
+
+        :ref:`change_13526`

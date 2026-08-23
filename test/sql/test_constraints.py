@@ -1189,6 +1189,96 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "DEFERRABLE INITIALLY DEFERRED)",
         )
 
+    def test_render_repeated_fk_columns(self):
+        """a FOREIGN KEY may name the same local column more than once
+
+        part of #13526
+
+        """
+
+        m = MetaData()
+        Table(
+            "r",
+            m,
+            Column("b", Integer),
+            Column("c", Integer),
+            UniqueConstraint("b", "c"),
+        )
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            ForeignKeyConstraint(["x", "x"], ["r.b", "r.c"]),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x INTEGER, "
+            "FOREIGN KEY(x, x) REFERENCES r (b, c))",
+        )
+
+    def test_use_alter_repeated_fk_columns(self):
+        """a FOREIGN KEY may name the same local column more than once
+
+        part of #13526
+
+        """
+
+        m = MetaData()
+        Table(
+            "r",
+            m,
+            Column("b", Integer),
+            Column("c", Integer),
+            UniqueConstraint("b", "c"),
+        )
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            ForeignKeyConstraint(
+                ["x", "x"], ["r.b", "r.c"], name="fk_xx", use_alter=True
+            ),
+        )
+        const = list(t.foreign_key_constraints)[0]
+
+        self.assert_compile(
+            schema.AddConstraint(const),
+            "ALTER TABLE t ADD CONSTRAINT fk_xx "
+            "FOREIGN KEY(x, x) REFERENCES r (b, c)",
+        )
+        self.assert_compile(
+            schema.DropConstraint(const),
+            "ALTER TABLE t DROP CONSTRAINT fk_xx",
+        )
+
+    def test_render_repeated_fk_remote_columns(self):
+        """a FOREIGN KEY may name the same remote column more than once
+
+        part of #13526
+
+        """
+
+        m = MetaData()
+        Table(
+            "r",
+            m,
+            Column("a", Integer, primary_key=True),
+        )
+        t = Table(
+            "t",
+            m,
+            Column("a", Integer),
+            Column("b", Integer),
+            ForeignKeyConstraint(["a", "b"], ["r.a", "r.a"]),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (a INTEGER, b INTEGER, "
+            "FOREIGN KEY(a, b) REFERENCES r (a, a))",
+        )
+
     def test_use_alter(self):
         m = MetaData()
         Table("t", m, Column("a", Integer))

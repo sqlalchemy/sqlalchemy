@@ -91,6 +91,19 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def repeated_remote_col_foreign_keys(self):
+        """Target database must support a FOREIGN KEY constraint which names
+        the same *remote* column more than once, e.g.
+        ``FOREIGN KEY (a, b) REFERENCES r (c, c)``.
+
+        PostgreSQL rejects this as it requires a unique constraint on the
+        repeated remote column pair.
+
+        """
+
+        return only_on(["sqlite"], "not supported by database")
+
+    @property
     def foreign_keys_reflect_as_index(self):
         return only_on(["mysql", "mariadb"])
 

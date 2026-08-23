@@ -189,6 +189,16 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def repeated_remote_col_foreign_keys(self):
+        """Target database must support a FOREIGN KEY constraint which names
+        the same *remote* column more than once, e.g.
+        ``FOREIGN KEY (a, b) REFERENCES r (c, c)``.
+
+        """
+
+        return exclusions.closed()
+
+    @property
     def foreign_key_ddl(self):
         """Target database must support the DDL phrases for FOREIGN KEY."""
 

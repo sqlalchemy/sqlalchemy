@@ -324,7 +324,6 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(dict(fk1.columns), {})
         eq_(fk1.column_keys, ["foo", "bat"])
         eq_(fk1._col_description, "foo, bat")
-        eq_(fk1._elements, {"foo": fk1.elements[0], "bat": fk1.elements[1]})
 
     def test_fk_constraint_col_collection_no_table_real_cols(self):
         c1 = Column("foo", Integer)
@@ -333,7 +332,6 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(dict(fk1.columns), {})
         eq_(fk1.column_keys, ["foo"])
         eq_(fk1._col_description, "foo")
-        eq_(fk1._elements, {"foo": fk1.elements[0]})
 
     def test_fk_constraint_col_collection_added_to_table(self):
         c1 = Column("foo", Integer)
@@ -341,7 +339,6 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         fk1 = ForeignKeyConstraint(("foo",), ("bar",))
         Table("t", m, c1, fk1)
         eq_(dict(fk1.columns), {"foo": c1})
-        eq_(fk1._elements, {"foo": fk1.elements[0]})
 
     def test_fk_constraint_col_collection_via_fk(self):
         fk = ForeignKey("bar")
@@ -353,7 +350,78 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         assert fk1 in t1.constraints
         eq_(fk1.column_keys, ["foo"])
         eq_(dict(fk1.columns), {"foo": c1})
-        eq_(fk1._elements, {"foo": fk})
+        eq_(fk1.elements, [fk])
+
+    def test_fk_repeated_col_no_table(self):
+        fk1 = ForeignKeyConstraint(("foo", "foo"), ("bar", "hoho"))
+        eq_(fk1.column_keys, ["foo", "foo"])
+        eq_(fk1._col_description, "foo, foo")
+        eq_(len(fk1.elements), 2)
+
+    @testing.combinations(
+        "string_colargs",
+        "column_colargs",
+        "append_constraint",
+        argnames="type_",
+    )
+    def test_fk_repeated_col_added_to_table(self, type_):
+        """a FOREIGN KEY may name the same local column more than once;
+        the column collection stays parallel to .elements no matter which
+        way the constraint is attached.
+
+        """
+        m = MetaData()
+        Table("b", m, Column("a", Integer), Column("b", Integer))
+
+        if type_ == "string_colargs":
+            c1 = Column("foo", Integer)
+            fk1 = ForeignKeyConstraint(("foo", "foo"), ("b.a", "b.b"))
+            t1 = Table("t", m, c1, fk1)
+        elif type_ == "column_colargs":
+            # the Column objects are not yet attached, so the constraint
+            # auto-attaches on the column attach event as well as when the
+            # Table consumes it
+            c1 = Column("foo", Integer)
+            fk1 = ForeignKeyConstraint((c1, c1), ("b.a", "b.b"))
+            t1 = Table("t", m, c1, fk1)
+        elif type_ == "append_constraint":
+            c1 = Column("foo", Integer)
+            t1 = Table("t", m, c1)
+            fk1 = ForeignKeyConstraint(("foo", "foo"), ("b.a", "b.b"))
+            t1.append_constraint(fk1)
+        else:
+            assert False
+
+        assert fk1 in t1.constraints
+        eq_(list(fk1.columns), [c1, c1])
+        eq_(fk1.column_keys, ["foo", "foo"])
+        eq_(fk1._col_description, "foo, foo")
+        eq_(
+            [(fk.parent, fk.column) for fk in fk1.elements],
+            [(c1, m.tables["b"].c.a), (c1, m.tables["b"].c.b)],
+        )
+
+    def test_fk_repeated_col_copy(self):
+        m = MetaData()
+        Table("b", m, Column("a", Integer), Column("b", Integer))
+        t1 = Table(
+            "t",
+            m,
+            Column("foo", Integer),
+            ForeignKeyConstraint(("foo", "foo"), ("b.a", "b.b")),
+        )
+
+        m2 = MetaData()
+        m.tables["b"].to_metadata(m2)
+        t2 = t1.to_metadata(m2)
+        fk2 = list(t2.foreign_key_constraints)[0]
+
+        eq_(fk2.column_keys, ["foo", "foo"])
+        eq_(list(fk2.columns), [t2.c.foo, t2.c.foo])
+        eq_(
+            [(fk.parent, fk.column) for fk in fk2.elements],
+            [(t2.c.foo, m2.tables["b"].c.a), (t2.c.foo, m2.tables["b"].c.b)],
+        )
 
     def test_fk_no_such_parent_col_error(self):
         meta = MetaData()
@@ -468,13 +536,15 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             ["b.a"],
         )
 
+        # a repeated local column is supported, but still has to match
+        # the number of referenced columns
         assert_raises_message(
             exc.ArgumentError,
-            "ForeignKeyConstraint with duplicate source column "
-            "references are not supported.",
+            "ForeignKeyConstraint number of constrained columns "
+            "must match the number of referenced columns.",
             ForeignKeyConstraint,
             ["a", "a"],
-            ["b.a", "b.b"],
+            ["b.a"],
         )
 
     def test_pickle_metadata_sequence_restated(self):
@@ -6197,6 +6267,38 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             '"fk_address_UserData_UserData2_UserData3_user_data_Data2_Data3" '
             'FOREIGN KEY("UserData", "UserData2", "UserData3") '
             'REFERENCES "user" (data, "Data2", "Data3")',
+            dialect=default.DefaultDialect(),
+        )
+
+    def test_fk_repeated_col_allcols_underscore_name(self):
+        """a repeated local column contributes one token per position,
+        matching how the backend itself names such a constraint.
+
+        """
+        u1 = self._fixture(
+            naming_convention={
+                "fk": "fk_%(table_name)s_%(column_0_N_name)s_"
+                "%(referred_table_name)s_%(referred_column_0_N_name)s"
+            }
+        )
+
+        m1 = u1.metadata
+        a1 = Table(
+            "address",
+            m1,
+            Column("id", Integer, primary_key=True),
+            Column("UserData", String(30), key="user_data"),
+        )
+        fk = ForeignKeyConstraint(
+            ["user_data", "user_data"], ["user.data", "user.data2"]
+        )
+        a1.append_constraint(fk)
+        self.assert_compile(
+            schema.AddConstraint(fk),
+            "ALTER TABLE address ADD CONSTRAINT "
+            '"fk_address_UserData_UserData_user_data_Data2" '
+            'FOREIGN KEY("UserData", "UserData") '
+            'REFERENCES "user" (data, "Data2")',
             dialect=default.DefaultDialect(),
         )
 

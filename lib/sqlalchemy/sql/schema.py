@@ -39,6 +39,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import ClassVar
 from typing import Collection
 from typing import Dict
 from typing import Final
@@ -82,6 +83,7 @@ from .base import DialectKWArgs
 from .base import Executable
 from .base import SchemaEventTarget as SchemaEventTarget
 from .base import SchemaVisitable as SchemaVisitable
+from .base import WriteableColumnCollection
 from .coercions import _document_text_coercion
 from .ddl import CheckFirst
 from .elements import ClauseElement
@@ -4588,7 +4590,11 @@ class ColumnCollectionMixin:
 
     """
 
-    _columns: DedupeColumnCollection[Column[Any]]
+    _columns: WriteableColumnCollection[str, Column[Any]]
+
+    _column_collection_class: ClassVar[
+        Type[WriteableColumnCollection[Any, Any]]
+    ] = DedupeColumnCollection
 
     _allow_multiple_tables = False
 
@@ -4610,7 +4616,7 @@ class ColumnCollectionMixin:
         ] = None,
     ) -> None:
         self._column_flag = _column_flag
-        self._columns = DedupeColumnCollection()
+        self._columns = self._column_collection_class()
 
         processed_expressions: Optional[
             List[Union[ColumnElement[Any], str]]
@@ -4978,6 +4984,11 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
     __visit_name__ = "foreign_key_constraint"
 
+    # a FOREIGN KEY may name the same local column more than once, e.g.
+    # FOREIGN KEY (a, a) REFERENCES r (b, c).  the collection is therefore
+    # positional and parallel to self.elements, not deduplicating.
+    _column_collection_class = WriteableColumnCollection
+
     def __init__(
         self,
         columns: _typing_Sequence[_DDLColumnArgument],
@@ -5000,10 +5011,18 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         :param columns: A sequence of local column names. The named columns
           must be defined and present in the parent Table. The names should
           match the ``key`` given to each column (defaults to the name) unless
-          ``link_to_name`` is True.
+          ``link_to_name`` is True.  The same column may be named more than
+          once, e.g. ``FOREIGN KEY (a, a) REFERENCES r (b, c)``, which
+          constrains the referenced row so that its ``b`` and ``c`` values
+          are equal.
+
+          .. versionchanged:: 2.1  The same local column may be named more
+             than once.
 
         :param refcolumns: A sequence of foreign column names or Column
           objects. The columns must all be located within the same Table.
+          The number of entries must match that of
+          :paramref:`_schema.ForeignKeyConstraint.columns`.
 
         :param name: Optional, the in-database name of the key.
 
@@ -5086,22 +5105,15 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         self.use_alter = use_alter
         self.match = match
 
-        if len(set(columns)) != len(refcolumns):
-            if len(set(columns)) != len(columns):
-                # e.g. FOREIGN KEY (a, a) REFERENCES r (b, c)
-                raise exc.ArgumentError(
-                    "ForeignKeyConstraint with duplicate source column "
-                    "references are not supported."
-                )
-            else:
-                # e.g. FOREIGN KEY (a) REFERENCES r (b, c)
-                # paraphrasing
-                # https://www.postgresql.org/docs/current/static/ddl-constraints.html
-                raise exc.ArgumentError(
-                    "ForeignKeyConstraint number "
-                    "of constrained columns must match the number of "
-                    "referenced columns."
-                )
+        if len(columns) != len(refcolumns):
+            # e.g. FOREIGN KEY (a) REFERENCES r (b, c)
+            # paraphrasing
+            # https://www.postgresql.org/docs/current/static/ddl-constraints.html
+            raise exc.ArgumentError(
+                "ForeignKeyConstraint number "
+                "of constrained columns must match the number of "
+                "referenced columns."
+            )
 
         # standalone ForeignKeyConstraint - create
         # associated ForeignKey objects which will be applied to hosted
@@ -5135,8 +5147,18 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         self.elements.append(fk)
 
     columns: ReadOnlyColumnCollection[str, Column[Any]]
-    """A :class:`_expression.ColumnCollection` representing the set of columns
-    for this constraint.
+    """A :class:`_expression.ColumnCollection` representing the local columns
+    of this constraint, in the order given and parallel to
+    :attr:`.ForeignKeyConstraint.elements`.
+
+    Unlike the column collection of other constraint types, this collection
+    does not deduplicate; a constraint which names the same column more than
+    once, such as ``FOREIGN KEY (a, a) REFERENCES r (b, c)``, includes that
+    column once per position.
+
+    .. versionchanged:: 2.1  A :class:`_schema.ForeignKeyConstraint` may name
+       the same local column more than once, and this collection retains the
+       repeated entries.
 
     """
 
@@ -5150,11 +5172,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     This collection is intended to be read-only.
 
     """
-
-    @property
-    def _elements(self) -> util.OrderedDict[str, ForeignKey]:
-        # legacy - provide a dictionary view of (column_key, fk)
-        return util.OrderedDict(zip(self.column_keys, self.elements))
 
     @property
     def _referred_schema(self) -> Optional[str]:
@@ -5215,7 +5232,18 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         assert isinstance(table, Table)
         Constraint._set_parent(self, table)
 
-        ColumnCollectionConstraint._set_parent(self, table)
+        if self._pending_colargs:
+            # this collection is positional and parallel to self.elements,
+            # retaining duplicate entries for a constraint such as
+            # FOREIGN KEY (a, a) REFERENCES r (b, c).  _set_parent may run
+            # more than once for the same table, e.g. for an inline-declared
+            # constraint that also auto-attaches when its Column objects
+            # are attached, so populate rather than accumulate.
+            self._columns._populate_separate_keys(
+                (col.key, col)
+                for col in self._col_expressions(table)
+                if col is not None
+            )
 
         for col, fk in zip(self._columns, self.elements):
             if not hasattr(fk, "parent") or fk.parent is not col:
@@ -5340,6 +5368,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     """
 
     __visit_name__ = "primary_key_constraint"
+
+    _columns: DedupeColumnCollection[Column[Any]]
 
     def __init__(
         self,
