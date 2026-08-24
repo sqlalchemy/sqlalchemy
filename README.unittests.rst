@@ -95,6 +95,72 @@ same time::
     pytest -n4 --db postgresql --db mysql
 
 
+Profiling and Call Counts
+=========================
+
+The ``test/aaa_profiling/`` suite asserts function call counts for a series
+of operations, comparing what it measures against the counts stored in
+``test/profiles.txt``.  Each line in that file is keyed to a "platform key"
+that includes the architecture, operating system, Python implementation and
+version, the database and DBAPI in use, and whether or not the C extensions
+were built; a test is skipped outright when the running environment has no
+matching line.
+
+Call counts move whenever the library changes, so the file is regenerated
+periodically using the ``profiles`` nox session, which runs the suite with
+``--force-write-profiles`` across every interpreter, backend and cextension
+build that the file records::
+
+    nox -s profiles
+
+That is the slow, complete version, and it requires every database backend
+listed in "Setting Up Databases" below to be running.  In practice a change
+usually only affects part of the suite, and a subset can be handed through
+to pytest.  The session then looks at which backends actually have counts
+recorded for those tests and runs only those; most of ``test/aaa_profiling/``
+requires an in-memory SQLite database, so this typically means one backend
+rather than five::
+
+    nox -s profiles -- test/aaa_profiling/test_orm.py
+
+Individual cells of the matrix are addressable by parameter or by tag::
+
+    nox -s "profiles(py314-nocext)"
+    nox -t py313-profiles
+
+For a newly added test there is nothing recorded to consult, so all backends
+are run; ``--all-dbs`` requests that explicitly, and passing pytest's own
+``--db`` or ``--dburi`` through takes over backend selection entirely::
+
+    nox -s profiles -- --all-dbs test/aaa_profiling/test_new_thing.py
+    nox -s profiles -- --db postgresql
+
+Note that ``test/profiles.txt`` is rewritten in place as the tests run, so
+the session refuses to run under pytest-xdist.
+
+Entries are never removed by a regeneration run - a run only adds or updates
+lines for the platform it's running as.  ``tools/profiles.py`` handles the
+other side of that::
+
+    # what's in the file
+    python tools/profiles.py show
+    python tools/profiles.py show --tests
+
+    # report entries nothing regenerates anymore
+    python tools/profiles.py check
+
+    # drop entries for Python versions no longer in PROFILE_PYTHONS,
+    # plus tests that no longer exist in the source
+    python tools/profiles.py prune --stale --orphans
+
+The set of interpreters that are regenerated is the ``PROFILE_PYTHONS`` list
+at the top of ``tools/profiles.py``.  When a Python version is dropped,
+remove it from that list and run ``prune --stale``; when one is added, add it
+there and run the session to seed its counts.  ``prune`` also accepts
+``--python``, ``--database``, ``--platform`` (a glob against the platform
+key) and ``--test``, along with ``-n`` for a dry run.
+
+
 Setting Up Databases
 ====================
 
