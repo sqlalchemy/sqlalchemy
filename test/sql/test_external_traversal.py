@@ -205,9 +205,11 @@ class TraversalTest(
         escaped out for the POSTCOMPILE regex to work correctly.
 
 
+        Revised again for :ticket:`13534`.
+
         Currently, the bind key reg is::
 
-            re.sub(r"[%\(\) \$\[\]]", "_", name)
+            re.sub(r"[%\(\) \$\.\[\]:]+", "_", name).strip("_")
 
         and the compiler postcompile reg is::
 
@@ -226,7 +228,7 @@ class TraversalTest(
             expr.right.unique = False
             expr.right._convert_to_unique()
 
-        token = re.sub(r"[%\(\) \$\[\]]", "_", name)
+        token = re.sub(r"[%\(\) \$\.\[\]:]+", "_", name).strip("_")
 
         if positional:
             self.assert_compile(
