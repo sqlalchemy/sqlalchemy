@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13534
+
+    Fixed issue where two bound parameters whose names differ only in the
+    characters listed in
+    :attr:`.SQLCompiler.bindname_escape_characters`, such as those generated
+    for columns named ``"a.b"`` and ``"a_b"``, would be rendered using the
+    same name in the compiled statement, as those characters are escaped only
+    as the parameter is rendered.  The value for one of the two parameters was
+    then silently used for both, affecting SELECT criteria as well as the
+    VALUES and SET clauses of INSERT and UPDATE statements, where a value
+    could be written to the wrong column.  Escaped parameter names are now
+    disambiguated against the names already in use.  The ``.key`` of each
+    :class:`.BindParameter` is unaffected, so parameter dictionaries passed
+    by the caller continue to be keyed as before.

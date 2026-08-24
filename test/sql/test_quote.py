@@ -1,8 +1,10 @@
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import delete
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
+from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -11,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import update
 from sqlalchemy.engine import default
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -184,6 +187,162 @@ class QuoteExecTest(fixtures.TablesTest):
             select(*columns).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         ).all()
         assert result == [(1, 2, 3), (2, 2, 3), (4, 3, 2)]
+
+
+class BindEscapeRoundTripTest(fixtures.TestBase):
+    """round trip parameters whose names escape to the same string.
+
+    Bind parameter names are escaped for the characters in
+    :attr:`.SQLCompiler.bindname_escape_characters` as the statement is
+    rendered.  Two names differing only in those characters therefore escape
+    to the same string, and as the escaped name is what keys the parameter
+    dictionary handed to the driver, one parameter would overwrite the other.
+    See #13534.
+
+    """
+
+    __backend__ = True
+
+    @testing.fixture(
+        params=[
+            ("a.b", "a_b"),
+            ("a b", "a_b"),
+            ("a.b", "a b"),
+            ("a[b]", "a_b_"),
+        ],
+        ids=[
+            "dot_vs_underscore",
+            "space_vs_underscore",
+            "dot_vs_space",
+            "brackets_vs_underscore",
+        ],
+    )
+    def bind_escape_table(self, request, metadata, connection):
+        name_one, name_two = request.param
+
+        t = Table(
+            "bind_escape",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(name_one, Integer),
+            Column(name_two, Integer),
+        )
+        t.create(connection)
+        return t, name_one, name_two
+
+    def test_insert(self, connection, bind_escape_table):
+        t, name_one, name_two = bind_escape_table
+
+        connection.execute(insert(t), {"id": 1, name_one: 10, name_two: 20})
+
+        eq_(connection.execute(select(t)).all(), [(1, 10, 20)])
+
+    def test_insert_values(self, connection, bind_escape_table):
+        t, name_one, name_two = bind_escape_table
+
+        connection.execute(
+            insert(t).values({"id": 1, name_one: 10, name_two: 20})
+        )
+
+        eq_(connection.execute(select(t)).all(), [(1, 10, 20)])
+
+    def test_insert_executemany(self, connection, bind_escape_table):
+        t, name_one, name_two = bind_escape_table
+
+        connection.execute(
+            insert(t),
+            [
+                {"id": 1, name_one: 10, name_two: 20},
+                {"id": 2, name_one: 30, name_two: 40},
+            ],
+        )
+
+        eq_(
+            connection.execute(select(t).order_by(t.c.id)).all(),
+            [(1, 10, 20), (2, 30, 40)],
+        )
+
+    def test_update(self, connection, bind_escape_table):
+        t, name_one, name_two = bind_escape_table
+
+        connection.execute(insert(t), {"id": 1, name_one: 10, name_two: 20})
+        connection.execute(
+            update(t).where(t.c.id == 1).values({name_one: 30, name_two: 40})
+        )
+
+        eq_(connection.execute(select(t)).all(), [(1, 30, 40)])
+
+    def test_update_values_and_criteria(self, connection, bind_escape_table):
+        """the SET clause and the WHERE clause name parameters through
+        different mechanisms; exercise both in one statement"""
+
+        t, name_one, name_two = bind_escape_table
+
+        connection.execute(insert(t), {"id": 1, name_one: 10, name_two: 20})
+        connection.execute(
+            update(t)
+            .where(t.c[name_one] == 10, t.c[name_two] == 20)
+            .values({name_one: 30, name_two: 40})
+        )
+
+        eq_(connection.execute(select(t)).all(), [(1, 30, 40)])
+
+    def test_select_criteria(self, connection, bind_escape_table):
+        t, name_one, name_two = bind_escape_table
+
+        connection.execute(
+            insert(t),
+            [
+                {"id": 1, name_one: 10, name_two: 20},
+                {"id": 2, name_one: 20, name_two: 10},
+            ],
+        )
+
+        eq_(
+            connection.execute(
+                select(t).where(t.c[name_one] == 10, t.c[name_two] == 20)
+            ).all(),
+            [(1, 10, 20)],
+        )
+
+    def test_select_expanding_criteria(self, connection, bind_escape_table):
+        """expanding IN parameters are rendered through the postcompile
+        path, which names its parameters separately"""
+
+        t, name_one, name_two = bind_escape_table
+
+        connection.execute(
+            insert(t),
+            [
+                {"id": 1, name_one: 10, name_two: 20},
+                {"id": 2, name_one: 20, name_two: 10},
+            ],
+        )
+
+        eq_(
+            connection.execute(
+                select(t).where(
+                    t.c[name_one].in_([10, 30]), t.c[name_two].in_([20, 40])
+                )
+            ).all(),
+            [(1, 10, 20)],
+        )
+
+    def test_delete_criteria(self, connection, bind_escape_table):
+        t, name_one, name_two = bind_escape_table
+
+        connection.execute(
+            insert(t),
+            [
+                {"id": 1, name_one: 10, name_two: 20},
+                {"id": 2, name_one: 20, name_two: 10},
+            ],
+        )
+        connection.execute(
+            delete(t).where(t.c[name_one] == 10, t.c[name_two] == 20)
+        )
+
+        eq_(connection.execute(select(t)).all(), [(2, 20, 10)])
 
 
 class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
