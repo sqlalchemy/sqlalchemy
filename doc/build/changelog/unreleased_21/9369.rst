@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9369
+
+    Fixed bug in Declarative where ``__allow_unmapped__`` was not honored for
+    a :class:`_schema.Column` or :class:`_orm.MappedColumn` object inherited
+    from a mixin class and paired with a non-``Mapped[]`` (bare) type
+    annotation. Such an annotation would unconditionally raise
+    ``MappedAnnotationError`` even when ``__allow_unmapped__ = True`` was set
+    on the mapped class or a superclass, since the annotation-collection path
+    used for mixin attributes did not consult the flag.
