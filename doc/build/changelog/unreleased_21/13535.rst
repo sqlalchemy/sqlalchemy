@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13535
+
+    Fixed issue where an empty string passed to
+    :meth:`.IdentifierPreparer.quote`, such as the name of a
+    :class:`.Table` constructed with a blank name, would raise
+    ``IndexError`` rather than being rendered.  An empty identifier is now
+    always quoted.  While a blank name is not a legal identifier on most
+    backends, SQLite accepts one, so such a table may be delivered by
+    reflection; a table with a blank name can now be used in SELECT, INSERT,
+    UPDATE, DELETE and DDL statements.

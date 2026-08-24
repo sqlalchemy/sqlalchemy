@@ -79,6 +79,39 @@ class KeywordInDatabaseNameTest(fixtures.TestBase):
         assert "default.a" in meta.tables
 
 
+class BlankTableNameTest(fixtures.TestBase):
+    """SQLite accepts a blank table name, so reflection can produce a
+    :class:`.Table` that has one.
+
+    """
+
+    __only_on__ = "sqlite"
+    __backend__ = True
+
+    @testing.fixture
+    def blank_table(self, connection):
+        connection.exec_driver_sql('CREATE TABLE "" (c INTEGER, d VARCHAR)')
+        try:
+            yield
+        finally:
+            connection.exec_driver_sql('DROP TABLE ""')
+
+    def test_reflect(self, connection, blank_table):
+        meta = MetaData()
+        meta.reflect(connection)
+
+        eq_(set(meta.tables), {""})
+        eq_([c.name for c in meta.tables[""].c], ["c", "d"])
+
+    def test_round_trip(self, connection, blank_table):
+        meta = MetaData()
+        meta.reflect(connection)
+        table = meta.tables[""]
+
+        connection.execute(table.insert(), {"c": 1, "d": "d1"})
+        eq_(connection.execute(table.select()).all(), [(1, "d1")])
+
+
 class ConstraintReflectionTest(fixtures.TestBase):
     __only_on__ = "sqlite"
     __backend__ = True
