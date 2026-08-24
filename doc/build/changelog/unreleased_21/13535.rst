@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13535
+
+    Fixed issue where :meth:`.IdentifierPreparer.quote` would raise
+    ``IndexError`` when given an empty string, as the check for an illegal
+    initial character indexed the value without testing its length.  An empty
+    identifier is now treated as requiring quotes, which is the form the
+    database itself holds; this is reachable through reflection, as SQLite
+    accepts a table created with an empty name.

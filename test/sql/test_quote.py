@@ -20,6 +20,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.util import picklers
 
 
@@ -874,6 +875,18 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class PreparerTest(fixtures.TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
+
+    def test_quote_empty_identifier(self):
+        """an empty identifier has no unquoted form, and no first character
+        for the illegal-initial-character test to look at.
+
+        reflection can produce one: SQLite accepts CREATE TABLE "" (...).
+
+        """
+        prep = compiler.IdentifierPreparer(default.DefaultDialect())
+
+        eq_(prep.quote(""), '""')
+        is_true(prep._requires_quotes(""))
 
     def test_unformat(self):
         prep = compiler.IdentifierPreparer(default.DefaultDialect())

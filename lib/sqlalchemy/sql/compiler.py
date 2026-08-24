@@ -8090,6 +8090,10 @@ class IdentifierPreparer:
 
     def _requires_quotes(self, value: str) -> bool:
         """Return True if the given identifier requires quoting."""
+        if not value:
+            # an empty identifier has no unquoted form; it also has no first
+            # character, which the illegal-initial test below would index
+            return True
         lc_value = value.lower()
         return (
             lc_value in self.reserved_words
