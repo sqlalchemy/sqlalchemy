@@ -527,6 +527,20 @@ class ConstraintReflectionTest(fixtures.TestBase):
             ],
         )
 
+    def test_foreign_key_columns_backtracking(self, connection, metadata):
+        # the referred-columns branch of the FK reflection regex had a
+        # nested quantifier over the bare column token, so a long word run
+        # with no following ")" made it backtrack exponentially.  sqlite
+        # stores the CREATE TABLE text verbatim and get_foreign_keys scans
+        # all of it, so such a run placed inside a column DEFAULT literal
+        # used to hang reflection
+        Table("t", metadata, Column("id", Integer), Column("note", String))
+        connection.exec_driver_sql(
+            "CREATE TABLE t (id INTEGER, note TEXT DEFAULT "
+            "'FOREIGN KEY (a) REFERENCES b(" + ("a" * 100) + "')"
+        )
+        eq_(inspect(connection).get_foreign_keys("t"), [])
+
     def test_foreign_key_implicit_missing_parent(self):
         # test when the FK refers to a non-existent table and column names
         # aren't given.   only sqlite allows this case to exist

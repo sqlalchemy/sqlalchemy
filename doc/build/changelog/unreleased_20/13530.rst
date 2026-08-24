@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, sqlite, reflection
+    :tickets: 13530
+
+    Reworked the regular expression that parses ``FOREIGN KEY`` constraints
+    during SQLite ``CREATE TABLE`` reflection so that the referred column list
+    is matched unambiguously.  The previous pattern repeated a bare column
+    token with an optional separator between iterations, so a long run of word
+    characters that was not followed by a closing parenthesis made the engine
+    partition the run exponentially.  As SQLite stores the ``CREATE TABLE``
+    statement as it was originally typed and
+    :meth:`_reflection.Inspector.get_foreign_keys` scans the whole statement,
+    such a run placed inside e.g. a column ``DEFAULT`` string literal made
+    reflection of an otherwise ordinary table hang.  Fix courtesy of Javid
+    Khan.
