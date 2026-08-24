@@ -466,7 +466,6 @@ class TestTyping(fixtures.TestBase):
             {typing.ForwardRef("TAext_recursive_a"), str},
         )
 
-    @requires.up_to_date_typealias_type
     def test_pep695_value_generics(self):
         # generics
 
@@ -563,7 +562,6 @@ class TestTyping(fixtures.TestBase):
             typing.Union[bool, TAext_int, NT_str],
         )
 
-    @requires.up_to_date_typealias_type
     def test_includes_none_generics(self):
         # TODO: these are false negatives
         false_negatives = {

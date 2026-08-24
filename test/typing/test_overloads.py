@@ -50,12 +50,6 @@ orm_execution_options = {
 
 
 class OverloadTest(fixtures.TestBase):
-    # NOTE: get_overloads is python 3.11. typing_extensions implements it
-    # but for it to work the typing_extensions overload needs to be use and
-    # it can only be imported directly from typing_extensions in all modules
-    # that use it otherwise flake8 (pyflakes actually) will flag it with F811
-    __requires__ = ("python311",)
-
     @testing.combinations(
         (Engine, engine_execution_options),
         (Connection, core_execution_options),

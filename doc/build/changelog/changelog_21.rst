@@ -1753,6 +1753,12 @@
         Python 3.10 or above is now required; support for Python 3.9, 3.8 and 3.7
         is dropped as these versions are EOL.
 
+        .. note:: as of 2.0.0rc1 3.10 is also dropped
+
+        ..seealso::
+
+            :ref:`change_python_versions`
+
     .. change::
         :tags: engine, change
 
