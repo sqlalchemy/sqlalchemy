@@ -1031,6 +1031,78 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
+class BlankNameTest(fixtures.TestBase, AssertsCompiledSQL):
+    """test that a blank identifier is quoted rather than raising.
+
+    A blank name is not a legal identifier on most backends, however
+    SQLite accepts one, so a blank table name can be delivered by
+    reflection.
+
+    """
+
+    __dialect__ = "default"
+
+    @testing.fixture
+    def blank_table(self):
+        return Table(
+            "",
+            MetaData(),
+            Column("c", Integer, primary_key=True),
+            Column("d", Integer),
+        )
+
+    def test_requires_quotes(self):
+        preparer = default.DefaultDialect().identifier_preparer
+        is_(preparer._requires_quotes(""), True)
+
+    def test_quote(self):
+        preparer = default.DefaultDialect().identifier_preparer
+        eq_(preparer.quote(""), '""')
+
+    def test_format_table(self, blank_table):
+        preparer = default.DefaultDialect().identifier_preparer
+        eq_(preparer.format_table(blank_table), '""')
+
+    def test_select(self, blank_table):
+        self.assert_compile(select(blank_table), 'SELECT "".c, "".d FROM ""')
+
+    def test_select_labels(self, blank_table):
+        self.assert_compile(
+            select(blank_table).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
+            'SELECT "".c AS _c, "".d AS _d FROM ""',
+        )
+
+    def test_select_alias(self, blank_table):
+        self.assert_compile(
+            select(blank_table.alias("q")), 'SELECT q.c, q.d FROM "" AS q'
+        )
+
+    def test_insert(self, blank_table):
+        self.assert_compile(
+            insert(blank_table), 'INSERT INTO "" (c, d) VALUES (:c, :d)'
+        )
+
+    def test_update(self, blank_table):
+        self.assert_compile(
+            update(blank_table).values(d=5), 'UPDATE "" SET d=:d'
+        )
+
+    def test_delete(self, blank_table):
+        self.assert_compile(delete(blank_table), 'DELETE FROM ""')
+
+    def test_create_table(self, blank_table):
+        self.assert_compile(
+            schema.CreateTable(blank_table),
+            'CREATE TABLE "" (c INTEGER NOT NULL, d INTEGER, '
+            "PRIMARY KEY (c))",
+        )
+
+    def test_drop_table(self, blank_table):
+        self.assert_compile(schema.DropTable(blank_table), 'DROP TABLE ""')
+
+
 class PreparerTest(fixtures.TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
 

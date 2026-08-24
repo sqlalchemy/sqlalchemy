@@ -8139,6 +8139,12 @@ class IdentifierPreparer:
 
     def _requires_quotes(self, value: str) -> bool:
         """Return True if the given identifier requires quoting."""
+        if not value:
+            # a blank name is legal on SQLite only, where it can be
+            # delivered by reflection; quote it so that it renders as the
+            # database has it, rather than indexing into an empty string
+            # below
+            return True
         lc_value = value.lower()
         return (
             lc_value in self.reserved_words
