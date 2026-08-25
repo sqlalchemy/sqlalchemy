@@ -3008,37 +3008,77 @@ class SQLCompiler(Compiled):
 
         return f"{left} AND {right}"
 
-    def visit_over(self, over, **kwargs):
-        text = over.element._compiler_dispatch(self, **kwargs)
-        if over.range_ is not None:
-            range_ = f"RANGE BETWEEN {self.process(over.range_, **kwargs)}"
-        elif over.rows is not None:
-            range_ = f"ROWS BETWEEN {self.process(over.rows, **kwargs)}"
-        elif over.groups is not None:
-            range_ = f"GROUPS BETWEEN {self.process(over.groups, **kwargs)}"
+    def _window_specification(
+        self,
+        element,
+        *,
+        existing_window_name=None,
+        **kwargs,
+    ):
+        if element.range_ is not None:
+            frame = f"RANGE BETWEEN {self.process(element.range_, **kwargs)}"
+        elif element.rows is not None:
+            frame = f"ROWS BETWEEN {self.process(element.rows, **kwargs)}"
+        elif element.groups is not None:
+            frame = f"GROUPS BETWEEN {self.process(element.groups, **kwargs)}"
         else:
-            range_ = None
+            frame = None
 
-        if range_ is not None and over.exclude is not None:
-            range_ += " EXCLUDE " + self.preparer.validate_sql_phrase(
-                over.exclude, _WINDOW_EXCLUDE_RE
+        if frame is not None and element.exclude is not None:
+            frame += " EXCLUDE " + self.preparer.validate_sql_phrase(
+                element.exclude, _WINDOW_EXCLUDE_RE
             )
 
-        return "%s OVER (%s)" % (
-            text,
-            " ".join(
-                [
-                    "%s BY %s"
-                    % (word, clause._compiler_dispatch(self, **kwargs))
-                    for word, clause in (
-                        ("PARTITION", over.partition_by),
-                        ("ORDER", over.order_by),
-                    )
-                    if clause is not None and len(clause)
-                ]
-                + ([range_] if range_ else [])
-            ),
+        clauses = []
+        if existing_window_name is not None:
+            clauses.append(self.preparer.quote(existing_window_name))
+        clauses.extend(
+            "%s BY %s" % (word, clause._compiler_dispatch(self, **kwargs))
+            for word, clause in (
+                ("PARTITION", element.partition_by),
+                ("ORDER", element.order_by),
+            )
+            if clause is not None and len(clause)
         )
+        if frame:
+            clauses.append(frame)
+        return " ".join(clauses)
+
+    def visit_over(self, over, **kwargs):
+        text = over.element._compiler_dispatch(self, **kwargs)
+        if over.window is not None:
+            window_name = over.window.name
+        else:
+            window_name = over.window_name
+
+        specification = self._window_specification(
+            over, existing_window_name=window_name, **kwargs
+        )
+        has_local_specification = any(
+            item is not None
+            for item in (
+                over.partition_by,
+                over.order_by,
+                over.range_,
+                over.rows,
+                over.groups,
+            )
+        )
+
+        if window_name is not None and not has_local_specification:
+            return f"{text} OVER {self.preparer.quote(window_name)}"
+        else:
+            return f"{text} OVER ({specification})"
+
+    def visit_window(self, window, **kwargs):
+        if window.existing_window is not None:
+            existing_window_name = window.existing_window.name
+        else:
+            existing_window_name = window.existing_window_name
+        specification = self._window_specification(
+            window, existing_window_name=existing_window_name, **kwargs
+        )
+        return f"{self.preparer.quote(window.name)} AS ({specification})"
 
     def visit_withingroup(self, withingroup, **kwargs):
         return "%s WITHIN GROUP (ORDER BY %s)" % (
@@ -5315,6 +5355,73 @@ class SQLCompiler(Compiled):
 
         return froms
 
+    def _collect_select_windows(self, select):
+        definitions: Dict[str, elements.Window] = {}
+        visiting = set()
+
+        def add_window(window):
+            identity = id(window)
+            if identity in visiting:
+                raise exc.CompileError("named window definitions are cyclic")
+            visiting.add(identity)
+            if window.existing_window is not None:
+                add_window(window.existing_window)
+
+            existing = definitions.get(window.name)
+            if existing is not None and existing is not window:
+                if not existing.compare(window):
+                    raise exc.CompileError(
+                        f"named window {window.name!r} is defined more "
+                        "than once"
+                    )
+            else:
+                definitions[window.name] = window
+            visiting.remove(identity)
+
+        for window in select._window_definitions:
+            add_window(window)
+
+        seen = set()
+
+        def visit(element):
+            if isinstance(element, (list, tuple)):
+                for child in element:
+                    visit(child)
+                return
+            elif not isinstance(element, elements.ClauseElement):
+                return
+
+            identity = id(element)
+            if identity in seen:
+                return
+            seen.add(identity)
+            if isinstance(element, elements.Window):
+                add_window(element)
+                return
+            if isinstance(element, selectable.SelectBase):
+                return
+            for child in element.get_children():
+                visit(child)
+
+        for clause in itertools.chain(
+            select._raw_columns,
+            select._where_criteria,
+            select._having_criteria,
+            select._group_by_clauses,
+            select._order_by_clauses,
+        ):
+            visit(clause)
+
+        return list(definitions.values())
+
+    def window_clause(self, select, **kwargs):
+        windows = self._collect_select_windows(select)
+        if not windows:
+            return ""
+        return " WINDOW " + ", ".join(
+            window._compiler_dispatch(self, **kwargs) for window in windows
+        )
+
     def _compose_select_body(
         self,
         text,
@@ -5398,6 +5505,8 @@ class SQLCompiler(Compiled):
             )
             if t:
                 text += " \nHAVING " + t
+
+        text += self.window_clause(select, **kwargs)
 
         if select._post_criteria_clause is not None:
             pcc = self.process(select._post_criteria_clause, **kwargs)

@@ -114,6 +114,7 @@ from .expression import Update as Update
 from .expression import update as update
 from .expression import Values as Values
 from .expression import values as values
+from .expression import window as window
 from .expression import within_group as within_group
 from .expression import WriteableColumnCollection as WriteableColumnCollection
 from .visitors import ClauseVisitor as ClauseVisitor

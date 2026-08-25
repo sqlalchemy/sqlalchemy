@@ -4512,6 +4512,137 @@ class _OverrideBinds(Grouping[_T]):
 _FrameIntTuple = tuple[int | None, int | None]
 
 
+class Window(ClauseElement):
+    """Represent a named SQL window definition.
+
+    Named windows are associated with a :class:`_sql.Select` automatically
+    when referenced by an :class:`.Over` construct, or explicitly with
+    :meth:`_sql.Select.add_window`.
+
+    .. versionadded:: 2.1
+    """
+
+    __visit_name__ = "window"
+
+    inherit_cache = True
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("name", InternalTraversal.dp_string),
+        ("existing_window", InternalTraversal.dp_clauseelement),
+        ("existing_window_name", InternalTraversal.dp_string),
+        ("order_by", InternalTraversal.dp_clauseelement),
+        ("partition_by", InternalTraversal.dp_clauseelement),
+        ("range_", InternalTraversal.dp_clauseelement),
+        ("rows", InternalTraversal.dp_clauseelement),
+        ("groups", InternalTraversal.dp_clauseelement),
+        ("exclude", InternalTraversal.dp_string),
+    ]
+
+    name: str
+    existing_window: Window | None
+    existing_window_name: str | None
+    order_by: ClauseList | None = None
+    partition_by: ClauseList | None = None
+    range_: FrameClause | None
+    rows: FrameClause | None
+    groups: FrameClause | None
+    exclude: str | None
+
+    def __init__(
+        self,
+        name: str,
+        *,
+        existing_window: Window | str | None = None,
+        partition_by: _ByArgument | None = None,
+        order_by: _ByArgument | None = None,
+        range_: _FrameIntTuple | FrameClause | None = None,
+        rows: _FrameIntTuple | FrameClause | None = None,
+        groups: _FrameIntTuple | FrameClause | None = None,
+        exclude: str | None = None,
+    ):
+        if not isinstance(name, str) or not name:
+            raise exc.ArgumentError("a named window requires a name")
+        self.name = name
+
+        if isinstance(existing_window, Window):
+            self.existing_window = existing_window
+            self.existing_window_name = None
+        elif existing_window is None or (
+            isinstance(existing_window, str) and existing_window
+        ):
+            self.existing_window = None
+            self.existing_window_name = existing_window
+        else:
+            raise exc.ArgumentError(
+                "existing_window must be a Window object or a non-empty name"
+            )
+
+        if order_by is not None:
+            self.order_by = ClauseList(
+                *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
+            )
+        if partition_by is not None:
+            self.partition_by = ClauseList(
+                *util.to_list(partition_by),
+                _literal_as_text_role=roles.ByOfRole,
+            )
+
+        if sum(item is not None for item in (range_, rows, groups)) > 1:
+            raise exc.ArgumentError(
+                "only one of 'rows', 'range_', or 'groups' may be provided"
+            )
+        self.range_ = FrameClause._parse(range_, coerce_int=False)
+        self.rows = FrameClause._parse(rows, coerce_int=True)
+        self.groups = FrameClause._parse(groups, coerce_int=True)
+        self.exclude = exclude
+
+        if exclude is not None and not any(
+            item is not None for item in (range_, rows, groups)
+        ):
+            raise exc.ArgumentError(
+                "'exclude' requires that one of 'rows', "
+                "'range_', or 'groups' is also specified"
+            )
+
+    def window(
+        self,
+        name: str,
+        *,
+        partition_by: _ByArgument | None = None,
+        order_by: _ByArgument | None = None,
+        range_: _FrameIntTuple | FrameClause | None = None,
+        rows: _FrameIntTuple | FrameClause | None = None,
+        groups: _FrameIntTuple | FrameClause | None = None,
+        exclude: str | None = None,
+    ) -> Window:
+        """Return a named window derived from this window."""
+        return Window(
+            name,
+            existing_window=self,
+            partition_by=partition_by,
+            order_by=order_by,
+            range_=range_,
+            rows=rows,
+            groups=groups,
+            exclude=exclude,
+        )
+
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
+        from_objects: List[FromClause] = []
+        window: Window | None = self
+        seen: Set[int] = set()
+
+        while window is not None and id(window) not in seen:
+            seen.add(id(window))
+            for clause in (window.partition_by, window.order_by):
+                if clause is not None:
+                    from_objects.extend(clause._from_objects)
+            window = window.existing_window
+
+        return from_objects
+
+
 class Over(ColumnElement[_T]):
     """Represent an OVER clause.
 
@@ -4526,6 +4657,8 @@ class Over(ColumnElement[_T]):
 
     _traverse_internals: _TraverseInternalsType = [
         ("element", InternalTraversal.dp_clauseelement),
+        ("window", InternalTraversal.dp_clauseelement),
+        ("window_name", InternalTraversal.dp_string),
         ("order_by", InternalTraversal.dp_clauseelement),
         ("partition_by", InternalTraversal.dp_clauseelement),
         ("range_", InternalTraversal.dp_clauseelement),
@@ -4545,6 +4678,8 @@ class Over(ColumnElement[_T]):
     rows: FrameClause | None
     groups: FrameClause | None
     exclude: str | None
+    window: Window | None
+    window_name: str | None
 
     def __init__(
         self,
@@ -4555,8 +4690,19 @@ class Over(ColumnElement[_T]):
         rows: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
         exclude: str | None = None,
+        window: Window | str | None = None,
     ):
         self.element = element
+        if isinstance(window, Window):
+            self.window = window
+            self.window_name = None
+        elif window is None or (isinstance(window, str) and window):
+            self.window = None
+            self.window_name = window
+        else:
+            raise exc.ArgumentError(
+                "window must be a Window object or a non-empty name"
+            )
         if order_by is not None:
             self.order_by = ClauseList(
                 *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
@@ -4598,7 +4744,12 @@ class Over(ColumnElement[_T]):
             itertools.chain(
                 *[
                     c._from_objects
-                    for c in (self.element, self.partition_by, self.order_by)
+                    for c in (
+                        self.element,
+                        self.window,
+                        self.partition_by,
+                        self.order_by,
+                    )
                     if c is not None
                 ]
             )
@@ -4814,6 +4965,7 @@ class AggregateOrderBy(WrapsColumnExpression[_T]):
 
     def over(
         self,
+        window: Window | str | None = None,
         *,
         partition_by: _ByArgument | None = None,
         order_by: _ByArgument | None = None,
@@ -4837,6 +4989,7 @@ class AggregateOrderBy(WrapsColumnExpression[_T]):
             rows=rows,
             groups=groups,
             exclude=exclude,
+            window=window,
         )
 
     @overload
@@ -4967,6 +5120,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
         rows: _FrameIntTuple | FrameClause | None = None,
         groups: _FrameIntTuple | FrameClause | None = None,
         exclude: str | None = None,
+        window: Window | str | None = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this filtered function.
 
@@ -4994,6 +5148,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
             rows=rows,
             groups=groups,
             exclude=exclude,
+            window=window,
         )
 
     def within_group(
