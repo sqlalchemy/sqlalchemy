@@ -23,6 +23,16 @@ class NamedWindowTest(fixtures.TestBase, AssertsCompiledSQL):
             "WINDOW w AS (PARTITION BY x ORDER BY y)",
         )
 
+    def test_order_by_reference_adds_definition(self):
+        w = window("w", partition_by=column("x"))
+
+        stmt = select(column("z")).order_by(func.sum(column("z")).over(w))
+
+        self.assert_compile(
+            stmt,
+            "SELECT z WINDOW w AS (PARTITION BY x) ORDER BY sum(z) OVER w",
+        )
+
     def test_string_reference_with_explicit_definition(self):
         w = window("w", partition_by=column("x"))
 

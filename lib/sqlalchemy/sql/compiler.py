@@ -435,6 +435,8 @@ class _CompilerStackEntry(_BaseCompilerStackEntry, total=False):
     need_result_map_for_compound: bool
     select_0: ReturnsRows
     insert_from_select: Select[Unpack[TupleAny]]
+    window_clause_prefix: str
+    window_definitions: List[elements.Window]
 
 
 class ExpandedState(NamedTuple):
@@ -3048,6 +3050,8 @@ class SQLCompiler(Compiled):
         text = over.element._compiler_dispatch(self, **kwargs)
         if over.window is not None:
             window_name = over.window.name
+            if self.stack:
+                self.stack[-1]["window_definitions"].append(over.window)
         else:
             window_name = over.window_name
 
@@ -5277,6 +5281,15 @@ class SQLCompiler(Compiled):
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
+        referenced_windows = self.stack[-1]["window_definitions"]
+        if select_stmt._window_definitions or referenced_windows:
+            position = len(self.stack[-1]["window_clause_prefix"])
+            text = (
+                text[:position]
+                + self.window_clause(select_stmt, referenced_windows, **kwargs)
+                + text[position:]
+            )
+
         # In compound query, CTEs are shared at the compound level
         if self.ctes and (not is_embedded_select or toplevel):
             nesting_level = len(self.stack) if not toplevel else None
@@ -5350,12 +5363,13 @@ class SQLCompiler(Compiled):
             "correlate_froms": all_correlate_froms,
             "selectable": select,
             "compile_state": compile_state,
+            "window_definitions": [],
         }
         self.stack.append(new_entry)
 
         return froms
 
-    def _collect_select_windows(self, select):
+    def _collect_select_windows(self, select, referenced_windows):
         definitions: Dict[str, elements.Window] = {}
         visiting = set()
 
@@ -5378,44 +5392,15 @@ class SQLCompiler(Compiled):
                 definitions[window.name] = window
             visiting.remove(identity)
 
-        for window in select._window_definitions:
-            add_window(window)
-
-        seen = set()
-
-        def visit(element):
-            if isinstance(element, (list, tuple)):
-                for child in element:
-                    visit(child)
-                return
-            elif not isinstance(element, elements.ClauseElement):
-                return
-
-            identity = id(element)
-            if identity in seen:
-                return
-            seen.add(identity)
-            if isinstance(element, elements.Window):
-                add_window(element)
-                return
-            if isinstance(element, selectable.SelectBase):
-                return
-            for child in element.get_children():
-                visit(child)
-
-        for clause in itertools.chain(
-            select._raw_columns,
-            select._where_criteria,
-            select._having_criteria,
-            select._group_by_clauses,
-            select._order_by_clauses,
+        for window in itertools.chain(
+            select._window_definitions, referenced_windows
         ):
-            visit(clause)
+            add_window(window)
 
         return list(definitions.values())
 
-    def window_clause(self, select, **kwargs):
-        windows = self._collect_select_windows(select)
+    def window_clause(self, select, referenced_windows, **kwargs):
+        windows = self._collect_select_windows(select, referenced_windows)
         if not windows:
             return ""
         return " WINDOW " + ", ".join(
@@ -5506,7 +5491,7 @@ class SQLCompiler(Compiled):
             if t:
                 text += " \nHAVING " + t
 
-        text += self.window_clause(select, **kwargs)
+        self.stack[-1]["window_clause_prefix"] = text
 
         if select._post_criteria_clause is not None:
             pcc = self.process(select._post_criteria_clause, **kwargs)
