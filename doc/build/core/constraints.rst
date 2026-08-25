@@ -612,7 +612,12 @@ that as follows::
                 table.name,
             ]
             + [element.parent.name for element in constraint.elements]
-            + [element.target_fullname for element in constraint.elements]
+            + [
+                token
+                for element in constraint.elements
+                for token in element.target_tokens
+                if token is not None
+            ]
         )
         guid = uuid.uuid5(uuid.NAMESPACE_OID, "_".join(str_tokens).encode("ascii"))
         return str(guid)
@@ -646,7 +651,7 @@ name as follows::
     >>> fk = ForeignKeyConstraint(["user_id", "user_version_id"], ["user.id", "user.version"])
     >>> address_table.append_constraint(fk)
     >>> fk.name
-    fk_0cd51ab5-8d70-56e8-a83c-86661737766d
+    fk_c4e8ce9a-6723-5c2d-8b41-a4e0b119115a
 
 .. seealso::
 
@@ -813,6 +818,9 @@ Constraints API
 .. autoclass:: ForeignKeyConstraint
     :members:
     :inherited-members:
+
+.. autoclass:: ForeignKeyTarget
+    :members:
 
 .. autoclass:: HasConditionalDDL
     :members:

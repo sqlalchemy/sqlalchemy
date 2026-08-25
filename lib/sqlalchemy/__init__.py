@@ -74,6 +74,7 @@ from .schema import ExecutableDDLElement as ExecutableDDLElement
 from .schema import FetchedValue as FetchedValue
 from .schema import ForeignKey as ForeignKey
 from .schema import ForeignKeyConstraint as ForeignKeyConstraint
+from .schema import ForeignKeyTarget as ForeignKeyTarget
 from .schema import Identity as Identity
 from .schema import Index as Index
 from .schema import insert_sentinel as insert_sentinel

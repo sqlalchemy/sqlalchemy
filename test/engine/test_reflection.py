@@ -49,6 +49,54 @@ from sqlalchemy.testing.schema import Table
 class ReflectionTest(fixtures.TestBase, ComparesTables):
     __sparse_driver_backend__ = True
 
+    @testing.combinations(
+        ("plain", "ref_tbl", "col", None),
+        ("dot_in_table", "ref.tbl", "col", None),
+        ("dot_in_column", "ref_tbl", "my.col", None),
+        ("dots_in_both", "ref.tbl", "my.col", None),
+        ("many_dots", "a.b.c.tbl", "x.y.z.col", None),
+        (
+            "cross_schema",
+            "ref.tbl",
+            "my.col",
+            True,
+            testing.requires.cross_schema_fk_reflection,
+        ),
+        argnames="tname, cname, use_schema",
+        id_="iaas",
+    )
+    def test_reflect_fk_with_dotted_names(
+        self, connection, metadata, tname, cname, use_schema
+    ):
+        """reflection built its refspec by joining the referred schema,
+        table and column names with dots, so a reflected name containing a
+        dot could not survive being handed back to ForeignKeyConstraint.
+
+        """
+        schema = config.test_schema if use_schema else None
+
+        ref = Table(
+            tname,
+            metadata,
+            Column(cname, sa.Integer, primary_key=True),
+            schema=schema,
+        )
+        Table(
+            "reflect_dotted_fk",
+            metadata,
+            Column("a", sa.Integer, ForeignKey(ref.c[cname])),
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+        t2 = Table("reflect_dotted_fk", m2, autoload_with=connection)
+
+        fk = list(t2.c.a.foreign_keys)[0]
+        eq_(fk.target_tokens, (schema, tname, cname))
+        eq_(fk.column.table.name, tname)
+        eq_(fk.column.table.schema, schema)
+        eq_(fk.column.name, cname)
+
     def test_basic_reflection(self, connection, metadata):
         meta = metadata
 

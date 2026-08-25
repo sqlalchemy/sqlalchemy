@@ -60,6 +60,7 @@ from .sql.schema import DefaultGenerator as DefaultGenerator
 from .sql.schema import FetchedValue as FetchedValue
 from .sql.schema import ForeignKey as ForeignKey
 from .sql.schema import ForeignKeyConstraint as ForeignKeyConstraint
+from .sql.schema import ForeignKeyTarget as ForeignKeyTarget
 from .sql.schema import HasConditionalDDL as HasConditionalDDL
 from .sql.schema import Identity as Identity
 from .sql.schema import Index as Index

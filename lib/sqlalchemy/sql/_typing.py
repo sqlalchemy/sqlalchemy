@@ -20,6 +20,7 @@ from typing import Optional
 from typing import overload
 from typing import Protocol
 from typing import Set
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeAlias
@@ -301,7 +302,19 @@ used for :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`, etc.
 
 """
 
-_DDLColumnReferenceArgument = _DDLColumnArgument
+_DDLColumnReferenceArgument = Union[
+    _DDLColumnArgument,
+    Tuple[Optional[str], str, Optional[str]],
+    Tuple[str, Optional[str]],
+]
+"""DDL column reference, as used by :class:`.ForeignKey`.
+
+In addition to the forms accepted by ``_DDLColumnArgument``, the target may
+be given as a ``(schema, table_name, column_name)`` or ``(table_name,
+column_name)`` tuple, which is the only form that can express a name that
+itself contains a dot.
+
+"""
 
 _DMLTableArgument = Union[
     "TableClause",

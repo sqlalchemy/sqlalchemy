@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from contextlib import nullcontext
 import pickle
+import re
 
 import sqlalchemy as tsa
 from sqlalchemy import ARRAY
@@ -23,6 +24,7 @@ from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import ForeignKeyTarget
 from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
@@ -135,7 +137,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 eq_(c2.default.name, "foo_seq")
             for a1, a2 in zip(col.foreign_keys, c2.foreign_keys):
                 assert a1 is not a2
-                eq_(a2._colspec, "bat.blah")
+                eq_(a2.target_fullname, "bat.blah")
 
     def test_col_subclass_copy(self):
         class MyColumn(schema.Column):
@@ -466,7 +468,9 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         xa = t.alias().c.x
         assert_raises_message(
             exc.ArgumentError,
-            "ForeignKey received Column not bound to a Table, got: .*Alias",
+            "ForeignKey target Column .*x.* is associated with .*Alias.*, "
+            "which is not a Table; a foreign key may only target a Column "
+            "of a Table",
             ForeignKey,
             xa,
         )
@@ -480,7 +484,9 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
         assert_raises_message(
             exc.ArgumentError,
-            "ForeignKey received Column not bound to a Table, got: .*Alias",
+            "ForeignKey target Column .*x.* is associated with .*Alias.*, "
+            "which is not a Table; a foreign key may only target a Column "
+            "of a Table",
             ForeignKey,
             Foo(),
         )
@@ -6855,3 +6861,464 @@ class SentinelColTest(fixtures.TestBase):
                 Integer,
                 default=_InsertSentinelColumnDefault(),
             )
+
+
+class ForeignKeyTargetTest(fixtures.TestBase, AssertsCompiledSQL):
+    """test :attr:`.ForeignKey.target_tokens` and the handling of names
+    which contain dots.
+
+    A dotted string can't tell a dot inside of a name apart from the
+    separator between two names, so a ForeignKey whose target table or
+    column name contains a dot has no string representation at all; the
+    individual tokens are always available instead.
+
+    """
+
+    __dialect__ = "default"
+
+    @testing.combinations(
+        ("t1", (None, "t1", None)),
+        ("t1.x", (None, "t1", "x")),
+        ("q.t1.x", ("q", "t1", "x")),
+        # everything to the left of the rightmost two tokens is the schema,
+        # so a dot within the schema name is unambiguous
+        ("otherdb.dbo.t1.x", ("otherdb.dbo", "t1", "x")),
+        argnames="colspec, expected",
+    )
+    def test_tokens_from_string(self, colspec, expected):
+        fk = ForeignKey(colspec)
+        eq_(fk.target_tokens, expected)
+        eq_(fk.target_tokens, ForeignKeyTarget(*expected))
+
+    @testing.combinations(
+        (None, "t1", "x"),
+        ("q", "t1", "x"),
+        (None, "my.tbl", "x"),
+        ("my.schema", "my.tbl", "my.col"),
+        argnames="schema, tname, colname",
+    )
+    def test_tokens_from_column(self, schema, tname, colname):
+        m = MetaData()
+        t1 = Table(tname, m, Column(colname, Integer), schema=schema)
+        fk = ForeignKey(t1.c[colname])
+        eq_(fk.target_tokens, (schema, tname, colname))
+
+    def test_tokens_from_clause_element(self):
+        """a target which is not itself a Core column, such as an ORM
+        attribute, is unwrapped by coercions before it reaches the
+        ForeignKey, so ``__clause_element__()`` never needs handling here"""
+
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer))
+
+        class HasClauseElement:
+            def __clause_element__(self):
+                return t1.c.x
+
+        fk = ForeignKey(HasClauseElement())
+        is_(fk.target_column, t1.c.x)
+        eq_(fk.target_tokens, ForeignKeyTarget(None, "t1", "x"))
+
+    def test_resolve_column_clause_element_target(self):
+        """the target may be a plain ColumnClause rather than a Column"""
+
+        fk = ForeignKey(column("x", Integer))
+        eq_(fk.target_tokens, ForeignKeyTarget(None, "x", None))
+        is_(fk._resolve_column(), fk.target_column)
+
+    def test_tokens_from_unbound_column(self):
+        """a Column not associated with a Table has only its key, which
+        is matched to a table of the same name later on"""
+
+        fk = ForeignKey(Column("x", Integer))
+        eq_(fk.target_tokens, (None, "x", None))
+
+    @testing.combinations(
+        ((None, "t1", "x"), "t1.x"),
+        (("q", "t1", "x"), "q.t1.x"),
+        ((None, "t1", None), "t1"),
+        # a dot within the schema name still round trips
+        (("otherdb.dbo", "t1", "x"), "otherdb.dbo.t1.x"),
+        argnames="tokens, expected",
+    )
+    def test_target_fullname_renderable(self, tokens, expected):
+        eq_(ForeignKey(tokens).target_fullname, expected)
+        eq_(ForeignKeyTarget(*tokens)._as_string(), expected)
+
+    @testing.combinations(
+        (
+            (None, "my.tbl", "x"),
+            "the table name 'my.tbl' contains a dot",
+        ),
+        (
+            (None, "t1", "my.col"),
+            "the column name 'my.col' contains a dot",
+        ),
+        (
+            ("q", "t1", None),
+            "a schema name 'q' is present with no column name",
+        ),
+        argnames="tokens, reason",
+    )
+    def test_target_fullname_not_renderable(self, tokens, reason):
+        fk = ForeignKey(tokens)
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Can't render a single string representation for foreign key "
+            "target \\(schema=.*\\); %s" % re.escape(reason),
+        ):
+            fk.target_fullname
+
+    def test_naming_convention_dotted_table(self):
+        """the reported case; %(referred_table_name)s used to be derived
+        by splitting the dotted string, dropping 'my.'"""
+
+        m = MetaData(
+            naming_convention={
+                "fk": "fk_%(table_name)s_%(referred_table_name)s"
+            }
+        )
+        r = Table("my.tbl", m, Column("z", Integer, primary_key=True))
+        t = Table(
+            "t",
+            m,
+            Column("a", Integer),
+            ForeignKeyConstraint(["a"], [r.c.z]),
+        )
+
+        const = next(
+            c for c in t.constraints if isinstance(c, ForeignKeyConstraint)
+        )
+        eq_(const.name, "fk_t_my.tbl")
+        self.assert_compile(
+            CreateTable(t),
+            'CREATE TABLE t (a INTEGER, CONSTRAINT "fk_t_my.tbl" '
+            'FOREIGN KEY(a) REFERENCES "my.tbl" (z))',
+        )
+
+    @testing.combinations(True, False, argnames="use_schema")
+    def test_to_metadata_dotted_table(self, use_schema):
+        m = MetaData()
+        r = Table("my.tbl", m, Column("z", Integer, primary_key=True))
+        t = Table(
+            "t",
+            m,
+            Column("a", Integer),
+            ForeignKeyConstraint(["a"], [r.c.z]),
+        )
+
+        schema = "s" if use_schema else None
+        m2 = MetaData()
+        r2 = r.to_metadata(m2, schema=schema)
+        t2 = t.to_metadata(m2, schema=schema)
+
+        fk = list(t2.c.a.foreign_keys)[0]
+        eq_(fk.target_tokens, (schema, "my.tbl", "z"))
+        is_(fk.column, r2.c.z)
+
+        self.assert_compile(
+            CreateTable(t2),
+            "CREATE TABLE %(sch)st (a INTEGER, FOREIGN KEY(a) "
+            'REFERENCES %(sch)s"my.tbl" (z))'
+            % {"sch": "s." if use_schema else ""},
+        )
+
+    def test_to_metadata_table_only_colspec(self):
+        """a ForeignKey given a table name only used to render as
+        'newschema.t1.None' when copied into a new schema"""
+
+        m = MetaData()
+        t2 = Table("t2", m, Column("x", Integer, ForeignKey("t1")))
+
+        t2c = t2.to_metadata(MetaData(), schema="s")
+        fk = list(t2c.c.x.foreign_keys)[0]
+        eq_(fk.target_tokens, ("s", "t1", None))
+
+    @testing.combinations(
+        ("string", "t1.x", "s.t1.x"),
+        ("tuple", ("t1", "x"), "s.t1.x"),
+        ("column", None, "s.t1.x"),
+        argnames="kind, colspec, expected",
+    )
+    def test_legacy_colspec_accessor(self, kind, colspec, expected):
+        """the legacy ``_colspec`` accessor continues to report a target in
+        its pre-2.1 form, either a dotted string or the target Column, so
+        that third party code branching on
+        ``isinstance(fk._colspec, str)`` keeps working.
+
+        """
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer))
+        if kind == "column":
+            colspec = t1.c.x
+        t2 = Table("t2", m, Column("y", Integer, ForeignKey(colspec)))
+
+        t2c = t2.to_metadata(MetaData(), schema="s")
+        fk = list(t2c.c.y.foreign_keys)[0]
+        eq_(fk._colspec, expected)
+        assert isinstance(fk._colspec, str)
+
+    def test_legacy_colspec_accessor_column_target(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer))
+        t2 = Table("t2", m, Column("y", Integer, ForeignKey(t1.c.x)))
+
+        is_(list(t2.c.y.foreign_keys)[0]._colspec, t1.c.x)
+
+    def test_legacy_colspec_accessor_raises(self):
+        """``_colspec`` has no value to report for a target with no dotted
+        string form"""
+
+        m = MetaData()
+        r = Table("my.tbl", m, Column("z", Integer))
+        t = Table("t", m, Column("a", Integer, ForeignKey(("my.tbl", "z"))))
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Can't render a single string representation",
+        ):
+            list(t.c.a.foreign_keys)[0]._colspec
+
+        # the target itself is stored in one format, always available
+        eq_(
+            list(t.c.a.foreign_keys)[0]._column_tokens,
+            ForeignKeyTarget(None, "my.tbl", "z"),
+        )
+        is_(list(t.c.a.foreign_keys)[0].column, r.c.z)
+
+    def test_target_tokens_always_tokens(self):
+        """however the target was given, the names of it are reported in
+        exactly one format; nothing has to type test the result"""
+
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer), schema="q")
+
+        for colspec in ("q.t1.x", ("q", "t1", "x"), t1.c.x):
+            fk = ForeignKey(colspec)
+            eq_(fk.target_tokens, ForeignKeyTarget("q", "t1", "x"))
+            assert isinstance(fk.target_tokens, ForeignKeyTarget)
+
+    def test_tokens_track_late_column_setup(self):
+        """the target Column may gain both its name and its Table after the
+        ForeignKey is built -- a declarative mixin using declared_attr does
+        exactly this, so the tokens can't be captured up front.
+
+        .. seealso::
+
+            :meth:`.DeclarativeMixinTest.
+            test_fk_mixin_self_referential_declared_attr`
+
+        """
+        c1 = Column(Integer)
+        fk = ForeignKey(c1)
+
+        # nothing to report yet; the target has no name at all
+        eq_(fk.target_tokens, ForeignKeyTarget(None, None, None))
+
+        c1.name = c1.key = "z"
+        Table("my.tbl", MetaData(), c1, schema="q")
+        eq_(fk.target_tokens, ForeignKeyTarget("q", "my.tbl", "z"))
+
+    def test_target_column(self):
+        """``target_column`` reports the target as given, and is None when
+        the target was named rather than given as a Column; the tokens are
+        the same either way"""
+
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer))
+        expected = ForeignKeyTarget(None, "t1", "x")
+
+        is_(ForeignKey(t1.c.x).target_column, t1.c.x)
+        eq_(ForeignKey(t1.c.x).target_tokens, expected)
+
+        is_(ForeignKey("t1.x").target_column, None)
+        eq_(ForeignKey("t1.x").target_tokens, expected)
+
+        is_(ForeignKey(("t1", "x")).target_column, None)
+        eq_(ForeignKey(("t1", "x")).target_tokens, expected)
+
+    def test_target_column_vs_resolved_column(self):
+        """``target_column`` is the target as specified; ``column`` is the
+        resolved target however it was specified"""
+
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer))
+        t2 = Table("t2", m, Column("y", Integer, ForeignKey("t1.x")))
+
+        fk = list(t2.c.y.foreign_keys)[0]
+        is_(fk.target_column, None)
+        is_(fk.column, t1.c.x)
+
+    @testing.combinations(
+        ("t1.x", "t1"),
+        ("q.t1.x", "q.t1"),
+        ("t1", "t1"),
+        (("my.tbl", "z"), "my.tbl"),
+        (("q", "my.tbl", "z"), "q.my.tbl"),
+        argnames="colspec, expected",
+    )
+    def test_target_table_key(self, colspec, expected):
+        """the key the referenced Table is, or would be, registered under
+        in MetaData.tables -- available before that table exists"""
+
+        eq_(ForeignKey(colspec).target_table_key, expected)
+
+    @testing.combinations(True, False, argnames="use_schema")
+    def test_target_table_key_from_column(self, use_schema):
+        m = MetaData()
+        schema = "q" if use_schema else None
+        t1 = Table("my.tbl", m, Column("z", Integer), schema=schema)
+
+        fk = ForeignKey(t1.c.z)
+        eq_(fk.target_table_key, t1.key)
+        eq_(fk.target_table_key, "q.my.tbl" if use_schema else "my.tbl")
+
+    def test_target_table_key_none_when_unattached(self):
+        """the one case with no key to name"""
+
+        is_(ForeignKey(Column("z", Integer)).target_table_key, None)
+
+    def test_target_fullname_unnamed_target(self):
+        """a target Column with no name yet has nothing to render, and says
+        so rather than raising TypeError on the missing table name"""
+
+        fk = ForeignKey(Column(Integer))
+        eq_(fk.target_tokens, ForeignKeyTarget(None, None, None))
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Can't render a single string representation for foreign key "
+            r"target \(schema=None, table_name=None, column_name=None\); "
+            "the target has no table name",
+        ):
+            fk.target_fullname
+
+    def test_resolve_column_parent_detached_from_metadata(self):
+        """non-raising resolution reports no column when the *parent* table
+        has been removed from its MetaData, even though the target table is
+        still present"""
+
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer))
+        t2 = Table("t2", m, Column("y", Integer, ForeignKey("t1.x")))
+        fk = list(t2.c.y.foreign_keys)[0]
+
+        m.remove(t2)
+        is_true(t1.key in m.tables)
+        is_false(t2.key in m.tables)
+
+        is_(fk._resolve_column(raiseerr=False), None)
+
+    @testing.combinations(
+        ({},),
+        ({"schema": "s"},),
+        ({"schema": BLANK_SCHEMA},),
+        argnames="kw",
+    )
+    def test_copy_unbound_column_target(self, kw):
+        """copying a constraint whose target Column has no Table can't
+        produce anything meaningful.
+
+        .. versionchanged:: 2.1  this is now refused whether or not a new
+           schema is being applied; previously applying a schema produced the
+           literal target string ``"s.z.None"``.
+
+        """
+        m = MetaData()
+        t = Table(
+            "t", m, Column("a", Integer, ForeignKey(Column("z", Integer)))
+        )
+        const = next(
+            c for c in t.constraints if isinstance(c, ForeignKeyConstraint)
+        )
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Can't copy ForeignKey object which refers to non-table "
+            "bound Column",
+        ):
+            const._copy(**kw)
+
+    @testing.combinations(
+        (("my.tbl", "z"),),
+        ((None, "my.tbl", "z"),),
+        argnames="tokens",
+    )
+    def test_tuple_argument(self, tokens):
+        m = MetaData()
+        r = Table("my.tbl", m, Column("z", Integer, primary_key=True))
+        t = Table("t", m, Column("a", Integer, ForeignKey(tokens)))
+
+        fk = list(t.c.a.foreign_keys)[0]
+        eq_(fk.target_tokens, (None, "my.tbl", "z"))
+        is_(fk.column, r.c.z)
+
+    def test_tuple_argument_table_only(self):
+        m = MetaData()
+        r = Table("my.tbl", m, Column("a", Integer, primary_key=True))
+        t = Table("t", m, Column("a", Integer, ForeignKey(("my.tbl", None))))
+
+        fk = list(t.c.a.foreign_keys)[0]
+        eq_(fk.target_tokens, (None, "my.tbl", None))
+        is_(fk.column, r.c.a)
+
+    def test_tuple_argument_constraint(self):
+        m = MetaData()
+        r = Table("my.tbl", m, Column("z", Integer, primary_key=True))
+        t = Table(
+            "t",
+            m,
+            Column("a", Integer),
+            ForeignKeyConstraint(["a"], [("my.tbl", "z")]),
+        )
+
+        is_(list(t.c.a.foreign_keys)[0].column, r.c.z)
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t (a INTEGER, FOREIGN KEY(a) "
+            'REFERENCES "my.tbl" (z))',
+        )
+
+    @testing.combinations(
+        (("t1",), "must have two tokens .* or three tokens"),
+        (("a", "b", "c", "d"), "must have two tokens .* or three tokens"),
+        (("", "b"), "table_name must be a non-empty string"),
+        ((None, None), "table_name must be a non-empty string"),
+        argnames="tokens, message",
+    )
+    def test_tuple_argument_errors(self, tokens, message):
+        with expect_raises_message(exc.ArgumentError, message):
+            ForeignKey(tokens)
+
+    @testing.combinations(
+        ((None, "t1", "x"), "ForeignKey('t1.x')"),
+        (
+            (None, "my.tbl", "z"),
+            "ForeignKey(ForeignKeyTarget(schema=None, "
+            "table_name='my.tbl', column_name='z'))",
+        ),
+        argnames="tokens, expected",
+    )
+    def test_repr(self, tokens, expected):
+        """repr() has to work whether or not a string form is available,
+        and either way names something the constructor accepts"""
+
+        fk = ForeignKey(tokens)
+        eq_(repr(fk), expected)
+
+        # the repr round trips
+        eq_(eval(repr(fk)).target_tokens, fk.target_tokens)
+
+    def test_no_such_column_error_message(self):
+        m = MetaData()
+        Table("my.tbl", m, Column("q", Integer, primary_key=True))
+
+        t = Table("t", m, Column("a", Integer, ForeignKey(("my.tbl", "z"))))
+
+        with expect_raises_message(
+            exc.NoReferencedColumnError,
+            "Could not initialize target column for ForeignKey "
+            r"\(schema=None, table_name='my.tbl', column_name='z'\) on "
+            "table 't': table 'my.tbl' has no column named 'z'",
+        ):
+            list(t.c.a.foreign_keys)[0].column

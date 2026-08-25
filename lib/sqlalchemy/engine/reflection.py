@@ -1793,7 +1793,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
             referred_schema = fkey_d["referred_schema"]
             referred_table = fkey_d["referred_table"]
             referred_columns = fkey_d["referred_columns"]
-            refspec = []
+            refspec: List[sa_schema.ForeignKeyTarget] = []
             if referred_schema is not None:
                 if resolve_fks:
                     sa_schema.Table(
@@ -1807,7 +1807,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
                     )
                 for column in referred_columns:
                     refspec.append(
-                        ".".join([referred_schema, referred_table, column])
+                        sa_schema.ForeignKeyTarget(
+                            referred_schema, referred_table, column
+                        )
                     )
             else:
                 if resolve_fks:
@@ -1821,7 +1823,11 @@ class Inspector(inspection.Inspectable["Inspector"]):
                         **reflection_options,
                     )
                 for column in referred_columns:
-                    refspec.append(".".join([referred_table, column]))
+                    refspec.append(
+                        sa_schema.ForeignKeyTarget(
+                            None, referred_table, column
+                        )
+                    )
             if "options" in fkey_d:
                 options = fkey_d["options"]
             else:

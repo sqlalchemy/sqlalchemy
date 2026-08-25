@@ -80,12 +80,7 @@ class ConventionDict:
 
     def _key_referred_table_name(self):
         fk = self.const.elements[0]
-        refs = fk.target_fullname.split(".")
-        if len(refs) == 3:
-            refschema, reftable, refcol = refs
-        else:
-            reftable, refcol = refs
-        return reftable
+        return fk.target_tokens.table_name
 
     def _key_referred_column_X_name(self, idx):
         fk = self.const.elements[idx]

@@ -48,6 +48,7 @@ from typing import Iterator
 from typing import List
 from typing import Literal
 from typing import Mapping
+from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -2925,7 +2926,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T], Named[_T]):
 
         fk = [
             ForeignKey(
-                col if col is not None else f._colspec,
+                col if col is not None else f.target_tokens,
                 _unresolvable=col is None,
                 _constraint=f.constraint,
             )
@@ -3035,6 +3036,190 @@ def insert_sentinel(
     )
 
 
+class ForeignKeyTarget(NamedTuple):
+    """Represents the target of a :class:`_schema.ForeignKey` as three
+    individual name tokens.
+
+    This is the return value of :attr:`_schema.ForeignKey.target_tokens`, and
+    may also be passed directly to the :class:`_schema.ForeignKey` constructor
+    as well as to the :paramref:`_schema.ForeignKeyConstraint.refcolumns`
+    parameter, as either a three-token tuple ``(schema, table_name,
+    column_name)`` or a two-token tuple ``(table_name, column_name)``.
+
+    The token form is the only representation of a foreign key target that is
+    unambiguous in all cases; the dotted string form, available at
+    :attr:`_schema.ForeignKey.target_fullname`, cannot represent a target
+    where the table or column name itself contains a dot.
+
+    .. versionadded:: 2.1
+
+    .. seealso::
+
+        :attr:`_schema.ForeignKey.target_tokens`
+
+    """
+
+    schema: Optional[str]
+    """The schema name of the target, or ``None`` for the default schema."""
+
+    table_name: str
+    """The name of the target table."""
+
+    column_name: Optional[str]
+    """The key of the target column.
+
+    This is ``None`` for a :class:`_schema.ForeignKey` that was given a table
+    name only, in which case the local column's key is used to locate the
+    target column.
+
+    Note that this is the ``key`` of the target column rather than its name,
+    unless :paramref:`_schema.ForeignKey.link_to_name` is ``True``.
+
+    """
+
+    def _tokens_no_dots(self) -> _typing_Sequence[str] | None:
+        """return a sequence of non-None tokens to create a dotted name.
+
+        returns None if either of table_name or column_name already have an
+        embedded dot, making dotted name string impossible.
+
+        """
+        tokens = []
+        for i, token in enumerate(
+            [self.schema, self.table_name, self.column_name]
+        ):
+            if token is not None:
+                # dot in the table name or column name; a dotted name
+                # would be ambiguous
+                if i != 0 and "." in token:
+                    return None
+                tokens.append(token)
+            elif i == 1:
+                # table name is None; not renderable
+                return None
+            elif i == 2 and self.schema:
+                # column name is None and there's a schema; a dotted
+                # name would be ambiguous
+                return None
+
+        return tokens
+
+    def _as_string(self) -> str:
+        """Render these tokens as a single dotted string if possible,
+        else raise :class:`.InvalidRequestError` if no unambiguous string form
+        exists and a string is required.
+
+        """
+
+        tokens_no_dots = self._tokens_no_dots()
+
+        if tokens_no_dots is None:
+
+            if not self.table_name:
+                reason = (
+                    "the target has no table name; a ForeignKey to a Column "
+                    "which is not yet associated with a Table has no names "
+                    "to render until that Column is attached"
+                )
+            elif "." in self.table_name:
+                reason = (
+                    f"the table name {self.table_name!r} contains a dot, "
+                    f"which can't be told apart from the separator between "
+                    f"a schema name and a table name"
+                )
+            elif self.column_name is not None and "." in self.column_name:
+                reason = (
+                    f"the column name {self.column_name!r} contains a dot, "
+                    f"which can't be told apart from the separator between "
+                    f"a table name and a column name"
+                )
+            elif self.column_name is None:
+                reason = (
+                    f"a schema name {self.schema!r} is present with no "
+                    f"column name, so the schema name can't be told apart "
+                    f"from a table name"
+                )
+            else:
+                # this is currently unreachable based on the current behavior
+                # of tokens_no_dots
+                assert False
+
+            raise exc.InvalidRequestError(
+                f"Can't render a single string representation for foreign "
+                f"key target {self._description()}; {reason}.  Use "
+                f"ForeignKey.target_tokens to receive the schema, table and "
+                f"column names individually."
+            )
+
+        return ".".join(tokens_no_dots)
+
+    def _description(self) -> str:
+        """Render a description of these tokens which never raises.
+
+        The dotted string form is preferred when it's available, falling
+        back to naming the tokens individually when it isn't.
+
+        """
+
+        tokens_no_dots = self._tokens_no_dots()
+        if tokens_no_dots:
+            return repr(".".join(tokens_no_dots))
+        else:
+            return (
+                f"(schema={self.schema!r}, "
+                f"table_name={self.table_name!r}, "
+                f"column_name={self.column_name!r})"
+            )
+
+    @classmethod
+    def _from_string(cls, spec: str) -> ForeignKeyTarget:
+        """Parse a dotted string colspec into its component tokens.
+
+        A FK between column 'bar' and table 'foo' can be specified as 'foo',
+        'foo.bar', 'dbo.foo.bar', 'otherdb.dbo.foo.bar'.  Once we have the
+        column name and the table name, treat everything else as the schema
+        name.  Some databases (e.g. Sybase) support inter-database foreign
+        keys.  See tickets #1341 and -- indirectly related -- #594.
+
+        This assumes that '.' will never appear *within* the table or column
+        name; a target which does contain such a dot has no string form and
+        must be given as a :class:`.ForeignKeyTarget` instead.
+
+        """
+        m = spec.split(".")
+        if len(m) == 1:
+            return cls(None, m[0], None)
+
+        colname = m.pop()
+        tname = m.pop()
+        return cls(".".join(m) if m else None, tname, colname)
+
+    @classmethod
+    def _from_argument(
+        cls, argument: _typing_Sequence[Any]
+    ) -> ForeignKeyTarget:
+        """Coerce a two or three token sequence passed by the user."""
+
+        if len(argument) == 3:
+            schema, table_name, column_name = argument
+        elif len(argument) == 2:
+            schema = None
+            table_name, column_name = argument
+        else:
+            raise exc.ArgumentError(
+                f"ForeignKey target given as a tuple must have two tokens "
+                f"(table_name, column_name) or three tokens "
+                f"(schema, table_name, column_name); got {len(argument)}"
+            )
+
+        if not table_name:
+            raise exc.ArgumentError(
+                "ForeignKey target table_name must be a non-empty string"
+            )
+
+        return cls(schema, table_name, column_name)
+
+
 class ForeignKey(DialectKWArgs, SchemaItem):
     """Defines a dependency between two columns.
 
@@ -3072,18 +3257,60 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     object are available in the `foreign_keys` collection
     of that column.
 
+    The target of a ``ForeignKey`` is described by three names -- a schema
+    name, a table name and a column name -- which are available at
+    :attr:`_schema.ForeignKey.target_tokens` as a
+    :class:`_schema.ForeignKeyTarget` named tuple::
+
+        >>> fk = ForeignKey("main_table.id")
+        >>> fk.target_tokens
+        ForeignKeyTarget(schema=None, table_name='main_table', column_name='id')
+
+    The same three names may be given to ``ForeignKey`` in place of the
+    dotted string, as either a two or three token tuple.  This is the only
+    way to name a target whose table or column name itself contains a dot,
+    as the dotted string form has no way of telling such a dot apart from
+    the separator between two names::
+
+        ForeignKey(("my.tbl", "id"))
+        ForeignKey(("my_schema", "my.tbl", "id"))
+
+    .. versionadded:: 2.1  :attr:`_schema.ForeignKey.target_tokens`, and the
+       tuple form of the target.
+
+    Where the target was given as a :class:`_schema.Column` rather than by
+    name, that column is available at
+    :attr:`_schema.ForeignKey.target_column`; this is distinct from
+    :attr:`_schema.ForeignKey.column`, which is the *resolved* target however
+    it was specified.  :attr:`_schema.ForeignKey.target_table_key` gives the
+    key under which the referenced :class:`_schema.Table` is, or would be,
+    registered in :attr:`_schema.MetaData.tables`.
+
     Further examples of foreign key configuration are in
     :ref:`metadata_foreignkeys`.
 
-    """
+    """  # noqa: E501
 
     __visit_name__ = "foreign_key"
 
     parent: Column[Any]
 
     _table_column: Optional[Column[Any]]
+    """Storage for :attr:`.ForeignKey.target_column`; read that instead.
 
-    _colspec: Union[str, Column[Any]]
+    ``None`` when the target was given by name, in which case
+    :attr:`.ForeignKey._given_tokens` holds those names.
+
+    """
+
+    _given_tokens: Optional[ForeignKeyTarget]
+    """The names of the target, when the target was given by name.
+
+    ``None`` when the target was given as a :class:`.Column`, in which case
+    the names are derived from that column on demand -- read
+    :attr:`.ForeignKey.target_tokens` rather than this.
+
+    """
 
     def __init__(
         self,
@@ -3116,6 +3343,17 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             ``columnkey`` is the ``key`` which has been assigned to the column
             (defaults to the column name itself), unless ``link_to_name`` is
             ``True`` in which case the rendered name of the column is used.
+
+            The target may also be given as a tuple of individual name
+            tokens, either ``(table_name, column_name)`` or
+            ``(schema, table_name, column_name)``.  This is the only form
+            which can refer to a name that itself contains a dot, as the
+            dotted string form has no way of telling such a dot apart from
+            the separator between two names::
+
+                ForeignKey(("my.tbl", "z"))
+
+            .. versionadded:: 2.1  The tuple form.
 
         :param name: Optional string. An in-database name for the key if
             `constraint` is not provided.
@@ -3184,7 +3422,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         self._unresolvable = _unresolvable
 
-        self._colspec, self._table_column = self._parse_colspec_argument(
+        self._table_column, self._given_tokens = self._parse_colspec_argument(
             column
         )
 
@@ -3211,41 +3449,55 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             self.info = info
         self._unvalidated_dialect_kw = dialect_kw
 
-    def _resolve_colspec_argument(
-        self,
-    ) -> Tuple[
-        Union[str, Column[Any]],
-        Optional[Column[Any]],
-    ]:
-        argument = self._colspec
-
-        return self._parse_colspec_argument(argument)
-
     def _parse_colspec_argument(
         self,
-        argument: _DDLColumnArgument,
-    ) -> Tuple[
-        Union[str, Column[Any]],
-        Optional[Column[Any]],
-    ]:
+        argument: _DDLColumnReferenceArgument,
+    ) -> Tuple[Optional[Column[Any]], ForeignKeyTarget]:
+        """Coerce the ``column`` argument into the target
+        :class:`.ForeignKeyTarget`, along with the target :class:`.Column`
+        itself if that's how the target was given.
+
+        """
+        if isinstance(argument, tuple):
+            return None, ForeignKeyTarget._from_argument(argument)
+
         _colspec = coercions.expect(roles.DDLReferredColumnRole, argument)
 
         if isinstance(_colspec, str):
-            _table_column = None
+            return None, ForeignKeyTarget._from_string(_colspec)
+
+        assert isinstance(_colspec, ColumnClause)
+
+        table = _colspec.table
+        if not isinstance(table, (type(None), TableClause)):
+            # a Column of some other FromClause, e.g. a subquery or a join;
+            # the target of a ForeignKey has to be a Table (or a TableClause,
+            # or a Column not yet associated with either)
+            raise exc.ArgumentError(
+                f"ForeignKey target Column {_colspec!r} is associated with "
+                f"{table!r}, which is not a Table; a foreign key may only "
+                f"target a Column of a Table"
+            )
+        elif table is None:
+            # a Column not yet associated with a Table; this is the
+            # declarative mixin + declared_attr case, where the target column
+            # is attached to its Table after this ForeignKey is constructed
+            return _colspec, ForeignKeyTarget(None, _colspec.key, None)
         else:
-            assert isinstance(_colspec, ColumnClause)
-            _table_column = _colspec
-
-            if not isinstance(_table_column.table, (type(None), TableClause)):
-                raise exc.ArgumentError(
-                    "ForeignKey received Column not bound "
-                    "to a Table, got: %r" % _table_column.table
-                )
-
-        return _colspec, _table_column
+            return _colspec, ForeignKeyTarget(
+                table.schema, table.name, _colspec.key
+            )
 
     def __repr__(self) -> str:
-        return "ForeignKey(%r)" % self._get_colspec()
+        tokens = self.target_tokens
+        tokens_no_dots = self.target_tokens._tokens_no_dots()
+
+        if tokens_no_dots:
+            return f"ForeignKey({'.'.join(tokens_no_dots)!r})"
+        else:
+            # no string form for this target, so name the tokens; this still
+            # round trips, as ForeignKeyTarget is accepted by the constructor
+            return f"ForeignKey({tokens!r})"
 
     @util.deprecated(
         "1.4",
@@ -3271,7 +3523,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         """
         fk = ForeignKey(
-            self._get_colspec(schema=schema),
+            self._copy_tokens(schema=schema),
             use_alter=self.use_alter,
             name=self.name,
             onupdate=self.onupdate,
@@ -3285,7 +3537,98 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         )
         return self._schema_item_copy(fk)
 
-    def _get_colspec(
+    @property
+    def target_tokens(self) -> ForeignKeyTarget:
+        """Return the target of this :class:`_schema.ForeignKey` as three
+        individual name tokens.
+
+        The return value is a :class:`_schema.ForeignKeyTarget` named tuple of
+        ``(schema, table_name, column_name)``.  This is the representation
+        SQLAlchemy itself computes against; unlike
+        :attr:`_schema.ForeignKey.target_fullname` it is available in all
+        cases, including when one of the names contains a dot::
+
+            >>> from sqlalchemy import Column, ForeignKey, Integer, MetaData, Table
+            >>> m = MetaData()
+            >>> r = Table("my.tbl", m, Column("z", Integer, primary_key=True))
+            >>> t = Table("t", m, Column("a", Integer, ForeignKey(r.c.z)))
+            >>> list(t.c.a.foreign_keys)[0].target_tokens
+            ForeignKeyTarget(schema=None, table_name='my.tbl', column_name='z')
+
+        The tokens describe the target as it was specified, and are available
+        whether or not the target :class:`_schema.Column` has been resolved;
+        for the resolved column, see :attr:`_schema.ForeignKey.column`.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :class:`_schema.ForeignKeyTarget`
+
+        """  # noqa: E501
+
+        col = self._table_column
+        if col is None:
+            assert self._given_tokens is not None
+            return self._given_tokens
+
+        # derived on demand rather than captured up front: a target Column
+        # may gain both its name and its Table *after* this ForeignKey is
+        # constructed, which is what a declarative mixin using declared_attr
+        # does (see test_fk_mixin_self_referential_declared_attr)
+        table = col.table
+        if table is None:
+            return ForeignKeyTarget(None, col.key, None)
+
+        return ForeignKeyTarget(table.schema, table.name, col.key)
+
+    @property
+    def target_column(self) -> Optional[Column[Any]]:
+        """Return the target :class:`_schema.Column` of this
+        :class:`_schema.ForeignKey`, if the target was given as one.
+
+        Returns ``None`` when the target was instead given by name, as a
+        string or as :class:`_schema.ForeignKeyTarget`; in that case only
+        :attr:`_schema.ForeignKey.target_tokens` describes the target until
+        it is resolved.
+
+        This is distinct from :attr:`_schema.ForeignKey.column`, which is the
+        *resolved* target however it was specified, and which raises if the
+        target can't be resolved.  Note also that a target given as a
+        :class:`_schema.Column` need not be associated with a
+        :class:`_schema.Table` yet.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :attr:`_schema.ForeignKey.target_tokens`
+
+            :attr:`_schema.ForeignKey.column`
+
+        """
+        return self._table_column
+
+    @property
+    def _column_tokens(self) -> ForeignKeyTarget:
+        """legacy private name for :attr:`.ForeignKey.target_tokens`"""
+
+        return self.target_tokens
+
+    @property
+    def _colspec(self) -> Union[str, Column[Any]]:
+        """Legacy accessor for the target in its pre-2.1 form, either the
+        target :class:`.Column` or a dotted string.
+
+        Raises :class:`.InvalidRequestError` for a target which has no dotted
+        string form.  Kept for the benefit of third party code which reads it;
+        :attr:`.ForeignKey.target_tokens` is what SQLAlchemy itself uses.
+
+        """
+        col = self.target_column
+        return self.target_tokens._as_string() if col is None else col
+
+    def _copy_tokens(
         self,
         schema: Optional[
             Union[
@@ -3295,65 +3638,99 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         ] = None,
         table_name: Optional[str] = None,
         _is_copy: bool = False,
-    ) -> str:
-        """Return a string based 'column specification' for this
-        :class:`_schema.ForeignKey`.
-
-        This is usually the equivalent of the string-based "tablename.colname"
-        argument first passed to the object's constructor.
+    ) -> ForeignKeyTarget:
+        """Return the tokens for a copy of this :class:`_schema.ForeignKey`,
+        optionally rewriting the schema and/or table name.
 
         """
 
-        _colspec, effective_table_column = self._resolve_colspec_argument()
+        col = self.target_column
+
+        if _is_copy and col is not None and col.table is None:
+            raise exc.InvalidRequestError(
+                f"Can't copy ForeignKey object which refers to "
+                f"non-table bound Column {col!r}"
+            )
+
+        tokens = self.target_tokens
 
         if schema not in (None, RETAIN_SCHEMA):
-            _schema, tname, colname = self._column_tokens
-            if table_name is not None:
-                tname = table_name
-            if schema is BLANK_SCHEMA:
-                return "%s.%s" % (tname, colname)
-            else:
-                return "%s.%s.%s" % (schema, tname, colname)
-        elif table_name:
-            schema, tname, colname = self._column_tokens
-            if schema:
-                return "%s.%s.%s" % (schema, table_name, colname)
-            else:
-                return "%s.%s" % (table_name, colname)
-        elif effective_table_column is not None:
-            if effective_table_column.table is None:
-                if _is_copy:
-                    raise exc.InvalidRequestError(
-                        f"Can't copy ForeignKey object which refers to "
-                        f"non-table bound Column {effective_table_column!r}"
-                    )
-                else:
-                    return effective_table_column.key
-            return "%s.%s" % (
-                effective_table_column.table.fullname,
-                effective_table_column.key,
+            return ForeignKeyTarget(
+                None if schema is BLANK_SCHEMA else schema,
+                table_name if table_name is not None else tokens.table_name,
+                tokens.column_name,
             )
+        elif table_name:
+            return tokens._replace(table_name=table_name)
         else:
-            assert isinstance(_colspec, str)
-            return _colspec
+            return tokens
+
+    def _get_colspec(self) -> str:
+        """legacy method for :attr:`.ForeignKey.target_fullname`.
+
+        Retained as third party code makes use of it; new code should use
+        :attr:`.ForeignKey.target_tokens`.
+
+        """
+
+        return self.target_fullname
 
     @property
     def _referred_schema(self) -> Optional[str]:
-        return self._column_tokens[0]
+        return self.target_tokens.schema
 
-    def _table_key_within_construction(self) -> Any:
-        """get the table key but only safely"""
+    @property
+    def target_table_key(self) -> Optional[str]:
+        """Return the key under which the target :class:`_schema.Table` is,
+        or would be, registered in :attr:`_schema.MetaData.tables`.
 
-        if self._table_column is not None:
-            if self._table_column.table is None:
-                return None
-            else:
-                return self._table_column.table.key
-        else:
-            schema, tname, colname = self._column_tokens
-            return _get_table_key(tname, schema)
+        This is derived from :attr:`_schema.ForeignKey.target_tokens`, and is
+        available whether or not the target table exists yet, making it
+        usable while a :class:`_schema.Table` is still being constructed.
 
-    target_fullname = property(_get_colspec)
+        Returns ``None`` in the one case where no key can be named: the
+        target was given as a :class:`_schema.Column` which is not yet
+        associated with a :class:`_schema.Table`.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :attr:`_schema.ForeignKey.target_tokens`
+
+        """
+        col = self.target_column
+        if col is not None and col.table is None:
+            # target Column not yet associated with a Table, so there is no
+            # key to report; the tokens name the column, not a table
+            return None
+
+        schema, tname, colname = self.target_tokens
+        return _get_table_key(tname, schema)
+
+    @property
+    def target_fullname(self) -> str:
+        """Return the target of this :class:`_schema.ForeignKey` as a single
+        dotted string, e.g. ``"schema.tablename.columnname"``.
+
+        This is usually the equivalent of the string-based
+        ``"tablename.colname"`` argument first passed to the object's
+        constructor.
+
+        .. versionchanged:: 2.1  This attribute raises
+           :class:`.InvalidRequestError` when the target table or column name
+           itself contains a dot, as a dotted string can't distinguish such a
+           name from the separator between names.  The dotted form is now a
+           legacy convenience; :attr:`_schema.ForeignKey.target_tokens` is the
+           representation that is available in all cases, and is what
+           SQLAlchemy itself makes use of.
+
+        .. seealso::
+
+            :attr:`_schema.ForeignKey.target_tokens`
+
+        """
+        return self.target_tokens._as_string()
 
     def references(self, table: Table) -> bool:
         """Return True if the given :class:`_schema.Table`
@@ -3377,33 +3754,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         # be returned here
         return table.columns.corresponding_column(self.column)  # type: ignore[return-value]  # noqa: E501
 
-    @util.memoized_property
-    def _column_tokens(self) -> Tuple[Optional[str], str, Optional[str]]:
-        """parse a string-based _colspec into its component parts."""
-
-        m = self._get_colspec().split(".")
-        if len(m) == 1:
-            tname = m.pop()
-            colname = None
-        else:
-            colname = m.pop()
-            tname = m.pop()
-
-        # A FK between column 'bar' and table 'foo' can be
-        # specified as 'foo', 'foo.bar', 'dbo.foo.bar',
-        # 'otherdb.dbo.foo.bar'. Once we have the column name and
-        # the table name, treat everything else as the schema
-        # name. Some databases (e.g. Sybase) support
-        # inter-database foreign keys. See tickets#1341 and --
-        # indirectly related -- Ticket #594. This assumes that '.'
-        # will never appear *within* any component of the FK.
-
-        if len(m) > 0:
-            schema = ".".join(m)
-        else:
-            schema = None
-        return schema, tname, colname
-
     def _resolve_col_tokens(self) -> Tuple[Table, str, Optional[str]]:
         if self.parent is None:
             raise exc.InvalidRequestError(
@@ -3420,7 +3770,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         parenttable = self.parent.table
 
         if self._unresolvable:
-            schema, tname, colname = self._column_tokens
+            schema, tname, colname = self.target_tokens
             tablekey = _get_table_key(tname, schema)
             return parenttable, tablekey, colname
 
@@ -3436,7 +3786,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             assert False
         ######################
 
-        schema, tname, colname = self._column_tokens
+        schema, tname, colname = self.target_tokens
 
         if schema is None and parenttable.metadata.schema is not None:
             schema = parenttable.metadata.schema
@@ -3471,7 +3821,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         if _column is None:
             raise exc.NoReferencedColumnError(
                 "Could not initialize target column "
-                f"for ForeignKey '{self._get_colspec()}' "
+                f"for ForeignKey {self.target_tokens._description()} "
                 f"on table '{parenttable.name}': "
                 f"table '{table.name}' has no column named '{key}'",
                 table.name,
@@ -3522,11 +3872,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def _resolve_column(
         self, *, raiseerr: bool = True
     ) -> Optional[Column[Any]]:
-        _column: Column[Any]
+        target_column = self.target_column
 
-        _colspec, effective_table_column = self._resolve_colspec_argument()
-
-        if isinstance(_colspec, str):
+        if target_column is None:
             parenttable, tablekey, colname = self._resolve_col_tokens()
 
             if self._unresolvable or tablekey not in parenttable.metadata:
@@ -3552,13 +3900,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     parenttable, table, colname
                 )
 
-        elif hasattr(_colspec, "__clause_element__"):
-            _column = _colspec.__clause_element__()
-            return _column
         else:
-            assert isinstance(_colspec, Column)
-            _column = _colspec
-            return _column
+            assert target_column is not None
+            return target_column
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, Column)
@@ -3610,8 +3954,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         # set up remote ".column" attribute, or a note to pick it
         # up when the other Table/Column shows up
 
-        _colspec, _ = self._resolve_colspec_argument()
-        if isinstance(_colspec, str):
+        target_column = self.target_column
+        if target_column is None:
             parenttable, table_key, colname = self._resolve_col_tokens()
             fk_key = (table_key, colname)
             if table_key in parenttable.metadata.tables:
@@ -3627,11 +3971,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     self._set_target_column(_column)
 
             parenttable.metadata._fk_memos[fk_key].append(self)
-        elif hasattr(_colspec, "__clause_element__"):
-            _column = _colspec.__clause_element__()
-            self._set_target_column(_column)
         else:
-            self._set_target_column(_colspec)
+            self._set_target_column(target_column)
 
 
 if TYPE_CHECKING:
@@ -5022,7 +5363,13 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         :param refcolumns: A sequence of foreign column names or Column
           objects. The columns must all be located within the same Table.
           The number of entries must match that of
-          :paramref:`_schema.ForeignKeyConstraint.columns`.
+          :paramref:`_schema.ForeignKeyConstraint.columns`.  Each entry
+          accepts the same forms as :paramref:`_schema.ForeignKey.column`,
+          including the ``(table_name, column_name)`` and
+          ``(schema, table_name, column_name)`` tuple forms.
+
+          .. versionchanged:: 2.1  Individual entries may be given as a
+             tuple of name tokens.
 
         :param name: Optional, the in-database name of the key.
 
@@ -5193,11 +5540,9 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         return self.elements[0].column.table
 
     def _validate_dest_table(self, table: Table) -> None:
-        table_keys = {
-            elem._table_key_within_construction() for elem in self.elements
-        }
+        table_keys = {elem.target_table_key for elem in self.elements}
         if None not in table_keys and len(table_keys) > 1:
-            elem0, elem1 = sorted(table_keys)[0:2]
+            elem0, elem1 = sorted(cast("Set[str]", table_keys))[0:2]
             raise exc.ArgumentError(
                 f"ForeignKeyConstraint on "
                 f"{table.fullname}({self._col_description}) refers to "
@@ -5275,13 +5620,12 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         fkc = ForeignKeyConstraint(
             [x.parent.key for x in self.elements],
             [
-                x._get_colspec(
+                x._copy_tokens(
                     schema=schema,
                     table_name=(
                         target_table.name
                         if target_table is not None
-                        and x._table_key_within_construction()
-                        == x.parent.table.key
+                        and x.target_table_key == x.parent.table.key
                         else None
                     ),
                     _is_copy=True,

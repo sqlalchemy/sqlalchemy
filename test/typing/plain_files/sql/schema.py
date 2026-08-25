@@ -1,8 +1,13 @@
 from typing import Union
 
 from sqlalchemy import CheckConstraint
+from sqlalchemy import Column
 from sqlalchemy import Constraint
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import ForeignKeyTarget
 from sqlalchemy import Index
+from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
 
@@ -83,3 +88,35 @@ MetaData(
         "uq": constraint_only,
     }
 )
+
+
+# ForeignKey target given as name tokens, in each accepted form
+ForeignKey("my_table.my_col")
+ForeignKey(("my.tbl", "my.col"))
+ForeignKey((None, "my.tbl", "my.col"))
+ForeignKey(("some.schema", "my.tbl", "my.col"))
+ForeignKey(ForeignKeyTarget("some.schema", "my.tbl", "my.col"))
+ForeignKey(Column("my_col", Integer))
+
+# EXPECTED_MYPY: Argument 1 to "ForeignKey" has incompatible type
+ForeignKey((None, "my.tbl", 3))
+
+ForeignKeyConstraint(
+    ["a", "b"],
+    ["my_table.a", ("my.tbl", "b")],
+)
+
+
+def fk_target_tokens(fk: ForeignKey) -> str:
+    tokens: ForeignKeyTarget = fk.target_tokens
+
+    # EXPECTED_TYPE: Optional[str]
+    reveal_type(tokens.schema)
+
+    # EXPECTED_TYPE: str
+    reveal_type(tokens.table_name)
+
+    # EXPECTED_TYPE: Optional[str]
+    reveal_type(tokens.column_name)
+
+    return tokens.table_name
