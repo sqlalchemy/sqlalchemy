@@ -4504,7 +4504,9 @@ class _OverrideBinds(Grouping[_T]):
             for bp in existing_bps
         )
 
-        return ck
+        # ck derives from _gen_cache_key, a compiled function in
+        # _cache_key_cy that mypy sees as untyped
+        return ck  # type: ignore[no-any-return]
 
 
 _FrameIntTuple = tuple[int | None, int | None]
@@ -5972,6 +5974,12 @@ class conv(_truncated_label):
 # compiler
 _generated_label = _truncated_label
 _anonymous_label_escape = re.compile(r"[%\(\) \$]+")
+# for bind parameter keys, additionally escape the characters that
+# SQLCompiler.bindname_escape_characters would otherwise escape only at
+# compile time, after the uniquifying counter has already been applied.
+# escaping them up front is what allows names like "a.b" and "a_b" to be
+# disambiguated as "a_b_1" / "a_b_2" rather than colliding.  see #13534
+_bind_key_escape = re.compile(r"[%\(\) \$\.\[\]:]+")
 
 
 class _anonymous_label(_truncated_label):
@@ -5986,11 +5994,13 @@ class _anonymous_label(_truncated_label):
     ) -> typing_Tuple[_anonymous_label, str]:
         # need to escape chars that interfere with format
         # strings in any case, issue #8724
-        body = _anonymous_label_escape.sub("_", body)
-
         if sanitize_key:
-            # sanitize_key is then an extra step used by BindParameter
-            body = body.strip("_")
+            # sanitize_key is an extra step used by BindParameter, which
+            # also escapes the characters that would otherwise be escaped
+            # only at compile time; issue #13534
+            body = _bind_key_escape.sub("_", body).strip("_")
+        else:
+            body = _anonymous_label_escape.sub("_", body)
 
         key = f"{seed} {body.replace('%', '%%')}"
         label = _anonymous_label(f"%({key})s")
@@ -6002,11 +6012,13 @@ class _anonymous_label(_truncated_label):
     ) -> _anonymous_label:
         # need to escape chars that interfere with format
         # strings in any case, issue #8724
-        body = _anonymous_label_escape.sub("_", body)
-
         if sanitize_key:
-            # sanitize_key is then an extra step used by BindParameter
-            body = body.strip("_")
+            # sanitize_key is an extra step used by BindParameter, which
+            # also escapes the characters that would otherwise be escaped
+            # only at compile time; issue #13534
+            body = _bind_key_escape.sub("_", body).strip("_")
+        else:
+            body = _anonymous_label_escape.sub("_", body)
 
         return _anonymous_label(f"%({seed} {body.replace('%', '%%')})s")
 

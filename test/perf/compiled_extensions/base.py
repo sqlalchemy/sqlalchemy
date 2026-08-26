@@ -25,7 +25,8 @@ class Case:
 
     _CASES = []
 
-    def __init__(self, impl):
+    def __init__(self, name, impl):
+        self.name = name
         self.impl = impl
         self.init_objects()
 
@@ -38,6 +39,9 @@ class Case:
 
     @classmethod
     def init_class(cls):
+        pass
+
+    def end(self):
         pass
 
     @classmethod
@@ -92,7 +96,7 @@ class Case:
         results = defaultdict(dict)
         for name, impl in objects:
             print(f"Running {name:<10} ", end="", flush=True)
-            impl_case = cls(impl)
+            impl_case = cls(name, impl)
             fails = []
             for m in methods:
                 call = getattr(impl_case, m)
@@ -101,6 +105,8 @@ class Case:
                     fn_num = getattr(call, "__number__", None)
                     if fn_num is not None:
                         t_num = max(1, int(fn_num * factor))
+                    # warmup run
+                    timeit(call, number=max(1, t_num // 1000))
                     value = timeit(call, number=t_num)
                     print(".", end="", flush=True)
                 except Exception as e:
@@ -112,6 +118,7 @@ class Case:
             print(" Done")
             for f in fails:
                 print("\t", f)
+            impl_case.end()
 
         before = set(results)
         cls.update_results(results)

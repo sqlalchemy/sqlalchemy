@@ -2902,11 +2902,11 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         )
 
     def _cc_by_name(self, reflected, name):
-        """return the lower cased sqltext for the named CHECK constraint."""
+        """return the sqltext for the named CHECK constraint."""
 
         for rec in reflected:
             if rec["name"] == name:
-                return rec["sqltext"].lower()
+                return rec["sqltext"]
 
         assert False, (
             f"No CHECK constraint named {name!r} in "
@@ -3663,6 +3663,141 @@ class CompositeKeyReflectionTest(fixtures.TablesTest):
         eq_(fkey1.get("constrained_columns"), ["pname", "pid", "pattr"])
 
 
+class RepeatedColumnForeignKeyTest(fixtures.TestBase):
+    """round trip a FOREIGN KEY which names the same column more than
+    once, e.g. ``FOREIGN KEY (a, a) REFERENCES r (b, c)``.
+
+    """
+
+    __requires__ = ("foreign_key_constraint_reflection",)
+    __backend__ = True
+
+    @testing.fixture
+    @testing.requires.repeated_column_foreign_keys
+    def rep_fk_t(self, connection, metadata):
+        """a table with a FOREIGN KEY that repeats a local column."""
+
+        t = Table(
+            "rep_fk_t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("cid", Integer, nullable=False),
+            sa.UniqueConstraint("id", "cid"),
+            sa.ForeignKeyConstraint(
+                ["cid", "cid"],
+                ["rep_fk_t.id", "rep_fk_t.cid"],
+                name="fk_rep_cid",
+            ),
+            test_needs_fk=True,
+        )
+        metadata.create_all(connection)
+        return t
+
+    @testing.fixture
+    @testing.requires.repeated_remote_col_foreign_keys
+    def remote_fk_t(self, connection, metadata, rep_fk_t):
+        """a table with a FOREIGN KEY that repeats a remote column."""
+
+        t = Table(
+            "remote_fk_t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("cid", Integer, nullable=False),
+            sa.UniqueConstraint("id", "cid"),
+            sa.ForeignKeyConstraint(
+                ["id", "cid"],
+                ["rep_fk_t.id", "rep_fk_t.id"],
+                name="fk_remote_cid",
+            ),
+            test_needs_fk=True,
+        )
+        metadata.create_all(connection)
+        return t
+
+    def _exp_fk(self, **kw):
+        """an expected ``get_foreign_keys()`` entry.
+
+        ``comment`` is only present for dialects that reflect constraint
+        comments.
+
+        """
+        exp = dict(referred_schema=None, options={}, **kw)
+        if testing.requires.constraint_comment_reflection.enabled:
+            exp["comment"] = None
+        return exp
+
+    def test_get_foreign_keys_local_repeated(self, connection, rep_fk_t):
+        insp = inspect(connection)
+        fkeys = insp.get_foreign_keys("rep_fk_t")
+        eq_(
+            fkeys,
+            [
+                self._exp_fk(
+                    name="fk_rep_cid",
+                    constrained_columns=["cid", "cid"],
+                    referred_table="rep_fk_t",
+                    referred_columns=["id", "cid"],
+                )
+            ],
+        )
+
+    def test_get_foreign_keys_remote_repeated(self, connection, remote_fk_t):
+        insp = inspect(connection)
+        fkeys = insp.get_foreign_keys("remote_fk_t")
+        eq_(
+            fkeys,
+            [
+                self._exp_fk(
+                    name="fk_remote_cid",
+                    constrained_columns=["id", "cid"],
+                    referred_table="rep_fk_t",
+                    referred_columns=["id", "id"],
+                )
+            ],
+        )
+
+    def test_reflect_constraint_local_repeated(self, connection, rep_fk_t):
+        t = Table("rep_fk_t", MetaData(), autoload_with=connection)
+
+        fkcs = [
+            const
+            for const in t.constraints
+            if isinstance(const, sa.ForeignKeyConstraint)
+        ]
+
+        eq_(len(fkcs), 1)
+        fkc = fkcs[0]
+
+        eq_(fkc.column_keys, ["cid", "cid"])
+        eq_(list(fkc.columns), [t.c.cid, t.c.cid])
+        eq_(
+            [(fk.parent, fk.column) for fk in fkc.elements],
+            [(t.c.cid, t.c.id), (t.c.cid, t.c.cid)],
+        )
+
+    def test_reflect_constraint_remote_repeated(self, connection, remote_fk_t):
+        t = Table("remote_fk_t", MetaData(), autoload_with=connection)
+
+        fkcs = [
+            const
+            for const in t.constraints
+            if isinstance(const, sa.ForeignKeyConstraint)
+        ]
+
+        eq_(len(fkcs), 1)
+        fkc = fkcs[0]
+
+        # the referred table is reflected into the same MetaData
+        remote = t.metadata.tables["rep_fk_t"]
+
+        eq_(fkc.column_keys, ["id", "cid"])
+        eq_(list(fkc.columns), [t.c.id, t.c.cid])
+        eq_(
+            [(fk.parent, fk.column) for fk in fkc.elements],
+            [(t.c.id, remote.c.id), (t.c.cid, remote.c.id)],
+        )
+
+
 __all__ = (
     "ComponentReflectionTest",
     "ComponentReflectionTestExtra",
@@ -3675,5 +3810,6 @@ __all__ = (
     "ComputedReflectionTest",
     "IdentityReflectionTest",
     "CompositeKeyReflectionTest",
+    "RepeatedColumnForeignKeyTest",
     "TempTableElementsTest",
 )

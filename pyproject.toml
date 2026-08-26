@@ -2,7 +2,7 @@
 build-backend = "setuptools.build_meta"
 requires = [
     "setuptools>=77.0.3",
-    "cython>=3.1; platform_python_implementation == 'CPython'", # Skip cython when using pypy
+    "cython>=3.3; platform_python_implementation == 'CPython'", # Skip cython when using pypy
 ]
 
 
@@ -12,14 +12,13 @@ description = "Database Abstraction Library"
 readme = "README.rst"
 authors = [{name = "Mike Bayer", email = "mike_mp@zzzcomputing.com"}]
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "AUTHORS"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -29,7 +28,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database :: Front-Ends",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "typing-extensions >= 4.6.0",
 ]

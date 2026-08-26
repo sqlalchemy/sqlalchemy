@@ -10,18 +10,19 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Union
 
 from .._typing import _OnConflictIndexElementsT
 from .._typing import _OnConflictIndexWhereT
 from .._typing import _OnConflictSetT
 from .._typing import _OnConflictWhereT
+from ... import exc
 from ... import util
 from ...sql import coercions
 from ...sql import roles
 from ...sql import schema
 from ...sql._typing import _DMLTableArgument
-from ...sql.base import _exclusive_against
 from ...sql.base import ColumnCollection
 from ...sql.base import ReadOnlyColumnCollection
 from ...sql.base import SyntaxExtension
@@ -102,15 +103,6 @@ class Insert(StandardInsert):
         """
         return alias(self.table, name="excluded").columns
 
-    _on_conflict_exclusive = _exclusive_against(
-        "_post_values_clause",
-        msgs={
-            "_post_values_clause": "This Insert construct already has "
-            "an ON CONFLICT clause established"
-        },
-    )
-
-    @_on_conflict_exclusive
     def on_conflict_do_update(
         self,
         index_elements: _OnConflictIndexElementsT = None,
@@ -120,6 +112,17 @@ class Insert(StandardInsert):
     ) -> Self:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
+
+        This method may be invoked more than once against the same
+        :class:`_sqlite.Insert` construct, where each ``ON CONFLICT`` clause
+        renders in the order in which it was established.
+
+        .. versionadded:: 2.1  Multiple ``ON CONFLICT`` clauses may be
+           established on a single :class:`_sqlite.Insert` construct.
+
+        .. seealso::
+
+            :ref:`sqlite_on_conflict_multiple`
 
         :param index_elements:
          A sequence consisting of string column names, :class:`_schema.Column`
@@ -161,7 +164,6 @@ class Insert(StandardInsert):
             OnConflictDoUpdate(index_elements, index_where, set_, where)
         )
 
-    @_on_conflict_exclusive
     def on_conflict_do_nothing(
         self,
         index_elements: _OnConflictIndexElementsT = None,
@@ -169,6 +171,23 @@ class Insert(StandardInsert):
     ) -> Self:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
+
+        This method may be invoked more than once against the same
+        :class:`_sqlite.Insert` construct, and may be combined with
+        :meth:`_sqlite.Insert.on_conflict_do_update`, where each
+        ``ON CONFLICT`` clause renders in the order in which it was
+        established.  As SQLite allows only the last ``ON CONFLICT`` clause
+        of a statement to omit its conflict target, a call that omits
+        :paramref:`_sqlite.Insert.on_conflict_do_nothing.index_elements`
+        must be the last clause established, else
+        :class:`.InvalidRequestError` is raised.
+
+        .. versionadded:: 2.1  Multiple ``ON CONFLICT`` clauses may be
+           established on a single :class:`_sqlite.Insert` construct.
+
+        .. seealso::
+
+            :ref:`sqlite_on_conflict_multiple`
 
         :param index_elements:
          A sequence consisting of string column names, :class:`_schema.Column`
@@ -220,9 +239,25 @@ class OnConflictClause(SyntaxExtension, ClauseElement):
                 self.inferred_target_whereclause
             ) = None
 
+    def _append_to_existing(
+        self, existing: Sequence[ClauseElement]
+    ) -> Sequence[ClauseElement]:
+        if existing:
+            last = existing[-1]
+            if (
+                isinstance(last, OnConflictClause)
+                and last.inferred_target_elements is None
+            ):
+                raise exc.InvalidRequestError(
+                    "This Insert construct already has an ON CONFLICT "
+                    "clause that omits a conflict target; such a clause "
+                    "must be the last ON CONFLICT clause in the statement"
+                )
+        return [*existing, self]
+
     def apply_to_insert(self, insert_stmt: StandardInsert) -> None:
         insert_stmt.apply_syntax_extension_point(
-            self.append_replacing_same_type, "post_values"
+            self._append_to_existing, "post_values"
         )
 
 

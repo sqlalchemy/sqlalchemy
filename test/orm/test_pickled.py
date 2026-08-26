@@ -1,29 +1,44 @@
 import copy
 import pickle
+import sys
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import collections
+from sqlalchemy.orm import defer
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import lazyload
+from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
+from sqlalchemy.orm import raiseload
+from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import state as sa_state
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.collections import column_keyed_dict
+from sqlalchemy.orm.path_registry import PathRegistry
+from sqlalchemy.orm.path_registry import PathToken
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not_none
+from sqlalchemy.testing import unpickle_in_subprocess
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.pickleable import Address
 from sqlalchemy.testing.pickleable import AddressWMixin
@@ -664,6 +679,235 @@ class PickleTest(fixtures.MappedTest):
         s.bulk_save_objects(pes, return_defaults=True)
         state = pickle.dumps(pes)
         pickle.loads(state)
+
+
+def _token_pickle_tables(metadata):
+    """tables for :class:`.TokenPathPickleTest`."""
+
+    users = Table(
+        "users",
+        metadata,
+        Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
+        Column("name", String(30), nullable=False),
+    )
+    addresses = Table(
+        "addresses",
+        metadata,
+        Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
+        Column("user_id", None, ForeignKey("users.id")),
+        Column("email_address", String(50), nullable=False),
+    )
+    return users, addresses
+
+
+def _token_pickle_mappers(reg, users, addresses):
+    """mapping for :class:`.TokenPathPickleTest`."""
+
+    reg.map_imperatively(
+        User, users, properties={"addresses": relationship(Address)}
+    )
+    reg.map_imperatively(Address, addresses)
+
+
+def _unpickle_token_path_main():
+    """entry point for the interpreter spawned by
+    :meth:`.TokenPathPickleTest.test_unpickle_other_process`.
+
+    establishes the same mapping in a process which has not run any query,
+    then unpickles the instance named in ``sys.argv[1]``.
+
+    """
+
+    _token_pickle_mappers(registry(), *_token_pickle_tables(MetaData()))
+
+    with open(sys.argv[1], "rb") as file_:
+        print(pickle.load(file_).name)
+
+
+class TokenPathPickleTest(fixtures.MappedTest):
+    """test #13493.
+
+    loader paths may include wildcard / default tokens such as
+    ``"column:*"``, which ride along with a pickled ORM instance and are
+    reconstructed by :meth:`.PathRegistry.deserialize`.  As tokens are
+    recognized there by their presence in ``PathToken._intern``, that
+    collection must be fully populated up front, in every process,
+    including one which has not yet run any query.
+
+    Previously it was populated lazily, so unpickling in a fresh
+    interpreter failed; this is routinely hit under the ``spawn`` and
+    ``forkserver`` multiprocessing start methods, the latter of which
+    became the POSIX default in Python 3.14.
+
+    """
+
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        _token_pickle_tables(metadata)
+
+    @classmethod
+    def setup_mappers(cls):
+        _token_pickle_mappers(
+            cls.mapper_registry, cls.tables.users, cls.tables.addresses
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        with Session(connection) as sess:
+            sess.add(
+                User(
+                    name="ed",
+                    addresses=[Address(email_address="ed@bar.com")],
+                )
+            )
+            sess.commit()
+
+    def test_intern_is_fully_populated(self):
+        """the complete set of tokens is present at import time.
+
+        this is the actual fix for #13493; the ``load_only()`` /
+        ``raiseload("*")`` round trips below depend on it.
+
+        """
+
+        eq_(
+            set(PathToken._intern),
+            {
+                "column:*",
+                "column:_sa_default",
+                "relationship:*",
+                "relationship:_sa_default",
+            },
+        )
+
+    def test_intern_does_not_grow(self):
+        """no loader option adds to ``PathToken._intern``.
+
+        the collection is process-global and never pruned, so it must not
+        accept new entries at runtime, in particular not from paths
+        arriving via deserialization.
+
+        """
+
+        before = dict(PathToken._intern)
+
+        with fixture_session() as sess:
+            for opt in (
+                load_only(User.name),
+                load_only(User.name, raiseload=True),
+                defer(User.name),
+                undefer(User.name),
+                raiseload("*"),
+                lazyload("*"),
+                Load(User).defer("*"),
+                Load(User).raiseload("*"),
+                selectinload(User.addresses).load_only(Address.email_address),
+                selectinload(User.addresses).raiseload("*"),
+            ):
+                u1 = sess.scalars(select(User).options(opt)).one()
+                pickle.loads(pickle.dumps(u1))
+                sess.expunge_all()
+
+        eq_(PathToken._intern, before)
+
+    def test_unknown_token_rejected(self):
+        """a string that is not one of the fixed tokens can't create one."""
+
+        with expect_raises_message(
+            sa.exc.ArgumentError, "invalid token: column:not_a_token:\\*"
+        ):
+            inspect(User)._path_registry.token("column:not_a_token:*")
+
+    @testing.combinations("column", "relationship", argnames="wildcard_key")
+    @testing.combinations("*", "_sa_default", argnames="token_type")
+    @testing.combinations(True, False, argnames="from_root")
+    def test_deserialize_token_path(self, wildcard_key, token_type, from_root):
+        """every token round trips through serialize() / deserialize()."""
+
+        token = f"{wildcard_key}:{token_type}"
+
+        parent = (
+            PathRegistry.root if from_root else inspect(User)._path_registry
+        )
+        path = parent.token(token)
+
+        eq_(PathRegistry.deserialize(path.serialize()).path, path.path)
+
+    def test_pickle_load_only(self):
+        """load_only() propagates a ``"column:*"`` token within
+        InstanceState.load_options."""
+
+        with fixture_session() as sess:
+            u1 = sess.scalars(select(User).options(load_only(User.name))).one()
+            sess.expunge_all()
+
+        # prior to the #13493 fix, in a fresh interpreter this raised
+        # KeyError: 'column:*'; see
+        # test_unpickle_other_process() for that condition
+        u2 = pickle.loads(pickle.dumps(u1))
+
+        eq_(
+            [
+                elem.path.path
+                for opt in u2._sa_instance_state.load_options
+                for elem in opt.context
+            ],
+            [
+                (inspect(User), inspect(User).attrs.name),
+                (inspect(User), PathToken._intern["column:*"]),
+            ],
+        )
+
+    def test_pickle_wildcard_raiseload(self):
+        """raiseload("*") leaves a _LoadLazyAttribute in
+        InstanceState.callables whose loader option has a root level
+        token path."""
+
+        with fixture_session() as sess:
+            u1 = sess.scalars(select(User).options(raiseload("*"))).one()
+            sess.expunge_all()
+
+        # prior to the #13493 fix, in a fresh interpreter this raised
+        # IndexError: invalid argument for RootRegistry.__getitem__: None;
+        # see test_unpickle_other_process() for that condition
+        u2 = pickle.loads(pickle.dumps(u1))
+
+        eq_(
+            u2._sa_instance_state.callables["addresses"].loadopt.path.path,
+            (PathToken._intern["relationship:_sa_default"],),
+        )
+
+    @testing.combinations("load_only", "raiseload", argnames="option")
+    def test_unpickle_other_process(self, option):
+        """unpickle in an interpreter that has not itself run a query.
+
+        this is the condition reported in #13493; the tests above run in
+        the process that produced the pickle, where the tokens would have
+        been set up by the query itself.
+
+        """
+
+        if option == "load_only":
+            opt = load_only(User.name)
+        else:
+            opt = raiseload("*")
+
+        with fixture_session() as sess:
+            u1 = sess.scalars(select(User).options(opt)).one()
+            sess.expunge_all()
+
+        eq_(
+            unpickle_in_subprocess(
+                u1,
+                "from test.orm.test_pickled import "
+                "_unpickle_token_path_main; _unpickle_token_path_main()",
+            ),
+            b"ed",
+        )
 
 
 class OptionsTest(_Polymorphic):

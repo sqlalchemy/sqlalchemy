@@ -744,6 +744,54 @@ occurs:
     >>> print(stmt)
     {printsql}INSERT INTO my_table (id, data) VALUES (?, ?) ON CONFLICT DO NOTHING
 
+.. _sqlite_on_conflict_multiple:
+
+Specifying Multiple ON CONFLICT Clauses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLite accepts more than one ``ON CONFLICT`` clause within a single INSERT
+statement.  The :meth:`_sqlite.Insert.on_conflict_do_update` and
+:meth:`_sqlite.Insert.on_conflict_do_nothing` methods may therefore be
+invoked repeatedly against the same construct, and may be combined with each
+other; each clause renders in the order in which it was established:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = insert(my_table).values(id="some_id", data="inserted value")
+    >>> stmt = stmt.on_conflict_do_update(
+    ...     index_elements=["id"], set_=dict(data="updated value")
+    ... ).on_conflict_do_nothing(index_elements=["data"])
+    >>> print(stmt)
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
+    ON CONFLICT (id) DO UPDATE SET data = ?
+    ON CONFLICT (data) DO NOTHING
+
+SQLite tests the clauses in the order given, and applies at most one of them
+to any particular row, that being the first clause whose conflict target
+matches the constraint that was violated.
+
+Only the last ``ON CONFLICT`` clause of a statement may omit its conflict
+target, in which case it fires for any unique violation not already captured
+by a preceding clause.  A :meth:`_sqlite.Insert.on_conflict_do_nothing` call
+that omits
+:paramref:`_sqlite.Insert.on_conflict_do_nothing.index_elements` must
+therefore be the last clause established, else
+:class:`.InvalidRequestError` is raised:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = insert(my_table).values(id="some_id", data="inserted value")
+    >>> stmt = stmt.on_conflict_do_update(
+    ...     index_elements=["id"], set_=dict(data="updated value")
+    ... ).on_conflict_do_nothing()
+    >>> print(stmt)
+    {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
+    ON CONFLICT (id) DO UPDATE SET data = ?
+    ON CONFLICT DO NOTHING
+
+.. versionadded:: 2.1  Multiple ``ON CONFLICT`` clauses may be established
+   on a single :class:`_sqlite.Insert` construct.
+
 .. _sqlite_type_reflection:
 
 Type Reflection
@@ -2562,7 +2610,7 @@ class SQLiteDialect(default.DefaultDialect):
         constraint_name = None
         table_data = self._get_table_sql(connection, table_name, schema=schema)
         if table_data:
-            PK_PATTERN = r'CONSTRAINT +(?:"(.+?)"|(\w+)) +PRIMARY KEY'
+            PK_PATTERN = r'CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+PRIMARY\s+KEY'
             result = re.search(PK_PATTERN, table_data, re.I)
             if result:
                 constraint_name = result.group(1) or result.group(2)
@@ -2667,13 +2715,14 @@ class SQLiteDialect(default.DefaultDialect):
             # so parsing the columns is really about matching it up to what
             # we already have.
             FK_PATTERN = (
-                r'(?:CONSTRAINT +(?:"(.+?)"|(\w+)) +)?'
-                r"FOREIGN KEY *\( *(.+?) *\) +"
-                r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\( *((?:(?:"[^"]+"|[a-z0-9_]+) *(?:, *)?)+)\) *'  # noqa: E501
-                r"((?:ON (?:DELETE|UPDATE) "
-                r"(?:SET NULL|SET DEFAULT|CASCADE|RESTRICT|NO ACTION) *)*)"
-                r"((?:NOT +)?DEFERRABLE)?"
-                r"(?: +INITIALLY +(DEFERRED|IMMEDIATE))?"
+                r'(?:CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+)?'
+                r"FOREIGN\s+KEY\s*\(\s*(.+?)\s*\)\s+"
+                r'REFERENCES\s+(?:(?:"(.+?)")|([a-z0-9_]+))\s*\(\s*((?:(?:"[^"]+"|[a-z0-9_]+)\s*(?:,\s*)?)+)\)\s*'  # noqa: E501
+                r"((?:ON\s+(?:DELETE|UPDATE)\s+"
+                r"(?:SET\s+NULL|SET\s+DEFAULT|CASCADE|RESTRICT|"
+                r"NO\s+ACTION)\s*)*)"
+                r"((?:NOT\s+)?DEFERRABLE)?"
+                r"(?:\s+INITIALLY\s+(DEFERRED|IMMEDIATE))?"
             )
             for match in re.finditer(FK_PATTERN, table_data, re.I):
                 (
@@ -2700,7 +2749,13 @@ class SQLiteDialect(default.DefaultDialect):
                 referred_name = referred_quoted_name or referred_name
                 options = {}
 
-                for token in re.split(r" *\bON\b *", onupdatedelete.upper()):
+                # a newline may separate the words of an
+                # ON DELETE / ON UPDATE clause; normalize to single
+                # spaces so the tokens below compare correctly
+                onupdatedelete = re.sub(
+                    r"\s+", " ", onupdatedelete.upper()
+                ).strip()
+                for token in re.split(r" *\bON\b *", onupdatedelete):
                     if token.startswith("DELETE"):
                         ondelete = token[6:].strip()
                         if ondelete and ondelete != "NO ACTION":
@@ -2783,7 +2838,7 @@ class SQLiteDialect(default.DefaultDialect):
             if table_data is None:
                 return
             UNIQUE_PATTERN = (
-                r'(?:CONSTRAINT +(?:"(.+?)"|(\w+)) +)?UNIQUE *\((.+?)\)'
+                r'(?:CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+)?UNIQUE\s*\((.+?)\)'
             )
             INLINE_UNIQUE_PATTERN = (
                 r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?)[\t ]'

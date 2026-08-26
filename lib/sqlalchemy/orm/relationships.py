@@ -47,7 +47,6 @@ from typing import Union
 import weakref
 
 from . import attributes
-from . import strategy_options
 from ._typing import insp_is_aliased_class
 from ._typing import is_has_collection_adapter
 from .base import _DeclarativeMapped
@@ -67,6 +66,7 @@ from .interfaces import ONETOMANY
 from .interfaces import PropComparator
 from .interfaces import RelationshipDirection
 from .interfaces import StrategizedProperty
+from .path_registry import _RELATIONSHIP_TOKEN
 from .util import CascadeOptions
 from .. import exc as sa_exc
 from .. import Exists
@@ -358,7 +358,7 @@ class RelationshipProperty(
 
     """
 
-    strategy_wildcard_key = strategy_options._RELATIONSHIP_TOKEN
+    strategy_wildcard_key = _RELATIONSHIP_TOKEN
     inherit_cache = True
     """:meta private:"""
 

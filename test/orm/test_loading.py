@@ -1,6 +1,8 @@
 from sqlalchemy import delete
 from sqlalchemy import exc
+from sqlalchemy import ForeignKey
 from sqlalchemy import insert
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import literal_column
@@ -10,9 +12,14 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy import update
+from sqlalchemy.orm import immediateload
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
@@ -163,6 +170,171 @@ class InstanceProcessorTest(_fixtures.FixtureTest):
             )
 
         self.assert_sql_count(testing.db, go, 1)
+
+
+class MultiPathLoadPathTest(_fixtures.FixtureTest):
+    """test #13507.
+
+    When an object occupies more than one column position within a single
+    result, ``state.load_path`` is the shallowest of those paths, rather
+    than whichever position happened to be processed last.  As
+    ``state.load_path`` is what drives the loader options replayed when the
+    object is later refreshed or unexpired, taking the last position made
+    those options depend on the loader strategy in use, on column order
+    within the row and on row order within the result.
+
+    """
+
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        User, Address, Order = cls.classes("User", "Address", "Order")
+        users, addresses, orders = cls.tables("users", "addresses", "orders")
+
+        cls.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, backref="user"),
+                "orders": relationship(Order),
+            },
+        )
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(Order, orders)
+
+    @testing.combinations(
+        joinedload,
+        selectinload,
+        subqueryload,
+        immediateload,
+        lazyload,
+        argnames="fn",
+        id_="n",
+    )
+    def test_load_path_is_shallowest_path(self, fn):
+        """the root path stays in place even though ``User`` is also
+        loaded underneath ``Address.user``"""
+
+        User, Address = self.classes("User", "Address")
+
+        sess = fixture_session()
+        u1 = (
+            sess.scalars(
+                select(User)
+                .where(User.id == 7)
+                .options(fn(User.addresses).options(fn(Address.user)))
+            )
+            .unique()
+            .one()
+        )
+
+        eq_(inspect(u1).load_path.path, (inspect(User),))
+
+    @testing.combinations(
+        joinedload,
+        selectinload,
+        subqueryload,
+        immediateload,
+        lazyload,
+        argnames="fn",
+        id_="n",
+    )
+    def test_refresh_ignores_cyclic_raiseload(self, fn):
+        """a ``raiseload()`` declared under a path that cycles back to
+        ``User`` is not applied to the ``User`` that was loaded at the
+        root of the query"""
+
+        User, Address = self.classes("User", "Address")
+
+        sess = fixture_session()
+        u1 = (
+            sess.scalars(
+                select(User)
+                .where(User.id == 7)
+                .options(
+                    fn(User.addresses).options(
+                        fn(Address.user).raiseload("*")
+                    ),
+                    fn(User.orders),
+                )
+            )
+            .unique()
+            .one()
+        )
+
+        sess.expire(u1)
+
+        # refresh u1; only the "users" row is fetched
+        eq_(u1.name, "jack")
+
+        eq_(inspect(u1).callables, {})
+
+        eq_(len(u1.orders), 3)
+
+
+class MultiPathShallowestLoadPathTest(fixtures.DeclarativeMappedTest):
+    """test #13507, continued.
+
+    the shallowest path wins regardless of the order in which the paths
+    are encountered, i.e. it does not matter whether the object showed up
+    under a relationship first and as the root entity later, or the
+    reverse.
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Node(Base):
+            __tablename__ = "node"
+
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(ForeignKey("node.id"))
+            parent = relationship("Node", remote_side=[id])
+            name = Column(String(10))
+
+    @classmethod
+    def insert_data(cls, connection):
+        Node = cls.classes.Node
+
+        with Session(connection) as session:
+            session.add_all(
+                [
+                    Node(id=1, name="n1"),
+                    Node(id=2, parent_id=1, name="n2"),
+                    Node(id=3, parent_id=1, name="n3"),
+                ]
+            )
+            session.commit()
+
+    @testing.combinations("asc", "desc", argnames="direction")
+    def test_shallowest_path_wins(self, direction):
+        Node = self.classes.Node
+
+        sess = fixture_session()
+
+        # descending, Node #1 is seen first under Node.parent in the rows
+        # for #3 and #2 and only afterwards as the root entity in its own
+        # row; ascending, the reverse.  either way the root path is the
+        # one that's kept
+        order_by = Node.id.asc() if direction == "asc" else Node.id.desc()
+
+        nodes = (
+            sess.scalars(
+                select(Node)
+                .order_by(order_by)
+                .options(joinedload(Node.parent))
+            )
+            .unique()
+            .all()
+        )
+
+        n1 = {n.id: n for n in nodes}[1]
+
+        eq_(inspect(n1).load_path.path, (inspect(Node),))
 
 
 class InstancesTest(_fixtures.FixtureTest):

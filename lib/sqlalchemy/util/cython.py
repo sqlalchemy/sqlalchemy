@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Callable
+from typing import Generic
+from typing import overload
 from typing import Type
 from typing import TypeVar
 
@@ -34,6 +36,12 @@ void = Any
 NULL = None
 
 
+class const(Generic[_T]):
+    @classmethod
+    def __class_getitem__(cls, item: _T) -> _T:
+        return item
+
+
 # functions
 def _no_op(fn: _T) -> _T:
     return fn
@@ -47,7 +55,15 @@ final = _no_op
 pointer = _no_op  # not sure how to express a pointer to a type
 
 
-def declare(t: Type[_T], value: Any = None, **kw: Any) -> _T:
+@overload
+def declare(t: Type[const[_T]], value: Any = None, **kw: Any) -> _T: ...
+
+
+@overload
+def declare(t: Type[_T], value: Any = None, **kw: Any) -> _T: ...
+
+
+def declare(t: Type[_T] | Type[const[_T]], value: Any = None, **kw: Any) -> _T:
     return value  # type: ignore[no-any-return]
 
 

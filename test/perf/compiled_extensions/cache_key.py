@@ -1,3 +1,4 @@
+from types import MethodType
 from types import SimpleNamespace
 
 import sqlalchemy as sa
@@ -6,6 +7,10 @@ from sqlalchemy.dialects.oracle.base import OracleDialect
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import ObjectKind
 from sqlalchemy.engine import ObjectScope
+from sqlalchemy.sql import cache_key
+from sqlalchemy.sql.cache_key import HasCacheKey
+from sqlalchemy.util.langhelpers import load_uncompiled_module
+from sqlalchemy.util.langhelpers import walk_subclasses
 from .base import Case
 from .base import test_case
 
@@ -14,14 +19,31 @@ class CacheKey(Case):
     NUMBER = 50_000
 
     @staticmethod
-    def traversal():
-        from sqlalchemy.sql.cache_key import HasCacheKey
+    def python():
+        from sqlalchemy.sql import _cache_key_cy
 
-        return HasCacheKey._generate_cache_key
+        py_mod = load_uncompiled_module(_cache_key_cy)
+        assert not py_mod._is_compiled()
+        # avoid enum issues
+        py_mod._attr_info_kind = _cache_key_cy._attr_info_kind
+        py_mod.CacheTraverseTarget = _cache_key_cy.CacheTraverseTarget
+        return (HasCacheKey._generate_cache_key, py_mod)
+
+    @staticmethod
+    def cython():
+        from sqlalchemy.sql import _cache_key_cy
+
+        assert _cache_key_cy._is_compiled()
+        return (HasCacheKey._generate_cache_key, _cache_key_cy)
 
     IMPLEMENTATIONS = {
-        "traversal": traversal.__func__,
+        "python": python.__func__,
+        "cython": cython.__func__,
     }
+
+    @classmethod
+    def update_results(cls, results):
+        cls._divide_results(results, "cython", "python", "cy / py")
 
     @classmethod
     def init_class(cls):
@@ -33,6 +55,10 @@ class CacheKey(Case):
             "parent_orm",
             "parent_orm_join",
             "many_types",
+            "core_insert",
+            "core_update",
+            "core_union",
+            "deep_and",
         ):
             cls.make_test_cases(name, cls.statements.__dict__[name])
 
@@ -44,16 +70,16 @@ class CacheKey(Case):
                 oracle._all_objects_query(
                     "scott", ObjectScope.DEFAULT, ObjectKind.ANY, False, False
                 ),
-                None,
+                20_000,
             ),
             (
                 "_table_options_query",
                 oracle._table_options_query(
                     "scott", ObjectScope.DEFAULT, ObjectKind.ANY, False, False
                 ),
-                None,
+                20_000,
             ),
-            ("_column_query", oracle._column_query("scott"), 15_000),
+            ("_column_query", oracle._column_query("scott"), 20_000),
             (
                 "_comment_query",
                 oracle._comment_query(
@@ -69,36 +95,36 @@ class CacheKey(Case):
         pg = PGDialect()
         pg.server_version_info = (16, 0, 0)
         for name, stmt, num in (
-            ("_has_table_query", pg._has_table_query("scott"), 30_000),
+            ("_has_table_query", pg._has_multi_table_query("scott"), 20_000),
             (
                 "_columns_query",
                 pg._columns_query(
                     "scott", False, ObjectScope.DEFAULT, ObjectKind.ANY
                 ),
-                10_000,
+                20_000,
             ),
             (
                 "_table_oids_query",
                 pg._table_oids_query(
                     "scott", False, ObjectScope.DEFAULT, ObjectKind.ANY
                 ),
-                30_000,
+                20_000,
             ),
-            ("_index_query", pg._index_query, 7_000),
-            ("_constraint_query", pg._constraint_query(True), 10_000),
+            ("_index_query", pg._index_query, 20_000),
+            ("_constraint_query", pg._constraint_query, 20_000),
             (
                 "_foreing_key_query",
                 pg._foreing_key_query(
                     "scott", False, ObjectScope.DEFAULT, ObjectKind.ANY
                 ),
-                15_000,
+                20_000,
             ),
             (
                 "_comment_query",
                 pg._comment_query(
                     "scott", False, ObjectScope.DEFAULT, ObjectKind.ANY
                 ),
-                25_000,
+                20_000,
             ),
             (
                 "_check_constraint_query",
@@ -108,9 +134,42 @@ class CacheKey(Case):
                 20_000,
             ),
             ("_enum_query", pg._enum_query("scott"), 20_000),
-            ("_domain_query", pg._domain_query("scott"), 15_000),
+            ("_domain_query", pg._domain_query("scott"), 20_000),
         ):
             cls.make_test_cases("pg" + name, stmt, num)
+
+    def _reset_traversal(self):
+        # need to reset all the subclasses object
+        for cls in walk_subclasses(cache_key.HasCacheKey):
+            if "_generated_cache_key_traversal" in cls.__dict__:
+                delattr(cls, "_generated_cache_key_traversal")
+
+    def init_objects(self):
+        self.module = self.impl[1]
+        self.impl = self.impl[0]
+        self._reset_traversal()
+        visitor_instance = cache_key._cache_key_traversal_visitor
+        for meth in ["generate_class_attrs", "_generate_class_attrs"]:
+            setattr(self, "orig_" + meth, getattr(visitor_instance, meth))
+            generated_method = MethodType(
+                getattr(self.module._BaseCacheKeyTraversal, meth),
+                visitor_instance,
+            )
+            setattr(visitor_instance, meth, generated_method)
+        # NOTE: this sets the cython/python version of the function
+        cache_key.HasCacheKey._gen_cache_key = (
+            self.module.BaseHasCacheKey._gen_cache_key
+        )
+
+    def end(self):
+        cache_key._cache_key_traversal_visitor.generate_class_attrs = (
+            self.orig_generate_class_attrs
+        )
+        cache_key._cache_key_traversal_visitor._generate_class_attrs = (
+            self.orig__generate_class_attrs
+        )
+        delattr(cache_key.HasCacheKey, "_gen_cache_key")
+        self._reset_traversal()
 
     @classmethod
     def make_test_cases(cls, name, obj, number=None):
@@ -238,6 +297,20 @@ def setup_statements(setup: SimpleNamespace):
 
     many_types = sa.select(setup.many_types).where(
         setup.many_types.c.col_Boolean
+    )
+
+    core_insert = setup.parent.insert().values(id=1, data=sa.bindparam("d"))
+    core_update = (
+        setup.parent.update().where(setup.parent.c.id == 5).values(data="x")
+    )
+    core_union = sa.union(
+        sa.select(setup.parent.c.id).where(setup.parent.c.data == "a"),
+        sa.select(setup.child.c.id).where(setup.child.c.data == "b"),
+    )
+    deep_and = sa.select(setup.parent).where(
+        sa.and_(
+            *[setup.parent.c.data == str(i) for i in range(20)],
+        )
     )
 
     return SimpleNamespace(**locals())

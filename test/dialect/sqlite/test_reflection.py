@@ -79,6 +79,39 @@ class KeywordInDatabaseNameTest(fixtures.TestBase):
         assert "default.a" in meta.tables
 
 
+class BlankTableNameTest(fixtures.TestBase):
+    """SQLite accepts a blank table name, so reflection can produce a
+    :class:`.Table` that has one.
+
+    """
+
+    __only_on__ = "sqlite"
+    __backend__ = True
+
+    @testing.fixture
+    def blank_table(self, connection):
+        connection.exec_driver_sql('CREATE TABLE "" (c INTEGER, d VARCHAR)')
+        try:
+            yield
+        finally:
+            connection.exec_driver_sql('DROP TABLE ""')
+
+    def test_reflect(self, connection, blank_table):
+        meta = MetaData()
+        meta.reflect(connection)
+
+        eq_(set(meta.tables), {""})
+        eq_([c.name for c in meta.tables[""].c], ["c", "d"])
+
+    def test_round_trip(self, connection, blank_table):
+        meta = MetaData()
+        meta.reflect(connection)
+        table = meta.tables[""]
+
+        connection.execute(table.insert(), {"c": 1, "d": "d1"})
+        eq_(connection.execute(table.select()).all(), [(1, "d1")])
+
+
 class ConstraintReflectionTest(fixtures.TestBase):
     __only_on__ = "sqlite"
     __backend__ = True
@@ -887,6 +920,64 @@ class ConstraintReflectionTest(fixtures.TestBase):
         eq_(
             inspect(connection).get_unique_constraints("t"),
             [{"column_names": ["y"], "name": None}],
+        )
+
+    def test_constraint_names_multiline(self, connection, metadata):
+        """test #13528
+
+        SQLite stores the CREATE TABLE text as it was typed, so a constraint
+        name placed on a line of its own has to be located across the
+        newline.
+
+        """
+
+        Table("t", metadata, Column("id", Integer), Column("x", Integer))
+        connection.exec_driver_sql("""CREATE TABLE t (
+    id INTEGER NOT NULL,
+    x INTEGER,
+    CONSTRAINT my_pk
+        PRIMARY KEY (id),
+    CONSTRAINT my_uq
+        UNIQUE (x),
+    CONSTRAINT my_ck
+        CHECK (x > 0),
+    CONSTRAINT my_fk
+        FOREIGN KEY (x)
+        REFERENCES a1 (id)
+        ON DELETE CASCADE
+        DEFERRABLE
+        INITIALLY DEFERRED
+)""")
+
+        inspector = inspect(connection)
+        eq_(
+            inspector.get_pk_constraint("t"),
+            {"constrained_columns": ["id"], "name": "my_pk"},
+        )
+        eq_(
+            inspector.get_unique_constraints("t"),
+            [{"column_names": ["x"], "name": "my_uq"}],
+        )
+        eq_(
+            inspector.get_check_constraints("t"),
+            [{"sqltext": "x > 0", "name": "my_ck"}],
+        )
+        eq_(
+            inspector.get_foreign_keys("t"),
+            [
+                {
+                    "referred_table": "a1",
+                    "referred_columns": ["id"],
+                    "referred_schema": None,
+                    "name": "my_fk",
+                    "constrained_columns": ["x"],
+                    "options": {
+                        "ondelete": "CASCADE",
+                        "deferrable": True,
+                        "initially": "DEFERRED",
+                    },
+                }
+            ],
         )
 
     def test_unique_constraint_unnamed_normal(self):

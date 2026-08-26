@@ -179,6 +179,26 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def repeated_column_foreign_keys(self):
+        """Target database must support a FOREIGN KEY constraint which names
+        the same local column more than once, e.g.
+        ``FOREIGN KEY (a, a) REFERENCES r (b, c)``.
+
+        """
+
+        return exclusions.closed()
+
+    @property
+    def repeated_remote_col_foreign_keys(self):
+        """Target database must support a FOREIGN KEY constraint which names
+        the same *remote* column more than once, e.g.
+        ``FOREIGN KEY (a, b) REFERENCES r (c, c)``.
+
+        """
+
+        return exclusions.closed()
+
+    @property
     def foreign_key_ddl(self):
         """Target database must support the DDL phrases for FOREIGN KEY."""
 
@@ -1628,33 +1648,6 @@ class SuiteRequirements(Requirements):
                 return True
 
         return exclusions.skip_if(check)
-
-    @property
-    def up_to_date_typealias_type(self):
-        # this checks a particular quirk found in typing_extensions <=4.12.0
-        # using older python versions like 3.10 or 3.9, we use TypeAliasType
-        # from typing_extensions which does not provide for sufficient
-        # introspection prior to 4.13.0
-        def check(config):
-            import typing
-            import typing_extensions
-
-            TypeAliasType = getattr(
-                typing, "TypeAliasType", typing_extensions.TypeAliasType
-            )
-            TV = typing.TypeVar("TV")
-            TA_generic = TypeAliasType(  # type: ignore
-                "TA_generic", typing.List[TV], type_params=(TV,)
-            )
-            return hasattr(TA_generic[int], "__value__")
-
-        return exclusions.only_if(check)
-
-    @property
-    def python311(self):
-        return exclusions.only_if(
-            lambda: util.py311, "Python 3.11 or above required"
-        )
 
     @property
     def python312(self):

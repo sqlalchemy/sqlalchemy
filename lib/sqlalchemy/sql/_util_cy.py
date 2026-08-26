@@ -97,7 +97,7 @@ class anon_map(Dict[_AM_KEY, _AM_VALUE]):
 
     @cython.cfunc
     @cython.inline
-    def _add_missing(self: anon_map, key: _AM_KEY, /) -> int:
+    def _add_missing(self: anon_map, key: _AM_KEY, /) -> object:
         val: int = self._index
         self._index += 1
         self_dict: dict = self  # type: ignore[type-arg]

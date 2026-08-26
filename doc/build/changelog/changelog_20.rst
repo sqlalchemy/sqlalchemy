@@ -9,8 +9,215 @@
 
 
 .. changelog::
-    :version: 2.0.52
+    :version: 2.0.53
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.52
+    :released: August 11, 2026
+
+    .. change::
+        :tags: bug, postgresql, reflection
+        :tickets: 13157
+
+        Fixed reflection of PostgreSQL CHECK constraints where an expression made
+        up of multiple parenthesized sub-expressions, such as ``(x IS NULL OR y IS
+        NULL) AND (x IS NULL OR y IS NULL)``, would have its leading and trailing
+        parentheses incorrectly stripped, producing an unbalanced and
+        syntactically invalid reflected expression.  Pull request courtesy
+        Shaurya Singh.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 13380
+
+        Tightened the construction of the ODBC connection string in the pyodbc
+        connector (as well as the mssql-python connector in 2.1) so that the
+        driver name, the names of pass-through connection parameters, and values
+        containing ``}`` are brace-quoted.  Previously a ``}`` in the driver name
+        or in a pass-through value, or a ``;`` in the name of a pass-through
+        parameter, could close the surrounding token early and allow the
+        remainder of the string to be interpreted as additional connection
+        attributes.  Pull request courtesy dxbjavid.
+
+    .. change::
+      :tags: bug, orm declarative
+      :tickets: 13386
+
+      Fixed issue where using :pep:`593` ``Annotated`` wrapping a :pep:`695`
+      ``type`` alias, such as ``Annotated[SomeTypeAlias, mapped_column()]``,
+      would crash with ``AttributeError: __value__``. The internal
+      ``is_pep695()`` check incorrectly identified the ``Annotated`` type as a
+      PEP 695 type alias due to a quirk in ``Annotated.__origin__`` returning
+      the first type argument rather than ``Annotated`` itself.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 13392
+
+        Fixed class-scoped pytest fixtures that were defined as instance methods
+        using ``self``, which is deprecated as of pytest 9.1 and will be removed in
+        pytest 10. Fixtures are now decorated with a compatibility ``@classmethod``
+        decorator and use ``cls`` as the first parameter.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13396
+
+        Fixed issue where :meth:`_sql.Select.get_final_froms` would emit a
+        deprecation warning when the statement made use of the PostgreSQL-specific
+        expression argument to :meth:`_sql.Select.distinct`; the same spurious
+        warning would be emitted when stringifying such a statement without
+        explicitly using a PostgreSQL dialect.  The fix ensures that this 1.4-era
+        warning is suppressed under both 2.0 and 2.1.
+
+        Note that under SQLAlchemy 2.1, passing an expression to
+        :meth:`_sql.Select.distinct` is deprecated overall, and is replaced by a
+        new PostgreSQL-specific construct (see :ticket:`12342`).
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 13419
+
+        Reworked the regular expression that detects inline ``UNIQUE`` column
+        constraints during SQLite ``CREATE TABLE`` reflection so that the
+        whitespace separating a column's type from a following clause is matched
+        unambiguously.  The previous pattern had three overlapping quantifiers
+        that could each consume a space character, so a column definition
+        carrying a long run of whitespace in the stored schema made
+        :meth:`_reflection.Inspector.get_unique_constraints` spend cubic time
+        backtracking before returning.  Fix courtesy of Javid Khan.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13424
+
+        Fixed an issue in :class:`.Numeric` where the
+        :paramref:`.Numeric.decimal_return_scale` parameter was ignored when the
+        DBAPI does not support native decimal objects (i.e.
+        ``dialect.supports_native_decimal`` is ``False``).  In this path the result
+        processor was computing the conversion scale from
+        :paramref:`.Numeric.scale` directly, bypassing
+        :paramref:`.Numeric.decimal_return_scale` entirely.  The behavior now
+        matches :class:`.Float`, which already used the correct
+        ``_effective_decimal_return_scale`` property. Pull request courtesy Kadir
+        Can Ozden.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13429
+
+        Fixed bug in the PostgreSQL dialect where a single quote in a sequence,
+        table, or schema name, such as one supplied via a ``schema_translate_map``
+        or an explicit :class:`.Sequence`, could result in a malformed
+        ``nextval()`` statement. The quote is now properly escaped. Pull request
+        courtesy dxbjavid.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13439
+
+        Fixed a result-column misalignment bug in ORM-enabled UPDATE statements
+        where ``synchronize_session="fetch"`` is in use, either explicitly or
+        because the statement uses constructs such as CTEs that implicitly select
+        for it.  Columns in rows returned by ``.returning()`` could be returned
+        under incorrect keys (e.g. ``row[SomeClass.a]`` returning the value of
+        a different column), a problem most likely to manifest under concurrent
+        workloads.  ORM DELETE statements were not affected.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13448
+
+        Added auditing to the test suite which exercises the literal execute
+        processors across all datatypes and dialects to ensure that string input is
+        either appropriately rejected or correctly escaped.  Literal execute
+        processors are invoked when the :paramref:`.bindparam.literal_execute`
+        parameter is used with an explicit :func:`.bindparam` object, which
+        overrides DBAPI-native bind handling to render the value inline with the
+        statement instead. Datatypes that were updated include the originally
+        reported SQL Server ``Uuid`` / ``UNIQUEIDENTIFIER`` rendering which now
+        escapes properly, the :class:`.JSONPATH` type that's currently
+        PostgreSQL-only, and a full family of numeric types stemming from the
+        :class:`_types.Float` and :class:`_types.Numeric` bases which now coerce
+        the value to a number, rejecting non-numeric input.  Thanks to Javid Khan
+        for helping to identify the issue.
+
+    .. change::
+        :tags: bug, platform
+        :tickets: 13477
+
+        Python 3.15 support has been added and tested, including minimal changes
+        for full compatibility.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 13481
+
+        Fixed an issue where :meth:`_schema.Table.to_metadata` reused column
+        default and on-update objects, causing the defaults on the original
+        columns to refer to the copied columns. Default generators, including
+        sequences, and server-side defaults are now copied and remain associated
+        with their respective columns and metadata collections. Applications that
+        inspected these objects will now see distinct defaults on the copied table
+        instead of the objects owned by the original table.  Pull request courtesy
+        Goutam Adwant.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13485
+
+        Fixed bug where a failed :meth:`_orm.Session.bulk_insert_mappings`,
+        :meth:`_orm.Session.bulk_update_mappings` or
+        :meth:`_orm.Session.bulk_save_objects` call could leave the
+        :class:`_orm.Session` permanently in a "flushing" state, such as when the
+        transaction could not be begun because a previous flush had left it
+        needing a rollback.  Unlike :meth:`_orm.Session.flush`, the bulk methods
+        set the internal flushing flag and began the transaction outside of the
+        ``try``/``finally`` block that resets it, so that neither
+        :meth:`_orm.Session.rollback` nor :meth:`_orm.Session.close` would clear
+        it, and every subsequent flush would raise ``InvalidRequestError: Session
+        is already flushing``.  Pull request courtesy Hamody We.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13493
+
+        Fixed issue where unpickling an ORM object that were loaded using loader
+        options making use of wildcard tokens, such as :func:`_orm.load_only` or
+        :func:`_orm.raiseload` with ``"*"``, would fail with ``KeyError`` or
+        ``IndexError`` if the process doing the unpickling had not yet constructed
+        a loader path making use of that same token.  This would typically be
+        observed when the object were unpickled in a separate process, such as
+        with the ``spawn`` or ``forkserver`` multiprocessing start methods, the
+        latter of which became the default on POSIX platforms as of Python 3.14.
+        The internal collection of these tokens is now established up front, so
+        that it is identical in every process.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13493
+
+        Fixed issue where a string ending in ``"*"`` passed to a
+        :class:`_orm.Load` strategy method, such as
+        ``Load(A).joinedload("bs.*")``, would bypass the check which rejects
+        string attribute names in loader options, silently producing a loader
+        path that matched nothing.  Such a string now raises
+        :class:`.ArgumentError` with the same message given for any other
+        string attribute name.  The bare wildcard ``"*"``, as in
+        ``Load(A).lazyload("*")``, continues to be accepted.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6274
+
+        Calling :func:`_orm.aliased` against a :func:`_sql.select` or
+        :func:`_sql.union` / :class:`_sql.CompoundSelect` construct, which
+        previously failed with an obscure ``AttributeError`` regarding a missing
+        ``.mapper`` attribute, now raises when using SQLAlchemy 2.1, and emits a
+        deprecation warning under SQLAlchemy 2.0 as it coerces the construct into a
+        subquery instead.  This matches the behavior of other similar implicit
+        SELECT-to-FROM coercions.  Pull request courtesy Rens Groothuijsen.
 
 .. changelog::
     :version: 2.0.51

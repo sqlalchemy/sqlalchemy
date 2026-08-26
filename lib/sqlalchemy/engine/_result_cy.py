@@ -76,9 +76,9 @@ across all the result types
 _UniqueFilterType = Callable[[Any], Any]
 _UniqueFilterStateType = tuple[set[Any], _UniqueFilterType | None]
 
-_FLAG_SIMPLE = cython.declare(cython.char, 0)
-_FLAG_SCALAR_TO_TUPLE = cython.declare(cython.char, 1)
-_FLAG_TUPLE_FILTER = cython.declare(cython.char, 2)
+_FLAG_SIMPLE = cython.declare(cython.const[cython.char], 0)
+_FLAG_SCALAR_TO_TUPLE = cython.declare(cython.const[cython.char], 1)
+_FLAG_TUPLE_FILTER = cython.declare(cython.const[cython.char], 2)
 
 
 # a symbol that indicates to internal Result methods that

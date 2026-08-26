@@ -888,6 +888,8 @@ class SADeprecationWarning(HasDescriptionCode, DeprecationWarning):
     deprecated_since: Optional[str] = None
     "Indicates the version that started raising this deprecation warning"
 
+    _what_are_we = "warning"
+
 
 class Base20DeprecationWarning(SADeprecationWarning):
     """Issued for usage of APIs specifically deprecated or legacy in

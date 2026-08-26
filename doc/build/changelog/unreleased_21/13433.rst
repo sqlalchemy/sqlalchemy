@@ -1,0 +1,49 @@
+.. change::
+    :tags: deprecated, sqlite
+    :tickets: 13433
+
+    Deprecated the selection of a single-connection pool class, i.e.
+    :class:`.SingletonThreadPool` for pysqlite or :class:`.StaticPool` for
+    aiosqlite, based on the presence of the ``mode=memory`` query string
+    argument in a SQLite URL.  Pool selection for SQLite is intended to be
+    based on the database name alone, where only ``:memory:`` or an empty
+    database name indicate a memory database; interpreting the query string
+    additionally requires that assumptions be made regarding whether or not
+    the resulting database can be shared among multiple connections.  In a
+    future release, such URLs will make use of :class:`.QueuePool` or
+    :class:`.AsyncAdaptedQueuePool` as would any other URL.  This notably
+    includes the shared cache form
+    ``sqlite:///file:mydb?mode=memory&cache=shared&uri=true``, for which a
+    queue pool is in fact the appropriate class, as a shared cache database
+    supports multiple concurrent connections, whereas a single-connection
+    pool causes such connections to share one transaction state.
+    Applications that rely upon the present behavior should indicate the
+    intended pool using the :paramref:`_sa.create_engine.poolclass`
+    parameter.  Pull request courtesy Itachi-0xAI.
+
+.. change::
+    :tags: bug, sqlite
+    :tickets: 13433
+
+    Added a warning for query string arguments that are passed to a SQLite
+    URL without the ``uri=true`` argument also being present, and which are
+    not accepted by the ``sqlite3`` driver itself.  SQLite URI arguments
+    such as ``mode`` or ``cache`` take effect only when URI mode is in use;
+    without it they were previously discarded silently, so that a URL such
+    as ``sqlite:///file:mydb?mode=memory`` would connect to a file on disk
+    named ``file:mydb``.  Arguments intended for the driver itself may be
+    passed using the :paramref:`_sa.create_engine.connect_args` parameter.
+
+.. change::
+    :tags: bug, documentation, sqlite
+    :tickets: 13433
+
+    Corrected the SQLite documentation regarding shared cache memory
+    databases, which incorrectly indicated that the named form
+    ``sqlite:///file:mydb?mode=memory&cache=shared&uri=true`` makes use of
+    :class:`.QueuePool`; a single-connection pool is used for this form.
+    Documentation has also been added noting that a shared cache database
+    exists only for as long as at least one connection to it remains open,
+    so that ordinary pool operations such as
+    :meth:`_engine.Engine.dispose` or use of
+    :paramref:`_sa.create_engine.pool_recycle` will discard its contents.

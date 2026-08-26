@@ -1365,8 +1365,27 @@ def _populate_full(
 
     elif load_path != state.load_path:
         # new load path, e.g. object is present in more than one
-        # column position in a series of rows
-        state.load_path = load_path
+        # column position in a series of rows.
+        #
+        # the shallowest path wins.  state.load_path is paired with
+        # state.load_options and the two are replayed together when the
+        # object is later refreshed or unexpired; taking whichever path
+        # happened to be processed last made that replay depend on column
+        # order within the row, row order within the result, and which
+        # eager loader style was in use.  the shallowest path is both
+        # deterministic and the most conservative choice, as a deeper
+        # path matches loader options that were registered for some other
+        # occurrence of this entity.  See #13507.
+        #
+        # only move the path if the current load is the one that stamped
+        # it; the condition here mirrors the one in _instance_processor()
+        # that assigns load_path / load_options together.  when
+        # populate_existing is in effect with no propagated options, the
+        # path in place belongs to a previous load and is left alone.
+        if len(load_path) < len(state.load_path) and (
+            context.propagated_loader_options or not populate_existing
+        ):
+            state.load_path = load_path
 
         # if we have data, and the data isn't in the dict, OK, let's put
         # it in.

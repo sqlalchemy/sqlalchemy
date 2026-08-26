@@ -533,6 +533,93 @@ class ParseConnectTest(fixtures.TestBase):
             False,
         )
 
+    @testing.fixture
+    def mssqlpython_dialect(self):
+        """dialect with a mocked out mssql_python DBAPI.
+
+        the exception hierarchy mirrors that of mssql_python, where every
+        error carries the driver level and DDBC level messages both as
+        attributes and within the string form of the exception.
+
+        """
+
+        class Error(Exception):
+            def __init__(self, driver_error, ddbc_error=""):
+                self.driver_error = driver_error
+                self.ddbc_error = ddbc_error
+                super().__init__(
+                    f"Driver Error: {driver_error}; "
+                    f"DDBC Error: {ddbc_error}"
+                )
+
+        dbapi = mock.Mock()
+        dbapi.Error = Error
+        dbapi.OperationalError = type("OperationalError", (Error,), {})
+        dbapi.ProgrammingError = type("ProgrammingError", (Error,), {})
+        dbapi.InterfaceError = type("InterfaceError", (Error,), {})
+
+        return mssqlpython.dialect(dbapi=dbapi)
+
+    @testing.combinations(
+        ("OperationalError", "Disconnect error", True),
+        ("OperationalError", "Client unable to establish connection", True),
+        ("OperationalError", "Connection not open", True),
+        ("OperationalError", "Connection failure during transaction", True),
+        ("OperationalError", "Communication link failure", True),
+        (
+            "OperationalError",
+            "An error occurred with SQLSTATE code: 08S02",
+            True,
+        ),
+        (
+            "OperationalError",
+            "An error occurred with SQLSTATE code: 10054",
+            True,
+        ),
+        ("OperationalError", "Connection timeout expired", True),
+        ("OperationalError", "Function sequence error", True),
+        ("OperationalError", "Timeout expired", False),
+        ("OperationalError", "Syntax error or access violation", False),
+        ("ProgrammingError", "The cursor's connection has been closed.", True),
+        ("ProgrammingError", "Attempt to use a closed connection.", True),
+        ("ProgrammingError", "Operation cannot be performed", True),
+        ("ProgrammingError", "Invalid object name 'foo'", False),
+        ("InterfaceError", "Cannot rollback on a closed connection", True),
+        ("InterfaceError", "Cannot commit on closed connection", True),
+        ("InterfaceError", "Invalid connection attribute", False),
+        argnames="exc_cls_name,driver_error,expected",
+    )
+    def test_mssqlpython_disconnect(
+        self, mssqlpython_dialect, exc_cls_name, driver_error, expected
+    ):
+        dialect = mssqlpython_dialect
+        error = getattr(dialect.loaded_dbapi, exc_cls_name)(driver_error)
+
+        eq_(dialect.is_disconnect(error, None, None), expected)
+
+    def test_mssqlpython_disconnect_ddbc_message_only(
+        self, mssqlpython_dialect
+    ):
+        """a disconnect phrase that occurs only in the DDBC level message of
+        an otherwise unrelated error is not a disconnect.
+
+        """
+        dialect = mssqlpython_dialect
+        error = dialect.loaded_dbapi.OperationalError(
+            "Syntax error or access violation",
+            "Communication link failure in query text",
+        )
+
+        eq_(dialect.is_disconnect(error, None, None), False)
+
+    def test_mssqlpython_disconnect_not_dbapi_error(self, mssqlpython_dialect):
+        dialect = mssqlpython_dialect
+
+        eq_(
+            dialect.is_disconnect(Exception("Disconnect error"), None, None),
+            False,
+        )
+
 
 class FastExecutemanyTest(fixtures.TestBase):
     __only_on__ = "mssql"

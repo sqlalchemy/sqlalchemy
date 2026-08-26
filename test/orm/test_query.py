@@ -38,6 +38,7 @@ from sqlalchemy import type_coerce
 from sqlalchemy import Unicode
 from sqlalchemy import union
 from sqlalchemy import util
+from sqlalchemy.dialects import mssql
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
@@ -3791,6 +3792,81 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         s = fixture_session()
         self.assert_compile(
             s.query(C).filter(C.bs.any(B.id == 1)),
+            "SELECT c.id AS c_id, c.d_id AS c_d_id FROM c WHERE "
+            "EXISTS (SELECT 1 FROM b WHERE c.id = b.c_id AND b.id = :id_1)",
+        )
+
+    def test_has_with_hint(self):
+        B, C = self.classes("B", "C")
+        s = fixture_session()
+        self.assert_compile(
+            s.query(B).filter(
+                B.c.has(C.id == 1).with_hint(
+                    C.__table__, "WITH (NOLOCK)", "mssql"
+                )
+            ),
+            "SELECT b.id AS b_id, b.c_id AS b_c_id FROM b WHERE "
+            "EXISTS (SELECT 1 FROM c WITH (NOLOCK) "
+            "WHERE c.id = b.c_id AND c.id = :id_1)",
+            dialect=mssql.dialect(),
+        )
+
+    def test_any_with_hint(self):
+        B, C = self.classes("B", "C")
+        s = fixture_session()
+        self.assert_compile(
+            s.query(C).filter(
+                C.bs.any(B.id == 1).with_hint(
+                    B.__table__, "WITH (NOLOCK)", "mssql"
+                )
+            ),
+            "SELECT c.id AS c_id, c.d_id AS c_d_id FROM c WHERE "
+            "EXISTS (SELECT 1 FROM b WITH (NOLOCK) "
+            "WHERE c.id = b.c_id AND b.id = :id_1)",
+            dialect=mssql.dialect(),
+        )
+
+    def test_has_with_statement_hint(self):
+        B, C = self.classes("B", "C")
+        s = fixture_session()
+        self.assert_compile(
+            s.query(B).filter(
+                B.c.has(C.id == 1).with_statement_hint(
+                    "WITH (NOLOCK)", "mssql"
+                )
+            ),
+            "SELECT b.id AS b_id, b.c_id AS b_c_id FROM b WHERE "
+            "EXISTS (SELECT 1 FROM c WHERE c.id = b.c_id AND c.id = :id_1 "
+            "WITH (NOLOCK))",
+            dialect=mssql.dialect(),
+        )
+
+    def test_any_with_statement_hint(self):
+        B, C = self.classes("B", "C")
+        s = fixture_session()
+        self.assert_compile(
+            s.query(C).filter(
+                C.bs.any(B.id == 1).with_statement_hint(
+                    "WITH (NOLOCK)", "mssql"
+                )
+            ),
+            "SELECT c.id AS c_id, c.d_id AS c_d_id FROM c WHERE "
+            "EXISTS (SELECT 1 FROM b WHERE c.id = b.c_id AND b.id = :id_1 "
+            "WITH (NOLOCK))",
+            dialect=mssql.dialect(),
+        )
+
+    def test_any_with_hint_other_dialect(self):
+        """hint is omitted for a dialect other than the one named"""
+
+        B, C = self.classes("B", "C")
+        s = fixture_session()
+        self.assert_compile(
+            s.query(C).filter(
+                C.bs.any(B.id == 1).with_hint(
+                    B.__table__, "WITH (NOLOCK)", "mssql"
+                )
+            ),
             "SELECT c.id AS c_id, c.d_id AS c_d_id FROM c WHERE "
             "EXISTS (SELECT 1 FROM b WHERE c.id = b.c_id AND b.id = :id_1)",
         )

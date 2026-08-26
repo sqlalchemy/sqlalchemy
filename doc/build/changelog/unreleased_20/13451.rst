@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 13451
+
+    Fixed issue in SQL Server reflection where ``TEXT`` and ``NTEXT`` columns
+    would be reflected with a spurious length of 16 and 8, respectively.  These
+    are unlengthed LOB datatypes; the value originates from the
+    ``sys.columns.max_length`` column, which reports the size of the in-row LOB
+    pointer rather than a character length for these types.  The reflected
+    :class:`_mssql.TEXT` and :class:`_mssql.NTEXT` types now have a ``length``
+    of ``None``, so that a reflected table emits valid DDL when re-created,
+    which previously failed with "Cannot specify a column width on data type
+    text".  Pull request courtesy Sam Debruyn.

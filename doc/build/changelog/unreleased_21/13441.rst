@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 13441
+
+    Improved disconnect detection for the ``mssql+mssqlpython`` dialect.
+    Connection-level failures such as a dropped or reset network connection
+    are now recognized by consulting the ``driver_error`` attribute of the
+    exception, in addition to the message-based checks that were already in
+    place, so that the affected connection is invalidated and the pool
+    "pre ping" feature is able to recycle it.  Pull request courtesy Sam
+    Debruyn.

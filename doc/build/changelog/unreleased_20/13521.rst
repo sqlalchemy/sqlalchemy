@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 13521
+
+    Altered the dialect reflection test
+    ``test_check_constraint_parenthesized_expressions()`` so that it does not
+    convert the reflected constraint to lowercase, which interferes with some
+    third party dialect's representation of reflected check constraints.

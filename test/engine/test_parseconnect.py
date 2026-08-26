@@ -1201,10 +1201,7 @@ class TestRegNewDBAPI(fixtures.TestBase):
             ],
         )
 
-    @testing.requires.sqlite
     def test_plugin_url_registration(self):
-        from sqlalchemy.dialects import sqlite
-
         global MyEnginePlugin
 
         def side_effect(url, kw):
@@ -1226,38 +1223,35 @@ class TestRegNewDBAPI(fixtures.TestBase):
         MyEnginePlugin = Mock(side_effect=side_effect, update_url=update_url)
 
         plugins.register("engineplugin", __name__, "MyEnginePlugin")
+        registry.register("mockdialect", __name__, "MockDialect")
 
         e = create_engine(
-            "sqlite:///?plugin=engineplugin&foo=bar&myplugin_arg=bat",
+            "mockdialect://?plugin=engineplugin&foo=bar&myplugin_arg=bat",
             logging_name="foob",
         )
-        eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
 
         # plugin args are removed from URL.
         eq_(e.url.query, {"foo": "bar"})
-        assert isinstance(e.dialect, sqlite.dialect)
+        assert isinstance(e.dialect, MockDialect)
 
         eq_(
             MyEnginePlugin.mock_calls,
             [
                 call(
                     url.make_url(
-                        "sqlite:///?plugin=engineplugin"
+                        "mockdialect://?plugin=engineplugin"
                         "&foo=bar&myplugin_arg=bat"
                     ),
                     {},
                 ),
-                call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
+                call.handle_dialect_kwargs(MockDialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e),
             ],
         )
 
-    @testing.requires.sqlite
     def test_plugin_multiple_url_registration(self):
-        from sqlalchemy.dialects import sqlite
-
         global MyEnginePlugin1
         global MyEnginePlugin2
 
@@ -1283,27 +1277,27 @@ class TestRegNewDBAPI(fixtures.TestBase):
 
         plugins.register("engineplugin1", __name__, "MyEnginePlugin1")
         plugins.register("engineplugin2", __name__, "MyEnginePlugin2")
+        registry.register("mockdialect", __name__, "MockDialect")
 
         url_str = (
-            "sqlite:///?plugin=engineplugin1&foo=bar&myplugin1_arg=bat"
+            "mockdialect://?plugin=engineplugin1&foo=bar&myplugin1_arg=bat"
             "&plugin=engineplugin2&myplugin2_arg=hoho"
         )
         e = create_engine(
             url_str,
             logging_name="foob",
         )
-        eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
 
         # plugin args are removed from URL.
         eq_(e.url.query, {"foo": "bar"})
-        assert isinstance(e.dialect, sqlite.dialect)
+        assert isinstance(e.dialect, MockDialect)
 
         eq_(
             MyEnginePlugin1.mock_calls,
             [
                 call(url.make_url(url_str), {}),
-                call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
+                call.handle_dialect_kwargs(MockDialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e),
             ],
@@ -1313,16 +1307,13 @@ class TestRegNewDBAPI(fixtures.TestBase):
             MyEnginePlugin2.mock_calls,
             [
                 call(url.make_url(url_str), {}),
-                call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
+                call.handle_dialect_kwargs(MockDialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e),
             ],
         )
 
-    @testing.requires.sqlite
     def test_plugin_arg_registration(self):
-        from sqlalchemy.dialects import sqlite
-
         global MyEnginePlugin
 
         def side_effect(url, kw):
@@ -1344,23 +1335,23 @@ class TestRegNewDBAPI(fixtures.TestBase):
         MyEnginePlugin = Mock(side_effect=side_effect, update_url=update_url)
 
         plugins.register("engineplugin", __name__, "MyEnginePlugin")
+        registry.register("mockdialect", __name__, "MockDialect")
 
         e = create_engine(
-            "sqlite:///?foo=bar",
+            "mockdialect://?foo=bar",
             logging_name="foob",
             plugins=["engineplugin"],
             myplugin_arg="bat",
         )
-        eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
 
-        assert isinstance(e.dialect, sqlite.dialect)
+        assert isinstance(e.dialect, MockDialect)
 
         eq_(
             MyEnginePlugin.mock_calls,
             [
-                call(url.make_url("sqlite:///?foo=bar"), {}),
-                call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
+                call(url.make_url("mockdialect://?foo=bar"), {}),
+                call.handle_dialect_kwargs(MockDialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e),
             ],

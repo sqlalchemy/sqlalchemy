@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Set
 
 import nox
@@ -20,11 +21,15 @@ nox.options.default_venv_backend = "venv"
 
 if True:
     sys.path.insert(0, ".")
+    from tools.profiles import PROFILE_DATABASES
+    from tools.profiles import PROFILE_PYTHONS
+    from tools.profiles import recorded_databases
     from tools.toxnox import apply_pytest_opts
+    from tools.toxnox import extract_opts
     from tools.toxnox import tox_parameters
 
 
-PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14", "3.14t", "3.15"]
+PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14", "3.14t", "3.15"]
 DATABASES = ["sqlite", "sqlite_file", "postgresql", "mysql", "oracle", "mssql"]
 CEXT = ["_auto", "cext", "nocext"]
 GREENLET = ["_greenlet", "nogreenlet"]
@@ -321,6 +326,129 @@ def _tests(
         ):
             session.run("python", "reap_dbs.py", "db_idents.txt")
             os.unlink("db_idents.txt")
+
+
+@nox.session(name="profiles")
+@tox_parameters(
+    ["python", "cext"],
+    [PROFILE_PYTHONS, ["cext", "nocext"]],
+    base_tag="profiles",
+)
+def profiles(session: nox.Session, cext: str) -> None:
+    """regenerate the call counts in test/profiles.txt.
+
+    This replaces the former ``regen_callcounts.tox.ini`` runner.  With no
+    arguments the full matrix is regenerated, which is every interpreter in
+    ``tools/profiles.py -> PROFILE_PYTHONS``, with and without the C
+    extensions, against every backend in ``PROFILE_DATABASES``::
+
+        nox -s profiles
+
+    Individual cells of that matrix are addressable in the usual ways::
+
+        nox -s "profiles(py314-nocext)"
+        nox -t py314-profiles
+
+    A subset of the suite may be passed through to pytest, in which case
+    only the backends that actually have counts recorded for those tests are
+    run.   Most of ``test/aaa_profiling/`` requires an in-memory SQLite
+    database, so regenerating e.g. the ORM suite runs one backend rather
+    than five::
+
+        nox -s profiles -- test/aaa_profiling/test_orm.py
+
+    That decision is made by looking at what's already in
+    ``test/profiles.txt``, so a brand new test file, having nothing recorded
+    yet, falls back to running all backends.  ``--all-dbs`` forces the same
+    thing explicitly, and passing ``--db`` / ``--dburi`` through to pytest
+    takes over backend selection entirely::
+
+        nox -s profiles -- --all-dbs test/aaa_profiling/test_new_thing.py
+        nox -s profiles -- --db postgresql
+
+    Entries for interpreters and backends that are no longer regenerated
+    stay in the file until they're removed; see
+    ``python tools/profiles.py --help``.
+
+    """
+
+    posargs, opts = extract_opts(session.posargs, "all-dbs")
+
+    if any(
+        arg.startswith(("-n", "--numprocesses", "--dist")) for arg in posargs
+    ):
+        session.error(
+            "profiles cannot be regenerated under pytest-xdist; "
+            "test/profiles.txt is rewritten in place by the test run"
+        )
+
+    # pytest --db / --dburi in posargs means the caller is choosing the
+    # backend themselves; run exactly once and forward it along
+    if any(arg.split("=")[0] in ("--db", "--dburi") for arg in posargs):
+        databases: List[Optional[str]] = [None]
+    elif opts.all_dbs:
+        databases = list(PROFILE_DATABASES)
+    else:
+        recorded = recorded_databases(posargs)
+        databases = [db for db in PROFILE_DATABASES if db in recorded]
+        session.log(
+            f"backends with recorded call counts for this selection: "
+            f"{', '.join(str(db) for db in databases)}"
+        )
+
+    # ensure external PYTHONPATH not interfering; see comments in _tests()
+    session.env["PYTHONPATH"] = ""
+    session.env["PYTHONNOUSERSITE"] = "1"
+
+    if cext == "cext":
+        session.env["REQUIRE_SQLALCHEMY_CEXT"] = "1"
+    else:
+        session.env["DISABLE_SQLALCHEMY_CEXT"] = "1"
+
+    session.install(".")
+    session.install(*nox.project.dependency_groups(pyproject, "tests"))
+
+    for database in databases:
+        cmd = ["python", "-m", "pytest"]
+
+        # no -n; the profile file is rewritten in place as tests run.
+        # memory / timing intensive suites don't record call counts at all
+        cmd.extend(
+            [
+                "-x",
+                "-m",
+                "not memory_intensive and not timing_intensive",
+                "--force-write-profiles",
+            ]
+        )
+
+        if not any(
+            arg.startswith(("test/", f"test{os.sep}")) for arg in posargs
+        ):
+            cmd.append("test/aaa_profiling")
+
+        if database is not None:
+            deps = nox.project.dependency_groups(
+                pyproject, f"tests-{database.replace('_', '-')}"
+            )
+            if deps:
+                session.install(*deps)
+
+            # e.g. TOX_POSTGRESQL, TOX_MYSQL, etc.
+            dburl_env = f"TOX_{database.upper()}"
+            cmd.extend(os.environ.get(dburl_env, f"--db={database}").split())
+
+            if database in ("oracle", "mssql"):
+                cmd.append("--low-connections")
+
+        cmd.extend(posargs)
+
+        session.run(*cmd)
+
+    session.log(
+        "call counts written; 'python tools/profiles.py check' will report "
+        "entries in test/profiles.txt that are no longer regenerated"
+    )
 
 
 @nox.session(name="pep484")

@@ -50,6 +50,8 @@ from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.base import HasCacheKey
 from sqlalchemy.sql.base import SingletonConstant
 from sqlalchemy.sql.base import SyntaxExtension
+from sqlalchemy.sql.cache_key import _cache_key_traversal_visitor
+from sqlalchemy.sql.cache_key import _CacheKeyTraversal
 from sqlalchemy.sql.cache_key import CacheKey
 from sqlalchemy.sql.elements import _label_reference
 from sqlalchemy.sql.elements import _textual_label_reference
@@ -92,6 +94,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.util import random_choices
 from sqlalchemy.types import ARRAY
@@ -1508,6 +1511,42 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         ne_(ck1, ck2)
         is_not(ck1, None)
         is_not(ck2, None)
+
+    def test_generation_rule_for_every_dispatched_symbol(self):
+        """every symbol the cache key visitor dispatches on has a code
+        generation rule in _BaseCacheKeyTraversal._generate_class_attrs().
+
+        """
+        no_rule = []
+        for sym in InternalTraversal:
+            if _cache_key_traversal_visitor.dispatch(sym) is None:
+                continue
+            try:
+                _cache_key_traversal_visitor._generate_class_attrs(
+                    [("someattr", sym)]
+                )
+            except NotImplementedError:
+                no_rule.append(sym.name)
+
+        eq_(no_rule, [])
+
+    def test_generation_rule_missing(self):
+        """a symbol that's dispatched inline but has no generation rule
+        fails loudly at class setup time rather than silently.
+
+        """
+
+        class MyTraversal(_CacheKeyTraversal):
+            visit_string = InternalTraversal.dp_string
+
+        with expect_raises_message(
+            NotImplementedError,
+            "No cache key traversal generation rule for symbol "
+            ".*dp_string.*, used by attribute 'someattr'",
+        ):
+            MyTraversal()._generate_class_attrs(
+                [("someattr", InternalTraversal.dp_string)]
+            )
 
     def test_generative_cache_key_regen_w_del(self):
         t1 = table("t1", column("a"), column("b"))

@@ -1346,6 +1346,12 @@ class SQLCompiler(Compiled):
     """
 
     escaped_bind_names: util.immutabledict[str, str] = util.EMPTY_DICT
+
+    # the names ``escaped_bind_names`` maps *to*, maintained alongside it so
+    # that collision checks don't rebuild the value collection each time.
+    # only assigned once a name actually needs escaping, which is rare;
+    # ``escaped_bind_names`` being empty means this was never set.
+    _escaped_bind_names_used: Set[str]
     """Late escaping of bound parameter names that has to be converted
     to the original name when looking in the parameter dictionary.
 
@@ -4165,6 +4171,44 @@ class SQLCompiler(Compiled):
     def _anonymize(self, name: str) -> str:
         return name % self.anon_map
 
+    def _escaped_bind_name(self, escaped_from: str, name: str) -> str:
+        """Record the escaped form of a bind name, uniquifying it against
+        the names already in use.
+
+        Distinct bind names can escape to the same string, e.g. parameters
+        named ``"a.b"`` and ``"a_b"`` both escape to ``a_b``.  As the escaped
+        name is what keys the parameter dictionary handed to the driver, the
+        second parameter would otherwise overwrite the first and its value be
+        silently discarded.  A counter is appended so that the two remain
+        distinct.  The ``.key`` of each :class:`.BindParameter` is untouched,
+        so parameter dictionaries passed by the caller are unaffected.
+
+        See :ticket:`13534`.
+
+        """
+        try:
+            return self.escaped_bind_names[escaped_from]
+        except KeyError:
+            pass
+
+        if self.escaped_bind_names:
+            used = self._escaped_bind_names_used
+        else:
+            self._escaped_bind_names_used = used = set()
+
+        if name in used or (name != escaped_from and name in self.binds):
+            base = name
+            counter = 0
+            while name in used or name in self.binds:
+                counter += 1
+                name = "%s__%d" % (base, counter)
+
+        used.add(name)
+        self.escaped_bind_names = self.escaped_bind_names.union(
+            {escaped_from: name}
+        )
+        return name
+
     def bindparam_string(
         self,
         name: str,
@@ -4196,11 +4240,16 @@ class SQLCompiler(Compiled):
                 )
                 escaped_from = name
                 name = new_name
+            elif (
+                self.escaped_bind_names
+                and name in self._escaped_bind_names_used
+            ):
+                # this name needs no escaping of its own, but another
+                # parameter has already escaped to it; #13534
+                escaped_from = name
 
         if escaped_from:
-            self.escaped_bind_names = self.escaped_bind_names.union(
-                {escaped_from: name}
-            )
+            name = self._escaped_bind_name(escaped_from, name)
         if post_compile:
             ret = "__[POSTCOMPILE_%s]" % name
             if expanding:
@@ -8090,6 +8139,12 @@ class IdentifierPreparer:
 
     def _requires_quotes(self, value: str) -> bool:
         """Return True if the given identifier requires quoting."""
+        if not value:
+            # a blank name is legal on SQLite only, where it can be
+            # delivered by reflection; quote it so that it renders as the
+            # database has it, rather than indexing into an empty string
+            # below
+            return True
         lc_value = value.lower()
         return (
             lc_value in self.reserved_words

@@ -16,16 +16,12 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Coroutine
-from typing import Literal
 from typing import NoReturn
 from typing import TYPE_CHECKING
 from typing import TypeGuard
 from typing import TypeVar
-from typing import Union
 
-from .compat import py311
 from .langhelpers import memoized_property
-from .typing import Self
 from .. import exc
 
 _T = TypeVar("_T")
@@ -240,58 +236,12 @@ class AsyncAdaptedLock:
         self.mutex.release()
 
 
-if not TYPE_CHECKING and py311:
-    _Runner = asyncio.Runner
-else:
-
-    class _Runner:
-        """Runner implementation for test only"""
-
-        _loop: Union[None, asyncio.AbstractEventLoop, Literal[False]]
-
-        def __init__(self) -> None:
-            self._loop = None
-
-        def __enter__(self) -> Self:
-            self._lazy_init()
-            return self
-
-        def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-            self.close()
-
-        def close(self) -> None:
-            if self._loop:
-                try:
-                    self._loop.run_until_complete(
-                        self._loop.shutdown_asyncgens()
-                    )
-                finally:
-                    self._loop.close()
-                    self._loop = False
-
-        def get_loop(self) -> asyncio.AbstractEventLoop:
-            """Return embedded event loop."""
-            self._lazy_init()
-            assert self._loop
-            return self._loop
-
-        def run(self, coro: Coroutine[Any, Any, _T]) -> _T:
-            self._lazy_init()
-            assert self._loop
-            return self._loop.run_until_complete(coro)
-
-        def _lazy_init(self) -> None:
-            if self._loop is False:
-                raise RuntimeError("Runner is closed")
-            if self._loop is None:
-                self._loop = asyncio.new_event_loop()
-
-
 class _AsyncUtil:
     """Asyncio util for test suite/ util only"""
 
     def __init__(self) -> None:
-        self.runner = _Runner()  # runner it lazy so it can be created here
+        # runner it lazy so it can be created here
+        self.runner = asyncio.Runner()
 
     def run(
         self,

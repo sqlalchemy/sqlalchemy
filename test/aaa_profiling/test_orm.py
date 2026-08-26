@@ -542,13 +542,21 @@ class SessionTest(NoCache, fixtures.MappedTest):
         )
         cls.mapper_registry.map_imperatively(Child, child)
 
-    # the profiling count depends on weakref callbacks being GC'ed
     @testing.add_to_marker.gc_intensive
     def test_expire_lots(self):
+        """test callcount when expiring lots of objects.
+
+        it's not clear what issue this test was addressing when it was first
+        added, but it now takes GC out of the picture by maintaining strong
+        refs to all the objects.
+
+        """
         Parent, Child = self.classes.Parent, self.classes.Child
         obj = [
             Parent(children=[Child() for j in range(10)]) for i in range(10)
         ]
+        # keep the child states in the identity map regardless of GC timing
+        children = [c for p in obj for c in p.children]  # noqa: F841
 
         sess = fixture_session()
         sess.add_all(obj)
