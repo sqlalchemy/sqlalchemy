@@ -2147,6 +2147,25 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
             return colname, None
 
 
+# regexp that locates a FOREIGN KEY clause within the verbatim CREATE TABLE
+# text that sqlite stores in sqlite_master.  the referred-columns group
+# requires a non-empty separator between column tokens; an earlier form made
+# the separator optional, which turned the repeat into a nested quantifier and
+# let a long word run backtrack exponentially.  kept at module level so it can
+# be exercised directly from the tests.
+FK_PATTERN = re.compile(
+    r'(?:CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+)?'
+    r"FOREIGN\s+KEY\s*\(\s*(.+?)\s*\)\s+"
+    r'REFERENCES\s+(?:(?:"(.+?)")|([a-z0-9_]+))\s*\(\s*((?:"[^"]+"|[a-z0-9_]+)(?:(?:\s*,\s*|\s+)(?:"[^"]+"|[a-z0-9_]+))*\s*)\)\s*'  # noqa: E501
+    r"((?:ON\s+(?:DELETE|UPDATE)\s+"
+    r"(?:SET\s+NULL|SET\s+DEFAULT|CASCADE|RESTRICT|"
+    r"NO\s+ACTION)\s*)*)"
+    r"((?:NOT\s+)?DEFERRABLE)?"
+    r"(?:\s+INITIALLY\s+(DEFERRED|IMMEDIATE))?",
+    re.I,
+)
+
+
 class SQLiteDialect(default.DefaultDialect):
     name = "sqlite"
     supports_alter = False
@@ -2714,17 +2733,7 @@ class SQLiteDialect(default.DefaultDialect):
             # FKs, namely the name of the constraint and other options.
             # so parsing the columns is really about matching it up to what
             # we already have.
-            FK_PATTERN = (
-                r'(?:CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+)?'
-                r"FOREIGN\s+KEY\s*\(\s*(.+?)\s*\)\s+"
-                r'REFERENCES\s+(?:(?:"(.+?)")|([a-z0-9_]+))\s*\(\s*((?:"[^"]+"|[a-z0-9_]+)(?:(?:\s*,\s*|\s+)(?:"[^"]+"|[a-z0-9_]+))*\s*)\)\s*'  # noqa: E501
-                r"((?:ON\s+(?:DELETE|UPDATE)\s+"
-                r"(?:SET\s+NULL|SET\s+DEFAULT|CASCADE|RESTRICT|"
-                r"NO\s+ACTION)\s*)*)"
-                r"((?:NOT\s+)?DEFERRABLE)?"
-                r"(?:\s+INITIALLY\s+(DEFERRED|IMMEDIATE))?"
-            )
-            for match in re.finditer(FK_PATTERN, table_data, re.I):
+            for match in FK_PATTERN.finditer(table_data):
                 (
                     constraint_quoted_name,
                     constraint_name,
