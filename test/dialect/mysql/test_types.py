@@ -356,6 +356,15 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect._backslash_escapes = False
         self.assert_compile(mysql.ENUM("b\\"), "ENUM('b\\')", dialect=dialect)
 
+    @testing.combinations(True, False, argnames="double_percents")
+    def test_enum_set_double_percents(self, double_percents):
+        # percent signs in member values are doubled only when the
+        # paramstyle in use requires it
+        dialect = mysql.MySQLDialect()
+        dialect.identifier_preparer._double_percents = double_percents
+        expected = "ENUM('a%%b')" if double_percents else "ENUM('a%b')"
+        self.assert_compile(mysql.ENUM("a%b"), expected, dialect=dialect)
+
     @testing.combinations(
         (BOOLEAN(), "BOOL"),
         (Boolean(), "BOOL"),
