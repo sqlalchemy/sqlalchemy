@@ -969,6 +969,24 @@ class MiscBackendTest(
         assert t2.c.date1.type.timezone is True
         assert t2.c.date2.type.timezone is False
 
+    def test_get_schema_names_only_excludes_pg_prefix(self, connection):
+        """reported downstream in apache/superset#30678
+
+        ``get_schema_names()`` previously excluded schemas via
+        ``NOT LIKE 'pg_%'``, but ``_`` is a single-character LIKE
+        wildcard, so the pattern matched "pg" followed by any one
+        character, not just a literal ``pg_`` prefix.  A user-created
+        schema like ``pgfoo`` was silently dropped even though only
+        schemas literally prefixed with ``pg_`` (``pg_catalog``,
+        ``pg_toast``, etc.) are reserved by PostgreSQL itself.
+        """
+        connection.execute(DDL("CREATE SCHEMA pgfoo_test_schema"))
+        try:
+            insp = inspect(connection)
+            is_true("pgfoo_test_schema" in insp.get_schema_names())
+        finally:
+            connection.execute(DDL("DROP SCHEMA pgfoo_test_schema"))
+
     @testing.requires.psycopg2_compatibility
     def test_psycopg2_version(self):
         v = testing.db.dialect.psycopg2_version
