@@ -16,7 +16,13 @@ were built:
 .. sourcecode:: txt
 
     test.aaa_profiling.test_orm.MergeTest.test_merge_load \
-x86_64_linux_cpython_3.14_postgresql_psycopg_dbapiunicode_cextensions 1234
+x86_64_linux_cpython_3.14_sqlite_pysqlite_dbapiunicode_cextensions 1234
+
+The key covers anything that moves the counts, which includes compiled
+code that isn't SQLAlchemy's own: a DBAPI that ships both a pure Python
+and a C accelerated build carries a ``pydbapi`` / ``cdbapi`` token naming
+which one was loaded, since the difference between them can be tens of
+thousands of calls.
 
 A call count is only asserted when the running environment matches a key
 that's present in the file; otherwise the test is skipped.
@@ -117,7 +123,15 @@ class PlatformKey(NamedTuple):
     """the DBAPI name, e.g. ``psycopg``."""
 
     dbapi_flags: Tuple[str, ...]
-    """extra DBAPI tokens; ``async`` and / or ``file``, in that order."""
+    """extra DBAPI tokens, in the order they're rendered.
+
+    ``async`` for an asyncio driver, followed by whatever the dialect
+    contributes through the ``profile_platform_tokens`` provisioning hook,
+    such as ``file`` for a file based SQLite database or ``cdbapi`` /
+    ``pydbapi`` for a DBAPI that ships in both a compiled and a pure
+    Python build.
+
+    """
 
     cextensions: bool
     """whether the C / Cython extensions were built."""

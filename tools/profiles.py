@@ -274,15 +274,15 @@ def _cmd_show(profiles: ProfilesFile, options: argparse.Namespace) -> int:
 
     print()
     print(
-        f"{'python':<8} {'dialect':<12} {'driver':<12} {'cext':<12} "
-        f"{'tests':>6}"
+        f"{'python':<8} {'dialect':<12} {'driver':<12} {'dbapi':<12} "
+        f"{'cext':<12} {'tests':>6}"
     )
-    print("-" * 54)
+    print("-" * 67)
     for key in keys:
         print(
             f"{key.python:<8} {key.dialect:<12} "
-            f"{key.driver:<12} {key.cext_token:<12} "
-            f"{per_key[key]:>6}"
+            f"{key.driver:<12} {','.join(key.dbapi_flags):<12} "
+            f"{key.cext_token:<12} {per_key[key]:>6}"
         )
 
     print()

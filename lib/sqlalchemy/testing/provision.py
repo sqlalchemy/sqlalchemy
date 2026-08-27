@@ -610,3 +610,24 @@ def dbapi_error(cfg, cls, message):
 
     """
     return cls(message)
+
+
+@register.init
+def profile_platform_tokens(eng):
+    """return extra tokens for the ``test/profiles.txt`` platform key.
+
+    The call counts asserted by ``test/aaa_profiling/`` are keyed to the
+    environment they were recorded in, and a dialect knows things about
+    that environment which the generic key can't see - whether the DBAPI
+    loaded its C accelerator, whether the database is on disk, and so on.
+    Anything that moves the counts belongs here, otherwise counts recorded
+    under one configuration get asserted against another.
+
+    Tokens are rendered into the key in the order returned, immediately
+    after the driver name, and must consist of lower case alphanumerics;
+    ``_`` is the separator between key tokens.  A dialect that adds a
+    token invalidates the entries already recorded for it, so the counts
+    need regenerating; see ``python tools/profiles.py --help``.
+
+    """
+    return ()
