@@ -19,6 +19,7 @@ from ...testing.provision import drop_db
 from ...testing.provision import log
 from ...testing.provision import post_configure_engine
 from ...testing.provision import prepare_for_drop_tables
+from ...testing.provision import profile_platform_tokens
 from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import temp_table_keyword_args
 from ...testing.provision import upsert
@@ -182,3 +183,20 @@ def _create_citext_extension(url, engine, follower_ident):
                     text(f"CREATE EXTENSION IF NOT EXISTS {extension}")
                 )
                 conn.commit()
+
+
+@profile_platform_tokens.for_db("postgresql")
+def _postgresql_profile_platform_tokens(eng):
+    if eng.dialect.driver not in ("psycopg", "psycopg_async"):
+        # psycopg2 and pg8000 each only come one way, and asyncpg's
+        # accelerator isn't optional
+        return ()
+
+    # psycopg 3 is a pure Python package whose C speedups ship separately
+    # as psycopg-c / psycopg-binary and are picked up at import time when
+    # installed.  The two compiled builds are the same code, so they share
+    # a token; the pure Python one costs tens of thousands of extra calls
+    # in the resultset suite.
+    return (
+        "pydbapi" if eng.dialect.dbapi.pq.__impl__ == "python" else "cdbapi",
+    )

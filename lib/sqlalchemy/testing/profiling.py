@@ -34,6 +34,7 @@ from typing import Optional
 from typing import Tuple
 
 from . import config
+from . import provision
 from .profiles_file import PlatformKey
 from .profiles_file import ProfilesFile
 from .profiles_file import TestKey
@@ -122,8 +123,10 @@ class ProfileStatsFile:
         dbapi_flags = []
         if db.dialect.is_async:
             dbapi_flags.append("async")
-        if db.name == "sqlite" and db.dialect._is_url_file_db(db.url):
-            dbapi_flags.append("file")
+
+        # anything else that moves the counts and that only the dialect
+        # knows about, e.g. whether the DBAPI loaded its C accelerator
+        dbapi_flags.extend(provision.profile_platform_tokens(db))
 
         # major.minor only; the micro version isn't part of the key
         py_version = f"{sys.version_info.major}.{sys.version_info.minor}"

@@ -106,6 +106,12 @@ version, the database and DBAPI in use, and whether or not the C extensions
 were built; a test is skipped outright when the running environment has no
 matching line.
 
+Dialects contribute their own tokens to that key through the
+``profile_platform_tokens`` provisioning hook, for anything they know about
+that moves the counts.  psycopg 3 uses it to record whether its C speedups
+were installed, which is worth tens of thousands of calls in the resultset
+suite, and SQLite uses it to tell a file based database from ``:memory:``.
+
 Call counts move whenever the library changes, so the file is regenerated
 periodically using the ``profiles`` nox session, which runs the suite with
 ``--force-write-profiles`` across every interpreter, backend and cextension
@@ -114,26 +120,37 @@ build that the file records::
     nox -s profiles
 
 That is the slow, complete version, and it requires every database backend
-listed in "Setting Up Databases" below to be running.  In practice a change
-usually only affects part of the suite, and a subset can be handed through
-to pytest.  The session then looks at which backends actually have counts
-recorded for those tests and runs only those; most of ``test/aaa_profiling/``
-requires an in-memory SQLite database, so this typically means one backend
-rather than five::
+listed in "Setting Up Databases" below to be running.  Individual cells of
+the matrix are addressable by parameter or by tag::
+
+    nox -s "profiles(py314-nocext-postgresql)"
+    nox -t py313-profiles
+
+The backend is a session parameter rather than a pytest argument, so that
+each cell installs its own drivers; a URL other than the built in one comes
+from ``TOX_POSTGRESQL`` and friends in the environment, the same as for the
+``tests`` session.
+
+In practice a change usually only affects part of the suite, and a subset
+can be handed through to pytest.  Cells for backends that have no counts
+recorded for those tests then skip themselves before installing anything;
+most of ``test/aaa_profiling/`` requires an in-memory SQLite database, so
+this typically means one backend rather than five::
 
     nox -s profiles -- test/aaa_profiling/test_orm.py
 
-Individual cells of the matrix are addressable by parameter or by tag::
-
-    nox -s "profiles(py314-nocext)"
-    nox -t py313-profiles
-
-For a newly added test there is nothing recorded to consult, so all backends
-are run; ``--all-dbs`` requests that explicitly, and passing pytest's own
-``--db`` or ``--dburi`` through takes over backend selection entirely::
+For a newly added test there is nothing recorded to consult, so every
+backend runs.  ``--all-dbs`` says that explicitly, for a selection that is
+partly recorded already::
 
     nox -s profiles -- --all-dbs test/aaa_profiling/test_new_thing.py
-    nox -s profiles -- --db postgresql
+
+A backend whose DBAPI ships in more than one build gets a pass for each of
+them, listed in ``PROFILE_DBAPI_BUILDS`` in the noxfile; today that is
+PostgreSQL, run once with plain ``psycopg`` and once with
+``psycopg[binary]``.  Both sets of counts end up in the file, and a
+developer's own environment asserts against whichever build they have
+installed.
 
 Note that ``test/profiles.txt`` is rewritten in place as the tests run, so
 the session refuses to run under pytest-xdist.

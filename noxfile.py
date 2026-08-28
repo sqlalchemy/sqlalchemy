@@ -8,8 +8,8 @@ from pathlib import Path
 import sys
 from typing import Dict
 from typing import List
-from typing import Optional
 from typing import Set
+from typing import Tuple
 
 import nox
 from nox.command import CommandFailed
@@ -34,6 +34,26 @@ DATABASES = ["sqlite", "sqlite_file", "postgresql", "mysql", "oracle", "mssql"]
 CEXT = ["_auto", "cext", "nocext"]
 GREENLET = ["_greenlet", "nogreenlet"]
 BACKENDONLY = ["_all", "backendonly", "memusage"]
+
+PROFILE_DBAPI_BUILDS: Dict[str, List[Tuple[List[str], List[str]]]] = {
+    "postgresql": [
+        # psycopg 3's C speedups ship as a separate distribution which is
+        # picked up at import time; they're worth tens of thousands of
+        # calls in the resultset suite, and the platform key records which
+        # build was loaded, so both get their own entries.  Uninstalling
+        # is what selects the pure Python build - the venv is reused
+        # between runs, so its absence can't be assumed.
+        (["psycopg-binary", "psycopg-c"], ["sqlalchemy[postgresql-psycopg]"]),
+    ],
+}
+"""Extra DBAPI builds the ``profiles`` session regenerates a backend for.
+
+Keyed on backend name, each entry is one additional pass over the suite,
+as ``(packages to uninstall first, packages to install)``.  These run
+before the pass made with the backend's ``tests-<db>`` dependency group,
+which is the only pass for a backend that isn't listed here.
+
+"""
 
 # table of ``--dbdriver`` names to use on the pytest command line, which
 # match to dialect names
@@ -330,11 +350,11 @@ def _tests(
 
 @nox.session(name="profiles")
 @tox_parameters(
-    ["python", "cext"],
-    [PROFILE_PYTHONS, ["cext", "nocext"]],
+    ["python", "cext", "database"],
+    [PROFILE_PYTHONS, ["cext", "nocext"], PROFILE_DATABASES],
     base_tag="profiles",
 )
-def profiles(session: nox.Session, cext: str) -> None:
+def profiles(session: nox.Session, cext: str, database: str) -> None:
     """regenerate the call counts in test/profiles.txt.
 
     This replaces the former ``regen_callcounts.tox.ini`` runner.  With no
@@ -346,25 +366,33 @@ def profiles(session: nox.Session, cext: str) -> None:
 
     Individual cells of that matrix are addressable in the usual ways::
 
-        nox -s "profiles(py314-nocext)"
+        nox -s "profiles(py314-nocext-postgresql)"
         nox -t py314-profiles
 
+    The backend is a session parameter rather than a pytest argument, so
+    that each cell installs its own drivers; a URL other than the built in
+    one for a backend comes from ``TOX_<BACKEND>`` in the environment, the
+    same as for the ``tests`` session.
+
     A subset of the suite may be passed through to pytest, in which case
-    only the backends that actually have counts recorded for those tests are
-    run.   Most of ``test/aaa_profiling/`` requires an in-memory SQLite
-    database, so regenerating e.g. the ORM suite runs one backend rather
-    than five::
+    the cells for backends that have no counts recorded for those tests
+    skip themselves before installing anything.   Most of
+    ``test/aaa_profiling/`` requires an in-memory SQLite database, so
+    regenerating e.g. the ORM suite runs one backend rather than five::
 
         nox -s profiles -- test/aaa_profiling/test_orm.py
 
     That decision is made by looking at what's already in
     ``test/profiles.txt``, so a brand new test file, having nothing recorded
-    yet, falls back to running all backends.  ``--all-dbs`` forces the same
-    thing explicitly, and passing ``--db`` / ``--dburi`` through to pytest
-    takes over backend selection entirely::
+    yet, runs on every backend.  ``--all-dbs`` says the same thing
+    explicitly, for a selection that is partly recorded already::
 
         nox -s profiles -- --all-dbs test/aaa_profiling/test_new_thing.py
-        nox -s profiles -- --db postgresql
+
+    A backend whose DBAPI ships in more than one build - psycopg 3, with
+    and without its C speedups - is run once per build, since the platform
+    key records which one the counts came from; see
+    ``PROFILE_DBAPI_BUILDS``.
 
     Entries for interpreters and backends that are no longer regenerated
     stay in the file until they're removed; see
@@ -382,18 +410,19 @@ def profiles(session: nox.Session, cext: str) -> None:
             "test/profiles.txt is rewritten in place by the test run"
         )
 
-    # pytest --db / --dburi in posargs means the caller is choosing the
-    # backend themselves; run exactly once and forward it along
     if any(arg.split("=")[0] in ("--db", "--dburi") for arg in posargs):
-        databases: List[Optional[str]] = [None]
-    elif opts.all_dbs:
-        databases = list(PROFILE_DATABASES)
-    else:
-        recorded = recorded_databases(posargs)
-        databases = [db for db in PROFILE_DATABASES if db in recorded]
-        session.log(
-            f"backends with recorded call counts for this selection: "
-            f"{', '.join(str(db) for db in databases)}"
+        session.error(
+            "the backend is a session parameter here, e.g. "
+            "nox -s 'profiles(py314-nocext-postgresql)'; set "
+            f"TOX_{database.upper()} to run it against a different URL"
+        )
+
+    # bail before installing anything; a given selection usually only has
+    # counts recorded for one backend, leaving most cells with nothing to do
+    if not opts.all_dbs and database not in recorded_databases(posargs):
+        session.skip(
+            f"no call counts recorded for {database} for this selection; "
+            "pass --all-dbs to run it anyway"
         )
 
     # ensure external PYTHONPATH not interfering; see comments in _tests()
@@ -408,40 +437,44 @@ def profiles(session: nox.Session, cext: str) -> None:
     session.install(".")
     session.install(*nox.project.dependency_groups(pyproject, "tests"))
 
-    for database in databases:
-        cmd = ["python", "-m", "pytest"]
+    cmd = ["python", "-m", "pytest"]
 
-        # no -n; the profile file is rewritten in place as tests run.
-        # memory / timing intensive suites don't record call counts at all
-        cmd.extend(
-            [
-                "-x",
-                "-m",
-                "not memory_intensive and not timing_intensive",
-                "--force-write-profiles",
-            ]
-        )
+    # no -n; the profile file is rewritten in place as tests run.
+    # memory / timing intensive suites don't record call counts at all
+    cmd.extend(
+        [
+            "-x",
+            "-m",
+            "not memory_intensive and not timing_intensive",
+            "--force-write-profiles",
+        ]
+    )
 
-        if not any(
-            arg.startswith(("test/", f"test{os.sep}")) for arg in posargs
-        ):
-            cmd.append("test/aaa_profiling")
+    if not any(arg.startswith(("test/", f"test{os.sep}")) for arg in posargs):
+        cmd.append("test/aaa_profiling")
 
-        if database is not None:
-            deps = nox.project.dependency_groups(
-                pyproject, f"tests-{database.replace('_', '-')}"
-            )
-            if deps:
-                session.install(*deps)
+    # e.g. TOX_POSTGRESQL, TOX_MYSQL, etc.
+    dburl_env = f"TOX_{database.upper()}"
+    cmd.extend(os.environ.get(dburl_env, f"--db={database}").split())
 
-            # e.g. TOX_POSTGRESQL, TOX_MYSQL, etc.
-            dburl_env = f"TOX_{database.upper()}"
-            cmd.extend(os.environ.get(dburl_env, f"--db={database}").split())
+    if database in ("oracle", "mssql"):
+        cmd.append("--low-connections")
 
-            if database in ("oracle", "mssql"):
-                cmd.append("--low-connections")
+    cmd.extend(posargs)
 
-        cmd.extend(posargs)
+    # a DBAPI that ships in more than one build gets a pass for each, since
+    # the platform key tells them apart; the dependency group install is
+    # the last of them so that the venv is left in its normal state
+    deps = nox.project.dependency_groups(
+        pyproject, f"tests-{database.replace('_', '-')}"
+    )
+    for uninstall, install in PROFILE_DBAPI_BUILDS.get(database, []) + [
+        ([], deps)
+    ]:
+        if uninstall:
+            session.run("python", "-m", "pip", "uninstall", "-y", *uninstall)
+        if install:
+            session.install(*install)
 
         session.run(*cmd)
 

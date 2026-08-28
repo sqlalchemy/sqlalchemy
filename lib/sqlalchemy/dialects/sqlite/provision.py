@@ -20,6 +20,7 @@ from ...testing.provision import generate_driver_url
 from ...testing.provision import log
 from ...testing.provision import post_configure_engine
 from ...testing.provision import post_configure_testing_engine
+from ...testing.provision import profile_platform_tokens
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import stop_test_class_outside_fixtures
 from ...testing.provision import temp_table_keyword_args
@@ -227,3 +228,10 @@ def _upsert(
         *returning, sort_by_parameter_order=sort_by_parameter_order
     )
     return stmt
+
+
+@profile_platform_tokens.for_db("sqlite")
+def _sqlite_profile_platform_tokens(eng):
+    # a file based database goes through the filesystem for every page it
+    # reads, which a ``:memory:`` database doesn't
+    return ("file",) if eng.dialect._is_url_file_db(eng.url) else ()
