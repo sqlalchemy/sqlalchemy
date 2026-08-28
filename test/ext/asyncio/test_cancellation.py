@@ -96,6 +96,9 @@ class AsyncCancellationTest(fixtures.TestBase):
             pool_connection = await async_engine.raw_connection()
             record = pool_connection._connection_record
 
+            record.fairy_ref = lambda: None
+            assert record.needs_gc
+
             # invoke the finalizer the way the garbage collector would,
             # rather than dropping the reference and collecting, so that
             # the warning below is raised somewhere it can be caught; a
@@ -107,9 +110,9 @@ class AsyncCancellationTest(fixtures.TestBase):
                     None,
                     record,
                     pool_connection._pool,
-                    record.fairy_ref,
                     False,
                     transaction_was_reset=False,
+                    is_gc_cleanup=True,
                 )
 
             eq_(accounting.leaked, set())

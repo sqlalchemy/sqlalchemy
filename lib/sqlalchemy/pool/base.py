@@ -20,7 +20,6 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Deque
-from typing import Dict
 from typing import List
 from typing import Literal
 from typing import Optional
@@ -721,17 +720,10 @@ class _ConnectionRecord(ConnectionPoolEntry):
         echo = pool._should_log_debug()
         fairy = _ConnectionFairy(pool, dbapi_connection, rec, echo)
 
-        rec.fairy_ref = ref = weakref.ref(
-            fairy,
-            lambda ref: (
-                _finalize_fairy(
-                    None, rec, pool, ref, echo, transaction_was_reset=False
-                )
-                if _finalize_fairy is not None
-                else None
-            ),
-        )
-        _strong_ref_connection_records[ref] = rec
+        # assign fairy_ref to the ConnectionRecord; note that under StaticPool,
+        # this could be swapping out an existing fairy on that ConnectionRecord
+        rec.fairy_ref = weakref.ref(fairy)
+
         if echo:
             pool.logger.debug(
                 "Connection %r checked out from pool", dbapi_connection
@@ -772,6 +764,11 @@ class _ConnectionRecord(ConnectionPoolEntry):
     @property
     def in_use(self) -> bool:
         return self.fairy_ref is not None
+
+    @property
+    def needs_gc(self) -> bool:
+        ref = self.fairy_ref
+        return ref is not None and ref() is None
 
     @property
     def last_connect_time(self) -> float:
@@ -934,12 +931,10 @@ def _finalize_fairy(
     dbapi_connection: Optional[DBAPIConnection],
     connection_record: Optional[_ConnectionRecord],
     pool: Pool,
-    ref: Optional[
-        weakref.ref[_ConnectionFairy]
-    ],  # this is None when called directly, not by the gc
     echo: Optional[log._EchoFlagType],
     transaction_was_reset: bool = False,
     fairy: Optional[_ConnectionFairy] = None,
+    is_gc_cleanup: bool = False,
 ) -> None:
     """Cleanup for a :class:`._ConnectionFairy` whether or not it's already
     been garbage collected.
@@ -950,19 +945,17 @@ def _finalize_fairy(
     will only log a message and raise a warning.
     """
 
-    is_gc_cleanup = ref is not None
-
     if is_gc_cleanup:
-        assert ref is not None
-        _strong_ref_connection_records.pop(ref, None)
         assert connection_record is not None
-        if connection_record.fairy_ref is not ref:
+
+        # check connection record to see that we're the current
+        # fairy for this record.  if not, then return; assume the
+        # record is either checked in, or another fairy supersedes us
+        # (can happen with StaticPool)
+        if not connection_record.needs_gc:
             return
         assert dbapi_connection is None
         dbapi_connection = connection_record.dbapi_connection
-
-    elif fairy:
-        _strong_ref_connection_records.pop(weakref.ref(fairy), None)
 
     # null pool is not _is_asyncio but can be used also with async dialects
     dont_restore_gced = pool._dialect.is_async
@@ -1047,7 +1040,7 @@ def _finalize_fairy(
                 pool.logger.error(message)
                 util.warn(message)
 
-    if connection_record and connection_record.fairy_ref is not None:
+    if connection_record and connection_record.in_use:
         connection_record.checkin()
 
     # give gc some help.  See
@@ -1055,20 +1048,13 @@ def _finalize_fairy(
     # which actually started failing when pytest warnings plugin was
     # turned on, due to util.warn() above
     if fairy is not None:
+        # don't need the finalizer anymore since we are cleaning up here
+        fairy._finalizer.detach()
         fairy.dbapi_connection = None  # type: ignore[assignment]
         fairy._connection_record = None
     del dbapi_connection
     del connection_record
     del fairy
-
-
-# a dictionary of the _ConnectionFairy weakrefs to _ConnectionRecord, so that
-# GC under pypy will call ConnectionFairy finalizers.  linked directly to the
-# weakref that will empty itself when collected so that it should not create
-# any unmanaged memory references.
-_strong_ref_connection_records: Dict[
-    weakref.ref[_ConnectionFairy], _ConnectionRecord
-] = {}
 
 
 class PoolProxiedConnection(ManagesConnection):
@@ -1236,6 +1222,7 @@ class _ConnectionFairy(PoolProxiedConnection):
     __slots__ = (
         "dbapi_connection",
         "_connection_record",
+        "_finalizer",
         "_echo",
         "_pool",
         "_counter",
@@ -1259,6 +1246,18 @@ class _ConnectionFairy(PoolProxiedConnection):
         self.dbapi_connection = dbapi_connection
         self._connection_record = connection_record
         self._echo = echo
+
+        # use weakref.finalize as a destructor
+        self._finalizer = weakref.finalize(
+            self,
+            _finalize_fairy,
+            None,
+            connection_record,
+            pool,
+            echo,
+            transaction_was_reset=False,
+            is_gc_cleanup=True,
+        )
 
     _connection_record: Optional[_ConnectionRecord]
 
@@ -1411,7 +1410,6 @@ class _ConnectionFairy(PoolProxiedConnection):
             self.dbapi_connection,
             self._connection_record,
             self._pool,
-            None,
             self._echo,
             transaction_was_reset=transaction_was_reset,
             fairy=self,
@@ -1516,6 +1514,12 @@ class _ConnectionFairy(PoolProxiedConnection):
         if self._connection_record is not None:
             rec = self._connection_record
             rec.fairy_ref = None
+
+            # cancel the finalizer, as current behavior is that there's no
+            # GC "cleanup" for a detached connection.  not sure if this
+            # is the most appropriate decision; see issue #13570
+            self._finalizer.detach()
+
             rec.dbapi_connection = None
             # TODO: should this be _return_conn?
             self._pool._do_return_conn(self._connection_record)

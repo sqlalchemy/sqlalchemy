@@ -370,11 +370,18 @@ class AsyncEngineTest(EngineFixture):
         pool_connection = await_(go())
 
         rec = pool_connection._connection_record
-        ref = rec.fairy_ref
         pool = pool_connection._pool
         echo = False
 
         if simulate_gc:
+            # simulate the fairy having been garbage collected without
+            # being checked in.  The record still refers to it, but the
+            # weakref is cleared; that is the state _finalize_fairy() reads
+            # to tell that the record has not since been checked in or,
+            # under StaticPool, handed to some other fairy.
+            rec.fairy_ref = lambda: None
+            assert rec.needs_gc
+
             # not using expect_warnings() here because we also want to do a
             # negative test for warnings, and we want to absolutely make sure
             # the thing here that emits the warning is the correct path
@@ -389,7 +396,12 @@ class AsyncEngineTest(EngineFixture):
                 mock.patch("sqlalchemy.util.warn") as m,
             ):
                 _finalize_fairy(
-                    None, rec, pool, ref, echo, transaction_was_reset=False
+                    None,
+                    rec,
+                    pool,
+                    echo,
+                    transaction_was_reset=False,
+                    is_gc_cleanup=True,
                 )
 
             if adhoc_async_engine.dialect.has_terminate:
