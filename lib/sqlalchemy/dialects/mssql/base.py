@@ -3621,6 +3621,8 @@ class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 kwargs["precision"] = numericprec
                 if not issubclass(coltype, sqltypes.Float):
                     kwargs["scale"] = numericscale
+            elif issubclass(coltype, (sqltypes.DateTime, sqltypes.Time)):
+                kwargs["precision"] = numericprec
             coltype = coltype(**kwargs)
 
         cdict = {
