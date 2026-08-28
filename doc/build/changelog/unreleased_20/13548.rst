@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, engine, pool, asyncio
+    :tickets: 13548
+
+    Fixed issue where a DBAPI connection would be left open and unreachable
+    if an exception were raised within the :meth:`_events.PoolEvents.connect`
+    or :meth:`_events.PoolEvents.first_connect` event handlers, which is
+    where :meth:`.Dialect.initialize` runs.  The connection had been created
+    but not yet associated with anything that could close it, so it was
+    neither returned to the pool nor closed.  For an asyncio driver in
+    particular this could leak a server-side session for the life of the
+    process, as the garbage collector is not able to close a connection that
+    requires the event loop.
