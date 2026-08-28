@@ -2717,7 +2717,7 @@ class SQLiteDialect(default.DefaultDialect):
             FK_PATTERN = (
                 r'(?:CONSTRAINT\s+(?:"(.+?)"|(\w+))\s+)?'
                 r"FOREIGN\s+KEY\s*\(\s*(.+?)\s*\)\s+"
-                r'REFERENCES\s+(?:(?:"(.+?)")|([a-z0-9_]+))\s*\(\s*((?:(?:"[^"]+"|[a-z0-9_]+)\s*(?:,\s*)?)+)\)\s*'  # noqa: E501
+                r'REFERENCES\s+(?:(?:"(.+?)")|([a-z0-9_]+))\s*\(\s*((?:"[^"]+"|[a-z0-9_]+)(?:\s*,\s*(?:"[^"]+"|[a-z0-9_]+))*)\)\s*'  # noqa: E501
                 r"((?:ON\s+(?:DELETE|UPDATE)\s+"
                 r"(?:SET\s+NULL|SET\s+DEFAULT|CASCADE|RESTRICT|"
                 r"NO\s+ACTION)\s*)*)"
