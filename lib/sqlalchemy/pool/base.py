@@ -898,18 +898,36 @@ class _ConnectionRecord(ConnectionPoolEntry):
             with util.safe_reraise():
                 pool.logger.debug("Error on connect(): %s", e)
         else:
-            # in SQLAlchemy 1.4 the first_connect event is not used by
-            # the engine, so this will usually not be set
-            if pool.dispatch.first_connect:
-                pool.dispatch.first_connect.for_modify(
-                    pool.dispatch
-                ).exec_once_unless_exception(self.dbapi_connection, self)
+            try:
+                # in SQLAlchemy 1.4 the first_connect event is not used by
+                # the engine, so this will usually not be set
+                if pool.dispatch.first_connect:
+                    pool.dispatch.first_connect.for_modify(
+                        pool.dispatch
+                    ).exec_once_unless_exception(self.dbapi_connection, self)
 
-            # init of the dialect now takes place within the connect
-            # event, so ensure a mutex is used on the first run
-            pool.dispatch.connect.for_modify(
-                pool.dispatch
-            )._exec_w_sync_on_first_run(self.dbapi_connection, self)
+                # init of the dialect now takes place within the connect
+                # event, so ensure a mutex is used on the first run
+                pool.dispatch.connect.for_modify(
+                    pool.dispatch
+                )._exec_w_sync_on_first_run(self.dbapi_connection, self)
+            except BaseException:
+                # the connection is established but the events that
+                # configure it did not complete; nothing else has a
+                # reference to it, so close it here or it is stranded.
+                # for an asyncio driver in particular there is no other
+                # opportunity, as the garbage collector cannot close a
+                # connection that needs the event loop
+                with util.safe_reraise():
+                    try:
+                        pool._close_connection(connection, terminate=True)
+                    except BaseException:
+                        pool.logger.exception(
+                            "Exception closing connection %r stranded by a "
+                            "failed connect event",
+                            connection,
+                        )
+                    self.dbapi_connection = None
 
 
 def _finalize_fairy(
