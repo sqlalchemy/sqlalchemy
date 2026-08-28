@@ -2443,6 +2443,19 @@ class SQLiteDialect(default.DefaultDialect):
             )
 
     @reflection.cache
+    def get_table_options(
+        self, connection, table_name, schema=None, **kw
+    ) -> dict[str, Any]:
+        """Return the table options for the given table."""
+        options: dict[str, Any] = {}
+        tablesql = self._get_table_sql(connection, table_name, schema, **kw)
+        if re.search(r"WITHOUT\s+ROWID", tablesql, re.IGNORECASE):
+            options["sqlite_with_rowid"] = False
+        if re.search(r"STRICT", tablesql, re.IGNORECASE):
+            options["sqlite_strict"] = True
+        return options
+
+    @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
         pragma = "table_info"
         # computed columns are threaded as hidden, they require table_xinfo
