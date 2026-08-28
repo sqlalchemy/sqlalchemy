@@ -4066,7 +4066,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
     def get_schema_names(self, connection, **kw):
         query = (
             select(pg_catalog.pg_namespace.c.nspname)
-            .where(pg_catalog.pg_namespace.c.nspname.not_like("pg_%"))
+            .where(pg_catalog.pg_namespace.c.nspname.not_like("pg\_%"))
             .order_by(pg_catalog.pg_namespace.c.nspname)
         )
         return connection.scalars(query).all()
