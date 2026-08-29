@@ -1157,7 +1157,7 @@
         reflection to support both the ``postgresql_with`` flag as well
         as the ``postgresql_using`` flag, which will now be set on
         :class:`.Index` objects that are reflected, as well present
-        in a new "dialect_options" dictionary in the result of
+        in a new "be" dictionary in the result of
         :meth:`_reflection.Inspector.get_indexes`.  Pull request courtesy Pete Hollobon.
 
         .. seealso::
