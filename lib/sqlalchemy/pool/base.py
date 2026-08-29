@@ -898,18 +898,27 @@ class _ConnectionRecord(ConnectionPoolEntry):
             with util.safe_reraise():
                 pool.logger.debug("Error on connect(): %s", e)
         else:
-            # in SQLAlchemy 1.4 the first_connect event is not used by
-            # the engine, so this will usually not be set
-            if pool.dispatch.first_connect:
-                pool.dispatch.first_connect.for_modify(
-                    pool.dispatch
-                ).exec_once_unless_exception(self.dbapi_connection, self)
+            try:
+                # in SQLAlchemy 1.4 the first_connect event is not used by
+                # the engine, so this will usually not be set
+                if pool.dispatch.first_connect:
+                    pool.dispatch.first_connect.for_modify(
+                        pool.dispatch
+                    ).exec_once_unless_exception(self.dbapi_connection, self)
 
-            # init of the dialect now takes place within the connect
-            # event, so ensure a mutex is used on the first run
-            pool.dispatch.connect.for_modify(
-                pool.dispatch
-            )._exec_w_sync_on_first_run(self.dbapi_connection, self)
+                # init of the dialect now takes place within the connect
+                # event, so ensure a mutex is used on the first run
+                pool.dispatch.connect.for_modify(
+                    pool.dispatch
+                )._exec_w_sync_on_first_run(self.dbapi_connection, self)
+            except BaseException:
+                # listeners ran after the DBAPI connection was created; close
+                # it so a failed connect event cannot strand the socket
+                conn = self.dbapi_connection
+                self.dbapi_connection = None
+                with util.safe_reraise():
+                    if conn is not None:
+                        pool._close_connection(conn, terminate=True)
 
 
 def _finalize_fairy(

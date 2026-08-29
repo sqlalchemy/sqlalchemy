@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, pool
+    :tickets: 13548
+
+    Fixed issue where a DBAPI connection created by the pool was left open if a
+    :meth:`_events.PoolEvents.connect` or :meth:`_events.PoolEvents.first_connect`
+    listener raised. The connection is now closed before the exception
+    propagates.

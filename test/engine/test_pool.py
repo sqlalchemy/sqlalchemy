@@ -587,6 +587,46 @@ class PoolEventsTest(PoolTestBase):
         p.connect()
         eq_(canary, ["first_connect"])
 
+    def test_connect_event_exception_closes_dbapi_connection(self):
+        dbapi, p = self._queuepool_dbapi_fixture()
+        created = []
+        real_connect = dbapi.connect.side_effect
+
+        def wrap(*a, **k):
+            conn = real_connect(*a, **k)
+            created.append(conn)
+            return conn
+
+        dbapi.connect.side_effect = wrap
+
+        @event.listens_for(p, "connect")
+        def go_boom(dbapi_con, rec):
+            raise RuntimeError("connect listener failed")
+
+        assert_raises(RuntimeError, p.connect)
+        eq_(len(created), 1)
+        eq_(created[0].close.call_count, 1)
+
+    def test_first_connect_event_exception_closes_dbapi_connection(self):
+        dbapi, p = self._queuepool_dbapi_fixture()
+        created = []
+        real_connect = dbapi.connect.side_effect
+
+        def wrap(*a, **k):
+            conn = real_connect(*a, **k)
+            created.append(conn)
+            return conn
+
+        dbapi.connect.side_effect = wrap
+
+        @event.listens_for(p, "first_connect")
+        def go_boom(dbapi_con, rec):
+            raise RuntimeError("first_connect listener failed")
+
+        assert_raises(RuntimeError, p.connect)
+        eq_(len(created), 1)
+        eq_(created[0].close.call_count, 1)
+
     def test_first_connect_event_fires_once(self):
         p, canary = self._first_connect_event_fixture()
 
