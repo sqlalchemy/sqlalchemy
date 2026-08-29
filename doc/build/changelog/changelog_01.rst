@@ -110,7 +110,7 @@
         :tickets: 
 
       added "construct_new" flag to mapper, will use __new__ to create instances
-      instead of __init__ (standard in 0.2)
+      instead of not (standard in 0.2)
 
     .. change::
         :tags: 
