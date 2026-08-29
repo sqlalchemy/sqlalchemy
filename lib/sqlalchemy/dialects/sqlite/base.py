@@ -2507,6 +2507,30 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             return ReflectionDefaults.columns()
 
+    @reflection.cache
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        table_sql = self._get_table_sql(connection, table_name, schema=schema)
+        if table_sql is None:
+            raise exc.NoSuchTableError(
+                f"{schema}.{table_name}" if schema else table_name
+            )
+
+        match = re.match(
+            r"create table .*?\(.*\)(?P<options>.*?);?$",
+            table_sql.strip(),
+            re.DOTALL | re.IGNORECASE,
+        )
+        if not match:
+            return ReflectionDefaults.table_options()
+
+        options = {}
+        suffix = match.group("options")
+        if re.search(r"\bWITHOUT\s+ROWID\b", suffix, re.IGNORECASE):
+            options["sqlite_with_rowid"] = False
+        if re.search(r"\bSTRICT\b", suffix, re.IGNORECASE):
+            options["sqlite_strict"] = True
+        return options
+
     def _get_column_info(
         self,
         name,

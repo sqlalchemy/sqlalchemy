@@ -1476,6 +1476,37 @@ class ReflectInternalSchemaTables(fixtures.TablesTest):
             connection.exec_driver_sql("DROP VIEW sqlitetempview")
 
 
+class TableOptionsReflectionTest(fixtures.TestBase):
+    __only_on__ = "sqlite"
+    __backend__ = True
+
+    @testing.only_on("sqlite>=3.37.0")
+    def test_reflect_table_options(self, connection):
+        connection.exec_driver_sql(
+            "CREATE TABLE without_rowid (id INTEGER PRIMARY KEY) "
+            "WITHOUT ROWID"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE strict (id INTEGER PRIMARY KEY) STRICT"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE both (id INTEGER PRIMARY KEY) STRICT, WITHOUT ROWID"
+        )
+
+        inspector = inspect(connection)
+        eq_(inspector.get_table_options("without_rowid"),
+            {"sqlite_with_rowid": False})
+        eq_(inspector.get_table_options("strict"),
+            {"sqlite_strict": True})
+        eq_(inspector.get_table_options("both"),
+            {"sqlite_strict": True, "sqlite_with_rowid": False})
+
+        metadata = MetaData()
+        table = Table("both", metadata, autoload_with=connection)
+        eq_(dict(table.dialect_kwargs),
+            {"sqlite_strict": True, "sqlite_with_rowid": False})
+
+
 class ComputedReflectionTest(fixtures.TestBase):
     __only_on__ = "sqlite"
     __backend__ = True
