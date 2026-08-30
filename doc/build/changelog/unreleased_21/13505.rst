@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 13505
+
+    Python source generated at runtime is now compiled against a descriptive
+    filename which is registered with the :mod:`linecache` module, so that
+    generated functions appearing on a stack trace render with their source
+    rather than as an opaque ``File "<string>"`` frame.  This allows tools
+    like ``pdb`` and :func:`inspect.getsource` to work with these generated
+    source blocks as well.  The new feature is applied to the instrumentation
+    applied to an ORM object's ``__init__`` method, as well as throughout
+    SQLAlchemy functions that are internally instrumented.

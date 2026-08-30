@@ -2,6 +2,7 @@ import copy
 from decimal import Decimal
 import importlib.metadata
 import inspect
+import linecache
 import operator
 from pathlib import Path
 import pickle
@@ -10,9 +11,11 @@ import sys
 from sqlalchemy import exc
 from sqlalchemy import sql
 from sqlalchemy import testing
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.sql import column
 from sqlalchemy.sql.base import DedupeColumnCollection
+from sqlalchemy.sql.expression import table
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import combinations
@@ -4015,3 +4018,256 @@ class TestTest(fixtures.TestBase):
                 is_false(foo.foo)
             case _:
                 foo.fail()
+
+
+class GeneratedSourceTest(fixtures.TestBase):
+    """test exec_code_in_env() with a description, and the call sites that
+    make use of it, so that generated functions appearing on end-user stack
+    traces render with their source.
+
+    """
+
+    @testing.fixture
+    def no_linecache_fixture(self):
+        the_cache = linecache.cache
+        try:
+
+            delattr(linecache, "cache")
+            yield
+        finally:
+            linecache.cache = the_cache
+
+    def test_linecache_safe_getter_non_dict(self):
+        with mock.patch.object(linecache, "cache", 12):
+            with expect_raises_message(
+                AttributeError, "linecache has changed from being a dict"
+            ):
+                langhelpers._linecache_cache_getter()
+
+    def test_linecache_safe_getter_disappeared(self, no_linecache_fixture):
+        with expect_raises(AttributeError):
+            langhelpers._linecache_cache_getter()
+
+    def test_linecache_changed_to_a_non_dict(self):
+        with mock.patch.object(linecache, "cache", 12):
+            fn = langhelpers.exec_code_in_env(
+                "def foo():\n    return 1\n", {}, "foo", "foo for testing"
+            )
+        eq_(fn(), 1)
+
+    def test_linecache_disappeared(self, no_linecache_fixture):
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo", "foo for testing"
+        )
+        eq_(fn(), 1)
+
+    def test_filename_form(self):
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo", "foo for testing"
+        )
+        eq_(
+            fn.__code__.co_filename,
+            "<sqlalchemy generated foo for testing>",
+        )
+
+    def test_registers_source(self):
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo", "registers_source"
+        )
+        eq_(
+            linecache.getlines(fn.__code__.co_filename),
+            ["def foo():\n", "    return 1\n"],
+        )
+
+    def test_mtime_none_survives_checkcache(self):
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo", "survives_checkcache"
+        )
+        filename = fn.__code__.co_filename
+        eq_(linecache.cache[filename][1], None)
+
+        linecache.checkcache()
+
+        eq_(
+            linecache.getlines(filename),
+            ["def foo():\n", "    return 1\n"],
+        )
+
+    def test_regenerating_replaces_entry(self):
+        """the same description generated twice is the same target being
+        regenerated; the newest source is the live one.
+
+        """
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo", "replaces_entry"
+        )
+        fn2 = langhelpers.exec_code_in_env(
+            "def foo():\n    return 2\n", {}, "foo", "replaces_entry"
+        )
+        eq_(fn(), 1)
+        eq_(
+            linecache.getlines(fn2.__code__.co_filename),
+            ["def foo():\n", "    return 2\n"],
+        )
+
+    def test_entry_dropped_when_function_collected(self):
+        """the entry is tied to the lifespan of the generated function, so
+        that classes generated dynamically at runtime and then discarded
+        don't accumulate entries.
+
+        """
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo", "dropped_when_collected"
+        )
+        filename = fn.__code__.co_filename
+        eq_(linecache.getlines(filename), ["def foo():\n", "    return 1\n"])
+
+        del fn
+        gc_collect()
+
+        not_in(filename, linecache.cache)
+
+    def test_removal_tolerates_key_vanishing(self):
+        """the finalizer runs at an arbitrary point in an arbitrary thread,
+        including from inside a gc pass, so the key may be gone between the
+        identity test and the removal; an exception raised there would
+        surface as an unraisable error.
+
+        """
+
+        class RaceyCache(dict):
+            def get(self, key, default=None):
+                value = dict.get(self, key, default)
+                # something else, e.g. linecache.clearcache(), drops the
+                # key right after we've looked at it
+                dict.pop(self, key, None)
+                return value
+
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo", "racey_removal"
+        )
+        filename = fn.__code__.co_filename
+        entry = linecache.cache[filename]
+
+        with mock.patch.object(
+            linecache, "cache", RaceyCache(linecache.cache)
+        ):
+            langhelpers._remove_linecache_entry(filename, entry)
+
+    def test_regenerated_entry_survives_collection(self):
+        """a superseded function's finalizer must not remove the entry that
+        replaced it.
+
+        """
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo", "survives_collection"
+        )
+        filename = fn.__code__.co_filename
+
+        fn2 = langhelpers.exec_code_in_env(
+            "def foo():\n    return 2\n", {}, "foo", "survives_collection"
+        )
+
+        del fn
+        gc_collect()
+
+        eq_(fn2(), 2)
+
+        eq_(linecache.getlines(filename), ["def foo():\n", "    return 2\n"])
+
+    def test_exec_code_in_env_no_description(self):
+        """callers whose generated function doesn't show up on user stack
+        traces omit the description and are unaffected.
+
+        """
+        fn = langhelpers.exec_code_in_env(
+            "def foo():\n    return 1\n", {}, "foo"
+        )
+        eq_(fn.__code__.co_filename, "<string>")
+        not_in("<string>", linecache.cache)
+
+    def test_decorator_wrapper_source(self):
+        @langhelpers.decorator
+        def my_deco(fn, *arg, **kw):
+            return fn(*arg, **kw)
+
+        @my_deco
+        def some_function(a, b):
+            return a + b
+
+        eq_(
+            some_function.__code__.co_filename,
+            "<sqlalchemy generated my_deco() wrapper for "
+            f"{__name__}.GeneratedSourceTest."
+            "test_decorator_wrapper_source.<locals>.some_function>",
+        )
+        eq_(
+            linecache.getlines(some_function.__code__.co_filename),
+            ["def some_function(a, b):\n", "    return target(fn, a, b)\n"],
+        )
+
+    def test_stacked_decorators_distinct_filenames(self):
+        """update_wrapper() gives every layer of a stack of decorators the
+        same __qualname__, so the target name has to be part of the key or
+        the outer layer claims the inner layer's source.
+
+        """
+
+        @langhelpers.decorator
+        def outer(fn, *arg, **kw):
+            return fn(*arg, **kw)
+
+        @langhelpers.decorator
+        def inner(fn, *arg, **kw):
+            return fn(*arg, **kw)
+
+        @outer
+        @inner
+        def some_function(a):
+            return a
+
+        outer_file = some_function.__code__.co_filename
+        inner_file = some_function.__wrapped__.__code__.co_filename
+
+        ne_(outer_file, inner_file)
+        assert outer_file.startswith("<sqlalchemy generated outer() wrapper")
+        assert inner_file.startswith("<sqlalchemy generated inner() wrapper")
+
+    def test_stacked_decorators_in_lib(self):
+        """Update.values() is decorated by both @_generative and
+        @_exclusive_against; both layers should be resolvable.
+
+        """
+        fn = update(table("t", column("x"))).values
+
+        eq_(
+            [
+                linecache.getlines(f.__code__.co_filename)[0]
+                for f in (fn.__func__, fn.__func__.__wrapped__)
+            ],
+            ["def values(self, *args, **kwargs):\n"] * 2,
+        )
+
+    def test_proxied_specials_source(self):
+        class Source:
+            def __set__(self, obj, value):
+                raise ValueError("nope")
+
+        class Target:
+            pass
+
+        langhelpers.monkeypatch_proxied_specials(
+            Target, Source, name="descriptor", from_instance=Source()
+        )
+
+        eq_(
+            Target.__set__.__code__.co_filename,
+            "<sqlalchemy generated __set__ proxying to "
+            f"{__name__}.GeneratedSourceTest."
+            "test_proxied_specials_source.<locals>.Source>",
+        )
+        eq_(
+            inspect.getsource(Target.__set__),
+            "def __set__(self, obj, value): "
+            "return descriptor.__set__(obj, value)",
+        )

@@ -136,13 +136,15 @@ def _grab_overloads(fn):
 
     """
 
-    # functions that use @util.deprecated and whatnot will have a string
-    # generated fn.  we can look at __wrapped__ but these functions don't
+    # functions that use @util.deprecated and whatnot will have a runtime
+    # generated fn, whose co_filename is a synthetic <...> name rather than
+    # a file on disk.  we can look at __wrapped__ but these functions don't
     # have any overloads in any case right now so skip
-    if fn.__code__.co_filename == "<string>":
+    filename = fn.__code__.co_filename
+    if filename.startswith("<") and filename.endswith(">"):
         return []
 
-    with open(fn.__code__.co_filename) as f:
+    with open(filename) as f:
         lines = [l for i, l in zip(range(fn.__code__.co_firstlineno), f)]
 
         lines.reverse()

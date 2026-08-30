@@ -98,7 +98,7 @@ class HasShallowCopy(HasTraverseInternals):
             for attrname, _ in internal_dispatch
         )
         meth_text = f"def {method_name}(self, other):\n{code}\n"
-        return langhelpers._exec_code_in_env(meth_text, {}, method_name)
+        return langhelpers.exec_code_in_env(meth_text, {}, method_name)
 
     @classmethod
     def _generate_shallow_to_dict(
@@ -111,7 +111,7 @@ class HasShallowCopy(HasTraverseInternals):
             for attrname, _ in internal_dispatch
         )
         meth_text = f"def {method_name}(self):\n    return {{{code}}}\n"
-        return langhelpers._exec_code_in_env(meth_text, {}, method_name)
+        return langhelpers.exec_code_in_env(meth_text, {}, method_name)
 
     @classmethod
     def _generate_shallow_from_dict(
@@ -124,7 +124,7 @@ class HasShallowCopy(HasTraverseInternals):
             for attrname, _ in internal_dispatch
         )
         meth_text = f"def {method_name}(self, d):\n{code}\n"
-        return langhelpers._exec_code_in_env(meth_text, {}, method_name)
+        return langhelpers.exec_code_in_env(meth_text, {}, method_name)
 
     def _shallow_from_dict(self, d: Dict[str, Any]) -> None:
         cls = self.__class__

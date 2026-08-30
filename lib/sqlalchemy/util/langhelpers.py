@@ -20,6 +20,7 @@ import importlib.metadata
 import importlib.util
 import inspect
 import itertools
+import linecache
 import operator
 import re
 import sys
@@ -48,6 +49,7 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 import warnings
+import weakref
 
 from . import _collections
 from . import compat
@@ -346,9 +348,19 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
             "__name__": fn.__module__,
         }
 
+        # the target's name is part of the description because decorators
+        # built here do get stacked (see ValuesBase.values()), and
+        # update_wrapper() gives every layer the same __qualname__; without
+        # it the outer layer would claim the inner layer's source.
         decorated = cast(
             types.FunctionType,
-            _exec_code_in_env(code, env, fn.__name__),
+            exec_code_in_env(
+                code,
+                env,
+                fn.__name__,
+                f"{target.__name__}() wrapper for "
+                f"{fn.__module__}.{fn.__qualname__}",
+            ),
         )
         decorated.__defaults__ = fn.__defaults__
         decorated.__kwdefaults__ = fn.__kwdefaults__  # type: ignore[union-attr]  # noqa: E501
@@ -357,11 +369,97 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
     return update_wrapper(decorate, target)  # type: ignore[return-value]
 
 
-def _exec_code_in_env(
-    code: Union[str, types.CodeType], env: Dict[str, Any], fn_name: str
+_LinecacheEntry = Tuple[int, None, List[str], str]
+
+
+def _linecache_cache_getter():
+    """safe getter for linecache.cache
+
+    linecache.cache despite being non-underscored and widely used is
+    nonetheless not documented by cPython.   Therefore we cannot trust that it
+    it's present in third party Python distributions, or that it wont
+    suddenly be removed or changed.  Guard against this such that linecache
+    features will be silently disabled if this should happen.  Unit tests in
+    test/base/test_utils.py ensures linecache.cache remains available for new
+    releases.
+
+    """
+    try:
+        linecache_cache = linecache.cache
+    except AttributeError:
+        raise
+    else:
+        if not isinstance(linecache_cache, dict):
+            raise AttributeError("linecache has changed from being a dict")
+        return linecache_cache
+
+
+def _remove_linecache_entry(filename: str, entry: _LinecacheEntry) -> None:
+    """Discard a ``linecache`` entry made by :func:`.exec_code_in_env`, if
+    it is still the live one.
+
+    Runs from a weakref finalizer.
+
+    This function is only established if we actually added an entry to the
+    linecache within exec_code_in_env.
+
+    """
+    linecache_cache = _linecache_cache_getter()
+
+    if linecache_cache.get(filename) is entry:
+        linecache_cache.pop(filename, None)
+
+
+def exec_code_in_env(
+    code: Union[str, types.CodeType],
+    env: Dict[str, Any],
+    fn_name: str,
+    description: Optional[str] = None,
 ) -> Callable[..., Any]:
+    """Exec generated ``code`` in ``env`` and return the function it defines.
+
+    If ``description`` is passed, the code is compiled against a synthetic
+    filename which is registered with :mod:`linecache`, allowing traceback
+    frames to reference the actual source code being referenced.
+
+    entries are placed in the cache without an expiration time and a
+    weakref.finalize() is applied to the function to remove the linecache
+    entry if and when the function is garbage collected.
+
+    """
+    filename: Optional[str] = None
+    entry: Optional[_LinecacheEntry] = None
+
+    if description is not None:
+        assert isinstance(code, str), (
+            "a description is only meaningful for source that has not "
+            "already been compiled"
+        )
+        filename = f"<sqlalchemy generated {description}>"
+
+        try:
+            linecache_cache = _linecache_cache_getter()
+        except AttributeError:
+            pass
+        else:
+            entry = (len(code), None, code.splitlines(True), filename)
+            linecache_cache[filename] = entry
+        code = compile(code, filename, "exec")
+
     exec(code, env)
-    return env[fn_name]  # type: ignore[no-any-return]
+    fn = env[fn_name]
+
+    if filename is not None and entry is not None:
+        # apply a finalizer that addresses on-the-fly functions, ORM mapped
+        # classes, etc. which might be garbage collected
+        finalizer = weakref.finalize(
+            fn, _remove_linecache_entry, filename, entry
+        )
+        # atexit is a property on the C implementation; typeshed
+        # renders finalize with an empty __slots__
+        finalizer.atexit = False  # type: ignore[misc]
+
+    return fn  # type: ignore[no-any-return]
 
 
 _PF = TypeVar("_PF")
@@ -1047,12 +1145,22 @@ def monkeypatch_proxied_specials(
         env: Dict[str, types.FunctionType] = (
             from_instance is not None and {name: from_instance} or {}
         )
-        exec(py, env)
+        # the generated source is derived entirely from from_cls and the method
+        # name, and into_cls is a throwaway per-descriptor class whose
+        # __qualname__ is the same for every one of them, so this is keyed on
+        # from_cls rather than into_cls
+        proxied = exec_code_in_env(
+            py,
+            env,
+            method,
+            f"{method} proxying to "
+            f"{from_cls.__module__}.{from_cls.__qualname__}",
+        )
         try:
-            env[method].__defaults__ = fn.__defaults__
+            proxied.__defaults__ = fn.__defaults__
         except AttributeError:
             pass
-        setattr(into_cls, method, env[method])
+        setattr(into_cls, method, proxied)
 
 
 def methods_equivalent(meth1, meth2):
