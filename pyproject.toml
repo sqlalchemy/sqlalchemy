@@ -223,11 +223,6 @@ namespaces = false
 version = {attr = "sqlalchemy.__version__"}
 
 
-[tool.distutils.egg_info]
-# ref https://github.com/pypa/setuptools/discussions/3348#discussioncomment-6556887
-tag-build = "dev"
-
-
 [tool.black]
 line-length = 79
 target-version = ['py310']
