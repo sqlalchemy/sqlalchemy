@@ -3379,26 +3379,26 @@
 
         .. seealso::
 
-        	:ref:`migration_3061`
+            :ref:`migration_3061`
 
-	.. change::
-		:tags: feature, sql
-		:tickets: 3034
+    .. change::
+        :tags: feature, sql
+        :tickets: 3034
 
-		The :meth:`_expression.Select.limit` and :meth:`_expression.Select.offset` methods
-		now accept any SQL expression, in addition to integer values, as
-		arguments.  Typically this is used to allow a bound parameter to be
-		passed, which can be substituted with a value later thus allowing
-		Python-side caching of the SQL query.   The implementation
-		here is fully backwards compatible with existing third party dialects,
-		however those dialects which implement special LIMIT/OFFSET systems
-		will need modification in order to take advantage of the new
-		capabilities.  Limit and offset also support "literal_binds" mode,
+        The :meth:`_expression.Select.limit` and :meth:`_expression.Select.offset` methods
+        now accept any SQL expression, in addition to integer values, as
+        arguments.  Typically this is used to allow a bound parameter to be
+        passed, which can be substituted with a value later thus allowing
+        Python-side caching of the SQL query.   The implementation
+        here is fully backwards compatible with existing third party dialects,
+        however those dialects which implement special LIMIT/OFFSET systems
+        will need modification in order to take advantage of the new
+        capabilities.  Limit and offset also support "literal_binds" mode,
         where bound parameters are rendered inline as strings based on
         a compile-time option.
         Work on this feature is courtesy of Dobes Vandermeer.
 
 
-		.. seealso::
+        .. seealso::
 
-			:ref:`feature_3034`.
+            :ref:`feature_3034`.
