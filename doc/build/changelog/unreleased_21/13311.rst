@@ -1,8 +1,8 @@
 .. change::
-    :tags: feature, reflection, performance
+    :tags: schema, performance
     :tickets: 13311
 
-    Created new reflection method :meth:`_engine.Inspector.has_multi_table`
+    Created new reflection method :meth:`_reflection.Inspector.has_multi_table`
     to check the existence of multiple tables at once, allowing for
     better performance when checking many tables. Like the other "multi"
     reflection methods, the default dialect offers a default implementation

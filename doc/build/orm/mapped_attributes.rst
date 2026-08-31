@@ -155,14 +155,6 @@ Above, assigning to ``VerifiedUser.email`` invokes
 causes ``User.validate_email`` to run as well.  Without that
 ``super()`` call, the parent's validator would be skipped entirely.
 
-.. versionchanged:: 2.1
-
-   A subclass overriding a parent's validator using the same method name
-   now replaces the parent validator rather than the parent validator
-   running unconditionally.  Previously, the parent validator would
-   always run even when the subclass provided an override, which made it
-   difficult for a subclass to alter or replace the parent's validation
-   behavior.
 
 Using Custom Datatypes at the Core Level
 -----------------------------------------

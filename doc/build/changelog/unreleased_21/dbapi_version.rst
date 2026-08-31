@@ -1,5 +1,5 @@
 .. change::
-    :tags: feature, engine
+    :tags: usecase, schema
 
     Added :attr:`.Dialect.dbapi_version`, a standardized accessor for the
     version of the DBAPI module in use by a dialect, in contrast to
@@ -31,7 +31,7 @@
     rather than ``(1, 2, 0)``.
 
 .. change::
-    :tags: bug, testing
+    :tags: usecase, tests
 
     The version specifications used by testing exclusions such as
     ``testing.fails_if("+asyncmy<0.2.13")`` now support a driver name, in

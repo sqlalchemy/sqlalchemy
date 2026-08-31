@@ -1,5 +1,5 @@
 .. change::
-    :tags: change
+    :tags: platform, change
 
     Python 3.11 or above is now required; support for Python 3.10 is dropped,
     in addition to the drop of versions Python 3.9, 3.8 and 3.7 introduced

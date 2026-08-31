@@ -10,7 +10,7 @@
     throughout, and are no longer derived by splitting a dotted string.
 
 .. change::
-    :tags: feature, schema
+    :tags: usecase, schema
     :tickets: 13538
 
     Added new :class:`_schema.ForeignKey` accessors
@@ -23,7 +23,7 @@
     usage patterns.
 
 .. change::
-    :tags: change, schema
+    :tags: deprecated, schema
     :tickets: 13538
 
     :attr:`_schema.ForeignKey.target_fullname` is now a legacy accessor, and

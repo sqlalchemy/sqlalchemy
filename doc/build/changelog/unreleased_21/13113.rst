@@ -1,5 +1,5 @@
 .. change::
-    :tags: usecase, sqlite, dml
+    :tags: usecase, sqlite
     :tickets: 13113
 
     Added support for multiple ``ON CONFLICT`` clauses within a single
