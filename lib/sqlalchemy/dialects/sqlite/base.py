@@ -747,7 +747,7 @@ occurs:
 .. _sqlite_on_conflict_multiple:
 
 Specifying Multiple ON CONFLICT Clauses
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 SQLite accepts more than one ``ON CONFLICT`` clause within a single INSERT
 statement.  The :meth:`_sqlite.Insert.on_conflict_do_update` and

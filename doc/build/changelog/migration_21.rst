@@ -1728,7 +1728,7 @@ Examples to summarize the change are as follows::
 The ``psycopg`` DBAPI driver itself can be installed either directly
 or via the ``sqlalchemy[postgresql]`` extra:
 
-.. sourcecode:: txt
+.. sourcecode:: text
 
     # install psycopg directly
     pip install "psycopg[binary]"

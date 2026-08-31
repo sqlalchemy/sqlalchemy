@@ -13,7 +13,7 @@ the machine architecture, operating system, Python implementation and
 version, the database / DBAPI in use, and whether or not the C extensions
 were built:
 
-.. sourcecode:: txt
+.. sourcecode:: text
 
     test.aaa_profiling.test_orm.MergeTest.test_merge_load \
 x86_64_linux_cpython_3.14_sqlite_pysqlite_dbapiunicode_cextensions 1234
