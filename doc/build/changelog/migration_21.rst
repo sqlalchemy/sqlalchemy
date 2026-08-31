@@ -72,11 +72,11 @@ ORM - New Features
 
 
 Session-level execution options added
---------------------------------------------------------------------------
+-------------------------------------
 
 The :class:`_orm.Session`, :class:`_orm.sessionmaker`,
-:class:`_orm.scoped_session`, :class:`_ext.asyncio.AsyncSession`, and
-:class:`_ext.asyncio.async_sessionmaker` constructors now accept an
+:class:`_orm.scoped_session`, :class:`_asyncio.AsyncSession`, and
+:class:`_asyncio.async_sessionmaker` constructors now accept an
 :paramref:`_orm.Session.execution_options` parameter, which establishes
 a dictionary of execution options that are applied across all operations
 within that session instance. These options are propagated both to
@@ -458,7 +458,7 @@ on the instance, delivered via descriptor::
 
     >>> so = SomeObject()
     >>> so.status
-    default_status
+    'default_status'
 
 default_factory for collection-based relationships internally uses DONT_SET
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -781,7 +781,7 @@ the view is created after all dependent tables have been created:
     >>> from sqlalchemy import create_engine
     >>> e = create_engine("sqlite://", echo=True)
     >>> metadata_obj.create_all(e)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
 
     CREATE TABLE user_account (
     	id INTEGER NOT NULL,
@@ -803,7 +803,7 @@ The view is usable in SQL expressions via the :attr:`.CreateView.table` attribut
 
     >>> with e.connect() as conn:
     ...     conn.execute(select(view.table))
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT spongebob_view.id, spongebob_view.name, spongebob_view.fullname
     FROM spongebob_view
     <sqlalchemy.engine.cursor.CursorResult object at 0x7f573e4a4ad0>
@@ -826,7 +826,7 @@ executing the object:
 
     >>> with e.begin() as conn:
     ...     conn.execute(create_table_as)
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     CREATE TABLE squidward_users AS SELECT user_account.id, user_account.name
     FROM user_account
     WHERE user_account.name = 'squidward'
@@ -838,7 +838,7 @@ Like before, the :class:`.Table` is accessible from :attr:`.CreateTableAs.table`
 
     >>> with e.connect() as conn:
     ...     conn.execute(select(create_table_as.table))
-    {opensql}BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT squidward_users.id, squidward_users.name
     FROM squidward_users
     <sqlalchemy.engine.cursor.CursorResult object at 0x7f573e4a4f30>
@@ -1529,7 +1529,7 @@ Where the above URL correctly round-trips to itself::
 
 Whereas previously, special characters applied programmatically would not
 be escaped in the result, leading to a URL that does not represent the
-original database portion.  Below, `b=c` is part of the query string and
+original database portion.  Below, ``b=c`` is part of the query string and
 not the database portion::
 
     >>> # pre-2.1 behavior
@@ -1613,8 +1613,8 @@ expression construction time with datatypes using the
 may want to set this attribute to indicate the kinds of operators that make
 sense::
 
+    from sqlalchemy.types import OperatorClass
     from sqlalchemy.types import UserDefinedType
-    from sqlalchemy.sql.sqltypes import OperatorClass
 
 
     class ComplexNumber(UserDefinedType):
@@ -1846,6 +1846,8 @@ used by the :class:`.MetaData` is not what's desired.
 
 :ticket:`10594`
 
+.. _change_12866:
+
 Support for ``VIRTUAL`` computed columns
 ----------------------------------------
 
@@ -1872,6 +1874,8 @@ To maintain the previous behavior of ``STORED`` computed columns,
         Column("x", Integer),
         Column("x^2", Integer, Computed("x * x", persisted=True)),
     )
+
+:ticket:`12866`
 
 .. _change_10556:
 
@@ -1918,7 +1922,7 @@ operator syntax automatically, ensuring backward compatibility.
 
 Example of the new syntax when connected to PostgreSQL 14+::
 
-    from sqlalchemy import table, column, update
+    from sqlalchemy import table, column, select, update
     from sqlalchemy.dialects.postgresql import HSTORE
 
     data = table("data", column("h", HSTORE))
@@ -2187,11 +2191,11 @@ Improved reflection performance via native multi-table queries
 --------------------------------------------------------------
 
 The SQL Server dialect now implements native bulk reflection methods,
-including :meth:`.MSDialect.get_multi_columns`,
-:meth:`.MSDialect.get_multi_pk_constraint`,
-:meth:`.MSDialect.get_multi_foreign_keys`,
-:meth:`.MSDialect.get_multi_indexes`, and
-:meth:`.MSDialect.get_multi_table_comment`.  Previously, the SQL Server
+including :meth:`_reflection.Inspector.get_multi_columns`,
+:meth:`_reflection.Inspector.get_multi_pk_constraint`,
+:meth:`_reflection.Inspector.get_multi_foreign_keys`,
+:meth:`_reflection.Inspector.get_multi_indexes`, and
+:meth:`_reflection.Inspector.get_multi_table_comment`.  Previously, the SQL Server
 dialect fell back to the default implementation which calls the per-table
 single-reflection methods in a loop, resulting in one round-trip per table
 per object type.  The new implementations issue a single bulk query per
@@ -2276,6 +2280,8 @@ the :class:`.Boolean` datatype.
 
 SQLite
 ======
+
+.. _change_13260:
 
 Added :class:`_sqlite.JSONB` json format for SQLite
 ---------------------------------------------------
