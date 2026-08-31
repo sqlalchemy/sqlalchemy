@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, engine, pool, asyncio
     :tickets: 13548
+    :versions: 2.1.0b4
 
     Fixed issue where a DBAPI connection would be left open and unreachable
     if an exception were raised within the :meth:`_events.PoolEvents.connect`

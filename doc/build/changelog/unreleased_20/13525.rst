@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, reflection
     :tickets: 13525
+    :versions: 2.1.0b4
 
     Fixed issue where reflecting a table with a foreign key constraint that
     names the same source column more than once, such as ``FOREIGN KEY (a, a)

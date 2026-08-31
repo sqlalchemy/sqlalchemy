@@ -19,6 +19,7 @@
     .. change::
         :tags: bug, postgresql, reflection
         :tickets: 13157
+        :versions: 2.1.0b4
 
         Fixed reflection of PostgreSQL CHECK constraints where an expression made
         up of multiple parenthesized sub-expressions, such as ``(x IS NULL OR y IS
@@ -30,6 +31,7 @@
     .. change::
         :tags: bug, mssql
         :tickets: 13380
+        :versions: 2.1.0b3
 
         Tightened the construction of the ODBC connection string in the pyodbc
         connector (as well as the mssql-python connector in 2.1) so that the
@@ -43,6 +45,7 @@
     .. change::
       :tags: bug, orm declarative
       :tickets: 13386
+      :versions: 2.1.0b3
 
       Fixed issue where using :pep:`593` ``Annotated`` wrapping a :pep:`695`
       ``type`` alias, such as ``Annotated[SomeTypeAlias, mapped_column()]``,
@@ -54,6 +57,7 @@
     .. change::
         :tags: bug, tests
         :tickets: 13392
+        :versions: 2.1.0b3
 
         Fixed class-scoped pytest fixtures that were defined as instance methods
         using ``self``, which is deprecated as of pytest 9.1 and will be removed in
@@ -63,6 +67,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 13396
+        :versions: 2.1.0b3
 
         Fixed issue where :meth:`_sql.Select.get_final_froms` would emit a
         deprecation warning when the statement made use of the PostgreSQL-specific
@@ -78,6 +83,7 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 13419
+        :versions: 2.1.0b4
 
         Reworked the regular expression that detects inline ``UNIQUE`` column
         constraints during SQLite ``CREATE TABLE`` reflection so that the
@@ -91,6 +97,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 13424
+        :versions: 2.1.0b4
 
         Fixed an issue in :class:`.Numeric` where the
         :paramref:`.Numeric.decimal_return_scale` parameter was ignored when the
@@ -106,6 +113,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13429
+        :versions: 2.1.0b4
 
         Fixed bug in the PostgreSQL dialect where a single quote in a sequence,
         table, or schema name, such as one supplied via a ``schema_translate_map``
@@ -116,6 +124,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13439
+        :versions: 2.1.0b4
 
         Fixed a result-column misalignment bug in ORM-enabled UPDATE statements
         where ``synchronize_session="fetch"`` is in use, either explicitly or
@@ -128,6 +137,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 13448
+        :versions: 2.1.0b4
 
         Added auditing to the test suite which exercises the literal execute
         processors across all datatypes and dialects to ensure that string input is
@@ -146,6 +156,7 @@
     .. change::
         :tags: bug, platform
         :tickets: 13477
+        :versions: 2.1.0b4
 
         Python 3.15 support has been added and tested, including minimal changes
         for full compatibility.
@@ -153,6 +164,7 @@
     .. change::
         :tags: bug, schema
         :tickets: 13481
+        :versions: 2.1.0b4
 
         Fixed an issue where :meth:`_schema.Table.to_metadata` reused column
         default and on-update objects, causing the defaults on the original
@@ -166,6 +178,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13485
+        :versions: 2.1.0b4
 
         Fixed bug where a failed :meth:`_orm.Session.bulk_insert_mappings`,
         :meth:`_orm.Session.bulk_update_mappings` or
@@ -182,6 +195,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13493
+        :versions: 2.1.0b4
 
         Fixed issue where unpickling an ORM object that were loaded using loader
         options making use of wildcard tokens, such as :func:`_orm.load_only` or
@@ -197,6 +211,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13493
+        :versions: 2.1.0b4
 
         Fixed issue where a string ending in ``"*"`` passed to a
         :class:`_orm.Load` strategy method, such as
@@ -210,6 +225,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 6274
+        :versions: 2.1.0b4
 
         Calling :func:`_orm.aliased` against a :func:`_sql.select` or
         :func:`_sql.union` / :class:`_sql.CompoundSelect` construct, which
@@ -226,6 +242,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 10827
+        :versions: 2.1.0b3
 
         Fixed issue where :class:`_sql.StatementLambdaElement` would proxy
         attribute access through the cached "expected" expression rather than the
@@ -236,6 +253,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13207
+        :versions: 2.1.0b3
 
         Fixed issue where :func:`_orm.subqueryload` combined with
         :meth:`.PropComparator.of_type` and :meth:`.PropComparator.and_` would
@@ -248,6 +266,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13355
+        :versions: 2.1.0b3
 
         Repaired bug introduced in :ticket:`13229` where a two-phase
         transaction recovery would not return the correct transaction
@@ -257,6 +276,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13356
+        :versions: 2.1.0b3
 
         Fixed bug where a failure during ``tpc_prepare()`` within
         :meth:`_orm.Session.commit` for a two-phase session would raise
@@ -269,6 +289,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13370
+        :versions: 2.1.0b3
 
         Fixed regular expression in the pure Python hstore result processor,
         used when ``use_native_hstore=False`` is set, which could hang on
@@ -278,6 +299,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 9427
+        :versions: 2.1.0b3
 
         Fixed issue where :meth:`.Result.freeze` would lose track of ambiguous
         column names present in the original :class:`.CursorResult`, causing
@@ -294,6 +316,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 10528
+        :versions: 2.1.0b3
 
         Fixed issue where floor division (``//``) between a :class:`.Float` or
         :class:`.Numeric` numerator and an :class:`.Integer` denominator would omit
@@ -307,6 +330,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13203
+        :versions: 2.1.0b3
 
         Fixed issue where using :func:`_orm.joinedload` with
         :meth:`.PropComparator.of_type` targeting a joined-table subclass combined
@@ -317,6 +341,7 @@
     .. change::
         :tags: postgresql, bug
         :tickets: 13229
+        :versions: 2.1.0b2
 
         Improve handling of two phase transaction identifiers for PostgreSQL
         when the identifier is provided by the user.
@@ -326,12 +351,14 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 13230
+        :versions: 2.1.0b2
 
         Escape key and pragma values when utilizing the pysqlcipher dialect.
 
     .. change::
         :tags: bug, postgresql
         :tickets: 13241
+        :versions: 2.1.0b3
 
         Fixed issue where the asyncpg driver could throw an insufficiently-handled
         exception ``InternalClientError`` under some circumstances, leading to
@@ -342,6 +369,7 @@
     .. change::
         :tags: bug, mysql, reflection
         :tickets: 13243
+        :versions: 2.1.0b3
 
         Narrowed the scope of the internal workaround for MySQL bugs `#88718
         <https://bugs.mysql.com/bug.php?id=88718>`_ and `#96365
@@ -356,6 +384,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13301
+        :versions: 2.1.0b3
 
         Fixed issue where the presence of a :meth:`.SessionEvents.do_orm_execute`
         event hook would cause internal execution options such as ``yield_per`` and
@@ -370,6 +399,7 @@
     .. change::
         :tags: bug, mysql
         :tickets: 13306
+        :versions: 2.1.0b3
 
         Fixed issue in aiomysql and asyncmy dialects that appears as of using
         pymysql 1.2.0; the dialects were not properly taking into account logic
@@ -382,6 +412,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13317
+        :versions: 2.1.0b3
 
         Fixed issue where the :class:`.ExcludeConstraint` construct did not
         correctly forward the :paramref:`.ExcludeConstraint.info` parameter to
@@ -392,6 +423,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13319
+        :versions: 2.1.0b3
 
         Fixed issue where using :func:`_orm.with_polymorphic` on a leaf class (a
         subclass with no further descendants) or a non-inherited class would fail
@@ -408,6 +440,7 @@
     .. change::
         :tags: postgresql, bug
         :tickets: 10902
+        :versions: 2.1.0b2
 
         Fixed regular expression used when reflecting foreign keys in PostgreSQL to
         support escaped quotes in table names.
@@ -416,6 +449,7 @@
     .. change::
         :tags: bug, oracle
         :tickets: 13150
+        :versions: 2.1.0b2
 
         Fixed issue in Oracle dialect where the :class:`_oracle.RAW` datatype would
         not reflect the length parameter.   Pull request courtesy Daniel Sullivan.
@@ -424,6 +458,7 @@
     .. change::
         :tags: usecase, mssql
         :tickets: 13152
+        :versions: 2.1.0b2
 
         Enhanced the ``aioodbc`` dialect to expose the ``fast_executemany``
         attribute of the pyodbc cursor.   This allows the ``fast_executemany``
@@ -433,6 +468,7 @@
     .. change::
         :tags: bug, typing
         :tickets: 13167
+        :versions: 2.1.0b2
 
         Fixed a typing issue where the typed members of :data:`.func` would return
         the appropriate class of the same name, however this creates an issue for
@@ -448,6 +484,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13176
+        :versions: 2.1.0b2
 
         Fixed issue where :meth:`_orm.Session.get` would bypass the identity map
         and emit unnecessary SQL when ``with_for_update=False`` was passed,
@@ -457,6 +494,7 @@
     .. change::
         :tags: bug, mssql, reflection
         :tickets: 13181, 13182
+        :versions: 2.1.0b2
 
         Fixed regression from version 2.0.42 caused by :ticket:`12654` where the
         updated column reflection query would receive SQL Server "type alias" names
@@ -473,6 +511,7 @@
     .. change::
         :tags: mssql, usecase
         :tickets: 13185
+        :versions: 2.1.0b2
 
         Remove warning for SQL Server dialect when a new version is detected.
         The warning was originally added more than 15 years ago due to an unexpected
@@ -484,6 +523,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13193
+        :versions: 2.1.0b2
 
         Fixed issue where chained :func:`_orm.joinedload` options would not be
         applied correctly when the final relationship in the chain is declared on a
@@ -496,6 +536,7 @@
     .. change::
         :tags: bug, orm, inheritance
         :tickets: 13202
+        :versions: 2.1.0b2
 
         Fixed issue where using :meth:`_orm.Load.options` to apply a chained loader
         option such as :func:`_orm.joinedload` or :func:`_orm.selectinload` with
@@ -509,6 +550,7 @@
     .. change::
         :tags: bug, orm, inheritance
         :tickets: 13209
+        :versions: 2.1.0b2
 
         Fixed issue where using chained loader options such as
         :func:`_orm.selectinload` after :func:`_orm.joinedload` with
@@ -525,6 +567,7 @@
     .. change::
         :tags: bug, engine
         :tickets: 13144
+        :versions: 2.1.0b2
 
         Fixed a critical issue in :class:`.Engine` where connections created in
         conjunction with the :meth:`.DialectEvents.do_connect` event listeners
@@ -542,6 +585,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13104
+        :versions: 2.1.0b2
 
         Fixed issue when using ORM mappings with Python 3.14's :pep:`649` feature
         that no longer requires "future annotations", where the ORM's introspection
@@ -554,6 +598,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13105
+        :versions: 2.1.0b2
 
         Fixed an issue in the PostgreSQL dialect where foreign key constraint
         reflection would incorrectly swap or fail to capture ``onupdate`` and
@@ -567,6 +612,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13107
+        :versions: 2.1.0b2
 
         Fixed issue in the :ref:`engine_insertmanyvalues` feature where using
         PostgreSQL's ``ON CONFLICT`` clause with
@@ -583,6 +629,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13110
+        :versions: 2.1.0b2
 
         Fixed issue where :meth:`_postgresql.Insert.on_conflict_do_update`
         parameters were not respecting compilation options such as
@@ -592,6 +639,7 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 13110
+        :versions: 2.1.0b2
 
         Fixed issue where :meth:`_sqlite.Insert.on_conflict_do_update`
         parameters were not respecting compilation options such as
@@ -600,6 +648,7 @@
     .. change::
         :tags: usecase, engine
         :tickets: 13116
+        :versions: 2.1.0b2
 
         The connection object returned by :meth:`_engine.Engine.raw_connection`
         now supports the context manager protocol, automatically returning the
@@ -608,6 +657,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13130
+        :versions: 2.1.0b2
 
         Fixed issue where :meth:`_postgresql.Insert.on_conflict_do_update`
         using parametrized bound parameters in the ``set_`` clause would fail
@@ -624,6 +674,7 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 13130
+        :versions: 2.1.0b2
 
         Fixed issue where :meth:`_sqlite.Insert.on_conflict_do_update`
         using parametrized bound parameters in the ``set_`` clause would fail
@@ -636,6 +687,7 @@
     .. change::
         :tags: bug, mysql
         :tickets: 13134
+        :versions: 2.1.0b2
 
         Fixed issue where DDL compilation options were registered to the hard-coded
         dialect name ``mysql``. This made it awkward for MySQL-derived dialects
@@ -661,6 +713,7 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 13039
+        :versions: 2.1.0b1
 
         Fixed issue in the aiosqlite driver where SQLAlchemy's setting of
         aiosqlite's worker thread to "daemon" stopped working because the aiosqlite
@@ -678,6 +731,7 @@
     .. change::
         :tags: usecase, mssql
         :tickets: 13045
+        :versions: 2.1.0b1
 
         Added support for the ``IF EXISTS`` clause when dropping indexes on SQL
         Server 2016 (13.x) and later versions. The :paramref:`.DropIndex.if_exists`
@@ -688,6 +742,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13059
+        :versions: 2.1.0b1
 
         Fixed issue where PostgreSQL JSONB operators
         :meth:`_postgresql.JSONB.Comparator.path_match` and
@@ -703,6 +758,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13067
+        :versions: 2.1.0b1
 
         Fixed regression in PostgreSQL dialect where JSONB subscription syntax
         would generate incorrect SQL for :func:`.cast` expressions returning JSONB,
@@ -715,6 +771,7 @@
     .. change::
         :tags: bug, mariadb
         :tickets: 13070
+        :versions: 2.1.0b1
 
         Fixed the SQL compilation for the mariadb sequence "NOCYCLE" keyword that
         is to be emitted when the :paramref:`.Sequence.cycle` parameter is set to
@@ -723,6 +780,7 @@
     .. change::
         :tags: bug, typing
         :tickets: 13075
+        :versions: 2.1.0b1
 
         Fixed typing issues where ORM mapped classes and aliased entities could not
         be used as keys in result row mappings or as join targets in select
@@ -736,6 +794,7 @@
 
     .. change::
         :tags: bug, postgresql
+        :versions: 2.1.0b1
 
         Improved the foreign key reflection regular expression pattern used by the
         PostgreSQL dialect to be more permissive in matching identifier characters,
