@@ -1,7 +1,7 @@
 .. change::
     :tags: bug, mysql
     :tickets: 13523
-    :versions: 2.1.0b4
+    :versions: 2.1.0rc1
 
     Ensure that CREATE TABLE DDL statements for MySQL and MariaDB dialects
     render the table options in a deterministic order. Previously the order
