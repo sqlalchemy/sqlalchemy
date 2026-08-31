@@ -3308,18 +3308,18 @@
         official Python driver.
 
     .. change::
-    	:tags: feature, general, py3k
-      	:tickets: 2671
+        :tags: feature, general, py3k
+        :tickets: 2671
 
         The codebase is now "in-place" for Python
         2 and 3, the need to run 2to3 has been removed.
         Compatibility is now against Python 2.6 on forward.
 
     .. change::
-    	:tags: feature, oracle, py3k
+        :tags: feature, oracle, py3k
 
-    	The Oracle unit tests with cx_oracle now pass
-    	fully under Python 3.
+        The Oracle unit tests with cx_oracle now pass
+        fully under Python 3.
 
     .. change::
         :tags: bug, orm
