@@ -1,7 +1,7 @@
 .. change::
     :tags: bug, tests
     :tickets: 13521
-    :versions: 2.1.0b4
+    :versions: 2.1.0rc1
 
     Altered the dialect reflection test
     ``test_check_constraint_parenthesized_expressions()`` so that it does not

@@ -19,7 +19,7 @@
     .. change::
         :tags: bug, postgresql, reflection
         :tickets: 13157
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Fixed reflection of PostgreSQL CHECK constraints where an expression made
         up of multiple parenthesized sub-expressions, such as ``(x IS NULL OR y IS
@@ -83,7 +83,7 @@
     .. change::
         :tags: bug, sqlite
         :tickets: 13419
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Reworked the regular expression that detects inline ``UNIQUE`` column
         constraints during SQLite ``CREATE TABLE`` reflection so that the
@@ -97,7 +97,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 13424
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Fixed an issue in :class:`.Numeric` where the
         :paramref:`.Numeric.decimal_return_scale` parameter was ignored when the
@@ -113,7 +113,7 @@
     .. change::
         :tags: bug, postgresql
         :tickets: 13429
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Fixed bug in the PostgreSQL dialect where a single quote in a sequence,
         table, or schema name, such as one supplied via a ``schema_translate_map``
@@ -124,7 +124,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13439
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Fixed a result-column misalignment bug in ORM-enabled UPDATE statements
         where ``synchronize_session="fetch"`` is in use, either explicitly or
@@ -137,7 +137,7 @@
     .. change::
         :tags: bug, sql
         :tickets: 13448
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Added auditing to the test suite which exercises the literal execute
         processors across all datatypes and dialects to ensure that string input is
@@ -156,7 +156,7 @@
     .. change::
         :tags: bug, platform
         :tickets: 13477
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Python 3.15 support has been added and tested, including minimal changes
         for full compatibility.
@@ -164,7 +164,7 @@
     .. change::
         :tags: bug, schema
         :tickets: 13481
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Fixed an issue where :meth:`_schema.Table.to_metadata` reused column
         default and on-update objects, causing the defaults on the original
@@ -178,7 +178,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13485
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Fixed bug where a failed :meth:`_orm.Session.bulk_insert_mappings`,
         :meth:`_orm.Session.bulk_update_mappings` or
@@ -195,7 +195,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13493
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Fixed issue where unpickling an ORM object that were loaded using loader
         options making use of wildcard tokens, such as :func:`_orm.load_only` or
@@ -211,7 +211,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 13493
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Fixed issue where a string ending in ``"*"`` passed to a
         :class:`_orm.Load` strategy method, such as
@@ -225,7 +225,7 @@
     .. change::
         :tags: bug, orm
         :tickets: 6274
-        :versions: 2.1.0b4
+        :versions: 2.1.0rc1
 
         Calling :func:`_orm.aliased` against a :func:`_sql.select` or
         :func:`_sql.union` / :class:`_sql.CompoundSelect` construct, which

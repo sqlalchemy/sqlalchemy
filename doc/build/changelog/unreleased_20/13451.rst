@@ -1,7 +1,7 @@
 .. change::
     :tags: bug, mssql, reflection
     :tickets: 13451
-    :versions: 2.1.0b4
+    :versions: 2.1.0rc1
 
     Fixed issue in SQL Server reflection where ``TEXT`` and ``NTEXT`` columns
     would be reflected with a spurious length of 16 and 8, respectively.  These
