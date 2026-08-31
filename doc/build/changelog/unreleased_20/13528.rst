@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, sqlite, reflection
     :tickets: 13528
+    :versions: 2.1.0b4
 
     Fixed issue in SQLite reflection where the name of a ``PRIMARY KEY``,
     ``UNIQUE`` or ``FOREIGN KEY`` constraint would be reflected as ``None`` if
