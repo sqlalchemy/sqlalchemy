@@ -9,6 +9,10 @@
 
 
 .. changelog::
+    :version: 2.1.0rc2
+    :include_notes_from: unreleased_21
+
+.. changelog::
     :version: 2.1.0rc1
     :released: August 31, 2026
 
