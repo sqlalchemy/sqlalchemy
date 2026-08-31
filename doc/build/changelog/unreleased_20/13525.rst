@@ -1,7 +1,6 @@
 .. change::
     :tags: bug, reflection
     :tickets: 13525
-    :versions: 2.1.0rc1
 
     Fixed issue where reflecting a table with a foreign key constraint that
     names the same source column more than once, such as ``FOREIGN KEY (a, a)
@@ -11,3 +10,7 @@
     form, the constraint is now skipped with a warning, in the same way as one
     that names columns which are not present in the table, so that the
     remainder of the table is still reflected.
+
+    Note that in the SQLAlchemy 2.1 series, full support for reflecting
+    and constructing foreign key constraints with duplicated source columns
+    has been added, with no warnings or skips.
