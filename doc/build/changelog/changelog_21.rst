@@ -10,7 +10,438 @@
 
 .. changelog::
     :version: 2.1.0rc1
-    :include_notes_from: unreleased_21
+    :released: August 31, 2026
+
+    .. change::
+        :tags: bug, misc
+        :tickets: 10748
+
+        Allowed the inspection registry to replace an existing registration with a
+        reloaded callable from the same module and name. This avoids an assertion
+        failure for tooling that unloads and reloads SQLAlchemy modules while still
+        rejecting conflicting registrations. Pull request courtersy w-Jessamine.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 11122, 13432
+
+        Added ``postgresql_with`` support to :class:`.CreateView` for specifying
+        PostgreSQL view options such as ``security_invoker``, ``security_barrier``,
+        and ``check_option``, rendered as a ``WITH (...)`` clause between the view
+        name and the ``AS`` keyword. Additionally, the ``postgresql_with`` parameter
+        accepted by :class:`_schema.Table` and :class:`_schema.Index` now correctly
+        renders Python boolean values as ``true``/``false`` (lowercase), and
+        ``None`` values as the parameter name alone without an ``= value`` portion.
+        Pull request courtesy alphavector.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 11297
+
+        Improved the error message raised when a :class:`.Session` is used
+        inside a context manager after the transaction has been rolled back due
+        to an exception. The ``InvalidRequestError`` now includes the original
+        exception that triggered the rollback, making it clearer why the
+        transaction is no longer active. Pull request courtesy Ilan Keshet.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 12398
+
+        Improved error messages raised when ORM loader strategy options cannot be
+        applied to a query.  Messages now render the offending option in a
+        user-friendly form such as ``joinedload(User.orders)`` rather than exposing
+        internal class and path representations, and the "does not apply to root
+        entities" message now includes the option that triggered the error.  The
+        same user-friendly rendering is also applied to the "conflicting loader
+        strategy" message and to the ``of_type()`` representation in "does not
+        link" messages.  Originating pull request courtesy Jan Vollmer.
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 13113
+
+        Added support for multiple ``ON CONFLICT`` clauses within a single
+        statement for the SQLite :func:`_sqlite.insert` construct; the
+        :meth:`_sqlite.Insert.on_conflict_do_update` and
+        :meth:`_sqlite.Insert.on_conflict_do_nothing` methods may now each be
+        invoked more than once against the same construct, where the clauses
+        render in the order in which they were established and are evaluated by
+        SQLite in that order.  As SQLite allows only the last ``ON CONFLICT``
+        clause to omit its conflict target, a
+        :meth:`_sqlite.Insert.on_conflict_do_nothing` call that omits
+        :paramref:`_sqlite.Insert.on_conflict_do_nothing.index_elements` must be
+        the last clause established.  Documentation is added at
+        :ref:`sqlite_on_conflict_multiple`.  Pull request courtesy Diemid
+        Berozkin.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13227
+
+        Fixed regression caused by the dataclasses change in :ticket:`12168` where
+        passing :paramref:`_orm.relationship.default_factory` as ``list`` to a
+        relationship that used the :class:`_orm.WriteOnlyMapped` or
+        :class:`_orm.DynamicMapped` annotation would raise an error at mapper
+        configuration time, as these relationships have no ``collection_class``.
+        ``list`` is now accepted for these relationships, which behave the same
+        as ordinary collections in this regard; the factory itself is never
+        invoked, and a newly constructed object begins with an empty
+        collection. Documentation is added at :ref:`write_only_dataclasses`
+        illustrating the use of write only and dynamic relationships with ORM
+        mapped dataclasses.
+
+    .. change::
+        :tags: schema, performance
+        :tickets: 13311
+
+        Created new reflection method :meth:`_reflection.Inspector.has_multi_table`
+        to check the existence of multiple tables at once, allowing for
+        better performance when checking many tables. Like the other "multi"
+        reflection methods, the default dialect offers a default implementation
+        that just call the single method in a loop. Backends that wish to take
+        advantage of this new method can implement it in their dialects.
+        The PostgreSQL, Oracle and SQL Server dialects have been updated to use
+        this new method.
+        The implementation of :meth:`_schema.MetaData.create_all` has been updated
+        to make use of this new method to check the existence of the tables,
+        reducing the number of round trips to the database when creating many tables.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 13420
+
+        Updated the oracledb async dialect where the async cursor adapter invoked
+        ``__enter__()`` rather than ``__aenter__()`` on the underlying cursor.
+        While these are equivalent in oracledb itself, the correct async form is
+        now used for correctness. As ``AsyncCursor.__aenter__()`` was added in
+        oracledb 2.0.1, the minimum supported oracledb version is now 2.0.1,
+        declared via the ``oracle-oracledb`` extra.  Pull request courtesy AVRC26.
+
+    .. change::
+        :tags: deprecated, sqlite
+        :tickets: 13433
+
+        Deprecated the selection of a single-connection pool class, i.e.
+        :class:`.SingletonThreadPool` for pysqlite or :class:`.StaticPool` for
+        aiosqlite, based on the presence of the ``mode=memory`` query string
+        argument in a SQLite URL.  Pool selection for SQLite is intended to be
+        based on the database name alone, where only ``:memory:`` or an empty
+        database name indicate a memory database; interpreting the query string
+        additionally requires that assumptions be made regarding whether or not
+        the resulting database can be shared among multiple connections.  In a
+        future release, such URLs will make use of :class:`.QueuePool` or
+        :class:`.AsyncAdaptedQueuePool` as would any other URL.  This notably
+        includes the shared cache form
+        ``sqlite:///file:mydb?mode=memory&cache=shared&uri=true``, for which a
+        queue pool is in fact the appropriate class, as a shared cache database
+        supports multiple concurrent connections, whereas a single-connection
+        pool causes such connections to share one transaction state.
+        Applications that rely upon the present behavior should indicate the
+        intended pool using the :paramref:`_sa.create_engine.poolclass`
+        parameter.  Pull request courtesy Itachi-0xAI.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 13433
+
+        Added a warning for query string arguments that are passed to a SQLite
+        URL without the ``uri=true`` argument also being present, and which are
+        not accepted by the ``sqlite3`` driver itself.  SQLite URI arguments
+        such as ``mode`` or ``cache`` take effect only when URI mode is in use;
+        without it they were previously discarded silently, so that a URL such
+        as ``sqlite:///file:mydb?mode=memory`` would connect to a file on disk
+        named ``file:mydb``.  Arguments intended for the driver itself may be
+        passed using the :paramref:`_sa.create_engine.connect_args` parameter.
+
+    .. change::
+        :tags: bug, documentation, sqlite
+        :tickets: 13433
+
+        Corrected the SQLite documentation regarding shared cache memory
+        databases, which incorrectly indicated that the named form
+        ``sqlite:///file:mydb?mode=memory&cache=shared&uri=true`` makes use of
+        :class:`.QueuePool`; a single-connection pool is used for this form.
+        Documentation has also been added noting that a shared cache database
+        exists only for as long as at least one connection to it remains open,
+        so that ordinary pool operations such as
+        :meth:`_engine.Engine.dispose` or use of
+        :paramref:`_sa.create_engine.pool_recycle` will discard its contents.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 13441
+
+        Improved disconnect detection for the ``mssql+mssqlpython`` dialect.
+        Connection-level failures such as a dropped or reset network connection
+        are now recognized by consulting the ``driver_error`` attribute of the
+        exception, in addition to the message-based checks that were already in
+        place, so that the affected connection is invalidated and the pool
+        "pre ping" feature is able to recycle it.  Pull request courtesy Sam
+        Debruyn.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 13479
+
+        Fixed issue in the Oracle dialects where a :class:`_types.JSON` value would
+        be returned as an undecoded string for any JSON expression that is not a
+        JSON column, such as a bound parameter, as well as for textual constructs
+        with positional columns, such as :func:`_expression.text` combined with
+        :meth:`_expression.TextClause.columns`.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 13505
+
+        Python source generated at runtime is now compiled against a descriptive
+        filename which is registered with the :mod:`linecache` module, so that
+        generated functions appearing on a stack trace render with their source
+        rather than as an opaque ``File "<string>"`` frame.  This allows tools
+        like ``pdb`` and :func:`inspect.getsource` to work with these generated
+        source blocks as well.  The new feature is applied to the instrumentation
+        applied to an ORM object's ``__init__`` method, as well as throughout
+        SQLAlchemy functions that are internally instrumented.
+
+    .. change::
+        :tags: performance, sql
+        :tickets: 13506
+
+        Improved the performance of SQL cache key generation by moving the
+        traversal into the Cython extension modules.  The set of attributes that
+        participate in the cache key for a particular construct, along with the
+        handler that applies to each one, is now resolved once at class setup
+        time into a structure that the compiled traversal consumes directly, so
+        that the chain of identity comparisons that formerly rediscovered this
+        per attribute, per cache key is no longer run at all.  Benchmarks against
+        a range of Core and ORM statements show cache key generation running
+        approximately 1.5 to 2.2 times faster in a build with the Cython
+        extensions compiled, and approximately 1.05 to 1.2 times faster in a
+        pure Python build, with the generated cache keys themselves unchanged.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13507
+
+        Fixed long-standing issue where an object that was loaded at more than one
+        path within a single query, such as when a chain of :func:`_orm.joinedload`
+        options leads back to an entity that was also loaded at the top level of
+        the query, would retain the loader options of whichever path the query
+        happened to see last, which varied with the loader strategy in use.  The
+        options an object retains are applied to all forms of :term:`lazy loading`
+        for that object, so an otherwise identical set of options could behave
+        differently depending on the loader strategy.  The shallowest path is now
+        favored, which is deterministic.
+
+        .. seealso::
+
+            :ref:`change_13507`
+
+    .. change::
+        :tags: usecase, schema
+        :tickets: 13526
+
+        :class:`.ForeignKeyConstraint` now accepts a constraint which names the
+        same local column more than once, such as ``FOREIGN KEY (a, a) REFERENCES
+        r (b, c)``.  This form is valid SQL and constrains the referenced row so
+        that two of its columns are equal; it previously raised
+        :class:`.ArgumentError`.  Such a constraint now emits and reflects like any
+        other composite foreign key; the workaround added in 2.0 for
+        :ticket:`13525`, which skipped such a constraint during reflection, is
+        removed as it is no longer needed.  As part of this change, the check that
+        the number of constrained columns matches the number of referenced columns
+        no longer counts distinct column names, so that a genuine mismatch such as
+        ``ForeignKeyConstraint(["x", "x"], ["r.b"])``, which was formerly accepted
+        and silently dropped a column, is now rejected.
+
+        .. seealso::
+
+            :ref:`change_13526`
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13534
+
+        Fixed issue where two bound parameters whose names differ only in the
+        characters listed in
+        :attr:`.SQLCompiler.bindname_escape_characters`, such as those generated
+        for columns named ``"a.b"`` and ``"a_b"``, would be rendered using the
+        same name in the compiled statement, as those characters are escaped only
+        as the parameter is rendered.  The value for one of the two parameters was
+        then silently used for both, affecting SELECT criteria as well as the
+        VALUES and SET clauses of INSERT and UPDATE statements, where a value
+        could be written to the wrong column.  Escaped parameter names are now
+        disambiguated against the names already in use.  The ``.key`` of each
+        :class:`.BindParameter` is unaffected, so parameter dictionaries passed
+        by the caller continue to be keyed as before.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13535
+
+        Fixed issue where an empty string passed to
+        :meth:`.IdentifierPreparer.quote`, such as the name of a
+        :class:`.Table` constructed with a blank name, would raise
+        ``IndexError`` rather than being rendered.  An empty identifier is now
+        always quoted.  While a blank name is not a legal identifier on most
+        backends, SQLite accepts one, so such a table may be delivered by
+        reflection; a table with a blank name can now be used in SELECT, INSERT,
+        UPDATE, DELETE and DDL statements.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 13538
+
+        Fixed issue where a :class:`_schema.ForeignKey` which refers to a table or
+        column whose name contains a dot would be interpreted incorrectly, as the
+        dotted string form of the target could not be told apart from the
+        separator between a schema, table and column name.  Foreign key targets
+        are now tracked as their individual schema, table and column names
+        throughout, and are no longer derived by splitting a dotted string.
+
+    .. change::
+        :tags: usecase, schema
+        :tickets: 13538
+
+        Added new :class:`_schema.ForeignKey` accessors
+        :attr:`_schema.ForeignKey.target_tokens`,
+        :attr:`_schema.ForeignKey.target_column` and
+        :attr:`_schema.ForeignKey.target_table_key`, as well as new
+        ForeignKey-related datastructure :class:`_schema.ForeignKeyTarget`.
+        :class:`_schema.ForeignKeyTarget` is now accepted as a constructor
+        argument as well.  See :class:`_schema.ForeignKey` for new datamembers and
+        usage patterns.
+
+    .. change::
+        :tags: deprecated, schema
+        :tickets: 13538
+
+        :attr:`_schema.ForeignKey.target_fullname` is now a legacy accessor, and
+        raises :class:`.InvalidRequestError` when the target has no unambiguous
+        dotted string form, which is the case when the target table or column name
+        contains a dot, or when a schema name is present with no column name.  No
+        SQLAlchemy internals make use of the attribute any longer; new code should
+        use :attr:`_schema.ForeignKey.target_tokens`.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 2943
+
+        When a subclass overrides a :func:`_orm.validates` method using the
+        same method name as the parent class, only the subclass validator is
+        now invoked for instances of the subclass.  The subclass validator
+        may call ``super()`` to also invoke the parent class validator.
+        Previously, the parent validator was always used regardless of
+        whether the subclass provided an override.  Pull request courtesy
+        Indivar Mishra.
+
+        .. seealso::
+
+            :ref:`validators_subclass_override`
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 6511
+
+        The PostgreSQL dialect now reflects the schema of a schema-qualified
+        column or :class:`_postgresql.DOMAIN` collation, populating the new
+        :paramref:`.String.collation_schema` /
+        :paramref:`_postgresql.DOMAIN.collation_schema` parameters so that
+        reflected DDL round-trips exactly.  The schema is omitted from the
+        reflected value when the collation is visible on the current
+        ``search_path`` without qualification.
+
+        .. seealso::
+
+            :ref:`postgresql_collation`
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 8311
+
+        Added new methods :meth:`_sql.Exists.with_hint` and
+        :meth:`_sql.Exists.with_statement_hint`, which apply a table hint or a
+        statement hint to the SELECT statement that's enclosed by the EXISTS
+        expression, in the same way as :meth:`_sql.Select.with_hint` and
+        :meth:`_sql.Select.with_statement_hint`.  As ORM constructs such as
+        :meth:`_orm.PropComparator.any` and :meth:`_orm.PropComparator.has`
+        produce an :class:`_sql.Exists` object, hints may now be applied to the
+        subqueries which these constructs generate.  Pull request courtesy
+        Abhinav Gorrepati.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 9693
+
+        Added a new parameter :paramref:`.String.collation_schema`, as well as
+        :paramref:`_postgresql.DOMAIN.collation_schema` and
+        :paramref:`.ColumnOperators.collate.collation_schema`, allowing a
+        PostgreSQL schema-qualified collation name to be specified explicitly,
+        rather than embedding the schema name within the ``collation`` string
+        itself, which previously rendered incorrectly.  As part of this change,
+        collation name rendering across DDL and the :func:`_sql.collate`
+        construct now consistently uses the dialect's identifier preparer for
+        quoting, rather than several separate, inconsistent hand-quoting code
+        paths; as a side effect, simple lowercase collation names such as
+        ``"utf8"`` are no longer unconditionally quoted in generated DDL.
+
+        .. seealso::
+
+            :ref:`postgresql_collation`
+
+    .. change::
+        :tags: usecase, schema
+
+        Added :attr:`.Dialect.dbapi_version`, a standardized accessor for the
+        version of the DBAPI module in use by a dialect, in contrast to
+        :attr:`.Dialect.server_version_info` which refers to the database server.
+        The implementation on :class:`.DefaultDialect` makes use of a new
+        per-dialect method :meth:`.Dialect.retrieve_dbapi_version` in order to
+        retrieve the version from the DBAPI module and return it as a
+        :class:`.VersionInfo` object, which is a tuple subclass with additional
+        properties; third-party dialects should also implement the
+        :meth:`.Dialect.retrieve_dbapi_version` method.
+
+    .. change::
+        :tags: bug, postgresql
+
+        Fixed issue in the asyncpg dialect where the version of the ``asyncpg``
+        DBAPI would always be reported as ``(99, 99, 99)``, as the version was
+        looked up on the dialect's DBAPI wrapper module rather than on the
+        ``asyncpg`` module itself.
+
+    .. change::
+        :tags: bug, mysql
+
+        Fixed issue where the version of the DBAPI reported by the mysqldb and
+        pymysql dialects was incorrect.  Current mysqlclient releases publish
+        ``MySQLdb.version_info`` and no version string at all, so no version was
+        reported; pymysql publishes ``__version__`` and ``version_info`` as
+        mysqlclient compatibility values, so the version reported for pymysql
+        was that of the mysqlclient release it emulates, e.g. ``(2, 2, 8)``
+        rather than ``(1, 2, 0)``.
+
+    .. change::
+        :tags: usecase, tests
+
+        The version specifications used by testing exclusions such as
+        ``testing.fails_if("+asyncmy<0.2.13")`` now support a driver name, in
+        which case the comparison is against the version of the DBAPI rather
+        than that of the database server.  Previously this form raised
+        ``AssertionError: DBAPI version specs not supported yet``.
+
+    .. change::
+        :tags: platform, change
+
+        Python 3.11 or above is now required; support for Python 3.10 is dropped,
+        in addition to the drop of versions Python 3.9, 3.8 and 3.7 introduced
+        in 2.1.0b1.   Python 3.10 reaches EOL in October of 2026, so dropping
+        support now gives the SQLAlchemy 2.1 series an extra year of space to
+        remain on current Python versions.
+
+        .. seealso::
+
+            :ref:`change_python_versions`
 
 .. changelog::
     :version: 2.1.0b3
