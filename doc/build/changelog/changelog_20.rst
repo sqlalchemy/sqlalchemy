@@ -501,7 +501,7 @@
         for special types such as ``sysname``, whereas previously the base name
         would be received (e.g. ``nvarchar`` for ``sysname``), leading to warnings
         that such types could not be reflected and resulting in :class:`.NullType`,
-        rather than the expected :class:`.NVARCHAR` for a type like ``sysname``.
+        rather than the expected :class:`_mssql.NVARCHAR` for a type like ``sysname``.
         The column reflection query now joins ``sys.types`` a second time to look
         up the base type when the user type name is not present in
         :attr:`.MSDialect.ischema_names`, and both names are checked in
@@ -1247,7 +1247,7 @@
         :tags: usecase, postgresql
         :tickets: 10927
 
-        Added support for PostgreSQL 14+ :class:`.JSONB` subscripting syntax.
+        Added support for PostgreSQL 14+ :class:`_postgresql.JSONB` subscripting syntax.
         When connected to PostgreSQL 14 or later, JSONB columns now
         automatically use the native subscript notation ``jsonb_col['key']``
         instead of the arrow operator ``jsonb_col -> 'key'`` for both read and
@@ -1271,7 +1271,7 @@
           will resemble ``(entity.data['a'] ->> 'b')`` which will fail to
           produce the exact textual syntax match required by the PostgreSQL
           query planner.  Therefore, for users upgrading to SQLAlchemy 2.0.42
-          or higher, existing indexes that were created against :class:`.JSONB`
+          or higher, existing indexes that were created against :class:`_postgresql.JSONB`
           expressions that use subscripting would need to be dropped and
           re-created in order for them to work with the new query syntax, e.g.
           an expression like ``((entity.data -> 'a') ->> 'b')`` would become

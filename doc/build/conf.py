@@ -42,7 +42,7 @@ extensions = [
     "sphinx_paramlinks",
     "sphinx_copybutton",
 ]
-needs_extensions = {"zzzeeksphinx": "1.6.1"}
+needs_extensions = {"zzzeeksphinx": "1.6.4"}
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -138,6 +138,17 @@ zzzeeksphinx_annotation_key = "glossary#annotated-example"
 # autodoc_typehints = "description"
 # autodoc_typehints_format = "short"
 # autodoc_typehints_description_target = "documented"
+
+# indicates which object an un-qualified name within a type annotation
+# rendered by autodoc refers to, where more than one documented object
+# would otherwise match that name.  A value of None means the name is not
+# one of ours at all, such as the Python builtin "type", in which case the
+# name renders unlinked as other builtin and typing names do.  See
+# zzzeeksphinx.render_pydomains for details.
+annotation_target_precedence = {
+    "Insert": "sqlalchemy.sql.expression.Insert",
+    "type": None,
+}
 
 # zzzeeksphinx makes these conversions when it is rendering the
 # docstrings classes, methods, and functions within the scope of
