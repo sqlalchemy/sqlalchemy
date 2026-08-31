@@ -80,18 +80,6 @@ jobs:
         with:
           platforms: riscv64
 
-      - name: Remove tag-build from pyproject.toml
-        # sqlalchemy has `tag-build` set to `dev` in pyproject.toml. It needs to be removed before creating the wheel
-        # otherwise it gets tagged with `dev0`
-        shell: pwsh
-        # This is equivalent to the sed commands:
-        # `sed -i '/tag-build="dev"/d' pyproject.toml`
-        # `sed -i '/tag-build = "dev"/d' pyproject.toml`
-
-        # `-replace` uses a regexp match
-        run: |
-          (get-content pyproject.toml) | %{$_ -replace 'tag-build.?=.?"dev"',""} | set-content pyproject.toml
-
       - name: Build compiled wheels
         if: ${{ matrix.wheel_mode == 'compiled' }}
         uses: pypa/cibuildwheel@v4.2.0
