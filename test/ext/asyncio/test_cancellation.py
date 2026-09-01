@@ -55,6 +55,12 @@ class AsyncCancellationTest(fixtures.TestBase):
             }
         )
 
+    @testing.crashes(
+        "+aioodbc",
+        "aioodbc abandons the cancelled pyodbc call in its executor "
+        "thread; the next call on that connection frees the ODBC "
+        "statement handle underneath it and msodbcsql segfaults",
+    )
     @async_test
     async def test_cancel_anywhere(self, engine_factory):
         eq_(
@@ -64,6 +70,12 @@ class AsyncCancellationTest(fixtures.TestBase):
             [],
         )
 
+    @testing.crashes(
+        "+aioodbc",
+        "aioodbc abandons the cancelled pyodbc call in its executor "
+        "thread; the next call on that connection frees the ODBC "
+        "statement handle underneath it and msodbcsql segfaults",
+    )
     @async_test
     async def test_cancel_anywhere_warm_pool(self, engine_factory):
         eq_(
