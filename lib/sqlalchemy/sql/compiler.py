@@ -2462,7 +2462,13 @@ class SQLCompiler(Compiled):
         """
         return ""
 
-    def visit_override_binds(self, override_binds, **kw):
+    def visit_override_binds(
+        self,
+        override_binds,
+        add_to_result_map=None,
+        result_map_targets=(),
+        **kw,
+    ):
         """SQL compile the nested element of an _OverrideBinds with
         bindparams swapped out.
 
@@ -2477,6 +2483,16 @@ class SQLCompiler(Compiled):
         so it has to do the right thing at compile time as well.
 
         """
+
+        if add_to_result_map is not None:
+            # the ORM looks up result columns using the objects it placed
+            # into the loader option, which for a cached statement is the
+            # _OverrideBinds wrapper rather than the element inside of it.
+            # make sure the wrapper is present in the result map so that
+            # lookup succeeds.  See #13560
+            result_map_targets += (override_binds,)
+            kw["add_to_result_map"] = add_to_result_map
+            kw["result_map_targets"] = result_map_targets
 
         # get SQL text first
         sqltext = override_binds.element._compiler_dispatch(self, **kw)

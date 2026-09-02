@@ -4480,6 +4480,11 @@ class _OverrideBinds(Grouping[_T]):
         replaces_params: Sequence[BindParameter[Any]],
     ):
         self.element = element
+
+        # as with Grouping, take on the type of the element we wrap;
+        # otherwise the construct reports NULLTYPE and the result set
+        # for a column that's compiled from here has no result processor
+        self.type = element.type
         self.translate = {
             k.key: v.value for k, v in zip(replaces_params, bindparams)
         }

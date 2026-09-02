@@ -1409,6 +1409,28 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
             compare_values=True,
         )
 
+    def test_apply_params_to_element_maintains_type(self):
+        """test #13560
+
+        the element returned by _apply_params_to_element has to report the
+        type of the element it replaces, else a result column compiled from
+        it has no result processor.
+
+        """
+
+        expr = table_a.c.a > 5
+        replacement = table_a.c.a > 10
+
+        new_expr = replacement._generate_cache_key()._apply_params_to_element(
+            expr._generate_cache_key(), expr
+        )
+
+        is_not(new_expr, expr)
+        is_(new_expr.type, expr.type)
+
+        # the replacement bound value is what's used
+        eq_(select(new_expr).compile().params, {"a_1": 10})
+
     def test_bindparam_subclass_nocache(self):
         # does not implement inherit_cache
         class _literal_bindparam(BindParameter):
