@@ -198,7 +198,6 @@ mypy = [
     "types-greenlet",
 ]
 
-
 [tool.coverage.paths]
 source=["lib/"]
 

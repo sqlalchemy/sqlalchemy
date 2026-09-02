@@ -73,6 +73,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       # See details at https://cibuildwheel.readthedocs.io/en/stable/faq/#emulation
       - name: Set up QEMU

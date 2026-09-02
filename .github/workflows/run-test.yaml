@@ -100,6 +100,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up python
         uses: actions/setup-python@v7
@@ -140,6 +142,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up python
         uses: actions/setup-python@v7
