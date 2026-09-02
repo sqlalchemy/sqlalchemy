@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Union
 
 import sqlalchemy as sa
+from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -2307,6 +2308,49 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
                 s.scalars(stmt).all(),
                 [HasNonCacheable(id=1, created=12345, msg_translated=12355)],
             )
+
+    @testing.combinations(
+        selectinload,
+        subqueryload,
+        immediateload,
+        joinedload,
+        lazyload,
+        argnames="loader",
+    )
+    def test_repeated_subquery_expr_in_relationship_loader(self, loader):
+        """test #13560
+
+        the expression passed to with_expression() embeds a SELECT, and a
+        new but structurally identical expression is constructed on each
+        run.  the second and subsequent runs hit the cache for the outer
+        statement, at which point the expression is wrapped in
+        _OverrideBinds; that construct has to remain locatable in the
+        result map so the attribute continues to be populated.
+
+        """
+
+        A, B, C = self.classes("A", "B", "C")
+
+        s = fixture_session()
+
+        for i in range(3):
+            s.expunge_all()
+
+            expr = exists(select(C.id).where(C.x == B.p))
+            stmt = (
+                select(A)
+                .where(A.id == 1)
+                .options(loader(A.bs).options(with_expression(B.b_expr, expr)))
+            )
+
+            a1 = s.scalars(stmt).unique().one()
+            eq_([b.id for b in a1.bs], [1, 2])
+
+            # is_() rather than eq_(); one failure mode for this issue
+            # returns the raw value from the driver, e.g. 1 / 0, which
+            # compares equal to True / False
+            is_(a1.bs[0].b_expr, True)
+            is_(a1.bs[1].b_expr, False)
 
     def test_reuse_expr(self):
         A = self.classes.A

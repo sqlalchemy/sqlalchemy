@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13560
+
+    Fixed issue where an expression passed to :func:`_orm.with_expression`
+    that embedded a :func:`_sql.select`, such as a correlated
+    :func:`_sql.exists`, would fail to populate the attribute correctly on
+    the second and subsequent executions of an otherwise identical
+    statement, when the :func:`_orm.query_expression` attribute was loaded
+    by a relationship loader that emits a second query, i.e.
+    :func:`_orm.selectinload`, :func:`_orm.lazyload` or
+    :func:`_orm.immediateload`.
