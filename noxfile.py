@@ -55,6 +55,21 @@ which is the only pass for a backend that isn't listed here.
 
 """
 
+WHEEL_TEST_SCOPES: Dict[str, List[str]] = {
+    "full": ["test"],
+    "reduced": [
+        "test/base",
+        "test/engine/test_processors.py",
+        "test/sql/test_resultset.py",
+    ],
+}
+"""Test paths run by the ``test-wheel`` session, per scope.
+
+"reduced" covers the compiled extensions only, for emulated
+architectures where the full suite is too slow to run per wheel.
+
+"""
+
 # table of ``--dbdriver`` names to use on the pytest command line, which
 # match to dialect names
 DB_CLI_NAMES = {
@@ -214,6 +229,49 @@ def github_nocext(session: nox.Session) -> None:
     """run tests for github actions"""
 
     _tests(session, "sqlite", "nocext", greenlet=False)
+
+
+@nox.session(name="test-wheel")
+@nox.parametrize(
+    "scope", [nox.param(scope, id=scope) for scope in WHEEL_TEST_SCOPES]
+)
+def test_wheel(session: nox.Session, scope: str) -> None:
+    """test a wheel that is already installed in the current environment.
+
+    Run by cibuildwheel from inside the environment it created for the
+    wheel it just built, so nothing is installed here and no venv is
+    created::
+
+        nox -f {project}/noxfile.py --no-venv -s "test-wheel(reduced)"
+
+    The "reduced" scope is for architectures that have no runner and are
+    built under QEMU emulation, where the full suite takes about an hour
+    per wheel.  Only the compiled extensions vary by architecture, so it
+    runs just the suites that exercise them, which includes the paired
+    Py*/Cy* tests comparing each compiled module against the pure Python
+    module it was generated from.
+
+    """
+
+    # nothing is installed by this session; the wheel under test is
+    # already present, and nothing may shadow it
+    session.env["PYTHONPATH"] = ""
+
+    # PYTHONNOUSERSITE disables the ./lib/ path insertion in
+    # test/conftest.py, so that the installed wheel is imported rather
+    # than the local checkout.  equivalent to passing -s to python
+    session.env["PYTHONNOUSERSITE"] = "1"
+
+    # a wheel with no compiled extensions must fail here rather than
+    # silently skipping the suites that require them
+    session.env["REQUIRE_SQLALCHEMY_CEXT"] = "1"
+
+    cmd = ["python", "-m", "pytest"]
+    cmd.extend(os.environ.get("TOX_WORKERS", "-n4").split())
+    cmd.extend(["-q", "--nomemory", "--notimingintensive", "--nomypy"])
+    cmd.extend(WHEEL_TEST_SCOPES[scope])
+
+    session.run(*cmd)
 
 
 def _tests(

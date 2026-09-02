@@ -345,9 +345,13 @@ module = ["cython", "cython.*"]
 ignore_missing_imports = true
 
 [tool.cibuildwheel]
-test-requires = "pytest pytest-xdist"
-# remove user site, otherwise the local checkout has precedence, disabling cyextensions
-test-command = "python -s -m pytest -c {project}/pyproject.toml -n4 -q --nomemory --notimingintensive --nomypy {project}/test"
+test-requires = "nox pytest pytest-xdist"
+# the pytest flags, test paths and environment needed to test a built wheel
+# are in the test-wheel session in noxfile.py; --no-venv runs it against
+# the wheel cibuildwheel has installed here rather than a new environment.
+# single quoted so the double quotes reach both sh and cmd, which need them
+# to protect the parentheses
+test-command = 'nox -f {project}/noxfile.py --no-venv -s "test-wheel(full)"'
 
 build = "*"
 
@@ -358,3 +362,13 @@ archs = ["arm64"]
 # NOTE: this is overridden in the pipeline using the CIBW_ARCHS_LINUX env variable to speed up the build
 [tool.cibuildwheel.linux]
 archs = ["x86_64", "aarch64", "riscv64"]
+
+# riscv64 has no runner and is built under QEMU emulation, where the full
+# suite takes about an hour per wheel; as each Python version produces two
+# wheels (manylinux and musllinux), a job covering more than two versions
+# runs past the six hour limit.  The "reduced" scope covers the compiled
+# extensions, which are the only architecture specific part of a wheel.
+# Matches both libc variants.
+[[tool.cibuildwheel.overrides]]
+select = "*riscv64"
+test-command = 'nox -f {project}/noxfile.py --no-venv -s "test-wheel(reduced)"'

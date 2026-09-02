@@ -24,9 +24,10 @@ jobs:
       matrix:
         # emulated wheels on linux take too much time, split wheels into multiple runs
         python:
-          - "cp310-* cp311-*"
-          - "cp312-* cp313-* cp314-*"
-          - "cp314t-*"
+          - "cp311-* cp312-*"
+          - "cp313-* cp314-*"
+          - "cp315-*"
+          - "cp314t-* cp315t-*"
         wheel_mode:
           - compiled
         os:
