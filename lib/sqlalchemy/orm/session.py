@@ -23,6 +23,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Literal
+from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -1497,10 +1498,28 @@ class Session(_SessionClassMethods, EventTarget):
 
     """
 
+    binds: Mapping[_SessionBindKey, _SessionBind]
+    """An immutable mapping of bind targets to :class:`_engine.Engine` or
+    :class:`_engine.Connection` objects.
+
+    This collection is established from the
+    :paramref:`_orm.Session.binds` parameter as well as the
+    :meth:`_orm.Session.bind_mapper` and :meth:`_orm.Session.bind_table`
+    methods, and is consulted by :meth:`_orm.Session.get_bind`.  The keys are
+    normalized from what was originally passed; a mapper or mapped class is
+    entered both under the mapped class and under each of its selectables.
+
+    The collection is replaced, rather than mutated, whenever a new bind is
+    added, so a reference to it will not observe subsequent changes.
+
+    .. versionadded:: 2.1  Previously this collection was stored
+       privately.
+
+    """
+
     _new: Dict[InstanceState[Any], Any]
     _deleted: Dict[InstanceState[Any], Any]
     bind: Optional[Union[Engine, Connection]]
-    __binds: Dict[_SessionBindKey, _SessionBind]
     _flushing: bool
     _warn_on_events: bool
     _transaction: Optional[SessionTransaction]
@@ -1800,7 +1819,7 @@ class Session(_SessionClassMethods, EventTarget):
         self._new = {}  # InstanceState->object, strong refs object
         self._deleted = {}  # same
         self.bind = bind
-        self.__binds = {}
+        self.binds = util.EMPTY_DICT
         self._flushing = False
         self._warn_on_events = False
         self._transaction = None
@@ -2708,6 +2727,8 @@ class Session(_SessionClassMethods, EventTarget):
         statelib.InstanceState._detach_states(all_states, self)
 
     def _add_bind(self, key: _SessionBindKey, bind: _SessionBind) -> None:
+        new_binds: Dict[_SessionBindKey, _SessionBind] = {}
+
         try:
             insp = inspect(key)
         except sa_exc.NoInspectionAvailable as err:
@@ -2716,21 +2737,25 @@ class Session(_SessionClassMethods, EventTarget):
                     "Not an acceptable bind target: %s" % key
                 ) from err
             else:
-                self.__binds[key] = bind
+                new_binds[key] = bind
         else:
             if TYPE_CHECKING:
                 assert isinstance(insp, Inspectable)
 
             if isinstance(insp, TableClause):
-                self.__binds[insp] = bind
+                new_binds[insp] = bind
             elif insp_is_mapper(insp):
-                self.__binds[insp.class_] = bind
+                new_binds[insp.class_] = bind
                 for _selectable in insp._all_tables:
-                    self.__binds[_selectable] = bind
+                    new_binds[_selectable] = bind
             else:
                 raise sa_exc.ArgumentError(
                     "Not an acceptable bind target: %s" % key
                 )
+
+        self.binds = self.binds.merge_with(  # type: ignore[attr-defined]
+            new_binds
+        )
 
     def bind_mapper(
         self, mapper: _EntityBindKey[_O], bind: _SessionBind
@@ -2876,13 +2901,13 @@ class Session(_SessionClassMethods, EventTarget):
         # to call this method even if the return is simple
         if bind:
             return bind
-        elif not self.__binds and self.bind:
+        elif not self.binds and self.bind:
             # simplest and most common case, we have a bind and no
             # per-mapper/table binds, we're done
             return self.bind
 
-        # we don't have self.bind and either have self.__binds
-        # or we don't have self.__binds (which is legacy).  Look at the
+        # we don't have self.bind and either have self.binds
+        # or we don't have self.binds (which is legacy).  Look at the
         # mapper and the clause
         if mapper is None and clause is None:
             if self.bind:
@@ -2906,14 +2931,14 @@ class Session(_SessionClassMethods, EventTarget):
         else:
             inspected_mapper = None
 
-        # match up the mapper or clause in the __binds
-        if self.__binds:
+        # match up the mapper or clause in the binds
+        if self.binds:
             # matching mappers and selectables to entries in the
             # binds dictionary; supported use case.
             if inspected_mapper:
                 for cls in inspected_mapper.class_.__mro__:
-                    if cls in self.__binds:
-                        return self.__binds[cls]
+                    if cls in self.binds:
+                        return self.binds[cls]
                 if clause is None:
                     clause = inspected_mapper.persist_selectable
 
@@ -2924,16 +2949,16 @@ class Session(_SessionClassMethods, EventTarget):
 
                 if plugin_subject is not None:
                     for cls in plugin_subject.mapper.class_.__mro__:
-                        if cls in self.__binds:
-                            return self.__binds[cls]
+                        if cls in self.binds:
+                            return self.binds[cls]
 
                 for obj in visitors.iterate(clause):
-                    if obj in self.__binds:
+                    if obj in self.binds:
                         if TYPE_CHECKING:
                             assert isinstance(obj, Table)
-                        return self.__binds[obj]
+                        return self.binds[obj]
 
-        # none of the __binds matched, but we have a fallback bind.
+        # none of the binds matched, but we have a fallback bind.
         # return that
         if self.bind:
             return self.bind

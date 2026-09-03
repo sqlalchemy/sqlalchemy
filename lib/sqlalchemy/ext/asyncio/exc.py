@@ -19,3 +19,12 @@ class AsyncContextNotStarted(exc.InvalidRequestError):
 
 class AsyncContextAlreadyStarted(exc.InvalidRequestError):
     """a startable context manager is already started."""
+
+
+class AsyncBindNotFound(exc.InvalidRequestError):
+    """a bind has no asyncio counterpart known to the
+    :class:`_asyncio.AsyncSession`.
+
+    .. versionadded:: 2.1
+
+    """
