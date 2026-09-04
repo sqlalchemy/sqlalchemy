@@ -63,10 +63,6 @@ class AsyncScopedSessionTest(AsyncFixture):
             "get_nested_transaction",
             "in_transaction",
             "in_nested_transaction",
-            # not proxied onto scoped_session either; see the same
-            # ignore list in test/orm/test_scoping.py
-            "bind_mapper",
-            "bind_table",
         }
 
         SM = async_scoped_session(

@@ -12,7 +12,6 @@ from typing import Callable
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
-from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -41,7 +40,6 @@ if TYPE_CHECKING:
     from .engine import AsyncConnection
     from .result import AsyncResult
     from .result import AsyncScalarResult
-    from .session import _AsyncSessionBind
     from .session import AsyncSessionTransaction
     from ...engine import Connection
     from ...engine import Engine
@@ -59,7 +57,6 @@ if TYPE_CHECKING:
     from ...orm.session import _EntityBindKey
     from ...orm.session import _PKIdentityArgument
     from ...orm.session import _SessionBind
-    from ...orm.session import _SessionBindKey
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateParameter
@@ -95,7 +92,6 @@ _Ts = TypeVarTuple("_Ts")
         "expunge_all",
         "flush",
         "get_bind",
-        "get_async_bind",
         "is_modified",
         "invalidate",
         "merge",
@@ -111,7 +107,6 @@ _Ts = TypeVarTuple("_Ts")
     ],
     attributes=[
         "bind",
-        "binds",
         "dirty",
         "deleted",
         "new",
@@ -855,66 +850,10 @@ class async_scoped_session(Generic[_AS]):
         blocking-style code, which will be translated to implicitly async calls
         at the point of invoking IO on the database drivers.
 
-        .. seealso::
-
-            :meth:`.AsyncSession.get_async_bind`
-
 
         """  # noqa: E501
 
         return self._proxied.get_bind(
-            mapper=mapper, clause=clause, bind=bind, **kw
-        )
-
-    def get_async_bind(
-        self,
-        mapper: Optional[_EntityBindKey[_O]] = None,
-        clause: Optional[ClauseElement] = None,
-        bind: Optional[_AsyncSessionBind] = None,
-        **kw: Any,
-    ) -> _AsyncSessionBind:
-        r"""Return a "bind" to which this :class:`.AsyncSession` is bound.
-
-        .. container:: class_bases
-
-            Proxied for the :class:`_asyncio.AsyncSession` class on
-            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
-
-        This is the asyncio-facing counterpart to
-        :meth:`.AsyncSession.get_bind`; the bind resolved against the
-        underlying :attr:`.AsyncSession.sync_session` is translated back into
-        the :class:`.AsyncEngine` or :class:`.AsyncConnection` that it was
-        derived from.  :paramref:`.AsyncSession.get_async_bind.bind` is
-        likewise given as an asyncio object, and is translated on the way in.
-
-        Raises :class:`_asyncio.exc.AsyncBindNotFound` if the bind that's
-        resolved has no asyncio counterpart known to this
-        :class:`.AsyncSession`.
-
-        Like :meth:`.AsyncSession.get_bind`, this method is currently
-        **not** used by this :class:`.AsyncSession` in any way in order to
-        resolve engines for requests.
-
-        .. note::
-
-            This method delegates to :meth:`.AsyncSession.get_bind`, and is
-            likewise currently **not** useful as an override target, in
-            contrast to that of the :meth:`_orm.Session.get_bind` method.
-            To apply a custom bind-lookup scheme to an
-            :class:`.AsyncSession`, subclass :class:`_orm.Session` and apply
-            it using :paramref:`.AsyncSession.sync_session_class`, as
-            illustrated at :meth:`.AsyncSession.get_bind`.
-
-        .. versionadded:: 2.1
-
-        .. seealso::
-
-            :meth:`.AsyncSession.get_bind`
-
-
-        """  # noqa: E501
-
-        return self._proxied.get_async_bind(
             mapper=mapper, clause=clause, bind=bind, **kw
         )
 
@@ -1414,7 +1353,7 @@ class async_scoped_session(Generic[_AS]):
         )
 
     @property
-    def bind(self) -> Optional[_AsyncSessionBind]:
+    def bind(self) -> Any:
         r"""Proxy for the :attr:`_asyncio.AsyncSession.bind` attribute
         on behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
 
@@ -1423,17 +1362,8 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.bind
 
     @bind.setter
-    def bind(self, attr: Optional[_AsyncSessionBind]) -> None:
+    def bind(self, attr: Any) -> None:
         self._proxied.bind = attr
-
-    @property
-    def binds(self) -> Mapping[_SessionBindKey, _AsyncSessionBind]:
-        r"""Proxy for the :attr:`_asyncio.AsyncSession.binds` attribute
-        on behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
-
-        """  # noqa: E501
-
-        return self._proxied.binds
 
     @property
     def dirty(self) -> Any:

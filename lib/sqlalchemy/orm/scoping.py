@@ -13,7 +13,6 @@ from typing import Dict
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
-from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Protocol
@@ -50,7 +49,6 @@ if TYPE_CHECKING:
     from .session import _EntityBindKey
     from .session import _PKIdentityArgument
     from .session import _SessionBind
-    from .session import _SessionBindKey
     from .session import sessionmaker
     from .session import SessionTransaction
     from ..engine import Connection
@@ -141,7 +139,6 @@ __all__ = ["scoped_session"]
     ],
     attributes=[
         "bind",
-        "binds",
         "dirty",
         "deleted",
         "new",
@@ -1998,19 +1995,6 @@ class scoped_session(Generic[_S]):
     @bind.setter
     def bind(self, attr: Optional[Union[Engine, Connection]]) -> None:
         self._proxied.bind = attr
-
-    @property
-    def binds(self) -> Mapping[_SessionBindKey, _SessionBind]:
-        r"""Proxy for the :attr:`_orm.Session.binds` attribute
-        on behalf of the :class:`_orm.scoping.scoped_session` class.
-
-        """  # noqa: E501
-
-        return self._proxied.binds
-
-    @binds.setter
-    def binds(self, attr: Mapping[_SessionBindKey, _SessionBind]) -> None:
-        self._proxied.binds = attr
 
     @property
     def dirty(self) -> Any:

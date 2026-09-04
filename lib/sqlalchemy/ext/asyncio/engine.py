@@ -170,8 +170,6 @@ def create_async_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool:
 class AsyncConnectable:
     __slots__ = "_slots_dispatch", "__weakref__"
 
-    sync_engine: Engine
-
     @classmethod
     def _no_async_engine_events(cls) -> NoReturn:
         raise NotImplementedError(
