@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13566
+    :versions: 2.1.0rc2
+
+    Fixed memory issue where mapped classes, along with their
+    :class:`.Table` and :class:`_orm.Mapper` objects, would not be garbage
+    collected after the :class:`_orm.registry` in which they were mapped had
+    been disposed and dereferenced.  The issue would occur for mappings that
+    made use of :func:`_orm.relationship` together with constructs such as an
+    :class:`.Index` established against an ORM-annotated expression.

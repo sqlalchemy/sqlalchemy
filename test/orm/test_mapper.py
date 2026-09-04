@@ -1,12 +1,14 @@
 import logging
 import logging.handlers
 import re
+import weakref
 
 import sqlalchemy as sa
 from sqlalchemy import column
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
@@ -57,6 +59,7 @@ from sqlalchemy.testing.entities import ComparableMixin
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 
 
@@ -3526,6 +3529,51 @@ class RegistryConfigDisposeTest(fixtures.TestBase):
                 "pass cascade=True to clear these also",
             ):
                 reg3.dispose()
+
+    def test_dispose_releases_classes_w_orm_index(self):
+        """test #13566
+
+        an :class:`.Index` against an ORM-annotated expression links the
+        :class:`.Table` to the mapper, and from there to the registry and
+        to every other class mapped within it.  The class-level dictionary
+        that tracks overlapping sync targets would then hold this entire
+        graph alive for the life of the process, even after the registry
+        were disposed and dereferenced.
+
+        """
+
+        def make_registry():
+            reg = registry()
+
+            @reg.mapped
+            class Parent:
+                __tablename__ = "parent"
+                id = Column(Integer, primary_key=True)
+
+            @reg.mapped
+            class Child:
+                __tablename__ = "child"
+                id = Column(Integer, primary_key=True)
+                parent_id = Column(ForeignKey("parent.id"))
+                parent = relationship(Parent)
+
+            Index("ix_parent_id_desc", Parent.id.desc())
+
+            configure_mappers()
+
+            refs = [
+                weakref.ref(Parent),
+                weakref.ref(Child),
+                weakref.ref(Parent.__table__),
+            ]
+            reg.dispose()
+            return refs
+
+        refs = make_registry()
+
+        gc_collect()
+
+        eq_([ref() for ref in refs], [None, None, None])
 
 
 class ConfigureOrNotConfigureTest(_fixtures.FixtureTest, AssertsCompiledSQL):
