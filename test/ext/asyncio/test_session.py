@@ -14,10 +14,10 @@ from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
-from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_object_session
+from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,6 +50,7 @@ from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
 from .test_engine import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
+from ...orm.test_bind import BindAttributeTest as _BindAttributeTest
 
 
 class AsyncFixture(_AsyncFixture, _fixtures.FixtureTest):
@@ -89,14 +90,6 @@ class AsyncSessionTest(AsyncFixture):
         async_session.info["foo"] = "bar"
 
         eq_(async_session.sync_session.info, {"foo": "bar"})
-
-    def test_init(self, async_engine):
-        ss = AsyncSession(bind=async_engine)
-        is_(ss.bind, async_engine)
-
-        binds = {Table: async_engine}
-        ss = AsyncSession(binds=binds)
-        is_(ss.binds, binds)
 
     @async_test
     @testing.combinations((True,), (False,), argnames="use_scalar")
@@ -264,6 +257,212 @@ class AsyncSessionTest(AsyncFixture):
 
         for key, value in expected_opts.items():
             eq_(gather_options[key], value)
+
+
+class AsyncBindAttributeTest(_BindAttributeTest):
+    """test the ``bind`` attribute on :class:`_asyncio.AsyncSession` as well
+    as its scoped variant.
+
+    This suite is intended to remain in parity with
+    ``BindAttributeTest`` in ``test/orm/test_bind.py``.
+
+    """
+
+    __requires__ = ("async_dialect",)
+
+    @testing.fixture(params=["async_session", "async_scoped_session"])
+    def make_session(self, request):
+        if request.param == "async_session":
+            return AsyncSession
+        else:
+
+            def go(**kw):
+                # constant scope; a scopefunc returning a new value each
+                # call would hand back a different session on every
+                # ``_proxied`` access
+                return async_scoped_session(
+                    async_sessionmaker(**kw), scopefunc=lambda: None
+                )
+
+            return go
+
+    @testing.fixture
+    def make_engine(self, testing_engine):
+        def go():
+            return testing_engine(
+                asyncio=True, options={"sqlite_share_pool": True}
+            )
+
+        return go
+
+    def assert_get_bind(self, session, expected_engine, *arg, **kw):
+        is_(session.get_async_bind(*arg, **kw), expected_engine)
+        is_(session.get_bind(*arg, **kw), expected_engine.sync_engine)
+
+    @async_test
+    async def test_bind_async_connection(self, make_session, make_engine):
+        """an :class:`_asyncio.AsyncConnection` bind translates against the
+        :class:`_engine.Connection` it proxies, rather than against an
+        :class:`_engine.Engine`.
+
+        """
+        User = self.classes.User
+
+        async with make_engine().connect() as conn:
+            sess = make_session(bind=conn)
+
+            is_(sess.bind, conn)
+            is_(sess.get_async_bind(User), conn)
+            is_(sess.get_bind(User), conn._proxied)
+
+    def test_bind_unknown_not_translatable(self, make_engine):
+        """a bind that isn't one of the session's own raises, rather than
+        being translated into an unrelated object.
+
+        note this drives :class:`_asyncio.AsyncSession` directly as it
+        reaches through to ``sync_session``, which is not proxied onto
+        :class:`_asyncio.async_scoped_session`.
+
+        """
+        sess = AsyncSession(bind=make_engine())
+
+        # establish a bind on the sync side that has no asyncio counterpart
+        # known to this AsyncSession
+        sess.sync_session.bind = make_engine().sync_engine
+
+        with expect_raises_message(
+            async_exc.AsyncBindNotFound, "Can't translate bind Engine"
+        ):
+            sess.bind
+
+    @testing.combinations(
+        (lambda User: {"mapper": User}, "e1"),
+        (lambda Address: {"mapper": Address}, "e2"),
+        (lambda User: {"mapper": inspect(User)}, "e1"),
+        (lambda users: {"clause": select(users)}, "e1"),
+        (lambda addresses: {"clause": select(addresses)}, "e2"),
+        (lambda User: {"clause": select(1).select_from(User)}, "e1"),
+        (lambda: {"clause": select(1)}, "e3"),
+        (lambda: {}, "e3"),
+        # a bind passed in is handed straight back out, translated both
+        # ways even though it is not one of this session's own binds
+        (lambda e4: {"bind": e4}, "e4"),
+        (lambda User, e4: {"mapper": User, "bind": e4}, "e4"),
+        argnames="testcase, expected",
+    )
+    def test_get_async_bind(self, testcase, expected, make_engine):
+        """modest asyncio counterpart to
+        ``BindIntegrationTest.test_get_bind``, confirming that a bind
+        resolved from a mapper, a mapped class, a table or a passed-in bind
+        translates back out to the asyncio object it came from.
+
+        """
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        e1, e2, e3, e4 = (make_engine() for _ in range(4))
+
+        sess = AsyncSession(bind=e3, binds={User: e1, Address: e2})
+
+        testcase = testing.resolve_lambda(
+            testcase,
+            User=User,
+            Address=Address,
+            users=users,
+            addresses=addresses,
+            e1=e1,
+            e2=e2,
+            e3=e3,
+            e4=e4,
+        )
+
+        async_engine = {"e1": e1, "e2": e2, "e3": e3, "e4": e4}[expected]
+
+        is_(sess.get_async_bind(**testcase), async_engine)
+
+        # the sync-side lookup resolves to the corresponding sync engine
+        sync_testcase = dict(testcase)
+        if "bind" in sync_testcase:
+            sync_testcase["bind"] = sync_testcase["bind"].sync_engine
+        is_(sess.get_bind(**sync_testcase), async_engine.sync_engine)
+
+    @async_test
+    async def test_get_async_bind_connection(self, make_engine):
+        """an :class:`_asyncio.AsyncConnection` passed as ``bind`` round
+        trips through the sync-side :class:`_engine.Connection`.
+
+        """
+        User = self.classes.User
+
+        sess = AsyncSession(bind=make_engine())
+
+        async with make_engine().connect() as conn:
+            is_(sess.get_async_bind(bind=conn), conn)
+            is_(sess.get_async_bind(User, bind=conn), conn)
+            is_(sess.get_bind(bind=conn._proxied), conn._proxied)
+
+    @testing.variation("meth", ["bind_mapper", "bind_table"])
+    def test_bind_mapper_table(self, make_engine, meth: testing.Variation):
+        """:meth:`_asyncio.AsyncSession.bind_mapper` and
+        :meth:`_asyncio.AsyncSession.bind_table` take asyncio binds and
+        establish the sync counterpart on ``sync_session``.
+
+        """
+        User = self.classes.User
+        users = self.tables.users
+
+        e1, e2 = make_engine(), make_engine()
+        sess = AsyncSession(bind=e1)
+
+        if meth.bind_mapper:
+            sess.bind_mapper(User, e2)
+            # a mapped class is entered under the class and its selectables
+            expected = {User: e2, users: e2}
+        elif meth.bind_table:
+            sess.bind_table(users, e2)
+            expected = {users: e2}
+        else:
+            meth.fail()
+
+        is_(sess.get_async_bind(User), e2)
+        is_(sess.get_bind(User), e2.sync_engine)
+
+        eq_(sess.binds, expected)
+        eq_(
+            sess.sync_session.binds,
+            {key: e2.sync_engine for key in expected},
+        )
+
+    @testing.variation("meth", ["bind_setter", "bind_mapper", "bind_table"])
+    def test_translate_binds_invalidated(
+        self, make_engine, meth: testing.Variation
+    ):
+        """the memoized translation map is discarded whenever the binds
+        change, so a newly established bind is translatable right away.
+
+        """
+        User = self.classes.User
+        users = self.tables.users
+
+        sess = AsyncSession(bind=make_engine())
+
+        # memoize it
+        memoized = sess._translate_binds
+        is_(sess._translate_binds, memoized)
+
+        e2 = make_engine()
+        if meth.bind_setter:
+            sess.bind = e2
+        elif meth.bind_mapper:
+            sess.bind_mapper(User, e2)
+        elif meth.bind_table:
+            sess.bind_table(users, e2)
+        else:
+            meth.fail()
+
+        is_not(sess._translate_binds, memoized)
+        is_(sess._translate_binds[e2], e2.sync_engine)
+        is_(sess._translate_binds[e2.sync_engine], e2)
 
 
 class AsyncSessionQueryTest(AsyncFixture):

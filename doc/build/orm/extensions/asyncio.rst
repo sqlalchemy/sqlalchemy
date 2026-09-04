@@ -1176,5 +1176,6 @@ ORM Session API Documentation
 .. autoclass:: AsyncSessionTransaction
    :members:
 
+.. currentmodule:: sqlalchemy.ext.asyncio.exc
 
-
+.. autoclass:: AsyncBindNotFound
