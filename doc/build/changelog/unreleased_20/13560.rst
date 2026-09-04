@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, orm
     :tickets: 13560
+    :versions: 2.1.0rc2
 
     Fixed issue where an expression passed to :func:`_orm.with_expression`
     that embedded a :func:`_sql.select`, such as a correlated
