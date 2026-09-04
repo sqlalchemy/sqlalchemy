@@ -14,15 +14,12 @@ from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy import union_all
 from sqlalchemy import update
-from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.query import Query
-from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -37,42 +34,6 @@ from test.orm import _fixtures
 
 class BindIntegrationTest(_fixtures.FixtureTest):
     run_inserts = None
-
-    def test_binds_replaced_not_mutated(self):
-        """:meth:`_orm.Session.bind_mapper` copies in place, so a previously
-        held reference does not observe the new bind.
-
-        note ``bind_mapper`` / ``bind_table`` are deliberately not proxied
-        onto :class:`_orm.scoping.scoped_session`, so this exercises
-        :class:`_orm.Session` directly.
-
-        """
-        Address, addresses, users, User = (
-            self.classes.Address,
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
-        )
-
-        self.mapper_registry.map_imperatively(User, users)
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        sess = Session(binds={User: testing.db})
-        before = sess.binds
-
-        sess.bind_mapper(Address, testing.db)
-
-        assert sess.binds is not before
-        eq_(before, {User: testing.db, users: testing.db})
-        eq_(
-            sess.binds,
-            {
-                User: testing.db,
-                users: testing.db,
-                Address: testing.db,
-                addresses: testing.db,
-            },
-        )
 
     def test_mapped_binds(self):
         Address, addresses, users, User = (
@@ -708,89 +669,6 @@ class SessionBindTest(fixtures.MappedTest):
             ),
             sess.flush,
         )
-
-
-class BindAttributeTest(_fixtures.FixtureTest):
-    """test the ``bind`` and ``binds`` attributes on :class:`_orm.Session` as
-    well as its scoped variant.
-
-    :class:`_asyncio.AsyncSession` is expected to present the same set of
-    accessors and setters; the parallel suite is
-    ``AsyncSessionBindAttributeTest`` in ``test/ext/asyncio/test_session.py``.
-
-    """
-
-    run_inserts = None
-
-    @classmethod
-    def setup_mappers(cls):
-        cls._setup_stock_mapping()
-
-    @testing.fixture(params=["session", "scoped_session"])
-    def make_session(self, request):
-        if request.param == "session":
-            return Session
-        else:
-
-            def go(**kw):
-                return scoped_session(sessionmaker(**kw))
-
-            return go
-
-    @testing.fixture
-    def make_engine(self, testing_engine):
-        return testing_engine
-
-    def assert_get_bind(self, session, expected_engine, *arg, **kw):
-        is_(session.get_bind(*arg, **kw), expected_engine)
-
-    def test_bind_default_none(self, make_session):
-        sess = make_session()
-        is_(sess.bind, None)
-
-    def test_bind_from_constructor(self, make_session, make_engine):
-        engine = make_engine()
-        sess = make_session(bind=engine)
-        is_(sess.bind, engine)
-
-    def test_bind_settable(self, make_session, make_engine):
-        sess = make_session()
-        engine = make_engine()
-        sess.bind = engine
-        is_(sess.bind, engine)
-        self.assert_get_bind(sess, engine)
-
-    def test_binds_empty_by_default(self, make_session):
-        sess = make_session()
-        eq_(sess.binds, {})
-
-    def test_binds_immutable(self, make_session, make_engine):
-        User = self.classes.User
-
-        engine = make_engine()
-        sess = make_session(binds={User: engine})
-
-        assert isinstance(sess.binds, util.immutabledict)
-        assert_raises(TypeError, sess.binds.__setitem__, User, engine)
-
-    def test_binds_from_constructor(self, make_session, make_engine):
-        """keys are normalized; a mapped class is entered both under the
-        class and under each of its selectables.
-
-        """
-        User = self.classes.User
-        users = self.tables.users
-
-        engine = make_engine()
-        sess = make_session(binds={User: engine})
-        eq_(sess.binds, {User: engine, users: engine})
-
-    def test_binds_used_by_get_bind(self, make_session, make_engine):
-        User = self.classes.User
-
-        engine = make_engine()
-        sess = make_session(binds={User: engine})
-        self.assert_get_bind(sess, engine, inspect(User))
 
 
 class GetBindTest(fixtures.MappedTest):

@@ -16,7 +16,6 @@ from typing import Dict
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
-from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -29,7 +28,6 @@ from typing import TypeVar
 from typing import Union
 
 from . import engine
-from . import exc as async_exc
 from .base import ReversibleProxy
 from .base import StartableContext
 from .result import _ensure_sync_result
@@ -74,7 +72,6 @@ if TYPE_CHECKING:
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateParameter
-    from ...sql.selectable import TableClause
     from ...sql.selectable import TypedReturnsRows
 
 _AsyncSessionBind = Union["AsyncEngine", "AsyncConnection"]
@@ -230,38 +227,6 @@ class AsyncSession(ReversibleProxy[Session]):
 
     _is_asyncio = True
 
-    bind: Optional[_AsyncSessionBind]
-    """The :class:`_asyncio.AsyncEngine` or :class:`_asyncio.AsyncConnection`
-    this :class:`_asyncio.AsyncSession` is bound to, if any.
-
-    The value is derived from :attr:`_orm.Session.bind` on the underlying
-    :attr:`_asyncio.AsyncSession.sync_session`, translated back into the
-    asyncio object it was established from, so that a bind assigned after
-    construction is reflected here as well.  The attribute may be assigned
-    to, which establishes the bind on the
-    :attr:`_asyncio.AsyncSession.sync_session`.
-
-    .. versionadded:: 2.1
-
-    """
-
-    binds: Mapping[_SessionBindKey, _AsyncSessionBind]
-    """An immutable mapping of the per-mapper / per-table binds established
-    for this :class:`_asyncio.AsyncSession`.
-
-    Like :attr:`_asyncio.AsyncSession.bind`, the collection is derived from
-    :attr:`_orm.Session.binds` on the underlying
-    :attr:`_asyncio.AsyncSession.sync_session` with each bind translated back
-    into the asyncio object it was established from; the keys are therefore
-    normalized in the same way as they are for :attr:`_orm.Session.binds`.
-
-    As the collection is derived it is read-only; binds are established by
-    passing the :paramref:`_asyncio.AsyncSession.binds` parameter.
-
-    .. versionadded:: 2.1
-
-    """
-
     dispatch: dispatcher[Session]
 
     def __init__(
@@ -290,15 +255,14 @@ class AsyncSession(ReversibleProxy[Session]):
           .. versionadded:: 1.4.24
 
         """
-        self._async_bind = bind
-        self._async_binds = dict(binds) if binds else {}
-
         sync_bind = sync_binds = None
 
         if bind:
+            self.bind = bind
             sync_bind = engine._get_sync_engine_or_connection(bind)
 
         if binds:
+            self.binds = binds
             sync_binds = {
                 key: engine._get_sync_engine_or_connection(b)
                 for key, b in binds.items()
@@ -309,169 +273,6 @@ class AsyncSession(ReversibleProxy[Session]):
 
         self.sync_session = self._proxied = self._assign_proxied(
             self.sync_session_class(bind=sync_bind, binds=sync_binds, **kw)
-        )
-
-    @util.memoized_property
-    def _translate_binds(
-        self,
-    ) -> Dict[
-        Union[_SessionBind, _AsyncSessionBind],
-        Union[_SessionBind, _AsyncSessionBind],
-    ]:
-        """The sync <-> async bind translation map, in both directions.
-
-        Establishing a bind on the :attr:`.AsyncSession.sync_session` runs the
-        asyncio bind through
-        :func:`_asyncio.engine._get_sync_engine_or_connection`, so the map is
-        built by running that same translation over the asyncio binds this
-        :class:`.AsyncSession` holds.  A bind is therefore translatable only
-        while it remains one of this session's own, which is what allows a
-        lookup miss to be reported as an error rather than silently
-        translating an unrelated object.
-
-        The map is memoized and discarded by
-        :meth:`.AsyncSession._invalidate_translate_binds` whenever the binds
-        change; it is only ever built from binds this
-        :class:`.AsyncSession` was itself given, so nothing here keeps an
-        engine or connection alive that isn't already held by
-        ``_async_bind`` / ``_async_binds``.
-
-        """
-
-        translate: Dict[
-            Union[_SessionBind, _AsyncSessionBind],
-            Union[_SessionBind, _AsyncSessionBind],
-        ] = {}
-
-        for async_bind in (self._async_bind, *self._async_binds.values()):
-            if async_bind is None:
-                continue
-            sync_bind = engine._get_sync_engine_or_connection(async_bind)
-            translate[async_bind] = sync_bind
-            translate[sync_bind] = async_bind
-
-        return translate
-
-    def _invalidate_translate_binds(self) -> None:
-        """Discard the memoized bind translation map.
-
-        Called whenever the binds this :class:`.AsyncSession` holds change,
-        so that the map is rebuilt on next use.
-
-        """
-        util.memoized_property.reset(self, "_translate_binds")
-
-    @overload
-    def _translate_for_bind(self, bind: Engine) -> AsyncEngine: ...
-
-    @overload
-    def _translate_for_bind(self, bind: Connection) -> AsyncConnection: ...
-
-    @overload
-    def _translate_for_bind(self, bind: AsyncEngine) -> Engine: ...
-
-    @overload
-    def _translate_for_bind(self, bind: AsyncConnection) -> Connection: ...
-
-    @overload
-    def _translate_for_bind(self, bind: None) -> None: ...
-
-    @overload
-    def _translate_for_bind(self, bind: Any) -> Any: ...
-
-    def _translate_for_bind(self, bind: Any) -> Any:
-        if bind is None:
-            return None
-
-        try:
-            return self._translate_binds[bind]
-        except KeyError as ke:
-            raise async_exc.AsyncBindNotFound(
-                f"Can't translate bind {bind!r}; it is not among the binds "
-                f"established for this {type(self).__name__}.  Binds should "
-                f"be established on the {type(self).__name__} rather than "
-                f"directly on its sync_session, so that the asyncio object "
-                f"each one was derived from is known."
-            ) from ke
-
-    # the annotations these implement are declared at the class level, along
-    # with the documentation consumed by Sphinx and by
-    # tools/generate_proxy_methods.py
-    @property  # type: ignore[no-redef]
-    def bind(self) -> Optional[_AsyncSessionBind]:
-        return self._translate_for_bind(self.sync_session.bind)
-
-    @bind.setter
-    def bind(self, bind: Optional[_AsyncSessionBind]) -> None:
-        if bind is not None:
-            sync_bind = engine._get_sync_engine_or_connection(bind)
-        else:
-            sync_bind = None
-        self.sync_session.bind = sync_bind
-
-        self._async_bind = bind
-        self._invalidate_translate_binds()
-
-    def bind_mapper(
-        self, mapper: _EntityBindKey[_O], bind: _AsyncSessionBind
-    ) -> None:
-        """Associate a :class:`_orm.Mapper` or arbitrary Python class with an
-        asyncio "bind", e.g. an :class:`_asyncio.AsyncEngine` or
-        :class:`_asyncio.AsyncConnection`.
-
-        This is the asyncio-facing counterpart to
-        :meth:`_orm.Session.bind_mapper`, which is what the given bind is
-        established with on the underlying
-        :attr:`.AsyncSession.sync_session`.
-
-        .. versionadded:: 2.1
-
-        .. seealso::
-
-            :meth:`_orm.Session.bind_mapper`
-
-        """
-        self.sync_session.bind_mapper(
-            mapper, engine._get_sync_engine_or_connection(bind)
-        )
-        self._register_async_bind(mapper, bind)
-
-    def bind_table(self, table: TableClause, bind: _AsyncSessionBind) -> None:
-        """Associate a :class:`_schema.Table` with an asyncio "bind", e.g. an
-        :class:`_asyncio.AsyncEngine` or :class:`_asyncio.AsyncConnection`.
-
-        This is the asyncio-facing counterpart to
-        :meth:`_orm.Session.bind_table`, which is what the given bind is
-        established with on the underlying
-        :attr:`.AsyncSession.sync_session`.
-
-        .. versionadded:: 2.1
-
-        .. seealso::
-
-            :meth:`_orm.Session.bind_table`
-
-        """
-        self.sync_session.bind_table(
-            table, engine._get_sync_engine_or_connection(bind)
-        )
-        self._register_async_bind(table, bind)
-
-    def _register_async_bind(
-        self, key: _SessionBindKey, bind: _AsyncSessionBind
-    ) -> None:
-        """Record the asyncio object a newly established bind came from."""
-
-        self._async_binds[key] = bind
-        self._invalidate_translate_binds()
-
-    @property  # type: ignore[no-redef]
-    def binds(self) -> Mapping[_SessionBindKey, _AsyncSessionBind]:
-        return util.immutabledict(  # type: ignore[type-var]
-            {
-                key: self._translate_for_bind(bind)
-                for key, bind in self.sync_session.binds.items()
-            }
         )
 
     sync_session_class: Type[Session] = Session
@@ -1144,76 +945,11 @@ class AsyncSession(ReversibleProxy[Session]):
         blocking-style code, which will be translated to implicitly async calls
         at the point of invoking IO on the database drivers.
 
-        .. seealso::
-
-            :meth:`.AsyncSession.get_async_bind`
-
         """  # noqa: E501
 
         return self.sync_session.get_bind(
             mapper=mapper, clause=clause, bind=bind, **kw
         )
-
-    def get_async_bind(
-        self,
-        mapper: Optional[_EntityBindKey[_O]] = None,
-        clause: Optional[ClauseElement] = None,
-        bind: Optional[_AsyncSessionBind] = None,
-        **kw: Any,
-    ) -> _AsyncSessionBind:
-        """Return a "bind" to which this :class:`.AsyncSession` is bound.
-
-        This is the asyncio-facing counterpart to
-        :meth:`.AsyncSession.get_bind`; the bind resolved against the
-        underlying :attr:`.AsyncSession.sync_session` is translated back into
-        the :class:`.AsyncEngine` or :class:`.AsyncConnection` that it was
-        derived from.  :paramref:`.AsyncSession.get_async_bind.bind` is
-        likewise given as an asyncio object, and is translated on the way in.
-
-        Raises :class:`_asyncio.exc.AsyncBindNotFound` if the bind that's
-        resolved has no asyncio counterpart known to this
-        :class:`.AsyncSession`.
-
-        Like :meth:`.AsyncSession.get_bind`, this method is currently
-        **not** used by this :class:`.AsyncSession` in any way in order to
-        resolve engines for requests.
-
-        .. note::
-
-            This method delegates to :meth:`.AsyncSession.get_bind`, and is
-            likewise currently **not** useful as an override target, in
-            contrast to that of the :meth:`_orm.Session.get_bind` method.
-            To apply a custom bind-lookup scheme to an
-            :class:`.AsyncSession`, subclass :class:`_orm.Session` and apply
-            it using :paramref:`.AsyncSession.sync_session_class`, as
-            illustrated at :meth:`.AsyncSession.get_bind`.
-
-        .. versionadded:: 2.1
-
-        .. seealso::
-
-            :meth:`.AsyncSession.get_bind`
-
-        """
-
-        sync_bind: Optional[_SessionBind]
-
-        if bind is not None:
-            sync_bind = engine._get_sync_engine_or_connection(bind)
-        else:
-            sync_bind = None
-
-        resolved = self.get_bind(
-            mapper=mapper, clause=clause, bind=sync_bind, **kw
-        )
-
-        if bind is not None and resolved is sync_bind:
-            # get_bind() hands back a bind given to it as is; return the
-            # asyncio object it was translated from, which need not be one of
-            # this session's own binds for _translate_for_bind() to accept
-            return bind
-
-        return self._translate_for_bind(resolved)
 
     async def connection(
         self,
