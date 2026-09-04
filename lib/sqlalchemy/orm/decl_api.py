@@ -53,6 +53,7 @@ from .decl_base import _DeclarativeMapperConfig
 from .decl_base import _DeferredDeclarativeConfig
 from .decl_base import _del_attribute
 from .decl_base import _ORMClassConfigurator
+from .decl_base import _remove_declared_events
 from .decl_base import MappedClassProtocol
 from .descriptor_props import Composite
 from .descriptor_props import Synonym
@@ -1549,6 +1550,7 @@ class registry(EventTarget):
 
         class_ = manager.class_
         self._dispose_cls(class_)
+        _remove_declared_events(class_)
         instrumentation._instrumentation_factory.unregister(class_)
 
     def generate_base(

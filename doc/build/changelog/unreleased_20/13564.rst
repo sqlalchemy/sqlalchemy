@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13564
+
+    Fixed two process-wide references that kept the classes, mappers and
+    tables of a disposed :class:`_orm.registry` (or of classes removed via
+    :func:`_orm.clear_mappers`) in memory indefinitely.  The
+    ``after_configured`` / ``before_configured`` listeners that declarative
+    registers for ``__declare_last__`` and ``__declare_first__`` now refer to
+    the class weakly and are removed when the class is unmapped, instead of
+    accumulating one per mapped class for the lifetime of the process.  The
+    internal bookkeeping used to warn about relationships writing the same
+    column now holds its columns weakly as well, so that a column expression
+    attached to a table (such as an :class:`.Index` built from an ORM
+    attribute) no longer pins the whole mapping.

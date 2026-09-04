@@ -1,4 +1,5 @@
 from operator import is_not
+import weakref
 from typing import Annotated
 
 import sqlalchemy as sa
@@ -24,6 +25,7 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events as orm_events
 from sqlalchemy.orm import has_inherited_table
 from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import synonym
@@ -2540,3 +2542,59 @@ class AbstractTest(DeclarativeTestBase):
         assert B1.__mapper__.inherits is A.__mapper__
 
         assert B2.__mapper__.inherits is A.__mapper__
+
+
+class DeclaredEventsGCTest(fixtures.TestBase):
+    """__declare_last__ / __declare_first__ listeners must neither keep a
+    disposed class alive nor accumulate on the Mapper class."""
+
+    __requires__ = ("predictable_gc",)
+
+    def _count_listeners(self, identifier):
+        dispatch = getattr(Mapper.dispatch, identifier)
+        return sum(len(coll) for coll in dispatch._clslevel.values())
+
+    @testing.teardown_events(orm_events.MapperEvents)
+    @testing.combinations(
+        ("__declare_last__", "after_configured"),
+        ("__declare_first__", "before_configured"),
+        argnames="hook, identifier",
+    )
+    def test_disposed_class_released(self, hook, identifier):
+        canary = mock.Mock()
+        before = self._count_listeners(identifier)
+
+        reg = registry()
+        Base = reg.generate_base()
+
+        if hook == "__declare_last__":
+
+            class A(Base):
+                __tablename__ = "a"
+                id = Column(Integer, primary_key=True)
+
+                @classmethod
+                def __declare_last__(cls):
+                    canary(cls.__name__)
+
+        else:
+
+            class A(Base):
+                __tablename__ = "a"
+                id = Column(Integer, primary_key=True)
+
+                @classmethod
+                def __declare_first__(cls):
+                    canary(cls.__name__)
+
+        configure_mappers()
+        eq_(canary.mock_calls, [mock.call("A")])
+        eq_(self._count_listeners(identifier), before + 1)
+
+        ref = weakref.ref(A)
+        reg.dispose()
+        del A, Base
+        gc_collect()
+
+        is_(ref(), None)
+        eq_(self._count_listeners(identifier), before)

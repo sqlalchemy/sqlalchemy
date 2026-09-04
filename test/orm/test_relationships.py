@@ -42,6 +42,10 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.util import gc_collect
+from sqlalchemy.orm import registry
+from sqlalchemy import Index
+import weakref
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -7243,3 +7247,39 @@ class AnnotationsMaintainedTest(AssertsCompiledSQL, fixtures.TestBase):
             f"""{" AND employee.type IN (__[POSTCOMPILE_type_1])"
                  if use_orm else ""})""",
         )
+
+
+class SyncTargetsGCTest(fixtures.TestBase):
+    """the overlapping-sync-target tracking must not keep disposed
+    mappers alive."""
+
+    __requires__ = ("predictable_gc",)
+
+    def test_disposed_registry_released(self):
+        reg = registry()
+        Base = reg.generate_base()
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+
+        class Child(Base):
+            __tablename__ = "child"
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(ForeignKey("parent.id"))
+            parent = relationship(Parent)
+
+        # an expression built from an ORM attribute is annotated with the
+        # mapper; attached to the Table it links the Table back to the
+        # whole mapping
+        Index("ix_parent_id_desc", Parent.id.desc())
+        configure_mappers()
+
+        refs = [weakref.ref(obj) for obj in (Parent, Child, Parent.__table__)]
+        reg.dispose()
+        # the registry's MetaData still holds the tables, and the index
+        # expression links the table back to the mapper; drop it as well
+        del Parent, Child, Base, reg
+        gc_collect()
+
+        eq_([ref() for ref in refs], [None, None, None])

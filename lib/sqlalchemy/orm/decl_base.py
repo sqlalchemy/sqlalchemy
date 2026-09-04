@@ -251,6 +251,23 @@ def _check_declared_props_nocascade(
         return False
 
 
+_declared_event_listeners: weakref.WeakKeyDictionary[
+    Type[Any], List[Tuple[str, Callable[[], None]]]
+] = weakref.WeakKeyDictionary()
+"""Mapper-level listeners created for ``__declare_last__`` /
+``__declare_first__``, keyed by the mapped class, so that they can be
+removed when the class is unmapped."""
+
+
+def _remove_declared_events(cls: Type[Any]) -> None:
+    """Remove the Mapper listeners that were registered for ``cls`` by
+    :meth:`._ClassScanMapperConfig._setup_declared_events`."""
+
+    for identifier, fn in _declared_event_listeners.pop(cls, ()):
+        if event.contains(Mapper, identifier, fn):
+            event.remove(Mapper, identifier, fn)
+
+
 class _ORMClassConfigurator:
     """Object that configures a class that's potentially going to be
     mapped, and/or turned into an ORM dataclass.
@@ -1041,21 +1058,41 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
             self._early_mapping(util.EMPTY_DICT)
 
     def _setup_declared_events(self) -> None:
+        # The listeners registered here live on the Mapper class for the
+        # whole process.  They refer to the mapped class only through a
+        # weak reference and are recorded so that unmapping the class
+        # (registry.dispose(), clear_mappers()) can remove them; otherwise
+        # every class ever mapped with __declare_last__ would be kept alive
+        # and the listener list would grow without bound.
+        cls_ref = weakref.ref(self.cls)
+        listeners: List[Tuple[str, Callable[[], None]]] = []
+
         if _get_immediate_cls_attr(self.cls, "__declare_last__"):
 
-            @event.listens_for(Mapper, "after_configured")
             def after_configured() -> None:
-                cast(
-                    "_DeclMappedClassProtocol[Any]", self.cls
-                ).__declare_last__()
+                target = cls_ref()
+                if target is not None:
+                    cast(
+                        "_DeclMappedClassProtocol[Any]", target
+                    ).__declare_last__()
+
+            event.listen(Mapper, "after_configured", after_configured)
+            listeners.append(("after_configured", after_configured))
 
         if _get_immediate_cls_attr(self.cls, "__declare_first__"):
 
-            @event.listens_for(Mapper, "before_configured")
             def before_configured() -> None:
-                cast(
-                    "_DeclMappedClassProtocol[Any]", self.cls
-                ).__declare_first__()
+                target = cls_ref()
+                if target is not None:
+                    cast(
+                        "_DeclMappedClassProtocol[Any]", target
+                    ).__declare_first__()
+
+            event.listen(Mapper, "before_configured", before_configured)
+            listeners.append(("before_configured", before_configured))
+
+        if listeners:
+            _declared_event_listeners[self.cls] = listeners
 
     def _scan_attributes(self) -> None:
         cls = self.cls
