@@ -13,6 +13,7 @@ import re
 import typing
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import ClassVar
 from typing import Dict
 from typing import FrozenSet
@@ -50,8 +51,10 @@ from .base import ORMDescriptor
 from .decl_base import _add_attribute
 from .decl_base import _declarative_constructor
 from .decl_base import _DeclarativeMapperConfig
+from .decl_base import _DeclMappedClassProtocol
 from .decl_base import _DeferredDeclarativeConfig
 from .decl_base import _del_attribute
+from .decl_base import _get_immediate_cls_attr
 from .decl_base import _ORMClassConfigurator
 from .decl_base import MappedClassProtocol
 from .descriptor_props import Composite
@@ -61,6 +64,7 @@ from .mapper import Mapper
 from .properties import MappedColumn
 from .relationships import RelationshipProperty
 from .state import InstanceState
+from .. import event
 from .. import exc
 from .. import inspection
 from .. import util
@@ -1202,6 +1206,12 @@ class registry(EventTarget):
     type_annotation_map: _MutableTypeAnnotationMapType
     _dependents: Set[_RegistryType]
     _dependencies: Set[_RegistryType]
+    _declare_first_classes: weakref.WeakKeyDictionary[
+        _DeclMappedClassProtocol[Any], Literal[True]
+    ]
+    _declare_last_classes: weakref.WeakKeyDictionary[
+        _DeclMappedClassProtocol[Any], Literal[True]
+    ]
     _new_mappers: bool
     dispatch: dispatcher["registry"]
 
@@ -1266,6 +1276,15 @@ class registry(EventTarget):
             self.update_type_annotation_map(type_annotation_map)
         self._dependents = set()
         self._dependencies = set()
+        self._declare_first_classes = weakref.WeakKeyDictionary()
+        self._declare_last_classes = weakref.WeakKeyDictionary()
+
+        # these listeners are established first, so that user-defined
+        # listeners appended to the same events run after the
+        # ``__declare_first__()`` / ``__declare_last__()`` hooks; a listener
+        # added with ``insert=True`` will run before them
+        event.listen(self, "before_configured", _declare_first_for_registry)
+        event.listen(self, "after_configured", _declare_last_for_registry)
 
         self._new_mappers = False
 
@@ -1466,6 +1485,25 @@ class registry(EventTarget):
 
     def _add_manager(self, manager: ClassManager[Any]) -> None:
         self._managers[manager] = True
+
+        # collect the class if it uses the __declare_first__() /
+        # __declare_last__() hooks, so that the registry-level listeners
+        # established in __init__() can invoke them.  the collection is
+        # weak so that the class remains garbage collectable.
+        #
+        # these are insertion ordered dictionaries rather than sets, as a
+        # class is necessarily added after its bases, and the hook of a base
+        # class has to run before that of its subclasses; ConcreteBase
+        # inherits __declare_first__() to the whole hierarchy, and the first
+        # class to run establishes the "type" property that the remaining
+        # ones then adapt as a ConcreteInheritedProperty
+        cls = manager.class_
+        decl_cls = cast("_DeclMappedClassProtocol[Any]", cls)
+        if _get_immediate_cls_attr(cls, "__declare_first__"):
+            self._declare_first_classes[decl_cls] = True
+        if _get_immediate_cls_attr(cls, "__declare_last__"):
+            self._declare_last_classes[decl_cls] = True
+
         if manager.is_mapped:
             raise exc.ArgumentError(
                 "Class '%s' already has a primary mapper defined. "
@@ -1930,6 +1968,20 @@ RegistryType = registry
 if not TYPE_CHECKING:
     # allow for runtime type resolution of ``ClassVar[_RegistryType]``
     _RegistryType = registry  # noqa
+
+
+def _declare_first_for_registry(registry: registry) -> None:
+    """Invoke ``__declare_first__()`` for classes within this registry."""
+
+    for cls in list(registry._declare_first_classes):
+        cls.__declare_first__()
+
+
+def _declare_last_for_registry(registry: registry) -> None:
+    """Invoke ``__declare_last__()`` for classes within this registry."""
+
+    for cls in list(registry._declare_last_classes):
+        cls.__declare_last__()
 
 
 class TypeResolve:

@@ -61,7 +61,6 @@ from .util import _is_mapped_annotation
 from .util import _metadata_for_cls as _metadata_for_cls_fn
 from .util import class_mapper
 from .util import de_stringify_annotation
-from .. import event
 from .. import exc
 from .. import util
 from ..sql import expression
@@ -1017,8 +1016,6 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
         # dataclasses.get_fields(cls) when scanning for attributes
         self.allow_dataclass_fields = bool(sdk and cld)
 
-        self._setup_declared_events()
-
         self._scan_attributes()
 
         self._setup_dataclasses_transforms(enable_descriptor_defaults=True)
@@ -1039,23 +1036,6 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
             self._setup_inheriting_columns()
 
             self._early_mapping(util.EMPTY_DICT)
-
-    def _setup_declared_events(self) -> None:
-        if _get_immediate_cls_attr(self.cls, "__declare_last__"):
-
-            @event.listens_for(Mapper, "after_configured")
-            def after_configured() -> None:
-                cast(
-                    "_DeclMappedClassProtocol[Any]", self.cls
-                ).__declare_last__()
-
-        if _get_immediate_cls_attr(self.cls, "__declare_first__"):
-
-            @event.listens_for(Mapper, "before_configured")
-            def before_configured() -> None:
-                cast(
-                    "_DeclMappedClassProtocol[Any]", self.cls
-                ).__declare_first__()
 
     def _scan_attributes(self) -> None:
         cls = self.cls

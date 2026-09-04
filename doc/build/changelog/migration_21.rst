@@ -268,6 +268,38 @@ E.g.::
 
 :ticket:`9832`
 
+.. _change_9147:
+
+Declarative ``__declare_first__()`` and ``__declare_last__()`` use registry events
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The declarative ``__declare_first__()`` and ``__declare_last__()`` hooks are
+now invoked by :meth:`_orm.RegistryEvents.before_configured` and
+:meth:`_orm.RegistryEvents.after_configured` listeners which are established
+when the :class:`_orm.registry` is constructed.  Previously, every mapped
+class making use of these hooks established its own :class:`_orm.Mapper`-wide
+listener, which held a permanent reference to that class, so that the class,
+its :class:`.Table` and its :class:`_orm.Mapper` could never be garbage
+collected.
+
+As the listeners are local to a :class:`_orm.registry`, the hooks are now
+invoked only when that registry is configured, rather than whenever any
+registry in the process is configured, and are not invoked at all for a
+registry that has been disposed.  Applications making use of a single
+:class:`_orm.registry` will see no change in behavior.
+
+The hooks are now located as the class is added to the
+:class:`_orm.registry`, rather than as part of the declarative scan of the
+class.  They therefore also take effect for a class mapped using
+:meth:`_orm.registry.map_imperatively`, where previously they were silently
+ignored.
+
+.. seealso::
+
+    :ref:`declarative_declare_ordering`
+
+:ticket:`9147`
+
 
 .. _change_10050:
 

@@ -395,14 +395,7 @@ class MemUsageTest(EnsureZeroed):
 
         go()
 
-    @testing.variation(
-        "scenario",
-        [
-            "plain",
-            "orm_index",
-            ("declare_last", testing.fails("issue #9147 is not yet fixed")),
-        ],
-    )
+    @testing.variation("scenario", ["plain", "orm_index", "declare_last"])
     def test_registry_dispose_releases_classes(self, scenario):
         """test #13566, #9147
 
@@ -411,16 +404,12 @@ class MemUsageTest(EnsureZeroed):
         #13566, where an :class:`.Index` against an ORM annotated
         expression links the :class:`.Table` to the mapper and from there
         to the whole registry; the "declare_last" scenario illustrates
-        #9147, where a ``__declare_last__`` method leaves behind an
-        ``after_configured`` event listener.
+        #9147, where a ``__declare_last__`` method would leave behind a
+        Mapper-wide ``after_configured`` event listener.
 
         """
 
-        # the "declare_last" scenario is expected to fail; don't spend the
-        # default number of iterations proving that it grows
-        maxtimes = 20 if scenario.declare_last else 250
-
-        @profile_memory(maxtimes=maxtimes)
+        @profile_memory()
         def go():
             reg = sa.orm.registry()
             Base = reg.generate_base()
