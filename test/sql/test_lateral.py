@@ -1,9 +1,12 @@
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import cross_apply
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import lateral
+from sqlalchemy import outer_apply
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
@@ -13,6 +16,7 @@ from sqlalchemy import true
 from sqlalchemy.engine import default
 from sqlalchemy.sql import func
 from sqlalchemy.sql import select
+from sqlalchemy.sql.selectable import Apply
 from sqlalchemy.sql.selectable import Lateral
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -344,3 +348,84 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
             a,
             "foo",
         )
+
+    def test_cross_apply(self):
+        table1 = self.tables.people
+        table2 = self.tables.books
+        subq = (
+            select(table2.c.book_id)
+            .where(table2.c.book_owner_id == table1.c.people_id)
+            .subquery()
+            .cross_apply(name="book_apply")
+        )
+
+        stmt = select(table1, subq.c.book_id).select_from(table1.join(subq))
+
+        self.assert_compile(
+            stmt,
+            "SELECT people.people_id, people.age, people.name, "
+            "book_apply.book_id FROM people CROSS APPLY "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE books.book_owner_id = people.people_id) AS book_apply",
+        )
+
+    def test_outer_apply(self):
+        table1 = self.tables.people
+        table2 = self.tables.books
+        subq = select(table2.c.book_id).where(
+            table2.c.book_owner_id == table1.c.people_id
+        )
+        apply_ = outer_apply(subq, name="book_apply")
+
+        stmt = select(table1, apply_.c.book_id).select_from(
+            table1.join(apply_)
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT people.people_id, people.age, people.name, "
+            "book_apply.book_id FROM people OUTER APPLY "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE books.book_owner_id = people.people_id) AS book_apply",
+        )
+
+    def test_apply_public_constructor(self):
+        subq = select(column("x")).subquery()
+
+        apply_ = cross_apply(subq, name="apply_alias")
+
+        assert isinstance(apply_, Apply)
+        self.assert_compile(apply_, "CROSS APPLY (SELECT x)")
+
+    def test_apply_implicit_subquery(self):
+        apply_ = select(column("x")).cross_apply(name="apply_alias")
+
+        self.assert_compile(
+            select(apply_.c.x).select_from(table("t").join(apply_)),
+            "SELECT apply_alias.x FROM t CROSS APPLY "
+            "(SELECT x) AS apply_alias",
+        )
+
+    def test_apply_rejects_join_criteria(self):
+        table1 = self.tables.people
+        apply_ = select(column("x")).cross_apply()
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "CROSS APPLY and OUTER APPLY do not accept an ON clause",
+            lambda: table1.join(apply_, true()),
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            "join flags are not accepted with CROSS APPLY or OUTER APPLY",
+            lambda: table1.join(apply_, isouter=True),
+        )
+
+    def test_apply_cache_key_includes_apply_type(self):
+        subq = select(column("x"))
+        cross = subq.cross_apply()
+        outer = subq.outer_apply()
+
+        assert cross._generate_cache_key() is not None
+        assert outer._generate_cache_key() is not None
+        assert cross._generate_cache_key() != outer._generate_cache_key()

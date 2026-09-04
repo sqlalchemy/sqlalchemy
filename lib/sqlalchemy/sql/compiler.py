@@ -4641,6 +4641,11 @@ class SQLCompiler(Compiled):
         kw["lateral"] = True
         return "LATERAL %s" % self.visit_alias(lateral_, **kw)
 
+    def visit_apply(self, apply_, **kw):
+        kw["lateral"] = True
+        apply_type = "OUTER" if apply_.isouter else "CROSS"
+        return f"{apply_type} APPLY {self.visit_alias(apply_, **kw)}"
+
     def visit_tablesample(self, tablesample, asfrom=False, **kw):
         text = "%s TABLESAMPLE %s" % (
             self.visit_alias(tablesample, asfrom=True, **kw),
@@ -5688,7 +5693,17 @@ class SQLCompiler(Compiled):
                 )
             )
 
-        if join.full:
+        if isinstance(join.right, selectable.Apply):
+            return (
+                join.left._compiler_dispatch(
+                    self, asfrom=True, from_linter=from_linter, **kwargs
+                )
+                + " "
+                + join.right._compiler_dispatch(
+                    self, asfrom=True, from_linter=from_linter, **kwargs
+                )
+            )
+        elif join.full:
             join_type = " FULL OUTER JOIN "
         elif join.isouter:
             join_type = " LEFT OUTER JOIN "

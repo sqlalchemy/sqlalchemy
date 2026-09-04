@@ -1140,6 +1140,46 @@ When using :meth:`_expression.Select.lateral`, the behavior of
 
 
 
+.. _tutorial_apply_correlation:
+
+APPLY correlation
+~~~~~~~~~~~~~~~~~
+
+SQL Server and Oracle provide ``CROSS APPLY`` and ``OUTER APPLY`` as a form
+of lateral correlation.  SQLAlchemy represents these expressions with the
+:class:`_expression.Apply` construct, created using
+:meth:`_expression.Selectable.cross_apply` or
+:meth:`_expression.Selectable.outer_apply`.  The construct is placed on the
+right side of :meth:`_expression.FromClause.join` without an ``ON`` clause::
+
+    >>> address_apply = (
+    ...     select(func.count(address_table.c.id).label("address_count"))
+    ...     .where(user_table.c.id == address_table.c.user_id)
+    ...     .cross_apply(name="address_apply")
+    ... )
+    >>> stmt = select(user_table.c.name, address_apply.c.address_count).select_from(
+    ...     user_table.join(address_apply)
+    ... )
+    >>> print(stmt)
+    {printsql}SELECT user_account.name, address_apply.address_count
+    FROM user_account CROSS APPLY (SELECT count(address.id) AS address_count
+    FROM address
+    WHERE user_account.id = address.user_id) AS address_apply
+
+``OUTER APPLY`` is produced in the same way using
+:meth:`_expression.Selectable.outer_apply`.  The standalone
+:func:`_expression.cross_apply` and :func:`_expression.outer_apply`
+constructors are also available.
+
+.. seealso::
+
+    :class:`_expression.Apply`
+
+    :func:`_expression.cross_apply`
+
+    :func:`_expression.outer_apply`
+
+
 .. _tutorial_union:
 
 UNION, UNION ALL and other set operations
