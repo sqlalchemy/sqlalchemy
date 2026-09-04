@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TableClause
     from ...sql.selectable import TypedReturnsRows
+    from ...util import IdentitySet
 
 _AsyncSessionBind = Union["AsyncEngine", "AsyncConnection"]
 
@@ -1693,7 +1694,7 @@ class AsyncSession(ReversibleProxy[Session]):
         return self._proxied.in_nested_transaction()
 
     @property
-    def dirty(self) -> Any:
+    def dirty(self) -> IdentitySet:
         r"""The set of all persistent instances considered dirty.
 
         .. container:: class_bases
@@ -1726,7 +1727,7 @@ class AsyncSession(ReversibleProxy[Session]):
         return self._proxied.dirty
 
     @property
-    def deleted(self) -> Any:
+    def deleted(self) -> IdentitySet:
         r"""The set of all instances marked as 'deleted' within this ``Session``
 
         .. container:: class_bases
@@ -1739,7 +1740,7 @@ class AsyncSession(ReversibleProxy[Session]):
         return self._proxied.deleted
 
     @property
-    def new(self) -> Any:
+    def new(self) -> IdentitySet:
         r"""The set of all instances marked as 'new' within this ``Session``.
 
         .. container:: class_bases
@@ -1765,7 +1766,7 @@ class AsyncSession(ReversibleProxy[Session]):
         self._proxied.identity_map = attr
 
     @property
-    def is_active(self) -> Any:
+    def is_active(self) -> bool:
         r"""True if this :class:`.Session` not in "partial rollback" state.
 
         .. container:: class_bases
@@ -1844,7 +1845,7 @@ class AsyncSession(ReversibleProxy[Session]):
         return self._proxied.no_autoflush
 
     @property
-    def info(self) -> Any:
+    def info(self) -> _InfoType:
         r"""A user-modifiable dictionary.
 
         .. container:: class_bases

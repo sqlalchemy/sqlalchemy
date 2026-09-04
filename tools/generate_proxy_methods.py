@@ -220,6 +220,43 @@ def _grab_overloads(fn):
     return output
 
 
+def _get_return_type(target_cls: Type[Any], name: str, attr: Any) -> str:
+    """Return the annotation to be used for a proxied attribute.
+
+    A plain annotated class-level attribute has its annotation in the class
+    ``__annotations__``; a descriptor such as ``@property`` or
+    ``@memoized_property`` instead carries it as the return annotation of its
+    getter function, so look there as well.
+
+    """
+
+    for cls in target_cls.__mro__:
+        if name in cls.__dict__.get("__annotations__", ()):
+            return_type = cls.__dict__["__annotations__"][name]
+            break
+    else:
+        fget = getattr(attr, "fget", None)
+        if fget is None:
+            return "Any"
+
+        # a getter that's itself decorated, e.g. Session.no_autoflush which
+        # is a @contextmanager, has a return annotation that describes the
+        # inner function and not what the descriptor actually returns; there's
+        # no way to derive the real type from source so fall back to Any
+        if hasattr(fget, "__wrapped__"):
+            return "Any"
+
+        return_type = getattr(fget, "__annotations__", {}).get("return", None)
+        if return_type is None:
+            return "Any"
+
+    assert isinstance(return_type, str), (
+        "expected string annotations, is from __future__ "
+        "import annotations set up?"
+    )
+    return return_type
+
+
 def process_class(
     buf: TextIO,
     target_cls: Type[Any],
@@ -340,11 +377,7 @@ def process_class(
     def makeprop(buf: TextIO, name: str) -> None:
         attr = target_cls.__dict__.get(name, None)
 
-        return_type = target_cls.__annotations__.get(name, "Any")
-        assert isinstance(return_type, str), (
-            "expected string annotations, is from __future__ "
-            "import annotations set up?"
-        )
+        return_type = _get_return_type(target_cls, name, attr)
 
         existing_doc = None
 

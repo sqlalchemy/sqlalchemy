@@ -12,6 +12,7 @@ from typing import Callable
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
+from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -47,21 +48,26 @@ if TYPE_CHECKING:
     from ...engine import Result
     from ...engine import Row
     from ...engine import RowMapping
+    from ...engine import ScalarResult
     from ...engine.interfaces import _CoreAnyExecuteParams
+    from ...engine.interfaces import _ExecuteOptions
     from ...engine.interfaces import CoreExecuteOptionsParameter
-    from ...engine.result import ScalarResult
     from ...orm._typing import _IdentityKeyType
     from ...orm._typing import _O
     from ...orm._typing import OrmExecuteOptionsParameter
+    from ...orm.identity import IdentityMap
     from ...orm.interfaces import ORMOption
     from ...orm.session import _BindArguments
     from ...orm.session import _EntityBindKey
     from ...orm.session import _PKIdentityArgument
     from ...orm.session import _SessionBind
+    from ...orm.session import _SessionBindKey
+    from ...sql._typing import _InfoType
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
+    from ...util import IdentitySet
 
 _T = TypeVar("_T", bound=Any)
 _Ts = TypeVarTuple("_Ts")
@@ -1412,7 +1418,7 @@ class async_scoped_session(Generic[_AS]):
         )
 
     @property
-    def bind(self) -> Any:
+    def bind(self) -> Optional[_AsyncSessionBind]:
         r"""The :class:`_asyncio.AsyncEngine` or
         :class:`_asyncio.AsyncConnection` this :class:`_asyncio.AsyncSession`
         is bound to, if any.
@@ -1437,11 +1443,11 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.bind
 
     @bind.setter
-    def bind(self, attr: Any) -> None:
+    def bind(self, attr: Optional[_AsyncSessionBind]) -> None:
         self._proxied.bind = attr
 
     @property
-    def binds(self) -> Any:
+    def binds(self) -> Mapping[_SessionBindKey, _AsyncSessionBind]:
         r"""An immutable mapping of the per-mapper / per-table binds established
         for this :class:`_asyncio.AsyncSession`.
 
@@ -1468,7 +1474,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.binds
 
     @property
-    def dirty(self) -> Any:
+    def dirty(self) -> IdentitySet:
         r"""The set of all persistent instances considered dirty.
 
         .. container:: class_bases
@@ -1507,7 +1513,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.dirty
 
     @property
-    def deleted(self) -> Any:
+    def deleted(self) -> IdentitySet:
         r"""The set of all instances marked as 'deleted' within this ``Session``
 
         .. container:: class_bases
@@ -1526,7 +1532,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.deleted
 
     @property
-    def new(self) -> Any:
+    def new(self) -> IdentitySet:
         r"""The set of all instances marked as 'new' within this ``Session``.
 
         .. container:: class_bases
@@ -1545,7 +1551,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.new
 
     @property
-    def identity_map(self) -> Any:
+    def identity_map(self) -> IdentityMap:
         r"""Proxy for the :attr:`_orm.Session.identity_map` attribute
         on behalf of the :class:`_asyncio.AsyncSession` class.
 
@@ -1560,11 +1566,11 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.identity_map
 
     @identity_map.setter
-    def identity_map(self, attr: Any) -> None:
+    def identity_map(self, attr: IdentityMap) -> None:
         self._proxied.identity_map = attr
 
     @property
-    def is_active(self) -> Any:
+    def is_active(self) -> bool:
         r"""True if this :class:`.Session` not in "partial rollback" state.
 
         .. container:: class_bases
@@ -1607,7 +1613,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.is_active
 
     @property
-    def autoflush(self) -> Any:
+    def autoflush(self) -> bool:
         r"""Proxy for the :attr:`_orm.Session.autoflush` attribute
         on behalf of the :class:`_asyncio.AsyncSession` class.
 
@@ -1622,7 +1628,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.autoflush
 
     @autoflush.setter
-    def autoflush(self, attr: Any) -> None:
+    def autoflush(self, attr: bool) -> None:
         self._proxied.autoflush = attr
 
     @property
@@ -1661,7 +1667,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.no_autoflush
 
     @property
-    def info(self) -> Any:
+    def info(self) -> _InfoType:
         r"""A user-modifiable dictionary.
 
         .. container:: class_bases
@@ -1687,7 +1693,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.info
 
     @property
-    def execution_options(self) -> Any:
+    def execution_options(self) -> _ExecuteOptions:
         r"""Proxy for the :attr:`_orm.Session.execution_options` attribute
         on behalf of the :class:`_asyncio.AsyncSession` class.
 
@@ -1702,7 +1708,7 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.execution_options
 
     @execution_options.setter
-    def execution_options(self, attr: Any) -> None:
+    def execution_options(self, attr: _ExecuteOptions) -> None:
         self._proxied.execution_options = attr
 
     @classmethod

@@ -922,7 +922,7 @@ class AsyncConnection(  # type: ignore[misc]
     # statically generated** by tools/generate_proxy_methods.py
 
     @property
-    def closed(self) -> Any:
+    def closed(self) -> bool:
         r"""Return True if this connection is closed.
 
         .. container:: class_bases
@@ -935,7 +935,7 @@ class AsyncConnection(  # type: ignore[misc]
         return self._proxied.closed
 
     @property
-    def invalidated(self) -> Any:
+    def invalidated(self) -> bool:
         r"""Return True if this connection was invalidated.
 
         .. container:: class_bases
@@ -965,7 +965,7 @@ class AsyncConnection(  # type: ignore[misc]
         self._proxied.dialect = attr
 
     @property
-    def default_isolation_level(self) -> Any:
+    def default_isolation_level(self) -> Optional[IsolationLevel]:
         r"""The initial-connection time isolation level associated with the
         :class:`_engine.Dialect` in use.
 
@@ -1276,7 +1276,7 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):  # type: ignore[mi
         self._proxied.dialect = attr
 
     @property
-    def engine(self) -> Any:
+    def engine(self) -> Engine:
         r"""Returns this :class:`.Engine`.
 
         .. container:: class_bases
@@ -1293,7 +1293,7 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):  # type: ignore[mi
         return self._proxied.engine
 
     @property
-    def name(self) -> Any:
+    def name(self) -> str:
         r"""String name of the :class:`~sqlalchemy.engine.interfaces.Dialect`
         in use by this :class:`Engine`.
 
@@ -1308,7 +1308,7 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):  # type: ignore[mi
         return self._proxied.name
 
     @property
-    def driver(self) -> Any:
+    def driver(self) -> str:
         r"""Driver name of the :class:`~sqlalchemy.engine.interfaces.Dialect`
         in use by this :class:`Engine`.
 
