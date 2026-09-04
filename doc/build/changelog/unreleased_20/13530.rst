@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sqlite, reflection
+    :tickets: 13530
+
+    Reworked the regular expression that parses ``FOREIGN KEY`` constraints
+    during SQLite ``CREATE TABLE`` reflection so that the referred column list
+    is matched unambiguously avoiding potential exponential backtracking.
+    Pull request courtesy of Javid Khan.
