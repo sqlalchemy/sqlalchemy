@@ -55,6 +55,7 @@ from .elements import Grouping
 from .elements import literal_column
 from .elements import NamedColumn
 from .elements import Over
+from .elements import Window
 from .elements import WithinGroup
 from .selectable import FromClause
 from .selectable import Select
@@ -457,6 +458,7 @@ class FunctionElement(
 
     def over(
         self,
+        window: Window | str | None = None,
         *,
         partition_by: _ByArgument | None = None,
         order_by: _ByArgument | None = None,
@@ -497,6 +499,7 @@ class FunctionElement(
             range_=range_,
             groups=groups,
             exclude=exclude,
+            window=window,
         )
 
     def aggregate_order_by(
