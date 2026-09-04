@@ -3115,10 +3115,12 @@ class JoinCondition:
             secondary_sync_pairs
         )
 
+    # ensure all references are weak so that no self-referencing cycles
+    # may form
     _track_overlapping_sync_targets: weakref.WeakKeyDictionary[
         ColumnElement[Any],
         weakref.WeakKeyDictionary[
-            RelationshipProperty[Any], ColumnElement[Any]
+            RelationshipProperty[Any], weakref.ref[ColumnElement[Any]]
         ],
     ] = weakref.WeakKeyDictionary()
 
@@ -3145,13 +3147,16 @@ class JoinCondition:
 
             if to_ not in self._track_overlapping_sync_targets:
                 self._track_overlapping_sync_targets[to_] = (
-                    weakref.WeakKeyDictionary({self.prop: from_})
+                    weakref.WeakKeyDictionary({self.prop: weakref.ref(from_)})
                 )
             else:
                 other_props = []
                 prop_to_from = self._track_overlapping_sync_targets[to_]
 
-                for pr, fr_ in prop_to_from.items():
+                for pr, fr_ref in prop_to_from.items():
+                    fr_ = fr_ref()
+                    if fr_ is None:
+                        continue
                     if (
                         not pr.mapper._dispose_called
                         and pr not in self.prop._reverse_property
@@ -3206,7 +3211,9 @@ class JoinCondition:
                         ),
                         code="qzyx",
                     )
-                self._track_overlapping_sync_targets[to_][self.prop] = from_
+                self._track_overlapping_sync_targets[to_][self.prop] = (
+                    weakref.ref(from_)
+                )
 
     @util.memoized_property
     def remote_columns(self) -> Set[ColumnElement[Any]]:

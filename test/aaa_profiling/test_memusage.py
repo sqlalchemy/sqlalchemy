@@ -395,6 +395,63 @@ class MemUsageTest(EnsureZeroed):
 
         go()
 
+    @testing.variation(
+        "scenario",
+        [
+            "plain",
+            "orm_index",
+            ("declare_last", testing.fails("issue #9147 is not yet fixed")),
+        ],
+    )
+    def test_registry_dispose_releases_classes(self, scenario):
+        """test #13566, #9147
+
+        a registry that is disposed and dereferenced should release the
+        classes mapped within it.   The "orm_index" scenario illustrates
+        #13566, where an :class:`.Index` against an ORM annotated
+        expression links the :class:`.Table` to the mapper and from there
+        to the whole registry; the "declare_last" scenario illustrates
+        #9147, where a ``__declare_last__`` method leaves behind an
+        ``after_configured`` event listener.
+
+        """
+
+        # the "declare_last" scenario is expected to fail; don't spend the
+        # default number of iterations proving that it grows
+        maxtimes = 20 if scenario.declare_last else 250
+
+        @profile_memory(maxtimes=maxtimes)
+        def go():
+            reg = sa.orm.registry()
+            Base = reg.generate_base()
+
+            class Parent(Base):
+                __tablename__ = "parent"
+
+                id = Column(Integer, primary_key=True)
+
+                if scenario.declare_last:
+
+                    @classmethod
+                    def __declare_last__(cls):
+                        pass
+
+            class Child(Base):
+                __tablename__ = "child"
+
+                id = Column(Integer, primary_key=True)
+                parent_id = Column(ForeignKey("parent.id"))
+                parent = relationship(Parent)
+
+            if scenario.orm_index:
+                sa.Index("ix_parent_id_desc", Parent.id.desc())
+
+            configure_mappers()
+
+            reg.dispose()
+
+        go()
+
 
 @testing.add_to_marker.memory_intensive
 class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
