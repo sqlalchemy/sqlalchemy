@@ -13,6 +13,7 @@ from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import foreign
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
@@ -42,6 +43,66 @@ from .inheritance._poly_fixtures import MachineType
 from .inheritance._poly_fixtures import Page
 from .inheritance._poly_fixtures import Paperwork
 from .inheritance._poly_fixtures import Person
+
+
+class TextualSelectRelationshipTest(
+    fixtures.MappedTest, testing.AssertsCompiledSQL
+):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "author",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Book(cls.Comparable):
+            pass
+
+        class Author(cls.Comparable):
+            pass
+
+    def test_join_relationship(self):
+        Book, Author = self.classes.Book, self.classes.Author
+        author = self.tables.author
+
+        subq = (
+            sa.text(
+                "SELECT id, title, author_id FROM publication "
+                "WHERE publication_type = 'BOOK'"
+            )
+            .columns(
+                Column("id", Integer, primary_key=True),
+                Column("title", String),
+                Column("author_id", Integer),
+            )
+            .subquery("subq")
+        )
+
+        self.mapper_registry.map_imperatively(Author, author)
+        self.mapper_registry.map_imperatively(
+            Book,
+            subq,
+            properties={
+                "author": relationship(
+                    Author,
+                    primaryjoin=foreign(subq.c.author_id) == author.c.id,
+                    viewonly=True,
+                )
+            },
+        )
+
+        self.assert_compile(
+            select(Book).join(Book.author),
+            "SELECT subq.id, subq.title, subq.author_id "
+            "FROM (SELECT id, title, author_id FROM publication "
+            "WHERE publication_type = 'BOOK') AS subq "
+            "JOIN author ON subq.author_id = author.id",
+            use_default_dialect=True,
+        )
 
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
