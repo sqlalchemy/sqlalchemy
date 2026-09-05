@@ -965,7 +965,14 @@ class GenericRepr:
                         pos_args.extend(spec.args[1:])
                 else:
                     kw_args.update(
-                        [(arg, missing) for arg in spec.args[1:-default_len]]
+                        [
+                            (arg, missing)
+                            for arg in (
+                                spec.args[1:-default_len]
+                                if default_len
+                                else spec.args[1:]
+                            )
+                        ]
                     )
 
                 if default_len:
