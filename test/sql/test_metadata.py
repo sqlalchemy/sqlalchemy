@@ -6518,6 +6518,63 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         eq_(fks[0].name, "fk_id")
 
+    def test_fk_ref_unresolvable_target_reports_the_convention(self):
+        """test #5350
+
+        A ``referred_column_*`` token resolves the ForeignKey while the name
+        is being built, which happens when the constraint is attached. For a
+        string target that can be before the referenced Table exists, and the
+        plain resolution error says nothing about the convention that
+        required it.
+
+        """
+
+        metadata = MetaData(
+            naming_convention={"fk": "fk_%(referred_column_0_name)s"}
+        )
+
+        with expect_raises_message(
+            exc.NoReferencedTableError,
+            r"Naming convention including the "
+            r"%\(referred_column_0_name\)s token requires the foreign key "
+            r"target to be resolvable when the constraint is attached to "
+            r"table 'b'; Foreign key associated with column 'b.aid' "
+            r"could not find table 'a'.*"
+            r"use the %\(referred_table_name\)s token",
+        ):
+            Table(
+                "b",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("aid", ForeignKey("a.id")),
+            )
+
+    def test_fk_ref_referred_table_name_needs_no_resolution(self):
+        """test #5350
+
+        ``%(referred_table_name)s`` is read out of the string target, so it
+        does not force resolution and keeps working when the referenced
+        table is defined later.
+
+        """
+
+        metadata = MetaData(
+            naming_convention={"fk": "fk_%(referred_table_name)s"}
+        )
+
+        b = Table(
+            "b",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("aid", ForeignKey("a.id")),
+        )
+        Table("a", metadata, Column("id", Integer, primary_key=True))
+
+        fks = list(
+            c for c in b.constraints if isinstance(c, ForeignKeyConstraint)
+        )
+        eq_(fks[0].name, "fk_a")
+
     def test_custom(self):
         def key_hash(const, table):
             return "HASH_%s" % table.name
