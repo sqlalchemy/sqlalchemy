@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import tuple_
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -216,6 +217,38 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "(lower('hi'), lower('there'), lower('some'), lower('expr'))",
                 literal_binds=True,
             )
+
+    def test_in_binds_tuple(self):
+        table = self._fixture()
+
+        stmt = select(table).where(
+            tuple_(table.c.x, table.c.y).in_(
+                [
+                    ("x1", "y1"),
+                    ("x2", "y2"),
+                    ("x3", "y3"),
+                ]
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT test_table.x, lower(test_table.y) AS y "
+            "FROM test_table WHERE (test_table.x, test_table.y) IN "
+            "((:param_1_1_1, lower(:param_1_1_2)), "
+            "(:param_1_2_1, lower(:param_1_2_2)), "
+            "(:param_1_3_1, lower(:param_1_3_2)))",
+            render_postcompile=True,
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT test_table.x, lower(test_table.y) AS y "
+            "FROM test_table WHERE (test_table.x, test_table.y) IN "
+            "(('x1', lower('y1')), ('x2', lower('y2')), "
+            "('x3', lower('y3')))",
+            literal_binds=True,
+        )
 
     def test_dialect(self):
         table = self._fixture()
