@@ -243,6 +243,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         *,
         compiled_cache: Optional[CompiledCacheType] = ...,
         logging_token: str = ...,
+        log_note: str = ...,
         isolation_level: IsolationLevel = ...,
         no_parameters: bool = False,
         stream_results: bool = False,
@@ -321,6 +322,16 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
             :paramref:`_sa.create_engine.logging_name` - adds a name to the
             name used by the Python logger object itself.
+
+        :param log_note: Available on: :class:`_engine.Connection`,
+          :class:`_engine.Engine`, :class:`_sql.Executable`.
+
+          Adds the specified string note surrounded by brackets in SQL
+          statement log messages adjacent to the cache statistics badge.  This
+          allows individual executions to be tagged without changing the SQL
+          string or cache key.
+
+          .. versionadded:: 2.1
 
         :param isolation_level: Available on: :class:`_engine.Connection`,
           :class:`_engine.Engine`.
@@ -1877,11 +1888,13 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 self._log_info(str_statement)
 
                 stats = context._get_cache_stats()
+                log_note = context._get_log_note()
 
                 if not self.engine.hide_parameters:
                     self._log_info(
-                        "[%s] %r",
+                        "[%s]%s %r",
                         stats,
+                        log_note,
                         sql_util._repr_params(
                             effective_parameters,
                             batches=10,
@@ -1890,9 +1903,10 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     )
                 else:
                     self._log_info(
-                        "[%s] [SQL parameters hidden due to "
+                        "[%s]%s [SQL parameters hidden due to "
                         "hide_parameters=True]",
                         stats,
+                        log_note,
                     )
             if context.execute_style is ExecuteStyle.EXECUTEMANY:
                 effective_parameters = cast(
@@ -2000,6 +2014,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         if self._echo:
             stats = context._get_cache_stats() + " (insertmanyvalues)"
+            log_note = context._get_log_note()
 
         preserve_rowcount = context.execution_options.get(
             "preserve_rowcount", False
@@ -2067,8 +2082,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
                     if not self.engine.hide_parameters:
                         self._log_info(
-                            "[%s] %r",
+                            "[%s]%s %r",
                             stats,
+                            log_note,
                             sql_util._repr_params(
                                 sub_params,
                                 batches=10,
@@ -2077,9 +2093,10 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                         )
                     else:
                         self._log_info(
-                            "[%s] [SQL parameters hidden due to "
+                            "[%s]%s [SQL parameters hidden due to "
                             "hide_parameters=True]",
                             stats,
+                            log_note,
                         )
 
                 for fn in do_execute_dispatch:
@@ -3015,6 +3032,7 @@ class Engine(
         *,
         compiled_cache: Optional[CompiledCacheType] = ...,
         logging_token: str = ...,
+        log_note: str = ...,
         isolation_level: IsolationLevel = ...,
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
