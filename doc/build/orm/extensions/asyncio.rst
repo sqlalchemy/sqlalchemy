@@ -334,6 +334,43 @@ the end of the block; this is equivalent to calling the
 :meth:`_asyncio.AsyncSession.close` method.
 
 
+.. _asyncio_testing:
+
+Testing with asyncio
+~~~~~~~~~~~~~~~~~~~~~~
+
+When testing an asyncio application, use a session-scoped engine fixture for database setup and a separate session fixture for each test. Binding each test session to a connection and using `create_savepoint` keeps commits inside the test isolated from the outer transaction.
+
+.. code-block:: python
+
+    import pytest_asyncio
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+
+
+    @pytest_asyncio.fixture(scope="session", loop_scope="session")
+    async def engine():
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        yield engine
+        await engine.dispose()
+
+
+
+    @pytest_asyncio.fixture
+    async def session(engine):
+        async_session = async_sessionmaker(
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
+
+        async with engine.connect() as conn:
+            async with conn.begin():
+                async with async_session(bind=conn) as session:
+                    yield session
+
 .. _asyncio_concurrency:
 
 Using AsyncSession with Concurrent Tasks
