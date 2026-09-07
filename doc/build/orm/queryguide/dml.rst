@@ -1030,9 +1030,10 @@ that matches multiple rows at once without complexity.
   is expired, which normally occurs upon :meth:`.Session.commit` or can be
   forced by using :meth:`.Session.expire_all`.
 
-* ORM-enabled UPDATEs and DELETEs do not handle joined table inheritance
-  automatically.   See the section :ref:`orm_queryguide_update_delete_joined_inh`
-  for notes on how to work with joined-inheritance mappings.
+* ORM-enabled UPDATEs and DELETEs **do not handle joined table inheritance
+  automatically**.   See the section
+  :ref:`orm_queryguide_update_delete_joined_inh` for notes on how to work
+  with joined-inheritance mappings.
 
 * The WHERE criteria needed in order to limit the polymorphic identity to
   specific subclasses for single-table-inheritance mappings **is included
@@ -1207,6 +1208,21 @@ means that for mappings such as joined inheritance subclasses, the ORM version
 of the UPDATE/DELETE with WHERE criteria feature can only be used to a limited
 extent or not at all, depending on specifics.
 
+.. warning:: as mentioned previously, ORM enabled UPDATE and DELETE **do not
+   automatically apply joining criteria between parent/child tables when using
+   multi-table forms of these statements**.
+   This
+   criteria must be assembled manually, as in the examples below.
+   Additionally, for deletes, rows must always be deleted from both parent
+   and child tables at the same time, which means that **multi-table DELETE
+   forms are not generally useful for deleting joined-table inheritance
+   mappings**, since these forms do not actually remove rows from multiple
+   tables.
+
+   When using multi-table forms, always test such queries on a test database, and always look out for the
+   :ref:`cartesian product warning <change_4737>` when testing, which would
+   indicate that more rows are being matched than are probably intended.
+
 The most straightforward way to emit a multi-row UPDATE statement
 for a joined-table subclass is to refer to the sub-table alone.
 This means the :func:`_dml.Update` construct should only refer to attributes
@@ -1256,11 +1272,12 @@ tables must be stated explicitly in some way::
     [...] ('Sandy Cheeks, President', 'sandy')
     {stop}<...>
 
-
-For a DELETE, it's expected that rows in both the base table and the sub-table
-would be DELETEd at the same time.   To DELETE many rows of joined inheritance
-objects **without** using cascading foreign keys, emit DELETE for each
-table individually::
+For DELETEs, while many backends such as PostgreSQL, MySQL/MariaDB, and
+SQL Server support multi-table forms of DELETE, the statements only
+delete rows from the primary table of the statement.  Therefore, to DELETE
+many rows of a joined inheritance mapping, either foreign key constraints
+that include ``ON DELETE CASCADE`` should be configured, or
+**an individual DELETE statement per table** must be emitted, as below::
 
     >>> from sqlalchemy import delete
     >>> session.execute(delete(Manager).where(Manager.id == 1))
