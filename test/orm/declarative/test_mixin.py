@@ -1,7 +1,9 @@
 from operator import is_not
 from typing import Annotated
+import weakref
 
 import sqlalchemy as sa
+from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -1023,6 +1025,231 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 mock.call.declare_last__(MyOtherModel),
             ],
         )
+
+    def test_declare_hooks_are_registry_local(self):
+        """test #9147"""
+
+        canary = mock.Mock()
+
+        def make(reg, tablename):
+            @reg.mapped
+            class Model:
+                __tablename__ = tablename
+                id = Column(Integer, primary_key=True)
+
+                @classmethod
+                def __declare_first__(cls):
+                    canary.declare_first__(cls)
+
+                @classmethod
+                def __declare_last__(cls):
+                    canary.declare_last__(cls)
+
+            return Model
+
+        reg1 = registry()
+        reg2 = registry()
+
+        m1 = make(reg1, "t1")
+        configure_mappers()
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.declare_first__(m1),
+                mock.call.declare_last__(m1),
+            ],
+        )
+
+        canary.reset_mock()
+
+        m2 = make(reg2, "t2")
+        configure_mappers()
+
+        # only the registry that has new mappers to configure has its
+        # hooks invoked; ``m1`` is not re-run
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.declare_first__(m2),
+                mock.call.declare_last__(m2),
+            ],
+        )
+
+        reg1.dispose()
+        reg2.dispose()
+
+    def test_declare_hooks_event_ordering(self):
+        """test #9147
+
+        the hooks are invoked by listeners established when the
+        :class:`_orm.registry` is constructed, so that they precede
+        listeners appended by the application, while ``insert=True``
+        still allows a listener to run ahead of them.
+
+        """
+
+        canary = mock.Mock()
+
+        reg = registry()
+
+        @reg.mapped
+        class Model:
+            __tablename__ = "t1"
+            id = Column(Integer, primary_key=True)
+
+            @classmethod
+            def __declare_first__(cls):
+                canary.declare_first__()
+
+            @classmethod
+            def __declare_last__(cls):
+                canary.declare_last__()
+
+        @event.listens_for(reg, "before_configured")
+        def appended(registry):
+            canary.appended()
+
+        @event.listens_for(reg, "before_configured", insert=True)
+        def inserted(registry):
+            canary.inserted()
+
+        configure_mappers()
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.inserted(),
+                mock.call.declare_first__(),
+                mock.call.appended(),
+                mock.call.declare_last__(),
+            ],
+        )
+
+        reg.dispose()
+
+    def test_declare_hooks_ordered_base_first(self):
+        """test #9147
+
+        a subclass is always added to the :class:`_orm.registry` after its
+        bases, and the hooks are invoked in that order.  the
+        :class:`.ConcreteBase` extension relies upon this, as it inherits
+        ``__declare_first__()`` to the whole hierarchy and the base class
+        has to establish the polymorphic union before its subclasses adapt
+        it.
+
+        """
+
+        canary = mock.Mock()
+
+        reg = registry()
+
+        class Base:
+            @classmethod
+            def __declare_first__(cls):
+                canary.declare_first__(cls.__name__)
+
+            @classmethod
+            def __declare_last__(cls):
+                canary.declare_last__(cls.__name__)
+
+        @reg.mapped
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50))
+            __mapper_args__ = {"polymorphic_on": type}
+
+        @reg.mapped
+        class Child(Parent):
+            __mapper_args__ = {"polymorphic_identity": "child"}
+
+        @reg.mapped
+        class Grandchild(Child):
+            __mapper_args__ = {"polymorphic_identity": "grandchild"}
+
+        configure_mappers()
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.declare_first__("Parent"),
+                mock.call.declare_first__("Child"),
+                mock.call.declare_first__("Grandchild"),
+                mock.call.declare_last__("Parent"),
+                mock.call.declare_last__("Child"),
+                mock.call.declare_last__("Grandchild"),
+            ],
+        )
+
+        reg.dispose()
+
+    def test_declare_hooks_imperative_mapping(self):
+        """test #9147
+
+        the hooks are located as the class is added to the
+        :class:`_orm.registry`, so they take effect for an imperative
+        mapping as well as a declarative one.
+
+        """
+
+        canary = mock.Mock()
+
+        reg = registry()
+
+        class Model:
+            @classmethod
+            def __declare_first__(cls):
+                canary.declare_first__(cls)
+
+            @classmethod
+            def __declare_last__(cls):
+                canary.declare_last__(cls)
+
+        reg.map_imperatively(
+            Model,
+            Table("t1", reg.metadata, Column("id", Integer, primary_key=True)),
+        )
+
+        configure_mappers()
+
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.declare_first__(Model),
+                mock.call.declare_last__(Model),
+            ],
+        )
+
+        reg.dispose()
+
+    def test_declare_hooks_dont_reference_class(self):
+        """test #9147"""
+
+        def make_registry():
+            reg = registry()
+
+            @reg.mapped
+            class Model:
+                __tablename__ = "t1"
+                id = Column(Integer, primary_key=True)
+
+                @classmethod
+                def __declare_first__(cls):
+                    pass
+
+                @classmethod
+                def __declare_last__(cls):
+                    pass
+
+            configure_mappers()
+            return weakref.ref(Model)
+
+        ref = make_registry()
+
+        gc_collect()
+
+        is_(ref(), None)
 
     def test_mapper_args_declared_attr(self):
         class ComputedMapperArgs:

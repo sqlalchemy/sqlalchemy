@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, orm declarative
+    :tickets: 9147
+
+    Fixed memory issue where a declarative class making use of the
+    ``__declare_first__()`` or ``__declare_last__()`` hooks could never be
+    garbage collected, as each such class established its own permanent
+    :class:`_orm.Mapper`-wide event listener referring to it.  These hooks
+    are now invoked by :class:`_orm.registry`-local :class:`.RegistryEvents`
+    listeners which refer to the classes weakly, and which are invoked only
+    for the :class:`_orm.registry` being configured.  As the hooks are now
+    located as the class is added to the :class:`_orm.registry`, they also
+    take effect for classes mapped using
+    :meth:`_orm.registry.map_imperatively`.
+
+    .. seealso::
+
+        :ref:`change_9147`

@@ -317,7 +317,7 @@ Other Declarative Mapping Directives
 
 The ``__declare_last__()`` hook allows definition of
 a class level function that is automatically called by the
-:meth:`.MapperEvents.after_configured` event, which occurs after mappings are
+:meth:`.RegistryEvents.after_configured` event, which occurs after mappings are
 assumed to be completed and the 'configure' step has finished::
 
     class MyClass(Base):
@@ -330,13 +330,43 @@ assumed to be completed and the 'configure' step has finished::
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Like ``__declare_last__()``, but is called at the beginning of mapper
-configuration via the :meth:`.MapperEvents.before_configured` event::
+configuration via the :meth:`.RegistryEvents.before_configured` event::
 
     class MyClass(Base):
         @classmethod
         def __declare_first__(cls):
             """ """
             # do something before mappings are configured
+
+.. _declarative_declare_ordering:
+
+Ordering of the ``__declare_first__()`` and ``__declare_last__()`` hooks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Both hooks are invoked by listeners that are established at the point at
+which the :class:`_orm.registry` itself is constructed.  A listener added by
+the application to the same event therefore runs after the corresponding
+hook; passing ``insert=True`` to :func:`.event.listen` places the listener
+ahead of it::
+
+    from sqlalchemy import event
+
+
+    @event.listens_for(Base.registry, "before_configured", insert=True)
+    def before_declare_first(registry):
+        """runs before any ``__declare_first__()`` hook"""
+
+As the listeners are local to a particular :class:`_orm.registry`, the hooks
+are invoked only when that registry is configured, and are not invoked at all
+for a registry that has been disposed.  The hooks are located as the class is
+added to the registry, so they take effect for a class mapped using
+:meth:`_orm.registry.map_imperatively` as well.
+
+.. versionchanged:: 2.1  The ``__declare_first__()`` and
+   ``__declare_last__()`` hooks are invoked by
+   :class:`_orm.registry`-local :class:`.RegistryEvents` listeners, rather
+   than by :class:`_orm.Mapper`-wide listeners established once per mapped
+   class; see :ref:`change_9147`.
 
 .. _declarative_metadata:
 
