@@ -1579,14 +1579,14 @@ class QueuePoolTest(PoolTestBase):
         finalize_fairy = pool._finalize_fairy
 
         def assert_no_wr_callback(
-            connection, connection_record, pool, echo, fairy=None, **kw
+            connection, connection_record, pool, ref, echo, fairy=None
         ):
             if fairy is None:
                 raise AssertionError(
                     "finalize fairy was called as a weakref callback"
                 )
             return finalize_fairy(
-                connection, connection_record, pool, echo, fairy=fairy, **kw
+                connection, connection_record, pool, ref, echo, fairy
             )
 
         return patch.object(pool, "_finalize_fairy", assert_no_wr_callback)
