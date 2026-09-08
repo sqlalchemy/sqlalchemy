@@ -2462,6 +2462,27 @@ class SQLiteDialect(default.DefaultDialect):
             )
 
     @reflection.cache
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        opts = self._get_table_sql(connection, table_name, schema, **kw)
+        if opts is None:
+            return ReflectionDefaults.table_options()
+        # extract trailing STRICT / WITHOUT ROWID modifiers
+        opts_match = re.search(
+            r"(?:\s*,?\s*(?:WITHOUT\s+ROWID|STRICT))+$",
+            opts.strip(),
+            re.IGNORECASE,
+        )
+        if opts_match:
+            opts_str = opts_match.group(0).lower()
+            result = {}
+            if "strict" in opts_str:
+                result["sqlite_strict"] = True
+            if "without rowid" in opts_str:
+                result["sqlite_with_rowid"] = True
+            return result
+        return ReflectionDefaults.table_options()
+
+    @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
         pragma = "table_info"
         # computed columns are threaded as hidden, they require table_xinfo
