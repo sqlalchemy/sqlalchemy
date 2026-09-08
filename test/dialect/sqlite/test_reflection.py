@@ -17,6 +17,7 @@ from sqlalchemy.dialects.sqlite import base as sqlite
 from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
@@ -1708,3 +1709,134 @@ class ComputedReflectionTest(fixtures.TestBase):
                 is_true(bool(col.computed))
                 eq_(col.computed.sqltext.text, info["text"], msg)
                 eq_(col.computed.persisted, info["stored"], msg)
+
+
+class TableOptionsReflectionTest(fixtures.TestBase):
+    """test #13543"""
+
+    __only_on__ = "sqlite"
+    __backend__ = True
+
+    @testing.combinations(
+        ("CREATE TABLE t (id INTEGER NOT NULL, PRIMARY KEY (id))", {}),
+        (
+            "CREATE TABLE t (id INTEGER NOT NULL, PRIMARY KEY (id)) "
+            "WITHOUT ROWID",
+            {"sqlite_with_rowid": False},
+        ),
+        (
+            "CREATE TABLE t (id INTEGER NOT NULL, PRIMARY KEY (id)) STRICT",
+            {"sqlite_strict": True},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        (
+            "CREATE TABLE t (id INTEGER NOT NULL, PRIMARY KEY (id)) "
+            "WITHOUT ROWID, STRICT",
+            {"sqlite_with_rowid": False, "sqlite_strict": True},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        (
+            "CREATE TABLE t (id INTEGER NOT NULL, PRIMARY KEY (id)) "
+            "STRICT, WITHOUT ROWID",
+            {"sqlite_with_rowid": False, "sqlite_strict": True},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        (
+            "CREATE TABLE t (\n"
+            "    id INTEGER NOT NULL,\n"
+            "    PRIMARY KEY (id)\n"
+            ")\n"
+            " WITHOUT ROWID,\n"
+            " STRICT",
+            {"sqlite_with_rowid": False, "sqlite_strict": True},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        (
+            "CREATE TABLE t (id INTEGER NOT NULL, "
+            "data VARCHAR(30) CHECK (data <> ')'), PRIMARY KEY (id)) "
+            "WITHOUT ROWID",
+            {"sqlite_with_rowid": False},
+        ),
+        argnames="ddl,expected",
+    )
+    def test_get_table_options(self, connection, metadata, ddl, expected):
+        Table("t", metadata, Column("id", Integer))
+        connection.exec_driver_sql(ddl)
+
+        eq_(inspect(connection).get_table_options("t"), expected)
+
+    @testing.combinations(
+        ({}, {}),
+        ({"sqlite_with_rowid": False}, {"sqlite_with_rowid": False}),
+        (
+            {"sqlite_strict": True},
+            {"sqlite_strict": True},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        (
+            {"sqlite_with_rowid": False, "sqlite_strict": True},
+            {"sqlite_with_rowid": False, "sqlite_strict": True},
+            testing.only_on("sqlite>=3.37.0"),
+        ),
+        argnames="kwargs,expected",
+    )
+    def test_round_trip(self, connection, metadata, kwargs, expected):
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            **kwargs,
+        ).create(connection)
+
+        reflected = Table("t", MetaData(), autoload_with=connection)
+        eq_(dict(reflected.kwargs), expected)
+
+    @testing.only_on("sqlite>=3.37.0")
+    def test_temp_table(self, connection, metadata):
+        connection.exec_driver_sql(
+            "CREATE TEMPORARY TABLE t (id INTEGER NOT NULL, "
+            "PRIMARY KEY (id)) WITHOUT ROWID, STRICT"
+        )
+        try:
+            eq_(
+                inspect(connection).get_table_options("t"),
+                {"sqlite_with_rowid": False, "sqlite_strict": True},
+            )
+        finally:
+            connection.exec_driver_sql("DROP TABLE t")
+
+    def test_view(self, connection, metadata):
+        Table("t", metadata, Column("id", Integer))
+        connection.exec_driver_sql(
+            "CREATE TABLE t (id INTEGER NOT NULL, PRIMARY KEY (id))"
+        )
+        connection.exec_driver_sql("CREATE VIEW v AS SELECT id FROM t")
+        try:
+            eq_(inspect(connection).get_table_options("v"), {})
+        finally:
+            connection.exec_driver_sql("DROP VIEW v")
+
+    def test_no_such_table(self, connection):
+        with expect_raises(exc.NoSuchTableError):
+            inspect(connection).get_table_options("nonexistent")
+
+    def test_multi_table_options(self, connection, metadata):
+        Table("t1", metadata, Column("id", Integer))
+        Table("t2", metadata, Column("id", Integer))
+        connection.exec_driver_sql(
+            "CREATE TABLE t1 (id INTEGER NOT NULL, PRIMARY KEY (id)) "
+            "WITHOUT ROWID"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE t2 (id INTEGER NOT NULL, PRIMARY KEY (id))"
+        )
+
+        eq_(
+            inspect(connection).get_multi_table_options(
+                filter_names=["t1", "t2"]
+            ),
+            {
+                (None, "t1"): {"sqlite_with_rowid": False},
+                (None, "t2"): {},
+            },
+        )

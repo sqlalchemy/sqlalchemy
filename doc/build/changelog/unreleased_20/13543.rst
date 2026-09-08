@@ -1,0 +1,14 @@
+.. change::
+    :tags: usecase, sqlite, reflection
+    :tickets: 13543
+    :versions: 2.1.0rc2
+
+    Implemented :meth:`_engine.Inspector.get_table_options` for the SQLite
+    dialect, which previously raised ``NotImplementedError``.  The method
+    returns the ``sqlite_with_rowid`` and ``sqlite_strict`` dialect options
+    for a table that was created using the ``WITHOUT ROWID`` and / or
+    ``STRICT`` keywords.  As a result, these keywords are now also present in
+    :attr:`_schema.Table.kwargs` for a :class:`_schema.Table` that is
+    reflected using autoload, so that a table which is recreated from its
+    reflected form, such as by Alembic's batch migration mode, renders the
+    keywords again rather than silently dropping them.

@@ -994,6 +994,15 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 
   .. versionadded:: 2.0.37
 
+Both options are also reflected, so that a :class:`_schema.Table` which is
+autoloaded from a database that was created using either keyword will render
+that keyword again when the table is recreated.  The reflected values are
+also available directly from
+:meth:`_engine.Inspector.get_table_options`.
+
+.. versionadded:: 2.0.53  Added reflection support for the ``WITHOUT ROWID``
+   and ``STRICT`` table options.
+
 .. seealso::
 
     `SQLite CREATE TABLE options
@@ -2165,6 +2174,18 @@ FK_PATTERN = re.compile(
     re.I,
 )
 
+# regexp that locates the table option keywords which may trail the closing
+# paren of the column list in the verbatim CREATE TABLE text.  the match is
+# anchored at the end of the statement, which makes the closing paren
+# unambiguous, as neither keyword can itself contain one.  the keywords may
+# be given in either order; as each may appear only once, the repeated group
+# leaves one named group per keyword holding the text that was matched.
+TABLE_OPTIONS_PATTERN = re.compile(
+    r"\)(?:\s*,?\s*(?:(?P<without_rowid>WITHOUT\s+ROWID)"
+    r"|(?P<strict>STRICT)))*\s*$",
+    re.I,
+)
+
 
 class SQLiteDialect(default.DefaultDialect):
     name = "sqlite"
@@ -2460,6 +2481,29 @@ class SQLiteDialect(default.DefaultDialect):
             raise exc.NoSuchTableError(
                 f"{schema}.{view_name}" if schema else view_name
             )
+
+    @reflection.cache
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        tablesql = self._get_table_sql(
+            connection, table_name, schema=schema, **kw
+        )
+
+        options = {}
+
+        # tablesql is None for the internal sqlite_ tables, which have no
+        # entry in sqlite_master
+        if tablesql is not None:
+            match = TABLE_OPTIONS_PATTERN.search(tablesql.strip())
+            if match:
+                if match.group("without_rowid"):
+                    options["sqlite_with_rowid"] = False
+                if match.group("strict"):
+                    options["sqlite_strict"] = True
+
+        if options:
+            return options
+        else:
+            return ReflectionDefaults.table_options()
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
