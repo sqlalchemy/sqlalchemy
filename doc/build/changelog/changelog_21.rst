@@ -10,7 +10,72 @@
 
 .. changelog::
     :version: 2.1.0rc2
-    :include_notes_from: unreleased_21
+    :released: September 8, 2026
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 13563
+
+        The collection of per-mapper / per-table binds established by the
+        :paramref:`_orm.Session.binds` parameter, as well as by the
+        :meth:`_orm.Session.bind_mapper` and :meth:`_orm.Session.bind_table`
+        methods, is now available publicly as :attr:`_orm.Session.binds`; the
+        collection was previously stored under a private, name-mangled attribute.
+        It is an immutable dictionary, and is replaced rather than mutated when a
+        new bind is added, so a reference to it will not observe subsequent
+        changes.  The collection is also proxied by
+        :class:`_orm.scoping.scoped_session`.
+
+        .. seealso::
+
+            :ref:`change_13563`
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 13563
+
+        :attr:`_asyncio.AsyncSession.bind` and
+        :attr:`_asyncio.AsyncSession.binds` are now always present and are
+        derived from the underlying :attr:`_asyncio.AsyncSession.sync_session`,
+        translated back into their asyncio equivalents.  Added
+        :meth:`_asyncio.AsyncSession.get_async_bind`,
+        :meth:`_asyncio.AsyncSession.bind_mapper` and
+        :meth:`_asyncio.AsyncSession.bind_table` as the asyncio-facing
+        counterparts to the :class:`_orm.Session` methods of the same name.
+        Both attributes, along with
+        :meth:`_asyncio.AsyncSession.get_async_bind`, are proxied by
+        :class:`_asyncio.async_scoped_session`.
+
+        .. seealso::
+
+            :ref:`change_13563`
+
+    .. change::
+        :tags: bug, orm declarative
+        :tickets: 9147
+
+        Fixed memory issue where a declarative class making use of the
+        ``__declare_first__()`` or ``__declare_last__()`` hooks could never be
+        garbage collected, as each such class established its own permanent
+        :class:`_orm.Mapper`-wide event listener referring to it.  These hooks
+        are now invoked by :class:`_orm.registry`-local :class:`.RegistryEvents`
+        listeners which refer to the classes weakly, and which are invoked only
+        for the :class:`_orm.registry` being configured.  As the hooks are now
+        located as the class is added to the :class:`_orm.registry`, they also
+        take effect for classes mapped using
+        :meth:`_orm.registry.map_imperatively`.
+
+        .. seealso::
+
+            :ref:`change_9147`
+
+    .. change::
+        :tags: changed, engine
+
+        Improved the implementation of :class:`_pool.Pool` to use
+        ``weakref.finalize()`` instead of a ``weakref.ref()`` finalizer to handle
+        GC cleanup of non-detached, pooled connections that were not explicitly
+        closed.
 
 .. changelog::
     :version: 2.1.0rc1
