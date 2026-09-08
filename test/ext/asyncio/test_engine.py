@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import inspect as stdlib_inspect
 from unittest.mock import patch
-import weakref
 
 from sqlalchemy import AssertionPool
 from sqlalchemy import Column
@@ -53,19 +52,6 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.util import greenlet_spawn
-
-
-def _cleared_weakref():
-    """Return a weakref that has already been cleared, i.e. what a
-    ``_ConnectionRecord.fairy_ref`` looks like once its
-    ``_ConnectionFairy`` has been garbage collected.
-
-    """
-
-    class Collected:
-        pass
-
-    return weakref.ref(Collected())
 
 
 class AsyncFixture:
@@ -384,17 +370,11 @@ class AsyncEngineTest(EngineFixture):
         pool_connection = await_(go())
 
         rec = pool_connection._connection_record
+        ref = rec.fairy_ref
         pool = pool_connection._pool
         echo = False
 
         if simulate_gc:
-            # simulate the fairy having been garbage collected without
-            # being checked in.  The record still refers to it, but the
-            # weakref is cleared; that is the state _finalize_fairy() reads
-            # to tell that the record has not since been checked in or,
-            # under StaticPool, handed to some other fairy.
-            rec.fairy_ref = _cleared_weakref()
-
             # not using expect_warnings() here because we also want to do a
             # negative test for warnings, and we want to absolutely make sure
             # the thing here that emits the warning is the correct path
@@ -409,12 +389,7 @@ class AsyncEngineTest(EngineFixture):
                 mock.patch("sqlalchemy.util.warn") as m,
             ):
                 _finalize_fairy(
-                    None,
-                    rec,
-                    pool,
-                    echo,
-                    transaction_was_reset=False,
-                    is_gc_cleanup=True,
+                    None, rec, pool, ref, echo, transaction_was_reset=False
                 )
 
             if adhoc_async_engine.dialect.has_terminate:
