@@ -11,7 +11,7 @@ Please see our current Code of Conduct at
 
 ## Use of AI / LLMs (robots)
 
-The SQLAlchemy project takes a two-pronged approach to LLM use.   We are fine if participants **use** LLMs **on their own** to 
+The SQLAlchemy project takes a two-pronged approach to LLM use.   We are fine if participants **use** LLMs **on their own** to
 understand new concepts, get answers to questions, or to help construct code for the purpose of issue demonstrations
 or even pull requests, however we must require that participants **do not use** LLMs as their primary means of communicating
 with humans on our github repositories or anywhere else.

@@ -41,6 +41,10 @@ for a one-line change, but the alternative is a rule with exceptions that have
 to be argued about, and we'd rather have one rule.  A typo is a two-line issue
 and we'll label it quickly.
 
+For more background on the pull request system see
+[Pull requests and AI contributions](https://www.sqlalchemy.org/develop.html#pullrequests).
+
+
 ## Note on use of AI, agents and bots ##
 
 Some of us here use large language models (LLM) to help us with our work, and
@@ -58,4 +62,4 @@ upvotes / vanity commits / positive responses, whether or not this content is
 machine generated, will be banned**.  We are not a casino and we're not here
 to be part of gamification of any kind.
 
-
+See similar notes in our code of conduct.
