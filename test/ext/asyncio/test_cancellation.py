@@ -120,7 +120,7 @@ class AsyncCancellationTest(fixtures.TestBase):
         await async_engine.dispose()
 
     @testing.fails_on(
-        ["+psycopg", "+oracledb", "+aioodbc"],
+        ["+psycopg", "+oracledb<26", "+aioodbc"],
         "dialect has not been given AsyncAdapt_terminate; tracked separately",
     )
     def test_dialect_supports_terminate(self):
