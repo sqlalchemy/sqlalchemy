@@ -16,6 +16,8 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import immediateload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
@@ -37,6 +39,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing import unpickle_in_subprocess
 from sqlalchemy.testing.fixtures import fixture_session
@@ -272,6 +275,120 @@ class PickleTest(fixtures.MappedTest):
         sess.add(u2)
         assert u2.addresses
 
+    @testing.combinations(
+        raiseload,
+        lazyload,
+        selectinload,
+        joinedload,
+        immediateload,
+        subqueryload,
+        argnames="loader_opt",
+    )
+    @testing.variation("nested", [True, False])
+    def test_instance_lazy_loader_repeated_pickle(self, loader_opt, nested):
+        """no warning is emitted when an instance level lazy loader that
+        has no additional criteria is pickled more than once.
+
+        the "nested" variation establishes the option on the
+        :class:`.Address` objects, which are themselves loaded by a joined
+        eager load, so that the loader option has a non-root path and the
+        instance level state is reached only by traversing the pickled
+        object graph; this is the shape that occurs when a whole graph
+        crosses more than one serialization boundary.
+
+        tests issue #13574
+
+        """
+
+        sess, User, Address, Dingaling = self._option_test_fixture()
+
+        if nested:
+            opt = getattr(joinedload(User.addresses), loader_opt.__name__)("*")
+
+            # "user" is the backref of User.addresses; the wildcard
+            # includes it for raiseload(), while the eager loaders other
+            # than immediateload() skip it, as it's the reverse of the
+            # path they came from
+            keys = {"dingaling", "user"}
+            loaded_keys = (
+                keys if loader_opt is immediateload else {"dingaling"}
+            )
+            expected_path = (
+                inspect(User),
+                inspect(User).attrs.addresses,
+                inspect(Address),
+                PathToken._intern["relationship:*"],
+            )
+        else:
+            opt = loader_opt("*")
+
+            keys = loaded_keys = {"addresses"}
+            expected_path = (PathToken._intern["relationship:_sa_default"],)
+
+        u1 = sess.query(User).options(opt).first()
+
+        def _assert_instance_state(user):
+            if nested:
+                # the joined eager load leaves nothing behind on the
+                # parent object
+                eq_(user._sa_instance_state.callables, {})
+                state = user.addresses[0]._sa_instance_state
+            else:
+                state = user._sa_instance_state
+
+            if loader_opt is raiseload:
+                # raiseload() is not the class level strategy for these
+                # attributes, so an instance level loader is installed
+                eq_(set(state.callables), keys)
+
+                for key in keys:
+                    loader = state.callables[key]
+                    eq_(loader.strategy_key, (("lazy", "raise"),))
+                    is_(loader.extra_criteria, None)
+                    eq_(loader.loadopt.path.path, expected_path)
+            else:
+                # lazyload() is the class level strategy and the eager
+                # loaders populate the attributes directly; no instance
+                # level state is left behind in any case
+                eq_(state.callables, {})
+
+                if loader_opt is not lazyload:
+                    eq_(set(state.dict).intersection(keys), loaded_keys)
+
+        _assert_instance_state(u1)
+
+        u2 = pickle.loads(pickle.dumps(u1))
+
+        _assert_instance_state(u2)
+
+        # second round trip; no warning is emitted
+        u3 = pickle.loads(pickle.dumps(u2))
+
+        _assert_instance_state(u3)
+
+        sess = fixture_session()
+        sess.add(u3)
+
+        if nested:
+            obj, key, value = u3.addresses[0], "dingaling", []
+        else:
+            obj, key, value = (
+                u3,
+                "addresses",
+                [Address(email_address="ed@bar.com")],
+            )
+
+        if loader_opt is raiseload:
+            # raiseload("*") continues to apply
+            with expect_raises_message(
+                sa.exc.InvalidRequestError,
+                "'%s.%s' is not available due to lazy='raise'"
+                % (type(obj).__name__, key),
+            ):
+                getattr(obj, key)
+        else:
+            eq_(getattr(obj, key), value)
+
     def test_lazyload_extra_criteria_not_supported(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
@@ -310,9 +427,17 @@ class PickleTest(fixtures.MappedTest):
 
         eq_(len(u1.addresses), 1)
 
+        # criteria are dropped by the first round trip, so pickling the
+        # result again does not warn
+        u3 = pickle.loads(pickle.dumps(u2))
+
         sess = fixture_session()
         sess.add(u2)
         eq_(len(u2.addresses), 2)
+
+        sess = fixture_session()
+        sess.add(u3)
+        eq_(len(u3.addresses), 2)
 
     def test_invalidated_flag_pickle(self):
         users, addresses = (self.tables.users, self.tables.addresses)

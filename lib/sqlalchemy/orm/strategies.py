@@ -67,6 +67,13 @@ if TYPE_CHECKING:
     from ..sql.elements import ColumnElement
 
 
+# sentinel for _LoadLazyAttribute.extra_criteria indicating that the loader
+# option had no additional criteria.  the attribute is otherwise a single
+# element returned by Load._generate_extra_criteria(), which has no
+# meaningful boolean value of its own.
+_NO_EXTRA_CRITERIA = None
+
+
 def _register_attribute(
     prop,
     mapper,
@@ -1209,7 +1216,7 @@ class LazyLoader(
                     (
                         loadopt._generate_extra_criteria(context)
                         if loadopt._extra_criteria
-                        else None
+                        else _NO_EXTRA_CRITERIA
                     ),
                 ),
                 key,
@@ -1257,7 +1264,7 @@ class LoadLazyAttribute:
         self.extra_criteria = extra_criteria
 
     def __getstate__(self):
-        if self.extra_criteria is not None:
+        if self.extra_criteria is not _NO_EXTRA_CRITERIA:
             util.warn(
                 "Can't reliably serialize a lazyload() option that "
                 "contains additional criteria; please use eager loading "
@@ -1267,7 +1274,7 @@ class LoadLazyAttribute:
             "key": self.key,
             "strategy_key": self.strategy_key,
             "loadopt": self.loadopt,
-            "extra_criteria": (),
+            "extra_criteria": _NO_EXTRA_CRITERIA,
         }
 
     def __call__(self, state, passive=attributes.PASSIVE_OFF):
