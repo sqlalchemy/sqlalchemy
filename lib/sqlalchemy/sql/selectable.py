@@ -104,6 +104,7 @@ from .elements import literal_column
 from .elements import TableValuedColumn
 from .elements import TextClause
 from .elements import UnaryExpression
+from .elements import Window
 from .operators import OperatorType
 from .sqltypes import NULLTYPE
 from .visitors import _TraverseInternalsType
@@ -5002,6 +5003,12 @@ class SelectState(util.MemoizedSlots, CompileState):
                         for element in statement._where_criteria
                     ]
                 ),
+                itertools.chain.from_iterable(
+                    [
+                        element._from_objects
+                        for element in statement._window_definitions
+                    ]
+                ),
             ),
             check_statement=statement,
             ambiguous_table_name_map=ambiguous_table_name_map,
@@ -5493,6 +5500,7 @@ class Select(
     _where_criteria: Tuple[ColumnElement[Any], ...] = ()
     _having_criteria: Tuple[ColumnElement[Any], ...] = ()
     _from_obj: Tuple[FromClause, ...] = ()
+    _window_definitions: Tuple[Window, ...] = ()
 
     _position_map = util.immutabledict(
         {
@@ -5552,6 +5560,10 @@ class Select(
             ("_from_obj", InternalTraversal.dp_clauseelement_list),
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_having_criteria", InternalTraversal.dp_clauseelement_tuple),
+            (
+                "_window_definitions",
+                InternalTraversal.dp_clauseelement_tuple,
+            ),
             ("_order_by_clauses", InternalTraversal.dp_clauseelement_tuple),
             ("_group_by_clauses", InternalTraversal.dp_clauseelement_tuple),
             ("_setup_joins", InternalTraversal.dp_setup_join_tuple),
@@ -6519,6 +6531,25 @@ class Select(
                 roles.WhereHavingRole, criterion, apply_propagate_attrs=self
             )
             self._having_criteria += (having_criteria,)
+        return self
+
+    @_generative
+    def add_window(self, *windows: Window) -> Self:
+        """Add one or more named window definitions to this SELECT.
+
+        Window objects referenced directly by :meth:`.FunctionElement.over`
+        are added automatically.  This method is useful when an OVER clause
+        refers to a window by string name, or when a window should be rendered
+        independently of an expression reference.
+
+        .. versionadded:: 2.1
+        """
+        for window in windows:
+            if not isinstance(window, Window):
+                raise exc.ArgumentError(
+                    "Select.add_window() arguments must be Window objects"
+                )
+            self._window_definitions += (window,)
         return self
 
     @_generative

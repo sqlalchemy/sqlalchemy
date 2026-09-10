@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 8352
+
+    Added support for named SQL window definitions with the new
+    :func:`_sql.window` constructor and :class:`_sql.Window` object.  Window
+    objects may be passed directly to :meth:`_functions.FunctionElement.over`
+    and are added to the enclosing SELECT automatically, or may be referenced
+    by string name and registered with :meth:`_sql.Select.add_window`.  Named
+    windows can derive from earlier definitions while preserving dependency
+    order, and participate fully in SQL traversal and statement cache keys.
