@@ -120,8 +120,15 @@ class AsyncCancellationTest(fixtures.TestBase):
         await async_engine.dispose()
 
     @testing.fails_on(
-        ["+psycopg", "+oracledb", "+aioodbc"],
+        ["+psycopg", "+aioodbc"],
         "dialect has not been given AsyncAdapt_terminate; tracked separately",
     )
     def test_dialect_supports_terminate(self):
+        if (
+            config.db.dialect.driver == "oracledb"
+            and config.db.dialect.oracledb_ver < (26,)
+        ):
+            config.skip_test(
+                "oracledb < 26 does not support AsyncAdapt_terminate"
+            )
         is_true(config.db.dialect.has_terminate)
