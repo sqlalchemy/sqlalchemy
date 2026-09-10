@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13574
+    :versions: 2.1.0
+
+    Fixed issue where pickling an ORM object that had an instance level lazy
+    loader established, such as when the :func:`_orm.raiseload` option is used,
+    would emit a spurious warning regarding the loader containing additional
+    criteria, if the object had itself been unpickled from a previous
+    serialization.  This would occur for objects that cross more than one
+    serialization boundary, such as when using multiprocessing.
