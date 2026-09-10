@@ -490,6 +490,23 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             status: int
 
+    def test_allow_unmapped_column_on_mixin(self, decl_base):
+        """test #9369"""
+
+        class Mixin:
+            # a bare (non-``Mapped[]``) annotation paired with a plain
+            # ``Column``, inherited from a mixin.  this goes through
+            # _produce_column_copies(), which previously hardcoded
+            # ``expect_mapped=True`` and ignored __allow_unmapped__.
+            id: int = Column(Integer, primary_key=True)
+            status: int = Column(Integer)
+
+        class MyClass(Mixin, decl_base):
+            __tablename__ = "mytable"
+            __allow_unmapped__ = True
+
+        eq_(MyClass.__table__.c.keys(), ["id", "status"])
+
     def test_allow_unmapped_on_base(self):
         class Base(DeclarativeBase):
             __allow_unmapped__ = True
