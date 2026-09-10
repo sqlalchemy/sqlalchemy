@@ -335,6 +335,37 @@ class Selectable(ReturnsRows):
         """
         return Lateral._construct(self, name=name)
 
+    def cross_apply(self, name: Optional[str] = None) -> ApplyFromClause:
+        """Return a ``CROSS APPLY`` alias of this selectable.
+
+        The returned object is intended for use as the right side of a
+        :meth:`_expression.FromClause.join`; no ``ON`` clause is needed.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :func:`_expression.cross_apply`
+
+            :meth:`_expression.Selectable.outer_apply`
+
+        """
+        return Apply._factory(cast(Any, self), name=name, isouter=False)
+
+    def outer_apply(self, name: Optional[str] = None) -> ApplyFromClause:
+        """Return an ``OUTER APPLY`` alias of this selectable.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :func:`_expression.outer_apply`
+
+            :meth:`_expression.Selectable.cross_apply`
+
+        """
+        return Apply._factory(cast(Any, self), name=name, isouter=True)
+
     @util.deprecated(
         "1.4",
         message="The :meth:`.Selectable.replace_selectable` method is "
@@ -1339,7 +1370,18 @@ class Join(roles.DMLTableRole, FromClause[_KeyColCC_co]):
             right,
         ).self_group()
 
-        if onclause is None:
+        if isinstance(self.right, Apply):
+            if onclause is not None:
+                raise exc.ArgumentError(
+                    "CROSS APPLY and OUTER APPLY do not accept an ON clause"
+                )
+            if isouter or full:
+                raise exc.ArgumentError(
+                    "join flags are not accepted with CROSS APPLY or "
+                    "OUTER APPLY; use cross_apply() or outer_apply()"
+                )
+            self.onclause = None
+        elif onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
         else:
             # note: taken from If91f61527236fd4d7ae3cad1f24c38be921c90ba
@@ -1731,6 +1773,10 @@ class LateralFromClause(NamedFromClause):
     """mark a FROM clause as being able to render directly as LATERAL"""
 
 
+class ApplyFromClause(LateralFromClause):
+    """Mark a FROM clause as a ``CROSS APPLY`` or ``OUTER APPLY`` target."""
+
+
 # FromClause ->
 #   AliasedReturnsRows
 #        -> Alias   only for FromClause
@@ -2074,6 +2120,52 @@ class TableValuedAlias(LateralFromClause, Alias):
         new_alias._render_derived = True
         new_alias._render_derived_w_types = with_types
         return new_alias
+
+
+class Apply(FromClauseAlias, ApplyFromClause):
+    """Represent a ``CROSS APPLY`` or ``OUTER APPLY`` subquery.
+
+    This object is constructed using :func:`_expression.cross_apply`,
+    :func:`_expression.outer_apply`, or the corresponding methods present on
+    :class:`_expression.Selectable`.
+
+    .. versionadded:: 2.1
+    """
+
+    __visit_name__ = "apply"
+    _is_lateral = True
+
+    _traverse_internals: _TraverseInternalsType = (
+        AliasedReturnsRows._traverse_internals
+        + [("isouter", InternalTraversal.dp_boolean)]
+    )
+
+    inherit_cache = True
+
+    isouter: bool
+
+    def _init(
+        self,
+        selectable: Any,
+        *,
+        name: Optional[str] = None,
+        isouter: bool = False,
+    ) -> None:
+        super()._init(selectable, name=name)
+        self.isouter = isouter
+
+    @classmethod
+    def _factory(
+        cls,
+        selectable: Union[SelectBase, _FromClauseArgument],
+        *,
+        isouter: bool,
+        name: Optional[str] = None,
+    ) -> ApplyFromClause:
+        target = coercions.expect(
+            roles.FromClauseRole, selectable, explicit_subquery=True
+        )
+        return cls._construct(target, name=name, isouter=isouter)
 
 
 class Lateral(FromClauseAlias, LateralFromClause):
