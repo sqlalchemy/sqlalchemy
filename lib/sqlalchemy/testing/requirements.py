@@ -447,6 +447,19 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def update_returning_dialect_not_supported(self):
+        """target database rejects UPDATE ... RETURNING when the dialect
+        reports that ``update_returning`` is not supported.
+
+        This is normally the case; it's false only where a server has
+        gained UPDATE ... RETURNING that the dialect doesn't implement
+        yet, so that the statement runs rather than raising.
+
+        """
+
+        return exclusions.open()
+
+    @property
     def insert_executemany_returning(self):
         """target platform supports RETURNING when INSERT is used with
         executemany(), e.g. multiple parameter sets, indicating

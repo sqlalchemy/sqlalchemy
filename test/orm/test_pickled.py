@@ -366,7 +366,7 @@ class PickleTest(fixtures.MappedTest):
 
         _assert_instance_state(u3)
 
-        sess = fixture_session()
+        sess.expunge_all()
         sess.add(u3)
 
         if nested:

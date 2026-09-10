@@ -10,6 +10,7 @@ from sqlalchemy import exc
 from sqlalchemy import false
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
@@ -185,22 +186,34 @@ class MatchTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table(
+        cattable = Table(
             "cattable",
             metadata,
             Column("id", Integer, primary_key=True),
             Column("description", String(50)),
-            mysql_engine="MyISAM",
-            mariadb_engine="MyISAM",
         )
-        Table(
+        matchtable = Table(
             "matchtable",
             metadata,
             Column("id", Integer, primary_key=True),
             Column("title", String(200)),
             Column("category_id", Integer, ForeignKey("cattable.id")),
-            mysql_engine="MyISAM",
-            mariadb_engine="MyISAM",
+        )
+
+        # the MATCH operator renders IN BOOLEAN MODE, which InnoDB will
+        # only run against a FULLTEXT index; MyISAM, which these tables
+        # used to use, would instead table scan without one
+        Index(
+            "ix_cattable_description",
+            cattable.c.description,
+            mysql_prefix="FULLTEXT",
+            mariadb_prefix="FULLTEXT",
+        )
+        Index(
+            "ix_matchtable_title",
+            matchtable.c.title,
+            mysql_prefix="FULLTEXT",
+            mariadb_prefix="FULLTEXT",
         )
 
     @classmethod
@@ -274,14 +287,21 @@ class MatchTest(fixtures.TablesTest):
                 matchtable.c.title,
             ).order_by(matchtable.c.id)
         ).fetchall()
+
+        # the relevance value itself is scored differently by each
+        # storage engine and server version; assert only that a match
+        # scores above zero and a non-match scores zero
         eq_(
-            result,
             [
-                (2.0, 0.0, "Agile Web Development with Ruby On Rails"),
-                (0.0, 2.0, "Dive Into Python"),
-                (2.0, 0.0, "Programming Matz's Ruby"),
-                (0.0, 0.0, "The Definitive Guide to Django"),
-                (0.0, 1.0, "Python in a Nutshell"),
+                (bool(ruby), bool(python), title)
+                for ruby, python, title in result
+            ],
+            [
+                (True, False, "Agile Web Development with Ruby On Rails"),
+                (False, True, "Dive Into Python"),
+                (True, False, "Programming Matz's Ruby"),
+                (False, False, "The Definitive Guide to Django"),
+                (False, True, "Python in a Nutshell"),
             ],
         )
 

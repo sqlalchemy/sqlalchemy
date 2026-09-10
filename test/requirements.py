@@ -110,6 +110,22 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def update_returning_dialect_not_supported(self):
+        """target database rejects UPDATE ... RETURNING when the dialect
+        reports that ``update_returning`` is not supported.
+
+        MariaDB 13.0 added UPDATE ... RETURNING for single-table
+        UPDATE statements; until the dialect reports it, the server
+        accepts the statement rather than raising.
+
+        """
+
+        return skip_if(
+            lambda config: self._mariadb_130(config)
+            and not config.db.dialect.update_returning
+        )
+
+    @property
     def table_ddl_if_exists(self):
         """target platform supports IF NOT EXISTS / IF EXISTS for tables."""
 
@@ -1894,6 +1910,13 @@ class DefaultRequirements(SuiteRequirements):
             against(config, ["mysql", "mariadb"])
             and config.db.dialect._is_mariadb
             and config.db.dialect._mariadb_normalized_version_info >= (10, 5)
+        )
+
+    def _mariadb_130(self, config):
+        return (
+            against(config, ["mysql", "mariadb"])
+            and config.db.dialect._is_mariadb
+            and config.db.dialect.server_version_info >= (13,)
         )
 
     def _mysql_and_check_constraints_exist(self, config):
