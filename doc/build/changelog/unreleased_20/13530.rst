@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, sqlite, reflection
     :tickets: 13530
+    :versions: 2.1.0rc2
 
     Reworked the regular expression that parses ``FOREIGN KEY`` constraints
     during SQLite ``CREATE TABLE`` reflection so that the referred column list
