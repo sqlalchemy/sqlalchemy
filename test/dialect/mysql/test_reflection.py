@@ -314,7 +314,6 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 mariadb_auto_increment="5",
                 mariadb_avg_row_length="3",
                 mariadb_password="secret",
-                mariadb_connection="fish",
             )
         else:
             kwargs = dict(
@@ -346,7 +345,6 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             assert def_table.kwargs["mariadb_auto_increment"] == "5"
             assert def_table.kwargs["mariadb_avg_row_length"] == "3"
             assert def_table.kwargs["mariadb_password"] == "secret"
-            assert def_table.kwargs["mariadb_connection"] == "fish"
 
             assert reflected.kwargs["mariadb_engine"] == "MEMORY"
 
@@ -354,7 +352,6 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             assert reflected.kwargs["mariadb_comment"] == comment
             assert reflected.kwargs["mariadb_default charset"] == "utf8mb4"
             assert reflected.kwargs["mariadb_avg_row_length"] == "3"
-            assert reflected.kwargs["mariadb_connection"] == "fish"
 
             # This field doesn't seem to be returned by mariadb itself.
             # assert reflected.kwargs['mariadb_password'] == 'secret'
