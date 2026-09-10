@@ -484,7 +484,7 @@ class SuiteRequirements(Requirements):
         )
 
     @property
-    def update_returning_guard(self):
+    def update_returning_dialect_not_supported(self):
         """target database rejects UPDATE ... RETURNING when the dialect
         reports that ``update_returning`` is not supported.
 

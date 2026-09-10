@@ -707,7 +707,7 @@ class ReturningGuardsTest(fixtures.TablesTest):
             stmt, True, "id", connection.dialect.insert_executemany_returning
         )
 
-    @testing.requires.update_returning_guard
+    @testing.requires.update_returning_dialect_not_supported
     def test_update_single(self, connection, run_stmt):
         t = self.tables.t
 
