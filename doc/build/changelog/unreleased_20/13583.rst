@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13583, 13584
+    :versions: 2.1.0
+
+    Fixed issue where calling :func:`_orm.aliased` against an existing
+    :func:`_orm.aliased` construct, without passing an explicit selectable,
+    would disregard the selectable of the existing construct and produce an
+    alias of the mapped table instead, if that selectable were anything other
+    than a table or a plain subquery, leading to incorrect results and/or
+    non-working queries.
+
+    This includes :func:`_orm.aliased` against a :func:`_orm.with_polymorphic`
+    construct, which would previously produce an alias of the base mapped
+    class only, discarding the polymorphic selectable and additional mappers.
+    The new construct now retains these, so that criteria against subclass
+    attributes and the ``innerjoin`` and ``selectable`` parameters of
+    :func:`_orm.with_polymorphic` take effect, and subclass columns are loaded
+    up front.  The SQL rendered for these constructs now includes the
+    polymorphic selectable.
