@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, mariadb
+    :tickets: 13575
+
+    Added support for ``UPDATE..RETURNING`` on MariaDB, which is available as
+    of MariaDB 13.0.1.  The MariaDB dialect's ``update_returning`` flag is now
+    enabled when connected to MariaDB 13.0 or greater, so that
+    :meth:`_dml.Update.returning` may be used with :class:`_dml.Update`
+    constructs, in the same way as the existing ``INSERT..RETURNING`` and
+    ``DELETE..RETURNING`` support.  Multiple-table UPDATE statements do not
+    support ``RETURNING`` on MariaDB, so ``update_returning_multifrom``
+    remains disabled.
