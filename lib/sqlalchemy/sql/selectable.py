@@ -2291,7 +2291,10 @@ class CTE(
             name=name,
             recursive=self.recursive,
             nesting=self.nesting,
-            _cte_alias=self,
+            # an alias of an alias refers to the original CTE, #13583
+            _cte_alias=(
+                self._cte_alias if self._cte_alias is not None else self
+            ),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
