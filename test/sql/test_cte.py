@@ -31,6 +31,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 
 
 class CTETest(fixtures.TestBase, AssertsCompiledSQL):
@@ -984,6 +985,119 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT cte3.id, cte2.id AS id_1 "
             "FROM cte2 JOIN cte3 ON cte2.id = cte3.id",
         )
+
+    def test_alias_of_aliased_cte(self):
+        """test #13583"""
+        t = table("t", column("x"))
+
+        c = select(t.c.x).cte("c")
+        a1 = c.alias("a1")
+        a2 = a1.alias("a2")
+        a3 = a2.alias("a3")
+
+        self.assert_compile(
+            select(c.c.x, a1.c.x, a2.c.x, a3.c.x),
+            "WITH c AS (SELECT t.x AS x FROM t) "
+            "SELECT c.x, a1.x AS x_1, a2.x AS x_2, a3.x AS x_3 "
+            "FROM c, c AS a1, c AS a2, c AS a3",
+        )
+
+    @testing.variation("num_aliases", ["one", "two"])
+    def test_anon_alias_of_aliased_cte(self, num_aliases):
+        """test #13583"""
+        t = table("t", column("x"))
+
+        a1 = select(t.c.x).cte("c").alias()
+        a2 = a1.alias()
+
+        if num_aliases.one:
+            self.assert_compile(
+                select(a2.c.x),
+                "WITH c AS (SELECT t.x AS x FROM t) "
+                "SELECT anon_1.x FROM c AS anon_1",
+            )
+        elif num_aliases.two:
+            self.assert_compile(
+                select(a1.c.x, a2.c.x),
+                "WITH c AS (SELECT t.x AS x FROM t) "
+                "SELECT anon_1.x, anon_2.x AS x_1 "
+                "FROM c AS anon_1, c AS anon_2",
+            )
+        else:
+            num_aliases.fail()
+
+    def test_alias_of_aliased_cte_corresponding_column(self):
+        """test #13583"""
+        t = table("t", column("x"))
+
+        a1 = select(t.c.x).cte("c").alias("a1")
+        a2 = a1.alias("a2")
+
+        is_(a2.corresponding_column(a1.c.x), a2.c.x)
+
+    @testing.variation("num_aliases", ["one", "two"])
+    def test_recursive_alias_of_aliased_cte(self, num_aliases):
+        """test #13583"""
+        n = table("n", column("id"), column("parent_id"))
+
+        r = (
+            select(n.c.id)
+            .where(n.c.parent_id == None)  # noqa: E711
+            .cte("r", recursive=True)
+        )
+        ra = r.alias("ra")
+        rb = ra.alias("rb")
+
+        if num_aliases.one:
+            r = r.union_all(select(n.c.id).join(rb, n.c.parent_id == rb.c.id))
+
+            self.assert_compile(
+                select(r.c.id),
+                "WITH RECURSIVE r(id) AS (SELECT n.id AS id FROM n "
+                "WHERE n.parent_id IS NULL UNION ALL SELECT n.id AS id "
+                "FROM n JOIN r AS rb ON n.parent_id = rb.id) "
+                "SELECT r.id FROM r",
+            )
+        elif num_aliases.two:
+            r = r.union_all(
+                select(n.c.id)
+                .join(ra, n.c.parent_id == ra.c.id)
+                .join(rb, n.c.id == rb.c.id)
+            )
+
+            self.assert_compile(
+                select(r.c.id),
+                "WITH RECURSIVE r(id) AS (SELECT n.id AS id FROM n "
+                "WHERE n.parent_id IS NULL UNION ALL SELECT n.id AS id "
+                "FROM n JOIN r AS ra ON n.parent_id = ra.id "
+                "JOIN r AS rb ON n.id = rb.id) "
+                "SELECT r.id FROM r",
+            )
+        else:
+            num_aliases.fail()
+
+    @testing.variation("num_aliases", ["one", "two"])
+    def test_alias_of_aliased_nesting_cte(self, num_aliases):
+        """test #13583"""
+        t = table("t", column("x"))
+
+        a1 = select(t.c.x).cte("nesting", nesting=True).alias("a1")
+        a2 = a1.alias("a2")
+
+        if num_aliases.one:
+            self.assert_compile(
+                select(a2.c.x),
+                "WITH nesting AS (SELECT t.x AS x FROM t) "
+                "SELECT a2.x FROM nesting AS a2",
+            )
+        elif num_aliases.two:
+            self.assert_compile(
+                select(a1.c.x, a2.c.x),
+                "WITH nesting AS (SELECT t.x AS x FROM t) "
+                "SELECT a1.x, a2.x AS x_1 FROM nesting AS a1, nesting AS a2",
+            )
+        else:
+            num_aliases.fail()
 
     def test_named_alias_no_quote(self):
         cte = select(literal(1).label("id")).cte(name="CTE")

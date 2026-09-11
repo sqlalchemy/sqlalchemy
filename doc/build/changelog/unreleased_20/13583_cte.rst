@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13583
+    :versions: 2.1.0
+
+    Fixed issue where calling :meth:`_sql.CTE.alias` on a :class:`_sql.CTE`
+    that was itself produced by :meth:`_sql.CTE.alias` would render SQL that
+    referred to the name of the intermediate alias, which is not present in
+    the WITH clause, rather than to the name of the original CTE, producing
+    invalid SQL.
