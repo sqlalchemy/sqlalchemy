@@ -1610,6 +1610,19 @@ class Join(roles.DMLTableRole, FromClause):
         """
         return Select(self.left, self.right).select_from(self)
 
+    @staticmethod
+    def _flat_element_name(
+        name: Optional[str], element: FromClause
+    ) -> Optional[str]:
+        if name and isinstance(element, NamedFromClause):
+            if isinstance(element.name, _anonymous_label):
+                # an anonymous name can't be embedded within a new name;
+                # alias the element anonymously, #13583
+                return None
+            return f"{name}_{element.name}"
+        else:
+            return name
+
     @util.preload_module("sqlalchemy.sql.util")
     def _anonymous_fromclause(
         self, name: Optional[str] = None, flat: bool = False
@@ -1619,17 +1632,11 @@ class Join(roles.DMLTableRole, FromClause):
             if isinstance(self.left, (FromGrouping, Join)):
                 left_name = name  # will recurse
             else:
-                if name and isinstance(self.left, NamedFromClause):
-                    left_name = f"{name}_{self.left.name}"
-                else:
-                    left_name = name
+                left_name = self._flat_element_name(name, self.left)
             if isinstance(self.right, (FromGrouping, Join)):
                 right_name = name  # will recurse
             else:
-                if name and isinstance(self.right, NamedFromClause):
-                    right_name = f"{name}_{self.right.name}"
-                else:
-                    right_name = name
+                right_name = self._flat_element_name(name, self.right)
             left_a, right_a = (
                 self.left._anonymous_fromclause(name=left_name, flat=flat),
                 self.right._anonymous_fromclause(name=right_name, flat=flat),
