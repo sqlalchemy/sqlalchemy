@@ -813,6 +813,28 @@ class VersionDetectionTest(fixtures.TestBase):
             )
         )
 
+    @testing.combinations(
+        ("1.9.0", (1, 9, 0), True),
+        ("1.14.0", (1, 14, 0), True),
+        ("1.15.0", (1, 15, 0), False),
+        ("2.0.1", (2, 0, 1), False),
+        argnames="version_string,expected_version,expected_decimal_fix",
+    )
+    def test_mssqlpython_dbapi_version(
+        self, version_string, expected_version, expected_decimal_fix
+    ):
+        dbapi = mock.Mock()
+        dbapi.__version__ = version_string
+
+        # mssql_python publishes no "version" attribute
+        del dbapi.version
+        dialect = mssqlpython.dialect(dbapi=dbapi)
+
+        eq_(
+            (dialect.dbapi_version, dialect._need_decimal_fix),
+            (expected_version, expected_decimal_fix),
+        )
+
     def test_pymssql_version(self, mock_conn_scalar):
         dialect = pymssql.MSDialect_pymssql()
 

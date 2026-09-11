@@ -1678,7 +1678,7 @@ class DefaultRequirements(SuiteRequirements):
 
         """
 
-        return fails_on("+mssqlpython")
+        return fails_on("+mssqlpython<1.15")
 
     @property
     def fetch_null_from_numeric(self):

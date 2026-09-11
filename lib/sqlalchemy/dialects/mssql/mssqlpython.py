@@ -101,9 +101,6 @@ class MSDialect_mssqlpython(MSDialect):
         }
     )
 
-    # used by pyodbc _ms_numeric_pyodbc class
-    _need_decimal_fix = True
-
     colspecs = util.update_copy(
         MSDialect.colspecs,
         {
@@ -116,6 +113,18 @@ class MSDialect_mssqlpython(MSDialect):
         super().__init__(**kw)
         if not enable_pooling and self.dbapi is not None:
             self.loaded_dbapi.pooling(enabled=False)
+
+        # used by pyodbc _ms_numeric_pyodbc class.  mssql-python 1.15
+        # binds every Decimal as SQL_NUMERIC; prior versions bound Decimal
+        # values within the MONEY range as VARCHAR, so that very large and
+        # very small values needed to be passed as strings as well.  On
+        # 1.15 those strings are instead coerced to the NUMERIC type of
+        # the Decimal values alongside them, which overflows.
+        # a version which can't be determined is assumed to be an old one
+        version = self._dbapi_version_or_none
+        self._need_decimal_fix = bool(self.dbapi) and (
+            version is None or version < (1, 15)
+        )
 
     @classmethod
     def import_dbapi(cls) -> DBAPIModule:
@@ -204,7 +213,7 @@ class MSDialect_mssqlpython(MSDialect):
     def retrieve_dbapi_version(
         self, dbapi: interfaces.DBAPIModule
     ) -> util.VersionInfo:
-        return util.parse_version_string(dbapi.version)
+        return util.parse_version_string(getattr(dbapi, "__version__", None))
 
     def _get_server_version_info(self, connection):
         vers = connection.exec_driver_sql("select @@version").scalar()

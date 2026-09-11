@@ -1,0 +1,21 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 13585
+
+    Adjusted the ``mssql+mssqlpython`` dialect for mssql-python version 1.15,
+    which now binds all Python ``Decimal`` values as ``SQL_NUMERIC``.  The
+    conversion of very large and very small ``Decimal`` values to strings,
+    carried over from the pyodbc dialect, is no longer applied for this
+    version of the driver, as the string values would otherwise be converted
+    by SQL Server to the narrower numeric type of other ``Decimal`` values in
+    the same statement, such as within a multiple-row INSERT, raising an
+    arithmetic overflow error.
+
+.. change::
+    :tags: bug, mssql
+    :tickets: 13585
+
+    Fixed issue where :attr:`.Dialect.dbapi_version` would raise
+    ``AttributeError`` for the ``mssql+mssqlpython`` dialect, as the version
+    was looked up using a ``version`` attribute that is not present on the
+    ``mssql_python`` module, rather than ``__version__``.
