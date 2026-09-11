@@ -2036,6 +2036,32 @@ class JoinAnonymizingTest(fixtures.TestBase, AssertsCompiledSQL):
             "a AS foo_a JOIN b AS foo_b ON foo_a.a = foo_b.b",
         )
 
+    def test_join_of_anon_aliases_alias_name_flat(self):
+        """test #13583"""
+        a = table("a", column("a")).alias()
+        b = table("b", column("b")).alias()
+
+        self.assert_compile(
+            select(
+                a.join(b, a.c.a == b.c.b)._anonymous_fromclause(
+                    name="foo", flat=True
+                )
+            ),
+            "SELECT anon_1.a, anon_2.b FROM a AS anon_1 "
+            "JOIN b AS anon_2 ON anon_1.a = anon_2.b",
+        )
+
+    def test_join_of_named_aliases_alias_name_flat(self):
+        a = table("a", column("a")).alias("aa")
+        b = table("b", column("b")).alias("bb")
+
+        self.assert_compile(
+            a.join(b, a.c.a == b.c.b)._anonymous_fromclause(
+                name="foo", flat=True
+            ),
+            "a AS foo_aa JOIN b AS foo_bb ON foo_aa.a = foo_bb.b",
+        )
+
     def test_composed_join_alias_flat(self):
         a = table("a", column("a"))
         b = table("b", column("b"))

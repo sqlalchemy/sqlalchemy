@@ -15,7 +15,6 @@ from sqlalchemy.exc import ArgumentError
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -167,7 +166,6 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
             Column("x", Integer),
             Column("y", Integer),
         )
-        clear_mappers()
         self.mapper_registry.map_imperatively(
             cls, table, properties=properties
         )
@@ -210,6 +208,41 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         self.assert_compile(
             select(alias), "SELECT pp.id, pp.x, pp.y FROM point AS pp"
+        )
+
+    def test_named_flat_entity_join_of_anon_aliases(self):
+        """test #13583"""
+
+        class Point:
+            pass
+
+        m = MetaData()
+        point = Table(
+            "point",
+            m,
+            Column("id", Integer(), primary_key=True),
+            Column("x", Integer),
+        )
+        point_detail = Table(
+            "point_detail",
+            m,
+            Column("pid", ForeignKey("point.id"), primary_key=True),
+            Column("z", Integer),
+        )
+        p_a = point.alias()
+        pd_a = point_detail.alias()
+
+        self.mapper_registry.map_imperatively(
+            Point, p_a.join(pd_a, p_a.c.id == pd_a.c.pid)
+        )
+
+        alias = aliased(Point, name="pp", flat=True)
+
+        self.assert_compile(
+            select(alias),
+            "SELECT anon_1.id, anon_1.x, anon_2.pid, anon_2.z "
+            "FROM point AS anon_1 JOIN point_detail AS anon_2 "
+            "ON anon_1.id = anon_2.pid",
         )
 
     def test_not_instantiatable(self):
