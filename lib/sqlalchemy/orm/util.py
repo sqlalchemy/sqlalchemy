@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import enum
 import functools
+import itertools
 import re
 import types
 import typing
@@ -628,6 +629,41 @@ class ORMAdapter(sql_util.ColumnAdapter):
         return not entity or entity.isa(self.mapper) or self.mapper.isa(entity)
 
 
+def _is_alias_of_selectable(
+    selectable: FromClause, target: FromClause
+) -> bool:
+    """Return True if ``selectable`` is ``target``, or a plain alias of it,
+    including a flat alias of a join of the same structure and join types."""
+
+    if selectable is target or (
+        isinstance(selectable, expression.Alias)
+        and selectable.element is target
+    ):
+        return True
+
+    return all(
+        elem is tgt
+        or (isinstance(elem, expression.Alias) and elem.element is tgt)
+        or (
+            # zip_longest() pads the shorter of the two with None
+            elem is not None
+            and tgt is not None
+            and elem._is_join
+            and tgt._is_join
+            and elem.isouter == tgt.isouter
+            and elem.full == tgt.full
+        )
+        or (
+            isinstance(elem, expression.FromGrouping)
+            and isinstance(tgt, expression.FromGrouping)
+        )
+        for elem, tgt in itertools.zip_longest(
+            sql_util.surface_selectables(selectable),
+            sql_util.surface_selectables(target),
+        )
+    )
+
+
 class AliasedClass(
     inspection.Inspectable["AliasedInsp[_O]"], ORMColumnsClauseRole[_O]
 ):
@@ -713,9 +749,38 @@ class AliasedClass(
         nest_adapters = False
 
         if alias is None:
-            if insp.is_aliased_class and insp.selectable._is_subquery:
-                alias = insp.selectable.alias()
-            else:
+            if insp_is_aliased_class(insp):
+                if insp._is_with_polymorphic:
+                    # polymorphic arguments are only passed along with an
+                    # explicit selectable, by with_polymorphic() and
+                    # AliasedInsp._merge_with()
+                    assert (
+                        not with_polymorphic_mappers
+                        and with_polymorphic_discriminator is None
+                        and not represents_outer_join
+                    )
+
+                    # aliased() of a with_polymorphic() carries along its
+                    # polymorphic configuration, #13584
+                    with_polymorphic_mappers = insp.with_polymorphic_mappers
+                    with_polymorphic_discriminator = insp.polymorphic_on
+                    represents_outer_join = insp.represents_outer_join
+
+                if not _is_alias_of_selectable(
+                    insp.selectable, mapper._with_polymorphic_selectable
+                ):
+                    # aliased() of an aliased() that refers to a subquery,
+                    # CTE, with_polymorphic() or other selectable; alias
+                    # that selectable rather than the mapped table,
+                    # #13583, #13584
+                    alias = insp.selectable._anonymous_fromclause(
+                        name=name, flat=flat
+                    )
+                    adapt_on_names = adapt_on_names or insp._adapt_on_names
+                elif insp.selectable._is_subquery:
+                    alias = insp.selectable.alias()
+
+            if alias is None:
                 alias = (
                     mapper._with_polymorphic_selectable._anonymous_fromclause(
                         name=name,
@@ -920,6 +985,7 @@ class AliasedInsp(
     _adapter: ORMAdapter
     with_polymorphic_mappers: Sequence[Mapper[Any]]
     _with_polymorphic_entities: Sequence[AliasedInsp[Any]]
+    _adapt_on_names: bool
 
     _weak_entity: weakref.ref[AliasedClass[_O]]
     """the AliasedClass that refers to this AliasedInsp"""
