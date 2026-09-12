@@ -7498,6 +7498,9 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
         self.column_args = columns
         self.positional = positional
 
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+        return False
+
     @HasMemoized_ro_memoized_attribute
     def selected_columns(
         self,

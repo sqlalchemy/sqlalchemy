@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 8326
+
+    Added support for using a :class:`_sql.TextualSelect` as the basis for
+    an ORM mapped subquery when configuring relationships.  The
+    :class:`_sql.TextualSelect` construct now implements selectable
+    derivation checks, preventing a ``NotImplementedError`` during
+    relationship configuration.
