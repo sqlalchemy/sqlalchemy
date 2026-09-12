@@ -26,6 +26,7 @@ from typing import List
 from typing import NoReturn
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -208,6 +209,7 @@ class CompositeProperty(
 
     composite_class: Union[Type[_CC], Callable[..., _CC]]
     attrs: Tuple[_CompositeAttrType[Any], ...]
+    column_template: Optional[str]
 
     _generated_composite_accessor: CallableReference[
         Optional[Callable[[_CC], Tuple[Any, ...]]]
@@ -229,6 +231,7 @@ class CompositeProperty(
         deferred: bool = False,
         group: Optional[str] = None,
         comparator_factory: Optional[Type[Comparator[_CC]]] = None,
+        column_template: Optional[str] = None,
         info: Optional[_InfoType] = None,
         **kwargs: Any,
     ):
@@ -241,6 +244,17 @@ class CompositeProperty(
         else:
             self.composite_class = _class_or_attr  # type: ignore[assignment]
             self.attrs = attrs
+
+        if column_template is not None:
+            try:
+                column_template % "x"
+            except (TypeError, ValueError) as te:
+                raise sa_exc.ArgumentError(
+                    f"column_template {column_template!r} is not a valid "
+                    "template; expected a string containing exactly one "
+                    "'%s' placeholder"
+                ) from te
+        self.column_template = column_template
 
         self.return_none_on = return_none_on
         self.active_history = active_history
@@ -428,6 +442,11 @@ class CompositeProperty(
                 decl_scan, registry, cls, originating_module, key
             )
         else:
+            if self.column_template is not None:
+                raise sa_exc.ArgumentError(
+                    "column_template is only supported when composite_class "
+                    "is a dataclass"
+                )
             for attr in self.attrs:
                 if (
                     isinstance(attr, (MappedColumn, schema.Column))
@@ -467,6 +486,35 @@ class CompositeProperty(
                 )
 
     @util.preload_module("sqlalchemy.orm.properties")
+    def _existing_declared_column_names(
+        self, decl_scan: _DeclarativeMapperConfig
+    ) -> Set[str]:
+        """Return the column names of attributes already scanned on the
+        class being mapped, at the point this composite is being scanned.
+
+        Used for a best-effort collision check when generating column
+        names from :paramref:`.composite.column_template`; attributes
+        that appear later in the class body are not visible here and are
+        not covered by this check.
+
+        """
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+
+        names: Set[str] = set()
+        for value in decl_scan.properties.values():
+            if isinstance(value, MappedColumn):
+                if value.column.name is not None:
+                    names.add(value.column.name)
+            elif isinstance(value, schema.Column):
+                if value.name is not None:
+                    names.add(value.name)
+            elif isinstance(value, CompositeProperty):
+                for col in value.columns:
+                    if col.name is not None:
+                        names.add(col.name)
+        return names
+
+    @util.preload_module("sqlalchemy.orm.properties")
     @util.preload_module("sqlalchemy.orm.decl_base")
     def _setup_for_dataclass(
         self,
@@ -481,6 +529,11 @@ class CompositeProperty(
         decl_base = util.preloaded.orm_decl_base
 
         insp = inspect.signature(self.composite_class)
+        existing_names = (
+            self._existing_declared_column_names(decl_scan)
+            if self.column_template is not None
+            else None
+        )
         for param, attr in itertools.zip_longest(
             insp.parameters.values(), self.attrs
         ):
@@ -492,8 +545,21 @@ class CompositeProperty(
                     f"{self.composite_class.__name__} {len(insp.parameters)}"
                 )
             if attr is None:
-                # fill in missing attr spots with empty MappedColumn
-                attr = MappedColumn()
+                # fill in missing attr spots with empty MappedColumn,
+                # or one named from column_template if present
+                if self.column_template is not None:
+                    generated_name = self.column_template % param.name
+                    assert existing_names is not None
+                    if generated_name in existing_names:
+                        raise sa_exc.ArgumentError(
+                            f"column_template generated column name "
+                            f"'{generated_name}' for composite '{key}' "
+                            f"conflicts with an existing column on class "
+                            f"{cls.__name__}"
+                        )
+                    attr = MappedColumn(generated_name)
+                else:
+                    attr = MappedColumn()
                 self.attrs += (attr,)
 
             if isinstance(attr, MappedColumn):
