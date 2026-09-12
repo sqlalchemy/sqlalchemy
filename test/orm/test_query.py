@@ -6002,6 +6002,52 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         ):
             with_parent(u1, User.name)
 
+    def test_none_instance(self):
+        User = self.classes.User
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Expected mapped instance for with_parent\(\), got None",
+        ):
+            with_parent(None, User.orders)
+
+    def test_non_mapped_instance(self):
+        User = self.classes.User
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Expected mapped instance for with_parent\(\)",
+        ):
+            with_parent(object(), User.orders)
+
+    def test_non_attribute_prop(self):
+        User = self.classes.User
+        sess = fixture_session()
+        u1 = sess.get(User, 7)
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Expected relationship property for with_parent\(\), got 123",
+        ):
+            with_parent(u1, 123)
+
+    def test_mismatched_instance(self):
+        User, Order = self.classes.User, self.classes.Order
+        sess = fixture_session()
+        u1 = sess.get(User, 7)
+        o1 = sess.get(Order, 1)
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"is not an instance of 'User', which is the parent class for "
+            r"relationship 'User.orders'",
+        ):
+            with_parent(o1, User.orders)
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"is not an instance of 'Order', which is the parent class for "
+            r"relationship 'Order.items'",
+        ):
+            with_parent(u1, Order.items)
+
     def test_select_from(self):
         User, Address = self.classes.User, self.classes.Address
 
