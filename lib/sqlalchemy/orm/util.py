@@ -2059,6 +2059,17 @@ def with_parent(
       "zero" entity of the :class:`_query.Query` itself.
 
     """  # noqa: E501
+    if instance is None:
+        raise sa_exc.ArgumentError(
+            "Expected mapped instance for with_parent(), got None"
+        )
+
+    state = inspection.inspect(instance, raiseerr=False)
+    if state is None or not getattr(state, "is_instance", False):
+        raise sa_exc.ArgumentError(
+            f"Expected mapped instance for with_parent(), got {instance!r}"
+        )
+
     prop_t: RelationshipProperty[Any]
 
     if isinstance(prop, str):
@@ -2077,8 +2088,20 @@ def with_parent(
                 f"got {mapper_property}"
             )
         prop_t = mapper_property
+    elif hasattr(prop, "_with_parent"):
+        prop_t = prop  # type: ignore[assignment]
     else:
-        prop_t = prop
+        raise sa_exc.ArgumentError(
+            f"Expected relationship property for with_parent(), got {prop!r}"
+        )
+
+    if hasattr(prop_t, "parent") and hasattr(prop_t.parent, "isa"):
+        if not state.mapper.isa(prop_t.parent):
+            raise sa_exc.ArgumentError(
+                f"Instance '{instance}' is not an instance of "
+                f"'{prop_t.parent.class_.__name__}', which is the parent "
+                f"class for relationship '{prop}'"
+            )
 
     return prop_t._with_parent(instance, from_entity=from_entity)
 
