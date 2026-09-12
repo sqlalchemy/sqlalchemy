@@ -216,6 +216,165 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
         )
 
 
+class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
+    __only_on__ = "postgresql"
+
+    @testing.fixture
+    def invalid_index(self, metadata):
+        table = Table(
+            "invalid_index_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+        )
+        with testing.db.begin() as connection:
+            metadata.create_all(connection)
+            connection.execute(
+                table.insert(), [{"id": 1, "x": 1}, {"id": 2, "x": 1}]
+            )
+            connection.exec_driver_sql(
+                "CREATE INDEX ix_valid ON invalid_index_table (x)"
+            )
+        with testing.db.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        ) as connection:
+            with expect_raises(exc.IntegrityError):
+                connection.exec_driver_sql(
+                    "CREATE UNIQUE INDEX CONCURRENTLY ix_invalid "
+                    "ON invalid_index_table (x)"
+                )
+            yield connection, table
+
+    def test_inspector(self, invalid_index):
+        connection, table = invalid_index
+        is_false(
+            connection.scalar(
+                sa.select(pg_catalog.pg_index.c.indisvalid).where(
+                    pg_catalog.pg_index.c.indexrelid
+                    == sa.cast("ix_invalid", pg_catalog.REGCLASS)
+                )
+            )
+        )
+        options = (
+            {"postgresql_include": []}
+            if testing.against("postgresql >= 11")
+            else {}
+        )
+        expected = [
+            {
+                "name": "ix_invalid",
+                "unique": True,
+                "column_names": ["x"],
+                "dialect_options": dict(options, postgresql_not_valid=True),
+            },
+            {"name": "ix_valid", "unique": False, "column_names": ["x"]},
+        ]
+        if options:
+            expected[1]["dialect_options"] = options
+        inspector = inspect(connection)
+        eq_(inspector.get_indexes(table.name), expected)
+        eq_(
+            inspector.get_multi_indexes(filter_names=[table.name]),
+            {(None, table.name): expected},
+        )
+
+        # This is how consumers such as Alembic reconstruct Index from the
+        # Inspector result, without going through Table reflection.
+        index_info = inspector.get_indexes(table.name)[0]
+        metadata_table = Table(table.name, MetaData(), Column("x", Integer))
+        index = Index(
+            index_info["name"],
+            metadata_table.c.x,
+            unique=True,
+            **index_info["dialect_options"],
+        )
+        assert "postgresql_not_valid" not in index.dialect_kwargs
+        eq_(index.dialect_options["postgresql"].reflected, {})
+
+    def test_table_reflection(self, invalid_index):
+        connection, table = invalid_index
+        inspector = inspect(connection)
+        before = inspector.get_indexes(table.name)
+        reflected = Table(table.name, MetaData(), autoload_with=inspector)
+        indexes = {index.name: index for index in reflected.indexes}
+        eq_(set(indexes), {"ix_invalid", "ix_valid"})
+        invalid = indexes["ix_invalid"]
+        eq_(
+            invalid.dialect_options["postgresql"].reflected,
+            {"not_valid": True},
+        )
+        eq_(indexes["ix_valid"].dialect_options["postgresql"].reflected, {})
+        assert "postgresql_not_valid" not in invalid.dialect_kwargs
+        self.assert_compile(
+            CreateIndex(invalid),
+            "CREATE UNIQUE INDEX ix_invalid ON invalid_index_table (x)",
+            dialect=connection.dialect,
+        )
+        eq_(inspector.get_indexes(table.name), before)
+
+        # Copy the definition and recreate it. Reflected state belongs to the
+        # original database object, not the newly created index.
+        copied = reflected.to_metadata(MetaData())
+        eq_(
+            next(i for i in copied.indexes if i.name == "ix_invalid")
+            .dialect_options["postgresql"]
+            .reflected,
+            {},
+        )
+        table.drop(connection)
+        copied.create(connection)
+        inspector.clear_cache()
+        assert all(
+            "postgresql_not_valid" not in i.get("dialect_options", {})
+            for i in inspector.get_indexes(table.name)
+        )
+
+    @testing.only_on("postgresql >= 11")
+    def test_partitioned_index(self, metadata, connection):
+        parent = Table(
+            "invalid_parent",
+            metadata,
+            Column("x", Integer),
+            postgresql_partition_by="RANGE (x)",
+        )
+        parent.create(connection)
+        connection.exec_driver_sql(
+            "CREATE TABLE invalid_child PARTITION OF invalid_parent "
+            "FOR VALUES FROM (0) TO (10)"
+        )
+        # Register the child so metadata cleanup drops it before its parent.
+        Table(
+            "invalid_child", metadata, Column("x", Integer)
+        ).add_is_dependent_on(parent)
+        connection.exec_driver_sql(
+            "CREATE INDEX ix_parent ON ONLY invalid_parent (x)"
+        )
+        inspector = inspect(connection)
+        is_true(
+            inspector.get_indexes(parent.name)[0]["dialect_options"][
+                "postgresql_not_valid"
+            ]
+        )
+        reflected = Table(parent.name, MetaData(), autoload_with=connection)
+        eq_(
+            next(iter(reflected.indexes))
+            .dialect_options["postgresql"]
+            .reflected,
+            {"not_valid": True},
+        )
+        connection.exec_driver_sql(
+            "CREATE INDEX ix_child ON invalid_child (x)"
+        )
+        connection.exec_driver_sql(
+            "ALTER INDEX ix_parent ATTACH PARTITION ix_child"
+        )
+        inspector.clear_cache()
+        assert (
+            "postgresql_not_valid"
+            not in inspector.get_indexes(parent.name)[0]["dialect_options"]
+        )
+
+
 class MaterializedViewReflectionTest(
     ReflectionFixtures, fixtures.TablesTest, AssertsExecutionResults
 ):

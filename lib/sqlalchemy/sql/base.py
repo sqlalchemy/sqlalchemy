@@ -448,6 +448,17 @@ class _DialectArgDict(MutableMapping[str, Any]):
     def __init__(self) -> None:
         self._non_defaults: Dict[str, Any] = {}
         self._defaults: Dict[str, Any] = {}
+        self._ignored: FrozenSet[str] = util.EMPTY_SET
+        self._reflected: util.immutabledict[str, Any] = util.EMPTY_DICT
+
+    @property
+    def reflected(self) -> Mapping[str, Any]:
+        """Database state populated by reflection, separate from DDL options.
+
+        .. versionadded:: 2.1
+
+        """
+        return self._reflected
 
     def __len__(self) -> int:
         return len(set(self._non_defaults).union(self._defaults))
@@ -462,6 +473,8 @@ class _DialectArgDict(MutableMapping[str, Any]):
             return self._defaults[key]
 
     def __setitem__(self, key: str, value: Any) -> None:
+        if key in self._ignored:
+            return
         self._non_defaults[key] = value
 
     def __delitem__(self, key: str) -> None:
@@ -525,6 +538,8 @@ class DialectKWArgs:
             return else_
 
         if argument_name in registry.get(self.__class__, {}):
+            if argument_name in self.dialect_options[dialect.name]._ignored:
+                return else_
             if (
                 deprecated_fallback is None
                 or dialect.name == deprecated_fallback
@@ -651,6 +666,7 @@ class DialectKWArgs:
     )
 
     @classmethod
+    @util.preload_module("sqlalchemy.sql.schema")
     def _kw_reg_for_dialect_cls(cls, dialect_name: str) -> _DialectArgDict:
         construct_arg_dictionary = DialectKWArgs._kw_registry[dialect_name]
         d = _DialectArgDict()
@@ -661,6 +677,13 @@ class DialectKWArgs:
             for cls in reversed(cls.__mro__):
                 if cls in construct_arg_dictionary:
                     d._defaults.update(construct_arg_dictionary[cls])
+        d._ignored = frozenset(
+            key
+            for key, value in d._defaults.items()
+            if value is util.preloaded.sql_schema.SchemaConst.IGNORE_OPTION
+        )
+        for key in d._ignored:
+            del d._defaults[key]
         return d
 
     @util.memoized_property
@@ -676,6 +699,19 @@ class DialectKWArgs:
 
         .. versionadded:: 0.9.2
 
+        For reflected indexes, database state that is not a DDL option is
+        available in a separate, read-only ``reflected`` mapping, for example::
+
+            invalid = my_index.dialect_options["postgresql"].reflected.get(
+                "not_valid", False
+            )
+
+        These values are not included in this dictionary or in
+        :attr:`.DialectKWArgs.dialect_kwargs`. They cannot be set through
+        constructor arguments and are not copied by :meth:`.Table.to_metadata`.
+
+        .. versionadded:: 2.1 Added the ``reflected`` mapping.
+
         .. seealso::
 
             :attr:`.DialectKWArgs.dialect_kwargs` - flat dictionary form
@@ -683,6 +719,42 @@ class DialectKWArgs:
         """
 
         return util.PopulateDict(self._kw_reg_for_dialect_cls)
+
+    @classmethod
+    def _from_reflection(
+        cls,
+        *args: Any,
+        dialect_options: Mapping[str, Any],
+        **kwargs: Any,
+    ) -> Self:
+        """Construct an object with separate reflected state."""
+        options = dict(dialect_options)
+        dialects: Dict[str, _DialectArgDict] = {}
+        reflected: Dict[str, Dict[str, Any]] = {}
+        for key in dialect_options:
+            dialect_name, separator, arg_name = key.partition("_")
+            if not separator:
+                # Leave malformed options to the constructor's validation.
+                continue
+            if dialect_name not in dialects:
+                try:
+                    dialects[dialect_name] = cls._kw_reg_for_dialect_cls(
+                        dialect_name
+                    )
+                except exc.NoSuchModuleError:
+                    # Preserve the constructor's warning for unknown dialects.
+                    continue
+            if arg_name in dialects[dialect_name]._ignored:
+                reflected.setdefault(dialect_name, {})[arg_name] = options.pop(
+                    key
+                )
+
+        obj = cls(*args, **kwargs, **options)
+        for dialect_name, values in reflected.items():
+            obj.dialect_options[dialect_name]._reflected = util.immutabledict(
+                values
+            )
+        return obj
 
     def _validate_dialect_kwargs(self, kwargs: Dict[str, Any]) -> None:
         # validate remaining kwargs that they all specify DB prefixes
@@ -711,6 +783,11 @@ class DialectKWArgs:
                 d._defaults.update({"*": None})
                 d._non_defaults[arg_name] = kwargs[k]
             else:
+                if arg_name in construct_arg_dictionary._ignored:
+                    # Consumers such as Alembic construct Index directly from
+                    # Inspector options. Accept reflected state without making
+                    # it part of dialect_kwargs or the generated DDL.
+                    continue
                 if (
                     "*" not in construct_arg_dictionary
                     and arg_name not in construct_arg_dictionary

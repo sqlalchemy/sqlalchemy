@@ -560,7 +560,13 @@ class ReflectedIndex(TypedDict):
     """
 
     dialect_options: NotRequired[Dict[str, Any]]
-    """Additional dialect-specific options detected for this index"""
+    """Additional dialect-specific options detected for this index.
+
+    This may include database state that is not a DDL option. Table reflection
+    places such values in the dialect's separate ``reflected`` mapping; see
+    :attr:`.DialectKWArgs.dialect_options`.
+
+    """
 
 
 class ReflectedTableComment(TypedDict):
@@ -1258,6 +1264,15 @@ class Dialect(EventTarget):
     the namespace of arguments prefixed with that dialect name.  The rationale
     here is so that third-party dialects that haven't yet implemented this
     feature continue to function in the old way.
+
+    For index options which describe database state rather than DDL, the
+    default may be :attr:`.SchemaConst.IGNORE_OPTION`. Such keywords are
+    accepted and discarded by the constructor, while index reflection
+    stores their values in the dialect's separate ``reflected`` mapping.
+    They are excluded from ordinary option defaults and
+    :attr:`.DialectKWArgs.dialect_kwargs`.
+
+    .. versionadded:: 2.1 Added :attr:`.SchemaConst.IGNORE_OPTION`.
 
     .. seealso::
 

@@ -175,6 +175,19 @@ class SchemaConst(Enum):
 
     """
 
+    IGNORE_OPTION = 4
+    """Mark a dialect argument as database state used only by reflection.
+
+    When used as an argument default in
+    :attr:`.DefaultDialect.construct_arguments`, the option is accepted and
+    discarded by the constructor.  Index reflection instead places its value
+    in the dialect's read-only ``reflected`` mapping, separate from the
+    options used to generate DDL.
+
+    .. versionadded:: 2.1
+
+    """
+
 
 RETAIN_SCHEMA: Final[Literal[SchemaConst.RETAIN_SCHEMA]] = (
     SchemaConst.RETAIN_SCHEMA

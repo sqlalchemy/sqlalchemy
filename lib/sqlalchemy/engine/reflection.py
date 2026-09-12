@@ -1918,12 +1918,12 @@ class Inspector(inspection.Inspectable["Inspector"]):
                             idx_element = op(idx_element)
                 idx_elements.append(idx_element)
             else:
-                sa_schema.Index(
+                sa_schema.Index._from_reflection(
                     name,
                     *idx_elements,
                     _table=table,
                     unique=unique,
-                    **dialect_options,
+                    dialect_options=dialect_options,
                 )
 
     def _reflect_unique_constraints(
