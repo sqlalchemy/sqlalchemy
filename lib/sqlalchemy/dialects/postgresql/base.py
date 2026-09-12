@@ -1215,10 +1215,7 @@ DDL options on each reflected :class:`.Index`::
 
 The ``reflected`` mapping is read-only. These values are not included in
 :attr:`.Index.dialect_kwargs`, do not affect DDL, and are not copied by
-:meth:`.Table.to_metadata`. The :class:`.Index` constructor accepts and ignores
-``postgresql_not_valid`` so that consumers which construct indexes directly
-from Inspector results continue to work. Passing the keyword does not set
-the reflected state.
+:meth:`.Table.to_metadata`.
 
 An invalid index may be left by a failed ``CREATE INDEX CONCURRENTLY``, may
 still be building, or may be a partitioned index awaiting attachment of its

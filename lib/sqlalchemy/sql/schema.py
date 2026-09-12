@@ -6012,6 +6012,7 @@ class Index(
         info: Optional[_InfoType] = None,
         _table: Optional[Table] = None,
         _column_flag: bool = False,
+        _dialect_kwargs_from_reflection: bool = False,
         **dialect_kw: Any,
     ) -> None:
         r"""Construct an index object.
@@ -6055,7 +6056,9 @@ class Index(
         if _table is not None:
             table = _table
 
-        self._validate_dialect_kwargs(dialect_kw)
+        self._validate_dialect_kwargs(
+            dialect_kw, _from_reflection=_dialect_kwargs_from_reflection
+        )
 
         self.expressions = []
         # will call _set_parent() if table-bound column

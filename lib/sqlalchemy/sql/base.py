@@ -720,43 +720,9 @@ class DialectKWArgs:
 
         return util.PopulateDict(self._kw_reg_for_dialect_cls)
 
-    @classmethod
-    def _from_reflection(
-        cls,
-        *args: Any,
-        dialect_options: Mapping[str, Any],
-        **kwargs: Any,
-    ) -> Self:
-        """Construct an object with separate reflected state."""
-        options = dict(dialect_options)
-        dialects: Dict[str, _DialectArgDict] = {}
-        reflected: Dict[str, Dict[str, Any]] = {}
-        for key in dialect_options:
-            dialect_name, separator, arg_name = key.partition("_")
-            if not separator:
-                # Leave malformed options to the constructor's validation.
-                continue
-            if dialect_name not in dialects:
-                try:
-                    dialects[dialect_name] = cls._kw_reg_for_dialect_cls(
-                        dialect_name
-                    )
-                except exc.NoSuchModuleError:
-                    # Preserve the constructor's warning for unknown dialects.
-                    continue
-            if arg_name in dialects[dialect_name]._ignored:
-                reflected.setdefault(dialect_name, {})[arg_name] = options.pop(
-                    key
-                )
-
-        obj = cls(*args, **kwargs, **options)
-        for dialect_name, values in reflected.items():
-            obj.dialect_options[dialect_name]._reflected = util.immutabledict(
-                values
-            )
-        return obj
-
-    def _validate_dialect_kwargs(self, kwargs: Dict[str, Any]) -> None:
+    def _validate_dialect_kwargs(
+        self, kwargs: Dict[str, Any], *, _from_reflection: bool = False
+    ) -> None:
         # validate remaining kwargs that they all specify DB prefixes
 
         if not kwargs:
@@ -784,6 +750,12 @@ class DialectKWArgs:
                 d._non_defaults[arg_name] = kwargs[k]
             else:
                 if arg_name in construct_arg_dictionary._ignored:
+                    if _from_reflection:
+                        construct_arg_dictionary._reflected = (
+                            construct_arg_dictionary._reflected.union(
+                                {arg_name: kwargs[k]}
+                            )
+                        )
                     # Consumers such as Alembic construct Index directly from
                     # Inspector options. Accept reflected state without making
                     # it part of dialect_kwargs or the generated DDL.
