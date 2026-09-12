@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import collections
 import dataclasses
+import functools
 import itertools
 import re
 from typing import Any
@@ -2052,6 +2053,31 @@ class _UnmappedDataclassConfig(_ClassScanAbstractConfig):
         self._setup_dataclasses_transforms(
             enable_descriptor_defaults=False, revert=True
         )
+
+        if self.dataclass_setup_arguments:
+            self._install_unmapped_dataclass_init_warning()
+
+    def _install_unmapped_dataclass_init_warning(self) -> None:
+        cls_ = self.cls
+        decl_api = util.preloaded.orm_decl_api
+        if not issubclass(cls_, decl_api.MappedAsDataclass):
+            return
+
+        orig_init = cls_.__dict__.get("__init__", None)
+        if orig_init is None:
+            return
+
+        @functools.wraps(orig_init)
+        def _warn_on_init(self_: Any, *args: Any, **kwargs: Any) -> None:
+            if type(self_) is cls_:
+                util.warn(
+                    f"Direct instantiation of unmapped dataclass {cls_.__name__!r} "
+                    f"is not supported and will become an error in a future release.",
+                    exc.SAWarning,
+                )
+            return orig_init(self_, *args, **kwargs)
+
+        cls_.__init__ = _warn_on_init  # type: ignore[misc]
 
     def _scan_attributes(self) -> None:
         cls = self.cls
