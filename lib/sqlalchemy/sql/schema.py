@@ -175,6 +175,19 @@ class SchemaConst(Enum):
 
     """
 
+    IGNORE_OPTION = 4
+    """Mark a dialect argument as database state used only by reflection.
+
+    When used as an argument default in
+    :attr:`.DefaultDialect.construct_arguments`, the option is accepted and
+    discarded by the constructor.  Index reflection instead places its value
+    in the dialect's read-only ``reflected`` mapping, separate from the
+    options used to generate DDL.
+
+    .. versionadded:: 2.1
+
+    """
+
 
 RETAIN_SCHEMA: Final[Literal[SchemaConst.RETAIN_SCHEMA]] = (
     SchemaConst.RETAIN_SCHEMA
@@ -5999,6 +6012,7 @@ class Index(
         info: Optional[_InfoType] = None,
         _table: Optional[Table] = None,
         _column_flag: bool = False,
+        _dialect_kwargs_from_reflection: bool = False,
         **dialect_kw: Any,
     ) -> None:
         r"""Construct an index object.
@@ -6042,7 +6056,9 @@ class Index(
         if _table is not None:
             table = _table
 
-        self._validate_dialect_kwargs(dialect_kw)
+        self._validate_dialect_kwargs(
+            dialect_kw, _from_reflection=_dialect_kwargs_from_reflection
+        )
 
         self.expressions = []
         # will call _set_parent() if table-bound column
