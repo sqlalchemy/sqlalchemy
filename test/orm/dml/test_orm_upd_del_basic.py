@@ -1771,8 +1771,32 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([25, 37, 29, 27])),
         )
 
-    @testing.fails_if(lambda: not testing.db.dialect.supports_sane_rowcount)
-    @testing.combinations("auto", "fetch", "evaluate")
+    @testing.combinations(
+        # the criteria here is evaluable, so "auto" and "evaluate" both
+        # emit a plain UPDATE and report cursor.rowcount
+        (
+            "auto",
+            testing.fails_if(
+                lambda: not testing.db.dialect.supports_sane_rowcount
+            ),
+        ),
+        # "fetch" uses UPDATE..RETURNING where available and counts the
+        # rows returned; otherwise it SELECTs first, then reports
+        # cursor.rowcount for a plain UPDATE
+        (
+            "fetch",
+            testing.fails_if(
+                lambda: not testing.db.dialect.supports_sane_rowcount
+                and not testing.db.dialect.update_returning
+            ),
+        ),
+        (
+            "evaluate",
+            testing.fails_if(
+                lambda: not testing.db.dialect.supports_sane_rowcount
+            ),
+        ),
+    )
     def test_update_returns_rowcount(self, synchronize_session):
         User = self.classes.User
 
