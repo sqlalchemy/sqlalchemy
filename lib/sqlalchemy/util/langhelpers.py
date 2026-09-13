@@ -404,7 +404,13 @@ def _remove_linecache_entry(filename: str, entry: _LinecacheEntry) -> None:
     linecache within exec_code_in_env.
 
     """
-    linecache_cache = _linecache_cache_getter()
+    try:
+        linecache_cache = _linecache_cache_getter()
+    except AttributeError:
+        # linecache.cache is gone or is no longer a dict; as this runs
+        # from a finalizer, an exception here would only surface as an
+        # unraisable error
+        return
 
     if linecache_cache.get(filename) is entry:
         linecache_cache.pop(filename, None)
