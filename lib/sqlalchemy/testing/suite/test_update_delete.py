@@ -100,6 +100,43 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
             ),
         )
 
+    @testing.variation("unchanged", ["some", "all"])
+    @testing.requires.update_returning
+    def test_update_returning_unchanged_rows(self, connection, unchanged):
+        """test that UPDATE..RETURNING returns all rows matched by the WHERE
+        clause, including those where the new value is the same as the
+        existing value.
+
+        """
+        t = self.tables.plain_pk
+
+        if unchanged.some:
+            # WHERE matches 2, 1 row changed
+            stmt = t.update().where(t.c.id.in_([2, 3]))
+        elif unchanged.all:
+            # WHERE matches 1, 0 rows changed
+            stmt = t.update().where(t.c.id == 3)
+        else:
+            unchanged.fail()
+
+        r = connection.execute(
+            stmt.returning(t.c.id, t.c.data), dict(data="d3")
+        )
+
+        if unchanged.some:
+            eq_(sorted(r.all()), [(2, "d3"), (3, "d3")])
+        else:
+            eq_(r.all(), [(3, "d3")])
+
+        eq_(
+            connection.execute(t.select().order_by(t.c.id)).fetchall(),
+            (
+                [(1, "d1"), (2, "d3"), (3, "d3")]
+                if unchanged.some
+                else [(1, "d1"), (2, "d2"), (3, "d3")]
+            ),
+        )
+
     @testing.variation("criteria", ["rows", "norows", "emptyin"])
     @testing.requires.delete_returning
     def test_delete_returning(self, connection, criteria):
