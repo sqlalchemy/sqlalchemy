@@ -10,7 +10,232 @@
 
 .. changelog::
     :version: 2.0.53
-    :include_notes_from: unreleased_20
+    :released: September 14, 2026
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 13451
+        :versions: 2.1.0rc1
+
+        Fixed issue in SQL Server reflection where ``TEXT`` and ``NTEXT`` columns
+        would be reflected with a spurious length of 16 and 8, respectively.  These
+        are unlengthed LOB datatypes; the value originates from the
+        ``sys.columns.max_length`` column, which reports the size of the in-row LOB
+        pointer rather than a character length for these types.  The reflected
+        :class:`_mssql.TEXT` and :class:`_mssql.NTEXT` types now have a ``length``
+        of ``None``, so that a reflected table emits valid DDL when re-created,
+        which previously failed with "Cannot specify a column width on data type
+        text".  Pull request courtesy Sam Debruyn.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13472
+        :versions: 2.1.0rc1
+
+        Fixed bug in :meth:`_reflection.Inspector.get_schema_names` for
+        PostgreSQL where the query used to exclude system schemas relied on
+        ``NOT LIKE 'pg_%'``, which treats the underscore as a SQL ``LIKE``
+        wildcard rather than a literal character. This caused user-created
+        schemas that happen to start with "pg" followed by any other
+        character, such as ``pgsql`` or ``pgstats``, to be silently excluded
+        along with actual system schemas like ``pg_catalog``. Pull request
+        courtesy Evan Rusackas.
+
+    .. change::
+        :tags: bug, installation
+        :tickets: 13518
+        :versions: 2.1.0rc1
+
+        Added the ``AUTHORS`` file to the set of license files included in the
+        built wheel, where previously only the ``LICENSE`` file was present. As
+        the text of ``LICENSE`` refers to ``AUTHORS`` for the list of copyright
+        holders, the reference would not resolve for tools that inspect an
+        installed distribution.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 13521
+        :versions: 2.1.0rc1
+
+        Altered the dialect reflection test
+        ``test_check_constraint_parenthesized_expressions()`` so that it does not
+        convert the reflected constraint to lowercase, which interferes with some
+        third party dialect's representation of reflected check constraints.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 13523
+        :versions: 2.1.0rc1
+
+        Ensure that CREATE TABLE DDL statements for MySQL and MariaDB dialects
+        render the table options in a deterministic order. Previously the order
+        could change depending on the Python seed.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 13525
+
+        Fixed issue where reflecting a table with a foreign key constraint that
+        names the same source column more than once, such as ``FOREIGN KEY (a, a)
+        REFERENCES r (b, c)`` which is accepted by backends such as PostgreSQL,
+        would raise :class:`.ArgumentError` and fail the reflection of the entire
+        table.  As :class:`.ForeignKeyConstraint` has no representation for this
+        form, the constraint is now skipped with a warning, in the same way as one
+        that names columns which are not present in the table, so that the
+        remainder of the table is still reflected.
+
+        Note that in the SQLAlchemy 2.1 series, full support for reflecting
+        and constructing foreign key constraints with duplicated source columns
+        has been added, with no warnings or skips.
+
+    .. change::
+        :tags: bug, sqlite, reflection
+        :tickets: 13528
+        :versions: 2.1.0rc1
+
+        Fixed issue in SQLite reflection where the name of a ``PRIMARY KEY``,
+        ``UNIQUE`` or ``FOREIGN KEY`` constraint would be reflected as ``None`` if
+        the ``CONSTRAINT <name>`` clause were separated from the keyword that
+        follows it by a newline rather than by spaces.  As SQLite stores the
+        ``CREATE TABLE`` statement as it was originally typed, this affected
+        tables created from hand-written DDL that spans multiple lines.  The
+        regular expressions used to recover constraint names, as well as the
+        ``ON UPDATE`` / ``ON DELETE``, ``DEFERRABLE`` and ``INITIALLY`` options of
+        a foreign key constraint, now accept any whitespace between tokens.
+
+    .. change::
+        :tags: bug, sqlite, reflection
+        :tickets: 13530
+        :versions: 2.1.0rc2
+
+        Reworked the regular expression that parses ``FOREIGN KEY`` constraints
+        during SQLite ``CREATE TABLE`` reflection so that the referred column list
+        is matched unambiguously avoiding potential exponential backtracking.
+        Pull request courtesy of Javid Khan.
+
+    .. change::
+        :tags: usecase, sqlite, reflection
+        :tickets: 13543
+        :versions: 2.1.0rc2
+
+        Implemented :meth:`_engine.Inspector.get_table_options` for the SQLite
+        dialect, which previously raised ``NotImplementedError``.  The method
+        returns the ``sqlite_with_rowid`` and ``sqlite_strict`` dialect options
+        for a table that was created using the ``WITHOUT ROWID`` and / or
+        ``STRICT`` keywords.  As a result, these keywords are now also present in
+        :attr:`_schema.Table.kwargs` for a :class:`_schema.Table` that is
+        reflected using autoload, so that a table which is recreated from its
+        reflected form, such as by Alembic's batch migration mode, renders the
+        keywords again rather than silently dropping them.
+
+    .. change::
+        :tags: bug, engine, pool, asyncio
+        :tickets: 13548
+        :versions: 2.1.0rc1
+
+        Fixed issue where a DBAPI connection would be left open and unreachable
+        if an exception were raised within the :meth:`_events.PoolEvents.connect`
+        or :meth:`_events.PoolEvents.first_connect` event handlers, which is
+        where :meth:`.Dialect.initialize` runs.  The connection had been created
+        but not yet associated with anything that could close it, so it was
+        neither returned to the pool nor closed.  For an asyncio driver in
+        particular this could leak a server-side session for the life of the
+        process, as the garbage collector is not able to close a connection that
+        requires the event loop.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13560
+        :versions: 2.1.0rc2
+
+        Fixed issue where an expression passed to :func:`_orm.with_expression`
+        that embedded a :func:`_sql.select`, such as a correlated
+        :func:`_sql.exists`, would fail to populate the attribute correctly on
+        the second and subsequent executions of an otherwise identical
+        statement, when the :func:`_orm.query_expression` attribute was loaded
+        by a relationship loader that emits a second query, i.e.
+        :func:`_orm.selectinload`, :func:`_orm.lazyload` or
+        :func:`_orm.immediateload`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13566
+        :versions: 2.1.0rc2
+
+        Fixed memory issue where mapped classes, along with their
+        :class:`.Table` and :class:`_orm.Mapper` objects, would not be garbage
+        collected after the :class:`_orm.registry` in which they were mapped had
+        been disposed and dereferenced.  The issue would occur for mappings that
+        made use of :func:`_orm.relationship` together with constructs such as an
+        :class:`.Index` established against an ORM-annotated expression.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13574
+        :versions: 2.1.0
+
+        Fixed issue where pickling an ORM object that had an instance level lazy
+        loader established, such as when the :func:`_orm.raiseload` option is used,
+        would emit a spurious warning regarding the loader containing additional
+        criteria, if the object had itself been unpickled from a previous
+        serialization.  This would occur for objects that cross more than one
+        serialization boundary, such as when using multiprocessing.
+
+    .. change::
+        :tags: usecase, oracle
+        :tickets: 13578
+        :versions: 2.1.0
+
+        Added support for oracledb's new ``terminate()`` feature, which allows for
+        clean termination of an Oracle database connection in an asyncio context
+        where the connection's state has fallen out of the event loop, and needs to
+        be garbage collected.  The feature is enabled automatically when using
+        oracledb 26.0.0 or greater.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13583, 13584
+        :versions: 2.1.0
+
+        Fixed issue where calling :func:`_orm.aliased` against an existing
+        :func:`_orm.aliased` construct, without passing an explicit selectable,
+        would disregard the selectable of the existing construct and produce an
+        alias of the mapped table instead, if that selectable were anything other
+        than a table or a plain subquery, leading to incorrect results and/or
+        non-working queries.
+
+        This includes :func:`_orm.aliased` against a :func:`_orm.with_polymorphic`
+        construct, which would previously produce an alias of the base mapped
+        class only, discarding the polymorphic selectable and additional mappers.
+        The new construct now retains these, so that criteria against subclass
+        attributes and the ``innerjoin`` and ``selectable`` parameters of
+        :func:`_orm.with_polymorphic` take effect, and subclass columns are loaded
+        up front.  The SQL rendered for these constructs now includes the
+        polymorphic selectable.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13583
+        :versions: 2.1.0
+
+        Fixed issue where calling :meth:`_sql.CTE.alias` on a :class:`_sql.CTE`
+        that was itself produced by :meth:`_sql.CTE.alias` would render SQL that
+        referred to the name of the intermediate alias, which is not present in
+        the WITH clause, rather than to the name of the original CTE, producing
+        invalid SQL.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13583
+        :versions: 2.1.0
+
+        Fixed issue where using :func:`_orm.aliased` with both the
+        :paramref:`_orm.aliased.name` and :paramref:`_orm.aliased.flat`
+        parameters, against an entity that is mapped to a join which includes
+        anonymously named aliases, would embed the anonymous name symbol within
+        the names generated for each element of the join, producing unusable
+        SQL.  An anonymously named element of the join is now aliased
+        anonymously.
 
 .. changelog::
     :version: 2.0.52
