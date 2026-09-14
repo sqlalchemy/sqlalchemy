@@ -602,6 +602,7 @@ from ... import pool
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...connectors.asyncio import AsyncAdapt_terminate
 from ...connectors.asyncio import AsyncAdaptFallback_dbapi_connection
 from ...engine import default
 from ...util import asbool
@@ -795,7 +796,9 @@ class AsyncAdapt_oracledb_ss_cursor(
             self._cursor = None  # type: ignore
 
 
-class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
+class AsyncAdapt_oracledb_connection(
+    AsyncAdapt_terminate, AsyncAdapt_dbapi_connection
+):
     _connection: AsyncConnection
     __slots__ = ()
 
@@ -860,6 +863,12 @@ class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
     def tpc_rollback(self, *args: Any, **kwargs: Any) -> Any:
         return self.await_(self._connection.tpc_rollback(*args, **kwargs))
 
+    async def _terminate_graceful_close(self) -> None:
+        await self._connection.close()
+
+    def _terminate_force_close(self) -> None:
+        self._connection.terminate()
+
 
 class AsyncAdaptFallback_oracledb_connection(
     AsyncAdaptFallback_dbapi_connection, AsyncAdapt_oracledb_connection
@@ -918,6 +927,11 @@ class OracleDialectAsync_oracledb(OracleDialect_oracledb):
 
     _min_version = (2,)
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.has_terminate = self.oracledb_ver >= (26, 0, 0)
+
     # thick_mode mode is not supported by asyncio, oracledb will raise
     @classmethod
     def import_dbapi(cls):
@@ -936,6 +950,12 @@ class OracleDialectAsync_oracledb(OracleDialect_oracledb):
 
     def get_driver_connection(self, connection):
         return connection._connection
+
+    def do_terminate(self, dbapi_connection) -> None:
+        if self.has_terminate:
+            dbapi_connection.terminate()
+        else:
+            super().do_terminate(dbapi_connection)
 
 
 dialect = OracleDialect_oracledb
