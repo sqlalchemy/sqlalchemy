@@ -855,6 +855,181 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
         eq_(sess.execute(q3).fetchall(), [(7, 1), (8, 1), (9, 1), (10, 1)])
 
 
+class AliasOfAliasedSelectableTest(QueryTest, AssertsCompiledSQL):
+    """test aliased() of an aliased() that refers to a selectable other
+    than the mapped table, #13583"""
+
+    __dialect__ = "default"
+
+    def test_subquery_w_name(self):
+        User = self.classes.User
+
+        subq = select(User).where(User.id > 8).subquery()
+        u1 = aliased(User, subq)
+
+        self.assert_compile(
+            select(aliased(u1, name="u2")),
+            "SELECT u2.id, u2.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users WHERE users.id > :id_1) AS u2",
+        )
+
+    def test_alias_of_subquery(self):
+        User = self.classes.User
+
+        subq = select(User).where(User.id > 8).subquery()
+        u2 = aliased(aliased(User, subq))
+
+        self.assert_compile(
+            select(aliased(u2, name="u3")),
+            "SELECT u3.id, u3.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users WHERE users.id > :id_1) AS u3",
+        )
+
+    @testing.combinations(
+        (lambda cte: cte,),
+        (lambda cte: cte.alias("ca"),),
+        (lambda cte: cte.alias("ca").alias("cb"),),
+        argnames="make_selectable",
+    )
+    def test_cte(self, make_selectable):
+        User = self.classes.User
+
+        cte = select(User).where(User.id > 8).cte("c")
+        u1 = aliased(User, make_selectable(cte))
+        u2 = aliased(u1, name="u2")
+
+        self.assert_compile(
+            select(aliased(u2, name="u3")),
+            "WITH c AS (SELECT users.id AS id, users.name AS name "
+            "FROM users WHERE users.id > :id_1) "
+            "SELECT u3.id, u3.name FROM c AS u3",
+        )
+
+    def test_lateral(self):
+        User = self.classes.User
+
+        lat = select(User).where(User.id > 8).lateral("lat")
+        u2 = aliased(aliased(User, lat), name="u2")
+
+        self.assert_compile(
+            select(User.id, u2.id).join(u2, true()),
+            "SELECT users.id, u2.id AS id_1 FROM users JOIN LATERAL "
+            "(SELECT users.id AS id, users.name AS name FROM users "
+            "WHERE users.id > :id_2) AS u2 ON 1 = 1",
+        )
+
+    def test_tablesample(self):
+        User = self.classes.User
+        users = self.tables.users
+
+        u1 = aliased(User, users.tablesample(func.bernoulli(1), name="ts"))
+
+        self.assert_compile(
+            select(aliased(u1, name="u2")),
+            "SELECT u2.id, u2.name FROM users "
+            "TABLESAMPLE bernoulli(:bernoulli_1) AS u2",
+        )
+
+    def test_table_alias_unchanged(self):
+        User = self.classes.User
+        users = self.tables.users
+
+        u1 = aliased(User, users.alias("ua"))
+
+        self.assert_compile(
+            select(aliased(u1)),
+            "SELECT users_1.id, users_1.name FROM users AS users_1",
+        )
+
+    def test_join_of_anon_aliases_flat_w_name(self):
+        """the aliased selectable is a join of anonymous aliases; flat,
+        named aliases of it can't embed the anonymous names within the given
+        names, so each is aliased anonymously and remains distinct from the
+        others"""
+        User = self.classes.User
+        users, addresses = self.tables.users, self.tables.addresses
+
+        ua, aa = users.alias(), addresses.alias()
+        u1 = aliased(User, ua.join(aa, ua.c.id == aa.c.user_id))
+        u2 = aliased(u1, flat=True, name="u2")
+        u3 = aliased(u1, flat=True, name="u3")
+
+        stmt = (
+            select(u2.id, u3.id)
+            .select_from(u2)
+            .join(u3, u2.id < u3.id)
+            .where(u2.id == 8, u3.id == 9)
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.id, anon_2.id AS id_1 FROM users AS anon_1 "
+            "JOIN addresses AS anon_3 ON anon_1.id = anon_3.user_id "
+            "JOIN (users AS anon_2 JOIN addresses AS anon_4 "
+            "ON anon_2.id = anon_4.user_id) ON anon_1.id < anon_2.id "
+            "WHERE anon_1.id = :id_2 AND anon_2.id = :id_3",
+        )
+
+        # user 8 has three addresses, user 9 has one
+        eq_(fixture_session().execute(stmt).all(), [(8, 9), (8, 9), (8, 9)])
+
+    def test_adapt_on_names(self):
+        User = self.classes.User
+
+        subq = (
+            select(User.id, (User.name + "!").label("name"))
+            .where(User.id > 8)
+            .subquery()
+        )
+        u2 = aliased(aliased(User, subq, adapt_on_names=True), name="u2")
+
+        self.assert_compile(
+            select(u2),
+            "SELECT u2.id, u2.name FROM (SELECT users.id AS id, "
+            "users.name || :name_1 AS name FROM users "
+            "WHERE users.id > :id_1) AS u2",
+        )
+        eq_(
+            fixture_session().execute(select(u2).order_by(u2.id)).all(),
+            [(User(id=9, name="fred!"),), (User(id=10, name="chuck!"),)],
+        )
+
+    @testing.combinations("subquery", "cte", argnames="kind")
+    @testing.combinations("serial", "parallel", "nested", argnames="pairing")
+    def test_self_join(self, kind, pairing):
+        """the case reported in #13581; counting across a join on true
+        ensures the criteria on both sides of the join are applied"""
+        User = self.classes.User
+
+        stmt = select(User).where(User.id > 8)
+        if kind == "subquery":
+            selectable = stmt.subquery()
+        else:
+            selectable = stmt.cte()
+
+        u0 = aliased(User, selectable)
+        u1 = aliased(u0)
+        u2 = aliased(u0)
+        u3 = aliased(u1)
+
+        left, right = {
+            "serial": (u0, u1),
+            "parallel": (u1, u2),
+            "nested": (u1, u3),
+        }[pairing]
+
+        eq_(
+            fixture_session()
+            .execute(
+                select(left.id, func.count(right.id))
+                .join(right, true())
+                .group_by(left.id)
+                .order_by(left.id)
+            )
+            .all(),
+            [(9, 2), (10, 2)],
+        )
+
+
 class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
     """test access of columns after _from_selectable has been applied"""
 
