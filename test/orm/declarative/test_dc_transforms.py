@@ -60,6 +60,7 @@ from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -3440,3 +3441,55 @@ class SynonymDescriptorDefaultTest(AssertsCompiledSQL, fixtures.TestBase):
                 eq_(a1.some_syn_2, 10)
                 eq_(a1.some_syn, 10)
                 eq_(a1.some_int, 10)
+
+
+class UnmappedDataclassInstantiationTest(fixtures.TestBase):
+    """Test warning emitted when directly instantiating unmapped dataclass mixins/abstracts (#10064)."""
+
+    def test_warn_on_unmapped_mixin_instantiation(self):
+        class MyMixin(MappedAsDataclass):
+            data: Mapped[str]
+
+        with expect_warnings(
+            r"Direct instantiation of unmapped dataclass 'MyMixin' "
+            r"is not supported and will become an error in a future release\."
+        ):
+            m = MyMixin(data="foo")
+            eq_(m.data, "foo")
+
+    def test_warn_on_unmapped_abstract_instantiation(self):
+        class Base(DeclarativeBase):
+            pass
+
+        class MyAbstract(MappedAsDataclass, Base):
+            __abstract__ = True
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+
+        with expect_warnings(
+            r"Direct instantiation of unmapped dataclass 'MyAbstract' "
+            r"is not supported and will become an error in a future release\."
+        ):
+            a = MyAbstract(id=1, data="bar")
+            eq_(a.id, 1)
+            eq_(a.data, "bar")
+
+    def test_no_warn_on_concrete_mapped_subclass(self):
+        class Base(DeclarativeBase):
+            pass
+
+        class MyMixin(MappedAsDataclass):
+            data: Mapped[str]
+
+        class MyAbstract(MappedAsDataclass, Base):
+            __abstract__ = True
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        class Concrete(MyAbstract, MyMixin):
+            __tablename__ = "concrete"
+
+        # Concrete subclass should instantiate cleanly with NO warnings
+        c = Concrete(id=1, data="test")
+        eq_(c.id, 1)
+        eq_(c.data, "test")
+
