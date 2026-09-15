@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import os
 import platform
+import sys
+from typing import Any
 from typing import cast
+from typing import Dict
 from typing import TYPE_CHECKING
 
 from setuptools import setup
@@ -42,7 +45,18 @@ if HAS_CYTHON and IS_CPYTHON and not DISABLE_EXTENSION:
         "resultproxy.pyx",
         "util.pyx",
     ]
-    cython_directives = {"language_level": "3"}
+    from Cython.Compiler import Options
+
+    cython_directives: Dict[str, Any] = {"language_level": "3"}
+
+    # declare the extensions as safe to run without the GIL, so that
+    # importing them on a free-threaded build does not re-enable it.
+    # the directive is not known to Cython versions prior to 3.1
+    if (
+        sys.version_info >= (3, 13)
+        and "freethreading_compatible" in Options.directive_types
+    ):
+        cython_directives["freethreading_compatible"] = True
 
     module_prefix = "sqlalchemy.cyextension."
     source_prefix = "lib/sqlalchemy/cyextension/"
