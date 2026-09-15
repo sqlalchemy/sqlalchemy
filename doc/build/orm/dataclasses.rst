@@ -625,6 +625,113 @@ variable may be generated::
    even though the purpose of this attribute was only to allow legacy
    ORM typed mappings to continue to function.
 
+.. _orm_declarative_dc_caveats:
+
+Dataclass Caveats
+^^^^^^^^^^^^^^^^^
+
+Declarative Dataclass Mapping produces a real Python dataclass, so the rules of
+the dataclasses_ module apply in addition to those of the ORM. The sections
+below collect the behaviors that most frequently cause surprise.
+
+Fields without defaults may not follow fields with defaults
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Python dataclasses generate a positional ``__init__()`` method, which means a
+field without a default may not be declared after one that has a default. As
+mapped attributes participate in that same ordering, the mapping below fails::
+
+    class Base(MappedAsDataclass, DeclarativeBase):
+        pass
+
+
+    class User(Base):
+        __tablename__ = "user"
+
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        name: Mapped[str] = mapped_column(default="default_name")
+
+        # raises: non-default argument 'email' follows default argument
+        email: Mapped[str] = mapped_column()
+
+The error originates in the dataclasses_ module and is raised as
+:class:`.InvalidRequestError` when the class is transformed. There are two ways
+to resolve it: declare the fields that have no default first, or make the
+arguments keyword-only using ``kw_only=True``, in which case ordering no longer
+matters::
+
+    class Base(MappedAsDataclass, DeclarativeBase, kw_only=True):
+        pass
+
+Keyword-only fields are particularly useful for attributes contributed by
+mixins and abstract superclasses, since a mixin cannot know where its fields
+will land in the ordering of the classes that use it.
+
+.. seealso::
+
+    :ref:`orm_declarative_dc_mixins`
+
+``kw_only`` is inherited at runtime, but not by type checkers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``kw_only=True`` is set on a superclass, SQLAlchemy applies it to
+subclasses as well, so the generated ``__init__()`` method accepts the
+subclass' own fields as keyword arguments. Type checkers implementing
+:pep:`681` treat class-level arguments as applying only to the class where they
+appear, so a checker may report a call as invalid even though it succeeds at
+runtime. Setting ``kw_only=True`` directly on the subclass resolves the
+disagreement.
+
+.. seealso::
+
+    `#9493 <https://github.com/sqlalchemy/sqlalchemy/issues/9493>`_ - tracking
+    issue for this behavior
+
+``asdict()`` recurses infinitely across bidirectional relationships
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`dataclasses.asdict()
+<https://docs.python.org/3/library/dataclasses.html#dataclasses.asdict>`_ walks
+nested dataclasses recursively and has no concept of a cycle. A pair of classes
+linked with :paramref:`_orm.relationship.back_populates` therefore refers back
+to itself, and calling ``asdict()`` on such an object raises ``RecursionError``.
+This affects unloaded, eagerly loaded and transient objects alike, as the cycle
+exists in the object graph rather than in the loading behavior. ``astuple()``
+has the same limitation.
+
+There is no ORM-level workaround, as the cause is in the dataclasses_ module
+itself, which offers no way to omit a field from ``asdict()``. Write an explicit
+serialization function that converts only the attributes needed and does not
+follow the reverse side of the relationship.
+
+.. seealso::
+
+    `python/cpython#94345 <https://github.com/python/cpython/issues/94345>`_ -
+    upstream issue for the underlying behavior
+
+Dataclass defaults and subsequent ORM operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A dataclass default causes the corresponding attribute to be **set** on a newly
+constructed object, and the ORM treats an attribute that is set, including one
+set to ``None`` or to an empty collection, differently from one that was never
+set at all. In SQLAlchemy 2.0 this means a default can take precedence over
+data that is already in the database. The most consequential case is
+:meth:`_orm.Session.merge`, where a collection given
+:paramref:`_orm.relationship.default_factory` is treated as loaded and empty,
+and merging an object constructed by ``__init__()`` will disassociate the rows
+that the database already holds.
+
+.. versionchanged:: 2.1  Implicit ``default`` and collection-based
+   ``default_factory`` values are no longer populated into ``__dict__``, so an
+   attribute that was not explicitly passed to ``__init__()`` is left absent and
+   no longer overwrites existing data. See :ref:`change_12168` for a full
+   description of the change.
+
+When running under 2.0, construct the object with the values that should be
+persisted rather than relying on the defaults, or set the attributes explicitly
+before merging.
+
 .. _dataclasses_pydantic:
 
 Integrating with Alternate Dataclass Providers such as Pydantic
