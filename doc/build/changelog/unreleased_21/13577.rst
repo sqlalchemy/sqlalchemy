@@ -1,0 +1,16 @@
+.. change::
+    :tags: usecase, postgresql, reflection
+    :tickets: 13577
+
+    PostgreSQL index reflection now reports invalid indexes with
+    ``postgresql_not_valid=True`` in the Inspector's ``dialect_options``.
+    Reflected :class:`.Index` objects expose this state in a separate,
+    read-only ``index.dialect_options["postgresql"].reflected`` mapping.
+    The new :attr:`.SchemaConst.IGNORE_OPTION` marker distinguishes these
+    values from DDL options and lets constructors accept and discard them
+    for compatibility with consumers of Inspector results. The state does
+    not affect DDL or :attr:`.Index.dialect_kwargs`.
+
+    .. seealso::
+
+        :ref:`postgresql_invalid_index_reflection`
