@@ -642,6 +642,7 @@ def composite(
     return_none_on: Union[_NoArg, None, Callable[..., bool]] = _NoArg.NO_ARG,
     comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
     active_history: bool = False,
+    column_template: Optional[str] = None,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
@@ -667,6 +668,7 @@ def composite(
     return_none_on: Union[_NoArg, None, Callable[..., bool]] = _NoArg.NO_ARG,
     comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
     active_history: bool = False,
+    column_template: Optional[str] = None,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
@@ -691,6 +693,7 @@ def composite(
     return_none_on: Union[_NoArg, None, Callable[..., bool]] = _NoArg.NO_ARG,
     comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
     active_history: bool = False,
+    column_template: Optional[str] = None,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
@@ -716,6 +719,7 @@ def composite(
     return_none_on: Union[_NoArg, None, Callable[..., bool]] = _NoArg.NO_ARG,
     comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
     active_history: bool = False,
+    column_template: Optional[str] = None,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
@@ -785,6 +789,23 @@ def composite(
       :class:`.Composite.Comparator` which provides custom SQL
       clause generation for comparison operations.
 
+    :param column_template: A string template such as ``"person_%s"``,
+     containing exactly one ``%s`` placeholder, that's used to generate
+     column names for fields of a dataclass :paramref:`.composite.class_`
+     that don't otherwise have an explicit name.  Only supported when
+     :paramref:`.composite.class_` is a dataclass; for each dataclass
+     field that doesn't correspond to an explicitly named
+     :func:`_orm.mapped_column` or :class:`_schema.Column` argument passed
+     positionally to :func:`_orm.composite`, the generated column is named
+     using ``column_template % field_name`` rather than the bare field
+     name.  Raises :class:`.ArgumentError` if
+     :paramref:`.composite.class_` is not a dataclass, if the template
+     does not contain exactly one ``%s`` placeholder, or if a generated
+     name collides with the name of a column from an attribute already
+     declared earlier in the same class body.
+
+     .. versionadded:: 2.1
+
     :param doc:
       optional string that will be applied as the doc on the
       class-bound descriptor.
@@ -852,6 +873,7 @@ def composite(
         raiseload=raiseload,
         comparator_factory=comparator_factory,
         active_history=active_history,
+        column_template=column_template,
         info=info,
         doc=doc,
     )

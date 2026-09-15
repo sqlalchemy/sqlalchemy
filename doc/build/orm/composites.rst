@@ -85,6 +85,71 @@ The above mapping would correspond to a CREATE TABLE statement as:
     )
 
 
+.. _composite_column_template:
+
+Naming Composite Columns with a Template
+-----------------------------------------
+
+When the composite class is a dataclass, :func:`_orm.composite` will
+automatically generate a :func:`_orm.mapped_column` for any dataclass field
+that isn't otherwise given an explicit name, using the bare field name as
+the column name, as illustrated in the ``Vertex`` example above.  To apply a
+naming convention to these automatically generated columns instead, such as
+prefixing them, the :paramref:`_orm.composite.column_template` parameter may
+be passed a string containing exactly one ``%s`` placeholder, which is
+applied against each field name to generate the corresponding column name::
+
+    @dataclasses.dataclass
+    class Address:
+        street: str
+        city: str
+        zip: str
+
+
+    class Person(Base):
+        __tablename__ = "person"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        home_address: Mapped[Address] = composite(
+            Address, column_template="home_%s"
+        )
+        work_address: Mapped[Address] = composite(
+            Address, column_template="work_%s"
+        )
+
+The above mapping is equivalent to spelling out each column explicitly::
+
+    home_address: Mapped[Address] = composite(
+        Address,
+        mapped_column("home_street"),
+        mapped_column("home_city"),
+        mapped_column("home_zip"),
+    )
+    work_address: Mapped[Address] = composite(
+        Address,
+        mapped_column("work_street"),
+        mapped_column("work_city"),
+        mapped_column("work_zip"),
+    )
+
+An explicitly passed :func:`_orm.mapped_column` or :class:`_schema.Column`
+still takes precedence over the template for the field position it
+occupies, allowing the template to be combined with one-off overrides::
+
+    shipping_address: Mapped[Address] = composite(
+        Address,
+        mapped_column("shipping_country"),  # explicit override
+        column_template="shipping_%s",  # applies to the rest
+    )
+
+:paramref:`_orm.composite.column_template` is only valid when the composite
+class is a dataclass; :class:`.ArgumentError` is raised otherwise, as well
+as for a malformed template or for a generated column name that collides
+with that of an attribute declared earlier in the same class body.
+
+.. versionadded:: 2.1
+
 Working with Mapped Composite Column Types
 -------------------------------------------
 
