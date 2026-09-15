@@ -4858,6 +4858,13 @@ class TupleTypingTest(fixtures.TestBase):
 
         self._assert_types(expr.right.type.types)
 
+    def test_expanding_type_inference_skips_none(self):
+        bind = bindparam("value", [None, 1], expanding=True)
+        is_(bind.type._type_affinity, Integer)
+
+        all_none = bindparam("all_none", [None, None], expanding=True)
+        is_(all_none.type, sqltypes.NULLTYPE)
+
     def test_tuple_type_plain_inference(self):
         a, b, c = column("a"), column("b"), column("c")
 
