@@ -1712,6 +1712,12 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def freethreading(self):
+        return exclusions.only_if(
+            lambda: util.freethreading, "free-threaded build needed"
+        )
+
+    @property
     def is64bit(self):
         return exclusions.only_if(lambda: util.is64bit, "64bit required")
 

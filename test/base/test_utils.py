@@ -2,11 +2,15 @@ import copy
 from decimal import Decimal
 import importlib.metadata
 import inspect
+import json
 import linecache
 import operator
+import os
 from pathlib import Path
 import pickle
+import subprocess
 import sys
+import textwrap
 import types
 
 from sqlalchemy import exc
@@ -4000,6 +4004,140 @@ class CyExtensionTest(fixtures.TestBase):
             print(expected)
             print(setup_modules)
             eq_(setup_modules, expected)
+
+
+class FreethreadingNoGILTest(fixtures.TestBase):
+    """On a free-threaded build, ensure importing SQLAlchemy never causes
+    the interpreter to re-enable the GIL.
+
+    CPython re-enables the GIL when an extension module that has not
+    declared ``Py_mod_gil = Py_MOD_GIL_NOT_USED`` is imported, which for
+    Cython is the ``freethreading_compatible`` directive in setup.py.
+    The test suite itself runs with ``PYTHON_GIL=0`` which suppresses
+    this, so the imports are run in a new interpreter with ``PYTHON_GIL``
+    removed from the environment, where the degradation is observable.
+
+    """
+
+    def test_freethreading_detection(self):
+        """the other tests here are skipped on builds where
+        util.freethreading is False; runs on every build to confirm
+        that flag agrees with the interpreter's own description of itself,
+        so that the tests can't silently skip on a free-threaded build.
+
+        util.freethreading is based on the Py_GIL_DISABLED build config
+        var, which indicates a free-threaded build and does not change
+        if the GIL is enabled at runtime.
+
+        """
+        eq_(util.freethreading, "free-threading build" in sys.version)
+
+    def _run_imports(self, modules):
+        code = textwrap.dedent("""
+            import importlib
+            import importlib.machinery
+            import json
+            import sys
+            import warnings
+
+            # report None if the function is not present, which fails
+            # the test rather than skipping it
+            is_gil_enabled = getattr(sys, "_is_gil_enabled", lambda: None)
+
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                initial = is_gil_enabled()
+                loaded = {
+                    name: importlib.import_module(name)
+                    for name in sys.argv[1:]
+                }
+                final = is_gil_enabled()
+
+            print(
+                json.dumps(
+                    {
+                        "initial_gil_enabled": initial,
+                        "final_gil_enabled": final,
+                        "gil_warnings": [
+                            str(m.message)
+                            for m in w
+                            if "global interpreter lock" in str(m.message)
+                        ],
+                        "extension_modules": sorted(
+                            name
+                            for name, mod in loaded.items()
+                            if mod.__file__.endswith(
+                                tuple(importlib.machinery.EXTENSION_SUFFIXES)
+                            )
+                        ),
+                        "sqlalchemy_file": sys.modules["sqlalchemy"].__file__,
+                    }
+                )
+            )
+            """)
+
+        parts = list(sys.path)
+        if os.environ.get("PYTHONPATH"):
+            parts.append(os.environ["PYTHONPATH"])
+
+        env = {**os.environ, "PYTHONPATH": os.pathsep.join(parts)}
+        env.pop("PYTHON_GIL", None)
+
+        proc = subprocess.run(
+            [sys.executable, "-c", code, *modules],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+        )
+        if proc.returncode != 0:
+            raise AssertionError(
+                "subprocess failed: %s" % proc.stderr.decode(errors="replace")
+            )
+        result = json.loads(proc.stdout)
+
+        # make sure the subprocess tested the same SQLAlchemy we're testing
+        eq_(result.pop("sqlalchemy_file"), sys.modules["sqlalchemy"].__file__)
+        return result
+
+    @testing.requires.freethreading
+    @testing.requires.cextensions
+    def test_cython_extensions_dont_enable_gil(self):
+        names = [m.__name__ for m in _all_cython_modules()]
+
+        eq_(
+            self._run_imports(names),
+            {
+                "initial_gil_enabled": False,
+                "final_gil_enabled": False,
+                "gil_warnings": [],
+                "extension_modules": sorted(names),
+            },
+        )
+
+    @testing.requires.freethreading
+    def test_import_sqlalchemy_doesnt_enable_gil(self):
+        eq_(
+            self._run_imports(["sqlalchemy", "sqlalchemy.orm"]),
+            {
+                "initial_gil_enabled": False,
+                "final_gil_enabled": False,
+                "gil_warnings": [],
+                "extension_modules": [],
+            },
+        )
+
+    @testing.requires.freethreading
+    @testing.requires.greenlet
+    def test_import_asyncio_doesnt_enable_gil(self):
+        eq_(
+            self._run_imports(["greenlet", "sqlalchemy.ext.asyncio"]),
+            {
+                "initial_gil_enabled": False,
+                "final_gil_enabled": False,
+                "gil_warnings": [],
+                "extension_modules": [],
+            },
+        )
 
 
 class TestTest(fixtures.TestBase):
