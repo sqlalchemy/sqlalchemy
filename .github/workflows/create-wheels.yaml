@@ -19,11 +19,20 @@ jobs:
     strategy:
       matrix:
         # emulated wheels on linux take too much time, split wheels into multiple runs
+        #
+        # no wheels are built for python 3.7.  since October 2025, PyPI
+        # rejects wheels whose filename does not start with the normalized
+        # project name "sqlalchemy".  the setuptools / wheel versions that
+        # install on python 3.7 name the wheel "SQLAlchemy-...", so no cp37
+        # wheel has been accepted by PyPI since SQLAlchemy 2.0.44.  python
+        # 3.7 installs use the sdist.
+        #
+        # cp38 is on its own as it's built with an older cibuildwheel
         python:
-          - "cp37-*"
-          - "cp38-* cp39-*"
-          - "cp310-* cp311-*"
-          - "cp312-* cp313-* cp314-*"
+          - "cp38-*"
+          - "cp39-* cp310-*"
+          - "cp311-* cp312-*"
+          - "cp313-* cp314-*"
           - "cp314t-*"
         wheel_mode:
           - compiled
@@ -46,8 +55,6 @@ jobs:
         exclude:
           - os: "windows-2022"
             linux_archs: "aarch64"
-          - os: "macos-15"
-            python: "cp37-*"
           - os: "macos-15"
             linux_archs: "x86_64"
           - os: "ubuntu-22.04"
@@ -82,18 +89,18 @@ jobs:
       #     platforms: all
 
       - name: Build compiled wheels
-        if: ${{ matrix.wheel_mode == 'compiled' && matrix.python != 'cp37-*' }}
-        uses: pypa/cibuildwheel@v3.4.1
+        if: ${{ matrix.wheel_mode == 'compiled' && matrix.python != 'cp38-*' }}
+        uses: pypa/cibuildwheel@v4.2.0
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
-          CIBW_ENABLE: ${{ matrix.python == 'cp314t-*' && 'cpython-freethreading' || '' }}
           # setting it here does not work on linux
           # PYTHONNOUSERSITE: "1"
 
-      - name: Build compiled wheels 3.7
-        if: ${{ matrix.wheel_mode == 'compiled' && matrix.python == 'cp37-*' }}
-        uses: pypa/cibuildwheel@v2.23.3
+      # cibuildwheel 4 no longer builds python 3.8
+      - name: Build compiled wheels 3.8
+        if: ${{ matrix.wheel_mode == 'compiled' && matrix.python == 'cp38-*' }}
+        uses: pypa/cibuildwheel@v3.4.1
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
