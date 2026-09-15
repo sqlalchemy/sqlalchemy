@@ -10,7 +10,32 @@
 
 .. changelog::
     :version: 2.0.54
-    :include_notes_from: unreleased_20
+    :released: September 15, 2026
+
+    .. change::
+        :tags: bug, platform
+        :tickets: 13592
+
+        Fixed issue where the Cython extensions were compiled without the
+        ``freethreading_compatible`` directive, so that they did not declare
+        themselves as safe to run without the GIL.  On a free-threaded Python
+        interpreter such as Python 3.13t or 3.14t, importing SQLAlchemy would
+        cause the interpreter to re-enable the GIL, emitting a
+        ``RuntimeWarning``.  The directive is now set when building for Python
+        3.13 and above, and a test has been added which confirms that importing
+        SQLAlchemy on a free-threaded build does not enable the GIL.
+
+    .. change::
+        :tags: change, platform
+
+        Binary wheels are no longer built for Python 3.7.  PyPI now rejects wheel
+        files whose filename does not begin with the normalized project name, and
+        the packaging tools that can be installed on Python 3.7 do not produce
+        such a filename.  As a result, SQLAlchemy 2.0.44 was the last release to
+        publish Python 3.7 wheels to PyPI, and releases 2.0.45 and later have
+        been available on Python 3.7 only as a source distribution; the wheel
+        builds for Python 3.7 are now removed.  Python 3.7 remains supported by
+        the 2.0 series.
 
 .. changelog::
     :version: 2.0.53
