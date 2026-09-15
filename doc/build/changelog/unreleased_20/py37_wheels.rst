@@ -1,5 +1,5 @@
 .. change::
-    :tags: change, installation
+    :tags: change, platform
 
     Binary wheels are no longer built for Python 3.7.  PyPI now rejects wheel
     files whose filename does not begin with the normalized project name, and
