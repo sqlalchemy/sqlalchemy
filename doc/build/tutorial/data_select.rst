@@ -916,7 +916,7 @@ each ``Address`` object ultimately came from a subquery against the
     SELECT user_account.id, user_account.name, user_account.fullname,
     anon_1.id AS id_1, anon_1.email_address, anon_1.user_id
     FROM user_account JOIN
-    (SELECT address.id AS id, address.email_address AS email_address, address.user_id AS user_id
+    (SELECT address.id AS id, address.user_id AS user_id
     FROM address
     WHERE address.email_address NOT LIKE ?) AS anon_1 ON user_account.id = anon_1.user_id
     ORDER BY user_account.id, anon_1.id
@@ -943,7 +943,7 @@ Another example follows, which is exactly the same except it makes use of the
     ...         print(f"{user} {address}")
     {execsql}BEGIN (implicit)
     WITH anon_1 AS
-    (SELECT address.id AS id, address.email_address AS email_address, address.user_id AS user_id
+    (SELECT address.id AS id, address.user_id AS user_id
     FROM address
     WHERE address.email_address NOT LIKE ?)
     SELECT user_account.id, user_account.name, user_account.fullname,
@@ -1103,26 +1103,25 @@ was discussed in the previous section::
     >>> subq = (
     ...     select(
     ...         func.count(address_table.c.id).label("address_count"),
-    ...         address_table.c.email_address,
     ...         address_table.c.user_id,
     ...     )
     ...     .where(user_table.c.id == address_table.c.user_id)
     ...     .lateral()
     ... )
     >>> stmt = (
-    ...     select(user_table.c.name, subq.c.address_count, subq.c.email_address)
+    ...     select(user_table.c.name, subq.c.address_count)
     ...     .join_from(user_table, subq)
-    ...     .order_by(user_table.c.id, subq.c.email_address)
+    ...     .order_by(user_table.c.id)
     ... )
     >>> print(stmt)
-    {printsql}SELECT user_account.name, anon_1.address_count, anon_1.email_address
+    {printsql}SELECT user_account.name, anon_1.address_count
     FROM user_account
     JOIN LATERAL (SELECT count(address.id) AS address_count,
-    address.email_address AS email_address, address.user_id AS user_id
+    address.user_id AS user_id
     FROM address
     WHERE user_account.id = address.user_id) AS anon_1
     ON user_account.id = anon_1.user_id
-    ORDER BY user_account.id, anon_1.email_address
+    ORDER BY user_account.id
 
 Above, the right side of the JOIN is a subquery that correlates to the
 ``user_account`` table that's on the left side of the join.
@@ -1890,3 +1889,4 @@ should be treated as :class:`_types.JSON`.  The Python ``__getitem__``
 operator, ``['some_key']`` in this case, became available as a result and
 allowed a ``JSON_EXTRACT`` path expression (not shown, however in this
 case it would ultimately be ``'$."some_key"'``) to be rendered.
+
