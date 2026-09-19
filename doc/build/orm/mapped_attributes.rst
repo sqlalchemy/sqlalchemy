@@ -384,6 +384,39 @@ using the :func:`.synonym_for` decorator::
         def job_status(self):
             return "Status: " + self.status
 
+When using :ref:`imperative (classical) mapping <orm_imperative_mapping>`,
+if no ``descriptor`` parameter is passed to :func:`.synonym` explicitly,
+and the mapped class already defines a plain Python descriptor, such as
+a ``@property``, under the same name as the synonym's key, that existing
+descriptor is used automatically, equivalent to passing it as
+``descriptor`` explicitly::
+
+    class Something:
+        @property
+        def status(self):
+            return "Status: " + self._status
+
+        @status.setter
+        def status(self, value):
+            self._status = value.upper()
+
+
+    mapper_registry.map_imperatively(
+        Something,
+        some_table,
+        properties={
+            "_status": some_table.c.status,
+            "status": synonym("_status"),
+        },
+    )
+
+This detection relies on the descriptor still being present on the class
+under that name when the mapper configures itself, so it does not apply
+to a Declarative class body, where assigning ``status = synonym(...)``
+after a same-named ``@property`` replaces the property outright before
+mapping occurs; use the explicit ``descriptor`` parameter or
+:func:`.synonym_for` shown above in that case.
+
 While the :func:`.synonym` is useful for simple mirroring, the use case
 of augmenting attribute behavior with descriptors is better handled in modern
 usage using the :ref:`hybrid attribute <mapper_hybrids>` feature, which

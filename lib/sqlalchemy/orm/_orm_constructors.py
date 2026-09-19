@@ -2008,7 +2008,17 @@ def synonym(
 
     :param descriptor: a Python :term:`descriptor` that will be used
       as a getter (and potentially a setter) when this attribute is
-      accessed at the instance level.
+      accessed at the instance level.  If left unspecified, and the
+      mapped class already defines a descriptor, such as a
+      ``@property``, under the same name given as the synonym's
+      ``name`` argument, that existing descriptor is used
+      automatically.  This detection relies on the descriptor still
+      being present on the class under that name when the mapper
+      configures itself, so it applies to classical mappings and
+      mappings against an existing :class:`_schema.Table` object,
+      but not to a Declarative class body, where assigning
+      ``some_name = synonym(...)`` after a same-named ``@property``
+      replaces the property outright before mapping occurs.
 
     :param map_column: **For classical mappings and mappings against
       an existing Table object only**.  if ``True``, the :func:`.synonym`
