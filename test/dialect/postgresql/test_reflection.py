@@ -265,7 +265,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 "name": "ix_invalid",
                 "unique": True,
                 "column_names": ["x"],
-                "dialect_options": dict(options, postgresql_not_valid=True),
+                "dialect_options": dict(options, postgresql_invalid=True),
             },
             {"name": "ix_valid", "unique": False, "column_names": ["x"]},
         ]
@@ -288,10 +288,10 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             unique=True,
             **index_info["dialect_options"],
         )
-        assert "postgresql_not_valid" not in index.dialect_kwargs
+        assert "postgresql_invalid" not in index.dialect_kwargs
         eq_(
             index.dialect_options["postgresql"].reflected,
-            {"not_valid": True},
+            {"invalid": True},
         )
 
     def test_table_reflection(self, invalid_index):
@@ -304,10 +304,10 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         invalid = indexes["ix_invalid"]
         eq_(
             invalid.dialect_options["postgresql"].reflected,
-            {"not_valid": True},
+            {"invalid": True},
         )
         eq_(indexes["ix_valid"].dialect_options["postgresql"].reflected, {})
-        assert "postgresql_not_valid" not in invalid.dialect_kwargs
+        assert "postgresql_invalid" not in invalid.dialect_kwargs
         self.assert_compile(
             CreateIndex(invalid),
             "CREATE UNIQUE INDEX ix_invalid ON invalid_index_table (x)",
@@ -328,7 +328,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         copied.create(connection)
         inspector.clear_cache()
         assert all(
-            "postgresql_not_valid" not in i.get("dialect_options", {})
+            "postgresql_invalid" not in i.get("dialect_options", {})
             for i in inspector.get_indexes(table.name)
         )
 
@@ -355,7 +355,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         inspector = inspect(connection)
         is_true(
             inspector.get_indexes(parent.name)[0]["dialect_options"][
-                "postgresql_not_valid"
+                "postgresql_invalid"
             ]
         )
         reflected = Table(parent.name, MetaData(), autoload_with=connection)
@@ -363,7 +363,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             next(iter(reflected.indexes))
             .dialect_options["postgresql"]
             .reflected,
-            {"not_valid": True},
+            {"invalid": True},
         )
         connection.exec_driver_sql(
             "CREATE INDEX ix_child ON invalid_child (x)"
@@ -373,7 +373,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         inspector.clear_cache()
         assert (
-            "postgresql_not_valid"
+            "postgresql_invalid"
             not in inspector.get_indexes(parent.name)[0]["dialect_options"]
         )
 

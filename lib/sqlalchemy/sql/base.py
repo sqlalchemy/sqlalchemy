@@ -377,6 +377,30 @@ def _cloned_difference(a: Iterable[_CLE], b: Iterable[_CLE]) -> Set[_CLE]:
     }
 
 
+class _DialectKWArgConst(Enum):
+    """Constants for dialect argument defaults in
+    :attr:`.DefaultDialect.construct_arguments`.
+
+    """
+
+    REFLECTED_ONLY = 1
+    """Mark a dialect argument as database state reported by reflection.
+
+    Applies to any construct that takes part in
+    :attr:`.DefaultDialect.construct_arguments`, such as :class:`.Table`,
+    :class:`.Column`, :class:`.Index` or :class:`.CheckConstraint`.  The
+    value is kept in the construct's read-only ``reflected`` mapping,
+    separate from the options used to generate DDL.
+
+    .. seealso::
+
+        :attr:`.DialectKWArgs.dialect_options`
+
+    .. versionadded:: 2.1
+
+    """
+
+
 class _DialectArgView(MutableMapping[str, Any]):
     """A dictionary view of dialect-level arguments in the form
     <dialectname>_<argument_name>.
@@ -457,7 +481,7 @@ class _DialectArgDict(MutableMapping[str, Any]):
 
         Holds values for arguments whose
         :attr:`.DefaultDialect.construct_arguments` default is
-        :attr:`.SchemaConst.REFLECTED_ONLY`.
+        ``_DialectKWArgConst.REFLECTED_ONLY``.
 
         .. versionadded:: 2.1
 
@@ -674,7 +698,6 @@ class DialectKWArgs:
     )
 
     @classmethod
-    @util.preload_module("sqlalchemy.sql.schema")
     def _kw_reg_for_dialect_cls(cls, dialect_name: str) -> _DialectArgDict:
         construct_arg_dictionary = DialectKWArgs._kw_registry[dialect_name]
         d = _DialectArgDict()
@@ -688,7 +711,7 @@ class DialectKWArgs:
         d._reflection_only = frozenset(
             key
             for key, value in d._defaults.items()
-            if value is util.preloaded.sql_schema.SchemaConst.REFLECTED_ONLY
+            if value is _DialectKWArgConst.REFLECTED_ONLY
         )
         for key in d._reflection_only:
             del d._defaults[key]
@@ -707,13 +730,12 @@ class DialectKWArgs:
 
         .. versionadded:: 0.9.2
 
-        Arguments a dialect declares as :attr:`.SchemaConst.REFLECTED_ONLY`
+        Arguments a dialect declares as ``_DialectKWArgConst.REFLECTED_ONLY``
         report database state rather than a DDL option.  Their values are
         kept in a separate, read-only ``reflected`` mapping, for example::
 
-            invalid = my_index.dialect_options["postgresql"].reflected.get(
-                "not_valid", False
-            )
+            options = my_index.dialect_options["postgresql"]
+            invalid = options.reflected.get("invalid")
 
         These values are not included in this dictionary or in
         :attr:`.DialectKWArgs.dialect_kwargs`, they take no part in DDL

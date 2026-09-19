@@ -1200,7 +1200,7 @@ Invalid indexes
 Indexes marked invalid by PostgreSQL remain present in reflection. The
 :meth:`_reflection.Inspector.get_indexes` and
 :meth:`_reflection.Inspector.get_multi_indexes` methods include
-``postgresql_not_valid=True`` in the index's ``dialect_options`` dictionary
+``postgresql_invalid=True`` in the index's ``dialect_options`` dictionary
 when ``pg_index.indisvalid`` is false. Valid indexes omit this flag.
 
 When reflecting a :class:`_schema.Table`, the flag is stored separately from
@@ -1208,9 +1208,7 @@ DDL options on each reflected :class:`.Index`::
 
     table = Table("my_table", MetaData(), autoload_with=engine)
     for index in table.indexes:
-        if index.dialect_options["postgresql"].reflected.get(
-            "not_valid", False
-        ):
+        if index.dialect_options["postgresql"].reflected.get("invalid"):
             print(index.name)
 
 The ``reflected`` mapping is read-only. These values are not included in
@@ -1220,9 +1218,7 @@ The ``reflected`` mapping is read-only. These values are not included in
 An invalid index may be left by a failed ``CREATE INDEX CONCURRENTLY``, may
 still be building, or may be a partitioned index awaiting attachment of its
 partition indexes. This flag reports the state at reflection time; it does
-not request an index rebuild. Unlike the ``postgresql_not_valid`` option for
-CHECK and FOREIGN KEY constraints, it does not correspond to ``NOT VALID``
-DDL syntax for indexes.
+not request an index rebuild.
 
 .. versionadded:: 2.1
 
@@ -1980,6 +1976,7 @@ from ...sql import functions
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
+from ...sql.base import _DialectKWArgConst
 from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...sql.visitors import InternalTraversal
 from ...types import BIGINT
@@ -3700,7 +3697,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 "with": {},
                 "tablespace": None,
                 "nulls_not_distinct": None,
-                "not_valid": schema.SchemaConst.REFLECTED_ONLY,
+                "invalid": _DialectKWArgConst.REFLECTED_ONLY,
             },
         ),
         (
@@ -5512,7 +5509,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                         ]
 
                     if not row["indisvalid"]:
-                        dialect_options["postgresql_not_valid"] = True
+                        dialect_options["postgresql_invalid"] = True
 
                     if dialect_options:
                         index["dialect_options"] = dialect_options

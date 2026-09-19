@@ -175,24 +175,6 @@ class SchemaConst(Enum):
 
     """
 
-    REFLECTED_ONLY = 4
-    """Mark a dialect argument as database state reported by reflection.
-
-    Used as an argument default in
-    :attr:`.DefaultDialect.construct_arguments`, for any construct that
-    takes part in that system such as :class:`.Table`, :class:`.Column`,
-    :class:`.Index` or :class:`.CheckConstraint`.  The value is kept in the
-    dialect's read-only ``reflected`` mapping, separate from the options
-    used to generate DDL.
-
-    .. seealso::
-
-        :attr:`.DialectKWArgs.dialect_options`
-
-    .. versionadded:: 2.1
-
-    """
-
 
 RETAIN_SCHEMA: Final[Literal[SchemaConst.RETAIN_SCHEMA]] = (
     SchemaConst.RETAIN_SCHEMA
