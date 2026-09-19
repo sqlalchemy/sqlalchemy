@@ -5974,12 +5974,12 @@ class DialectKWArgTest(fixtures.TestBase):
     def test_reflection_only_constructor_option(self, value):
         with self._fixture():
             Index.argument_for(
-                "participating", "state", schema.SchemaConst.IGNORE_OPTION
+                "participating", "state", schema.SchemaConst.REFLECTED_ONLY
             )
             idx = Index("a", "b", participating_state=value, participating_x=7)
             options = idx.dialect_options["participating"]
             eq_(idx.dialect_kwargs, {"participating_x": 7})
-            eq_(options.reflected, {})
+            eq_(options.reflected, {"state": value})
             assert "state" not in options
             is_(options.get("state"), None)
 
@@ -5991,17 +5991,31 @@ class DialectKWArgTest(fixtures.TestBase):
                 "absent",
             )
 
+    def test_reflection_only_non_index_construct(self):
+        with self._fixture():
+            Table.argument_for(
+                "participating", "state", schema.SchemaConst.REFLECTED_ONLY
+            )
+            t = Table(
+                "t",
+                MetaData(),
+                Column("x", Integer),
+                participating_state=True,
+            )
+            eq_(t.dialect_options["participating"].reflected, {"state": True})
+            eq_(t.dialect_kwargs, {})
+
     @testing.combinations(True, False, argnames="value")
     def test_reflection_only_options(self, value):
         with self._fixture():
             for dialect in ("participating", "participating2"):
                 Index.argument_for(
-                    dialect, "state", schema.SchemaConst.IGNORE_OPTION
+                    dialect, "state", schema.SchemaConst.REFLECTED_ONLY
                 )
             Index.argument_for(
                 "participating",
                 "other_state",
-                schema.SchemaConst.IGNORE_OPTION,
+                schema.SchemaConst.REFLECTED_ONLY,
             )
             original = {
                 "participating_state": value,
@@ -6010,9 +6024,7 @@ class DialectKWArgTest(fixtures.TestBase):
                 "participating_x": 7,
             }
             options = original.copy()
-            idx = Index(
-                "a", "b", _dialect_kwargs_from_reflection=True, **options
-            )
+            idx = Index("a", "b", **options)
             eq_(options, original)
             eq_(idx.dialect_kwargs, {"participating_x": 7})
             eq_(
@@ -6029,25 +6041,39 @@ class DialectKWArgTest(fixtures.TestBase):
             with testing.expect_raises(AttributeError):
                 idx.dialect_options["participating"].reflected = {}
 
-            # Ordinary option assignment cannot change the reflected snapshot
-            # or leak this state into the flat kwargs view.
+    @testing.combinations(True, False, argnames="value")
+    def test_reflection_only_assignment(self, value):
+        with self._fixture():
+            Index.argument_for(
+                "participating", "state", schema.SchemaConst.REFLECTED_ONLY
+            )
+            idx = Index("a", "b", participating_state=value)
+
+            # every write path for a marked argument lands in the same
+            # place and stays out of the flat kwargs view.
             idx.dialect_kwargs["participating_state"] = not value
             eq_(
                 idx.dialect_options["participating"].reflected,
-                {"state": value, "other_state": "second value"},
+                {"state": not value},
             )
-            eq_(idx.dialect_kwargs, {"participating_x": 7})
+            eq_(idx.dialect_kwargs, {})
+
+            idx.dialect_options["participating"]["state"] = value
+            eq_(
+                idx.dialect_options["participating"].reflected,
+                {"state": value},
+            )
+            eq_(idx.dialect_kwargs, {})
 
     def test_reflection_only_copy_and_pickle(self):
         with self._fixture():
             Index.argument_for(
-                "participating", "state", schema.SchemaConst.IGNORE_OPTION
+                "participating", "state", schema.SchemaConst.REFLECTED_ONLY
             )
             t = Table("t", MetaData(), Column("x", Integer))
             idx = Index(
                 "ix",
                 t.c.x,
-                _dialect_kwargs_from_reflection=True,
                 participating_state=True,
                 participating_x=7,
             )
@@ -6071,12 +6097,10 @@ class DialectKWArgTest(fixtures.TestBase):
                 pass
 
             Index.argument_for(
-                "participating", "state", schema.SchemaConst.IGNORE_OPTION
+                "participating", "state", schema.SchemaConst.REFLECTED_ONLY
             )
             options = {"participating_state": True}
-            inherited = CustomIndex(
-                "a", "b", _dialect_kwargs_from_reflection=True, **options
-            )
+            inherited = CustomIndex("a", "b", **options)
             eq_(
                 inherited.dialect_options["participating"].reflected,
                 {"state": True},
@@ -6084,19 +6108,19 @@ class DialectKWArgTest(fixtures.TestBase):
 
             # A subclass can replace the marker with an ordinary default.
             CustomIndex.argument_for("participating", "state", False)
-            overridden = CustomIndex(
-                "a", "b", _dialect_kwargs_from_reflection=True, **options
-            )
+            overridden = CustomIndex("a", "b", **options)
             eq_(overridden.dialect_options["participating"].reflected, {})
             eq_(overridden.dialect_kwargs, options)
 
     def test_reflection_only_preserves_validation(self):
         with self._fixture():
+            Index.argument_for(
+                "participating", "state", schema.SchemaConst.REFLECTED_ONLY
+            )
             with expect_warnings("Can't validate argument 'unknown_y'"):
                 idx = Index(
                     "a",
                     "b",
-                    _dialect_kwargs_from_reflection=True,
                     unknown_y=True,
                     nonparticipating_x=7,
                 )
@@ -6105,14 +6129,9 @@ class DialectKWArgTest(fixtures.TestBase):
                 {"unknown_y": True, "nonparticipating_x": 7},
             )
             with testing.expect_raises(exc.ArgumentError):
-                Index(
-                    "a",
-                    "b",
-                    _dialect_kwargs_from_reflection=True,
-                    participating_bad=1,
-                )
+                Index("a", "b", participating_bad=1)
             with testing.expect_raises(TypeError):
-                Index("a", "b", _dialect_kwargs_from_reflection=True, bad=1)
+                Index("a", "b", bad=1)
 
 
 class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):

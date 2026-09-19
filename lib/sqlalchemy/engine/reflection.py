@@ -1923,7 +1923,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
                     *idx_elements,
                     _table=table,
                     unique=unique,
-                    _dialect_kwargs_from_reflection=True,
                     **dialect_options,
                 )
 

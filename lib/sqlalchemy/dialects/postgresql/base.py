@@ -3700,7 +3700,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 "with": {},
                 "tablespace": None,
                 "nulls_not_distinct": None,
-                "not_valid": schema.SchemaConst.IGNORE_OPTION,
+                "not_valid": schema.SchemaConst.REFLECTED_ONLY,
             },
         ),
         (

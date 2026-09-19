@@ -289,7 +289,10 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             **index_info["dialect_options"],
         )
         assert "postgresql_not_valid" not in index.dialect_kwargs
-        eq_(index.dialect_options["postgresql"].reflected, {})
+        eq_(
+            index.dialect_options["postgresql"].reflected,
+            {"not_valid": True},
+        )
 
     def test_table_reflection(self, invalid_index):
         connection, table = invalid_index

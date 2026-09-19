@@ -1265,14 +1265,14 @@ class Dialect(EventTarget):
     here is so that third-party dialects that haven't yet implemented this
     feature continue to function in the old way.
 
-    For index options which describe database state rather than DDL, the
-    default may be :attr:`.SchemaConst.IGNORE_OPTION`. Such keywords are
-    accepted and discarded by the constructor, while index reflection
-    stores their values in the dialect's separate ``reflected`` mapping.
-    They are excluded from ordinary option defaults and
-    :attr:`.DialectKWArgs.dialect_kwargs`.
+    An argument that reports database state rather than a DDL option may
+    use :attr:`.SchemaConst.REFLECTED_ONLY` as its default.  Values for such
+    arguments are kept in the construct's separate, read-only ``reflected``
+    mapping rather than in :attr:`.DialectKWArgs.dialect_kwargs`, so they
+    take no part in DDL compilation.  This applies to every construct that
+    participates in ``construct_arguments``.
 
-    .. versionadded:: 2.1 Added :attr:`.SchemaConst.IGNORE_OPTION`.
+    .. versionadded:: 2.1 Added :attr:`.SchemaConst.REFLECTED_ONLY`.
 
     .. seealso::
 
