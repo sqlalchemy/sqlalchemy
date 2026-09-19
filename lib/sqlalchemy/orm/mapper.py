@@ -204,7 +204,9 @@ class Mapper(
             Sequence[_ORMColumnExprArgument[Any]]
         ] = None,
         always_refresh: bool = False,
-        version_id_col: Optional[_ORMColumnExprArgument[Any]] = None,
+        version_id_col: Optional[
+            Union[_ORMColumnExprArgument[Any], str, MapperProperty[Any]]
+        ] = None,
         version_id_generator: Optional[
             Union[Literal[False], Callable[[Any], Any]]
         ] = None,
@@ -646,8 +648,8 @@ class Mapper(
 
                 :ref:`mapper_primary_key` - background and example use
 
-        :param version_id_col: A :class:`_schema.Column`
-           that will be used to keep a running version id of rows
+         :param version_id_col: A :class:`_schema.Column` or string attribute
+            name that will be used to keep a running version id of rows
            in the table.  This is used to detect concurrent updates or
            the presence of stale data in a flush.  The methodology is to
            detect if an UPDATE statement does not match the last known
@@ -715,8 +717,7 @@ class Mapper(
         self.always_refresh = always_refresh
 
         if isinstance(version_id_col, MapperProperty):
-            self.version_id_prop = version_id_col
-            self.version_id_col = None
+            self.version_id_col = version_id_col
         else:
             self.version_id_col = (
                 coercions.expect(
@@ -841,6 +842,7 @@ class Mapper(
             self._configure_class_instrumentation()
             self._configure_properties()
             self._configure_polymorphic_setter()
+            self._configure_version_id_col()
             self._configure_pks()
             self.registry._flag_new_mapper(self)
             self._log("constructed")
@@ -1254,6 +1256,7 @@ class Mapper(
                 self.version_id_generator = self.inherits.version_id_generator
             elif (
                 self.inherits.version_id_col is not None
+                and not isinstance(self.version_id_col, str)
                 and self.version_id_col is not self.inherits.version_id_col
             ):
                 util.warn(
@@ -1263,8 +1266,16 @@ class Mapper(
                     "version_id_col should only be specified on "
                     "the base-most mapper that includes versioning."
                     % (
-                        self.version_id_col.description,
-                        self.inherits.version_id_col.description,
+                        getattr(
+                            self.version_id_col,
+                            "description",
+                            self.version_id_col,
+                        ),
+                        getattr(
+                            self.inherits.version_id_col,
+                            "description",
+                            self.inherits.version_id_col,
+                        ),
                     )
                 )
 
@@ -1951,6 +1962,65 @@ class Mapper(
             self._set_polymorphic_identity = None
 
     _validate_polymorphic_identity = None
+
+    def _configure_version_id_col(self) -> None:
+        if self.version_id_col is None:
+            if self.inherits is not None:
+                self.version_id_col = self.inherits.version_id_col
+                self.version_id_generator = self.inherits.version_id_generator
+        else:
+            if isinstance(self.version_id_col, str):
+                prop = self._props.get(self.version_id_col)
+                if prop is None:
+                    col = self.persist_selectable.c.get(self.version_id_col)
+                    if col is not None and col in self._columntoproperty:
+                        prop = self._columntoproperty[col]
+                if prop is None:
+                    raise sa_exc.ArgumentError(
+                        "Can't determine version_id_col "
+                        "value '%s' - no attribute is "
+                        "mapped to this name." % self.version_id_col
+                    )
+                if not isinstance(prop, properties.ColumnProperty):
+                    raise sa_exc.ArgumentError(
+                        "Only direct column-mapped "
+                        "property can be passed for version_id_col"
+                    )
+                self.version_id_col = prop.columns[0]
+            elif isinstance(self.version_id_col, MapperProperty):
+                if not isinstance(
+                    self.version_id_col, properties.ColumnProperty
+                ):
+                    raise sa_exc.ArgumentError(
+                        "Only direct column-mapped "
+                        "property can be passed for version_id_col"
+                    )
+                self.version_id_col = self.version_id_col.columns[0]
+
+            if (
+                self.inherits is not None
+                and self.inherits.version_id_col is not None
+                and self.version_id_col is not self.inherits.version_id_col
+            ):
+                util.warn(
+                    "Inheriting version_id_col '%s' does not match inherited "
+                    "version_id_col '%s' and will not automatically populate "
+                    "the inherited versioning column. "
+                    "version_id_col should only be specified on "
+                    "the base-most mapper that includes versioning."
+                    % (
+                        getattr(
+                            self.version_id_col,
+                            "description",
+                            self.version_id_col,
+                        ),
+                        getattr(
+                            self.inherits.version_id_col,
+                            "description",
+                            self.inherits.version_id_col,
+                        ),
+                    )
+                )
 
     @HasMemoized.memoized_attribute
     def _local_pk_cols(self) -> set[Any]:

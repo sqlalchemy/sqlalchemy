@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 6084
+
+    Added support for specifying string attribute or column names for the
+    :paramref:`_orm.Mapper.version_id_col` parameter, resolving to the
+    underlying mapped column property similarly to how
+    :paramref:`_orm.Mapper.polymorphic_on` functions. This allows specifying
+    ``version_id_col`` by name in Declarative mappings and dataclass-mapped
+    models without requiring a direct reference to the ``Column`` object.

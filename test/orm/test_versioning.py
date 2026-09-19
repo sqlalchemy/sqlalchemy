@@ -2202,3 +2202,181 @@ class PostUpdateVersioningTest(fixtures.DeclarativeMappedTest):
                 [{"id": 1, "version_id": 2}],
             ),
         )
+
+
+class StringVersionIdColTest(fixtures.TestBase):
+    """test for #6084"""
+
+    def test_string_attr_name(self):
+        Base = orm.declarative_base()
+
+        class Item(Base):
+            __tablename__ = "items"
+            id = Column(Integer, primary_key=True)
+            val = Column(String(50))
+            version = Column(Integer)
+            __mapper_args__ = {"version_id_col": "version"}
+
+        Base.metadata.create_all(testing.db)
+        try:
+            with Session(testing.db) as session:
+                item = Item(id=1, val="v1")
+                session.add(item)
+                session.commit()
+                eq_(item.version, 1)
+
+                item.val = "v2"
+                session.commit()
+                eq_(item.version, 2)
+        finally:
+            Base.metadata.drop_all(testing.db)
+
+    def test_string_attr_name_differs_from_col_name(self):
+        Base = orm.declarative_base()
+
+        class Item(Base):
+            __tablename__ = "items"
+            id = Column(Integer, primary_key=True)
+            val = Column(String(50))
+            my_version = Column("db_version", Integer)
+            __mapper_args__ = {"version_id_col": "my_version"}
+
+        Base.metadata.create_all(testing.db)
+        try:
+            with Session(testing.db) as session:
+                item = Item(id=1, val="v1")
+                session.add(item)
+                session.commit()
+                eq_(item.my_version, 1)
+
+                item.val = "v2"
+                session.commit()
+                eq_(item.my_version, 2)
+        finally:
+            Base.metadata.drop_all(testing.db)
+
+    def test_string_col_name_differs_from_attr_name(self):
+        Base = orm.declarative_base()
+
+        class Item(Base):
+            __tablename__ = "items"
+            id = Column(Integer, primary_key=True)
+            val = Column(String(50))
+            my_version = Column("db_version", Integer)
+            __mapper_args__ = {"version_id_col": "db_version"}
+
+        Base.metadata.create_all(testing.db)
+        try:
+            with Session(testing.db) as session:
+                item = Item(id=1, val="v1")
+                session.add(item)
+                session.commit()
+                eq_(item.my_version, 1)
+
+                item.val = "v2"
+                session.commit()
+                eq_(item.my_version, 2)
+        finally:
+            Base.metadata.drop_all(testing.db)
+
+    def test_string_attr_invalid_name(self):
+        Base = orm.declarative_base()
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Can't determine version_id_col value 'non_existent' - no attribute is mapped to this name.",
+            type,
+            "Item",
+            (Base,),
+            {
+                "__tablename__": "items",
+                "id": Column(Integer, primary_key=True),
+                "val": Column(String(50)),
+                "__mapper_args__": {"version_id_col": "non_existent"},
+            },
+        )
+
+    def test_string_attr_non_column_property(self):
+        Base = orm.declarative_base()
+
+        class Other(Base):
+            __tablename__ = "other"
+            id = Column(Integer, primary_key=True)
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Only direct column-mapped property can be passed for version_id_col",
+            type,
+            "Item",
+            (Base,),
+            {
+                "__tablename__": "items",
+                "id": Column(Integer, primary_key=True),
+                "other_id": Column(Integer, ForeignKey("other.id")),
+                "other": relationship(Other),
+                "__mapper_args__": {"version_id_col": "other"},
+            },
+        )
+
+    def test_inheritance_inherited_string_version_col(self):
+        Base = orm.declarative_base()
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(20))
+            version = Column(Integer)
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "parent",
+                "version_id_col": "version",
+            }
+
+        class Child(Parent):
+            __tablename__ = "child"
+            id = Column(Integer, ForeignKey("parent.id"), primary_key=True)
+            child_data = Column(String(50))
+            __mapper_args__ = {"polymorphic_identity": "child"}
+
+        Base.metadata.create_all(testing.db)
+        try:
+            with Session(testing.db) as session:
+                c1 = Child(id=1, child_data="c1")
+                session.add(c1)
+                session.commit()
+                eq_(c1.version, 1)
+
+                c1.child_data = "c2"
+                session.commit()
+                eq_(c1.version, 2)
+        finally:
+            Base.metadata.drop_all(testing.db)
+
+    def test_dataclass_mapping(self):
+        from dataclasses import dataclass, field
+
+        reg = orm.registry()
+
+        @reg.mapped
+        @dataclass
+        class Entity:
+            __tablename__ = "dc_entity"
+            __sa_dataclass_metadata_key__ = "sa"
+            id: int = field(metadata={"sa": Column(Integer, primary_key=True)})
+            data: str = field(metadata={"sa": Column(String(50))})
+            my_version: int = field(metadata={"sa": Column(Integer)})
+            __mapper_args__ = {"version_id_col": "my_version"}
+
+        reg.metadata.create_all(testing.db)
+        try:
+            with Session(testing.db) as session:
+                e = Entity(id=1, data="d1", my_version=1)
+                session.add(e)
+                session.commit()
+                eq_(e.my_version, 1)
+
+                e.data = "d2"
+                session.commit()
+                eq_(e.my_version, 2)
+        finally:
+            reg.metadata.drop_all(testing.db)
