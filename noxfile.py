@@ -87,7 +87,7 @@ DB_CLI_NAMES = {
     },
     "mysql": {
         "nogreenlet": {"mysqldb", "pymysql", "mariadbconnector"},
-        "greenlet": {"asyncmy", "aiomysql"},
+        "greenlet": {"asyncmy"},
     },
     "oracle": {
         "nogreenlet": {"oracledb"},
