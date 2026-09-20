@@ -318,6 +318,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE UNIQUE INDEX ix_invalid ON invalid_index_table (x)",
             dialect=connection.dialect,
         )
+        inspector.clear_cache()
         eq_(inspector.get_indexes(table.name), before)
 
         # Copy the definition and recreate it. Reflected state belongs to the
