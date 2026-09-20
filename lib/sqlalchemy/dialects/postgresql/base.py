@@ -1208,11 +1208,13 @@ DDL options on each reflected :class:`.Index`::
 
     table = Table("my_table", MetaData(), autoload_with=engine)
     for index in table.indexes:
-        if index.dialect_options["postgresql"].reflected.get("invalid"):
+        options = index.dialect_options["postgresql"]
+        if options.reflect_only_elements.get("invalid"):
             print(index.name)
 
-The ``reflected`` mapping is read-only. These values are not included in
-:attr:`.Index.dialect_kwargs`, do not affect DDL, and are not copied by
+The ``reflect_only_elements`` mapping is read-only. These values are not
+included in :attr:`.Index.dialect_kwargs`, do not affect DDL, and are not
+copied by
 :meth:`.Table.to_metadata`.
 
 An invalid index may be left by a failed ``CREATE INDEX CONCURRENTLY``, may

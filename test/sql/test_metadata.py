@@ -5980,7 +5980,7 @@ class DialectKWArgTest(fixtures.TestBase):
             idx = Index("a", "b", participating_state=value, participating_x=7)
             options = idx.dialect_options["participating"]
             eq_(idx.dialect_kwargs, {"participating_x": 7})
-            eq_(options.reflected, {"state": value})
+            eq_(options.reflect_only_elements, {"state": value})
             assert "state" not in options
             is_(options.get("state"), None)
 
@@ -6003,7 +6003,10 @@ class DialectKWArgTest(fixtures.TestBase):
                 Column("x", Integer),
                 participating_state=True,
             )
-            eq_(t.dialect_options["participating"].reflected, {"state": True})
+            eq_(
+                t.dialect_options["participating"].reflect_only_elements,
+                {"state": True},
+            )
             eq_(t.dialect_kwargs, {})
 
     @testing.combinations(True, False, argnames="value")
@@ -6029,18 +6032,20 @@ class DialectKWArgTest(fixtures.TestBase):
             eq_(options, original)
             eq_(idx.dialect_kwargs, {"participating_x": 7})
             eq_(
-                idx.dialect_options["participating"].reflected,
+                idx.dialect_options["participating"].reflect_only_elements,
                 {"state": value, "other_state": "second value"},
             )
             eq_(
-                idx.dialect_options["participating2"].reflected,
+                idx.dialect_options["participating2"].reflect_only_elements,
                 {"state": "other state"},
             )
 
             with testing.expect_raises(TypeError):
-                idx.dialect_options["participating"].reflected["state"] = False
+                idx.dialect_options["participating"].reflect_only_elements[
+                    "state"
+                ] = False
             with testing.expect_raises(AttributeError):
-                idx.dialect_options["participating"].reflected = {}
+                idx.dialect_options["participating"].reflect_only_elements = {}
 
     @testing.combinations(True, False, argnames="value")
     def test_reflection_only_assignment(self, value):
@@ -6054,14 +6059,14 @@ class DialectKWArgTest(fixtures.TestBase):
             # place and stays out of the flat kwargs view.
             idx.dialect_kwargs["participating_state"] = not value
             eq_(
-                idx.dialect_options["participating"].reflected,
+                idx.dialect_options["participating"].reflect_only_elements,
                 {"state": not value},
             )
             eq_(idx.dialect_kwargs, {})
 
             idx.dialect_options["participating"]["state"] = value
             eq_(
-                idx.dialect_options["participating"].reflected,
+                idx.dialect_options["participating"].reflect_only_elements,
                 {"state": value},
             )
             eq_(idx.dialect_kwargs, {})
@@ -6080,15 +6085,21 @@ class DialectKWArgTest(fixtures.TestBase):
             )
             pickled = pickle.loads(pickle.dumps(idx))
             eq_(
-                pickled.dialect_options["participating"].reflected,
+                pickled.dialect_options["participating"].reflect_only_elements,
                 {"state": True},
             )
             copied = t.to_metadata(MetaData())
             copied_index = next(iter(copied.indexes))
-            eq_(copied_index.dialect_options["participating"].reflected, {})
+            eq_(
+                copied_index.dialect_options[
+                    "participating"
+                ].reflect_only_elements,
+                {},
+            )
             eq_(copied_index.dialect_kwargs, {"participating_x": 7})
             eq_(
-                idx.dialect_options["participating"].reflected, {"state": True}
+                idx.dialect_options["participating"].reflect_only_elements,
+                {"state": True},
             )
 
     def test_reflection_only_inheritance(self):
@@ -6103,14 +6114,21 @@ class DialectKWArgTest(fixtures.TestBase):
             options = {"participating_state": True}
             inherited = CustomIndex("a", "b", **options)
             eq_(
-                inherited.dialect_options["participating"].reflected,
+                inherited.dialect_options[
+                    "participating"
+                ].reflect_only_elements,
                 {"state": True},
             )
 
             # A subclass can replace the marker with an ordinary default.
             CustomIndex.argument_for("participating", "state", False)
             overridden = CustomIndex("a", "b", **options)
-            eq_(overridden.dialect_options["participating"].reflected, {})
+            eq_(
+                overridden.dialect_options[
+                    "participating"
+                ].reflect_only_elements,
+                {},
+            )
             eq_(overridden.dialect_kwargs, options)
 
     def test_reflection_only_preserves_validation(self):

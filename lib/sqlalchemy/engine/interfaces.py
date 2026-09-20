@@ -562,8 +562,9 @@ class ReflectedIndex(TypedDict):
     dialect_options: NotRequired[Dict[str, Any]]
     """Additional dialect-specific options detected for this index.
 
-    This may include database state that is not a DDL option. Table reflection
-    places such values in the dialect's separate ``reflected`` mapping; see
+    This may include database state that is not a DDL option. Table
+    reflection places such values in the dialect's separate
+    ``reflect_only_elements`` mapping; see
     :attr:`.DialectKWArgs.dialect_options`.
 
     """
@@ -1268,7 +1269,7 @@ class Dialect(EventTarget):
     An argument that reports database state rather than a DDL option may
     use ``_DialectKWArgConst.REFLECTED_ONLY``, from ``sqlalchemy.sql.base``,
     as its default.  Values for such arguments are kept in the construct's
-    separate, read-only ``reflected`` mapping rather than in
+    separate, read-only ``reflect_only_elements`` mapping rather than in
     :attr:`.DialectKWArgs.dialect_kwargs`, so they take no part in DDL
     compilation.  This applies to every construct that participates in
     ``construct_arguments``.

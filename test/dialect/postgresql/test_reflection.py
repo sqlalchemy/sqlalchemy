@@ -290,7 +290,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         assert "postgresql_invalid" not in index.dialect_kwargs
         eq_(
-            index.dialect_options["postgresql"].reflected,
+            index.dialect_options["postgresql"].reflect_only_elements,
             {"invalid": True},
         )
 
@@ -303,10 +303,15 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(set(indexes), {"ix_invalid", "ix_valid"})
         invalid = indexes["ix_invalid"]
         eq_(
-            invalid.dialect_options["postgresql"].reflected,
+            invalid.dialect_options["postgresql"].reflect_only_elements,
             {"invalid": True},
         )
-        eq_(indexes["ix_valid"].dialect_options["postgresql"].reflected, {})
+        eq_(
+            indexes["ix_valid"]
+            .dialect_options["postgresql"]
+            .reflect_only_elements,
+            {},
+        )
         assert "postgresql_invalid" not in invalid.dialect_kwargs
         self.assert_compile(
             CreateIndex(invalid),
@@ -321,7 +326,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             next(i for i in copied.indexes if i.name == "ix_invalid")
             .dialect_options["postgresql"]
-            .reflected,
+            .reflect_only_elements,
             {},
         )
         table.drop(connection)
@@ -362,7 +367,7 @@ class InvalidIndexReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             next(iter(reflected.indexes))
             .dialect_options["postgresql"]
-            .reflected,
+            .reflect_only_elements,
             {"invalid": True},
         )
         connection.exec_driver_sql(

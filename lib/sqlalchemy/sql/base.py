@@ -389,8 +389,8 @@ class _DialectKWArgConst(Enum):
     Applies to any construct that takes part in
     :attr:`.DefaultDialect.construct_arguments`, such as :class:`.Table`,
     :class:`.Column`, :class:`.Index` or :class:`.CheckConstraint`.  The
-    value is kept in the construct's read-only ``reflected`` mapping,
-    separate from the options used to generate DDL.
+    value is kept in the construct's read-only ``reflect_only_elements``
+    mapping, separate from the options used to generate DDL.
 
     .. seealso::
 
@@ -472,11 +472,13 @@ class _DialectArgDict(MutableMapping[str, Any]):
     def __init__(self) -> None:
         self._non_defaults: Dict[str, Any] = {}
         self._defaults: Dict[str, Any] = {}
-        self._reflection_only: FrozenSet[str] = util.EMPTY_SET
-        self._reflected: util.immutabledict[str, Any] = util.EMPTY_DICT
+        self._reflection_only_keys: FrozenSet[str] = util.EMPTY_SET
+        self._reflect_only_elements: util.immutabledict[str, Any] = (
+            util.EMPTY_DICT
+        )
 
     @property
-    def reflected(self) -> Mapping[str, Any]:
+    def reflect_only_elements(self) -> Mapping[str, Any]:
         """Database state reported by reflection, separate from DDL options.
 
         Holds values for arguments whose
@@ -486,7 +488,7 @@ class _DialectArgDict(MutableMapping[str, Any]):
         .. versionadded:: 2.1
 
         """
-        return self._reflected
+        return self._reflect_only_elements
 
     def __len__(self) -> int:
         return len(set(self._non_defaults).union(self._defaults))
@@ -501,8 +503,10 @@ class _DialectArgDict(MutableMapping[str, Any]):
             return self._defaults[key]
 
     def __setitem__(self, key: str, value: Any) -> None:
-        if key in self._reflection_only:
-            self._reflected = self._reflected.union({key: value})
+        if key in self._reflection_only_keys:
+            self._reflect_only_elements = self._reflect_only_elements.union(
+                {key: value}
+            )
         else:
             self._non_defaults[key] = value
 
@@ -569,7 +573,7 @@ class DialectKWArgs:
         if argument_name in registry.get(self.__class__, {}):
             if (
                 argument_name
-                in self.dialect_options[dialect.name]._reflection_only
+                in self.dialect_options[dialect.name]._reflection_only_keys
             ):
                 return else_
             if (
@@ -708,12 +712,12 @@ class DialectKWArgs:
             for cls in reversed(cls.__mro__):
                 if cls in construct_arg_dictionary:
                     d._defaults.update(construct_arg_dictionary[cls])
-        d._reflection_only = frozenset(
+        d._reflection_only_keys = frozenset(
             key
             for key, value in d._defaults.items()
             if value is _DialectKWArgConst.REFLECTED_ONLY
         )
-        for key in d._reflection_only:
+        for key in d._reflection_only_keys:
             del d._defaults[key]
         return d
 
@@ -732,16 +736,17 @@ class DialectKWArgs:
 
         Arguments a dialect declares as ``_DialectKWArgConst.REFLECTED_ONLY``
         report database state rather than a DDL option.  Their values are
-        kept in a separate, read-only ``reflected`` mapping, for example::
+        kept in a separate, read-only ``reflect_only_elements`` mapping, for
+        example::
 
             options = my_index.dialect_options["postgresql"]
-            invalid = options.reflected.get("invalid")
+            invalid = options.reflect_only_elements.get("invalid")
 
         These values are not included in this dictionary or in
         :attr:`.DialectKWArgs.dialect_kwargs`, they take no part in DDL
         compilation, and they are not copied by :meth:`.Table.to_metadata`.
 
-        .. versionadded:: 2.1 Added the ``reflected`` mapping.
+        .. versionadded:: 2.1 Added the ``reflect_only_elements`` mapping.
 
         .. seealso::
 
@@ -782,7 +787,7 @@ class DialectKWArgs:
                     "*" not in construct_arg_dictionary
                     and arg_name not in construct_arg_dictionary
                     and arg_name
-                    not in construct_arg_dictionary._reflection_only
+                    not in construct_arg_dictionary._reflection_only_keys
                 ):
                     raise exc.ArgumentError(
                         "Argument %r is not accepted by "

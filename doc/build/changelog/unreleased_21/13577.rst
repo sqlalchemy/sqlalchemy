@@ -5,7 +5,8 @@
     PostgreSQL index reflection now reports invalid indexes with
     ``postgresql_invalid=True`` in the Inspector's ``dialect_options``.
     Reflected :class:`.Index` objects expose this state in a separate,
-    read-only ``index.dialect_options["postgresql"].reflected`` mapping.
+    read-only ``index.dialect_options["postgresql"].reflect_only_elements``
+    mapping.
     The new ``REFLECTED_ONLY`` marker, available to any construct that uses
     :attr:`.DefaultDialect.construct_arguments`, keeps these values out of
     DDL options and out of :attr:`.Index.dialect_kwargs`, while
