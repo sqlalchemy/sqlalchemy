@@ -560,7 +560,7 @@ class ReflectedIndex(TypedDict):
     """
 
     dialect_options: NotRequired[Dict[str, Any]]
-    """Additional dialect-specific options detected for this index"""
+    """Additional dialect-specific options detected for this index."""
 
 
 class ReflectedTableComment(TypedDict):
@@ -1258,6 +1258,17 @@ class Dialect(EventTarget):
     the namespace of arguments prefixed with that dialect name.  The rationale
     here is so that third-party dialects that haven't yet implemented this
     feature continue to function in the old way.
+
+    Arguments that represent database state without any corresponding DDL,
+    but may nonetheless appear in a reflected set of arguments that should
+    be ignored by the construct, may make use of the
+    :attr:`.DialectKWArgConst.REFLECTED_ONLY` token as the default value.
+    Arguments passed to the schema object on such a key will be passed along
+    into the separate read-only collection
+    :attr:`.DialectKWArgs.reflect_only_elements` and should be omitted from
+    DDL rendering.
+
+    .. versionadded:: 2.1 Added :class:`.DialectKWArgConst`.
 
     .. seealso::
 

@@ -265,6 +265,9 @@ class SchemaItem(SchemaVisitable):
     def _schema_item_copy(self, schema_item: _SI) -> _SI:
         if "info" in self.__dict__:
             schema_item.info = self.info.copy()
+        if isinstance(self, DialectKWArgs):
+            assert isinstance(schema_item, DialectKWArgs)
+            self._copy_reflect_only_elements(schema_item)
         schema_item.dispatch._update(self.dispatch)
         return schema_item
 
@@ -1766,6 +1769,7 @@ class Table(
                 ],
                 _table=table,
                 **index.kwargs,
+                **index._reflect_only_kwargs,
             )
         return self._schema_item_copy(table)
 
@@ -4655,6 +4659,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
             for_update=self.for_update,
             **self._as_dict(),
             **self.dialect_kwargs,
+            **self._reflect_only_kwargs,
         )
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:

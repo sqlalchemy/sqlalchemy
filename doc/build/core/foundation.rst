@@ -21,6 +21,10 @@ elements.
    :members:
 
 
+.. autoclass:: sqlalchemy.sql.base.DialectKWArgConst
+   :members:
+
+
 .. autoclass:: sqlalchemy.sql.traversals.HasCacheKey
     :members:
 
