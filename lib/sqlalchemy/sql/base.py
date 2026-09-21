@@ -377,7 +377,7 @@ def _cloned_difference(a: Iterable[_CLE], b: Iterable[_CLE]) -> Set[_CLE]:
     }
 
 
-class _DialectKWArgConst(Enum):
+class DialectKWArgConst(Enum):
     """Constants for dialect argument defaults in
     :attr:`.DefaultDialect.construct_arguments`.
 
@@ -483,7 +483,7 @@ class _DialectArgDict(MutableMapping[str, Any]):
 
         Holds values for arguments whose
         :attr:`.DefaultDialect.construct_arguments` default is
-        ``_DialectKWArgConst.REFLECTED_ONLY``.
+        :attr:`.DialectKWArgConst.REFLECTED_ONLY`.
 
         .. versionadded:: 2.1
 
@@ -715,7 +715,7 @@ class DialectKWArgs:
         d._reflection_only_keys = frozenset(
             key
             for key, value in d._defaults.items()
-            if value is _DialectKWArgConst.REFLECTED_ONLY
+            if value is DialectKWArgConst.REFLECTED_ONLY
         )
         for key in d._reflection_only_keys:
             del d._defaults[key]
@@ -734,8 +734,9 @@ class DialectKWArgs:
 
         .. versionadded:: 0.9.2
 
-        Arguments a dialect declares as ``_DialectKWArgConst.REFLECTED_ONLY``
-        report database state rather than a DDL option.  Their values are
+        Arguments a dialect declares as
+        :attr:`.DialectKWArgConst.REFLECTED_ONLY` report database state
+        rather than a DDL option.  Their values are
         kept in a separate, read-only ``reflect_only_elements`` mapping, for
         example::
 

@@ -1267,14 +1267,14 @@ class Dialect(EventTarget):
     feature continue to function in the old way.
 
     An argument that reports database state rather than a DDL option may
-    use ``_DialectKWArgConst.REFLECTED_ONLY``, from ``sqlalchemy.sql.base``,
-    as its default.  Values for such arguments are kept in the construct's
-    separate, read-only ``reflect_only_elements`` mapping rather than in
+    use :attr:`.DialectKWArgConst.REFLECTED_ONLY` as its default.  Values
+    for such arguments are kept in the construct's separate, read-only
+    ``reflect_only_elements`` mapping rather than in
     :attr:`.DialectKWArgs.dialect_kwargs`, so they take no part in DDL
     compilation.  This applies to every construct that participates in
     ``construct_arguments``.
 
-    .. versionadded:: 2.1 Added ``REFLECTED_ONLY``.
+    .. versionadded:: 2.1 Added :class:`.DialectKWArgConst`.
 
     .. seealso::
 

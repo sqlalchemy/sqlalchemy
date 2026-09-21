@@ -1978,7 +1978,7 @@ from ...sql import functions
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
-from ...sql.base import _DialectKWArgConst
+from ...sql.base import DialectKWArgConst
 from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...sql.visitors import InternalTraversal
 from ...types import BIGINT
@@ -3699,7 +3699,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 "with": {},
                 "tablespace": None,
                 "nulls_not_distinct": None,
-                "invalid": _DialectKWArgConst.REFLECTED_ONLY,
+                "invalid": DialectKWArgConst.REFLECTED_ONLY,
             },
         ),
         (

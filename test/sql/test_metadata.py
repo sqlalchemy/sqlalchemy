@@ -54,8 +54,8 @@ from sqlalchemy.schema import DefaultClause
 from sqlalchemy.schema import DropIndex
 from sqlalchemy.sql import naming
 from sqlalchemy.sql import operators
-from sqlalchemy.sql.base import _DialectKWArgConst
 from sqlalchemy.sql.base import _NONE_NAME
+from sqlalchemy.sql.base import DialectKWArgConst
 from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.sql.schema import _InsertSentinelColumnDefault
 from sqlalchemy.sql.schema import RETAIN_SCHEMA
@@ -5975,7 +5975,7 @@ class DialectKWArgTest(fixtures.TestBase):
     def test_reflection_only_constructor_option(self, value):
         with self._fixture():
             Index.argument_for(
-                "participating", "state", _DialectKWArgConst.REFLECTED_ONLY
+                "participating", "state", DialectKWArgConst.REFLECTED_ONLY
             )
             idx = Index("a", "b", participating_state=value, participating_x=7)
             options = idx.dialect_options["participating"]
@@ -5995,7 +5995,7 @@ class DialectKWArgTest(fixtures.TestBase):
     def test_reflection_only_non_index_construct(self):
         with self._fixture():
             Table.argument_for(
-                "participating", "state", _DialectKWArgConst.REFLECTED_ONLY
+                "participating", "state", DialectKWArgConst.REFLECTED_ONLY
             )
             t = Table(
                 "t",
@@ -6014,12 +6014,12 @@ class DialectKWArgTest(fixtures.TestBase):
         with self._fixture():
             for dialect in ("participating", "participating2"):
                 Index.argument_for(
-                    dialect, "state", _DialectKWArgConst.REFLECTED_ONLY
+                    dialect, "state", DialectKWArgConst.REFLECTED_ONLY
                 )
             Index.argument_for(
                 "participating",
                 "other_state",
-                _DialectKWArgConst.REFLECTED_ONLY,
+                DialectKWArgConst.REFLECTED_ONLY,
             )
             original = {
                 "participating_state": value,
@@ -6051,7 +6051,7 @@ class DialectKWArgTest(fixtures.TestBase):
     def test_reflection_only_assignment(self, value):
         with self._fixture():
             Index.argument_for(
-                "participating", "state", _DialectKWArgConst.REFLECTED_ONLY
+                "participating", "state", DialectKWArgConst.REFLECTED_ONLY
             )
             idx = Index("a", "b", participating_state=value)
 
@@ -6074,7 +6074,7 @@ class DialectKWArgTest(fixtures.TestBase):
     def test_reflection_only_copy_and_pickle(self):
         with self._fixture():
             Index.argument_for(
-                "participating", "state", _DialectKWArgConst.REFLECTED_ONLY
+                "participating", "state", DialectKWArgConst.REFLECTED_ONLY
             )
             t = Table("t", MetaData(), Column("x", Integer))
             idx = Index(
@@ -6109,7 +6109,7 @@ class DialectKWArgTest(fixtures.TestBase):
                 pass
 
             Index.argument_for(
-                "participating", "state", _DialectKWArgConst.REFLECTED_ONLY
+                "participating", "state", DialectKWArgConst.REFLECTED_ONLY
             )
             options = {"participating_state": True}
             inherited = CustomIndex("a", "b", **options)
@@ -6134,7 +6134,7 @@ class DialectKWArgTest(fixtures.TestBase):
     def test_reflection_only_preserves_validation(self):
         with self._fixture():
             Index.argument_for(
-                "participating", "state", _DialectKWArgConst.REFLECTED_ONLY
+                "participating", "state", DialectKWArgConst.REFLECTED_ONLY
             )
             with expect_warnings("Can't validate argument 'unknown_y'"):
                 idx = Index(
