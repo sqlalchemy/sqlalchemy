@@ -275,13 +275,13 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
             .where(self.c.c.col_c == self.d.c.col_d)
             .where(self.c.c.col_c == 5)
         )
-        for start in self.a, self.b:
-            froms, start = find_unmatching_froms(query, start)
-            assert start == start
+        for start_in in self.a, self.b:
+            froms, start = find_unmatching_froms(query, start_in)
+            assert start == start_in
             assert froms == {self.c, self.d}
-        for start in self.c, self.d:
-            froms, start = find_unmatching_froms(query, start)
-            assert start == start
+        for start_in in self.c, self.d:
+            froms, start = find_unmatching_froms(query, start_in)
+            assert start == start_in
             assert froms == {self.a, self.b}
 
     def test_c_and_d_both_disconnected(self):
@@ -291,9 +291,9 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
             .where(self.c.c.col_c == 5)
             .where(self.d.c.col_d == 10)
         )
-        for start in self.a, self.b:
-            froms, start = find_unmatching_froms(query, start)
-            assert start == start
+        for start_in in self.a, self.b:
+            froms, start = find_unmatching_froms(query, start_in)
+            assert start == start_in
             assert froms == {self.c, self.d}
 
         froms, start = find_unmatching_froms(query, self.c)
@@ -398,9 +398,9 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
             .where(self.d.c.col_d == 5)
         )
 
-        for start in self.a, self.b, self.c:
-            froms, start = find_unmatching_froms(query, start)
-            assert start == start
+        for start_in in self.a, self.b, self.c:
+            froms, start = find_unmatching_froms(query, start_in)
+            assert start == start_in
             assert froms == {self.d}
 
         froms, start = find_unmatching_froms(query, self.d)
