@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13602
+
+    Fixed issue in Annotated Declarative where an annotation naming an
+    undefined symbol, where the annotation is not wrapped in
+    :class:`_orm.Mapped`, would raise ``TypeError`` rather than the expected
+    :class:`.MappedAnnotationError` when running under Python 3.14 without
+    ``from __future__ import annotations`` in effect.  Under :pep:`649`, such
+    an annotation is delivered as a ``ForwardRef`` rather than a string, a
+    form which was not accommodated by the check that determines whether an
+    unresolvable annotation was intended to be mapped.
