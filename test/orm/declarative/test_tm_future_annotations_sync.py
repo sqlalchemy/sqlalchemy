@@ -1083,6 +1083,48 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 name: str = mapped_column()  # type: ignore
 
+    @testing.requires.python314
+    def test_missing_mapped_lhs_unresolvable_name(self, decl_base):
+        """test #13602.
+
+        under pep-649 (python 3.14, no ``from __future__ import
+        annotations``), an annotation that names an undefined symbol is
+        no longer evaluated by the interpreter up front; it arrives here
+        as a ``ForwardRef``.  previously the only non-evaluated form
+        possible was a plain string, so this case could not be
+        constructed at all.
+
+        """
+
+        with expect_annotation_syntax_error("User.name"):
+
+            class User(decl_base):
+                __tablename__ = "users"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                name: Bogus  # type: ignore  # noqa: F821
+
+    @testing.requires.python314
+    def test_missing_mapped_lhs_unresolvable_nested_mapped(self, decl_base):
+        """test #13602.
+
+        ``Mapped[]`` nested inside another construct along with an
+        unresolvable name.  under ``__future__`` annotations, this arrives
+        as a string that fails to evaluate and is reported as an
+        un-interpretable annotation, since it contains ``Mapped[``; under
+        pep-649, the outer ``list`` resolves and the usual "use Mapped[]"
+        error is raised.  either way, a :class:`.MappedAnnotationError`.
+
+        """
+
+        with expect_raises(orm_exc.MappedAnnotationError):
+
+            class User(decl_base):
+                __tablename__ = "users"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                name: list[Mapped[Bogus]]  # type: ignore  # noqa: F821
+
     def test_construct_lhs_separate_name(self, decl_base):
         class User(decl_base):
             __tablename__ = "users"
@@ -1951,6 +1993,67 @@ class TypeResolutionTests(fixtures.TestBase, testing.AssertsCompiledSQL):
 
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data: Mapped["fake"]  # noqa
+
+    @testing.requires.python314
+    def test_dont_ignore_unresolvable_unquoted(self, decl_base):
+        """test #8888, #13602.
+
+        as in ``test_dont_ignore_unresolvable``, but the inner name is
+        left unquoted.  under pep-649 this is only reachable because the
+        interpreter no longer evaluates the annotation up front.
+
+        """
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Could not resolve all types within mapped annotation: "
+            r"\".*Mapped\[.*fake.*\]\".  Ensure all types are written "
+            r"correctly and are imported within the module in use.",
+        ):
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[fake]  # noqa: F821
+
+    @testing.requires.python314
+    def test_indirect_mapped_name_closure_level(self, decl_base):
+        """test #8759, #13602.
+
+        a name bound in the enclosing scope rather than at the module
+        level can't be resolved under ``__future__`` annotations, since
+        the string is evaluated against module globals; under pep-649 the
+        annotation closes over the enclosing scope, so it resolves and the
+        attribute maps normally.
+
+        """
+
+        M2 = Mapped
+
+        expect_fail = False
+        expect_fail = True
+
+        def make_class():
+            class Foo(decl_base):
+                __tablename__ = "foo"
+
+                id: M2[int] = mapped_column(primary_key=True)
+
+                data2: M2[int]
+
+            return Foo
+
+        if expect_fail:
+            with expect_raises_message(
+                sa_exc.ArgumentError,
+                r"Could not interpret annotation M2\[int\].  Check that it "
+                "uses names that are correctly imported at the module level.",
+            ):
+                make_class()
+        else:
+            Foo = make_class()
+            is_(Foo.__table__.c.data2.type._type_affinity, Integer)
 
     def test_type_dont_mis_resolve_on_superclass(self):
         """test for #8859.

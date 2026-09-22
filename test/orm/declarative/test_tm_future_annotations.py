@@ -26,10 +26,13 @@ from sqlalchemy import testing
 from sqlalchemy import Uuid
 import sqlalchemy.orm
 from sqlalchemy.orm import attribute_keyed_dict
+from sqlalchemy.orm import DynamicMapped
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import KeyFuncDict
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import WriteOnlyMapped
 from sqlalchemy.orm.util import _cleanup_mapped_str_annotation
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.testing import eq_
@@ -352,6 +355,35 @@ class MappedColumnTest(_MappedColumnTest):
 
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data: Mapped[fake]  # noqa
+
+    @testing.variation("container", ["write_only", "dynamic"])
+    def test_unresolvable_inside_mapped_subclass(self, decl_base, container):
+        """test #13602.
+
+        an unresolvable name inside of ``WriteOnlyMapped[]`` /
+        ``DynamicMapped[]`` is reported as an un-interpretable mapped
+        annotation, same as for ``Mapped[]``, rather than as a missing
+        ``Mapped[]``.
+
+        """
+
+        with expect_raises_message(
+            orm_exc.MappedAnnotationError,
+            r"Could not interpret annotation \w+Mapped\[Lisst\[B\]\].  "
+            "Check that it uses names that are correctly imported",
+        ):
+
+            class A(decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+
+                if container.write_only:
+                    bs: WriteOnlyMapped[Lisst[B]]  # noqa: F821
+                elif container.dynamic:
+                    bs: DynamicMapped[Lisst[B]]  # noqa: F821
+                else:
+                    container.fail()
 
     @testing.variation(
         "reference_type",
