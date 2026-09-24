@@ -3614,7 +3614,7 @@ class Case(ColumnElement[_T]):
         ("else_", InternalTraversal.dp_clauseelement),
     ]
 
-    # for case(), the type is derived from the whens.  so for the moment
+    # for case(), the type is derived from the whens. So for the moment
     # users would have to cast() the case to get a specific type
 
     whens: List[typing_Tuple[ColumnElement[bool], ColumnElement[_T]]]
