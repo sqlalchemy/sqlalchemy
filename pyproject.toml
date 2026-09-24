@@ -88,19 +88,6 @@ aiosqlite = [
 ]
 sqlcipher = ["sqlcipher3_binary"]
 
-# legacy pre-pep-685 names. These are ignored by pip >= 23.3.0
-mssql_pymssql = ["sqlalchemy[mssql-pymssql]"]
-mssql_pyodbc = ["sqlalchemy[mssql-pyodbc]"]
-mysql_connector = ["sqlalchemy[mysql-connector]"]
-mariadb_connector = ["sqlalchemy[mariadb-connector]"]
-oracle_oracledb = ["sqlalchemy[oracle-oracledb]"]
-postgresql_pg8000 = ["sqlalchemy[postgresql-pg8000]"]
-postgresql_asyncpg = ["sqlalchemy[postgresql-asyncpg]"]
-postgresql_psycopg2binary = ["sqlalchemy[postgresql-psycopg2binary]"]
-postgresql_psycopg2cffi = ["sqlalchemy[postgresql-psycopg2cffi]"]
-postgresql_psycopg = ["sqlalchemy[postgresql-psycopg]"]
-postgresql_psycopgbinary = ["sqlalchemy[postgresql-psycopgbinary]"]
-
 [dependency-groups]
 tests = [
     "pytest>=7.0.0,<10",
