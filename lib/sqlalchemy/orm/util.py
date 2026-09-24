@@ -2410,6 +2410,29 @@ def _cleanup_mapped_str_annotation(
     return annotation
 
 
+def _unresolved_annotation_is_mapped(
+    raw_annotation: _AnnotationScanType,
+) -> bool:
+    """given an un-resolvable annotation, guess if it's ``Mapped[]``.
+
+    Used only to decide whether a ``NameError`` raised while de-stringifying
+    is worth reporting as a mapping error.  The annotation may be a plain
+    string (``__future__`` annotations / explicitly quoted), a ``ForwardRef``
+    (:pep:`649` deferred annotations on Python 3.14 and above), or an
+    already-resolved object.
+
+    """
+    if isinstance(raw_annotation, str):
+        return "Mapped[" in raw_annotation
+    elif isinstance(raw_annotation, typing.ForwardRef):
+        return "Mapped[" in raw_annotation.__forward_arg__
+    else:
+        origin = typing.get_origin(raw_annotation)
+        return isinstance(origin, type) and issubclass(
+            origin, _MappedAnnotationBase
+        )
+
+
 def _extract_mapped_subtype(
     raw_annotation: Optional[_AnnotationScanType],
     cls: type,
@@ -2456,7 +2479,7 @@ def _extract_mapped_subtype(
             "module level. See chained stack trace for more hints."
         ) from ce
     except NameError as ne:
-        if raiseerr and "Mapped[" in raw_annotation:  # type: ignore[operator]
+        if raiseerr and _unresolved_annotation_is_mapped(raw_annotation):
             raise orm_exc.MappedAnnotationError(
                 f"Could not interpret annotation {raw_annotation}.  "
                 "Check that it uses names that are correctly imported at the "

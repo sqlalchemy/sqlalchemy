@@ -1,4 +1,6 @@
 import re
+import typing
+from typing import Optional
 
 from sqlalchemy import Column
 from sqlalchemy import event
@@ -24,6 +26,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.orm import WriteOnlyMapped
 from sqlalchemy.orm.path_registry import PathRegistry
 from sqlalchemy.orm.path_registry import PathToken
 from sqlalchemy.orm.path_registry import RootRegistry
@@ -788,6 +791,42 @@ class IsAliasOfSelectableTest(fixtures.TestBase):
         selectable, target = testing.resolve_lambda(make_selectables, **t)
 
         eq_(orm_util._is_alias_of_selectable(selectable, target), expected)
+
+
+class UnresolvedAnnotationIsMappedTest(fixtures.TestBase):
+    """test the _unresolved_annotation_is_mapped() function used to decide
+    if an un-resolvable annotation is reported as a mapping error,
+    #13602"""
+
+    @testing.combinations(
+        ("Mapped[Undef]", True),
+        ("Mapped[list[Undef] | None]", True),
+        ("WriteOnlyMapped[list[Undef]]", True),
+        ("DynamicMapped[Undef]", True),
+        ("orm.Mapped[Undef]", True),
+        ("Undef", False),
+        ("list[Undef]", False),
+        ("Undef | None", False),
+        ("Undef | __annotationlib_name_1__", False),
+        argnames="annotation, expected",
+    )
+    @testing.variation("form", ["str", "forward_ref"])
+    def test_string_forms(self, annotation, expected, form):
+        if form.forward_ref:
+            annotation = typing.ForwardRef(annotation)
+
+        eq_(orm_util._unresolved_annotation_is_mapped(annotation), expected)
+
+    @testing.combinations(
+        (Mapped[int], True),
+        (WriteOnlyMapped[int], True),
+        (Optional[Mapped[int]], False),
+        (typing.List[Mapped[int]], False),
+        (int, False),
+        argnames="annotation, expected",
+    )
+    def test_resolved_forms(self, annotation, expected):
+        eq_(orm_util._unresolved_annotation_is_mapped(annotation), expected)
 
 
 class IdentityKeyTest(_fixtures.FixtureTest):
