@@ -2847,6 +2847,170 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
         eq_(repr(u2), "mymodule.User(name='u2', address=None)")
 
+    def test_column_template(self, dc_decl_base: Type[MappedAsDataclass]):
+        @dataclasses.dataclass
+        class Address:
+            street: str
+            city: str
+            zip_: str
+
+        class Person(dc_decl_base):
+            __tablename__ = "person"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, init=False, repr=False
+            )
+
+            home_address: Mapped[Address] = composite(
+                Address, column_template="home_%s", default=None
+            )
+            work_address: Mapped[Address] = composite(
+                Address, column_template="work_%s", default=None
+            )
+
+        eq_(
+            {c.name for c in Person.__table__.c},
+            {
+                "id",
+                "home_street",
+                "home_city",
+                "home_zip_",
+                "work_street",
+                "work_city",
+                "work_zip_",
+            },
+        )
+
+        p = Person(
+            home_address=Address("123 anywhere", "Springfield", "00000"),
+            work_address=Address("1 Main St", "Metropolis", "11111"),
+        )
+        eq_(p.home_address, Address("123 anywhere", "Springfield", "00000"))
+        eq_(p.work_address, Address("1 Main St", "Metropolis", "11111"))
+
+    def test_column_template_explicit_override(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        @dataclasses.dataclass
+        class Address:
+            country: str
+            city: str
+            zip_: str
+
+        class Person(dc_decl_base):
+            __tablename__ = "person"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, init=False, repr=False
+            )
+
+            shipping_address: Mapped[Address] = composite(
+                Address,
+                mapped_column("shipping_country_code"),
+                column_template="shipping_%s",
+                default=None,
+            )
+
+        eq_(
+            {c.name for c in Person.__table__.c},
+            {"id", "shipping_country_code", "shipping_city", "shipping_zip_"},
+        )
+
+    def test_column_template_requires_dataclass(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        class Address:
+            def __init__(self, street, city):
+                self.street = street
+                self.city = city
+
+            def __composite_values__(self):
+                return (self.street, self.city)
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "column_template is only supported when composite_class "
+            "is a dataclass",
+        ):
+
+            class Person(dc_decl_base):
+                __tablename__ = "person"
+
+                id: Mapped[int] = mapped_column(
+                    primary_key=True, init=False, repr=False
+                )
+
+                address: Mapped[Address] = composite(
+                    Address,
+                    mapped_column("street"),
+                    mapped_column("city"),
+                    column_template="home_%s",
+                    default=None,
+                )
+
+    @testing.combinations(
+        "person",
+        "person_%s_%s",
+        "%(name)s",
+        argnames="bad_template",
+    )
+    def test_column_template_bad_format(self, bad_template):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "is not a valid template",
+        ):
+            composite(column_template=bad_template)
+
+    @testing.variation("collide_on", ["column_name", "column_key"])
+    @testing.variation("order", ["before", "after"])
+    def test_column_template_collision(
+        self,
+        dc_decl_base: Type[MappedAsDataclass],
+        collide_on: testing.Variation,
+        order: testing.Variation,
+    ):
+        """test that a generated column name colliding with another column
+        is reported by the Table, whether the other column appears before
+        or after the composite in the class body."""
+
+        @dataclasses.dataclass
+        class Address:
+            street: str
+            city: str
+
+        def other_column():
+            if collide_on.column_name:
+                return mapped_column("home_street", init=False, default=None)
+            elif collide_on.column_key:
+                return mapped_column(
+                    "other", key="home_street", init=False, default=None
+                )
+            else:
+                collide_on.fail()
+
+        with expect_raises_message(
+            exc.DuplicateColumnError,
+            "A column with (name|key) 'home_street' is already "
+            "present in table 'person'",
+        ):
+
+            class Person(dc_decl_base):
+                __tablename__ = "person"
+
+                id: Mapped[int] = mapped_column(
+                    primary_key=True, init=False, repr=False
+                )
+
+                if order.before:
+                    other: Mapped[str] = other_column()
+
+                home_address: Mapped[Address] = composite(
+                    Address, column_template="home_%s", default=None
+                )
+
+                if order.after:
+                    other: Mapped[str] = other_column()
+
 
 class ReadOnlyAttrTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     """tests related to #9628"""

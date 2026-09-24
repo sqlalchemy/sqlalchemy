@@ -208,6 +208,7 @@ class CompositeProperty(
 
     composite_class: Union[Type[_CC], Callable[..., _CC]]
     attrs: Tuple[_CompositeAttrType[Any], ...]
+    column_template: Optional[str]
 
     _generated_composite_accessor: CallableReference[
         Optional[Callable[[_CC], Tuple[Any, ...]]]
@@ -229,6 +230,7 @@ class CompositeProperty(
         deferred: bool = False,
         group: Optional[str] = None,
         comparator_factory: Optional[Type[Comparator[_CC]]] = None,
+        column_template: Optional[str] = None,
         info: Optional[_InfoType] = None,
         **kwargs: Any,
     ):
@@ -241,6 +243,17 @@ class CompositeProperty(
         else:
             self.composite_class = _class_or_attr  # type: ignore[assignment]
             self.attrs = attrs
+
+        if column_template is not None:
+            try:
+                column_template % "x"
+            except (TypeError, ValueError) as te:
+                raise sa_exc.ArgumentError(
+                    f"column_template {column_template!r} is not a valid "
+                    "template; expected a string containing exactly one "
+                    "'%s' placeholder"
+                ) from te
+        self.column_template = column_template
 
         self.return_none_on = return_none_on
         self.active_history = active_history
@@ -428,6 +441,11 @@ class CompositeProperty(
                 decl_scan, registry, cls, originating_module, key
             )
         else:
+            if self.column_template is not None:
+                raise sa_exc.ArgumentError(
+                    "column_template is only supported when composite_class "
+                    "is a dataclass"
+                )
             for attr in self.attrs:
                 if (
                     isinstance(attr, (MappedColumn, schema.Column))
@@ -492,8 +510,12 @@ class CompositeProperty(
                     f"{self.composite_class.__name__} {len(insp.parameters)}"
                 )
             if attr is None:
-                # fill in missing attr spots with empty MappedColumn
-                attr = MappedColumn()
+                # fill in missing attr spots with empty MappedColumn,
+                # or one named from column_template if present
+                if self.column_template is not None:
+                    attr = MappedColumn(self.column_template % param.name)
+                else:
+                    attr = MappedColumn()
                 self.attrs += (attr,)
 
             if isinstance(attr, MappedColumn):
