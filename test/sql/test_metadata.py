@@ -55,6 +55,7 @@ from sqlalchemy.schema import DropIndex
 from sqlalchemy.sql import naming
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.base import _NONE_NAME
+from sqlalchemy.sql.base import DialectKWArgConst
 from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.sql.schema import _InsertSentinelColumnDefault
 from sqlalchemy.sql.schema import RETAIN_SCHEMA
@@ -5503,13 +5504,38 @@ class DialectKWArgTest(fixtures.TestBase):
 
         class ParticipatingDialect(DefaultDialect):
             construct_arguments = [
-                (schema.Index, {"x": 5, "y": False, "z_one": None}),
+                (
+                    schema.Index,
+                    {
+                        "x": 5,
+                        "y": False,
+                        "z_one": None,
+                        "state": DialectKWArgConst.REFLECTED_ONLY,
+                        "other_state": DialectKWArgConst.REFLECTED_ONLY,
+                    },
+                ),
                 (schema.ForeignKeyConstraint, {"foobar": False}),
+                (schema.Table, {"state": DialectKWArgConst.REFLECTED_ONLY}),
+                (schema.Column, {"state": DialectKWArgConst.REFLECTED_ONLY}),
+                (
+                    schema.Constraint,
+                    {"state": DialectKWArgConst.REFLECTED_ONLY},
+                ),
+                (schema.Sequence, {"state": DialectKWArgConst.REFLECTED_ONLY}),
+                (schema.Identity, {"state": DialectKWArgConst.REFLECTED_ONLY}),
             ]
 
         class ParticipatingDialect2(DefaultDialect):
             construct_arguments = [
-                (schema.Index, {"x": 9, "y": True, "pp": "default"}),
+                (
+                    schema.Index,
+                    {
+                        "x": 9,
+                        "y": True,
+                        "pp": "default",
+                        "state": DialectKWArgConst.REFLECTED_ONLY,
+                    },
+                ),
                 (schema.Table, {"*": None}),
             ]
 
@@ -5968,6 +5994,256 @@ class DialectKWArgTest(fixtures.TestBase):
             eq_(
                 idx.get_dialect_option(dialect, "x", else_="fallback"),
                 "fallback",
+            )
+
+    @testing.combinations(True, False, argnames="value")
+    def test_reflection_only_constructor_option(self, value):
+        with self._fixture():
+            idx = Index("a", "b", participating_state=value, participating_x=7)
+            eq_(idx.dialect_kwargs, {"participating_x": 7})
+            eq_(
+                dict(idx.dialect_options["participating"]),
+                {"x": 7, "y": False, "z_one": None},
+            )
+            eq_(idx.reflect_only_elements, {"participating": {"state": value}})
+
+    def test_reflection_only_absent_dialect(self):
+        """dialects with no reflection-only values present, including ones
+        that aren't installed, give an empty mapping and are not members"""
+
+        with self._fixture():
+            idx = Index("a", "b", participating_state=True)
+            eq_(
+                {
+                    name: (
+                        name in idx.reflect_only_elements,
+                        idx.reflect_only_elements[name],
+                    )
+                    for name in ("participating", "participating2", "nosuch")
+                },
+                {
+                    "participating": (True, {"state": True}),
+                    "participating2": (False, {}),
+                    "nosuch": (False, {}),
+                },
+            )
+
+    def test_get_dialect_option_participating_reflect_only(self):
+        with self._fixture():
+            idx = Index("a", "b", participating_state=True)
+            dialect = mock.Mock()
+            dialect.name = "participating"
+            eq_(
+                idx.get_dialect_option(dialect, "state", else_="absent"),
+                "absent",
+            )
+
+    def test_reflection_only_non_index_construct(self):
+        with self._fixture():
+            t = Table(
+                "t",
+                MetaData(),
+                Column("x", Integer),
+                participating_state=True,
+            )
+            eq_(t.reflect_only_elements, {"participating": {"state": True}})
+            eq_(t.dialect_kwargs, {})
+
+    def test_reflection_only_options(self):
+        with self._fixture():
+            idx = Index(
+                "a",
+                "b",
+                participating_state=True,
+                participating_other_state="second value",
+                participating2_state="other state",
+                participating_x=7,
+            )
+            eq_(idx.dialect_kwargs, {"participating_x": 7})
+            eq_(
+                idx.reflect_only_elements,
+                {
+                    "participating": {
+                        "state": True,
+                        "other_state": "second value",
+                    },
+                    "participating2": {"state": "other state"},
+                },
+            )
+
+    def test_reflection_only_immutable(self):
+        with self._fixture():
+            idx = Index("a", "b", participating_state=True)
+
+            with testing.expect_raises(TypeError):
+                idx.reflect_only_elements["participating"] = {}
+            with testing.expect_raises(TypeError):
+                idx.reflect_only_elements["participating"]["state"] = False
+            with testing.expect_raises(AttributeError):
+                idx.reflect_only_elements = {}
+
+    @testing.combinations(
+        "dialect_kwargs", "dialect_options", argnames="write_path"
+    )
+    def test_reflection_only_assignment(self, write_path):
+        """each write path for a marked argument lands in
+        reflect_only_elements and stays out of the flat kwargs view."""
+
+        with self._fixture():
+            idx = Index("a", "b")
+            if write_path == "dialect_kwargs":
+                idx.dialect_kwargs["participating_state"] = True
+            else:
+                idx.dialect_options["participating"]["state"] = True
+
+            eq_(
+                (idx.reflect_only_elements, idx.dialect_kwargs),
+                ({"participating": {"state": True}}, {}),
+            )
+
+    def test_reflection_only_pickle(self):
+        with self._fixture():
+            t = Table("t", MetaData(), Column("x", Integer))
+            idx = Index(
+                "ix",
+                t.c.x,
+                participating_state=True,
+                participating_x=7,
+            )
+            pickled = pickle.loads(pickle.dumps(idx))
+            eq_(
+                pickled.reflect_only_elements,
+                {"participating": {"state": True}},
+            )
+
+    def test_reflection_only_to_metadata(self):
+        """reflection-only state is carried along for each DialectKWArgs
+        construct copied by Table.to_metadata()."""
+
+        with self._fixture():
+            m = MetaData()
+            Table(
+                "parent",
+                m,
+                Column("id", Integer, primary_key=True),
+                Column("id2", Integer),
+                UniqueConstraint("id", "id2"),
+            )
+            t = Table(
+                "t",
+                m,
+                Column(
+                    "id",
+                    Integer,
+                    Sequence("s", participating_state="sequence"),
+                    primary_key=True,
+                ),
+                Column(
+                    "x",
+                    Integer,
+                    ForeignKey("parent.id", participating_state="fk"),
+                    participating_state="column",
+                ),
+                Column(
+                    "y",
+                    Integer,
+                    Identity(participating_state="identity"),
+                ),
+                Column("p1", Integer),
+                Column("p2", Integer),
+                ForeignKeyConstraint(
+                    ["p1", "p2"],
+                    ["parent.id", "parent.id2"],
+                    participating_state="fkc",
+                ),
+                UniqueConstraint("x", participating_state="unique"),
+                CheckConstraint("x > 5", participating_state="check"),
+                participating_state="table",
+            )
+            t.primary_key.dialect_kwargs["participating_state"] = "pk"
+            Index("ix", t.c.x, participating_state="index")
+
+            copied = t.to_metadata(MetaData())
+
+            constraints = {type(c): c for c in copied.constraints}
+            eq_(
+                [
+                    dict(elem.reflect_only_elements)
+                    for elem in [
+                        copied,
+                        copied.c.x,
+                        # ForeignKey passes its dialect arguments along
+                        # to its ForeignKeyConstraint
+                        next(iter(copied.c.x.foreign_keys)).constraint,
+                        copied.c.id.default,
+                        copied.c.y.server_default,
+                        next(iter(copied.c.p1.foreign_keys)).constraint,
+                        constraints[UniqueConstraint],
+                        constraints[CheckConstraint],
+                        copied.primary_key,
+                        next(iter(copied.indexes)),
+                    ]
+                ],
+                [
+                    {"participating": {"state": state}}
+                    for state in [
+                        "table",
+                        "column",
+                        "fk",
+                        "sequence",
+                        "identity",
+                        "fkc",
+                        "unique",
+                        "check",
+                        "pk",
+                        "index",
+                    ]
+                ],
+            )
+
+    def test_reflection_only_to_metadata_dialect_kwargs(self):
+        """reflection-only state stays out of the dialect_kwargs of the
+        copy."""
+
+        with self._fixture():
+            t = Table("t", MetaData(), Column("x", Integer))
+            Index(
+                "ix",
+                t.c.x,
+                participating_state=True,
+                participating_x=7,
+            )
+            copied_index = next(iter(t.to_metadata(MetaData()).indexes))
+            eq_(
+                (
+                    copied_index.reflect_only_elements,
+                    copied_index.dialect_kwargs,
+                ),
+                ({"participating": {"state": True}}, {"participating_x": 7}),
+            )
+
+    def test_reflection_only_inherited_by_subclass(self):
+        with self._fixture():
+
+            class CustomIndex(Index):
+                pass
+
+            idx = CustomIndex("a", "b", participating_state=True)
+            eq_(idx.reflect_only_elements, {"participating": {"state": True}})
+
+    def test_reflection_only_overridden_by_subclass(self):
+        """a subclass can replace the marker with an ordinary default."""
+
+        with self._fixture():
+
+            class CustomIndex(Index):
+                pass
+
+            CustomIndex.argument_for("participating", "state", False)
+            idx = CustomIndex("a", "b", participating_state=True)
+            eq_(
+                (idx.reflect_only_elements, idx.dialect_kwargs),
+                ({}, {"participating_state": True}),
             )
 
 

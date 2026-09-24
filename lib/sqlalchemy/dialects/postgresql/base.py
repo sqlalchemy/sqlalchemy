@@ -1179,6 +1179,12 @@ construct, the DBAPI's "autocommit" mode must be used::
 PostgreSQL Index Reflection
 ---------------------------
 
+Notes on Index reflection
+
+
+Implicit UNIQUE index for UNIQUE CONSTRAINT
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 The PostgreSQL database creates a UNIQUE INDEX implicitly whenever the
 UNIQUE CONSTRAINT construct is used.   When inspecting a table using
 :class:`_reflection.Inspector`, the :meth:`_reflection.Inspector.get_indexes`
@@ -1189,8 +1195,38 @@ two constructs distinctly; in the case of the index, the key
 detected as mirroring a constraint.   When performing reflection using
 ``Table(..., autoload_with=engine)``, the UNIQUE INDEX is **not** returned
 in :attr:`_schema.Table.indexes` when it is detected as mirroring a
-:class:`.UniqueConstraint` in the :attr:`_schema.Table.constraints` collection
-.
+:class:`.UniqueConstraint` in the :attr:`_schema.Table.constraints` collection.
+
+.. _postgresql_invalid_index_reflection:
+
+Invalid indexes
+^^^^^^^^^^^^^^^
+
+Indexes marked "invalid" by PostgreSQL (i.e. an index that exists in the
+catalog, but is ignored by the query planner because it may be incomplete,
+while still being maintained on writes) remain present in reflection. The
+:meth:`_reflection.Inspector.get_indexes` and
+:meth:`_reflection.Inspector.get_multi_indexes` methods include
+``postgresql_invalid=True`` in the index's ``dialect_options`` dictionary when
+``pg_index.indisvalid`` is false. Valid indexes omit this flag.
+
+When reflecting a :class:`_schema.Table`, the flag, if present, is stored
+separately from DDL options on each reflected :class:`.Index`::
+
+    table = Table("my_table", MetaData(), autoload_with=engine)
+    for index in table.indexes:
+        if index.reflect_only_elements["postgresql"].get("invalid"):
+            print(index.name)
+
+The :attr:`.Index.reflect_only_elements` mapping is read-only. These values are
+not included in :attr:`.Index.dialect_kwargs` and do not affect DDL.
+
+An invalid index may be left by a failed ``CREATE INDEX CONCURRENTLY``, may
+still be building, or may be a partitioned index awaiting attachment of its
+partition indexes. This flag reports the state at reflection time; it does not
+request an index rebuild.
+
+.. versionadded:: 2.1
 
 Special Reflection Options
 --------------------------
@@ -1946,6 +1982,7 @@ from ...sql import functions
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
+from ...sql.base import DialectKWArgConst
 from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...sql.visitors import InternalTraversal
 from ...types import BIGINT
@@ -3666,6 +3703,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 "with": {},
                 "tablespace": None,
                 "nulls_not_distinct": None,
+                "invalid": DialectKWArgConst.REFLECTED_ONLY,
             },
         ),
         (
@@ -5269,6 +5307,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 pg_catalog.pg_index.c.indrelid,
                 pg_catalog.pg_class.c.relname,
                 pg_catalog.pg_index.c.indisunique,
+                pg_catalog.pg_index.c.indisvalid,
                 pg_catalog.pg_constraint.c.conrelid.is_not(None).label(
                     "has_constraint"
                 ),
@@ -5474,6 +5513,9 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                         dialect_options["postgresql_nulls_not_distinct"] = row[
                             "indnullsnotdistinct"
                         ]
+
+                    if not row["indisvalid"]:
+                        dialect_options["postgresql_invalid"] = True
 
                     if dialect_options:
                         index["dialect_options"] = dialect_options

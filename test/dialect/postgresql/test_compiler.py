@@ -1337,6 +1337,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.DropIndex(idx1), "DROP INDEX test_idx1", dialect=dialect_9_1
         )
 
+    @testing.combinations(
+        (
+            schema.CreateIndex,
+            "CREATE UNIQUE INDEX test_idx1 ON testtbl (data)",
+        ),
+        (schema.DropIndex, "DROP INDEX test_idx1"),
+        argnames="ddl_cls, expected",
+    )
+    def test_invalid_index_ddl(self, ddl_cls, expected):
+        """postgresql_invalid is reflection-only state and has no effect
+        on DDL."""
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", Integer))
+
+        idx1 = Index(
+            "test_idx1", tbl.c.data, unique=True, postgresql_invalid=True
+        )
+        self.assert_compile(ddl_cls(idx1), expected)
+
     def test_create_check_constraint_not_valid(self):
         m = MetaData()
 

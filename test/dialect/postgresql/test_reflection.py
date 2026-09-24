@@ -216,6 +216,178 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
         )
 
 
+class InvalidIndexReflectionTest(fixtures.TestBase):
+    __only_on__ = "postgresql"
+
+    @testing.fixture
+    def invalid_index(self, metadata):
+        """a table with a valid index "ix_valid" and an invalid index
+        "ix_invalid", left behind by a failed CREATE INDEX CONCURRENTLY."""
+
+        table = Table(
+            "invalid_index_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            Index("ix_valid", "x"),
+        )
+        with testing.db.begin() as connection:
+            metadata.create_all(connection)
+            connection.execute(
+                table.insert(), [{"id": 1, "x": 1}, {"id": 2, "x": 1}]
+            )
+
+        # CONCURRENTLY can't run in a transaction.  The unique index fails
+        # on the duplicate rows, but leaves the index in place, marked
+        # invalid in the catalog.
+        with testing.db.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        ) as connection:
+            with expect_raises(exc.IntegrityError):
+                Index(
+                    "ix_invalid",
+                    table.c.x,
+                    unique=True,
+                    postgresql_concurrently=True,
+                ).create(connection)
+
+        return table
+
+    @testing.fixture
+    def partitioned_invalid_index(self, metadata, connection):
+        """a partitioned table with an index "ix_parent" created on the
+        parent only, which is invalid until an index is attached for each
+        partition."""
+
+        parent = Table(
+            "invalid_parent",
+            metadata,
+            Column("x", Integer),
+            postgresql_partition_by="RANGE (x)",
+        )
+        parent.create(connection)
+        connection.exec_driver_sql(
+            "CREATE TABLE invalid_child PARTITION OF invalid_parent "
+            "FOR VALUES FROM (0) TO (10)"
+        )
+        # Register the child so metadata cleanup drops it before its parent.
+        Table(
+            "invalid_child", metadata, Column("x", Integer)
+        ).add_is_dependent_on(parent)
+        connection.exec_driver_sql(
+            "CREATE INDEX ix_parent ON ONLY invalid_parent (x)"
+        )
+        return parent
+
+    def _expected_indexes(self):
+        if testing.against("postgresql >= 11"):
+            return [
+                {
+                    "name": "ix_invalid",
+                    "unique": True,
+                    "column_names": ["x"],
+                    "dialect_options": {
+                        "postgresql_include": [],
+                        "postgresql_invalid": True,
+                    },
+                },
+                {
+                    "name": "ix_valid",
+                    "unique": False,
+                    "column_names": ["x"],
+                    "dialect_options": {"postgresql_include": []},
+                },
+            ]
+        else:
+            return [
+                {
+                    "name": "ix_invalid",
+                    "unique": True,
+                    "column_names": ["x"],
+                    "dialect_options": {"postgresql_invalid": True},
+                },
+                {"name": "ix_valid", "unique": False, "column_names": ["x"]},
+            ]
+
+    def test_get_indexes(self, invalid_index, connection):
+        eq_(
+            inspect(connection).get_indexes(invalid_index.name),
+            self._expected_indexes(),
+        )
+
+    def test_get_multi_indexes(self, invalid_index, connection):
+        eq_(
+            inspect(connection).get_multi_indexes(
+                filter_names=[invalid_index.name]
+            ),
+            {(None, invalid_index.name): self._expected_indexes()},
+        )
+
+    def test_index_from_get_indexes(self, invalid_index, connection):
+        """Index can be constructed directly from the dialect_options
+        returned by get_indexes(), as is done by Alembic."""
+
+        index_info = inspect(connection).get_indexes(invalid_index.name)[0]
+        index = Index(
+            index_info["name"],
+            Table("t", MetaData(), Column("x", Integer)).c.x,
+            unique=True,
+            **index_info["dialect_options"],
+        )
+        eq_(index.reflect_only_elements, {"postgresql": {"invalid": True}})
+
+    def test_table_reflection(self, invalid_index, connection):
+        reflected = Table(
+            invalid_index.name, MetaData(), autoload_with=connection
+        )
+        indexes = {index.name: index for index in reflected.indexes}
+        invalid, valid = indexes["ix_invalid"], indexes["ix_valid"]
+
+        eq_(invalid.reflect_only_elements, {"postgresql": {"invalid": True}})
+        eq_(valid.reflect_only_elements, {})
+
+    @testing.only_on("postgresql >= 11")
+    def test_partitioned_index_invalid(
+        self, partitioned_invalid_index, connection
+    ):
+        eq_(
+            inspect(connection).get_indexes(partitioned_invalid_index.name),
+            [
+                {
+                    "name": "ix_parent",
+                    "unique": False,
+                    "column_names": ["x"],
+                    "dialect_options": {
+                        "postgresql_include": [],
+                        "postgresql_invalid": True,
+                    },
+                }
+            ],
+        )
+
+    @testing.only_on("postgresql >= 11")
+    def test_partitioned_index_valid_once_attached(
+        self, partitioned_invalid_index, connection
+    ):
+        connection.exec_driver_sql(
+            "CREATE INDEX ix_child ON invalid_child (x)"
+        )
+        connection.exec_driver_sql(
+            "ALTER INDEX ix_parent ATTACH PARTITION ix_child"
+        )
+        eq_(
+            inspect(connection).get_indexes(partitioned_invalid_index.name),
+            [
+                {
+                    "name": "ix_parent",
+                    "unique": False,
+                    "column_names": ["x"],
+                    "dialect_options": {"postgresql_include": []},
+                }
+            ],
+        )
+
+
 class MaterializedViewReflectionTest(
     ReflectionFixtures, fixtures.TablesTest, AssertsExecutionResults
 ):

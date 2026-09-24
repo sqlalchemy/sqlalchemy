@@ -377,6 +377,31 @@ def _cloned_difference(a: Iterable[_CLE], b: Iterable[_CLE]) -> Set[_CLE]:
     }
 
 
+class DialectKWArgConst(Enum):
+    """Constants for dialect argument defaults in
+    :attr:`.DefaultDialect.construct_arguments`.
+
+    """
+
+    REFLECTED_ONLY = 1
+    """Mark a dialect argument as database state reported by reflection.
+
+    Applies to any construct that takes part in
+    :attr:`.DefaultDialect.construct_arguments`, such as :class:`.Table`,
+    :class:`.Column`, :class:`.Index` or :class:`.CheckConstraint`.  The
+    value is kept in the construct's read-only
+    :attr:`.DialectKWArgs.reflect_only_elements` mapping, separate from the
+    options used to generate DDL.
+
+    .. seealso::
+
+        :attr:`.DialectKWArgs.reflect_only_elements`
+
+    .. versionadded:: 2.1
+
+    """
+
+
 class _DialectArgView(MutableMapping[str, Any]):
     """A dictionary view of dialect-level arguments in the form
     <dialectname>_<argument_name>.
@@ -436,6 +461,46 @@ class _DialectArgView(MutableMapping[str, Any]):
         )
 
 
+class _ReflectOnlyView(Mapping[str, Mapping[str, Any]]):
+    """A read-only dictionary view of reflection-only dialect-level
+    arguments, keyed to <dialectname>, then <argument_name>.
+
+    A dialect name that has no reflection-only arguments present returns
+    an empty mapping.
+
+    """
+
+    __slots__ = ("obj",)
+
+    def __init__(self, obj: DialectKWArgs) -> None:
+        self.obj = obj
+
+    def __getitem__(self, key: str) -> Mapping[str, Any]:
+        # check membership first so that the lookup does not attempt
+        # to load a dialect
+        if key in self.obj.dialect_options:
+            return self.obj.dialect_options[key]._reflect_only_elements
+        else:
+            return EMPTY_DICT
+
+    def __contains__(self, key: object) -> bool:
+        return bool(
+            isinstance(key, str)
+            and key in self.obj.dialect_options
+            and self.obj.dialect_options[key]._reflect_only_elements
+        )
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+    def __iter__(self) -> Generator[str, None, None]:
+        return (
+            dialect_name
+            for dialect_name, args in self.obj.dialect_options.items()
+            if args._reflect_only_elements
+        )
+
+
 class _DialectArgDict(MutableMapping[str, Any]):
     """A dictionary view of dialect-level arguments for a specific
     dialect.
@@ -448,6 +513,10 @@ class _DialectArgDict(MutableMapping[str, Any]):
     def __init__(self) -> None:
         self._non_defaults: Dict[str, Any] = {}
         self._defaults: Dict[str, Any] = {}
+        self._reflection_only_keys: FrozenSet[str] = util.EMPTY_SET
+        self._reflect_only_elements: util.immutabledict[str, Any] = (
+            util.EMPTY_DICT
+        )
 
     def __len__(self) -> int:
         return len(set(self._non_defaults).union(self._defaults))
@@ -462,7 +531,12 @@ class _DialectArgDict(MutableMapping[str, Any]):
             return self._defaults[key]
 
     def __setitem__(self, key: str, value: Any) -> None:
-        self._non_defaults[key] = value
+        if key in self._reflection_only_keys:
+            self._reflect_only_elements = self._reflect_only_elements.union(
+                {key: value}
+            )
+        else:
+            self._non_defaults[key] = value
 
     def __delitem__(self, key: str) -> None:
         del self._non_defaults[key]
@@ -525,6 +599,11 @@ class DialectKWArgs:
             return else_
 
         if argument_name in registry.get(self.__class__, {}):
+            if (
+                argument_name
+                in self.dialect_options[dialect.name]._reflection_only_keys
+            ):
+                return else_
             if (
                 deprecated_fallback is None
                 or dialect.name == deprecated_fallback
@@ -646,6 +725,60 @@ class DialectKWArgs:
         """A synonym for :attr:`.DialectKWArgs.dialect_kwargs`."""
         return self.dialect_kwargs
 
+    @property
+    def reflect_only_elements(self) -> Mapping[str, Mapping[str, Any]]:
+        """A read-only collection of dialect-specific database state
+        reported by reflection, separate from DDL options.
+
+        Holds values for arguments whose
+        :attr:`.DefaultDialect.construct_arguments` default is
+        :attr:`.DialectKWArgConst.REFLECTED_ONLY`.  Like
+        :attr:`.DialectKWArgs.dialect_options`, this is a two-level nested
+        collection keyed to ``<dialect_name>`` and ``<argument_name>``; a
+        dialect name with no values present returns an empty mapping, for
+        example::
+
+            invalid = my_index.reflect_only_elements["postgresql"].get("invalid")
+
+        These values are not included in
+        :attr:`.DialectKWArgs.dialect_options` or
+        :attr:`.DialectKWArgs.dialect_kwargs` and take no part in DDL
+        compilation.  They are carried along to copies of the object, such
+        as those produced by :meth:`.Table.to_metadata`.
+
+        .. versionadded:: 2.1
+
+        .. seealso::
+
+            :attr:`.DialectKWArgConst.REFLECTED_ONLY`
+
+        """  # noqa: E501
+        return _ReflectOnlyView(self)
+
+    @property
+    def _reflect_only_kwargs(self) -> Dict[str, Any]:
+        """The contents of :attr:`.DialectKWArgs.reflect_only_elements` in
+        flat ``<dialect>_<argument>`` form, suitable to be passed to the
+        constructor of a copy of this object."""
+
+        return {
+            f"{dialect_name}_{key}": value
+            for dialect_name, elements in self.reflect_only_elements.items()
+            for key, value in elements.items()
+        }
+
+    def _copy_reflect_only_elements(self, other: DialectKWArgs) -> None:
+        """Copy the contents of :attr:`.DialectKWArgs.reflect_only_elements`
+        onto ``other``, a copy of this object."""
+
+        if "dialect_options" not in self.__dict__:
+            return
+        for dialect_name, args in self.dialect_options.items():
+            if args._reflect_only_elements:
+                other.dialect_options[dialect_name]._reflect_only_elements = (
+                    args._reflect_only_elements
+                )
+
     _kw_registry: util.PopulateDict[str, Optional[Dict[Any, Any]]] = (
         util.PopulateDict(_kw_reg_for_dialect)
     )
@@ -661,6 +794,13 @@ class DialectKWArgs:
             for cls in reversed(cls.__mro__):
                 if cls in construct_arg_dictionary:
                     d._defaults.update(construct_arg_dictionary[cls])
+        d._reflection_only_keys = frozenset(
+            key
+            for key, value in d._defaults.items()
+            if value is DialectKWArgConst.REFLECTED_ONLY
+        )
+        for key in d._reflection_only_keys:
+            del d._defaults[key]
         return d
 
     @util.memoized_property
@@ -676,9 +816,17 @@ class DialectKWArgs:
 
         .. versionadded:: 0.9.2
 
+        Arguments a dialect declares as
+        :attr:`.DialectKWArgConst.REFLECTED_ONLY` are not included in this
+        collection; they are available from
+        :attr:`.DialectKWArgs.reflect_only_elements`.
+
         .. seealso::
 
             :attr:`.DialectKWArgs.dialect_kwargs` - flat dictionary form
+
+            :attr:`.DialectKWArgs.reflect_only_elements` - database state
+            reported by reflection
 
         """
 
@@ -714,6 +862,8 @@ class DialectKWArgs:
                 if (
                     "*" not in construct_arg_dictionary
                     and arg_name not in construct_arg_dictionary
+                    and arg_name
+                    not in construct_arg_dictionary._reflection_only_keys
                 ):
                     raise exc.ArgumentError(
                         "Argument %r is not accepted by "
