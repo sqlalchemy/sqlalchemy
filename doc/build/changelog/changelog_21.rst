@@ -10,10 +10,68 @@
 
 .. changelog::
     :version: 2.1.0
-    :include_notes_from: unreleased_21
+    :released: September 24, 2026
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 12575
+
+        Added :paramref:`_orm.composite.column_template` parameter to
+        :func:`_orm.composite`.  When the composite class is a dataclass, this
+        parameter accepts a string template such as ``"person_%s"``, containing
+        exactly one ``%s`` placeholder, that's used to generate column names for
+        dataclass fields that don't otherwise have an explicit name, rather than
+        using the bare field name.  This removes the need to hand-write a
+        :func:`_orm.mapped_column` for each field when the same composite dataclass
+        is mapped multiple times on the same class with different column-name
+        prefixes.  Pull request courtesy Leonardo Rosa.
+
+        .. seealso::
+
+            :ref:`composite_column_template`
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 13577
+
+        PostgreSQL index reflection now reports so-called "invalid" indexes with
+        ``postgresql_invalid=True`` in the Inspector's ``dialect_options``.
+        Reflected :class:`.Index` objects expose this state in the new
+        read-only :attr:`.Index.reflect_only_elements` mapping, separate from
+        DDL options.  Added new marker :attr:`.DialectKWArgConst.REFLECTED_ONLY`
+        which may be used by third party dialects for similar features within
+        the :attr:`.DefaultDialect.construct_arguments` registry.  Pull request
+        courtesy Max Azatian.
+
+        .. seealso::
+
+            :ref:`postgresql_invalid_index_reflection`
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 13585
+
+        Adjusted the ``mssql+mssqlpython`` dialect for mssql-python version 1.15,
+        which now binds all Python ``Decimal`` values as ``SQL_NUMERIC``.  The
+        conversion of very large and very small ``Decimal`` values to strings,
+        carried over from the pyodbc dialect, is no longer applied for this
+        version of the driver, as the string values would otherwise be converted
+        by SQL Server to the narrower numeric type of other ``Decimal`` values in
+        the same statement, such as within a multiple-row INSERT, raising an
+        arithmetic overflow error.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 13585
+
+        Fixed issue where :attr:`.Dialect.dbapi_version` would raise
+        ``AttributeError`` for the ``mssql+mssqlpython`` dialect, as the version
+        was looked up using a ``version`` attribute that is not present on the
+        ``mssql_python`` module, rather than ``__version__``.
 
 .. changelog::
     :version: 2.1.0rc2
+    :released: September 24, 2026
     :released: September 8, 2026
 
     .. change::
@@ -83,6 +141,7 @@
 
 .. changelog::
     :version: 2.1.0rc1
+    :released: September 24, 2026
     :released: August 31, 2026
 
     .. change::
@@ -518,6 +577,7 @@
 
 .. changelog::
     :version: 2.1.0b3
+    :released: September 24, 2026
     :released: June 27, 2026
 
     .. change::
@@ -784,6 +844,7 @@
 
 .. changelog::
     :version: 2.1.0b2
+    :released: September 24, 2026
     :released: April 16, 2026
 
     .. change::
@@ -917,6 +978,7 @@
 
 .. changelog::
     :version: 2.1.0b1
+    :released: September 24, 2026
     :released: January 21, 2026
 
     .. change::
