@@ -5588,9 +5588,8 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         table = parent
         assert isinstance(table, Table)
-        Constraint._set_parent(self, table)
+        Constraint._set_parent(self, table, **kw)
 
-<<<<<<< HEAD
         if self._pending_colargs:
             # this collection is positional and parallel to self.elements,
             # retaining duplicate entries for a constraint such as
@@ -5603,9 +5602,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                 for col in self._col_expressions(table)
                 if col is not None
             )
-=======
-        ColumnCollectionConstraint._set_parent(self, table, **kw)
->>>>>>> 7d05f3f669 (Move attach_to_table support from UniqueConstraint to Constraint)
 
         for col, fk in zip(self._columns, self.elements):
             if not hasattr(fk, "parent") or fk.parent is not col:
