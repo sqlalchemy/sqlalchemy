@@ -1527,9 +1527,12 @@ class Table(
         :class:`.AddConstraint` construct which can produce this SQL when
         invoked as an executable clause.
 
+        force_attach is used to override UniqueConstraint and Index
+        :param attach_to_table flag.
+
         """
 
-        constraint._set_parent_with_dispatch(self)
+        constraint._set_parent_with_dispatch(self, force_attach=True)
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         metadata = parent
@@ -4835,6 +4838,7 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
         deferrable: Optional[bool] = None,
         initially: Optional[str] = None,
         info: Optional[_InfoType] = None,
+        attach_to_table: bool = True,
         comment: Optional[str] = None,
         _create_rule: Optional[Any] = None,
         _type_bound: bool = False,
@@ -4855,6 +4859,11 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
+
+        :param attach_to_table: This flag determines whether this
+          constraint gets added to Table.constraints.
+
+            ..versionadded: 2.1
 
         :param comment: Optional string that will render an SQL comment on
           foreign key constraint creation.
@@ -4880,6 +4889,7 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
         self.initially = initially
         if info:
             self.info = info
+        self.attach_to_table = attach_to_table
         self._create_rule = _create_rule
         self._type_bound = _type_bound
         util.set_creation_order(self)
@@ -4913,7 +4923,10 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, (Table, Column))
         self.parent = parent
-        parent.constraints.add(self)
+        if getattr(self, "attach_to_table", True) or kw.get(
+            "force_attach", False
+        ):
+            parent.constraints.add(self)
 
     @util.deprecated(
         "1.4",
@@ -5134,7 +5147,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, (Column, Table))
-        Constraint._set_parent(self, parent)
+        Constraint._set_parent(self, parent, **kw)
         ColumnCollectionMixin._set_parent(self, parent)
 
     def __contains__(self, x: Any) -> bool:
@@ -5580,7 +5593,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         table = parent
         assert isinstance(table, Table)
-        Constraint._set_parent(self, table)
+        Constraint._set_parent(self, table, **kw)
 
         if self._pending_colargs:
             # this collection is positional and parallel to self.elements,
@@ -5743,12 +5756,13 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         table = parent
         assert isinstance(table, Table)
-        super()._set_parent(table)
+        super()._set_parent(table, **kw)
 
         if table.primary_key is not self:
             table.constraints.discard(table.primary_key)
             table.primary_key = self  # type: ignore[misc]
-            table.constraints.add(self)
+            if self.attach_to_table:
+                table.constraints.add(self)
 
         table_pks = [c for c in table.c if c.primary_key]
         if (
@@ -6002,6 +6016,7 @@ class Index(
         unique: bool = False,
         quote: Optional[bool] = None,
         info: Optional[_InfoType] = None,
+        attach_to_table: bool = True,
         _table: Optional[Table] = None,
         _column_flag: bool = False,
         **dialect_kw: Any,
@@ -6028,6 +6043,11 @@ class Index(
         :param info=None: Optional data dictionary which will be populated
             into the :attr:`.SchemaItem.info` attribute of this object.
 
+        :param attach_to_table=True: This bool flag determines whether this
+            index gets added to Table.indexes
+
+              ..versionadded: 2.1
+
         :param \**dialect_kw: Additional keyword arguments not mentioned above
             are dialect specific, and passed in the form
             ``<dialectname>_<argname>``. See the documentation regarding an
@@ -6041,6 +6061,7 @@ class Index(
         self.unique = unique
         if info is not None:
             self.info = info
+        self.attach_to_table = attach_to_table
 
         # TODO: consider "table" argument being public, but for
         # the purpose of the fix here, it starts as private.
@@ -6073,7 +6094,8 @@ class Index(
                 f"cannot be associated with table '{table.description}'."
             )
         self.table = table
-        table.indexes.add(self)
+        if self.attach_to_table or kw.get("force_attach", False):
+            table.indexes.add(self)
 
         expressions = self.expressions
         col_expressions = self._col_expressions(table)
