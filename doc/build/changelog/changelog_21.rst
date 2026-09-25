@@ -10,7 +10,19 @@
 
 .. changelog::
     :version: 2.1.1
-    :include_notes_from: unreleased_21
+    :released: September 25, 2026
+
+    .. change::
+        :tags: bug, platform
+        :tickets: 13604
+
+        Removed the legacy underscore-separated extra names such as
+        ``mssql_pymssql`` and ``postgresql_psycopg`` from ``pyproject.toml``.
+        They normalize to the same names as the existing dash-separated extras,
+        which is disallowed by :pep:`685`, and caused the 2.1.0 source
+        distribution to fail to build with installers that enforce this rule,
+        such as uv. The underscore spellings continue to work when installing,
+        as installers normalize extra names before matching them.
 
 .. changelog::
     :version: 2.1.0
