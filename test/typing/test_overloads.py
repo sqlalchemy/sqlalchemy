@@ -14,6 +14,7 @@ from sqlalchemy.util.typing import is_fwd_ref
 engine_execution_options = {
     "compiled_cache": "Optional[CompiledCacheType]",
     "logging_token": "str",
+    "log_note": "str",
     "isolation_level": "IsolationLevel",
     "insertmanyvalues_page_size": "int",
     "schema_translate_map": "Optional[SchemaTranslateMapType]",
