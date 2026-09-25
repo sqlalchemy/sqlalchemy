@@ -191,6 +191,7 @@ class TestAsyncioCompat(fixtures.TestBase):
             await greenlet_spawn(run, _require_await=True)
 
 
+@testing.add_to_marker.timing_intensive
 class TestAsyncAdaptedQueue(fixtures.TestBase):
     __requires__ = ("greenlet",)
 
@@ -244,6 +245,7 @@ class TestAsyncAdaptedQueue(fixtures.TestBase):
         is_true(run[0])
 
 
+@testing.add_to_marker.timing_intensive
 class GreenletImportTests(fixtures.TestBase):
     def _run_in_process(self, fn):
         ctx = get_context("spawn")
