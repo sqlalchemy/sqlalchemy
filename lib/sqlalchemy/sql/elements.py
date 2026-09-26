@@ -2277,7 +2277,13 @@ class TextClause(
 
     _is_textual = True
 
-    _bind_params_regex = re.compile(r"(?<![:\w\x5c]):(\w+)(?!:)", re.UNICODE)
+    # also used by the compiler to render the text; the two must find
+    # the same names, else a name is rendered for which no
+    # BindParameter exists
+    _bind_params_regex = re.compile(
+        r"(?<![:\w\x5c]):(\w+)(?![:\w])", re.UNICODE
+    )
+
     _is_implicitly_boolean = False
 
     _render_label_in_columns_clause = False

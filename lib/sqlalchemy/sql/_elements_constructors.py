@@ -1646,6 +1646,12 @@ def text(text: str) -> TextClause:
 
         t = text(r"SELECT * FROM users WHERE name='\:username'")
 
+    .. note:: A name that is immediately followed by another colon,
+       such as ``:this:that`` or ``:value::int``, is currently not
+       interpreted as a bound parameter and is rendered as literal text;
+       whitespace may be used to separate the name from the colon, e.g.
+       ``:value ::int``.  This behavior may change in a future release.
+
     The :class:`_expression.TextClause`
     construct includes methods which can
     provide information about the bound parameters as well as the column
