@@ -1,0 +1,34 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13609
+
+    Fixed issue where literal text within a SQL statement that resembled a
+    ``pyformat`` bound parameter, such as ``%(name)s``, would be rewritten as a
+    bound parameter placeholder when compiling for a dialect using a
+    positional paramstyle such as ``qmark``, ``format``, ``numeric`` or
+    ``numeric_dollar``.  This would occur for string values rendered with the
+    ``literal_binds`` compiler option, as well as for literal text within
+    :func:`_sql.text` or :func:`_sql.literal_column` constructs, leading to a
+    SQL statement that silently compared against a different value, or that
+    raised a ``KeyError`` for numeric paramstyles.  This was a regression
+    caused by the change in the 2.0 series where statements for positional
+    paramstyles are first compiled using named parameters, which are then
+    converted to positional placeholders.
+
+.. change::
+    :tags: bug, sql
+    :tickets: 13609
+
+    The rendering of bound parameters within a :func:`_sql.text` construct no
+    longer considers the ``$`` character to be part of a bound parameter name,
+    matching the parsing already performed by :func:`_sql.text` itself when
+    the construct is created.  Previously, a string such as ``:foo$bar`` would
+    be rendered as a single bound parameter named ``foo$bar``, for which a
+    value could not be passed, and which would fail when executed.  The
+    string is now rendered as the bound parameter ``foo`` followed by the
+    literal text ``$bar``.  Additionally, :func:`_sql.text` no longer
+    establishes a spurious bound parameter from a name that is immediately
+    followed by a colon, such as ``thi`` for the string ``:this:that`` or
+    ``va`` for the string ``:val::int``; these strings are not rendered as
+    bound parameters, and :func:`_sql.text` now uses the same parsing as the
+    compiler to determine this.

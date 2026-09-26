@@ -5627,6 +5627,81 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             render_postcompile=True,
         )
 
+    @testing.combinations(
+        ("qmark", "?", "'%(k)s'"),
+        ("format", "%s", "'%%(k)s'"),
+        ("numeric", ":1", "'%(k)s'"),
+        ("numeric_dollar", "$1", "'%(k)s'"),
+        argnames="paramstyle, bind, literal",
+    )
+    def test_pyformat_like_literal_positional(self, paramstyle, bind, literal):
+        """test #13609"""
+
+        dialect = default.DefaultDialect(paramstyle=paramstyle)
+
+        self.assert_compile(
+            select(table1.c.name).where(table1.c.name == "%(k)s"),
+            "SELECT mytable.name FROM mytable "
+            f"WHERE mytable.name = {literal}",
+            dialect=dialect,
+            literal_binds=True,
+        )
+
+        self.assert_compile(
+            text("SELECT '%(k)s' WHERE x = :p").bindparams(p=5),
+            f"SELECT {literal} WHERE x = {bind}",
+            checkpositional=(5,),
+            dialect=dialect,
+        )
+
+        self.assert_compile(
+            select(table1.c.name).where(
+                table1.c.name == literal_column("'%(k)s'"),
+                table1.c.myid == 5,
+            ),
+            f"SELECT mytable.name FROM mytable WHERE mytable.name = {literal} "
+            f"AND mytable.myid = {bind}",
+            checkpositional=(5,),
+            dialect=dialect,
+        )
+
+    def test_escaped_percent_adjacent_to_bind_format(self):
+        """test #13609; an escaped percent sign immediately followed by a
+        bound parameter"""
+
+        self.assert_compile(
+            text("SELECT 5%:p, '%(k)s%'").bindparams(p=5),
+            "SELECT 5%%%s, '%%(k)s%%'",
+            checkpositional=(5,),
+            dialect=default.DefaultDialect(paramstyle="format"),
+        )
+
+    @testing.combinations(
+        ("qmark", "?", "'%(k)s'"),
+        ("format", "%s", "'%%(k)s'"),
+        ("numeric", ":1", "'%(k)s'"),
+        ("numeric_dollar", "$1", "'%(k)s'"),
+        argnames="paramstyle, bind, literal",
+    )
+    def test_pyformat_like_literal_execute_positional(
+        self, paramstyle, bind, literal
+    ):
+        """test #13609"""
+
+        self.assert_compile(
+            select(table1.c.name).where(
+                table1.c.name.in_(
+                    bindparam("q", ["%(k)s"], literal_execute=True)
+                ),
+                table1.c.myid == 5,
+            ),
+            "SELECT mytable.name FROM mytable "
+            f"WHERE mytable.name IN ({literal}) AND mytable.myid = {bind}",
+            checkpositional=(5,),
+            dialect=default.DefaultDialect(paramstyle=paramstyle),
+            render_postcompile=True,
+        )
+
     def test_bind_escape_extensibility(self):
         """test #8994, extensibility of the bind escape character lookup.
 
