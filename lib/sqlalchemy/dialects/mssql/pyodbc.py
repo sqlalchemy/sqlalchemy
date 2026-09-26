@@ -489,15 +489,12 @@ class _ODBCDateTimeBindProcessor:
             else:
                 # for DATETIMEOFFSET or DateTime(timezone=True)
                 #
-                # Convert to string format required by T-SQL
-                dto_string = value.strftime("%Y-%m-%d %H:%M:%S.%f %z")
-                # offset needs a colon, e.g., -0700 -> -07:00
-                # "UTC offset in the form (+-)HHMM[SS[.ffffff]]"
-                # backend currently rejects seconds / fractional seconds
-                dto_string = re.sub(
-                    r"([\+\-]\d{2})([\d\.]+)$", r"\1:\2", dto_string
-                )
-                return dto_string
+                # Convert to string format required by T-SQL.  isoformat()
+                # zero-pads the year, which strftime("%Y") does not do on
+                # all platforms, and renders the offset with a colon,
+                # e.g. -07:00.  backend currently rejects seconds /
+                # fractional seconds in the offset
+                return value.isoformat(sep=" ", timespec="microseconds")
 
         return process
 

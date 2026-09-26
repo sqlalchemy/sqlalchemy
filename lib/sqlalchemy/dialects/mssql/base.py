@@ -3315,6 +3315,27 @@ class MSDialect(default._BackendsMultiReflection, default.DefaultDialect):
         finally:
             cursor.close()
 
+    def min_year_for_type(self, typeobj):
+        typeobj = sqltypes.to_instance(typeobj)
+
+        if isinstance(typeobj, SMALLDATETIME):
+            return 1900
+        elif isinstance(typeobj, (DATETIME2, DATETIMEOFFSET)):
+            return datetime.MINYEAR
+        elif isinstance(typeobj, sqltypes.DateTime):
+            # DateTime renders DATETIMEOFFSET with timezone=True,
+            # else DATETIME
+            return datetime.MINYEAR if typeobj.timezone else 1753
+        elif (
+            isinstance(typeobj, sqltypes.Date)
+            and not isinstance(typeobj, sqltypes.DATE)
+            and self.server_version_info < MS_2008_VERSION
+        ):
+            # Date renders DATETIME before SQL Server 2008
+            return 1753
+        else:
+            return datetime.MINYEAR
+
     def initialize(self, connection):
         super().initialize(connection)
         self._setup_version_attributes()

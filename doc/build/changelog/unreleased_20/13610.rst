@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 13610
+
+    Fixed issue in the pyodbc dialect for SQL Server where timezone-aware
+    datetime values sent to a :class:`_mssql.DATETIMEOFFSET` or
+    :class:`.DateTime` column with :paramref:`.DateTime.timezone` set would be
+    rendered without zero-padding the year on Python versions prior to 3.14
+    on some platforms such as Linux, causing years before 1000 to fail, or
+    the year 1 to be silently stored as a different date.  The value is
+    now rendered using ``datetime.isoformat()``.

@@ -1042,7 +1042,19 @@ class SuiteRequirements(Requirements):
     @property
     def datetime_historic(self):
         """target dialect supports representation of Python
-        datetime.datetime() objects with historic (pre 1970) values."""
+        datetime.datetime() objects with historic values, meaning any
+        year from ``datetime.MINYEAR`` forward, or from the year
+        given by :meth:`.Dialect.min_year_for_type` if later."""
+
+        return exclusions.closed()
+
+    @property
+    def datetime_timezone_historic(self):
+        """target dialect supports representation of Python
+        datetime.datetime() objects with tzinfo with
+        DateTime(timezone=True), with historic values, meaning any
+        year from ``datetime.MINYEAR`` forward, or from the year
+        given by :meth:`.Dialect.min_year_for_type` if later."""
 
         return exclusions.closed()
 
@@ -1063,7 +1075,9 @@ class SuiteRequirements(Requirements):
     @property
     def date_historic(self):
         """target dialect supports representation of Python
-        datetime.datetime() objects with historic (pre 1970) values."""
+        datetime.date() objects with historic values, meaning any
+        year from ``datetime.MINYEAR`` forward, or from the year
+        given by :meth:`.Dialect.min_year_for_type` if later."""
 
         return exclusions.closed()
 

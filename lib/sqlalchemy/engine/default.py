@@ -16,6 +16,7 @@ as the base class for their own corresponding classes.
 
 from __future__ import annotations
 
+import datetime
 import functools
 import operator
 import random
@@ -828,6 +829,17 @@ class DefaultDialect(Dialect):
 
         """
         return type_api.adapt_type(typeobj, self.colspecs)
+
+    def min_year_for_type(self, typeobj: TypeEngine[Any]) -> int:
+        """Return the earliest year the database accepts for the given
+        date or datetime type.
+
+        The default implementation returns ``datetime.MINYEAR``.
+
+        .. versionadded:: 2.0.55
+
+        """
+        return datetime.MINYEAR
 
     def has_index(self, connection, table_name, index_name, schema=None, **kw):
         if not self.has_table(connection, table_name, schema=schema, **kw):

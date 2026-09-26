@@ -1465,6 +1465,23 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
+    def min_year_for_type(self, typeobj: TypeEngine[Any]) -> int:
+        """Return the earliest year the database accepts for the given
+        date or datetime type.
+
+        The type may be a generic type such as :class:`.DateTime`, in
+        which case the limit is that of the database type the dialect
+        renders for it.  Dialects whose date or datetime types don't
+        accept all years from ``datetime.MINYEAR`` forward override this
+        method; e.g. SQL Server's ``DATETIME`` type, which the dialect
+        renders for :class:`.DateTime`, accepts years from 1753 forward.
+
+        .. versionadded:: 2.0.55
+
+        """
+
+        raise NotImplementedError()
+
     def initialize(self, connection: Connection) -> None:
         """Called during strategized creation of the dialect with a
         connection.

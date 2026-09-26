@@ -1525,9 +1525,30 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def datetime_historic(self):
         """target dialect supports representation of Python
-        datetime.datetime() objects with historic (pre 1900) values."""
+        datetime.datetime() objects with historic values, meaning any
+        year from ``datetime.MINYEAR`` forward, or from the year
+        given by :meth:`.Dialect.min_year_for_type` if later."""
 
-        return succeeds_if(["sqlite", "postgresql"])
+        return exclusions.open()
+
+    @property
+    def datetime_timezone_historic(self):
+        """target dialect supports representation of Python
+        datetime.datetime() objects with tzinfo with
+        DateTime(timezone=True), with historic values, meaning any
+        year from ``datetime.MINYEAR`` forward, or from the year
+        given by :meth:`.Dialect.min_year_for_type` if later."""
+
+        return (
+            only_on(["postgresql", "mssql"])
+            + skip_if(
+                "+pg8000",
+                "pg8000 returns a string for UTC offsets that include "
+                "seconds, as PostgreSQL reports for historic dates in "
+                "local mean time",
+            )
+            + skip_if("+pymssql", "offsets dont seem to work")
+        )
 
     @property
     def date(self):
@@ -1547,9 +1568,11 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def date_historic(self):
         """target dialect supports representation of Python
-        datetime.datetime() objects with historic (pre 1900) values."""
+        datetime.date() objects with historic values, meaning any
+        year from ``datetime.MINYEAR`` forward, or from the year
+        given by :meth:`.Dialect.min_year_for_type` if later."""
 
-        return succeeds_if(["sqlite", "postgresql"])
+        return exclusions.open()
 
     @property
     def time(self):

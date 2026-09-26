@@ -769,23 +769,148 @@ class DateTimeCoercedToDateTimeTest(_DateFixture, fixtures.TablesTest):
         eq_(result, self.data)
 
 
-class DateTimeHistoricTest(_DateFixture, fixtures.TablesTest):
+class _HistoricDateFixture(_DateFixture):
+    """round trip a range of years from ``datetime.MINYEAR`` forward.
+
+    The years chosen are on either side of boundaries where formatting or
+    storage of dates commonly goes wrong: years that aren't four digits
+    wide, SQL Server's DATETIME lower bound of 1753, and the 1900 and
+    1970 epochs.
+
+    Years earlier than :meth:`.Dialect.min_year_for_type` reports for the
+    datatype are omitted.
+
+    """
+
+    historic_years = (1, 99, 100, 999, 1000, 1752, 1753, 1899, 1969)
+
+    @classmethod
+    def make_value(cls, year):
+        raise NotImplementedError()
+
+    @property
+    def historic_values(self):
+        min_year = config.db.dialect.min_year_for_type(self.datatype)
+        return [
+            self.make_value(year)
+            for year in self.historic_years
+            if year >= min_year
+        ]
+
+    def test_round_trip_years(self, connection):
+        date_table = self.tables.date_table
+
+        connection.execute(
+            date_table.insert(),
+            [
+                {"id": i, "date_data": value}
+                for i, value in enumerate(self.historic_values, 1)
+            ],
+        )
+
+        eq_(
+            connection.scalars(
+                select(date_table.c.date_data).order_by(date_table.c.id)
+            ).all(),
+            self.historic_values,
+        )
+
+    def test_round_trip_years_single_row(self, connection):
+        """test individual execute() calls, as some drivers format
+        parameters differently for execute() vs. executemany()"""
+
+        date_table = self.tables.date_table
+
+        for i, value in enumerate(self.historic_values, 1):
+            connection.execute(
+                date_table.insert(), {"id": i, "date_data": value}
+            )
+
+        eq_(
+            connection.scalars(
+                select(date_table.c.date_data).order_by(date_table.c.id)
+            ).all(),
+            self.historic_values,
+        )
+
+    @testing.requires.datetime_literals
+    def test_literal_years(self, connection):
+        """test rendered literals in both INSERT and WHERE, as with
+        _LiteralRoundTripFixture"""
+
+        date_table = self.tables.date_table
+
+        for i, value in enumerate(self.historic_values, 1):
+            connection.execute(
+                date_table.insert().values(
+                    id=i,
+                    date_data=literal(
+                        value, self.datatype, literal_execute=True
+                    ),
+                )
+            )
+
+        eq_(
+            connection.scalars(
+                select(date_table.c.date_data).order_by(date_table.c.id)
+            ).all(),
+            self.historic_values,
+        )
+
+        eq_(
+            [
+                connection.scalars(
+                    select(date_table.c.id).where(
+                        date_table.c.date_data
+                        == literal(value, self.datatype, literal_execute=True)
+                    )
+                ).all()
+                for value in self.historic_values
+            ],
+            [[i] for i in range(1, len(self.historic_values) + 1)],
+        )
+
+
+class DateTimeHistoricTest(_HistoricDateFixture, fixtures.TablesTest):
     __requires__ = ("datetime_historic",)
     __backend__ = True
     datatype = DateTime
     data = datetime.datetime(1850, 11, 10, 11, 52, 35)
 
-    @testing.requires.date_implicit_bound
+    @classmethod
+    def make_value(cls, year):
+        return datetime.datetime(year, 3, 4, 5, 6, 7)
+
+    @testing.requires.datetime_implicit_bound
     def test_select_direct(self, connection):
         result = connection.scalar(select(literal(self.data)))
         eq_(result, self.data)
 
 
-class DateHistoricTest(_DateFixture, fixtures.TablesTest):
+class DateTimeTZHistoricTest(_HistoricDateFixture, fixtures.TablesTest):
+    __requires__ = ("datetime_timezone_historic",)
+    __backend__ = True
+    datatype = DateTime(timezone=True)
+    data = datetime.datetime(
+        1850, 11, 10, 11, 52, 35, tzinfo=datetime.timezone.utc
+    )
+
+    @classmethod
+    def make_value(cls, year):
+        return datetime.datetime(
+            year, 3, 4, 5, 6, 7, tzinfo=datetime.timezone.utc
+        )
+
+
+class DateHistoricTest(_HistoricDateFixture, fixtures.TablesTest):
     __requires__ = ("date_historic",)
     __backend__ = True
     datatype = Date
     data = datetime.date(1727, 4, 1)
+
+    @classmethod
+    def make_value(cls, year):
+        return datetime.date(year, 3, 4)
 
     @testing.requires.date_implicit_bound
     def test_select_direct(self, connection):
@@ -2248,6 +2373,7 @@ __all__ = (
     "DateTest",
     "DateTimeTest",
     "DateTimeTZTest",
+    "DateTimeTZHistoricTest",
     "TextTest",
     "NumericTest",
     "IntegerTest",
