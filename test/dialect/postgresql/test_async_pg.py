@@ -1,3 +1,4 @@
+import asyncio
 import random
 import uuid
 
@@ -303,6 +304,20 @@ class AsyncPgTest(fixtures.TestBase):
             await conn.rollback()
 
             eq_((await conn.execute(select(1))).scalar(), 1)
+
+    @async_test
+    async def test_per_statement_timeout(self, async_testing_engine):
+        engine = async_testing_engine()
+
+        async with engine.connect() as conn:
+            with expect_raises(asyncio.TimeoutError):
+                await conn.exec_driver_sql(
+                    "select pg_sleep(2)",
+                    execution_options={"asyncpg_timeout": 0.1},
+                )
+
+            await conn.rollback()
+            eq_((await conn.exec_driver_sql("select 1")).scalar(), 1)
 
     @async_test
     async def test_rollback_twice_no_problem(
