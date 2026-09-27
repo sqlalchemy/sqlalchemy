@@ -1098,11 +1098,17 @@ is in the same family as :class:`.Subquery` and :class:`.Alias`, but also
 includes correlation behavior when the construct is added to the FROM clause of
 an enclosing SELECT. The following example illustrates a SQL query that makes
 use of LATERAL, selecting the "user account / count of email address" data as
-was discussed in the previous section::
+was discussed in the previous section.  Because the subquery selects both an
+aggregate and non-aggregated columns, the count is expressed as a
+:term:`window function` via :meth:`_functions.FunctionElement.over` so that each
+email address row keeps the user's total address count (a bare
+``count()`` without ``GROUP BY`` or ``OVER`` is rejected by PostgreSQL)::
 
     >>> subq = (
     ...     select(
-    ...         func.count(address_table.c.id).label("address_count"),
+    ...         func.count(address_table.c.id)
+    ...         .over()
+    ...         .label("address_count"),
     ...         address_table.c.email_address,
     ...         address_table.c.user_id,
     ...     )
@@ -1117,7 +1123,7 @@ was discussed in the previous section::
     >>> print(stmt)
     {printsql}SELECT user_account.name, anon_1.address_count, anon_1.email_address
     FROM user_account
-    JOIN LATERAL (SELECT count(address.id) AS address_count,
+    JOIN LATERAL (SELECT count(address.id) OVER () AS address_count,
     address.email_address AS email_address, address.user_id AS user_id
     FROM address
     WHERE user_account.id = address.user_id) AS anon_1
@@ -1125,7 +1131,11 @@ was discussed in the previous section::
     ORDER BY user_account.id, anon_1.email_address
 
 Above, the right side of the JOIN is a subquery that correlates to the
-``user_account`` table that's on the left side of the join.
+``user_account`` table that's on the left side of the join.  The example is
+shown with ``print(stmt)`` rather than :meth:`_engine.Connection.execute`
+because LATERAL is not supported by the SQLite backend used elsewhere in this
+tutorial; against PostgreSQL, the statement returns one row per email address
+with that user's address count repeated on each row.
 
 When using :meth:`_expression.Select.lateral`, the behavior of
 :meth:`_expression.Select.correlate` and
