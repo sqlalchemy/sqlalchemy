@@ -4379,8 +4379,12 @@ class PGDialect(default.DefaultDialect):
             )
             .outerjoin(
                 pg_catalog.pg_description,
-                pg_catalog.pg_description.c.objoid
-                == pg_catalog.pg_constraint.c.oid,
+                sql.and_(
+                    pg_catalog.pg_description.c.objoid
+                    == pg_catalog.pg_constraint.c.oid,
+                    pg_catalog.pg_description.c.classoid
+                    == sql.func.cast("pg_catalog.pg_constraint", REGCLASS),
+                ),
             )
             .where(
                 pg_catalog.pg_constraint.c.contype == bindparam("contype"),
@@ -4604,8 +4608,12 @@ class PGDialect(default.DefaultDialect):
             )
             .outerjoin(
                 pg_catalog.pg_description,
-                pg_catalog.pg_description.c.objoid
-                == pg_catalog.pg_constraint.c.oid,
+                sql.and_(
+                    pg_catalog.pg_description.c.objoid
+                    == pg_catalog.pg_constraint.c.oid,
+                    pg_catalog.pg_description.c.classoid
+                    == sql.func.cast("pg_catalog.pg_constraint", REGCLASS),
+                ),
             )
             .order_by(
                 pg_catalog.pg_class.c.relname,
@@ -5245,8 +5253,12 @@ class PGDialect(default.DefaultDialect):
             )
             .outerjoin(
                 pg_catalog.pg_description,
-                pg_catalog.pg_description.c.objoid
-                == pg_catalog.pg_constraint.c.oid,
+                sql.and_(
+                    pg_catalog.pg_description.c.objoid
+                    == pg_catalog.pg_constraint.c.oid,
+                    pg_catalog.pg_description.c.classoid
+                    == sql.func.cast("pg_catalog.pg_constraint", REGCLASS),
+                ),
             )
             .order_by(
                 pg_catalog.pg_class.c.relname,
