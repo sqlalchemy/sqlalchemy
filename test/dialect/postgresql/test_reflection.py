@@ -3218,6 +3218,111 @@ class ReflectionTest(
             connection.execute(sa_ddl.DropConstraintComment(cst))
         all_none()
 
+    @testing.fixture
+    def large_objects(self, connection):
+        """allows creation of large_objects while also explicitly dropping
+        them after the test (not relying on transaction rollback)"""
+
+        _oids = []
+
+        def go(oids):
+            oids = list(oids)
+            for oid in oids:
+                connection.exec_driver_sql(f"SELECT lo_create({oid})")
+                connection.exec_driver_sql(
+                    f"COMMENT ON LARGE OBJECT {oid} IS 'large object comment'"
+                )
+            _oids.extend(oids)
+
+        yield go
+
+        assert _oids
+        for oid in _oids:
+            connection.execute(text("SELECT lo_unlink(:oid)"), {"oid": oid})
+
+    def test_reflection_comments_oid_collision(
+        self, connection, metadata, large_objects
+    ):
+        """test #13615, #11961"""
+        Table(
+            "foo",
+            metadata,
+            Column("id", Integer),
+            Column("id2", Integer),
+            Column("foo_id", Integer),
+            Column("foo_id2", Integer),
+            PrimaryKeyConstraint("id", "id2", name="foo_pk"),
+            UniqueConstraint("foo_id", "foo_id2", name="un_1"),
+            ForeignKeyConstraint(
+                ["foo_id", "foo_id2"], ["foo.id", "foo.id2"], name="fk_1"
+            ),
+            CheckConstraint("id>0", name="ch_1"),
+            comment="table comment",
+        )
+        metadata.create_all(connection)
+
+        for name in ("foo_pk", "un_1", "fk_1", "ch_1"):
+            connection.exec_driver_sql(
+                f"COMMENT ON CONSTRAINT {name} ON foo IS '{name} comment'"
+            )
+
+        # a pg_description row for a large object whose oid is the same as
+        # that of each constraint and of the table, which must not be
+        # joined to them.  pg_description.objoid is only unique per catalog
+        oids = connection.exec_driver_sql(
+            "SELECT oid FROM pg_constraint WHERE conrelid = 'foo'::regclass "
+            "UNION SELECT 'foo'::regclass::oid"
+        ).scalars()
+
+        large_objects(oids)
+
+        insp = inspect(connection)
+        eq_(
+            insp.get_pk_constraint("foo"),
+            {
+                "constrained_columns": ["id", "id2"],
+                "name": "foo_pk",
+                "comment": "foo_pk comment",
+                "dialect_options": {"postgresql_include": []},
+            },
+        )
+        eq_(
+            insp.get_unique_constraints("foo"),
+            [
+                {
+                    "column_names": ["foo_id", "foo_id2"],
+                    "name": "un_1",
+                    "comment": "un_1 comment",
+                    "dialect_options": {
+                        "postgresql_include": [],
+                        "postgresql_nulls_not_distinct": False,
+                    },
+                }
+            ],
+        )
+        eq_(
+            insp.get_foreign_keys("foo"),
+            [
+                {
+                    "name": "fk_1",
+                    "constrained_columns": ["foo_id", "foo_id2"],
+                    "referred_schema": None,
+                    "referred_table": "foo",
+                    "referred_columns": ["id", "id2"],
+                    "options": {},
+                    "comment": "fk_1 comment",
+                }
+            ],
+        )
+        eq_(
+            insp.get_check_constraints("foo"),
+            [{"name": "ch_1", "sqltext": "id > 0", "comment": "ch_1 comment"}],
+        )
+        eq_(insp.get_table_comment("foo"), {"text": "table comment"})
+
+        reflected = Table("foo", MetaData(), autoload_with=connection)
+        eq_([c.name for c in reflected.primary_key], ["id", "id2"])
+
     @testing.skip_if("postgresql < 11.0", "not supported")
     def test_reflection_constraints_with_include(self, connection, metadata):
         Table(

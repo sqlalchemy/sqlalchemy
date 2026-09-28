@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, postgresql, reflection
+    :tickets: 13615
+
+    Fixed issue in PostgreSQL reflection where a composite primary key or
+    unique constraint could be reflected with some of its columns missing,
+    with those columns instead reported as ``postgresql_include`` columns,
+    resulting in an incorrect primary key on the reflected :class:`.Table`;
+    foreign key and check constraints could also be reflected more than once.
+    The issue could occur in databases where comments are present on other
+    objects, such as databases that were upgraded using ``pg_upgrade``.
+    Credit to Kirill Kozahenko for the patch.
