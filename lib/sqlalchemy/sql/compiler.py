@@ -2820,6 +2820,9 @@ class SQLCompiler(Compiled):
             ),
         )
 
+    def visit_tstring_text(self, element, **kw):
+        return self.post_process_text(element.text)
+
     def visit_tstring(self, tstring, add_to_result_map=None, **kw):
         if self._collect_params:
             self._add_to_params(tstring)
