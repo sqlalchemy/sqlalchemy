@@ -1831,17 +1831,49 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         return TypeDecorator._create_td_comparator_type(impl)(expr)
 
     @staticmethod
+    def _reduce_td_comparator_type(
+        impl_comparator: _ComparatorFactory[Any], expr: ColumnElement[_T]
+    ) -> Any:
+        return TypeDecorator._td_comparator_type(impl_comparator)(expr)
+
+    @staticmethod
     def _create_td_comparator_type(
         impl: TypeEngine[Any],
     ) -> _ComparatorFactory[Any]:
+        return TypeDecorator._td_comparator_type(impl.comparator_factory)
+
+    # generated TDComparator classes keyed on the comparator class of the
+    # impl, so that type() runs once per impl comparator rather than once
+    # per column expression
+    _td_comparator_types: ClassVar[
+        Dict[_ComparatorFactory[Any], _ComparatorFactory[Any]]
+    ] = {}
+
+    @staticmethod
+    def _td_comparator_type(
+        impl_comparator: _ComparatorFactory[Any],
+    ) -> _ComparatorFactory[Any]:
+        try:
+            return TypeDecorator._td_comparator_types[impl_comparator]
+        except KeyError:
+            pass
 
         def __reduce__(self: TypeDecorator.Comparator[Any]) -> Any:
-            return (TypeDecorator._reduce_td_comparator, (impl, self.expr))
+            return (
+                TypeDecorator._reduce_td_comparator_type,
+                (impl_comparator, self.expr),
+            )
 
-        return type(
-            "TDComparator",
-            (TypeDecorator.Comparator, impl.comparator_factory),  # type: ignore[arg-type, return-value] # noqa: E501
-            {"__reduce__": __reduce__},
+        td_comparator = cast(
+            "_ComparatorFactory[Any]",
+            type(
+                "TDComparator",
+                (TypeDecorator.Comparator, impl_comparator),  # type: ignore[arg-type] # noqa: E501
+                {"__reduce__": __reduce__},
+            ),
+        )
+        return TypeDecorator._td_comparator_types.setdefault(
+            impl_comparator, td_comparator
         )
 
     @property

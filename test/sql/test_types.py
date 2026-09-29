@@ -743,6 +743,18 @@ class PickleTypesTest(fixtures.TestBase):
             reunpickled = loads(dumps(unpickled))
             eq_(reunpickled.__class__.__mro__[1:4], expected_mro)
 
+    def test_td_comparator_class_is_reused(self):
+        is_(
+            SomeTypeDecorator().comparator_factory,
+            SomeTypeDecorator().comparator_factory,
+        )
+
+    def test_td_comparator_legacy_reduce(self):
+        """pickles made before the comparator cache pass the impl itself"""
+
+        comparator = TypeDecorator._reduce_td_comparator(String(), column("q"))
+        is_(comparator.__class__, SomeTypeDecorator().comparator_factory)
+
     @testing.combinations(
         ("Str", String()),
         ("Tex", Text()),

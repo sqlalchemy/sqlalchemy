@@ -1,0 +1,11 @@
+.. change::
+    :tags: performance, sql
+    :tickets: 13617
+
+    The comparator class that :class:`.TypeDecorator` generates in order to
+    combine :class:`.TypeDecorator.Comparator` with the comparator of its
+    ``impl`` type is now created once per ``impl`` comparator class and then
+    reused, rather than being created as a new class for every column
+    expression against a :class:`.TypeDecorator` type.  Creating a class is
+    comparatively expensive and each such class also adds work for Python's
+    cyclic garbage collector.
