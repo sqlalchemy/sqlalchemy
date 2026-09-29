@@ -266,8 +266,8 @@ FK_INITIALLY = re.compile(r"^(?:DEFERRED|IMMEDIATE)$", re.I)
 _WINDOW_EXCLUDE_RE = re.compile(
     r"^(?:CURRENT ROW|GROUP|TIES|NO OTHERS)$", re.I
 )
-BIND_PARAMS = re.compile(r"(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])", re.UNICODE)
-BIND_PARAMS_ESC = re.compile(r"\x5c(:[\w\$]*)(?![:\w\$])", re.UNICODE)
+BIND_PARAMS = elements.TextClause._bind_params_regex
+BIND_PARAMS_ESC = re.compile(r"\x5c(:\w*)(?![:\w])", re.UNICODE)
 
 _pyformat_template = "%%(%(name)s)s"
 BIND_TEMPLATES = {
@@ -1422,6 +1422,17 @@ class SQLCompiler(Compiled):
     _positional_pattern = re.compile(
         f"{_pyformat_pattern.pattern}|{_post_compile_pattern.pattern}"
     )
+
+    # variants of the above for dialects that double percent signs in
+    # literal text; a "%%" pair is matched first so that an escaped
+    # percent sign is never taken as the start of a bound parameter
+    _pct_escaped_pyformat_pattern = re.compile(
+        f"%%|{_pyformat_pattern.pattern}"
+    )
+    _pct_escaped_positional_pattern = re.compile(
+        f"%%|{_positional_pattern.pattern}"
+    )
+
     _collect_params: Final[bool]
     _collected_params: util.immutabledict[str, Any]
 
@@ -1733,24 +1744,38 @@ class SQLCompiler(Compiled):
             placeholder = "?"
 
         positions = []
-
-        def find_position(m: re.Match[str]) -> str:
-            normal_bind = m.group(1)
-            if normal_bind:
-                positions.append(normal_bind)
-                return placeholder
-            else:
-                # this a post-compile bind
-                positions.append(m.group(2))
-                return m.group(0)
-
-        self.string = re.sub(
-            self._positional_pattern, find_position, self.string
-        )
+        binds = self.binds
 
         if self.escaped_bind_names:
             reverse_escape = {v: k for k, v in self.escaped_bind_names.items()}
             assert len(self.escaped_bind_names) == len(reverse_escape)
+        else:
+            reverse_escape = {}
+
+        if self.preparer._double_percents:
+            positional_pattern = self._pct_escaped_positional_pattern
+        else:
+            positional_pattern = self._positional_pattern
+
+        def find_position(m: re.Match[str]) -> str:
+            normal_bind = m.group(1)
+            if normal_bind:
+                if reverse_escape.get(normal_bind, normal_bind) not in binds:
+                    # literal text that looks like a bound parameter
+                    return m.group(0)
+                positions.append(normal_bind)
+                return placeholder
+            elif m.group(2):
+                # this a post-compile bind
+                positions.append(m.group(2))
+                return m.group(0)
+            else:
+                # an escaped percent sign
+                return m.group(0)
+
+        self.string = re.sub(positional_pattern, find_position, self.string)
+
+        if reverse_escape:
             self.positiontup = [
                 reverse_escape.get(name, name) for name in positions
             ]
@@ -1761,7 +1786,7 @@ class SQLCompiler(Compiled):
             positions = []
 
             single_values_expr = re.sub(
-                self._positional_pattern,
+                positional_pattern,
                 find_position,
                 self._insertmanyvalues.single_values_expr,
             )
@@ -1769,7 +1794,7 @@ class SQLCompiler(Compiled):
                 (
                     v[0],
                     v[1],
-                    re.sub(self._positional_pattern, find_position, v[2]),
+                    re.sub(positional_pattern, find_position, v[2]),
                     v[3],
                 )
                 for v in self._insertmanyvalues.insert_crud_params
@@ -1829,9 +1854,15 @@ class SQLCompiler(Compiled):
             }
             assert len(param_pos) == len_before
 
-        # Can't use format here since % chars are not escaped.
-        self.string = self._pyformat_pattern.sub(
-            lambda m: param_pos[m.group(1)], self.string
+        if self.preparer._double_percents:
+            pyformat_pattern = self._pct_escaped_pyformat_pattern
+        else:
+            pyformat_pattern = self._pyformat_pattern
+
+        # any match not in param_pos is an escaped percent sign or literal
+        # text that looks like a bound parameter
+        self.string = pyformat_pattern.sub(
+            lambda m: param_pos.get(m.group(1), m.group(0)), self.string
         )
 
         if self._insertmanyvalues:
@@ -2277,9 +2308,16 @@ class SQLCompiler(Compiled):
                     numeric_positiontup, self.next_numeric_pos
                 )
             }
-            # Can't use format here since % chars are not escaped.
-            statement = self._pyformat_pattern.sub(
-                lambda m: param_pos[m.group(1)], statement
+            if self.preparer._double_percents:
+                pyformat_pattern = self._pct_escaped_pyformat_pattern
+            else:
+                pyformat_pattern = self._pyformat_pattern
+
+            # only the expanded parameters are replaced; any other
+            # match is an escaped percent sign or literal text that looks
+            # like a bound parameter
+            statement = pyformat_pattern.sub(
+                lambda m: param_pos.get(m.group(1), m.group(0)), statement
             )
             new_positiontup.extend(numeric_positiontup)
 

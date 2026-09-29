@@ -20,6 +20,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import union
 from sqlalchemy import util
+from sqlalchemy.engine import default
 from sqlalchemy.sql import column
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import quoted_name
@@ -431,6 +432,63 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"bar": 4, "whee": 7},
             dialect="sqlite",
         )
+
+    @testing.combinations(
+        ("select foo", "select foo", []),
+        ("time='12:30:00'", "time='12:30:00'", []),
+        (":this:that", ":this:that", []),
+        (":this :that", "? ?", ["this", "that"]),
+        ("(:this),(:that :other)", "(?),(? ?)", ["this", "that", "other"]),
+        ("(:this),(:that:other)", "(?),(:that:other)", ["this"]),
+        ("(:this),(:that,:other)", "(?),(?,?)", ["this", "that", "other"]),
+        ("(:that_:other)", "(:that_:other)", []),
+        ("(:that_ :other)", "(? ?)", ["that_", "other"]),
+        ("(:that_other)", "(?)", ["that_other"]),
+        ("(:that$other)", "(?$other)", ["that"]),
+        ("(:that$:other)", "(?$?)", ["that", "other"]),
+        (".:that$ :other.", ".?$ ?.", ["that", "other"]),
+        (r"select \foo", r"select \foo", []),
+        (r"time='12\:30:00'", r"time='12\:30:00'", []),
+        (r":this \:that", "? :that", ["this"]),
+        (r"(\:that$other)", "(:that$other)", []),
+        (r".\:that$ :other.", ".:that$ ?.", ["other"]),
+        ("x=:val::int", "x=:val::int", []),
+        argnames="stmt, expected, names",
+    )
+    def test_bindparam_detection(self, stmt, expected, names):
+        """test the parsing of ``:name`` bound parameters out of the
+        text() string.
+
+        The string is scanned twice: once by the TextClause constructor,
+        which establishes the BindParameter objects in ``_bindparams``,
+        and again in visit_textclause(), which renders those names in the
+        SQL.  Both scans must find the same names, so both use
+        ``TextClause._bind_params_regex``; this test asserts the names
+        established by text() against those rendered by the compiler, not
+        only the compiled string.
+
+        The two scans formerly used different regexes, which disagreed
+        in two ways (#13609).  The compiler accepted ``$`` within a name
+        where text() did not, rendering ``:that$other`` as a parameter
+        ``that$other`` for which no value could be passed.  text()'s
+        regex, lacking a ``\\w`` lookahead, backtracked on a name followed
+        by a colon, so that ``:this:that`` established a spurious
+        parameter ``thi`` which the compiler never rendered.
+
+        This test was originally added for #719, which concerned ``$``
+        within bound parameter names generated from column names; those
+        are rendered directly by the compiler and are not parsed from a
+        string.
+
+        """
+        t = text(stmt)
+        eq_(list(t._bindparams), names)
+
+        compiled = t.compile(
+            dialect=default.DefaultDialect(paramstyle="qmark")
+        )
+        eq_(compiled.string, expected)
+        eq_(compiled.positiontup, names)
 
     def test_missing_bind_kw(self):
         assert_raises_message(

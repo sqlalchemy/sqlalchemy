@@ -2569,7 +2569,12 @@ class TextClause(AbstractTextClause, inspection.Inspectable["TextClause"]):
         ("text", InternalTraversal.dp_string),
     ] + ExecutableStatement._executable_traverse_internals
 
-    _bind_params_regex = re.compile(r"(?<![:\w\x5c]):(\w+)(?!:)", re.UNICODE)
+    # also used by the compiler to render the text; the two must find
+    # the same names, else a name is rendered for which no
+    # BindParameter exists
+    _bind_params_regex = re.compile(
+        r"(?<![:\w\x5c]):(\w+)(?![:\w])", re.UNICODE
+    )
 
     @property
     def _is_star(self) -> bool:  # type: ignore[override]
