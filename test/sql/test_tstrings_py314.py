@@ -2,6 +2,7 @@
 
 from itertools import zip_longest
 
+from sqlalchemy import bindparam
 from sqlalchemy import column
 from sqlalchemy import exc
 from sqlalchemy import Integer
@@ -10,6 +11,7 @@ from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import tstring
 from sqlalchemy.engine.interfaces import CacheStats
 from sqlalchemy.sql import table
@@ -54,6 +56,74 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_tstring_literal_passthrough(self):
         stmt = tstring(t"select * from foo where lala = bar")
         self.assert_compile(stmt, "select * from foo where lala = bar")
+
+    @testing.combinations(
+        (t"select {5}, :p", "select ?, :p"),
+        (t"select {5}, 'time is :now'", "select ?, 'time is :now'"),
+        (t"select {5}, :param_1", "select ?, :param_1"),
+        (rt"select {5}, '\:p'", r"select ?, '\:p'"),
+        (t"select {5}, '12:30:00'", "select ?, '12:30:00'"),
+        (t"select {5}::int, '5'::int", "select ?::int, '5'::int"),
+        argnames="template, expected",
+    )
+    def test_colons_not_parsed(self, template, expected):
+        """string portions of a tstring are not scanned for bound
+        parameters or escapes, as is the case for text().
+
+        """
+        self.assert_compile(
+            tstring(template),
+            expected,
+            checkpositional=(5,),
+            dialect="sqlite",
+        )
+
+    def test_percent_sign_doubled(self):
+        a = 5
+        stmt = tstring(t"select {a} where x like '%foo%'")
+        self.assert_compile(
+            stmt,
+            "select %(param_1)s::INTEGER where x like '%%foo%%'",
+            checkparams={"param_1": 5},
+            dialect="postgresql",
+        )
+
+    def test_explicit_bindparam(self):
+        stmt = tstring(t"select {bindparam('p', type_=Integer)}")
+        self.assert_compile(
+            stmt,
+            "select ?",
+            params={"p": 10},
+            checkpositional=(10,),
+            dialect="sqlite",
+        )
+
+    def test_interpolated_text_parses_binds(self):
+        stmt = tstring(t"select {5}, {text(':p')}")
+        self.assert_compile(
+            stmt,
+            "select ?, ?",
+            params={"p": 10},
+            checkpositional=(5, 10),
+            dialect="sqlite",
+        )
+
+    @testing.combinations(
+        (lambda: tstring(t"*"), True),
+        (lambda: text("*"), True),
+        (lambda: tstring(t" * "), False),
+        (lambda: text(" * "), False),
+        (lambda: tstring(t"*, x"), False),
+        (lambda: tstring(t"{text('*')}"), False),
+        (lambda: tstring(t"* {5}"), False),
+        argnames="fn, expected",
+    )
+    def test_is_star(self, fn, expected):
+        """tstring() detects a "*" the same way as text(), with no
+        whitespace stripping.
+
+        """
+        eq_(fn()._is_star, expected)
 
     def test_sqlalchemy_expression_interpolation(self):
         subq = select(literal(1)).scalar_subquery()
@@ -303,6 +373,26 @@ class ExecutionTest(fixtures.TestBase):
         inner = select(literal("some value")).subquery()
         result = connection.execute(tstring(t"select * from {inner}"))
         eq_(result.all(), [("some value",)])
+
+    def test_colon_in_string_literal(self, connection):
+        a = 5
+        result = connection.execute(
+            tstring(t"select {a}, 'time is :now', '12:30:00'")
+        )
+        eq_(result.all(), [(5, "time is :now", "12:30:00")])
+
+    def test_percent_in_string_literal(self, connection):
+        a = 5
+        result = connection.execute(tstring(t"select {a}, '50%'"))
+        eq_(result.all(), [(5, "50%")])
+
+    def test_explicit_bindparam(self, connection):
+        a = 5
+        result = connection.execute(
+            tstring(t"select {a}, {bindparam('p', type_=Integer)}"),
+            {"p": 10},
+        )
+        eq_(result.all(), [(5, 10)])
 
     def test_multiple_values(self, connection):
         values = [1, 2, 3, 4, 5]

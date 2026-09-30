@@ -872,7 +872,14 @@ template strings.
 The :func:`_sql.tstring` function works similarly to :func:`_sql.text`, but
 automatically handles different types of interpolated values:
 
-* **String literals** from the template are rendered directly as SQL
+* **String literals** from the template are rendered directly as SQL;
+  unlike :func:`_sql.text`, they are not scanned for ``:name`` bound
+  parameters
+
+  .. versionchanged:: 2.1.2 String literals within a :func:`_sql.tstring`
+     are no longer scanned for ``:name`` bound parameters or ``\:``
+     escapes, as was the case in 2.1.0 and 2.1.1.
+
 * **SQLAlchemy expressions** (columns, functions, subqueries, etc.) are
   embedded as clause elements
 * **Plain Python values** are automatically wrapped with :func:`_sql.literal`
