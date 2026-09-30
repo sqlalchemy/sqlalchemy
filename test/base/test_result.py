@@ -6,8 +6,10 @@ from sqlalchemy import testing
 from sqlalchemy.engine import result
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertions import expect_deprecated
@@ -281,6 +283,32 @@ class ResultTupleTest(fixtures.TestBase):
         eq_(row_some_p._to_tuple_instance(), (1, "99", "42", "FOO"))
         with expect_raises(AssertionError):
             result.Row(parent, [None, str], parent._key_to_index, data)
+
+    @testing.variation("impl", ["cy", "py"])
+    @testing.variation("use_processors", [True, False])
+    def test_tuple_subclass_data(self, impl, use_processors, _load_module):
+        """test #13619"""
+
+        _cy_row, _py_row = _load_module
+        if impl.cy:
+            if not _cy_row._is_compiled():
+                config.skip_test("cython extensions not compiled")
+            base_row = _cy_row.BaseRow
+        else:
+            base_row = _py_row.BaseRow
+
+        class TupleSubclass(tuple):
+            pass
+
+        parent = result.SimpleResultMetaData(["a", "b"])
+        row = base_row(
+            parent,
+            [None, None] if use_processors else None,
+            parent._key_to_index,
+            TupleSubclass((1, "x")),
+        )
+        is_(type(row._data), tuple)
+        eq_(row._data, (1, "x"))
 
     def test_tuplegetter(self):
         data = list(range(10, 20))
