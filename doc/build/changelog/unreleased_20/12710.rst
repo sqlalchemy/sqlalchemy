@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 12710, 13622
+
+    Fixed issue where cancelling a task while an asyncio context manager
+    such as :class:`_asyncio.AsyncConnection` or :class:`_asyncio.AsyncSession`
+    was closing on exit would allow the task to complete while the close
+    continued in the background.  An application that disposed of the
+    engine at that point, as is typical at shutdown, would have the
+    connection returned to the disposed pool afterwards, where nothing
+    would close it.  The context manager now waits for the close to complete
+    before propagating the cancellation.
+
+    Also fixed related issues in the connection pool where a cancellation
+    received while a connection was being reset on return to the pool, or a
+    second cancellation received while the pool was cleaning up after a
+    first cancellation during checkout, would prevent the connection's slot
+    from being returned to the pool, reducing the pool's capacity until the
+    connection object was garbage collected, or permanently in the latter
+    case.

@@ -733,10 +733,21 @@ class _ConnectionRecord(ConnectionPoolEntry):
     def _checkin_failed(
         self, err: BaseException, _fairy_was_created: bool = True
     ) -> None:
-        self.invalidate(e=err)
-        self.checkin(
-            _fairy_was_created=_fairy_was_created,
-        )
+        try:
+            self.invalidate(e=err)
+        finally:
+            if self.dbapi_connection is not None:
+                # invalidate() was itself interrupted, such as by a second
+                # cancellation, before it could close the connection.  keep
+                # the connection so that its close can be retried, but
+                # have the next checkout recycle it rather than use it
+                self._soft_invalidate_time = time.time()
+
+            # the record must be returned in any case; nothing else will
+            # ever return it, as no _ConnectionFairy refers to it
+            self.checkin(
+                _fairy_was_created=_fairy_was_created,
+            )
 
     def checkin(self, _fairy_was_created: bool = True) -> None:
         if self.fairy_ref is None and _fairy_was_created:
@@ -1017,10 +1028,15 @@ def _finalize_fairy(
             pool.logger.error(
                 "Exception during reset or similar", exc_info=True
             )
+            if not isinstance(e, Exception):
+                # a cancellation or similar propagates from here, so the
+                # checkin() below is not reached; return the record now,
+                # rather than leaving it to garbage collection of the fairy
+                if connection_record:
+                    connection_record._checkin_failed(e)
+                raise
             if connection_record:
                 connection_record.invalidate(e=e)
-            if not isinstance(e, Exception):
-                raise
         finally:
             if detach and is_gc_cleanup and dont_restore_gced:
                 message = (

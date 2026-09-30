@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
-import asyncio
 import contextlib
 from typing import Any
 from typing import AsyncIterator
@@ -24,6 +23,7 @@ from typing import TypeVar
 from typing import Union
 
 from . import exc as async_exc
+from .base import _run_to_completion
 from .base import asyncstartablecontext
 from .base import GeneratorStartableContext
 from .base import ProxyComparable
@@ -606,8 +606,7 @@ class AsyncConnection(  # type: ignore[misc]
         except GeneratorExit:
             pass
         else:
-            task = asyncio.create_task(ar.close())
-            await asyncio.shield(task)
+            await _run_to_completion(ar.close())
 
     @overload
     async def execute(
@@ -913,8 +912,7 @@ class AsyncConnection(  # type: ignore[misc]
         return self.start().__await__()
 
     async def __aexit__(self, type_: Any, value: Any, traceback: Any) -> None:
-        task = asyncio.create_task(self.close())
-        await asyncio.shield(task)
+        await _run_to_completion(self.close())
 
     # START PROXY METHODS AsyncConnection
 
