@@ -1,0 +1,10 @@
+.. change::
+    :tags: performance, sql
+    :tickets: 13617
+
+    Added instance-level caching to the "comparator factory" method of the
+    :class:`.TypeDecorator` class.  This attribute is used in most SQL
+    comparison operations and was generating a new class on the fly each time
+    it was called.  Special steps have been taken to allow this class to be
+    cached while still allowing for pickling of the :class:`.TypeDecorator`
+    itself.

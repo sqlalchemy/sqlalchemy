@@ -743,6 +743,34 @@ class PickleTypesTest(fixtures.TestBase):
             reunpickled = loads(dumps(unpickled))
             eq_(reunpickled.__class__.__mro__[1:4], expected_mro)
 
+    def test_td_comparator_reduce_name(self):
+        """the TypeDecorator comparator pickles as a call to
+        TypeDecorator._reduce_td_comparator(impl, expr); this path is
+        present in pickles made by previous versions and must remain
+        stable.  See #13617.
+
+        """
+        col = column("q", SomeTypeDecorator())
+        fn, (impl, expr) = col.comparator.__reduce__()
+
+        eq_(
+            (fn.__module__, fn.__qualname__),
+            ("sqlalchemy.sql.type_api", "TypeDecorator._reduce_td_comparator"),
+        )
+        is_(impl, col.type.impl_instance)
+        is_(expr, col)
+
+        # as called by pickle.loads() for a pickle from a prior version
+        comparator = TypeDecorator._reduce_td_comparator(String(), col)
+        eq_(
+            comparator.__class__.__mro__[1:4],
+            (
+                TypeDecorator.Comparator,
+                sqltypes.Concatenable.Comparator,
+                TypeEngine.Comparator,
+            ),
+        )
+
     @testing.combinations(
         ("Str", String()),
         ("Tex", Text()),

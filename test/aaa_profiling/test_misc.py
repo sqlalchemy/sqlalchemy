@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import TypeDecorator
 from sqlalchemy.ext.declarative import ConcreteBase
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import join as ormjoin
@@ -376,5 +377,35 @@ class CCLookupTest(fixtures.RemoveORMEventsGlobally, fixtures.TestBase):
             a1 = aliased(A, subq)
 
             select(a1.x1, a1.x2, a1.x3, a1.x4)
+
+        go()
+
+
+class TypeDecoratorOTFTest(fixtures.TestBase):
+    """TypeDecorator "on the fly" test
+
+    a TypeDecorator that doesn't have its own comparator class makes
+    one "on the fly" using a custom class.   This class is not really
+    picklable, but we still want to cache it on the TypeDecorator.
+
+    hence issue #13617
+
+    """
+
+    __requires__ = ("cpython", "python_profiling_backend")
+
+    def test_td_comparator_factory(self):
+        """test #13617"""
+
+        class SomeTypeDecorator(TypeDecorator):
+            impl = Integer()
+            cache_ok = True
+
+        type_ = SomeTypeDecorator()
+
+        @profiling.function_call_count()
+        def go():
+            for i in range(500):
+                type_.comparator_factory
 
         go()

@@ -1824,38 +1824,67 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
             kwargs["_python_is_types"] = self.expr.type.coerce_to_is_types
             return super().reverse_operate(op, other, **kwargs)
 
+    class TDComparatorContainer:
+        """special class that allows us to make a
+        comparator callable which returns an on-the-fly class,
+        caching it in memory so that it isn't created multiple times,
+        yet still allows the parent TypeDecorator to be pickleable by
+        omitting the on the fly class from an actual dumps() operation.
+
+        See #13617 for where this was refactored from a previous iteration.
+
+        """
+
+        __slots__ = ("_td_comparator", "_impl_instance")
+
+        _td_comparator: Type[TypeEngine.Comparator[Any]]
+        _impl_instance: TypeEngine[Any]
+
+        def __init__(self, impl_instance: TypeEngine[Any]):
+            self._impl_instance = impl_instance
+
+            def __reduce__(self: TypeDecorator.Comparator[Any]) -> Any:
+                return (
+                    TypeDecorator._reduce_td_comparator,
+                    (impl_instance, self.expr),
+                )
+
+            self._td_comparator = type(
+                "TDComparator",
+                (TypeDecorator.Comparator, impl_instance.comparator_factory),  # type: ignore[arg-type] # noqa: E501
+                {"__reduce__": __reduce__},
+            )
+
+        def __reduce__(self) -> Any:
+            return (
+                TypeDecorator.TDComparatorContainer,
+                (self._impl_instance,),
+            )
+
+        def __call__(
+            self, expr: ColumnElement[Any]
+        ) -> TypeEngine.Comparator[Any]:
+            return self._td_comparator(expr)
+
     @staticmethod
     def _reduce_td_comparator(
-        impl: TypeEngine[Any], expr: ColumnElement[_T]
-    ) -> Any:
-        return TypeDecorator._create_td_comparator_type(impl)(expr)
+        impl: TypeEngine[Any], expr: ColumnElement[Any]
+    ) -> TypeEngine.Comparator[Any]:
+        """pickleable static method to regenerate a new comparator
+        without caching the on-the-fly class itself; this name is
+        referenced by pickles made since 2.0.36 and must remain stable
 
-    @staticmethod
-    def _create_td_comparator_type(
-        impl: TypeEngine[Any],
-    ) -> _ComparatorFactory[Any]:
+        """
+        return TypeDecorator.TDComparatorContainer(impl)(expr)
 
-        def __reduce__(self: TypeDecorator.Comparator[Any]) -> Any:
-            return (TypeDecorator._reduce_td_comparator, (impl, self.expr))
-
-        return type(
-            "TDComparator",
-            (TypeDecorator.Comparator, impl.comparator_factory),  # type: ignore[arg-type, return-value] # noqa: E501
-            {"__reduce__": __reduce__},
-        )
-
-    @property
-    def comparator_factory(  # type: ignore[override]  # mypy properties bug
+    @util.memoized_property
+    def comparator_factory(
         self,
     ) -> _ComparatorFactory[Any]:
         if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:  # type: ignore[attr-defined] # noqa: E501
             return self.impl_instance.comparator_factory
         else:
-            # reconcile the Comparator class on the impl with that
-            # of TypeDecorator.
-            # the use of multiple staticmethods is to support repeated
-            # pickling of the Comparator itself
-            return TypeDecorator._create_td_comparator_type(self.impl_instance)
+            return self.TDComparatorContainer(self.impl_instance)
 
     def _copy_with_check(self) -> Self:
         tt = self.copy()
