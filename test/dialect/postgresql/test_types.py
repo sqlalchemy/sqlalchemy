@@ -90,6 +90,7 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -155,6 +156,39 @@ class MiscTypesTest(AssertsCompiledSQL, fixtures.TestBase):
     )
     def test_float_type_compile(self, type_, sql_text):
         self.assert_compile(type_, sql_text)
+
+
+class NamedTypeMetaDataTest(fixtures.TestBase):
+    """test MetaData registration of named types, independent of backend"""
+
+    @testing.variation("datatype", ["enum", "domain"])
+    @testing.variation("metadata_arg", [True, False])
+    def test_get_schema_objects_ignores_adapted(self, datatype, metadata_arg):
+        """test #13625"""
+
+        m1 = MetaData()
+        kw = {"metadata": m1} if metadata_arg else {}
+
+        if datatype.enum:
+            e = ENUM("red", "blue", name="color", **kw)
+        elif datatype.domain:
+            e = DOMAIN("color", String, **kw)
+        else:
+            datatype.fail()
+
+        t = Table("t", m1, Column("color", e))
+
+        adapted = e.adapt(type(e))
+        impl1 = e.dialect_impl(postgresql.dialect())
+        impl2 = e.dialect_impl(postgresql.dialect())
+        str(select(t).compile(dialect=postgresql.dialect()))
+
+        is_not(adapted, e)
+        is_not(impl1, e)
+        is_not(impl2, e)
+        is_not(impl1, impl2)
+
+        eq_(m1.get_schema_objects(type(e)), (e,))
 
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
