@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12302
+
+    Fixed an additional race condition related to those fixed as part of
+    :ticket:`12302`, where concurrent access to the
+    :attr:`.FromClause.primary_key` or :attr:`.FromClause.foreign_keys`
+    collections on a newly created :class:`.Alias` or :class:`.Subquery`
+    could raise an ``AssertionError`` if another thread was in the midst of
+    generating these collections.
