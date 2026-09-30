@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, engine, regression
+    :tickets: 13619
+
+    Fixed regression where result rows delivered by the DBAPI as a subclass of
+    ``tuple`` would fail to be processed when the Cython extensions were in
+    use, raising ``TypeError: Expected tuple``.  Such rows are now converted to
+    a plain ``tuple``, as was the case in 2.0.  Rows delivered as a plain
+    ``tuple``, or as a sequence that is not a ``tuple`` at all such as
+    asyncpg's ``Record``, were not affected.  Drivers such as the Databricks
+    SQL connector return rows that are ``tuple`` subclasses.

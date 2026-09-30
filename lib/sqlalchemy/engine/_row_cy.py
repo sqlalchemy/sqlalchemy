@@ -69,7 +69,7 @@ class BaseRow:
             (
                 _apply_processors(processors, data)
                 if processors is not None
-                else data if isinstance(data, tuple) else tuple(data)
+                else data if type(data) is tuple else tuple(data)
             ),
         )
 
