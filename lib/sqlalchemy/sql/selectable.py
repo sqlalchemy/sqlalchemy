@@ -961,10 +961,12 @@ class FromClause(
             )
 
             # assigning these three collections separately is not itself
-            # atomic, but greatly reduces the surface for problems
-            self._columns = _columns
+            # atomic, but greatly reduces the surface for problems.
+            # _columns is assigned last, as its presence is what signals
+            # to other threads that all three collections are present
             self.primary_key = primary_key  # type: ignore[misc]
             self.foreign_keys = foreign_keys  # type: ignore[assignment, misc]
+            self._columns = _columns
 
     @util.ro_non_memoized_property
     def entity_namespace(self) -> _EntityNamespace:
