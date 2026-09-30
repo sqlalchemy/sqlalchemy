@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import abc
+import asyncio
 import functools
 from typing import Any
 from typing import AsyncGenerator
@@ -15,6 +16,7 @@ from typing import AsyncIterator
 from typing import Awaitable
 from typing import Callable
 from typing import ClassVar
+from typing import Coroutine
 from typing import Dict
 from typing import Generator
 from typing import Generic
@@ -35,6 +37,35 @@ _T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
 
 _PT = TypeVar("_PT", bound=Any)
+
+
+async def _run_to_completion(coro: Coroutine[Any, Any, _T]) -> _T:
+    """Run ``coro`` in a task of its own and wait for it to complete, even
+    if the calling task is cancelled meanwhile.
+
+    Used for cleanup, such as the ``close()`` performed by an async context
+    manager on exit, that must not be abandoned partway through.  A
+    cancellation received while waiting is re-raised once ``coro`` has
+    completed, so that the caller does not return before its cleanup has
+    finished; were it to return early, the cleanup would carry on in the
+    background, where for example it could return a connection into a pool
+    that the application has meanwhile disposed of.
+
+    """
+    task = asyncio.create_task(coro)
+    cancelled = None
+    while True:
+        try:
+            result = await asyncio.shield(task)
+        except asyncio.CancelledError as err:
+            if task.done():
+                raise
+            cancelled = err
+        else:
+            break
+    if cancelled is not None:
+        raise cancelled
+    return result
 
 
 class ReversibleProxy(Generic[_PT]):

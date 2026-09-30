@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -26,6 +25,7 @@ from typing import TypeVar
 from typing import Union
 
 from . import engine
+from .base import _run_to_completion
 from .base import ReversibleProxy
 from .base import StartableContext
 from .result import _ensure_sync_result
@@ -1067,8 +1067,7 @@ class AsyncSession(ReversibleProxy[Session]):
         return self
 
     async def __aexit__(self, type_: Any, value: Any, traceback: Any) -> None:
-        task = asyncio.create_task(self.close())
-        await asyncio.shield(task)
+        await _run_to_completion(self.close())
 
     def _maker_context_manager(self: _AS) -> _AsyncSessionContextManager[_AS]:
         return _AsyncSessionContextManager(self)
@@ -1800,8 +1799,7 @@ class _AsyncSessionContextManager(Generic[_AS]):
             await self.trans.__aexit__(type_, value, traceback)
             await self.async_session.__aexit__(type_, value, traceback)
 
-        task = asyncio.create_task(go())
-        await asyncio.shield(task)
+        await _run_to_completion(go())
 
 
 class AsyncSessionTransaction(
