@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine, typing
+    :tickets: 13627
+
+    The :class:`.ExceptionContext` interface now allows the documented
+    modification of :attr:`.ExceptionContext.is_disconnect` and
+    :attr:`.ExceptionContext.invalidate_pool_on_disconnect` in a
+    :meth:`.DialectEvents.handle_error` handler to pass static type checks.

@@ -3454,7 +3454,7 @@ class ExceptionContext:
 
     """
 
-    __slots__ = ()
+    __slots__ = ("is_disconnect", "invalidate_pool_on_disconnect")
 
     dialect: Dialect
     """The :class:`_engine.Dialect` in use.

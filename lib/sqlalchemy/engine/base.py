@@ -2450,8 +2450,6 @@ class ExceptionContextImpl(ExceptionContext):
         "sqlalchemy_exception",
         "chained_exception",
         "execution_context",
-        "is_disconnect",
-        "invalidate_pool_on_disconnect",
         "is_pre_ping",
     )
 
