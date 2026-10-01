@@ -201,6 +201,8 @@ class RunToCompletionTest(fixtures.TestBase):
     """cleanup run by _run_to_completion() is waited for even when the
     calling task is cancelled.  #12710"""
 
+    __requires__ = ("asyncio",)
+
     async def _run(self, number_of_cancels):
         started = asyncio.Event()
         release = asyncio.Event()
