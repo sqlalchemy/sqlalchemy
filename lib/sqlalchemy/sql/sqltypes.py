@@ -1160,13 +1160,13 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             self.schema = schema
         self._inherit_schema = inherit_schema
 
+        self.create_type = create_type
+        self._create_events = _create_events
+
         if metadata:
             self._set_metadata(metadata)
         else:
             self.metadata = None
-
-        self.create_type = create_type
-        self._create_events = _create_events
 
         if _create_events and self.metadata:
             event.listen(
@@ -1271,7 +1271,13 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
                 and metadata.schema
             ):
                 self.schema = metadata.schema
-            self.metadata._register_object(self)
+            if self._create_events:
+                # only register the type as it was constructed by the
+                # user; copies made by adapt() for dialect-level
+                # implementations are not independent schema objects
+                # and would otherwise accumulate for every new
+                # dialect, see #13625
+                self.metadata._register_object(self)
             return True
         else:
             return False

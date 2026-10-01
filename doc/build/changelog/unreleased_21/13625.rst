@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, schema, regression
+    :tickets: 13625
+
+    Fixed issue where the internal copies of :class:`.Enum`,
+    :class:`_postgresql.DOMAIN` and other :class:`.SchemaType` types produced
+    when the type is adapted to a dialect-specific implementation would
+    register themselves with the :class:`.MetaData` collection that is queried
+    by :meth:`.MetaData.get_schema_objects`, in addition to the original type.
+    As a new dialect-level copy is produced for each new :class:`.Dialect`
+    instance, such as each time ``str()`` is called on a statement referring
+    to a column using :class:`.Enum`, the collection would grow without bound
+    and lead to excessive memory use.  Only the type constructed by the user
+    is now registered.

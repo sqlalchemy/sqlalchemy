@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from contextlib import nullcontext
+import enum
 import pickle
 import re
 
@@ -45,6 +46,9 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import sqlite
 from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.ext.compiler import deregister
@@ -945,6 +949,61 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(m1.get_schema_object_by_name(MyEnum, "foo", schema="t"), e3)
         eq_(m1.get_schema_object_by_name(Enum, "baz", schema="t"), e4)
         eq_(m1.get_schema_object_by_name(Enum, "bar", schema="t"), None)
+
+    @testing.combinations(
+        (default.DefaultDialect,),
+        (postgresql.dialect,),
+        (mysql.dialect,),
+        (sqlite.dialect,),
+        argnames="dialect_cls",
+    )
+    @testing.variation("metadata_arg", [True, False])
+    @testing.variation("enum_arg", ["strings", "pep435"])
+    def test_get_schema_objects_ignores_adapted_enum(
+        self, dialect_cls, metadata_arg, enum_arg
+    ):
+        """test #13625"""
+
+        class Color(enum.Enum):
+            red = "red"
+            blue = "blue"
+
+        m1 = MetaData()
+
+        if enum_arg.pep435:
+            args = (Color,)
+        elif enum_arg.strings:
+            args = ("red", "blue")
+        else:
+            enum_arg.fail()
+
+        if metadata_arg:
+            e = Enum(*args, name="color", metadata=m1)
+        else:
+            e = Enum(*args, name="color")
+
+        t = Table("t", m1, Column("color", e))
+
+        # each new dialect instance produces a new impl
+        for _ in range(3):
+            dialect = dialect_cls()
+            is_not_(e.dialect_impl(dialect), e)
+            str(select(t).compile(dialect=dialect))
+
+        eq_(m1.get_schema_objects(Enum), (e,))
+
+    def test_get_schema_objects_to_metadata(self):
+        """test #13625"""
+
+        m1 = MetaData()
+        e = Enum("red", "blue", name="color", metadata=m1)
+        t = Table("t", m1, Column("color", e))
+
+        m2 = MetaData()
+        t2 = t.to_metadata(m2)
+
+        eq_(m1.get_schema_objects(Enum), (e,))
+        eq_(m2.get_schema_objects(Enum), (t2.c.color.type,))
 
     def test_custom_schematype(self):
         class FooType(sqltypes.SchemaType, sqltypes.TypeEngine):
