@@ -3278,7 +3278,8 @@ class ExceptionContext:
 
     """
 
-    __slots__ = ()
+    if not TYPE_CHECKING:
+        __slots__ = ()
 
     dialect: Dialect
     """The :class:`_engine.Dialect` in use.
