@@ -9,6 +9,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
+from test.orm import _join_criteria_fixtures
 
 
 class ImmediateTest(_fixtures.FixtureTest):
@@ -302,3 +303,8 @@ class SelfReferentialTest(_fixtures.FixtureTest):
                 is_(n1.parent, n0)
             else:
                 eq_(n1.parent, Node(data="n0"))
+
+
+class JoinCriteriaTest(_join_criteria_fixtures._JoinCriteriaLoaderTest):
+    loader_option = staticmethod(immediateload)
+    statement_count = 4

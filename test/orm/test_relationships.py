@@ -5640,7 +5640,10 @@ class InvalidRelationshipEscalationTestM2M(
         )
 
 
-class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
+class SecondaryCanBeUsedForRelatedJoinTest(fixtures.DeclarativeMappedTest):
+    """test the flag that determines if selectinload can omit the parent
+    table for a many-to-many relationship"""
+
     def test_false_no_secondary(self):
         Base = declarative_base()
 
@@ -5656,7 +5659,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             a: Mapped["A"] = relationship("A", back_populates="bs")
 
         join_cond = A.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is False
 
@@ -5681,7 +5684,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = A.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is False
 
@@ -5720,7 +5723,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = AChild.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is False
 
@@ -5762,7 +5765,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = AChild.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is True
 
@@ -5799,7 +5802,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = A.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is True
 
@@ -5849,7 +5852,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = AChild.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is False
 
@@ -5883,7 +5886,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = A.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is True
 
@@ -5913,7 +5916,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = A.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is False
 
@@ -5937,7 +5940,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = A.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is True
 
@@ -5966,10 +5969,10 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             )
 
         join_cond = A.bs.property._join_condition
-        a_flag = join_cond.secondary_covers_parent_primary_key
+        a_flag = join_cond.secondary_can_be_used_for_related_join
 
         join_cond = B.as_.property._join_condition
-        b_flag = join_cond.secondary_covers_parent_primary_key
+        b_flag = join_cond.secondary_can_be_used_for_related_join
 
         assert a_flag is True
         assert b_flag is True
@@ -6040,10 +6043,10 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             )
 
         join_cond = Parent.children.property._join_condition
-        parent_child_flag = join_cond.secondary_covers_parent_primary_key
+        parent_child_flag = join_cond.secondary_can_be_used_for_related_join
 
         join_cond = Child.parents.property._join_condition
-        child_parent_flag = join_cond.secondary_covers_parent_primary_key
+        child_parent_flag = join_cond.secondary_can_be_used_for_related_join
 
         assert parent_child_flag is True
         assert child_parent_flag is True
@@ -6072,7 +6075,7 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = A.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is True
 
@@ -6100,9 +6103,101 @@ class SecondaryCoversParentFlagTestM2M(fixtures.DeclarativeMappedTest):
             id: Mapped[int] = mapped_column(primary_key=True)
 
         join_cond = A.bs.property._join_condition
-        flag = join_cond.secondary_covers_parent_primary_key
+        flag = join_cond.secondary_can_be_used_for_related_join
 
         assert flag is False
+
+    @testing.combinations(
+        ("plain", None, None, True),
+        (
+            "pk_only",
+            lambda a, a_b, b: a.c.id == a_b.c.a_id,
+            None,
+            True,
+        ),
+        (
+            "secondaryjoin_crit_on_secondary",
+            None,
+            lambda a, a_b, b: and_(b.c.id == a_b.c.b_id, a_b.c.x == 5),
+            True,
+        ),
+        (
+            "secondaryjoin_crit_on_target",
+            None,
+            lambda a, a_b, b: and_(b.c.id == a_b.c.b_id, b.c.x == 5),
+            True,
+        ),
+        (
+            "primaryjoin_crit_on_secondary",
+            lambda a, a_b, b: and_(a.c.id == a_b.c.a_id, a_b.c.x == 5),
+            None,
+            False,
+        ),
+        (
+            "primaryjoin_crit_on_parent",
+            lambda a, a_b, b: and_(a.c.id == a_b.c.a_id, a.c.x == 5),
+            None,
+            False,
+        ),
+        (
+            "primaryjoin_parent_to_secondary",
+            lambda a, a_b, b: and_(a.c.id == a_b.c.a_id, a.c.x == a_b.c.x),
+            None,
+            False,
+        ),
+        (
+            "primaryjoin_is_null_on_secondary",
+            lambda a, a_b, b: and_(a.c.id == a_b.c.a_id, a_b.c.x.is_(None)),
+            None,
+            False,
+        ),
+        (
+            "primaryjoin_non_eq_on_pk",
+            lambda a, a_b, b: and_(a.c.id == a_b.c.a_id, a.c.id > 5),
+            None,
+            False,
+        ),
+        argnames="primaryjoin, secondaryjoin, expected",
+        id_="iaaa",
+    )
+    def test_criteria(self, primaryjoin, secondaryjoin, expected):
+        Base = declarative_base()
+
+        a = Table(
+            "a",
+            Base.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+        )
+        b = Table(
+            "b",
+            Base.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+        )
+        a_b = Table(
+            "a_b",
+            Base.metadata,
+            Column("a_id", ForeignKey("a.id")),
+            Column("b_id", ForeignKey("b.id")),
+            Column("x", Integer),
+        )
+
+        rel_kw = {}
+        if primaryjoin is not None:
+            rel_kw["primaryjoin"] = primaryjoin(a, a_b, b)
+        if secondaryjoin is not None:
+            rel_kw["secondaryjoin"] = secondaryjoin(a, a_b, b)
+
+        class B(Base):
+            __table__ = b
+
+        class A(Base):
+            __table__ = a
+            bs = relationship(B, secondary=a_b, viewonly=True, **rel_kw)
+
+        join_cond = A.bs.property._join_condition
+        is_(join_cond.secondary_can_be_used_for_related_join, expected)
 
 
 class ActiveHistoryFlagTest(_fixtures.FixtureTest):

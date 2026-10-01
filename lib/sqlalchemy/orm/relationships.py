@@ -2620,24 +2620,41 @@ class _JoinCondition:
         return self._has_annotation(self.primaryjoin, "remote")
 
     @util.memoized_property
-    def secondary_covers_parent_primary_key(self) -> bool:
-        """Return True if the "secondary" selectable's join to the parent
-        table contains columns that encompass the complete primary key
-        value of the parent.
+    def secondary_can_be_used_for_related_join(self) -> bool:
+        """Return True if the "secondary" selectable may be joined directly
+        to the related entity in order to load related rows for a set of
+        parent primary key values, omitting the parent table.
 
-        Used in optimizing the selectinload loader strategy to indicate
-        the parent table need not be included in the query, as a complete
-        primary key can be derived from the secondary table.
+        This is the case when the primaryjoin consists only of equality
+        comparisons between the complete primary key of the parent and
+        columns of the secondary.  If the primaryjoin contains any other
+        criteria, it would be lost when the parent table is omitted.
+
+        Used by the selectinload loader strategy for its ``omit_join``
+        optimization.
 
         """
         if self.secondary is None:
             return False
 
-        secondary_synced_parent_cols = util.column_set(
-            l for (l, _) in self.synchronize_pairs
-        )
-        return self.prop.parent._local_pk_cols.issubset(
-            secondary_synced_parent_cols
+        parent_pk_cols = self.prop.parent._local_pk_cols
+        if not parent_pk_cols.issubset(l for (l, _) in self.synchronize_pairs):
+            return False
+
+        # compare against the parent primary key comparisons only; any
+        # other criteria in the primaryjoin, including comparisons of
+        # non-primary key parent columns to the secondary, make the
+        # comparison fail.  compare() treats AND as unordered and "==" as
+        # commutative, so the primaryjoin may state these comparisons in
+        # any order or orientation
+        return self.primaryjoin.compare(
+            sql.and_(
+                *[
+                    l == r
+                    for (l, r) in self.synchronize_pairs
+                    if l in parent_pk_cols
+                ]
+            )
         )
 
     def _annotate_fks(self) -> None:

@@ -22,6 +22,7 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import foreign
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
@@ -40,6 +41,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import TypeDecorator
 from test.orm import _fixtures
+from test.orm import _join_criteria_fixtures
 
 
 class LazyTest(_fixtures.FixtureTest):
@@ -1776,3 +1778,8 @@ class CompositeSimpleM2OTest(fixtures.MappedTest):
 
         configure_mappers()
         is_false(m_b.relationships.a.strategy.use_get)
+
+
+class JoinCriteriaTest(_join_criteria_fixtures._JoinCriteriaLoaderTest):
+    loader_option = staticmethod(lazyload)
+    statement_count = 4

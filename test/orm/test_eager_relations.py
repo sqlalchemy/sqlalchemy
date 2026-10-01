@@ -50,6 +50,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import OrderedDict as odict
 from test.orm import _fixtures
+from test.orm import _join_criteria_fixtures
 
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
@@ -7287,3 +7288,8 @@ class NestedInnerjoinTestIssue11965(
         session.close()
         # verify eager-loaded correctly
         assert rooms[0].event.run.day
+
+
+class JoinCriteriaTest(_join_criteria_fixtures._JoinCriteriaLoaderTest):
+    loader_option = staticmethod(joinedload)
+    statement_count = 1

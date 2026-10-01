@@ -37,6 +37,7 @@ from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
+from test.orm import _join_criteria_fixtures
 from .inheritance._poly_fixtures import _Polymorphic
 from .inheritance._poly_fixtures import Company
 from .inheritance._poly_fixtures import Engineer
@@ -4742,3 +4743,8 @@ class SelectinM2ONoRelatedRowTest(fixtures.DeclarativeMappedTest):
 
             # NULL a_id
             is_(bs[2].a, None)
+
+
+class JoinCriteriaTest(_join_criteria_fixtures._JoinCriteriaLoaderTest):
+    loader_option = staticmethod(selectinload)
+    statement_count = 2
