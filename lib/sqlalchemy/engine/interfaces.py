@@ -3454,7 +3454,7 @@ class ExceptionContext:
 
     """
 
-    __slots__ = ("is_disconnect", "invalidate_pool_on_disconnect")
+    __slots__ = ()
 
     dialect: Dialect
     """The :class:`_engine.Dialect` in use.
@@ -3555,7 +3555,16 @@ class ExceptionContext:
 
     """
 
-    is_disconnect: bool
+    if TYPE_CHECKING:
+
+        @property
+        def is_disconnect(self) -> bool: ...
+
+        @is_disconnect.setter
+        def is_disconnect(self, value: bool) -> None: ...
+
+    else:
+        is_disconnect: bool
     """Represent whether the exception as occurred represents a "disconnect"
     condition.
 
@@ -3580,7 +3589,16 @@ class ExceptionContext:
 
     """
 
-    invalidate_pool_on_disconnect: bool
+    if TYPE_CHECKING:
+
+        @property
+        def invalidate_pool_on_disconnect(self) -> bool: ...
+
+        @invalidate_pool_on_disconnect.setter
+        def invalidate_pool_on_disconnect(self, value: bool) -> None: ...
+
+    else:
+        invalidate_pool_on_disconnect: bool
     """Represent whether all connections in the pool should be invalidated
     when a "disconnect" condition is in effect.
 
