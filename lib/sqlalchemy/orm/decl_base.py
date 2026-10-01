@@ -1410,7 +1410,11 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                     continue
 
                 collected_annotation = self._collect_annotation(
-                    name, annotation, originating_class, True, obj
+                    name,
+                    annotation,
+                    originating_class,
+                    not self.allow_unmapped_annotations,
+                    obj,
                 )
                 obj = (
                     collected_annotation.attr_value
@@ -1432,7 +1436,11 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                     continue
 
                 collected_annotation = self._collect_annotation(
-                    name, annotation, originating_class, True, obj
+                    name,
+                    annotation,
+                    originating_class,
+                    not self.allow_unmapped_annotations,
+                    obj,
                 )
                 obj = (
                     collected_annotation.attr_value
