@@ -7,10 +7,13 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import dml
 from sqlalchemy.sql import func
 from sqlalchemy.sql import select
+from sqlalchemy.sql import table
 from sqlalchemy.sql import text
 from sqlalchemy.sql import tstring
+from sqlalchemy.sql import union
 from sqlalchemy.sql.base import ExecutableStatement
 from sqlalchemy.sql.elements import literal
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
@@ -74,6 +77,82 @@ class BasicTests(fixtures.TestBase):
         eq_(impl.compile()._collected_params, {})
         eq_(new.compile()._collected_params, {"foo": 5, "bar": 10})
         eq_(new._generate_cache_key()[2], {"foo": 5, "bar": 10})
+
+
+class LiteralBindsTest(fixtures.TestBase, AssertsCompiledSQL):
+    """test #13635"""
+
+    __dialect__ = "default"
+
+    @testing.fixture
+    def t(self):
+        return table("t", column("id", Integer), column("data", Integer))
+
+    def test_select(self, t):
+        stmt = select(t.c.id).where(t.c.id == bindparam("x")).params(x=5)
+        self.assert_compile(
+            stmt,
+            "SELECT t.id FROM t WHERE t.id = 5",
+            literal_binds=True,
+        )
+
+    def test_override_bindparam_value(self, t):
+        stmt = select(t.c.id).where(t.c.id == bindparam("x", 3)).params(x=5)
+        self.assert_compile(
+            stmt,
+            "SELECT t.id FROM t WHERE t.id = 5",
+            literal_binds=True,
+        )
+
+    def test_expanding(self, t):
+        stmt = (
+            select(t.c.id)
+            .where(t.c.id.in_(bindparam("x", expanding=True)))
+            .params(x=[1, 2, 3])
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT t.id FROM t WHERE t.id IN (1, 2, 3)",
+            literal_binds=True,
+        )
+
+    def test_outer_params_take_precedence(self, t):
+        subq = (
+            select(t.c.id)
+            .where(t.c.data == bindparam("x"))
+            .params(x=3)
+            .scalar_subquery()
+        )
+        stmt = select(t.c.id).where(t.c.id == subq)
+
+        self.assert_compile(
+            stmt,
+            "SELECT t.id FROM t WHERE t.id = "
+            "(SELECT t.id FROM t WHERE t.data = 3)",
+            literal_binds=True,
+        )
+        self.assert_compile(
+            stmt.params(x=5),
+            "SELECT t.id FROM t WHERE t.id = "
+            "(SELECT t.id FROM t WHERE t.data = 5)",
+            literal_binds=True,
+        )
+
+    def test_union(self, t):
+        stmt = union(
+            select(t.c.id).where(t.c.id == bindparam("x")),
+            select(t.c.id).where(t.c.data == bindparam("y")),
+        ).params(x=5, y=7)
+        self.assert_compile(
+            stmt,
+            "SELECT t.id FROM t WHERE t.id = 5 "
+            "UNION SELECT t.id FROM t WHERE t.data = 7",
+            literal_binds=True,
+        )
+
+    def test_text(self):
+        stmt = text("select :x").bindparams(bindparam("x", type_=Integer))
+        self.assert_compile(stmt.params(x=5), "select 5", literal_binds=True)
 
 
 class CacheTests(fixtures.TablesTest):

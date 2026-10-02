@@ -4128,6 +4128,10 @@ class SQLCompiler(Compiled):
     ):
         if render_literal_value is not NO_ARG:
             value = render_literal_value
+        elif self._collect_params and bindparam.key in self._collected_params:
+            # values passed to ExecutableStatement.params() are not
+            # present on the bindparam itself
+            value = self._collected_params[bindparam.key]
         else:
             if bindparam.value is None and bindparam.callable is None:
                 op = kw.get("_binary_op", None)
