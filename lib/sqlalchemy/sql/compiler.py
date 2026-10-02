@@ -3383,7 +3383,7 @@ class SQLCompiler(Compiled):
                         **kw,
                     )
                     if binary.right.type._type_affinity
-                       in (sqltypes.Numeric, sqltypes.Float)
+                    in (sqltypes.Numeric, sqltypes.Float)
                     else "(%s + 0.0)" % self.process(binary.right, **kw)
                 )
             )

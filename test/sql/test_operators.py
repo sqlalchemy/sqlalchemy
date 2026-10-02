@@ -2128,9 +2128,7 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_associativity_8(self):
         f = column("f")
-        self.assert_compile(
-            f / (f - f).label("foo"), "f / ((f - f) + 0.0)"
-        )
+        self.assert_compile(f / (f - f).label("foo"), "f / ((f - f) + 0.0)")
 
     def test_associativity_9(self):
         f = column("f")
@@ -2142,9 +2140,7 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_associativity_11(self):
         f = column("f")
-        self.assert_compile(
-            (f / f).label("foo") - f, "f / (f + 0.0) - f"
-        )
+        self.assert_compile((f / f).label("foo") - f, "f / (f + 0.0) - f")
 
     def test_associativity_12(self):
         f = column("f")
@@ -2153,9 +2149,7 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_associativity_13(self):
         f = column("f")
-        self.assert_compile(
-            f - (f / f).label("foo"), "f - f / (f + 0.0)"
-        )
+        self.assert_compile(f - (f / f).label("foo"), "f - f / (f + 0.0)")
 
     def test_associativity_14(self):
         f = column("f")
@@ -2167,16 +2161,12 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_associativity_16(self):
         f = column("f")
-        self.assert_compile(
-            ((f - f) / f) - f, "(f - f) / (f + 0.0) - f"
-        )
+        self.assert_compile(((f - f) / f) - f, "(f - f) / (f + 0.0) - f")
 
     def test_associativity_17(self):
         f = column("f")
         # - lower precedence than /
-        self.assert_compile(
-            (f - f) / (f - f), "(f - f) / ((f - f) + 0.0)"
-        )
+        self.assert_compile((f - f) / (f - f), "(f - f) / ((f - f) + 0.0)")
 
     def test_associativity_18(self):
         f = column("f")
@@ -2188,9 +2178,7 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_associativity_19(self):
         f = column("f")
-        self.assert_compile(
-            (f / f) - (f - f), "f / (f + 0.0) - (f - f)"
-        )
+        self.assert_compile((f / f) - (f - f), "f / (f + 0.0) - (f - f)")
 
     def test_associativity_20(self):
         f = column("f")
@@ -2825,9 +2813,7 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.assert_compile(py_op(lhs, rhs), res % sql_op)
 
     def test_truediv_op_integer(self):
-        self.assert_compile(
-            5 / literal(5), ":param_1 / (:param_2 + 0.0)"
-        )
+        self.assert_compile(5 / literal(5), ":param_1 / (:param_2 + 0.0)")
 
     def test_floordiv_op_integer(self):
         self.assert_compile(5 // literal(5), ":param_1 / :param_2")
