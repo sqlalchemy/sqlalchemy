@@ -625,6 +625,39 @@ class ParseVersionTest(fixtures.TestBase):
         assert dialect._is_mariadb is is_mariadb
 
     @testing.combinations(
+        ("10.4.0-MariaDB", False, True, False),
+        ("10.6.12-MariaDB", True, True, False),
+        ("11.4.2-MariaDB", True, True, False),
+        ("12.1.0-MariaDB", True, True, False),
+        ("13.0.0-MariaDB", True, True, False),
+        ("13.0.1-MariaDB", True, True, True),
+        ("13.1.0-MariaDB", True, True, True),
+        ("14.0.0-MariaDB", True, True, True),
+        argnames="version, insert_returning, delete_returning, "
+        "update_returning",
+    )
+    def test_mariadb_returning_flags(
+        self, version, insert_returning, delete_returning, update_returning
+    ):
+        dialect = mysql.dialect(is_mariadb=True)
+        dialect._parse_server_version(version)
+        dialect._initialize_mariadb(None)
+        eq_(dialect.insert_returning, insert_returning)
+        eq_(dialect.delete_returning, delete_returning)
+        eq_(dialect.update_returning, update_returning)
+        # MariaDB has no RETURNING for multiple-table UPDATE / DELETE
+        is_(dialect.update_returning_multifrom, False)
+        is_(dialect.delete_returning_multifrom, False)
+
+    def test_mysql_no_update_returning(self):
+        dialect = mysql.dialect()
+        dialect._parse_server_version("8.4.0")
+        dialect._initialize_mysql(None)
+        is_(dialect.insert_returning, False)
+        is_(dialect.update_returning, False)
+        is_(dialect.delete_returning, False)
+
+    @testing.combinations(
         (True, "10.2.7-MariaDB"),
         (True, "5.6.15-10.2.7-MariaDB"),
         (False, "10.2.10-MariaDB"),
