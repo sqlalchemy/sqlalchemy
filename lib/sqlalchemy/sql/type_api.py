@@ -1098,7 +1098,7 @@ class TypeEngine(Visitable, Generic[_T]):
         # dmypy / mypy seems to sporadically keep thinking this line is
         # returning Any, which seems to be caused by the @deprecated_params
         # decorator on the DefaultDialect constructor
-        return default.StrCompileDialect()  # type: ignore
+        return default.StrCompileDialect()
 
     def __str__(self) -> str:
         return str(self.compile())

@@ -1661,11 +1661,11 @@ def _m2m_relationship(
             overlaps=overlaps,
             secondary=table,
             primaryjoin=and_(
-                fk.column == fk.parent for fk in m2m_const[0].elements
-            ),  # type: ignore [arg-type]
+                *(fk.column == fk.parent for fk in m2m_const[0].elements)
+            ),
             secondaryjoin=and_(
-                fk.column == fk.parent for fk in m2m_const[1].elements
-            ),  # type: ignore [arg-type]
+                *(fk.column == fk.parent for fk in m2m_const[1].elements)
+            ),
             backref=backref_obj,
             collection_class=collection_class,
         )
@@ -1687,11 +1687,11 @@ def _m2m_relationship(
             overlaps=overlaps,
             secondary=table,
             primaryjoin=and_(
-                fk.column == fk.parent for fk in m2m_const[1].elements
-            ),  # type: ignore [arg-type]
+                *(fk.column == fk.parent for fk in m2m_const[1].elements)
+            ),
             secondaryjoin=and_(
-                fk.column == fk.parent for fk in m2m_const[0].elements
-            ),  # type: ignore [arg-type]
+                *(fk.column == fk.parent for fk in m2m_const[0].elements)
+            ),
             back_populates=relationship_name,
             collection_class=collection_class,
         )
