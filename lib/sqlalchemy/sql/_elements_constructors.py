@@ -49,6 +49,7 @@ from .elements import TString
 from .elements import Tuple
 from .elements import TypeCoerce
 from .elements import UnaryExpression
+from .elements import Window
 from .elements import WithinGroup
 from .functions import FunctionElement
 
@@ -1639,6 +1640,33 @@ if not TYPE_CHECKING:
         return BooleanClauseList.or_(*clauses)
 
 
+def window(
+    name: str,
+    *,
+    existing_window: Window | str | None = None,
+    partition_by: _ByArgument | None = None,
+    order_by: _ByArgument | None = None,
+    range_: _FrameIntTuple | FrameClause | None = None,
+    rows: _FrameIntTuple | FrameClause | None = None,
+    groups: _FrameIntTuple | FrameClause | None = None,
+    exclude: str | None = None,
+) -> Window:
+    """Produce a named SQL :class:`_expression.Window` definition.
+
+    .. versionadded:: 2.1
+    """
+    return Window(
+        name,
+        existing_window=existing_window,
+        partition_by=partition_by,
+        order_by=order_by,
+        range_=range_,
+        rows=rows,
+        groups=groups,
+        exclude=exclude,
+    )
+
+
 def over(
     element: FunctionElement[_T],
     partition_by: _ByArgument | None = None,
@@ -1647,6 +1675,7 @@ def over(
     rows: _FrameIntTuple | FrameClause | None = None,
     groups: _FrameIntTuple | FrameClause | None = None,
     exclude: str | None = None,
+    window: Window | str | None = None,
 ) -> Over[_T]:
     r"""Produce an :class:`.Over` object against a function.
 
@@ -1780,6 +1809,7 @@ def over(
         rows,
         groups,
         exclude,
+        window=window,
     )
 
 
