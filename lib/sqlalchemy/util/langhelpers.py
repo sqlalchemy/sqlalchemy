@@ -463,7 +463,7 @@ def exec_code_in_env(
         )
         # atexit is a property on the C implementation; typeshed
         # renders finalize with an empty __slots__
-        finalizer.atexit = False  # type: ignore[misc]
+        finalizer.atexit = False
 
     return fn  # type: ignore[no-any-return]
 
