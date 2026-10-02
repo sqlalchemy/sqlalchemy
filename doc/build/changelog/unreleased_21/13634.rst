@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13634
+
+    Fixed regression where columns delivered to a mapped class from an
+    unmapped :class:`_orm.MappedAsDataclass` mixin, or from a class decorated
+    with :func:`_orm.unmapped_dataclass`, would not be placed in the
+    :class:`_schema.Table` in the order in which they were declared on the
+    mixin; columns that had no dataclass default, such as a primary key column
+    with no :paramref:`_orm.mapped_column.default`, or which made use of
+    :paramref:`_orm.mapped_column.default_factory`, would be moved after the
+    remaining columns of the mixin.

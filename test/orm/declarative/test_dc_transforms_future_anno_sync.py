@@ -2778,6 +2778,114 @@ class MixinColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert "id" not in obj.__dict__
 
 
+class MixinColumnOrderTest(fixtures.TestBase):
+    """test #13634"""
+
+    @testing.fixture(
+        params=[
+            "pk_first",
+            "default_factory",
+            "init_false",
+            "kw_only",
+            "non_field",
+        ]
+    )
+    def mixin_layout(self, request):
+        def pk_first(bases, decorate):
+            @decorate
+            class Mixin(*bases):
+                id: Mapped[int] = mapped_column(primary_key=True)
+                name: Mapped[Optional[str]] = mapped_column(default=None)
+                data: Mapped[Optional[str]] = mapped_column(default=None)
+
+            return Mixin, ["id", "name", "data"], ["id", "name", "data"]
+
+        def default_factory(bases, decorate):
+            @decorate
+            class Mixin(*bases):
+                id: Mapped[int] = mapped_column(primary_key=True)
+                x: Mapped[str] = mapped_column(default="x")
+                y: Mapped[str] = mapped_column(default_factory=lambda: "y")
+                z: Mapped[Optional[str]] = mapped_column(default=None)
+
+            return Mixin, ["id", "x", "y", "z"], ["id", "x", "y", "z"]
+
+        def init_false(bases, decorate):
+            @decorate
+            class Mixin(*bases):
+                x: Mapped[Optional[str]] = mapped_column(default=None)
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                y: Mapped[Optional[str]] = mapped_column(default=None)
+
+            return Mixin, ["x", "id", "y"], ["x", "id", "y"]
+
+        def kw_only(bases, decorate):
+            @decorate
+            class Mixin(*bases):
+                id: Mapped[int] = mapped_column(primary_key=True)
+                x: Mapped[Optional[str]] = mapped_column(default=None)
+                y: Mapped[str] = mapped_column(kw_only=True)
+                z: Mapped[Optional[str]] = mapped_column(default=None)
+
+            return Mixin, ["id", "x", "y", "z"], ["id", "x", "y", "z"]
+
+        def non_field(bases, decorate):
+            @decorate
+            class Mixin(*bases):
+                id: Mapped[int] = mapped_column(primary_key=True)
+                x = Column(Integer)
+                y: Mapped[Optional[str]] = mapped_column(default=None)
+
+            return Mixin, ["id", "y"], ["id", "x", "y"]
+
+        return {
+            "pk_first": pk_first,
+            "default_factory": default_factory,
+            "init_false": init_false,
+            "kw_only": kw_only,
+            "non_field": non_field,
+        }[request.param]
+
+    @testing.variation("style", ["mixin", "mixin_dc_base", "decorator"])
+    def test_mixin_column_order(self, mixin_layout, style):
+        if style.decorator:
+            Mixin, expected_fields, expected_cols = mixin_layout(
+                (), unmapped_dataclass
+            )
+
+            reg = registry()
+
+            @reg.mapped_as_dataclass
+            class Model(Mixin):
+                __tablename__ = "model"
+
+        else:
+            Mixin, expected_fields, expected_cols = mixin_layout(
+                (MappedAsDataclass,), lambda c: c
+            )
+
+            if style.mixin_dc_base:
+
+                class Base(MappedAsDataclass, DeclarativeBase):
+                    pass
+
+            else:
+
+                class Base(DeclarativeBase):
+                    pass
+
+            class Model(Base, Mixin):
+                __tablename__ = "model"
+
+        eq_(
+            (
+                [f.name for f in dataclasses.fields(Model)],
+                Model.__table__.c.keys(),
+            ),
+            (expected_fields, expected_cols),
+        )
+
+
 class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 

@@ -22,8 +22,8 @@ from .base import ReadOnlyColumnCollection
 from .. import util
 from ..exc import ArgumentError
 from ..exc import InvalidRequestError
+from ..util import dunders_re
 from ..util import typing as sa_typing
-from ..util.langhelpers import dunders_re
 from ..util.typing import Never
 from ..util.typing import Self
 from ..util.typing import TypeVar

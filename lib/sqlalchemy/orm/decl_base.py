@@ -578,11 +578,13 @@ class _ClassScanAbstractConfig(_ORMClassConfigurator):
         if revert:
             # the "revert" case is used only by an unmapped mixin class
             # that is nonetheless using Mapped construct and needs to
-            # itself be a dataclass
+            # itself be a dataclass.  revert_dict includes all non-dunder
+            # attributes, not just fields, in class __dict__ order, so that
+            # the finally: block below can restore that order
             revert_dict = {
-                name: self.cls.__dict__[name]
-                for name in (item[0] for item in field_list)
-                if name in self.cls.__dict__
+                name: value
+                for name, value in self.cls.__dict__.items()
+                if not util.dunders_re.match(name)
             }
         else:
             revert_dict = None
@@ -679,8 +681,14 @@ class _ClassScanAbstractConfig(_ORMClassConfigurator):
             if revert and revert_dict:
                 # used for mixin dataclasses; we have to restore the
                 # mapped_column(), relationship() etc. to the class so these
-                # take place for a mapped class scan
+                # take place for a mapped class scan.  dataclasses has
+                # deleted the attribute for fields with no plain default and
+                # replaced it in place for the others, so delete and re-set
+                # every attribute, restoring declaration order for the scan,
+                # #13634
                 for k, v in revert_dict.items():
+                    if k in self.cls.__dict__:
+                        delattr(self.cls, k)
                     setattr(self.cls, k, v)
 
             restore_anno()
