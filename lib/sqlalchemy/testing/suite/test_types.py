@@ -34,6 +34,7 @@ from ... import Date
 from ... import DateTime
 from ... import Enum
 from ... import Float
+from ... import func
 from ... import Integer
 from ... import Interval
 from ... import JSON
@@ -1119,6 +1120,112 @@ class TrueDivTest(fixtures.TestBase):
             connection.scalar(select(literal(15) // literal(10))),
             1,
         )
+
+    def test_truediv_numeric_divisor_whole_number(self, connection, metadata):
+        """tests an edge case: a Numeric divisor holding a whole number is
+        still a true division.
+        """
+
+        # Note: SQLite stores 2.00 in a NUMERIC column as the integer 2, and
+        # casting it to NUMERIC leaves it an integer, so 1 / 2 would be an
+        # integer division.
+        t = Table(
+            "t",
+            metadata,
+            Column("x", Integer),
+            Column("y", Numeric(10, 2)),
+        )
+        t.create(connection)
+        connection.execute(t.insert(), {"x": 1, "y": decimal.Decimal("2.00")})
+
+        eq_(
+            connection.scalar(select(t.c.x / t.c.y)),
+            decimal.Decimal("0.5"),
+        )
+
+    def test_truediv_untyped_function_divisor(self, connection):
+        """test that when a function of unknown type is used, its fractional
+        value is not truncated to an integer by the division.
+        """
+
+        result = connection.scalar(
+            select(
+                literal_column("7.0", type_=Float())
+                / func.nullif(literal_column("3.5", type_=Float()), 0)
+            )
+        )
+        eq_(float(result), 2.0)
+
+    @testing.requires.precision_numerics_many_significant_digits
+    def test_truediv_untyped_function_divisor_numeric_precision(
+        self, connection
+    ):
+        """tests an edge case against casting the divisor to float:
+        a divisor with 20 decimal places and hidden type should not lose
+        precision.
+        """
+
+        # Note: The operands are chosen so that the quotient is exactly 7,
+        # whereas converting the divisor to a floating point number gives
+        # 7.000000000000001 and rounding it to an integer gives about 5.
+        left = "5.02797279921331664759"
+        right = "0.71828182845904523537"
+
+        result = connection.scalar(
+            select(
+                literal_column(left, type_=Numeric(22, 20))
+                / func.nullif(literal_column(right, type_=Numeric(22, 20)), 0)
+            )
+        )
+        assert abs(result - decimal.Decimal(7)) < decimal.Decimal(
+            "1e-16"
+        ), result
+
+    @testing.combinations(
+        (
+            "small_divisor_many_decimals",
+            "0.00000000000049382716",
+            "0.00000000000012345679",
+            Numeric(38, 20),
+            4,
+        ),
+        (
+            "divisor_1e37",
+            "30000000000000000000000000000000000000",
+            "10000000000000000000000000000000000000",
+            Numeric(38, 0),
+            3,
+        ),
+        id_="iaaaa",
+        argnames="left, right, type_, expected",
+    )
+    def test_truediv_numeric_divisor_full_precision(
+        self, connection, left, right, type_, expected
+    ):
+        """tests an edge case against multiplying the divisor by 1.0:
+        a divisor of a wide Numeric type should not lose digits or overflow.
+        """
+
+        # Note: The operands are cast so that the database sees the wide
+        # type, and not the narrower type of a bare literal.
+        #
+        # On SQL Server, NUMERIC(38, 20) * 1.0 has a precision of 41 and a
+        # scale of 21, more than the maximum of 38 digits. The scale is
+        # reduced to 18 to keep all 20 integer digits, which rounds the
+        # first divisor (its significant digits reach the 20th decimal
+        # place) and gives a quotient of 3.999993 and not 4.
+        #
+        # NUMERIC(38, 0) * 1.0 needs 39 digits, so the second divisor, a 38
+        # digit integer, raises an arithmetic overflow.
+        result = connection.scalar(
+            select(
+                cast(literal_column(left), type_)
+                / cast(literal_column(right), type_)
+            )
+        )
+        assert abs(result - decimal.Decimal(expected)) < decimal.Decimal(
+            "1e-9"
+        ), result
 
 
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
