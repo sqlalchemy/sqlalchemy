@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql, regression
-    :tickets: 13635
-
-    Fixed regression caused by the new implementation of
-    :meth:`.ExecutableStatement.params` where parameter values established
-    using this method would not be rendered when compiling the statement with
-    the ``literal_binds`` compiler option, instead rendering NULL with a
-    warning.
