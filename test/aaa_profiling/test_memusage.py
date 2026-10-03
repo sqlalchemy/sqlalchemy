@@ -16,6 +16,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import type_coerce
 from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
@@ -1553,7 +1554,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         stmt = s.query(User).join(User.addresses).statement
 
-        @assert_cycles(21)
+        @assert_cycles()
         def go():
             result = s.execute(stmt)
             rows = result.fetchall()  # noqa
@@ -1568,7 +1569,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         stmt = s.query(User).join(User.addresses).statement
 
-        @assert_cycles(21)
+        @assert_cycles()
         def go():
             result = s.execute(stmt)
             for partition in result.partitions(3):
@@ -1584,11 +1585,69 @@ class CycleTest(_fixtures.FixtureTest):
 
         stmt = s.query(User).join(User.addresses).statement
 
-        @assert_cycles(21)
+        @assert_cycles()
         def go():
             result = s.execute(stmt)
             for partition in result.unique().partitions(3):
                 pass
+
+        go()
+
+    @testing.variation(
+        "method",
+        [
+            "iterate",
+            "iterate_unique",
+            "iterate_scalars",
+            "scalars_all",
+            "fetchone",
+            "fetchall",
+            "partitions",
+        ],
+    )
+    @testing.variation("processors", [True, False])
+    def test_core_result_consume(self, connection, method, processors):
+        """test #13639"""
+
+        users = self.tables.users
+
+        if processors:
+
+            class MyInt(types.TypeDecorator):
+                impl = Integer
+                cache_ok = True
+
+                def process_result_value(self, value, dialect):
+                    return value
+
+            stmt = select(type_coerce(users.c.id, MyInt()), users.c.name)
+        else:
+            stmt = select(users.c.id, users.c.name)
+
+        @assert_cycles()
+        def go():
+            result = connection.execute(stmt)
+            if method.iterate:
+                for row in result:
+                    pass
+            elif method.iterate_unique:
+                for row in result.unique():
+                    pass
+            elif method.iterate_scalars:
+                for value in result.scalars():
+                    pass
+            elif method.scalars_all:
+                result.scalars().all()
+            elif method.fetchone:
+                while result.fetchone() is not None:
+                    pass
+            elif method.fetchall:
+                result.fetchall()
+            elif method.partitions:
+                for partition in result.partitions(2):
+                    pass
+            else:
+                method.fail()
 
         go()
 

@@ -91,6 +91,37 @@ class _NoRow(Enum):
 _NO_ROW = _NoRow._NO_ROW
 
 
+def _list_map(
+    fn: Callable[[Any], _T], /
+) -> Callable[[Sequence[Any]], list[_T]]:
+    """Return a callable that applies ``fn`` to each element of a sequence,
+    returning a list.
+
+    This function serves to prevent a reference cycle between ``fn`` and
+    the closure scope of the function that defines it, when compiled with
+    Cython.
+
+    """
+    if cython.compiled:
+
+        def list_map(rows: Sequence[Any], /) -> list[_T]:
+            size: cython.Py_hash_t = len(rows)
+            i: cython.Py_ssize_t
+            result: list = PyList_New(size)
+            for i in range(size):
+                row: object = fn(rows[i])
+                Py_INCREF(row)
+                PyList_SET_ITEM(result, i, row)
+            return result
+
+    else:
+
+        def list_map(rows: Sequence[Any], /) -> list[_T]:
+            return [fn(row) for row in rows]
+
+    return list_map
+
+
 class BaseResultInternal(Generic[_R]):
     __slots__ = ()
 
@@ -245,22 +276,7 @@ class BaseResultInternal(Generic[_R]):
                 row = log_row(row)
             return row
 
-        if cython.compiled:
-
-            def many_rows(rows: Sequence[Any], /) -> list[Any]:
-                size: cython.Py_hash_t = len(rows)
-                i: cython.Py_ssize_t
-                result: list = PyList_New(size)
-                for i in range(size):
-                    row: object = single_row(rows[i])
-                    Py_INCREF(row)
-                    PyList_SET_ITEM(result, i, row)
-                return result
-
-        else:
-
-            def many_rows(rows: Sequence[Any], /) -> list[Any]:
-                return [single_row(row) for row in rows]
+        many_rows = _list_map(single_row)
 
         if flag == _FLAG_SCALAR_TO_TUPLE or has_log_row:
             # scalar-source rows have no tuple form; row logging requires
@@ -279,27 +295,12 @@ class BaseResultInternal(Generic[_R]):
                     input_row = tuple(input_row)
                 return input_row
 
-            if cython.compiled:
-
-                def interim_rows(rows: Sequence[Any], /) -> Sequence[Any]:
-                    size: cython.Py_hash_t = len(rows)
-                    i: cython.Py_ssize_t
-                    result: list = PyList_New(size)
-                    for i in range(size):
-                        row: object = single_interim_row(rows[i])
-                        Py_INCREF(row)
-                        PyList_SET_ITEM(result, i, row)
-                    return result
-
-            else:
-
-                def interim_rows(rows: Sequence[Any], /) -> Sequence[Any]:
-                    return [single_interim_row(row) for row in rows]
+            interim_rows = _list_map(single_interim_row)
 
         return single_row, many_rows, interim_rows  # type: ignore[return-value] # noqa: E501
 
     @HasMemoized_ro_memoized_attribute
-    def _iterator_getter(self) -> Callable[[], Iterator[_R]]:
+    def _iterator_getter(self) -> Callable[[Self], Iterator[_R]]:
         make_row = self._row_getter[0]
 
         post_creational_filter = self._post_creational_filter
@@ -308,7 +309,7 @@ class BaseResultInternal(Generic[_R]):
             uniques: set
             uniques, strategy = self._unique_strategy
 
-            def iterrows() -> Iterator[_R]:
+            def iterrows(self: Self) -> Iterator[_R]:
                 for raw_row in self._fetchiter_impl():
                     row = (
                         make_row(raw_row) if make_row is not None else raw_row
@@ -323,7 +324,7 @@ class BaseResultInternal(Generic[_R]):
 
         else:
 
-            def iterrows() -> Iterator[_R]:
+            def iterrows(self: Self) -> Iterator[_R]:
                 for raw_row in self._fetchiter_impl():
                     row = (
                         make_row(raw_row) if make_row is not None else raw_row
@@ -617,7 +618,7 @@ class BaseResultInternal(Generic[_R]):
             return row  # type: ignore[return-value]
 
     def _iter_impl(self) -> Iterator[_R]:
-        return self._iterator_getter()
+        return self._iterator_getter(self)
 
     def _next_impl(self) -> _R:
         row = self._onerow_getter(self)
