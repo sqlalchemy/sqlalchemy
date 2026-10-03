@@ -545,9 +545,9 @@ Arithmetic Operators
   This is the Python ``truediv`` operator, which will ensure integer true division occurs::
 
     >>> print(column("x") / 5)
-    {printsql}x / CAST(:x_1 AS NUMERIC){stop}
+    {printsql}x / (:x_1 + 0.0){stop}
     >>> print(5 / column("x"))
-    {printsql}:x_1 / CAST(x AS NUMERIC){stop}
+    {printsql}:x_1 / (x + 0.0){stop}
 
   .. versionchanged:: 2.0  The Python ``/`` operator now ensures integer true division takes place
 

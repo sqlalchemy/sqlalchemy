@@ -2457,6 +2457,17 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "/ CAST(values.val1 AS FLOAT) > :param_1",
         )
 
+        self.assert_compile(
+            select(value_tbl.c.val1 / value_tbl.c.id),
+            "SELECT values.val1 / (values.id + 0.0) AS anon_1 FROM values",
+        )
+
+        self.assert_compile(
+            select(value_tbl.c.val1 / func.nullif(value_tbl.c.val2, 0)),
+            "SELECT values.val1 / (nullif(values.val2, :nullif_1) + 0.0) "
+            "AS anon_1 FROM values",
+        )
+
     def test_percent_chars(self):
         t = table(
             "table%name",

@@ -3377,19 +3377,14 @@ class SQLCompiler(Compiled):
             return (
                 self.process(binary.left, **kw)
                 + " / "
-                # TODO: would need a fast cast again here,
-                # unless we want to use an implicit cast like "+ 0.0"
-                + self.process(
-                    elements.Cast(
-                        binary.right,
-                        (
-                            binary.right.type
-                            if binary.right.type._type_affinity
-                            in (sqltypes.Numeric, sqltypes.Float)
-                            else sqltypes.Numeric()
-                        ),
-                    ),
-                    **kw,
+                + (
+                    self.process(
+                        elements.Cast(binary.right, binary.right.type),
+                        **kw,
+                    )
+                    if binary.right.type._type_affinity
+                    in (sqltypes.Numeric, sqltypes.Float)
+                    else "(%s + 0.0)" % self.process(binary.right, **kw)
                 )
             )
         else:
