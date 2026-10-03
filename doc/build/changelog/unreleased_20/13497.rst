@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 13497
+
+    Fixed reflection of Microsoft SQL Server ``DATETIME2(p)``,
+    ``DATETIMEOFFSET(p)`` and ``TIME(p)`` columns, where the fractional-seconds
+    precision ``p`` was not reflected, causing reflect-then-create round trips
+    to silently change the column to the default scale of 7.  The precision
+    reported by ``sys.columns.precision`` is now assigned to the reflected
+    type.  Pull request courtesy Aryan Pardeshi.
