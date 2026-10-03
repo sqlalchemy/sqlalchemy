@@ -2137,6 +2137,15 @@ class DefaultExecutionContext(ExecutionContext):
         ):
             self._setup_out_parameters(result)
 
+        if not result._soft_closed and not result._metadata.returns_rows:
+            # no results, get rowcount (which requires open cursor on
+            # some drivers) and release the cursor.  this applies to all
+            # statements that don't return rows, including DML, text(),
+            # DDL and SAVEPOINT
+            if self._rowcount is None:
+                self._rowcount = self.cursor.rowcount
+            result._soft_close()
+
         self._soft_closed = result._soft_closed
 
         if yp:
@@ -2272,12 +2281,6 @@ class DefaultExecutionContext(ExecutionContext):
             # the rows have all been fetched however.
             assert result._metadata.returns_rows
 
-        elif not result._metadata.returns_rows:
-            # no results, get rowcount
-            # (which requires open cursor on some drivers)
-            if self._rowcount is None:
-                self._rowcount = self.cursor.rowcount
-            result._soft_close()
         elif self.isupdate or self.isdelete:
             if self._rowcount is None:
                 self._rowcount = self.cursor.rowcount

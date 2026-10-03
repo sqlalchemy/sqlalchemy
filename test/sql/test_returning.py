@@ -845,6 +845,7 @@ class InsertReturnDefaultsTest(fixtures.TablesTest):
 
         class MyType(TypeDecorator):
             impl = String(50)
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return f"PROCESSED! {value}"

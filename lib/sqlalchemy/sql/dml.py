@@ -1263,6 +1263,10 @@ class Insert(ValuesBase, HasSyntaxExtensions[Literal["post_values"]]):
                 "_return_defaults_columns",
                 InternalTraversal.dp_clauseelement_tuple,
             ),
+            (
+                "_supplemental_returning",
+                InternalTraversal.dp_clauseelement_tuple,
+            ),
             ("_sort_by_parameter_order", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
@@ -1661,6 +1665,10 @@ class Update(
             ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
             (
                 "_return_defaults_columns",
+                InternalTraversal.dp_clauseelement_tuple,
+            ),
+            (
+                "_supplemental_returning",
                 InternalTraversal.dp_clauseelement_tuple,
             ),
         ]

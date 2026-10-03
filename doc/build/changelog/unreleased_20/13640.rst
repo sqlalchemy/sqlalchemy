@@ -1,0 +1,27 @@
+.. change::
+    :tags: bug, engine, regression
+    :tickets: 13640
+    :versions: 2.1.4
+
+    Fixed regression from the 1.4 series where the DBAPI cursor used for a
+    compiled statement that returns no rows, which includes DDL constructs
+    such as :class:`.CreateTable` and :class:`.DropTable` as well as the
+    SAVEPOINT, ROLLBACK TO SAVEPOINT and RELEASE SAVEPOINT statements emitted
+    by :meth:`_engine.Connection.begin_nested`, was not closed after
+    execution, and was instead left to be released when garbage collected.
+    The cursor is now closed immediately, as was the case in 1.3 and as is
+    already the case for INSERT, UPDATE, DELETE and :func:`_sql.text`
+    statements.
+
+.. change::
+    :tags: bug, sql
+    :versions: 2.1.4
+
+    Fixed issue where the
+    :paramref:`.UpdateBase.return_defaults.supplemental_cols` parameter of
+    :meth:`.UpdateBase.return_defaults` was not included in the cache key of
+    an :class:`.Insert` or :class:`.Update` construct, causing a statement
+    that used this parameter to share a cached compiled form with an otherwise
+    identical statement that did not, or that used different supplemental
+    columns.  This would cause the supplemental RETURNING rows to be missing
+    or incorrect depending on which form of the statement was compiled first.

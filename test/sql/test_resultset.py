@@ -8,8 +8,11 @@ import pickle
 from unittest.mock import Mock
 from unittest.mock import patch
 
+from sqlalchemy import bindparam
 from sqlalchemy import CHAR
 from sqlalchemy import column
+from sqlalchemy import DDL
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
@@ -36,6 +39,8 @@ from sqlalchemy.engine import Row
 from sqlalchemy.engine.result import IteratorResult
 from sqlalchemy.engine.result import SimpleResultMetaData
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import DropTable
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -2332,6 +2337,319 @@ class CursorResultTest(fixtures.TablesTest):
 
         assert result._soft_closed
         assert result.closed
+
+
+class CursorAutoCloseTest(fixtures.TablesTest):
+    """test that the DBAPI cursor is closed for all statement types;
+    immediately for statements that don't return rows, and once rows are
+    exhausted for statements that do.
+
+    test #13640
+
+    """
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "a",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(50)),
+        )
+
+        # no server-generated primary key, for plain text() INSERT
+        Table("b_plain", metadata, Column("data", String(50)))
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.a.insert(), [{"data": "d1"}, {"data": "d2"}]
+        )
+
+    @testing.fixture
+    def cursor_tracker(self, connection):
+        """track the DBAPI cursors used and closed on the connection.
+
+        the number of cursors used for a given operation varies by backend,
+        e.g. reflection queries that fail and are caught, so tests assert
+        that every cursor used was closed and that at least an expected
+        number of cursors were used, rather than exact counts.
+
+        """
+        executed = []
+        closed = []
+
+        # before_cursor_execute also catches cursors whose execute raises,
+        # which are closed by the connection's exception handling
+        @event.listens_for(connection, "before_cursor_execute")
+        def before_cursor_execute(conn, cursor, *arg):
+            # insertmanyvalues may execute the same cursor more than once
+            if cursor not in executed:
+                executed.append(cursor)
+
+        safe_close_cursor = connection._safe_close_cursor
+
+        def track_close(cursor):
+            closed.append(cursor)
+            safe_close_cursor(cursor)
+
+        def assert_all_closed(min_executed):
+            eq_(
+                (
+                    len(executed) >= min_executed,
+                    [c for c in executed if c not in closed],
+                ),
+                (True, []),
+            )
+
+        with mock.patch.object(
+            connection, "_safe_close_cursor", side_effect=track_close
+        ):
+            yield executed, closed, assert_all_closed
+
+        event.remove(
+            connection, "before_cursor_execute", before_cursor_execute
+        )
+
+    @testing.combinations(
+        ("insert", lambda conn, a: conn.execute(a.insert(), {"data": "x"})),
+        (
+            "insert_executemany",
+            lambda conn, a: conn.execute(
+                a.insert(), [{"data": "x"}, {"data": "y"}]
+            ),
+        ),
+        (
+            "insert_return_defaults",
+            lambda conn, a: conn.execute(
+                a.insert().return_defaults(), {"data": "x"}
+            ),
+        ),
+        (
+            "update",
+            lambda conn, a: conn.execute(a.update().values(data="x")),
+        ),
+        (
+            "update_executemany",
+            lambda conn, a: conn.execute(
+                a.update()
+                .where(a.c.id == bindparam("b_id"))
+                .values(data=bindparam("b_data")),
+                [{"b_id": 1, "b_data": "x"}, {"b_id": 2, "b_data": "y"}],
+            ),
+        ),
+        ("delete", lambda conn, a: conn.execute(a.delete())),
+        (
+            "text_insert",
+            lambda conn, a: conn.execute(
+                text("INSERT INTO b_plain (data) VALUES (:data)"),
+                {"data": "x"},
+            ),
+        ),
+        (
+            "text_update",
+            lambda conn, a: conn.execute(
+                text("UPDATE a SET data=:data"), {"data": "x"}
+            ),
+        ),
+        (
+            "text_delete",
+            lambda conn, a: conn.execute(text("DELETE FROM a")),
+        ),
+        (
+            "driver_sql_update",
+            lambda conn, a: conn.exec_driver_sql("UPDATE a SET data='x'"),
+        ),
+        id_="ia",
+        argnames="execute",
+    )
+    def test_no_rows(self, connection, cursor_tracker, execute):
+        executed, closed, assert_all_closed = cursor_tracker
+
+        result = execute(connection, self.tables.a)
+
+        eq_((result._soft_closed, result.cursor), (True, None))
+        assert_all_closed(1)
+
+    @testing.combinations(
+        ("select", lambda conn, a: conn.execute(select(a))),
+        (
+            "select_empty",
+            lambda conn, a: conn.execute(select(a).where(a.c.id == -1)),
+        ),
+        (
+            "select_stream_results",
+            lambda conn, a: conn.execution_options(
+                stream_results=True
+            ).execute(select(a)),
+            testing.requires.server_side_cursors,
+        ),
+        (
+            "text_select",
+            lambda conn, a: conn.execute(text("SELECT id, data FROM a")),
+        ),
+        (
+            "driver_sql_select",
+            lambda conn, a: conn.exec_driver_sql("SELECT id, data FROM a"),
+        ),
+        (
+            "insert_returning",
+            lambda conn, a: conn.execute(
+                a.insert().returning(a.c.id), {"data": "x"}
+            ),
+            testing.requires.insert_returning,
+        ),
+        (
+            "insert_executemany_returning",
+            lambda conn, a: conn.execute(
+                a.insert().returning(a.c.id),
+                [{"data": "x"}, {"data": "y"}],
+            ),
+            testing.requires.insert_executemany_returning,
+        ),
+        (
+            "update_returning",
+            lambda conn, a: conn.execute(
+                a.update().values(data="x").returning(a.c.id)
+            ),
+            testing.requires.update_returning,
+        ),
+        (
+            "delete_returning",
+            lambda conn, a: conn.execute(a.delete().returning(a.c.id)),
+            testing.requires.delete_returning,
+        ),
+        id_="ia",
+        argnames="execute",
+    )
+    def test_rows_exhausted(self, connection, cursor_tracker, execute):
+        executed, closed, assert_all_closed = cursor_tracker
+
+        result = execute(connection, self.tables.a)
+
+        cursor = result.cursor
+        eq_(
+            (result._soft_closed, cursor is not None, cursor in closed),
+            (False, True, False),
+        )
+
+        result.all()
+
+        eq_((result._soft_closed, result.cursor), (True, None))
+        assert cursor in closed
+        assert_all_closed(1)
+
+    @testing.requires.insert_returning
+    @testing.variation("params", ["inline", "separate"])
+    def test_rows_prefetched(
+        self, connection, cursor_tracker, params: testing.Variation
+    ):
+        """rows for supplemental RETURNING are fetched up front, so the
+        cursor is closed at once while the result still delivers them"""
+
+        executed, closed, assert_all_closed = cursor_tracker
+
+        a = self.tables.a
+
+        if params.separate:
+            result = connection.execute(
+                a.insert().return_defaults(supplemental_cols=[a.c.data]),
+                {"data": "x"},
+            )
+        elif params.inline:
+            result = connection.execute(
+                a.insert()
+                .values(data="x")
+                .return_defaults(supplemental_cols=[a.c.data]),
+            )
+        else:
+            params.fail()
+
+        eq_((result._soft_closed, result.cursor), (True, None))
+        assert_all_closed(1)
+        eq_([row.data for row in result], ["x"])
+
+    @testing.combinations(
+        (
+            "construct",
+            lambda b: CreateTable(b),
+            lambda b: DropTable(b),
+        ),
+        (
+            "ddl_element",
+            lambda b: DDL("CREATE TABLE b (x INTEGER)"),
+            lambda b: DDL("DROP TABLE b"),
+        ),
+        (
+            "text",
+            lambda b: text("CREATE TABLE b (x INTEGER)"),
+            lambda b: text("DROP TABLE b"),
+        ),
+        id_="iaa",
+        argnames="create, drop",
+    )
+    def test_ddl(self, connection, metadata, cursor_tracker, create, drop):
+        executed, closed, assert_all_closed = cursor_tracker
+
+        b = Table("b", metadata, Column("x", Integer))
+
+        r1 = connection.execute(create(b))
+        r2 = connection.execute(drop(b))
+
+        eq_(
+            (r1._soft_closed, r1.cursor, r2._soft_closed, r2.cursor),
+            (True, None, True, None),
+        )
+        assert_all_closed(2)
+
+    def test_driver_sql_ddl(self, connection, metadata, cursor_tracker):
+        executed, closed, assert_all_closed = cursor_tracker
+
+        # ensure table is dropped on teardown if the test fails
+        Table("b", metadata, Column("x", Integer))
+
+        r1 = connection.exec_driver_sql("CREATE TABLE b (x INTEGER)")
+        r2 = connection.exec_driver_sql("DROP TABLE b")
+
+        eq_(
+            (r1._soft_closed, r1.cursor, r2._soft_closed, r2.cursor),
+            (True, None, True, None),
+        )
+        assert_all_closed(2)
+
+    def test_metadata_create_drop(self, connection, metadata, cursor_tracker):
+        executed, closed, assert_all_closed = cursor_tracker
+
+        Table("b", metadata, Column("x", Integer))
+        Table("c", metadata, Column("y", Integer))
+
+        metadata.create_all(connection)
+        metadata.drop_all(connection)
+
+        # CREATE TABLE and DROP TABLE for each table, plus whatever
+        # table existence checks the backend uses
+        assert_all_closed(4)
+
+    @testing.requires.savepoints
+    @testing.variation("end", ["rollback", "commit"])
+    def test_savepoint(self, connection, cursor_tracker, end):
+        executed, closed, assert_all_closed = cursor_tracker
+
+        sp = connection.begin_nested()
+        if end.rollback:
+            sp.rollback()
+        elif end.commit:
+            sp.commit()
+        else:
+            end.fail()
+
+        # SAVEPOINT, plus ROLLBACK TO SAVEPOINT / RELEASE SAVEPOINT on
+        # backends that emit them
+        assert_all_closed(1)
 
 
 class KeyTargetingTest(fixtures.TablesTest):
