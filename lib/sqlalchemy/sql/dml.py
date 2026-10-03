@@ -1240,6 +1240,10 @@ class Insert(ValuesBase):
                 "_return_defaults_columns",
                 InternalTraversal.dp_clauseelement_tuple,
             ),
+            (
+                "_supplemental_returning",
+                InternalTraversal.dp_clauseelement_tuple,
+            ),
             ("_sort_by_parameter_order", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
@@ -1554,6 +1558,10 @@ class Update(DMLWhereBase, ValuesBase):
             ("_return_defaults", InternalTraversal.dp_boolean),
             (
                 "_return_defaults_columns",
+                InternalTraversal.dp_clauseelement_tuple,
+            ),
+            (
+                "_supplemental_returning",
                 InternalTraversal.dp_clauseelement_tuple,
             ),
         ]
