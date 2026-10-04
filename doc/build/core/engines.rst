@@ -693,6 +693,42 @@ of an application without creating new engines::
     2021-02-03 11:52:05,520 DEBUG sqlalchemy.engine.Engine [track2] Row (1,)
 
 
+.. _dbengine_logging_notes:
+
+Adding Notes to Individual Statement Logs
+------------------------------------------
+
+The :paramref:`_engine.Connection.execution_options.log_note` execution
+option adds an arbitrary bracketed note immediately after the cache statistics
+badge in a SQL statement's parameter log record.  Unlike
+:paramref:`_engine.Connection.execution_options.logging_token`, the note is
+limited to the statement parameter record and does not alter the SQL string or
+its cache key::
+
+    from sqlalchemy import create_engine
+    from sqlalchemy import text
+
+    engine = create_engine("sqlite://", echo=True)
+
+    with engine.connect() as conn:
+        conn.execute(
+            text("select 1"),
+            execution_options={"log_note": "fetch user summary"},
+        )
+
+The parameter record then includes the note following the cache badge:
+
+.. sourcecode:: text
+
+    INFO sqlalchemy.engine.Engine [generated in 0.00012s] [fetch user summary] ()
+
+The option may also be set on a :class:`_engine.Connection`,
+:class:`_engine.Engine`, or SQL statement through their respective
+``execution_options()`` methods.
+
+.. versionadded:: 2.1
+
+
 Hiding Parameters
 ------------------
 

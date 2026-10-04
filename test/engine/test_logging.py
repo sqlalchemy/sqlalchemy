@@ -1056,6 +1056,144 @@ class LoggingTokenTest(fixtures.TestBase):
             self._assert_no_tokens_in_execute(c3)
 
 
+class LogNoteTest(fixtures.TestBase):
+    def setup_test(self):
+        self.buf = logging.handlers.BufferingHandler(100)
+        logging.getLogger("sqlalchemy.engine").addHandler(self.buf)
+
+    def teardown_test(self):
+        logging.getLogger("sqlalchemy.engine").removeHandler(self.buf)
+
+    @testing.fixture()
+    def note_engine(self, testing_engine):
+        return testing_engine(options={"echo": True})
+
+    def _assert_note_in_execute(
+        self,
+        conn,
+        note,
+        statement=None,
+        execution_options=None,
+    ):
+        self.buf.flush()
+        if statement is None:
+            statement = select(1)
+
+        r = conn.execute(statement, execution_options=execution_options)
+        r.all()
+
+        messages = [rec.getMessage() for rec in self.buf.buffer]
+        note_messages = [
+            message
+            for message in messages
+            if re.match(
+                r"\[(?:raw sql|generated|cached|no key|caching "
+                r"disabled|dialect|insertmanyvalues).*\] \[%s\]"
+                % re.escape(note),
+                message,
+            )
+        ]
+        assert note_messages, messages
+        return note_messages
+
+    def test_log_note_per_execution(self, note_engine):
+        with note_engine.connect() as conn:
+            self._assert_note_in_execute(
+                conn,
+                "fetch user summary",
+                execution_options={"log_note": "fetch user summary"},
+            )
+
+    def test_log_note_statement_option(self, note_engine):
+        with note_engine.connect() as conn:
+            self._assert_note_in_execute(
+                conn,
+                "daily report",
+                statement=select(1).execution_options(log_note="daily report"),
+            )
+
+    def test_log_note_connection_option(self, note_engine):
+        with note_engine.connect().execution_options(
+            log_note="connection scope"
+        ) as conn:
+            self._assert_note_in_execute(conn, "connection scope")
+
+    def test_log_note_engine_option(self, testing_engine):
+        eng = testing_engine(options={"echo": True}).execution_options(
+            log_note="engine scope"
+        )
+
+        with eng.connect() as conn:
+            self._assert_note_in_execute(conn, "engine scope")
+
+    def test_empty_log_note(self, note_engine):
+        self.buf.flush()
+        with note_engine.connect() as conn:
+            conn.execute(select(1), execution_options={"log_note": ""}).all()
+
+        messages = [rec.getMessage() for rec in self.buf.buffer]
+        parameter_messages = [
+            message
+            for message in messages
+            if re.match(
+                r"\[(?:raw sql|generated|cached|no key|caching "
+                r"disabled|dialect).*\] ",
+                message,
+            )
+        ]
+        assert parameter_messages
+        assert not any("] [" in message for message in parameter_messages)
+
+    def test_log_note_with_hidden_parameters(self, testing_engine):
+        eng = testing_engine(options={"echo": True, "hide_parameters": True})
+
+        with eng.connect() as conn:
+            messages = self._assert_note_in_execute(
+                conn,
+                "hidden params",
+                execution_options={"log_note": "hidden params"},
+            )
+
+        assert any(
+            "[hidden params]" in msg
+            and "SQL parameters hidden due to hide_parameters=True" in msg
+            for msg in messages
+        ), messages
+
+    @testing.requires.insertmanyvalues
+    def test_log_note_insertmanyvalues(self, testing_engine):
+        metadata = MetaData()
+        table = Table(
+            "log_note_imv",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50)),
+        )
+        eng = testing_engine(
+            options={"echo": True, "insertmanyvalues_page_size": 2}
+        )
+        metadata.create_all(eng)
+        self.buf.flush()
+
+        try:
+            with eng.begin() as conn:
+                result = conn.execute(
+                    table.insert().returning(table.c.id),
+                    [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}],
+                    execution_options={"log_note": "bulk load"},
+                )
+                result.all()
+        finally:
+            metadata.drop_all(eng)
+
+        messages = [rec.getMessage() for rec in self.buf.buffer]
+        batch_messages = [
+            message for message in messages if "insertmanyvalues" in message
+        ]
+        assert len(batch_messages) == 2, messages
+        assert all("] [bulk load] " in message for message in batch_messages)
+
+
 class EchoTest(fixtures.TestBase):
 
     def setup_test(self):
