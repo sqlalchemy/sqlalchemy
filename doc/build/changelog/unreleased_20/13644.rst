@@ -1,0 +1,24 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13644
+    :versions: 2.1.4
+
+    Fixed regression where copying a :class:`_postgresql.DOMAIN` datatype,
+    as occurs when using :meth:`.TypeEngine.copy`, :meth:`.Table.to_metadata`,
+    or when a :class:`.Column` referring to a :class:`_postgresql.DOMAIN` is
+    placed on a declarative mixin, would drop the
+    :paramref:`_postgresql.DOMAIN.collation`,
+    :paramref:`_postgresql.DOMAIN.default`,
+    :paramref:`_postgresql.DOMAIN.constraint_name`,
+    :paramref:`_postgresql.DOMAIN.not_null` and
+    :paramref:`_postgresql.DOMAIN.check` parameters, causing the
+    ``CREATE DOMAIN`` statement emitted for the copied type to omit these
+    elements.  The regression was introduced in version 2.0.42.
+
+    Additionally, copies of :class:`_postgresql.ENUM` now retain the
+    :paramref:`_types.Enum.sort_key_function`,
+    :paramref:`_types.Enum.create_constraint` and
+    :paramref:`_types.Enum.length` parameters, and copies of
+    :class:`_types.Enum` now retain the
+    :paramref:`_types.Enum.sort_key_function` parameter, all of which were
+    previously reset to their default values.

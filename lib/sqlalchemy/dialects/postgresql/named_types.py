@@ -339,6 +339,9 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
         kw.setdefault("_create_events", False)
         kw.setdefault("values_callable", impl.values_callable)
         kw.setdefault("omit_aliases", impl._omit_aliases)
+        kw.setdefault("sort_key_function", impl._sort_key_function)
+        kw.setdefault("create_constraint", impl.create_constraint)
+        kw.setdefault("length", impl.length)
         kw.setdefault("_adapted_from", impl)
 
         return cls(**kw)
@@ -513,6 +516,19 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
     @classmethod
     def __test_init__(cls):
         return cls("name", sqltypes.Integer)
+
+    def adapt(self, cls, **kw):
+        # the DOMAIN-specific arguments are keyword-only, which are not
+        # picked up by util.constructor_copy(); pass them explicitly so
+        # that copy(), to_metadata() and dialect adaptation retain them
+        kw.setdefault("collation", self.collation)
+        kw.setdefault("collation_schema", self.collation_schema)
+        kw.setdefault("default", self.default)
+        kw.setdefault("constraint_name", self.constraint_name)
+        kw.setdefault("not_null", self.not_null)
+        kw.setdefault("check", self.check)
+        kw.setdefault("create_type", self.create_type)
+        return super().adapt(cls, **kw)
 
 
 class CreateEnumType(schema._CreateDropBase):

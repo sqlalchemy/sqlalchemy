@@ -1939,6 +1939,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         kw.setdefault("create_constraint", self.create_constraint)
         kw.setdefault("length", self.length)
         kw.setdefault("omit_aliases", self._omit_aliases)
+        kw.setdefault("sort_key_function", self._sort_key_function)
         return kw
 
     def adapt_to_emulated(self, impltype, **kw):
