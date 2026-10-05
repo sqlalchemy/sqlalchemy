@@ -34,6 +34,7 @@ from ... import Date
 from ... import DateTime
 from ... import Enum
 from ... import Float
+from ... import func
 from ... import Integer
 from ... import Interval
 from ... import JSON
@@ -1118,6 +1119,75 @@ class TrueDivTest(fixtures.TestBase):
             connection.scalar(select(literal(15) // literal(10))),
             1,
         )
+
+    @testing.combinations(
+        ("typed", lambda divisor: divisor),
+        ("untyped_function", lambda divisor: func.nullif(divisor, 0)),
+        id_="ia",
+        argnames="wrap_divisor",
+    )
+    @testing.combinations(
+        (
+            "float",
+            "7.0",
+            "3.5",
+            Float(),
+            "2",
+            testing.requires.float_cast,
+        ),
+        ("numeric_whole_number", "1", "2.00", Numeric(10, 2), "0.5"),
+        (
+            "numeric_many_decimals",
+            "5.02797279921331664759",
+            "0.71828182845904523537",
+            Numeric(22, 20),
+            "7",
+            testing.requires.precision_numerics_many_significant_digits,
+        ),
+        (
+            "numeric_tiny_divisor",
+            "0.00000000000049382716",
+            "0.00000000000012345679",
+            Numeric(38, 20),
+            "4",
+        ),
+        (
+            "numeric_38_digit_divisor",
+            "30000000000000000000000000000000000000",
+            "10000000000000000000000000000000000000",
+            Numeric(38, 0),
+            "3",
+        ),
+        id_="iaaaa",
+        argnames="left, right, type_, expected",
+    )
+    def test_truediv_divisor(
+        self, connection, wrap_divisor, left, right, type_, expected
+    ):
+        """test #13631
+
+        each pair of operands is divided with the divisor's type visible to
+        SQLAlchemy ("typed") and hidden behind a function of unknown type
+        ("untyped_function").  The operand pairs each rule out an approach
+        to forcing true division that loses precision on some backend:
+
+        * float - a bare CAST(x AS NUMERIC) truncates 3.5 on SQL Server,
+          where NUMERIC means NUMERIC(18, 0)
+        * numeric_whole_number - SQLite stores 2.00 as the integer 2, so a
+          CAST to NUMERIC alone gives integer division
+        * numeric_many_decimals - CAST to FLOAT gives 7.000000000000001
+        * numeric_tiny_divisor - on SQL Server, multiplying a
+          NUMERIC(38, 20) by 1.0 reduces the scale and rounds the divisor
+        * numeric_38_digit_divisor - on SQL Server, multiplying a
+          NUMERIC(38, 0) by 1.0 overflows
+
+        """
+        expr = cast(literal_column(left), type_) / wrap_divisor(
+            cast(literal_column(right), type_)
+        )
+        result = connection.scalar(select(expr))
+
+        eq_(decimal.Decimal(str(result)), decimal.Decimal(expected))
 
 
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
