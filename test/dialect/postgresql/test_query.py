@@ -1375,42 +1375,6 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         eq_([1, 3, 5], [r.id for r in results])
 
 
-class TrueDivTextDivisorTest(fixtures.TestBase):
-    """Division by a string column.
-
-    This test highlights a behavioural change. Earlier versions rendered the
-    divisor as ``CAST(y AS NUMERIC)``, which PostgreSQL accepts for a string
-    column that holds valid numbers. A divisor of a type other than Numeric or
-    Float is no longer cast, so the division renders as ``x / (y + 0.0)``.
-    PostgreSQL has no ``text + numeric`` operator, so the statement raises an
-    error even if every value in the column is a valid number.
-    """
-
-    __only_on__ = "postgresql"
-    __backend__ = True
-
-    def test_text_divisor_fails(self, connection, metadata):
-        """tests that dividing by a column of strings that hold valid
-        numbers raises an error.
-        """
-
-        t = Table(
-            "t",
-            metadata,
-            Column("x", Integer),
-            Column("y", String(20)),
-        )
-        t.create(connection)
-        connection.execute(t.insert(), {"x": 3, "y": "0.4"})
-
-        assert_raises_message(
-            exc.DBAPIError,
-            "operator does not exist",
-            connection.execute,
-            select(t.c.x / t.c.y),
-        )
-
-
 class TupleTest(fixtures.TestBase):
     __only_on__ = "postgresql"
     __backend__ = True

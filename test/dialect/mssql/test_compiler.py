@@ -4,6 +4,7 @@ from sqlalchemy import Computed
 from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import extract
+from sqlalchemy import Float
 from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
@@ -119,6 +120,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT sometable.somecolumn FROM sometable "
             "ORDER BY sometable.somecolumn COLLATE "
             "Latin1_General_CS_AS_KS_WS_CI ASC",
+        )
+
+    def test_select_truediv(self):
+        m = MetaData()
+        t = Table(
+            "sometable",
+            m,
+            Column("numerator", Float),
+            Column("denominator", Float),
+        )
+
+        self.assert_compile(
+            select(t.c.numerator / t.c.denominator),
+            "SELECT sometable.numerator / (sometable.denominator + 0.0) AS anon_1 FROM sometable",
+        )
+
+        self.assert_compile(
+            select(t.c.numerator / func.nullif(t.c.denominator, 0)),
+            "SELECT sometable.numerator / (nullif(sometable.denominator, :nullif_1) + 0.0) "
+            "AS anon_1 FROM sometable",
         )
 
     @testing.fixture

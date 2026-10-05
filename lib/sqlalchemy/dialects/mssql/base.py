@@ -2098,6 +2098,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
+    def visit_truediv_binary(self, binary, operator, **kw):
+        return (
+            self.process(binary.left, **kw)
+            + " / "
+            + f"({self.process(binary.right, **kw)} + 0.0)"
+        )
+
     def visit_true(self, expr, **kw):
         return "1"
 
