@@ -3136,11 +3136,19 @@ class SQLCompiler(Compiled):
             self.process(element.aggregate_order_by, **kw),
         )
 
-    def visit_aggregate_strings_func(self, fn, *, use_function_name, **kw):
+    def visit_aggregate_strings_func(
+        self, fn, *, use_function_name=None, **kw
+    ):
         # aggreagate_order_by attribute is present if visit_function
         # gave us a Function with aggregate_orderby_inline() as the inner
         # contents
         order_by = getattr(fn.clauses, "aggregate_order_by", None)
+
+        if use_function_name is None:
+            raise exc.CompileError(
+                "%s dialect does not support the aggregate_strings function"
+                % self.dialect.name
+            )
 
         literal_exec = dict(kw)
         literal_exec["literal_execute"] = True
@@ -7091,6 +7099,11 @@ class StrSQLCompiler(SQLCompiler):
 
     def get_from_hint_text(self, table, text):
         return "[%s]" % text
+
+    def visit_aggregate_strings_func(self, fn, **kw):
+        return super().visit_aggregate_strings_func(
+            fn, use_function_name=fn.name, **kw
+        )
 
     def visit_regexp_match_op_binary(self, binary, operator, **kw):
         return self._generate_generic_binary(binary, " <regexp> ", **kw)

@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 13642
+
+    Fixed regression where stringifying a statement that includes the
+    :class:`_functions.aggregate_strings` function, such as via ``str()``,
+    would raise ``TypeError``.  Additionally, compiling the function with the
+    default dialect or with a third party dialect that doesn't provide its own
+    rendering for this function now raises :class:`.CompileError` rather than
+    ``TypeError``.
