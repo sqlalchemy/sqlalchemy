@@ -1022,6 +1022,43 @@ class LoggingTokenTest(fixtures.TestBase):
 
         c1.close()
 
+    @testing.variation("token", ["none", "empty"])
+    def test_logging_token_falsy_fresh_connection(self, token_engine, token):
+        """test #13641"""
+
+        value = None if token.none else ""
+
+        with token_engine.connect() as c1:
+            c1.execution_options(logging_token=value)
+            self._assert_no_tokens_in_execute(c1)
+
+    @testing.variation("token", ["none", "empty"])
+    def test_logging_token_falsy_engine(self, token_engine, token):
+        """test #13641"""
+
+        value = None if token.none else ""
+
+        eng = token_engine.execution_options(logging_token=value)
+
+        with eng.connect() as c1:
+            self._assert_no_tokens_in_execute(c1)
+
+    def test_logging_token_reset_twice(self, token_engine):
+        """test #13641"""
+
+        with token_engine.connect() as c1:
+            c1.execution_options(logging_token="my_name_1")
+            self._assert_token_in_execute(c1, "my_name_1")
+
+            c1.execution_options(logging_token=None)
+            self._assert_no_tokens_in_execute(c1)
+
+            c1.execution_options(logging_token=None)
+            self._assert_no_tokens_in_execute(c1)
+
+            c1.execution_options(logging_token="my_name_2")
+            self._assert_token_in_execute(c1, "my_name_2")
+
     def test_logging_token_option_not_transactional(self, token_engine):
         """test #11210"""
 
