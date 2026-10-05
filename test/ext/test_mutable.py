@@ -313,6 +313,36 @@ class _MutableDictTestBase(_MutableDictTestFixture):
 
         eq_(f1.data, {"a": "c"})
 
+    def test_in_place_union_or_persists(self):
+        sess = fixture_session()
+
+        f1 = Foo(data={"a": "b"})
+        sess.add(f1)
+        sess.commit()
+
+        f1.data |= {"c": "d"}
+        sess.commit()
+
+        eq_(sess.get(Foo, f1.id).data, {"a": "b", "c": "d"})
+
+    def test_in_place_union_or_modified_event(self):
+        canary = mock.Mock()
+        event.listen(Foo.data, "modified", canary)
+
+        f1 = Foo(data={"a": "b"})
+        f1.data |= {"c": "d"}
+
+        eq_(len(canary.mock_calls), 1)
+
+    def test_in_place_intersection_emits_modified_event(self):
+        canary = mock.Mock()
+        event.listen(Foo.data, "modified", canary)
+
+        f1 = Foo(data={"a": "b", "c": "d"})
+        f1.data &= {"c": "d"}
+
+        eq_(len(canary.mock_calls), 1)
+
     def test_modified_event(self):
         canary = mock.Mock()
         event.listen(Foo.data, "modified", canary)
@@ -541,6 +571,27 @@ class _MutableListTestBase(_MutableListTestFixture):
             Foo,
             data={1, 2, 3},
         )
+
+    def test_in_place_multiply_persists(self):
+        sess = fixture_session()
+
+        f1 = Foo(data=[1, 2])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data *= 2
+        sess.commit()
+
+        eq_(sess.get(Foo, f1.id).data, [1, 2, 1, 2])
+
+    def test_in_place_multiply_modified_event(self):
+        canary = mock.Mock()
+        event.listen(Foo.data, "modified", canary)
+
+        f1 = Foo(data=[1, 2])
+        f1.data *= 2
+
+        eq_(len(canary.mock_calls), 1)
 
     def test_in_place_mutation_int(self):
         sess = fixture_session()

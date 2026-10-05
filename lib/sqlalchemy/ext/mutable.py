@@ -384,6 +384,7 @@ from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Set
@@ -840,6 +841,30 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
         dict.update(self, *a, **kw)
         self.changed()
 
+    def __ior__(
+        self, other: Mapping[_KT, _VT]
+    ) -> MutableDict[_KT, _VT]:  # type: ignore[override,misc] # noqa: E501
+        self.update(other)
+        return self
+
+    def __iand__(self, other: Mapping[_KT, _VT]) -> MutableDict[_KT, _VT]:
+        keep = other.keys() if hasattr(other, "keys") else set(other)
+        for key in [k for k in dict.keys(self) if k not in keep]:
+            dict.__delitem__(self, key)
+        self.changed()
+        return self
+
+    def __ixor__(
+        self, other: Set[_KT]
+    ) -> MutableDict[_KT, _VT]:  # type: ignore[override,misc] # noqa: E501
+        for key in other:
+            if key in self:
+                dict.__delitem__(self, key)
+            else:
+                dict.__setitem__(self, key, None)  # type: ignore[arg-type]
+        self.changed()
+        return self
+
     if TYPE_CHECKING:
 
         @overload
@@ -947,6 +972,11 @@ class MutableList(Mutable, List[_T]):
 
     def __iadd__(self, x: Iterable[_T]) -> MutableList[_T]:  # type: ignore[override,misc] # noqa: E501
         self.extend(x)
+        return self
+
+    def __imul__(self, n: SupportsIndex) -> MutableList[_T]:  # type: ignore[override,misc] # noqa: E501
+        list.__imul__(self, n)
+        self.changed()
         return self
 
     def insert(self, i: SupportsIndex, x: _T) -> None:
