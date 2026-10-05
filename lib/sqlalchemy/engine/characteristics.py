@@ -142,7 +142,7 @@ class LoggingTokenCharacteristic(ConnectionCharacteristic):
         if value:
             conn._message_formatter = lambda msg: "[%s] %s" % (value, msg)
         else:
-            del conn._message_formatter
+            conn._message_formatter = None
 
     def get_characteristic(
         self, dialect: Dialect, dbapi_conn: DBAPIConnection
