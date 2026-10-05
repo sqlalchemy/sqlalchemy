@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 13643
+    :versions: 2.1.4
+
+    Fixed issue in the :ref:`mutable_toplevel` extension where the in-place
+    ``|=`` operator on :class:`.MutableDict` and the in-place ``*=`` operator
+    on :class:`.MutableList` did not emit change events, so that the
+    modification was not detected and was not persisted on the next flush.
+    These operators now invoke :meth:`.Mutable.changed` in the same way as
+    the in-place set operators of :class:`.MutableSet` and the ``+=``
+    operator of :class:`.MutableList`.
