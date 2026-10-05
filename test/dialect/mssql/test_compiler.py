@@ -133,12 +133,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select(t.c.numerator / t.c.denominator),
-            "SELECT sometable.numerator / (sometable.denominator + 0.0) AS anon_1 FROM sometable",
+            "SELECT sometable.numerator / (sometable.denominator + 0.0) "
+            "AS anon_1 FROM sometable",
         )
 
         self.assert_compile(
             select(t.c.numerator / func.nullif(t.c.denominator, 0)),
-            "SELECT sometable.numerator / (nullif(sometable.denominator, :nullif_1) + 0.0) "
+            "SELECT sometable.numerator / "
+            "(nullif(sometable.denominator, :nullif_1) + 0.0) "
             "AS anon_1 FROM sometable",
         )
 
