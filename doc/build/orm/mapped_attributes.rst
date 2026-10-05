@@ -351,6 +351,35 @@ The :func:`.synonym` can be used for any kind of mapped attribute that
 subclasses :class:`.MapperProperty`, including mapped columns and relationships,
 as well as synonyms themselves.
 
+When a synonym is mapped under a name for which the class already defines a Python
+:term:`descriptor`, that existing descriptor is used as the synonym's descriptor
+instead of the plain delegating property SQLAlchemy would otherwise create.  In the
+example below the ``foo`` attribute is a ``@property`` with a setter defined on the
+class, and the mapper configuration maps ``foo`` as a synonym of ``_foo``; the
+property is picked up from the class, so the setter continues to run on assignment
+and the getter on access::
+
+    class MyClass(Base):
+        __tablename__ = "my_table"
+
+        id = mapped_column(Integer, primary_key=True)
+        _foo = mapped_column(String(50))
+
+        @property
+        def foo(self):
+            return self._foo
+
+        @foo.setter
+        def foo(self, value):
+            self._foo = value.strip()
+
+    mapper(MyClass, MyClass.__table__, properties={"foo": synonym("_foo")})
+
+This is the same behaviour the ``descriptor`` parameter produces below, with the
+descriptor resolved from the class rather than passed explicitly.  A descriptor is
+not adopted when the attribute has already been instrumented for the ORM, or when
+the name is a :term:`dataclass` field.
+
 Beyond a simple mirror, :func:`.synonym` can also be made to reference
 a user-defined :term:`descriptor`.  We can supply our
 ``status`` synonym with a ``@property``::
