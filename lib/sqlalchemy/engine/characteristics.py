@@ -142,7 +142,11 @@ class LoggingTokenCharacteristic(ConnectionCharacteristic):
         if value:
             conn._message_formatter = lambda msg: "[%s] %s" % (value, msg)
         else:
-            del conn._message_formatter
+            # ``_message_formatter`` is a class attribute. It is only
+            # present on the instance after a truthy token was set, so
+            # deleting it raises AttributeError when the token is cleared
+            # on a fresh connection or cleared twice.
+            conn.__dict__.pop("_message_formatter", None)
 
     def get_characteristic(
         self, dialect: Dialect, dbapi_conn: DBAPIConnection

@@ -1022,6 +1022,25 @@ class LoggingTokenTest(fixtures.TestBase):
 
         c1.close()
 
+    def test_logging_token_reset_on_fresh_connection(self, token_engine):
+        """test #13641
+
+        Clearing the token before one was set, or setting an empty token,
+        must not raise. ``_message_formatter`` lives on the class until a
+        truthy token is assigned.
+        """
+
+        eng = token_engine
+
+        with eng.connect() as conn:
+            conn.execution_options(logging_token=None)
+            self._assert_no_tokens_in_execute(conn)
+            conn.execution_options(logging_token="")
+            self._assert_no_tokens_in_execute(conn)
+
+        with eng.execution_options(logging_token=None).connect() as conn:
+            self._assert_no_tokens_in_execute(conn)
+
     def test_logging_token_option_not_transactional(self, token_engine):
         """test #11210"""
 

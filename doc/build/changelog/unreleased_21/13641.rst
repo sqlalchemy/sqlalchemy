@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 13641
+
+    Fixed :paramref:`_engine.Connection.execution_options.logging_token` so
+    that clearing the token with ``None`` or an empty string on a connection
+    that has not yet had a token set, or connecting through an engine
+    configured with ``logging_token=None``, no longer raises
+    ``AttributeError``. ``_message_formatter`` is a class attribute and is
+    only stored on the instance after a non-empty token is applied.
+
