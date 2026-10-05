@@ -356,6 +356,18 @@ class _MutableDictTestBase(_MutableDictTestFixture):
 
         eq_(f1.data, {"a": "z"})
 
+    def test_operator_update(self):
+        sess = fixture_session()
+
+        f1 = Foo(data={"a": "b"})
+        sess.add(f1)
+        sess.commit()
+
+        f1.data |= {"a": "z", "c": "d"}
+        sess.commit()
+
+        eq_(f1.data, {"a": "z", "c": "d"})
+
     def test_pop(self):
         sess = fixture_session()
 
@@ -677,6 +689,30 @@ class _MutableListTestBase(_MutableListTestFixture):
         sess.commit()
 
         eq_(f1.data, [1, 2, 5])
+
+    def test_operator_multiply(self):
+        sess = fixture_session()
+
+        f1 = Foo(data=[1, 2])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data *= 2
+        sess.commit()
+
+        eq_(f1.data, [1, 2, 1, 2])
+
+    def test_operator_multiply_zero(self):
+        sess = fixture_session()
+
+        f1 = Foo(data=[1, 2])
+        sess.add(f1)
+        sess.commit()
+
+        f1.data *= 0
+        sess.commit()
+
+        eq_(f1.data, [])
 
     def test_insert(self):
         sess = fixture_session()
