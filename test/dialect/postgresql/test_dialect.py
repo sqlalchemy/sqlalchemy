@@ -345,6 +345,20 @@ class MultiHostConnectTest(fixtures.TestBase):
                 },
             ),
             (
+                # issue #13637: bracketed IPv6 in the repeated host:port form
+                "postgresql+psycopg2://USER:PASS@/DB"
+                "?host=[2001:db8::1]:5432&host=[2001:db8::2]:5433",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "2001:db8::1,2001:db8::2",
+                    "port": "5432,5433",
+                    "asyncpg_host": ["2001:db8::1", "2001:db8::2"],
+                    "asyncpg_port": [5432, 5433],
+                },
+            ),
+            (
                 "postgresql+psycopg2://USER:PASS@/DB?host=hostA:",
                 {
                     "dbname": "DB",

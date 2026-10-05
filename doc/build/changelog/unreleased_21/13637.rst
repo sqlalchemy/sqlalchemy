@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13637
+
+    Fixed PostgreSQL multi-host URL parsing for the repeated
+    ``host=[ipv6]:port`` form. Bracketed IPv6 literals were split on every
+    colon, which raised ``ValueError: too many values to unpack``. Host
+    names and IPv4 addresses in the same form are unchanged.
+

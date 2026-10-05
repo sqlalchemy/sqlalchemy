@@ -3829,6 +3829,34 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
     def get_deferrable(self, connection):
         raise NotImplementedError()
 
+    def _split_host_port_token(
+        self, token: str
+    ) -> Union[Tuple[str, Optional[str]], Tuple[str, ...]]:
+        """Split one repeated ``host`` query token into host and port.
+
+        ``name``, ``name:port``, ``[ipv6]`` and ``[ipv6]:port`` are
+        accepted. Bracketed IPv6 literals contain colons, so splitting the
+        whole token on ``:`` yields more than two fields and cannot be
+        unpacked. Unbracketed tokens keep the historical ``split(":")``
+        behavior.
+
+        """
+        if token.startswith("["):
+            end = token.find("]")
+            if end > 0:
+                host = token[1:end]
+                rest = token[end + 1 :]
+                if rest == "":
+                    return host, None
+                if rest.startswith(":"):
+                    return host, rest[1:]
+        if ":" in token:
+            parts = token.split(":")
+            if len(parts) == 2:
+                return parts[0], parts[1]
+            return tuple(parts)
+        return token, None
+
     def _split_multihost_from_url(self, url: URL) -> Union[
         Tuple[None, None],
         Tuple[Tuple[Optional[str], ...], Tuple[Optional[int], ...]],
@@ -3843,7 +3871,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 integrated_multihost = True
                 hosts, ports_str = zip(
                     *[
-                        token.split(":") if ":" in token else (token, None)
+                        self._split_host_port_token(token)
                         for token in url.query["host"]
                     ]
                 )
