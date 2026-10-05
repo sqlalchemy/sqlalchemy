@@ -4,6 +4,7 @@ from sqlalchemy import Computed
 from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import extract
+from sqlalchemy import Float
 from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
@@ -120,6 +121,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ORDER BY sometable.somecolumn COLLATE "
             "Latin1_General_CS_AS_KS_WS_CI ASC",
         )
+
+    @testing.combinations(
+        (
+            lambda t: t.c.f / t.c.f,
+            "SELECT t.f / (t.f + 0.0) AS anon_1 FROM t",
+        ),
+        (
+            lambda t: t.c.i / t.c.i,
+            "SELECT t.i / (t.i + 0.0) AS anon_1 FROM t",
+        ),
+        (
+            lambda t: t.c.i / literal(5),
+            "SELECT t.i / (:param_1 + 0.0) AS anon_1 FROM t",
+        ),
+        (
+            lambda t: t.c.f / func.nullif(t.c.f, 0),
+            "SELECT t.f / (nullif(t.f, :nullif_1) + 0.0) AS anon_1 FROM t",
+        ),
+    )
+    def test_truediv(self, fn, expected):
+        """test #13631"""
+
+        t = table("t", column("i", Integer), column("f", Float))
+        self.assert_compile(select(fn(t)), expected)
 
     @testing.fixture
     def column_expression_fixture(self):
