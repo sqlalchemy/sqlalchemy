@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 13641
+    :versions: 2.1.4
+
+    Fixed issue in the
+    :paramref:`_engine.Connection.execution_options.logging_token` option
+    where setting the value to ``None`` or another false value would raise
+    ``AttributeError`` if a logging token had not already been established on
+    that :class:`_engine.Connection`, such as on a newly checked out
+    connection, when the option was set at the :class:`_engine.Engine` level,
+    or when the token was reset to ``None`` more than once.  Regression
+    introduced in 2.0.30 as part of :ticket:`11210`.
