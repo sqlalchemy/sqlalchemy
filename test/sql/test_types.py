@@ -2772,6 +2772,23 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         typ = Enum(self.SomeEnum, sort_key_function=None, omit_aliases=False)
         is_(typ.sort_key_function, None)
 
+    @testing.combinations(None, len, argnames="sort_key_function")
+    def test_sort_key_function_copied(self, sort_key_function):
+        """test #13644"""
+
+        typ = Enum(
+            self.SomeEnum,
+            sort_key_function=sort_key_function,
+            omit_aliases=False,
+        )
+        eq_(
+            [
+                typ.copy().sort_key_function,
+                typ.adapt(Enum).sort_key_function,
+            ],
+            [sort_key_function, sort_key_function],
+        )
+
     def test_pep435_enum_round_trip(self, connection):
         stdlib_enum_table = self.tables["stdlib_enum_table"]
 

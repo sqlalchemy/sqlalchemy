@@ -88,6 +88,7 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -142,6 +143,169 @@ class MiscTypesTest(AssertsCompiledSQL, fixtures.TestBase):
     )
     def test_float_type_compile(self, type_, sql_text):
         self.assert_compile(type_, sql_text)
+
+
+class NamedTypeAdaptionTest(AssertsCompiledSQL, fixtures.TestBase):
+    """test that copies / adaptions of named types retain all arguments,
+    independent of backend; #13644"""
+
+    __dialect__ = postgresql.dialect()
+
+    class MyEnum(_PY_Enum):
+        one = 1
+        two = 2
+        uno = 1
+
+    @staticmethod
+    def _sort_key(value):
+        return 0
+
+    @staticmethod
+    def _values_callable(enum_cls):
+        return [m.name.upper() for m in enum_cls]
+
+    def _domain(self, metadata):
+        typ = DOMAIN(
+            "my_domain",
+            String,
+            collation="my_collation",
+            default="'x'",
+            constraint_name="my_constraint",
+            not_null=True,
+            check="VALUE != 'y'",
+            create_type=False,
+            schema="my_schema",
+            metadata=metadata,
+        )
+
+        def attrs(d):
+            return {
+                "name": d.name,
+                "schema": d.schema,
+                "metadata": d.metadata,
+                "data_type": type(d.data_type),
+                "collation": d.collation,
+                "default": d.default,
+                "constraint_name": d.constraint_name,
+                "not_null": d.not_null,
+                "check": str(d.check),
+                "create_type": d.create_type,
+            }
+
+        expected = {
+            "name": "my_domain",
+            "schema": "my_schema",
+            "data_type": String,
+            "collation": "my_collation",
+            "default": "'x'",
+            "constraint_name": "my_constraint",
+            "not_null": True,
+            "check": "VALUE != 'y'",
+            "create_type": False,
+        }
+        ddl = (
+            postgresql.CreateDomainType,
+            "CREATE DOMAIN my_schema.my_domain AS VARCHAR "
+            "COLLATE my_collation "
+            "DEFAULT '''x''' CONSTRAINT my_constraint "
+            "NOT NULL CHECK (VALUE != 'y')",
+        )
+        return typ, attrs, expected, ddl
+
+    def _enum(self, metadata):
+        typ = ENUM(
+            self.MyEnum,
+            name="my_enum",
+            schema="my_schema",
+            metadata=metadata,
+            create_type=False,
+            values_callable=self._values_callable,
+            validate_strings=True,
+            omit_aliases=False,
+            sort_key_function=self._sort_key,
+            create_constraint=True,
+            length=20,
+        )
+
+        def attrs(e):
+            return {
+                "name": e.name,
+                "schema": e.schema,
+                "metadata": e.metadata,
+                "enums": e.enums,
+                "enum_class": e.enum_class,
+                "create_type": e.create_type,
+                "values_callable": e.values_callable,
+                "validate_strings": e.validate_strings,
+                "omit_aliases": e._omit_aliases,
+                "sort_key_function": e.sort_key_function,
+                "create_constraint": e.create_constraint,
+                "length": e.length,
+            }
+
+        expected = {
+            "name": "my_enum",
+            "schema": "my_schema",
+            "enums": ["ONE", "TWO"],
+            "enum_class": self.MyEnum,
+            "create_type": False,
+            "values_callable": self._values_callable,
+            "validate_strings": True,
+            "omit_aliases": False,
+            "sort_key_function": self._sort_key,
+            "create_constraint": True,
+            "length": 20,
+        }
+        ddl = (
+            postgresql.CreateEnumType,
+            "CREATE TYPE my_schema.my_enum AS ENUM ('ONE', 'TWO')",
+        )
+        return typ, attrs, expected, ddl
+
+    @testing.variation("datatype", ["domain", "enum"])
+    @testing.variation(
+        "copy_type", ["copy", "adapt", "dialect_impl", "to_metadata", "mixin"]
+    )
+    def test_copy_retains_arguments(self, datatype, copy_type):
+        m1 = MetaData()
+
+        if datatype.domain:
+            typ, attrs, expected, (ddl_cls, ddl) = self._domain(m1)
+        elif datatype.enum:
+            typ, attrs, expected, (ddl_cls, ddl) = self._enum(m1)
+        else:
+            datatype.fail()
+
+        expected_metadata = m1
+
+        if copy_type.copy:
+            copied = typ.copy()
+        elif copy_type.adapt:
+            copied = typ.adapt(type(typ))
+        elif copy_type.dialect_impl:
+            copied = typ.dialect_impl(postgresql.dialect())
+        elif copy_type.to_metadata:
+            t = Table("t", m1, Column("x", typ), schema="my_schema")
+            m2 = MetaData()
+            copied = t.to_metadata(m2).c.x.type
+            expected_metadata = m2
+        elif copy_type.mixin:
+            Base = declarative_base()
+
+            class Mixin:
+                x = Column(typ)
+
+            class A(Mixin, Base):
+                __tablename__ = "a"
+                id = Column(Integer, primary_key=True)
+
+            copied = A.__table__.c.x.type
+        else:
+            copy_type.fail()
+
+        is_not(copied, typ)
+        eq_(attrs(copied), {**expected, "metadata": expected_metadata})
+        self.assert_compile(ddl_cls(copied), ddl)
 
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
