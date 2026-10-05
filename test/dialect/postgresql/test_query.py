@@ -35,7 +35,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import REGCONFIG
 from sqlalchemy.sql.expression import type_coerce
 from sqlalchemy.testing import assert_raises
-from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
