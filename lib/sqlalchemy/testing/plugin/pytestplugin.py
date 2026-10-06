@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import collections
 from functools import update_wrapper
+import hashlib
 import inspect
 import itertools
 import operator
@@ -545,6 +546,31 @@ def pytest_runtest_call(item):
 _current_report = None
 
 
+_MAX_PARAM_ID_LEN = 60
+
+
+def _shorten_param_id(ident):
+    """shorten a very long parameter id for console / junit output.
+
+    keeps the leading portion of the string and appends a short digest of
+    the full value, so that ids remain stable and distinct.
+
+    """
+    if len(ident) <= _MAX_PARAM_ID_LEN:
+        return ident
+    digest = hashlib.md5(
+        ident.encode("utf-8"), usedforsecurity=False
+    ).hexdigest()[:8]
+    return f"{ident[:_MAX_PARAM_ID_LEN - 12]}...{digest}"
+
+
+def pytest_make_parametrize_id(config, val, argname):
+    if isinstance(val, str) and len(val) > _MAX_PARAM_ID_LEN:
+        return _shorten_param_id(val.encode("unicode_escape").decode("ascii"))
+    else:
+        return None
+
+
 def pytest_runtest_logreport(report):
     global _current_report
     if report.when == "call":
@@ -768,7 +794,8 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
                         parameters,
                         param_exclusions,
                         "-".join(
-                            comb_fn(getter(arg)) for getter, comb_fn in fns
+                            _shorten_param_id(comb_fn(getter(arg)))
+                            for getter, comb_fn in fns
                         ),
                     )
                 )
