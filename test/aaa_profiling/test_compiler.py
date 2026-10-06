@@ -14,7 +14,7 @@ t1 = t2 = None
 
 
 class CompileTest(fixtures.TestBase, AssertsExecutionResults):
-    __requires__ = ("cpython",)
+    __requires__ = ("cpython", "dbapi_profiling_backend")
     __backend__ = True
 
     @classmethod

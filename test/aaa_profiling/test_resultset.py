@@ -18,6 +18,7 @@ NUM_RECORDS = 1000
 
 
 class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
+    __requires__ = ("dbapi_profiling_backend",)
     __backend__ = True
 
     @classmethod
@@ -170,6 +171,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
 
 
 class ExecutionTest(fixtures.TestBase):
+    __requires__ = ("dbapi_profiling_backend",)
     __backend__ = True
 
     def test_minimal_connection_execute(self):

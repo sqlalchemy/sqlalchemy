@@ -119,7 +119,9 @@ class ProfileStatsFile:
     def platform_key(self) -> PlatformKey:
         db = config.db
         assert db is not None, "no database configured"
+        return self.platform_key_for(db)
 
+    def platform_key_for(self, db: Any) -> PlatformKey:
         dbapi_flags = []
         if db.dialect.is_async:
             dbapi_flags.append("async")
@@ -142,6 +144,27 @@ class ProfileStatsFile:
             driver=db.driver,
             dbapi_flags=tuple(dbapi_flags),
             cextensions=has_compiled_ext(),
+        )
+
+    def has_platform(self, db: Any) -> bool:
+        """Return True if profiling tests should run against the given
+        engine.
+
+        This is the case when the profile file has counts for at least
+        one test on the engine's platform, or when profiles are being
+        written.  Used to keep profiling test classes from being generated
+        at all for drivers / interpreters that would only have each
+        test skip from within :func:`.count_functions`, after the class
+        has already run its fixture setup.
+
+        """
+        if self.write:
+            return True
+
+        platform_key = self.platform_key_for(db)
+        return any(
+            platform_key in self.profiles.platforms_for(test_key)
+            for test_key in self.profiles.test_keys()
         )
 
     def has_stats(self) -> bool:
