@@ -6,6 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import schema
@@ -563,6 +564,128 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(reg.metadata.tables["user"].c.keys(), ["id", "login"])
         eq_(m1.tables["user"].c.keys(), ["id", "name", "surname"])
         eq_(m2.tables["user"].c.keys(), ["id", "username"])
+
+    @testing.variation("placement", ["abstract", "mixin", "on_class"])
+    @testing.variation("base_style", ["declarative_base", "legacy_base"])
+    def test_custom_metadata_placement(self, placement, base_style):
+        """test #13659"""
+
+        m1 = MetaData()
+
+        if base_style.declarative_base:
+            DBase = Base
+        elif base_style.legacy_base:
+            DBase = declarative_base(metadata=mapper_registry.metadata)
+        else:
+            base_style.fail()
+
+        if placement.abstract:
+
+            class Abstract(DBase):
+                __abstract__ = True
+                metadata = m1
+
+            class User(Abstract):
+                __tablename__ = "user"
+
+                id = Column(Integer, primary_key=True)
+                name = Column(String)
+
+        elif placement.mixin:
+
+            class Mixin:
+                metadata = m1
+
+            class User(Mixin, DBase):
+                __tablename__ = "user"
+
+                id = Column(Integer, primary_key=True)
+                name = Column(String)
+
+        elif placement.on_class:
+
+            class User(DBase):
+                __tablename__ = "user"
+                metadata = m1
+
+                id = Column(Integer, primary_key=True)
+                name = Column(String)
+
+        else:
+            placement.fail()
+
+        class Address(DBase):
+            __tablename__ = "address"
+
+            id = Column(Integer, primary_key=True)
+
+        is_(User.__table__.metadata, m1)
+        is_(User.metadata, m1)
+        eq_(set(m1.tables), {"user"})
+        eq_(set(DBase.metadata.tables), {"address"})
+        eq_(m1.tables["user"].c.keys(), ["id", "name"])
+
+    @testing.variation("placement", ["abstract", "mixin", "on_class"])
+    @testing.variation("base_style", ["declarative_base", "legacy_base"])
+    def test_registry_placement_not_used(self, placement, base_style):
+        """test #13659; unlike metadata, a registry attribute on a class
+        other than the declarative base does not change the registry
+        used for mapping.  the mapped class case warns.
+
+        """
+
+        r2 = registry()
+
+        if base_style.declarative_base:
+            DBase = Base
+        elif base_style.legacy_base:
+            DBase = declarative_base(metadata=mapper_registry.metadata)
+        else:
+            base_style.fail()
+
+        base_registry = DBase.registry
+
+        if placement.abstract:
+
+            class Abstract(DBase):
+                __abstract__ = True
+                registry = r2
+
+            class User(Abstract):
+                __tablename__ = "user"
+
+                id = Column(Integer, primary_key=True)
+
+        elif placement.mixin:
+
+            class Mixin:
+                registry = r2
+
+            class User(Mixin, DBase):
+                __tablename__ = "user"
+
+                id = Column(Integer, primary_key=True)
+
+        elif placement.on_class:
+            with expect_warnings(
+                "Attribute name 'registry' should be left reserved"
+            ):
+
+                class User(DBase):
+                    __tablename__ = "user"
+                    registry = r2
+
+                    id = Column(Integer, primary_key=True)
+
+        else:
+            placement.fail()
+
+        is_(inspect(User).registry, base_registry)
+        is_(User.registry, r2)
+        is_(User.__table__.metadata, base_registry.metadata)
+        eq_(set(base_registry.metadata.tables), {"user"})
+        eq_(set(r2.metadata.tables), set())
+        eq_(set(r2.mappers), set())
 
     @testing.combinations(Column, mapped_column, argnames="_column")
     @testing.combinations("strname", "colref", "objref", argnames="fk_type")

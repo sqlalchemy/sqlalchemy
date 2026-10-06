@@ -67,6 +67,7 @@ from ..sql import expression
 from ..sql._annotated_cols import TypedColumns
 from ..sql.base import _NoArg
 from ..sql.schema import Column
+from ..sql.schema import MetaData
 from ..sql.schema import Table
 from ..util import topological
 from ..util.typing import _AnnotationScanType
@@ -80,7 +81,6 @@ if TYPE_CHECKING:
     from .decl_api import declared_attr
     from .instrumentation import ClassManager
     from ..sql.elements import NamedColumn
-    from ..sql.schema import MetaData
     from ..sql.selectable import FromClause
 
 _T = TypeVar("_T", bound=Any)
@@ -1525,7 +1525,9 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                 value = SynonymProperty(value.key)
                 setattr(cls, k, value)
 
-            if k in ("metadata", "registry"):
+            if k == "registry" or (
+                k == "metadata" and not isinstance(value, MetaData)
+            ):
                 noun = {
                     "metadata": "MetaData instance",
                     "registry": "Declarative class registry",
