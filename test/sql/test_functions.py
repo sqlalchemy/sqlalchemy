@@ -258,6 +258,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT LISTAGG(t.value, ',') AS" " aggregate_strings_1 FROM t",
             "oracle",
         ),
+        (
+            "SELECT aggregate_strings(t.value, ',') "
+            "AS aggregate_strings_1 FROM t",
+            "default_enhanced",
+        ),
     )
     def test_aggregate_strings(self, expected_sql, dialect):
         t = table("t", column("value", String))
@@ -297,6 +302,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             " aggregate_strings_1 FROM t",
             "oracle",
         ),
+        (
+            "SELECT aggregate_strings(t.value, ',' "
+            "ORDER BY t.ordering DESC) AS aggregate_strings_1 FROM t",
+            "default_enhanced",
+        ),
     )
     def test_aggregate_strings_order_by(self, expected_sql, dialect):
         t = table("t", column("value", String), column("ordering", String))
@@ -309,6 +319,41 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt, expected_sql, dialect=dialect, render_postcompile=True
         )
+
+    @testing.variation("use_order_by", [True, False])
+    def test_aggregate_strings_str(self, use_order_by):
+        """test #13642"""
+        t = table("t", column("value", String), column("ordering", String))
+        expr = func.aggregate_strings(t.c.value, ",")
+        if use_order_by:
+            expr = expr.aggregate_order_by(t.c.ordering.desc())
+            expected = (
+                "SELECT aggregate_strings(t.value, "
+                "__[POSTCOMPILE_aggregate_strings_2] "
+                "ORDER BY t.ordering DESC) AS aggregate_strings_1 \nFROM t"
+            )
+        else:
+            expected = (
+                "SELECT aggregate_strings(t.value, "
+                "__[POSTCOMPILE_aggregate_strings_2]) "
+                "AS aggregate_strings_1 \nFROM t"
+            )
+
+        eq_(str(select(expr)), expected)
+
+    @testing.variation("use_order_by", [True, False])
+    def test_aggregate_strings_default_dialect_raises(self, use_order_by):
+        """test #13642"""
+        t = table("t", column("value", String), column("ordering", String))
+        expr = func.aggregate_strings(t.c.value, ",")
+        if use_order_by:
+            expr = expr.aggregate_order_by(t.c.ordering.desc())
+
+        with expect_raises_message(
+            exc.CompileError,
+            "default dialect does not support the aggregate_strings function",
+        ):
+            select(expr).compile(dialect=default.DefaultDialect())
 
     def test_cube_operators(self):
         t = table(
