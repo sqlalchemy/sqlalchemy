@@ -1646,6 +1646,12 @@ class LikeFunctionsTest(fixtures.TablesTest):
 
 
 class ComputedColumnTest(fixtures.TablesTest):
+    """This test uses Computed without specifying the persisted mode.
+    On some postgresql version the compiler may raise a warning.
+    Use `warns_if` in the computed_columns requirement to catch the warning
+    conditionally on the postgresql version.
+    """
+
     __sparse_driver_backend__ = True
     __requires__ = ("computed_columns",)
 
