@@ -3346,7 +3346,7 @@ class SQLCompiler(Compiled):
             util.warn(
                 "Column-expression-level unary distinct() "
                 "should not be used outside of an aggregate "
-                "function. For general 'SELECT DISTINCT' support"
+                "function. For general 'SELECT DISTINCT' support "
                 "use select().distinct()."
             )
 
