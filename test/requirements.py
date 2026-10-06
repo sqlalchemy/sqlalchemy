@@ -1603,6 +1603,16 @@ class DefaultRequirements(SuiteRequirements):
         return exclusions.open()
 
     @property
+    def float_cast(self):
+        """target backend supports CAST to a FLOAT type"""
+
+        return skip_if(
+            lambda config: against(config, ["mysql", "mariadb"])
+            and not config.db.dialect._support_float_cast,
+            "MySQL < 8.0.17 / MariaDB < 10.4.5 can't CAST to FLOAT",
+        )
+
+    @property
     def precision_numerics_many_significant_digits(self):
         """target backend supports values with many digits on both sides,
         such as 319438950232418390.273596, 87673.594069654243

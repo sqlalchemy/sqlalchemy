@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 13631
+
+    Fixed issue where the Python true division operator ``/`` would truncate
+    the fractional part of the divisor on SQL Server when the divisor's type
+    was not numeric, such as when using a SQL function like ``NULLIF()`` that
+    has no known return type. The divisor was rendered as ``CAST(... AS
+    NUMERIC)``, which on SQL Server implies a scale of zero; the divisor is
+    now rendered as ``(... + 0.0)``, the same approach used by the SQLite
+    dialect, which promotes it to a decimal value without truncation.
+    Pull request courtesy James Guthrie.
