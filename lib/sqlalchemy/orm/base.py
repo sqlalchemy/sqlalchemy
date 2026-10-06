@@ -881,6 +881,60 @@ class _DeclarativeMapped(Mapped[_T_co], _MappedAttribute[_T_co]):
         return NotImplemented
 
 
+class Unmapped(_MappedAnnotationBase[_T_co]):
+    """Represent a database column that is part of the mapped
+    :class:`_schema.Table`, but is not mapped by the ORM.
+
+    The :class:`_orm.Unmapped` type annotation is used in an
+    :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
+    mapping, in conjunction with the :func:`_orm.unmapped_column`
+    construct, to indicate a column that should be present in the
+    :class:`_schema.Table` generated for the class, while not being part
+    of the Python model at all.  The type and nullability of the
+    :class:`_schema.Column` are derived from the annotation in the same
+    way as for :class:`_orm.Mapped`.
+
+    E.g.::
+
+        class User(Base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str]
+
+            legacy_name: Unmapped[str | None] = unmapped_column()
+
+    The ``legacy_name`` column is part of ``User.__table__``, but there is
+    no ``User.legacy_name`` attribute, and when using
+    :ref:`orm_declarative_native_dataclasses`, it is not part of the
+    dataclass.
+
+    A bare ``Unmapped[]`` annotation with no right-hand side is equivalent to
+    ``unmapped_column()`` with no arguments.  When using
+    :ref:`orm_declarative_native_dataclasses`, the attribute is omitted from
+    the dataclass and its ``__init__()`` method in both cases; however,
+    :pep:`681` typing tools are only able to determine this when
+    :func:`_orm.unmapped_column` is present, and otherwise see the attribute
+    as a required ``__init__()`` argument, so it should always be included
+    in that case.
+
+    .. versionadded:: 2.1.5
+
+    .. seealso::
+
+        :ref:`orm_declarative_unmapped_column`
+
+        :func:`_orm.unmapped_column`
+
+    """
+
+    __slots__ = ()
+
+
+def _is_unmapped_container(mapped_container: Optional[type]) -> bool:
+    return mapped_container is Unmapped
+
+
 class DynamicMapped(_MappedAnnotationBase[_T_co]):
     """Represent the ORM mapped attribute type for a "dynamic" relationship.
 

@@ -32,6 +32,7 @@ from . import attributes
 from . import exc as orm_exc
 from .base import _DeclarativeMapped
 from .base import class_mapper
+from .base import Unmapped
 from .descriptor_props import CompositeProperty
 from .descriptor_props import ConcreteInheritedProperty
 from .descriptor_props import SynonymProperty
@@ -88,6 +89,7 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
 _NC = TypeVar("_NC", bound="NamedColumn[Any]")
+_MC = TypeVar("_MC", bound="MappedColumn[Any]")
 
 __all__ = [
     "ColumnProperty",
@@ -603,7 +605,17 @@ class MappedColumn(
         util.set_creation_order(self)
 
     def _copy(self, **kw: Any) -> Self:
-        new = self.__class__.__new__(self.__class__)
+        return self._copy_as(self.__class__, **kw)
+
+    def _as_unmapped_column(self) -> UnmappedColumn[_T]:
+        """produce a copy of this :class:`.MappedColumn` as an
+        :class:`.UnmappedColumn`, e.g. for a ``mapped_column()`` that's
+        inside of ``Annotated`` that's applied to ``Unmapped[]``."""
+
+        return self._copy_as(UnmappedColumn)
+
+    def _copy_as(self, cls: Type[_MC], **kw: Any) -> _MC:
+        new = cls.__new__(cls)
         new.column = self.column._copy(**kw)
         new.deferred = self.deferred
         new.deferred_group = self.deferred_group
@@ -970,3 +982,65 @@ class MappedColumn(
                     )
 
             self.column._set_type(new_sqltype)
+
+
+class UnmappedColumn(MappedColumn[_T], Unmapped[_T]):
+    """Declares a :class:`_schema.Column` on a declarative class that is
+    part of the :class:`_schema.Table`, but is not mapped by the ORM.
+
+    To construct :class:`_orm.UnmappedColumn` objects, use the
+    :func:`_orm.unmapped_column` constructor function.
+
+    .. versionadded:: 2.1.5
+
+    """
+
+    __slots__ = ()
+
+    @property
+    def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
+        return None
+
+    def declarative_scan(
+        self,
+        decl_scan: _DeclarativeMapperConfig,
+        registry: _RegistryType,
+        cls: Type[Any],
+        originating_module: Optional[str],
+        key: str,
+        mapped_container: Optional[Type[Mapped[Any]]],
+        annotation: Optional[_AnnotationScanType],
+        extracted_mapped_annotation: Optional[_AnnotationScanType],
+        is_dataclass_field: bool,
+    ) -> None:
+        super().declarative_scan(
+            decl_scan,
+            registry,
+            cls,
+            originating_module,
+            key,
+            mapped_container,
+            annotation,
+            extracted_mapped_annotation,
+            is_dataclass_field,
+        )
+
+        # unmapped_column() itself disallows these ORM-only arguments up
+        # front; check again here for those that were merged in from a
+        # mapped_column() inside of an Annotated type
+        disallowed = [
+            name
+            for name, present in [
+                ("deferred", self.deferred is not _NoArg.NO_ARG),
+                ("deferred_group", self.deferred_group is not None),
+                ("deferred_raiseload", self.deferred_raiseload is not None),
+                ("active_history", self.active_history),
+            ]
+            if present
+        ]
+        if disallowed:
+            raise sa_exc.ArgumentError(
+                f'Attribute "{cls.__name__}.{key}" is not mapped, and does '
+                "not accept the argument(s) "
+                f"{', '.join(repr(k) for k in disallowed)}"
+            )

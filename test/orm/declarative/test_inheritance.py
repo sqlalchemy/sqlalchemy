@@ -22,6 +22,7 @@ from sqlalchemy.orm.decl_api import registry
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -126,10 +127,30 @@ class DeclarativeInheritanceTest(
                 "polymorphic_identity": "person",
                 "version_id_col": "a",
                 "column_prefix": "bar",
-                "include_properties": ["id", "a", "b"],
             }
 
         assert class_mapper(Person).version_id_col == "a"
+
+    def test_include_properties_excluding_declared_attrs(self):
+        """include_properties excluding attributes declared on the class
+        is deprecated, #13650"""
+
+        with expect_deprecated(
+            "Attribute 'c' declared on class .*Person.* is excluded",
+            "Attribute 'd' declared on class .*Person.* is excluded",
+        ):
+
+            class Person(Base):
+                __tablename__ = "people"
+                id = Column(Integer, primary_key=True)
+                a = Column(Integer)
+                b = Column(Integer)
+                c = Column(Integer)
+                d = Column(Integer)
+                __mapper_args__ = {
+                    "include_properties": ["id", "a", "b"],
+                }
+
         assert class_mapper(Person).include_properties == {"id", "a", "b"}
 
     def test_custom_join_condition(self):

@@ -43,6 +43,7 @@ from ._orm_constructors import deferred
 from ._orm_constructors import mapped_column
 from ._orm_constructors import relationship
 from ._orm_constructors import synonym
+from ._orm_constructors import unmapped_column
 from .attributes import InstrumentedAttribute
 from .base import _inspect_mapped_class
 from .base import _is_mapped_class
@@ -166,6 +167,7 @@ class DeclarativeAttributeIntercept(
         Composite,
         Synonym,
         mapped_column,
+        unmapped_column,
         relationship,
         composite,
         synonym,
@@ -1701,6 +1703,7 @@ class registry(EventTarget):
             Composite,
             Synonym,
             mapped_column,
+            unmapped_column,
             relationship,
             composite,
             synonym,
@@ -2165,6 +2168,7 @@ def as_declarative(**kw: Any) -> Callable[[Type[_T]], Type[_T]]:
         Composite,
         Synonym,
         mapped_column,
+        unmapped_column,
         relationship,
         composite,
         synonym,
@@ -2250,6 +2254,7 @@ def _inspect_decl_meta(cls: Type[Any]) -> Optional[Mapper[Any]]:
         Composite,
         Synonym,
         mapped_column,
+        unmapped_column,
         relationship,
         composite,
         synonym,

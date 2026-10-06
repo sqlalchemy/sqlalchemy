@@ -651,6 +651,83 @@ This change includes the following API changes:
 
 :ticket:`12168`
 
+.. _change_13650:
+
+Excluding declared attributes with ``exclude_properties`` is deprecated; use ``unmapped_column()``
+--------------------------------------------------------------------------------------------------
+
+A consequence of the change described at :ref:`change_12168` is that an ORM
+Mapped Dataclass attribute which includes
+:paramref:`_orm.mapped_column.default` remains mapped even if the attribute is
+named in :paramref:`_orm.Mapper.exclude_properties`, or is omitted from
+:paramref:`_orm.Mapper.include_properties`.  In the mapping below, the intent
+is that ``legacy_status`` is a column in the ``some_table`` table that is not
+part of the ``SomeObject`` class::
+
+    class Base(MappedAsDataclass, DeclarativeBase):
+        pass
+
+
+    class SomeObject(Base):
+        __tablename__ = "some_table"
+        __mapper_args__ = {"exclude_properties": ["legacy_status"]}
+
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        data: Mapped[str]
+        legacy_status: Mapped[str] = mapped_column(default="default_status")
+
+In SQLAlchemy 2.0, the above mapping would omit ``legacy_status`` from the
+:class:`_orm.Mapper`.  In 2.1, the descriptor that delivers the dataclass-level
+default is established for the attribute up front, so that the attribute is
+mapped regardless of the ``exclude_properties`` setting, and the column is
+included in SELECT, INSERT and UPDATE statements as with any other mapped
+column.
+
+Using :paramref:`_orm.mapped_column.insert_default` in place of
+:paramref:`_orm.mapped_column.default`, along with
+:paramref:`_orm.mapped_column.init` set to ``False``, slightly improves the
+situation, as no dataclass-level default is present and the attribute is then
+omitted from the :class:`_orm.Mapper` as well as from the ``__init__()``
+method.  However, the attribute is still not fully omitted from the dataclass;
+it remains a dataclass field that has no corresponding attribute on the
+instance, so that dataclass-generated methods such as ``__repr__()`` and
+``__eq__()``, as well as functions such as ``dataclasses.asdict()``, raise
+``AttributeError``.
+
+The use of :paramref:`_orm.Mapper.exclude_properties` and
+:paramref:`_orm.Mapper.include_properties` to exclude an attribute that is
+itself declared on the class was never a supported pattern; these parameters
+are intended for columns that are present only in the :class:`_schema.Table`,
+such as when using ``__table__``, ``__table_args__`` or table reflection.  As
+of 2.1.5, this use is deprecated and emits a deprecation warning, whether or
+not the attribute in question is ultimately excluded.
+
+To declare a column that is part of the :class:`_schema.Table` but is not
+mapped, the new :class:`_orm.Unmapped` annotation and
+:func:`_orm.unmapped_column` construct are used instead, which are also new as
+of 2.1.5::
+
+    class SomeObject(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        data: Mapped[str]
+        legacy_status: Unmapped[str] = unmapped_column(default="default_status")
+
+Above, ``legacy_status`` is present in the ``some_table`` table, and is omitted
+from the :class:`_orm.Mapper`, from the dataclass and from its ``__init__()``
+method.  As :func:`_orm.unmapped_column` configures only the
+:class:`_schema.Column`, the :paramref:`_orm.unmapped_column.default`
+parameter is strictly a Core level column default, passed along to
+:paramref:`_schema.Column.default`, which continues to take effect when the ORM
+emits an INSERT for the class.
+
+.. seealso::
+
+    :ref:`orm_declarative_unmapped_column`
+
+:ticket:`13650`
+
 .. _change_9809:
 
 Session autoflush behavior simplified to be unconditional

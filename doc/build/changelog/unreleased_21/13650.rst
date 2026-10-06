@@ -1,0 +1,31 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 13650
+
+    Added the :class:`_orm.Unmapped` annotation and the
+    :func:`_orm.unmapped_column` construct, providing a declarative-compatible
+    approach to having "excluded" columns in a Declarative model, that is,
+    columns that are part of the :class:`_schema.Table` but are not mapped,
+    replacing the use of :paramref:`_orm.Mapper.exclude_properties` for this
+    purpose when using a Declarative mapping.
+
+    .. seealso::
+
+        :ref:`orm_declarative_unmapped_column`
+
+.. change::
+    :tags: deprecated, orm
+    :tickets: 13650
+
+    Using the :paramref:`_orm.Mapper.exclude_properties` or
+    :paramref:`_orm.Mapper.include_properties` parameters on a Declarative
+    mapping to exclude attributes that are declared on the class, such as with
+    :func:`_orm.mapped_column`, is deprecated and now emits a deprecation
+    warning.  This use was never supported, and depending on the arguments
+    passed to :func:`_orm.mapped_column`, the attribute could remain mapped
+    regardless; in particular, as of 2.1 this includes ORM mapped dataclasses
+    where :paramref:`_orm.mapped_column.default` is present.  The new
+    :func:`_orm.unmapped_column` construct should be used instead.  Excluding
+    columns that are present only in the :class:`_schema.Table`, such as those
+    from ``__table__``, ``__table_args__`` or table reflection, is not
+    affected.
