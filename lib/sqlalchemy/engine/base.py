@@ -1257,30 +1257,33 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         """
 
-        if self._transaction:
-            self._transaction.close()
-            skip_reset = True
-        else:
-            skip_reset = False
+        # if the rollback here raises, skip_reset stays False and the pool
+        # does its own reset of the connection, invalidating it if that
+        # fails also.  see #13657
+        skip_reset = False
+        try:
+            if self._transaction:
+                self._transaction.close()
+                skip_reset = True
+        finally:
+            if self._dbapi_connection is not None:
+                conn = self._dbapi_connection
 
-        if self._dbapi_connection is not None:
-            conn = self._dbapi_connection
+                # as we just closed the transaction, close the connection
+                # pool connection without doing an additional reset
+                if skip_reset:
+                    cast("_ConnectionFairy", conn)._close_special(
+                        transaction_reset=True
+                    )
+                else:
+                    conn.close()
 
-            # as we just closed the transaction, close the connection
-            # pool connection without doing an additional reset
-            if skip_reset:
-                cast("_ConnectionFairy", conn)._close_special(
-                    transaction_reset=True
-                )
-            else:
-                conn.close()
-
-            # There is a slight chance that conn.close() may have
-            # triggered an invalidation here in which case
-            # _dbapi_connection would already be None, however usually
-            # it will be non-None here and in a "closed" state.
-            self._dbapi_connection = None
-        self.__can_reconnect = False
+                # There is a slight chance that conn.close() may have
+                # triggered an invalidation here in which case
+                # _dbapi_connection would already be None, however usually
+                # it will be non-None here and in a "closed" state.
+                self._dbapi_connection = None
+            self.__can_reconnect = False
 
     # special case to handle mypy issue:
     # https://github.com/python/mypy/issues/20651

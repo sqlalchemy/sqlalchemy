@@ -16,6 +16,7 @@ from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.util import greenlet_spawn
 
@@ -355,6 +356,47 @@ class AsyncPgTest(fixtures.TestBase):
 
             await conn.begin()
             await conn.rollback()
+
+    @async_test
+    async def test_failed_begin_recover(self, async_testing_engine):
+        """test #13657"""
+
+        engine = async_testing_engine()
+
+        async with engine.connect() as conn:
+            raw_connection = await conn.get_raw_connection()
+            driver_connection = raw_connection.driver_connection
+
+            # start a transaction behind the adapter's back, so that
+            # asyncpg refuses to BEGIN, without closing the connection
+            await driver_connection.execute("BEGIN")
+
+            with testing.expect_raises_message(
+                exc.InterfaceError, "in a manually started transaction"
+            ):
+                await conn.execute(select(1))
+
+            # the failed BEGIN was never tracked by the adapter, so its
+            # rollback has nothing to roll back; the transaction started
+            # behind its back is left in place
+            xact_id = await driver_connection.fetchval(
+                "SELECT pg_current_xact_id()"
+            )
+            await conn.rollback()
+            is_true(driver_connection.is_in_transaction())
+            eq_(
+                await driver_connection.fetchval(
+                    "SELECT pg_current_xact_id()"
+                ),
+                xact_id,
+            )
+
+            await driver_connection.execute("ROLLBACK")
+
+            # recovers no problem
+            eq_((await conn.execute(select(1))).scalar(), 1)
+
+        eq_(engine.pool.checkedout(), 0)
 
     @testing.combinations(
         "setup_asyncpg_json_codec",

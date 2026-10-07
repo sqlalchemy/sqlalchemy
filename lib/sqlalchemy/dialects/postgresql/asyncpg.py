@@ -886,14 +886,18 @@ class AsyncAdapt_asyncpg_connection(
 
         assert self._transaction is None
         try:
-            self._transaction = self._connection.transaction(
+            transaction = self._connection.transaction(
                 isolation=self.isolation_level,
                 readonly=self.readonly,
                 deferrable=self.deferrable,
             )
-            await self._transaction.start()
+            await transaction.start()
         except Exception as error:
             self._handle_exception(error)
+        else:
+            # only track the transaction once BEGIN has succeeded; a
+            # transaction that failed to start has nothing to roll back
+            self._transaction = transaction
 
     async def _call_and_discard(self, fn: Callable[[], Awaitable[Any]]):
         try:
