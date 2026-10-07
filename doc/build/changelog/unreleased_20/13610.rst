@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, mssql
     :tickets: 13610
+    :versions: 2.1.2
 
     Fixed issue in the pyodbc dialect for SQL Server where timezone-aware
     datetime values sent to a :class:`_mssql.DATETIMEOFFSET` or

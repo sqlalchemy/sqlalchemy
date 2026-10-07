@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, orm
     :tickets: 13602
+    :versions: 2.1.0
 
     Fixed issue in Annotated Declarative where an annotation naming an
     undefined symbol, where the annotation is not wrapped in

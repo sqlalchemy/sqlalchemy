@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, asyncio
     :tickets: 12710, 13622
+    :versions: 2.1.2
 
     Fixed issue where cancelling a task while an asyncio context manager
     such as :class:`_asyncio.AsyncConnection` or :class:`_asyncio.AsyncSession`

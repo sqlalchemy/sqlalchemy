@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, sql
     :tickets: 13609
+    :versions: 2.1.2
 
     Fixed issue where literal text within a SQL statement that resembled a
     ``pyformat`` bound parameter, such as ``%(name)s``, would be rewritten as a
@@ -18,6 +19,7 @@
 .. change::
     :tags: bug, sql
     :tickets: 13609
+    :versions: 2.1.2
 
     The rendering of bound parameters within a :func:`_sql.text` construct no
     longer considers the ``$`` character to be part of a bound parameter name,
