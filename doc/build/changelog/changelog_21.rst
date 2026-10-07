@@ -10,7 +10,66 @@
 
 .. changelog::
     :version: 2.1.4
-    :include_notes_from: unreleased_21
+    :released: October 7, 2026
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 13639
+
+        Fixed regression where iterating a :class:`.Result` directly would create
+        reference cycles that prevented the :class:`.Result` along with the DBAPI
+        cursor from being freed immediately, instead relying upon cyclic GC to free
+        it; also fixed a similar issue when using scalar-returning methods such as
+        :meth:`.Result.scalars`.  The issues were introduced as part of a 2.1
+        refactoring of :class:`.Result` into Cython code.
+
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 13642
+
+        Fixed regression where stringifying a statement that includes the
+        :class:`_functions.aggregate_strings` function, such as via ``str()``,
+        would raise ``TypeError``.  Additionally, compiling the function with the
+        default dialect or with a third party dialect that doesn't provide its own
+        rendering for this function now raises :class:`.CompileError` rather than
+        ``TypeError``.
+
+    .. change::
+        :tags: bug, postgresql, regression
+        :tickets: 13657
+
+        Fixed regression in the asyncpg dialect where a failure to start a
+        transaction, such as when an asyncpg connection is used from a different
+        event loop than the one it was created on, would leave the failed asyncpg
+        transaction in place, so that the subsequent rollback raised an
+        ``InterfaceError`` that masked the original error.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 13657
+
+        Fixed issue where an exception raised by the rollback performed within
+        :meth:`_engine.Connection.close`, which was not otherwise classified as a
+        disconnect, would leave the :class:`_engine.Connection` open and its
+        pooled DBAPI connection checked out, emitting a warning when later
+        garbage collected; for an asyncio driver, the connection could not be
+        closed at that point and was leaked.  The DBAPI connection is now
+        returned to the pool, which resets it as usual, invalidating it if that
+        reset fails as well, and the original exception is raised.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13659
+
+        Fixed regression caused by :ticket:`13333` where assigning a
+        :class:`.MetaData` object to the ``metadata`` attribute of a mapped
+        Declarative class, in order to place that class's :class:`.Table` in a
+        :class:`.MetaData` collection other than that of the
+        :class:`_orm.registry`, would emit a warning that the attribute name
+        ``metadata`` should be left reserved.  The warning is now emitted only
+        when the ``metadata`` attribute is assigned to an object other than a
+        :class:`.MetaData`.
 
 .. changelog::
     :version: 2.1.3
