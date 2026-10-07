@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, sql
     :tickets: 12302
+    :versions: 2.1.2
 
     Fixed an additional race condition related to those fixed as part of
     :ticket:`12302`, where concurrent access to the

@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, postgresql, reflection
     :tickets: 13615
+    :versions: 2.1.2
 
     Fixed issue in PostgreSQL reflection where a composite primary key or
     unique constraint could be reflected with some of its columns missing,
