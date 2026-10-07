@@ -1143,7 +1143,9 @@ class TrueDivTest(fixtures.TestBase):
             "0.71828182845904523537",
             Numeric(22, 20),
             "7",
-            testing.requires.precision_numerics_many_significant_digits,
+            (
+                testing.requires.precision_numerics_many_significant_digits
+            ).as_skips(),
         ),
         (
             "numeric_tiny_divisor",
@@ -1176,7 +1178,10 @@ class TrueDivTest(fixtures.TestBase):
           where NUMERIC means NUMERIC(18, 0)
         * numeric_whole_number - SQLite stores 2.00 as the integer 2, so a
           CAST to NUMERIC alone gives integer division
-        * numeric_many_decimals - CAST to FLOAT gives 7.000000000000001
+        * numeric_many_decimals - CAST to FLOAT gives 7.000000000000001.
+          skipped rather than xfailed on backends without decimal
+          arithmetic such as SQLite, where whether the result comes out
+          as 7 depends on how the platform parses the literals to floats
         * numeric_tiny_divisor - on SQL Server, multiplying a
           NUMERIC(38, 20) by 1.0 reduces the scale and rounds the divisor
         * numeric_38_digit_divisor - on SQL Server, multiplying a
