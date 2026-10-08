@@ -186,6 +186,11 @@ attribute, e.g. ``e.orig.detail``, or access the original driver exception
 through :attr:`.DBAPIError.driver_exception`, which exposes the complete set of
 attributes defined by the asyncpg exception classes.
 
+.. versionchanged:: 2.1.0
+
+    Documented that asyncpg no longer includes the ``DETAIL`` line as part of
+    the string form of its exceptions.
+
 """  # noqa
 
 from __future__ import annotations
