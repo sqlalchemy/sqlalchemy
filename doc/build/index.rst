@@ -191,6 +191,6 @@ SQLAlchemy Documentation
       documentation
     * :doc:`Error Message Guide <errors>` - Explanations of many SQLAlchemy
       errors
-    * :doc:`Complete table of of contents <contents>` - Full list of available
+    * :doc:`Complete table of contents <contents>` - Full list of available
       documentation
     * :ref:`Index <genindex>` - Index for easy lookup of documentation topics

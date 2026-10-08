@@ -616,7 +616,7 @@ before we call upon :meth:`_engine.Connection.begin`::
 Above, to manually revert the isolation level we made use of
 :attr:`_engine.Connection.default_isolation_level` to restore the default
 isolation level (assuming that's what we want here). However, it's
-probably a better idea to work with the architecture of of the
+probably a better idea to work with the architecture of the
 :class:`_engine.Connection` which already handles resetting of isolation level
 automatically upon checkin. The **preferred** way to write the above is to
 use two blocks ::
@@ -2136,7 +2136,7 @@ compatible with the "sentinel" use case, other non-primary key columns may be
 marked as "sentinel" columns assuming they meet certain requirements. A typical
 example is a non-primary key :class:`_sqltypes.Uuid` column with a client side
 default such as the Python ``uuid.uuid4()`` function.  There is also a construct to create
-simple integer columns with a a client side integer counter oriented towards
+simple integer columns with a client side integer counter oriented towards
 the "insertmanyvalues" use case.
 
 Sentinel columns may be indicated by adding :paramref:`_schema.Column.insert_sentinel`
