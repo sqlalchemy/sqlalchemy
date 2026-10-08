@@ -1129,7 +1129,7 @@ class were available, we could also apply it afterwards::
 
     from module_a import Parent
 
-    # assign the User.addresses relationship as a class variable.  The
+    # assign the Parent.children relationship as a class variable.  The
     # declarative base class will intercept this and map the relationship.
     Parent.children = relationship(Child, primaryjoin=Child.parent_id == Parent.id)
 
