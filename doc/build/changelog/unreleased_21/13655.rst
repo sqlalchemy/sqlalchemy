@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, postgresql, asyncio
+    :tickets: 13655
+    :versions: 2.1.5
+
+    Documented that as of asyncpg 2.1, the :func:`str` form of asyncpg
+    exceptions no longer includes the PostgreSQL ``DETAIL`` line; this content
+    is instead available via the asyncpg exception attributes, such as
+    ``exc.orig.detail`` on a :class:`.DBAPIError`, or through
+    :attr:`.DBAPIError.driver_exception`.

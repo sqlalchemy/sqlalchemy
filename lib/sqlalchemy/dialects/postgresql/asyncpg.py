@@ -174,6 +174,18 @@ client using this setting passed to :func:`_asyncio.create_async_engine`::
 
     https://github.com/MagicStack/asyncpg/issues/727
 
+DBAPI Error Messages
+---------------------
+
+The ``str()`` form of asyncpg exceptions no longer includes the PostgreSQL
+``DETAIL`` line as of asyncpg 2.1.  Applications that previously parsed the
+message for this content, for example to detect constraint violations, should
+instead use the attributes of the :class:`.EmulatedDBAPIException` object
+available from a :class:`.DBAPIError` via the :attr:`.StatementError.orig`
+attribute, e.g. ``e.orig.detail``, or access the original driver exception
+through :attr:`.DBAPIError.driver_exception`, which exposes the complete set of
+attributes defined by the asyncpg exception classes.
+
 """  # noqa
 
 from __future__ import annotations
