@@ -4635,8 +4635,9 @@ class PGDialect(default.DefaultDialect):
 
         # https://www.postgresql.org/docs/current/static/sql-createtable.html
         return re.compile(
-            r"FOREIGN KEY \((.*?)\) "
-            rf"REFERENCES (?:({qtoken})\.)?({qtoken})\(((?:{qtoken}(?: *, *)?)+)\)"  # noqa: E501
+            rf"FOREIGN KEY \((.*?)(?:, PERIOD ({qtoken}))?\) "
+            rf"REFERENCES (?:({qtoken})\.)?({qtoken})"
+            rf"\(((?:{qtoken}(?: *, *)?)+)(?:, PERIOD ({qtoken}))?\)"
             r"[\s]?(MATCH (FULL|PARTIAL|SIMPLE)+)?"
             r"[\s]?(?:ON (UPDATE|DELETE) "
             r"(CASCADE|RESTRICT|NO ACTION|"
@@ -4654,9 +4655,11 @@ class PGDialect(default.DefaultDialect):
 
         (
             constrained_columns,
+            constrained_period_column,
             referred_schema,
             referred_table,
             referred_columns,
+            referred_period_column,
             _,
             match,
             upddelkey1,
@@ -4667,6 +4670,13 @@ class PGDialect(default.DefaultDialect):
             _,
             initially,
         ) = m
+
+        # TODO: the PERIOD designation of a temporal foreign key
+        # (PostgreSQL 18+) is not yet reflected
+        if constrained_period_column:
+            constrained_columns += f", {constrained_period_column}"
+        if referred_period_column:
+            referred_columns += f", {referred_period_column}"
 
         onupdate = (
             upddelval1
