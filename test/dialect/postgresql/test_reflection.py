@@ -1417,6 +1417,25 @@ class RegexTest(fixtures.TestBase):
                 referred_schema="some_schema",
             ),
         ),
+        # temporal foreign keys, PostgreSQL 18, #13664
+        (
+            "FOREIGN KEY (parent_id, PERIOD valid) "
+            "REFERENCES t(id, PERIOD valid)",
+            _fk_match("parent_id, valid", "t", "id, valid"),
+        ),
+        (
+            'FOREIGN KEY ("parent id", PERIOD "valid at") '
+            'REFERENCES some_schema."some t"("id", PERIOD "valid at") '
+            "DEFERRABLE INITIALLY DEFERRED NOT ENFORCED",
+            _fk_match(
+                '"parent id", "valid at"',
+                '"some t"',
+                '"id", "valid at"',
+                referred_schema="some_schema",
+                deferrable="DEFERRABLE",
+                initially="DEFERRED",
+            ),
+        ),
     )
     def test_fk_parsing(self, condef, expected):
 
@@ -2868,6 +2887,40 @@ class ReflectionTest(
         reflected = Table("t", MetaData(), autoload_with=connection)
 
         eq_(set(reflected.indexes), set())
+
+    @testing.requires.btree_gist
+    @testing.only_on("postgresql >= 18")
+    def test_reflect_temporal_foreign_key(self, connection):
+        """test #13664"""
+
+        connection.exec_driver_sql(
+            "CREATE TABLE t ("
+            "id INTEGER NOT NULL, "
+            "valid DATERANGE NOT NULL, "
+            "parent_id INTEGER, "
+            "CONSTRAINT t_uq UNIQUE (id, valid WITHOUT OVERLAPS), "
+            "CONSTRAINT t_fk FOREIGN KEY (parent_id, PERIOD valid) "
+            "REFERENCES t (id, PERIOD valid))"
+        )
+
+        insp = inspect(connection)
+        try:
+            eq_(
+                insp.get_foreign_keys("t"),
+                [
+                    {
+                        "name": "t_fk",
+                        "constrained_columns": ["parent_id", "valid"],
+                        "referred_schema": None,
+                        "referred_table": "t",
+                        "referred_columns": ["id", "valid"],
+                        "options": {},
+                        "comment": None,
+                    }
+                ],
+            )
+        finally:
+            connection.exec_driver_sql("DROP TABLE t")
 
     def test_reflect_unique_index(self, metadata, connection):
         insp = inspect(connection)
