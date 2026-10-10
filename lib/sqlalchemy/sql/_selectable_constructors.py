@@ -21,6 +21,8 @@ from ._typing import _ColumnsClauseArgument
 from ._typing import _no_kw
 from .elements import ColumnClause
 from .selectable import Alias
+from .selectable import Apply
+from .selectable import ApplyFromClause
 from .selectable import CompoundSelect
 from .selectable import Exists
 from .selectable import FromClause
@@ -353,6 +355,34 @@ def lateral(
 
     """
     return Lateral._factory(selectable, name=name)
+
+
+def cross_apply(
+    selectable: Union[SelectBase, _FromClauseArgument],
+    name: Optional[str] = None,
+) -> ApplyFromClause:
+    """Return an :class:`_expression.Apply` that renders ``CROSS APPLY``.
+
+    The object is used as the right side of a join and, like
+    :class:`_expression.Lateral`, may correlate to FROM clauses on its left.
+
+    .. versionadded:: 2.1
+    """
+    return Apply._factory(selectable, isouter=False, name=name)
+
+
+def outer_apply(
+    selectable: Union[SelectBase, _FromClauseArgument],
+    name: Optional[str] = None,
+) -> ApplyFromClause:
+    """Return an :class:`_expression.Apply` that renders ``OUTER APPLY``.
+
+    The object is used as the right side of a join and, like
+    :class:`_expression.Lateral`, may correlate to FROM clauses on its left.
+
+    .. versionadded:: 2.1
+    """
+    return Apply._factory(selectable, isouter=True, name=name)
 
 
 def outerjoin(
