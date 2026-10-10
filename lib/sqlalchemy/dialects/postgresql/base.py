@@ -3843,7 +3843,7 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 integrated_multihost = True
                 hosts, ports_str = zip(
                     *[
-                        token.split(":") if ":" in token else (token, None)
+                        self._split_host_port(token)
                         for token in url.query["host"]
                     ]
                 )
@@ -3912,6 +3912,26 @@ class PGDialect(default._BackendsMultiReflection, default.DefaultDialect):
                 ports = tuple(None for _ in hosts)
 
         return hosts, ports  # type: ignore
+
+    def _split_host_port(self, token: str) -> Tuple[str, Optional[str]]:
+        # Split a single ``host`` token into ``(host, port)``.
+
+        # RFC 3986 / libpq bracketed IPv6 literal, e.g. ``[2001:db8::1]:5432``
+        # or a bare ``[2001:db8::1]``.  A naive ``token.split(":")`` would
+        # split the address on every ``:`` and break the multihost zip() below
+        # (see #13637).
+        if token.startswith("["):
+            end = token.index("]")
+            host = token[1:end]
+            rest = token[end + 1 :]
+            port = rest[1:] if rest.startswith(":") else None
+            return host, port
+
+        if ":" in token:
+            host, _, port = token.partition(":")
+            return host, port or None
+
+        return token, None
 
     def do_begin_twophase(self, connection, xid):
         self.do_begin(connection.connection)
