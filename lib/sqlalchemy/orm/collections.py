@@ -161,6 +161,19 @@ __all__ = [
 
 __instrumentation_mutex = threading.Lock()
 
+# instrumentation wrappers generated around exactly list.append / set.add,
+# registered by _list_decorators / _set_decorators and consulted by
+# _set_collection_attributes to elect the bulk fast path.  identity-based
+# membership is used rather than a function attribute, as attributes are
+# copied onto wrapping functions by functools.wraps and similar tools and
+# would falsely qualify an overriding method.
+_trivial_list_appenders: "weakref.WeakSet[Callable[..., Any]]" = (
+    weakref.WeakSet()
+)
+_trivial_set_appenders: "weakref.WeakSet[Callable[..., Any]]" = (
+    weakref.WeakSet()
+)
+
 
 _CollectionFactoryType = Callable[[], "_AdaptedCollectionProtocol"]
 
@@ -180,6 +193,13 @@ class _AdaptedCollectionProtocol(Protocol):
     _sa_appender: Callable[..., Any]
     _sa_remover: Callable[..., Any]
     _sa_iterator: Callable[..., Iterable[Any]]
+
+    # elected at instrumentation time by _set_collection_attributes;
+    # see CollectionAdapter.append_multiple_without_event /
+    # append_without_event.  distinct from CollectionAdapter's
+    # bulk_appender(), which returns the event-capable _sa_appender.
+    _sa_bulk_append_without_event: Callable[..., Any]
+    _sa_raw_append: Optional[Callable[..., Any]]
 
 
 class collection:
@@ -528,15 +548,27 @@ class CollectionAdapter:
 
         if self.empty:
             self._refuse_empty()
-        self._data()._sa_appender(item, _sa_initiator=False)
+        data = self._data()
+        raw_append = data._sa_raw_append
+        if raw_append is not None:
+            # trivial built-in collection; bound list.append / set.add,
+            # state-equivalent to _sa_appender(item, _sa_initiator=False).
+            # for sets this hashes the item once rather than twice
+            # (the instrumented wrapper tests membership before adding).
+            raw_append(item)
+        else:
+            data._sa_appender(item, _sa_initiator=False)
 
     def append_multiple_without_event(self, items: Iterable[Any]) -> None:
-        """Add or restore an entity to the collection, firing no events."""
+        """Add or restore multiple entities to the collection,
+        firing no events."""
         if self.empty:
             self._refuse_empty()
-        appender = self._data()._sa_appender
-        for item in items:
-            appender(item, _sa_initiator=False)
+        # elected at instrumentation time: list.extend / set.update for
+        # trivial built-in collections (instance access binds the
+        # descriptor to the collection), else _bulk_append_via_appender,
+        # the per-item loop over _sa_appender with _sa_initiator=False.
+        self._data()._sa_bulk_append_without_event(items)
 
     def bulk_remover(self):
         return self._data()._sa_remover
@@ -941,6 +973,15 @@ def _assert_required_roles(cls, roles, methods):
         )
 
 
+def _bulk_append_via_appender(self, items):
+    """Default ``_sa_bulk_append_without_event`` implementation; the
+    per-item loop over the elected appender for collections that don't
+    qualify for the built-in fast path."""
+    appender = self._sa_appender
+    for item in items:
+        appender(item, _sa_initiator=False)
+
+
 def _set_collection_attributes(cls, roles, methods):
     """apply ad-hoc instrumentation from decorators, class-level defaults
     and implicit role declarations
@@ -959,6 +1000,34 @@ def _set_collection_attributes(cls, roles, methods):
         setattr(cls, "_sa_%s" % role, getattr(cls, method_name))
 
     cls._sa_adapter = None
+
+    # detect "trivial" built-in collections, whose elected appender is
+    # the untouched instrumentation wrapper around list.append / set.add
+    # (identity membership in the WeakSets registered by
+    # _list_decorators / _set_decorators; a function attribute would be
+    # copied onto overrides by functools.wraps).  For those, event-less
+    # appends performed by CollectionAdapter are state-equivalent to
+    # the raw built-in operation, so bulk loads may use list.extend /
+    # set.update directly, skipping two Python frames per item.  "state
+    # equivalent" rather than exact: the instrumented set wrapper hashes
+    # each value twice (membership test, then set.add) where set.update
+    # hashes once.  Any override of the appender (subclass method,
+    # @collection.appender, @collection.internally_instrumented) keeps
+    # the per-item loop.
+    appender = getattr(cls, roles["appender"])
+    if appender in _trivial_list_appenders and issubclass(cls, list):
+        cls._sa_raw_append = list.append
+        cls._sa_bulk_append_without_event = list.extend
+    elif (
+        appender in _trivial_set_appenders
+        and issubclass(cls, set)
+        and cls.__contains__ is set.__contains__
+    ):
+        cls._sa_raw_append = set.add
+        cls._sa_bulk_append_without_event = set.update
+    else:
+        cls._sa_raw_append = None
+        cls._sa_bulk_append_without_event = _bulk_append_via_appender
 
     cls._sa_instrumented = id(cls)
 
@@ -1088,6 +1157,11 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
             fn(self, item)
 
         _tidy(append)
+        if fn is list.append:
+            # the wrapper adds no behavior over the built-in when
+            # _sa_initiator=False; CollectionAdapter may then use raw
+            # list.append / list.extend (see _set_collection_attributes)
+            _trivial_list_appenders.add(append)
         return append
 
     def remove(fn):
@@ -1346,6 +1420,10 @@ def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
             fn(self, value)
 
         _tidy(add)
+        if fn is set.add:
+            # see _set_collection_attributes; the wrapper is
+            # state-equivalent to raw set.add when _sa_initiator=False
+            _trivial_set_appenders.add(add)
         return add
 
     def discard(fn):
