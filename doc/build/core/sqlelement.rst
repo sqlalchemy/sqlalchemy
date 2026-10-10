@@ -126,6 +126,8 @@ Functions listed here are more commonly available as methods from any
 
 .. autofunction:: over
 
+.. autofunction:: window
+
 .. autofunction:: within_group
 
 Column Element Class Documentation
@@ -211,6 +213,9 @@ The classes here are generated using the constructors listed at
    :members:
 
 .. autoclass:: Over
+   :members:
+
+.. autoclass:: Window
    :members:
 
 .. autoclass:: FrameClause
