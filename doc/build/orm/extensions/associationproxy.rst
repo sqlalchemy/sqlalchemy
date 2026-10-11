@@ -526,9 +526,8 @@ to a related object, as in the example mapping below::
     from __future__ import annotations
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
-    from sqlalchemy.orm import DeclarativeBase, relationship
+    from sqlalchemy.orm import DeclarativeBase, Mapped, relationship
     from sqlalchemy.orm.collections import attribute_keyed_dict
-    from sqlalchemy.orm.collections import Mapped
 
 
     class Base(DeclarativeBase):
@@ -629,9 +628,8 @@ Given a mapping as::
     from __future__ import annotations
     from sqlalchemy import Column, ForeignKey, Integer, String
     from sqlalchemy.ext.associationproxy import association_proxy, AssociationProxy
-    from sqlalchemy.orm import DeclarativeBase, relationship
+    from sqlalchemy.orm import DeclarativeBase, Mapped, relationship
     from sqlalchemy.orm.collections import attribute_keyed_dict
-    from sqlalchemy.orm.collections import Mapped
 
 
     class Base(DeclarativeBase):
