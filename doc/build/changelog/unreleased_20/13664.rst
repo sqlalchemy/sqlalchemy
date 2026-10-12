@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 13664
+
+    Added support for reflection of PostgreSQL 18 temporal foreign keys,
+    which include the ``PERIOD`` keyword before the last column of the
+    constrained and referenced column lists.  Previously, the presence of such
+    a constraint would raise an ``AttributeError`` when reflecting the table.
+    The constraint is now reflected as a plain foreign key on the same
+    columns; reflection of the ``PERIOD`` designation itself is not
+    supported, but may be added in a future release.
