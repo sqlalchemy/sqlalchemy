@@ -891,10 +891,15 @@ class _ConnectionRecord(ConnectionPoolEntry):
         if self.__pool.dispatch.close:
             self.__pool.dispatch.close(self.dbapi_connection, self)
         assert self.dbapi_connection is not None
-        self.__pool._close_connection(
-            self.dbapi_connection, terminate=terminate
-        )
-        self.dbapi_connection = None
+        try:
+            self.__pool._close_connection(
+                self.dbapi_connection, terminate=terminate
+            )
+        finally:
+            # a close that was interrupted, such as by a cancellation
+            # reaching the await within an asyncio terminate(), is not
+            # retried; the connection is not to be handed out again
+            self.dbapi_connection = None
 
     def __connect(self) -> None:
         pool = self.__pool

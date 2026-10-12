@@ -1892,15 +1892,44 @@ class QueuePoolTest(PoolTestBase):
     def test_invalidate(self):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)
         c1 = p.connect()
-        c_id = c1.dbapi_connection.id
+        dbapi_conn = c1.dbapi_connection
         c1.close()
         c1 = None
         c1 = p.connect()
-        assert c1.dbapi_connection.id == c_id
+        assert c1.dbapi_connection is dbapi_conn
         c1.invalidate()
         c1 = None
         c1 = p.connect()
-        assert c1.dbapi_connection.id != c_id
+        assert c1.dbapi_connection is not dbapi_conn
+
+    def test_invalidate_close_interrupted(self):
+        """test #13673"""
+
+        dbapi, p = self._queuepool_dbapi_fixture(
+            pool_size=1, max_overflow=0, _is_asyncio=True, _has_terminate=True
+        )
+
+        class Interrupted(BaseException):
+            pass
+
+        c1 = p.connect()
+        dbapi_conn = c1.dbapi_connection
+        rec = c1._connection_record
+
+        terminate = patch.object(
+            p._dialect, "do_terminate", side_effect=Interrupted()
+        )
+        with terminate, expect_raises(Interrupted):
+            c1.invalidate()
+
+        is_none(rec.dbapi_connection)
+
+        c1.close()
+        c1 = None
+        eq_(p.checkedin(), 1)
+
+        c1 = p.connect()
+        assert c1.dbapi_connection is not dbapi_conn
 
     def test_recreate(self):
         p = self._queuepool_fixture(
@@ -1918,16 +1947,16 @@ class QueuePoolTest(PoolTestBase):
 
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=0)
         c1 = p.connect()
-        c_id = c1.dbapi_connection.id
+        dbapi_conn = c1.dbapi_connection
         c1.close()
         c1 = None
         c1 = p.connect()
-        assert c1.dbapi_connection.id == c_id
+        assert c1.dbapi_connection is dbapi_conn
         dbapi.raise_error = True
         c1.invalidate()
         c1 = None
         c1 = p.connect()
-        assert c1.dbapi_connection.id != c_id
+        assert c1.dbapi_connection is not dbapi_conn
 
     def test_detach(self):
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=0)

@@ -21,7 +21,7 @@ which is not necessarily the task performing the await; SQLAlchemy runs
 some operations, such as the ``close()`` performed by an async context
 manager on exit, in a task of its own.
 
-Two things are asserted afterwards:
+Three things are asserted afterwards:
 
 * Every DBAPI connection the pool creates is eventually closed through
   ``Pool._close_connection()``.  A connection that is never closed is
@@ -36,6 +36,12 @@ Two things are asserted afterwards:
   latter case, an application that disposes of its engine at that point
   has the connection returned into the disposed pool afterwards, where
   nothing closes it.
+
+* The pool still works.  The scenario is run once more against the same
+  engine, un-cancelled, and has to succeed.  A connection that was closed
+  and nonetheless returned to the pool as though it were usable is neither
+  leaked nor a lost slot; it is found only by the next thing to check it
+  out.
 
 """
 
@@ -159,7 +165,8 @@ def await_points(cancel_at=()):
 
 class ConnectionAccounting:
     """Records which DBAPI connections a pool created and which it managed
-    to close, and how many of the pool's slots were lost.
+    to close, how many of the pool's slots were lost, and whether the pool
+    could still be used afterwards.
 
     Creation is observed at ``Pool._invoke_creator`` rather than through the
     ``connect`` pool event, because the ``connect`` event is itself where
@@ -173,6 +180,7 @@ class ConnectionAccounting:
         self._real_invoke_creator = pool._invoke_creator
         self._real_close_connection = pool._close_connection
         self._lost_slots = 0
+        self._next_use_error = None
         self._created = set()
         self._closed = set()
 
@@ -221,9 +229,29 @@ class ConnectionAccounting:
         gc.collect()
         self._lost_slots = self._pool.checkedout()
 
+    async def record_next_use(self, scenario, engine):
+        """Run ``scenario`` once more, un-cancelled, and record what it
+        raises, if anything.
+
+        To be called once the application's task is done, and before the
+        engine is disposed.  The application goes on using its engine after
+        a cancellation, and whatever the pool hands out next has to work.
+
+        """
+        if self._lost_slots > 0:
+            # already reported, and for a pool with no slots remaining
+            # the scenario could only wait out the pool timeout
+            return
+
+        try:
+            await scenario(engine)
+        except Exception as err:
+            self._next_use_error = err
+
     def get_failure_messages(self):
-        """Return a list of strings describing each leaked connection and
-        lost pool slot, empty if there were none."""
+        """Return a list of strings describing each leaked connection,
+        lost pool slot and failed further use of the pool, empty if there
+        were none."""
 
         failures = []
         if self.leaked:
@@ -235,6 +263,11 @@ class ConnectionAccounting:
             failures.append(
                 f"{self._lost_slots} pool slot(s) were left checked out "
                 "with nothing able to return them"
+            )
+        if self._next_use_error is not None:
+            failures.append(
+                "the next use of the pool raised "
+                f"{type(self._next_use_error).__name__}"
             )
         return failures
 
@@ -293,6 +326,9 @@ async def run_scenario(
 
         # the scenario is over as far as the application can tell
         accounting.record_lost_slots()
+
+        # and it carries on using the engine
+        await accounting.record_next_use(scenario, engine)
 
         # the application may now dispose of the engine
         try:
