@@ -46,6 +46,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
+from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
@@ -58,11 +59,16 @@ from sqlalchemy.schema import DefaultClause
 from sqlalchemy.schema import DropIndex
 from sqlalchemy.sql import naming
 from sqlalchemy.sql import operators
+from sqlalchemy.sql.annotation import Annotated
 from sqlalchemy.sql.base import _NONE_NAME
 from sqlalchemy.sql.base import DialectKWArgConst
+from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.sql.schema import _InsertSentinelColumnDefault
+from sqlalchemy.sql.schema import ColumnCollectionConstraint
+from sqlalchemy.sql.schema import Constraint
 from sqlalchemy.sql.schema import RETAIN_SCHEMA
+from sqlalchemy.sql.schema import SchemaItem
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -7068,17 +7074,132 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class CopyDialectOptionsTest(fixtures.TestBase):
-    @contextmanager
-    def _fixture(self):
-        from sqlalchemy.engine.default import DefaultDialect
+    """test that dialect-specific keyword arguments on each
+    :class:`.DialectKWArgs` schema construct are carried along to the copy
+    produced by :meth:`.Table.to_metadata`.
 
-        class CopyDialectOptionsTestDialect(DefaultDialect):
+    Constructs that are local to a dialect, such as PostgreSQL's
+    :class:`.ExcludeConstraint`, are tested within that dialect's suite.
+
+    """
+
+    # (id, construct class, fn(kw) -> Table, fn(Table) -> construct)
+    _cases = [
+        (
+            "table",
+            Table,
+            lambda kw: Table("t", MetaData(), Column("x", Integer), **kw),
+            lambda t: t,
+        ),
+        (
+            "column",
+            Column,
+            lambda kw: Table("t", MetaData(), Column("x", Integer, **kw)),
+            lambda t: t.c.x,
+        ),
+        (
+            "primary_key",
+            PrimaryKeyConstraint,
+            lambda kw: Table(
+                "t",
+                MetaData(),
+                Column("x", Integer),
+                PrimaryKeyConstraint("x", **kw),
+            ),
+            lambda t: t.primary_key,
+        ),
+        (
+            "unique",
+            UniqueConstraint,
+            lambda kw: Table(
+                "t",
+                MetaData(),
+                Column("x", Integer),
+                UniqueConstraint("x", **kw),
+            ),
+            lambda t: next(
+                c for c in t.constraints if isinstance(c, UniqueConstraint)
+            ),
+        ),
+        (
+            "table_check",
+            CheckConstraint,
+            lambda kw: Table(
+                "t",
+                MetaData(),
+                Column("x", Integer),
+                CheckConstraint("x > 5", **kw),
+            ),
+            lambda t: next(
+                c for c in t.constraints if isinstance(c, CheckConstraint)
+            ),
+        ),
+        (
+            "column_check",
+            CheckConstraint,
+            lambda kw: Table(
+                "t",
+                MetaData(),
+                Column("x", Integer, CheckConstraint("x > 5", **kw)),
+            ),
+            lambda t: next(iter(t.c.x.constraints)),
+        ),
+        (
+            "foreign_key_constraint",
+            ForeignKeyConstraint,
+            lambda kw: Table(
+                "t",
+                MetaData(),
+                Column("x", Integer),
+                ForeignKeyConstraint(["x"], ["p.id"], **kw),
+            ),
+            lambda t: next(
+                c for c in t.constraints if isinstance(c, ForeignKeyConstraint)
+            ),
+        ),
+        (
+            "foreign_key",
+            ForeignKey,
+            lambda kw: Table(
+                "t",
+                MetaData(),
+                Column("x", Integer, ForeignKey("p.id", **kw)),
+            ),
+            # ForeignKey passes its dialect arguments along to its
+            # ForeignKeyConstraint
+            lambda t: next(iter(t.c.x.foreign_keys)).constraint,
+        ),
+        (
+            "index",
+            Index,
+            lambda kw: Table(
+                "t", MetaData(), Column("x", Integer), Index("ix", "x", **kw)
+            ),
+            lambda t: next(iter(t.indexes)),
+        ),
+        (
+            "sequence",
+            Sequence,
+            lambda kw: Table(
+                "t", MetaData(), Column("x", Integer, Sequence("s", **kw))
+            ),
+            lambda t: t.c.x.default,
+        ),
+        (
+            "identity",
+            Identity,
+            lambda kw: Table(
+                "t", MetaData(), Column("x", Integer, Identity(**kw))
+            ),
+            lambda t: t.c.x.server_default,
+        ),
+    ]
+
+    @testing.fixture
+    def dialect_fixture(self):
+        class CopyDialectOptionsTestDialect(default.DefaultDialect):
             construct_arguments = [
-                (Table, {"some_table_arg": None}),
-                (Column, {"some_column_arg": None}),
-                (Index, {"some_index_arg": None}),
-                (PrimaryKeyConstraint, {"some_pk_arg": None}),
-                (UniqueConstraint, {"some_uq_arg": None}),
+                (cls, {"some_arg": None}) for _, cls, _, _ in self._cases
             ]
 
         def load(dialect_name):
@@ -7090,63 +7211,42 @@ class CopyDialectOptionsTest(fixtures.TestBase):
         with mock.patch("sqlalchemy.dialects.registry.load", load):
             yield
 
-    @classmethod
-    def check_dialect_options_(cls, t):
+    @testing.combinations(
+        *_cases, argnames="cls, make_table, get_construct", id_="iaaa"
+    )
+    def test_dialect_options_are_copied(
+        self, dialect_fixture, cls, make_table, get_construct
+    ):
+        """test #5276, #13677"""
+
+        kw = {"copydialectoptionstest_some_arg": "x1"}
+
+        t1 = make_table(kw)
+        t2 = t1.to_metadata(MetaData())
+
+        const1, const2 = get_construct(t1), get_construct(t2)
+        is_not_(const1, const2)
         eq_(
-            t.dialect_kwargs["copydialectoptionstest_some_table_arg"],
-            "a1",
-        )
-        eq_(
-            t.c.foo.dialect_kwargs["copydialectoptionstest_some_column_arg"],
-            "a2",
-        )
-        eq_(
-            t.primary_key.dialect_kwargs["copydialectoptionstest_some_pk_arg"],
-            "a3",
-        )
-        eq_(
-            list(t.indexes)[0].dialect_kwargs[
-                "copydialectoptionstest_some_index_arg"
-            ],
-            "a4",
-        )
-        eq_(
-            list(c for c in t.constraints if isinstance(c, UniqueConstraint))[
-                0
-            ].dialect_kwargs["copydialectoptionstest_some_uq_arg"],
-            "a5",
+            (dict(const1.dialect_kwargs), dict(const2.dialect_kwargs)),
+            (kw, kw),
         )
 
-    def test_dialect_options_are_copied(self):
-        with self._fixture():
-            t1 = Table(
-                "t",
-                MetaData(),
-                Column(
-                    "foo",
-                    Integer,
-                    copydialectoptionstest_some_column_arg="a2",
-                ),
-                Column("bar", Integer),
-                PrimaryKeyConstraint(
-                    "foo", copydialectoptionstest_some_pk_arg="a3"
-                ),
-                UniqueConstraint(
-                    "bar", copydialectoptionstest_some_uq_arg="a5"
-                ),
-                copydialectoptionstest_some_table_arg="a1",
-            )
-            Index(
-                "idx",
-                t1.c.foo,
-                copydialectoptionstest_some_index_arg="a4",
-            )
+    def test_all_constructs_covered(self):
+        """ensure every :class:`.DialectKWArgs` schema construct within
+        sqlalchemy.sql has a case in test_dialect_options_are_copied."""
 
-            self.check_dialect_options_(t1)
+        constructs = {
+            cls
+            for cls in util.walk_subclasses(DialectKWArgs)
+            if issubclass(cls, SchemaItem)
+            and not issubclass(cls, Annotated)
+            and cls.__module__.startswith("sqlalchemy.sql.")
+        }
 
-            m2 = MetaData()
-            t2 = t1.to_metadata(m2)  # make a copy
-            self.check_dialect_options_(t2)
+        # base classes, not copied as themselves
+        constructs -= {Constraint, ColumnCollectionConstraint}
+
+        eq_(constructs, {cls for _, cls, _, _ in self._cases})
 
 
 class SentinelColTest(fixtures.TestBase):
