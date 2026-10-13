@@ -4579,6 +4579,7 @@ class CheckConstraint(ColumnCollectionConstraint):
             comment=self.comment,
             _autoattach=False,
             _type_bound=self._type_bound,
+            **self.dialect_kwargs,
         )
         return self._schema_item_copy(c)
 
@@ -4887,6 +4888,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             link_to_name=self.link_to_name,
             match=self.match,
             comment=self.comment,
+            **self.dialect_kwargs,
         )
         for self_fk, other_fk in zip(self.elements, fkc.elements):
             self_fk._schema_item_copy(other_fk)
