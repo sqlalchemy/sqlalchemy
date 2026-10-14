@@ -1929,6 +1929,32 @@ class QueuePoolTest(PoolTestBase):
         c1 = p.connect()
         assert c1.dbapi_connection is not dbapi_conn
 
+    def test_invalidate_interrupted_before_close(self):
+        """test #13678"""
+
+        dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=0)
+
+        class Interrupted(BaseException):
+            pass
+
+        c1 = p.connect()
+        dbapi_conn = c1.dbapi_connection
+
+        @event.listens_for(p, "invalidate")
+        def invalidate(dbapi_connection, connection_record, exception):
+            raise Interrupted()
+
+        with expect_raises(Interrupted):
+            c1.invalidate()
+
+        # the record is returned, and the connection it still holds is
+        # not handed out again
+        eq_(p.checkedin(), 1)
+
+        event.remove(p, "invalidate", invalidate)
+        c1 = p.connect()
+        assert c1.dbapi_connection is not dbapi_conn
+
     def test_recreate(self):
         p = self._queuepool_fixture(
             reset_on_return=None, pool_size=1, max_overflow=0

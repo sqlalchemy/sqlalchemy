@@ -11,6 +11,7 @@ is made deterministic and for what "intact" means precisely.
 
 import asyncio
 
+from sqlalchemy import event
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +43,17 @@ async def _connect_execute(async_engine):
 
     async with async_engine.connect() as conn:
         await conn.execute(select(1))
+
+
+async def _connect_execute_except_exception(async_engine):
+    """A fixture that illustrates a background task which treats an
+    ordinary exception as something to retry, shown in issue #13678."""
+
+    try:
+        async with async_engine.connect() as conn:
+            await conn.execute(select(1))
+    except Exception:
+        pass
 
 
 class AsyncCancellationTest(fixtures.TestBase):
@@ -109,6 +121,34 @@ class AsyncCancellationTest(fixtures.TestBase):
         eq_(
             await cancellation.sweep(
                 engine_factory, _session_execute_commit, warm=True
+            ),
+            [],
+        )
+
+    @testing.crashes(
+        "+aioodbc",
+        "aioodbc abandons the cancelled pyodbc call in its executor "
+        "thread; the next call on that connection frees the ODBC "
+        "statement handle underneath it and msodbcsql segfaults",
+    )
+    @async_test
+    async def test_cancel_anywhere_connect_event_fails(self, engine_factory):
+        """a connect event raising an ordinary exception has the new
+        connection closed; a cancellation reaching that close is what the
+        task ends with, not the exception.  #13678"""
+
+        def failing_engine_factory():
+            async_engine = engine_factory()
+
+            @event.listens_for(async_engine.sync_engine, "connect")
+            def connect(dbapi_connection, connection_record):
+                raise RuntimeError("connect event failed")
+
+            return async_engine
+
+        eq_(
+            await cancellation.sweep(
+                failing_engine_factory, _connect_execute_except_exception
             ),
             [],
         )

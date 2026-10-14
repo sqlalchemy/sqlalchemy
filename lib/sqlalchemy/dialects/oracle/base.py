@@ -2279,7 +2279,10 @@ class OracleDialect(default._BackendsMultiReflection, default.DefaultDialect):
             return self.get_isolation_level(dbapi_conn)
         except NotImplementedError:
             raise
-        except:
+        except Exception:
+            # Exception only; a bare except here also caught
+            # asyncio.CancelledError and KeyboardInterrupt, returning the
+            # default in place of propagating them
             return "READ COMMITTED"
 
     def _execute_reflection(

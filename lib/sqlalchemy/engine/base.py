@@ -758,12 +758,19 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if self.closed:
             raise exc.ResourceClosedError("This Connection is closed")
 
-        if self._still_open_and_dbapi_connection_is_valid:
-            pool_proxied_connection = self._dbapi_connection
-            assert pool_proxied_connection is not None
-            pool_proxied_connection.invalidate(exception)
-
-        self._dbapi_connection = None
+        try:
+            if self._still_open_and_dbapi_connection_is_valid:
+                pool_proxied_connection = self._dbapi_connection
+                assert pool_proxied_connection is not None
+                pool_proxied_connection.invalidate(exception)
+        finally:
+            # this is always a hard invalidation, which closes the DBAPI
+            # connection; for an asyncio driver that close is an awaited
+            # terminate() which a cancellation can interrupt.  this
+            # Connection is invalidated regardless, so that nothing
+            # further, such as a rollback, is emitted on the DBAPI
+            # connection
+            self._dbapi_connection = None
 
     def detach(self) -> None:
         """Detach the underlying DB-API connection from its connection pool.
