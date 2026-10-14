@@ -1933,9 +1933,11 @@ class _BulkORMUpdate(_BulkUDCompileState, UpdateDMLState):
             # attributes that were formerly modified instead get expired.
             # this only gets hit if the session had pending changes
             # and autoflush were set to False.
-            to_expire = attrib.intersection(dict_).difference(to_evaluate)
-            if to_expire:
-                state._expire_attributes(dict_, to_expire)
+            formerly_modified = attrib.intersection(dict_).difference(
+                to_evaluate
+            )
+            if formerly_modified:
+                state._expire_attributes(dict_, formerly_modified)
 
             states.add(state)
         session._register_altered(states)

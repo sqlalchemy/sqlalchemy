@@ -61,6 +61,7 @@ from .base import ORMDescriptor
 from .base import state_attribute_str as state_attribute_str  # noqa: F401
 from .base import state_class_str as state_class_str  # noqa: F401
 from .base import state_str as state_str  # noqa: F401
+from .base import Unmapped
 from .base import WriteOnlyMapped
 from .interfaces import CriteriaOption
 from .interfaces import MapperProperty as MapperProperty
@@ -151,6 +152,7 @@ _de_stringify_partial = functools.partial(
             "Mapped": Mapped,
             "WriteOnlyMapped": WriteOnlyMapped,
             "DynamicMapped": DynamicMapped,
+            "Unmapped": Unmapped,
         }
     ),
 )
@@ -2410,6 +2412,9 @@ def _cleanup_mapped_str_annotation(
     return annotation
 
 
+_mapped_str_annotation = re.compile(r"(?:Mapped|Unmapped)\[")
+
+
 def _unresolved_annotation_is_mapped(
     raw_annotation: _AnnotationScanType,
 ) -> bool:
@@ -2423,9 +2428,11 @@ def _unresolved_annotation_is_mapped(
 
     """
     if isinstance(raw_annotation, str):
-        return "Mapped[" in raw_annotation
+        return bool(_mapped_str_annotation.search(raw_annotation))
     elif isinstance(raw_annotation, typing.ForwardRef):
-        return "Mapped[" in raw_annotation.__forward_arg__
+        return bool(
+            _mapped_str_annotation.search(raw_annotation.__forward_arg__)
+        )
     else:
         origin = typing.get_origin(raw_annotation)
         return isinstance(origin, type) and issubclass(

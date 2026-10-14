@@ -43,6 +43,7 @@ from ._typing import attr_is_internal_proxy
 from .attributes import InstrumentedAttribute
 from .attributes import QueryableAttribute
 from .base import _is_mapped_class
+from .base import _is_unmapped_container
 from .base import InspectionAttr
 from .descriptor_props import CompositeProperty
 from .descriptor_props import SynonymProperty
@@ -56,6 +57,7 @@ from .interfaces import MapperProperty
 from .mapper import Mapper
 from .properties import ColumnProperty
 from .properties import MappedColumn
+from .properties import UnmappedColumn
 from .util import _extract_mapped_subtype
 from .util import _is_mapped_annotation
 from .util import _metadata_for_cls as _metadata_for_cls_fn
@@ -320,6 +322,8 @@ class _MapperConfig(_ORMClassConfigurator):
         "declared_attr_reg",
     )
 
+    is_declarative = False
+
     properties: util.OrderedDict[
         str,
         Union[
@@ -540,7 +544,8 @@ class _ClassScanAbstractConfig(_ORMClassConfigurator):
                     originating_module,
                     originating_class,
                 ) in self.collected_annotations.items()
-                if _allow_dataclass_field(key, originating_class)
+                if not _is_unmapped_container(mapped_container)
+                and _allow_dataclass_field(key, originating_class)
                 and (
                     key not in self.collected_attributes
                     # issue #9226; check for attributes that we've collected
@@ -590,8 +595,16 @@ class _ClassScanAbstractConfig(_ORMClassConfigurator):
             revert_dict = None
 
         # get original annotations using ForwardRef for symbols that
-        # are unresolvable
-        orig_annotations = util.get_annotations(self.cls)
+        # are unresolvable.  Unmapped[] attributes are not part of the
+        # dataclass, so omit their annotations, #13650
+        orig_annotations = {
+            k: v
+            for k, v in util.get_annotations(self.cls).items()
+            if k not in self.collected_annotations
+            or not _is_unmapped_container(
+                self.collected_annotations[k].mapped_container
+            )
+        }
 
         # build a new __annotations__ dict from the fields we have.
         # this has to be done carefully since we have to maintain
@@ -753,6 +766,14 @@ class _ClassScanAbstractConfig(_ORMClassConfigurator):
                 # such as Annotated[int, mapped_column(primary_key=True)]
                 if isinstance(elem, _IntrospectsAnnotations):
                     attr_value = elem.found_in_pep593_annotated()
+
+                    # check for use of the above Annotated[int,
+                    # mapped_column(...)] inside of Unmapped[].  if so, migrate
+                    # the mapped_column() to be an UnmappedColumn instead.
+                    if _is_unmapped_container(mapped_container) and isinstance(
+                        attr_value, MappedColumn
+                    ):
+                        attr_value = attr_value._as_unmapped_column()
 
         self.collected_annotations[name] = ca = _CollectedAnnotation(
             raw_annotation,
@@ -937,6 +958,7 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
         "local_table",
         "persist_selectable",
         "declared_columns",
+        "unmapped_columns",
         "column_ordering",
         "column_copies",
         "table_args",
@@ -955,11 +977,13 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
         "allow_unmapped_annotations",
     )
 
+    is_declarative = True
     is_deferred = False
     registry: _RegistryType
     local_table: Optional[FromClause]
     persist_selectable: Optional[FromClause]
     declared_columns: util.OrderedSet[Column[Any]]
+    unmapped_columns: util.OrderedSet[Column[Any]]
     column_ordering: Dict[Column[Any], int]
     column_copies: Dict[
         Union[MappedColumn[Any], Column[Any]],
@@ -990,6 +1014,7 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
         self.collected_attributes = {}
         self.collected_annotations = {}
         self.declared_columns = util.OrderedSet()
+        self.unmapped_columns = util.OrderedSet()
         self.column_ordering = {}
         self.column_copies = {}
         self.single = False
@@ -1321,16 +1346,10 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                         collected_annotation is not None
                         and collected_annotation.mapped_container is not None
                     )
-                    generated_obj = (
-                        collected_annotation.attr_value
-                        if collected_annotation is not None
-                        else obj
-                    )
                     if obj is None and not fixed_table and is_mapped:
+                        assert collected_annotation is not None
                         collected_attributes[name] = (
-                            generated_obj
-                            if generated_obj is not None
-                            else MappedColumn()
+                            _mapped_column_for_annotation(collected_annotation)
                         )
                     elif name in clsdict_view:
                         collected_attributes[name] = obj
@@ -1397,7 +1416,9 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
     ) -> Dict[str, Union[Column[Any], MappedColumn[Any]]]:
         cls = self.cls
         dict_ = self.clsdict_view
-        locally_collected_attributes = {}
+        locally_collected_attributes: Dict[
+            str, Union[Column[Any], MappedColumn[Any]]
+        ] = {}
         column_copies = self.column_copies
         # copy mixin columns to the mapped class
 
@@ -1420,16 +1441,13 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                 collected_annotation = self._collect_annotation(
                     name, annotation, originating_class, True, obj
                 )
-                obj = (
-                    collected_annotation.attr_value
-                    if collected_annotation is not None
-                    else obj
+                assert collected_annotation is not None
+                mapped_col = _mapped_column_for_annotation(
+                    collected_annotation
                 )
-                if obj is None:
-                    obj = MappedColumn()
 
-                locally_collected_attributes[name] = obj
-                setattr(cls, name, obj)
+                locally_collected_attributes[name] = mapped_col
+                setattr(cls, name, mapped_col)
 
             elif isinstance(obj, (Column, MappedColumn)):
                 if attribute_is_overridden(name, obj):
@@ -1535,6 +1553,30 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                 util.warn(
                     f"Attribute name '{k}' should be left reserved for the "
                     f"{noun[k]} when using a Declarative class."
+                )
+
+            # Unmapped[] and unmapped_column() must be used together
+            collected_annotation = self.collected_annotations.get(k)
+            anno_container = (
+                collected_annotation.mapped_container
+                if collected_annotation is not None
+                else None
+            )
+            if anno_container is None:
+                pass
+            elif _is_unmapped_container(anno_container):
+                if not isinstance(value, UnmappedColumn):
+                    raise exc.ArgumentError(
+                        f'Attribute "{cls.__name__}.{k}" uses the Unmapped[] '
+                        "annotation, which must be used with "
+                        "unmapped_column() or with no value on the right side"
+                    )
+            elif isinstance(value, UnmappedColumn):
+                raise exc.ArgumentError(
+                    f'Attribute "{cls.__name__}.{k}" uses unmapped_column() '
+                    f"with the {anno_container.__name__}[] annotation; "
+                    "unmapped_column() must be used with the Unmapped[] "
+                    "annotation"
                 )
 
             if (
@@ -1704,6 +1746,12 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                         name_to_prop_key[col.name].add(key)
                     declared_columns.add(col)
 
+                    if isinstance(c, UnmappedColumn):
+                        # the column goes into the Table, and is then
+                        # excluded from the mapping in
+                        # _prepare_mapper_arguments(), #13650
+                        self.unmapped_columns.add(col)
+
                     # we would assert this, however we want the below
                     # warning to take effect instead.  See #9630
                     # assert col not in column_ordering
@@ -1714,8 +1762,16 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                     # have is not what the column has for its key, map the
                     # Column explicitly under the attribute key name.
                     # otherwise, Mapper will map it under the column key.
-                    if mp_to_assign is None and key != col.key:
+                    if (
+                        mp_to_assign is None
+                        and key != col.key
+                        and not isinstance(c, UnmappedColumn)
+                    ):
                         our_stuff[key] = col
+
+                if isinstance(c, UnmappedColumn) and key in self.cls.__dict__:
+                    # the attribute is not part of the class at all
+                    delattr(self.cls, key)
             elif isinstance(c, Column):
                 # undefer previously occurred here, and now occurs earlier.
                 # ensure every column we get here has been named
@@ -2003,6 +2059,14 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                         # note here we place the subclass column
                         # first.  See [ticket:1892] for background.
                         properties[k] = [col] + p.columns
+
+        if self.unmapped_columns:
+            # exclude unmapped_column() columns by Column object, so that
+            # the exclusion applies regardless of key, #13650
+            mapper_args["exclude_properties"] = set(
+                mapper_args.get("exclude_properties") or ()
+            ).union(self.unmapped_columns)
+
         result_mapper_args = mapper_args.copy()
         result_mapper_args["properties"] = properties
         self.mapper_args = result_mapper_args
@@ -2239,7 +2303,7 @@ def _add_attribute(
                 _table_or_raise(mapped_cls).append_column(
                     col, replace_existing=True
                 )
-                if not mp:
+                if not mp and not isinstance(value, UnmappedColumn):
                     mapped_cls.__mapper__.add_property(key, col)
             if mp:
                 mapped_cls.__mapper__.add_property(key, mp)
@@ -2301,6 +2365,26 @@ def _declarative_constructor(self: Any, **kwargs: Any) -> None:
 
 
 _declarative_constructor.__name__ = "__init__"
+
+
+def _mapped_column_for_annotation(
+    collected_annotation: _CollectedAnnotation,
+) -> MappedColumn[Any]:
+    """produce the column construct for an annotation with no right side,
+    e.g. ``x: Mapped[int]`` or ``x: Unmapped[int]``.
+
+    This is the construct that was located inside of an ``Annotated`` type
+    if present, else a blank :class:`.MappedColumn` or
+    :class:`.UnmappedColumn` based on the annotation's container type.
+
+    """
+
+    if collected_annotation.attr_value is not None:
+        return collected_annotation.attr_value  # type: ignore[no-any-return]
+    elif _is_unmapped_container(collected_annotation.mapped_container):
+        return UnmappedColumn()
+    else:
+        return MappedColumn()
 
 
 def _undefer_column_name(key: str, column: Column[Any]) -> None:

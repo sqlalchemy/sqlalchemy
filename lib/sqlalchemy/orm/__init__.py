@@ -37,6 +37,7 @@ from ._orm_constructors import outerjoin as outerjoin
 from ._orm_constructors import query_expression as query_expression
 from ._orm_constructors import relationship as relationship
 from ._orm_constructors import synonym as synonym
+from ._orm_constructors import unmapped_column as unmapped_column
 from ._orm_constructors import with_loader_criteria as with_loader_criteria
 from ._orm_constructors import with_polymorphic as with_polymorphic
 from .attributes import AttributeEventToken as AttributeEventToken
@@ -51,6 +52,7 @@ from .base import NotExtension as NotExtension
 from .base import ORMDescriptor as ORMDescriptor
 from .base import PassiveFlag as PassiveFlag
 from .base import SQLORMExpression as SQLORMExpression
+from .base import Unmapped as Unmapped
 from .base import WriteOnlyMapped as WriteOnlyMapped
 from .context import FromStatement as FromStatement
 from .context import QueryContext as QueryContext

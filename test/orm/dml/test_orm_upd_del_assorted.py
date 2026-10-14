@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Optional
 import uuid
 
 from sqlalchemy import Computed
@@ -8,7 +9,9 @@ from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import insert
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import select
@@ -397,6 +400,80 @@ class OnUpdatePopulationTest(fixtures.TestBase):
         s.commit()
         s.expire_all()
         eq_(e1.some_server_value, server_new_value)
+
+    @testing.variation("synchronize", ["auto", "fetch", "evaluate"])
+    def test_server_onupdate_expired_all_matched(self, decl_base, synchronize):
+        """test #13675"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(String(50))
+            value: Mapped[str] = mapped_column(
+                String(50), server_onupdate=FetchedValue()
+            )
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        objs = [A(id=i, data="d1", value="value 1") for i in (1, 2, 3)]
+        s.add_all(objs)
+        s.flush()
+
+        # perform out of band UPDATE on server value to simulate
+        # a server side onupdate
+        s.connection().execute(update(A.__table__).values(value="value 2"))
+
+        execution_options = {}
+        if not synchronize.auto:
+            execution_options["synchronize_session"] = synchronize.name
+
+        s.execute(
+            update(A).values(data="d2"), execution_options=execution_options
+        )
+
+        eq_(["value" in obj.__dict__ for obj in objs], [False, False, False])
+        eq_(
+            [(obj.data, obj.value) for obj in objs],
+            [("d2", "value 2"), ("d2", "value 2"), ("d2", "value 2")],
+        )
+
+    @testing.variation("synchronize", ["auto", "fetch", "evaluate"])
+    def test_sql_expr_unloaded_expired_all_matched(
+        self, decl_base, synchronize
+    ):
+        """test #13675"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(String(50))
+            value: Mapped[Optional[str]] = mapped_column(String(50))
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        # "value" is not present in __dict__ for these objects
+        objs = [A(id=i, data="d1") for i in (1, 2, 3)]
+        s.add_all(objs)
+        s.flush()
+
+        execution_options = {}
+        if not synchronize.auto:
+            execution_options["synchronize_session"] = synchronize.name
+
+        s.execute(
+            update(A).values(value=func.upper("value 2")),
+            execution_options=execution_options,
+        )
+
+        eq_(
+            ["value" in inspect(obj).expired_attributes for obj in objs],
+            [True, True, True],
+        )
+        eq_([obj.value for obj in objs], ["VALUE 2", "VALUE 2", "VALUE 2"])
 
 
 class PGIssue11849Test(fixtures.DeclarativeMappedTest):

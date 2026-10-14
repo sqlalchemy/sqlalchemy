@@ -99,6 +99,7 @@ if TYPE_CHECKING:
     from ._typing import _ORMColumnExprArgument
     from ._typing import _RegistryType
     from .decl_api import registry
+    from .decl_base import _DeclarativeMapperConfig
     from .dependency import _DependencyProcessor
     from .descriptor_props import CompositeProperty
     from .descriptor_props import SynonymProperty
@@ -1662,6 +1663,17 @@ class Mapper(
                     )
                 else:
                     possible_col_prop = prop_arg
+
+                if isinstance(
+                    possible_col_prop, properties.ColumnProperty
+                ) and self._excluded_by_include_exclude(
+                    key, possible_col_prop.columns
+                ):
+                    # explicit properties are mapped regardless of
+                    # include_properties / exclude_properties
+                    self._warn_for_excluded_declared_attr(
+                        key, possible_col_prop.columns
+                    )
 
                 # issue #8705.  if the explicit property is actually a
                 # Column that is local to the local Table, don't set it up
@@ -3306,22 +3318,64 @@ class Mapper(
             ):
                 return True
 
+        columns = [column] if column is not None else []
+        if self._excluded_by_include_exclude(name, columns):
+            self._warn_for_excluded_declared_attr(name, columns)
+            return True
+
+        return False
+
+    def _excluded_by_include_exclude(
+        self, name: str, columns: Sequence[KeyedColumnElement[Any]]
+    ) -> bool:
         if (
             self.include_properties is not None
             and name not in self.include_properties
-            and (column is None or column not in self.include_properties)
+            and self.include_properties.isdisjoint(columns)
         ):
             self._log("not including property %s" % (name))
             return True
 
         if self.exclude_properties is not None and (
             name in self.exclude_properties
-            or (column is not None and column in self.exclude_properties)
+            or not self.exclude_properties.isdisjoint(columns)
         ):
             self._log("excluding property %s" % (name))
             return True
 
         return False
+
+    def _warn_for_excluded_declared_attr(
+        self, name: str, columns: Sequence[KeyedColumnElement[Any]]
+    ) -> None:
+        """warn for include_properties / exclude_properties that exclude
+        an attribute declared on a Declarative class, #13650.
+
+        Columns that are present only in the Table, e.g. from ``__table__``,
+        ``__table_args__`` or reflection, may be excluded without warning.
+
+        """
+        decl_scan_ref = self.class_manager.declarative_scan
+        mapper_config = decl_scan_ref() if decl_scan_ref is not None else None
+        if mapper_config is None or not mapper_config.is_declarative:
+            return
+        decl_scan = cast("_DeclarativeMapperConfig", mapper_config)
+
+        if any(
+            col in decl_scan.declared_columns
+            and col not in decl_scan.unmapped_columns
+            for col in columns
+        ):
+            util.warn_deprecated(
+                f"Attribute {name!r} declared on class {self.class_} is "
+                "excluded from the mapping by the exclude_properties / "
+                "include_properties mapper arguments; excluding attributes "
+                "that are declared on the class is deprecated, and does not "
+                "reliably remove them from the mapping.  To declare a column "
+                "that is part of the Table but is not mapped, use the "
+                "Unmapped[] annotation with unmapped_column().",
+                "2.1.5",
+            )
 
     def common_parent(self, other: Mapper[Any]) -> bool:
         """Return true if the given mapper shares a
