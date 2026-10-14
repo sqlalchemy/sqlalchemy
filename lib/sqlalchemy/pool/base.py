@@ -746,13 +746,6 @@ class _ConnectionRecord(ConnectionPoolEntry):
         try:
             self.invalidate(e=err)
         finally:
-            if self.dbapi_connection is not None:
-                # invalidate() was itself interrupted, such as by a second
-                # cancellation, before it could close the connection.  keep
-                # the connection so that its close can be retried, but
-                # have the next checkout recycle it rather than use it
-                self._soft_invalidate_time = time.time()
-
             # the record must be returned in any case; nothing else will
             # ever return it, as no _ConnectionFairy refers to it
             self.checkin(
@@ -804,8 +797,26 @@ class _ConnectionRecord(ConnectionPoolEntry):
             self.__pool.dispatch.soft_invalidate(
                 self.dbapi_connection, self, e
             )
-        else:
+            self._log_invalidate(e, soft)
+            self._soft_invalidate_time = time.time()
+            return
+
+        try:
             self.__pool.dispatch.invalidate(self.dbapi_connection, self, e)
+            self._log_invalidate(e, soft)
+            self.__close(terminate=True)
+            assert self.dbapi_connection is None
+        finally:
+            if self.dbapi_connection is not None:
+                # the hard invalidation was interrupted before it could
+                # close the connection, such as by an exception raised
+                # from the invalidate event.  a close that was itself
+                # interrupted has already discarded the connection; here
+                # it's kept so that its close can be retried, but the
+                # next checkout recycles it rather than use it
+                self._soft_invalidate_time = time.time()
+
+    def _log_invalidate(self, e: Optional[BaseException], soft: bool) -> None:
         if e is not None:
             self.__pool.logger.info(
                 "%sInvalidate connection %r (reason: %s:%s)",
@@ -820,12 +831,6 @@ class _ConnectionRecord(ConnectionPoolEntry):
                 "Soft " if soft else "",
                 self.dbapi_connection,
             )
-
-        if soft:
-            self._soft_invalidate_time = time.time()
-        else:
-            self.__close(terminate=True)
-            self.dbapi_connection = None
 
     def get_connection(self) -> DBAPIConnection:
         recycle = False
@@ -939,13 +944,17 @@ class _ConnectionRecord(ConnectionPoolEntry):
                 with util.safe_reraise():
                     try:
                         pool._close_connection(connection, terminate=True)
-                    except BaseException:
+                    except Exception:
                         pool.logger.exception(
                             "Exception closing connection %r stranded by a "
                             "failed connect event",
                             connection,
                         )
-                    self.dbapi_connection = None
+                    finally:
+                        # a cancellation reaching the await within an
+                        # asyncio terminate() propagates in place of the
+                        # original exception
+                        self.dbapi_connection = None
 
 
 def _finalize_fairy(
@@ -1518,15 +1527,19 @@ class _ConnectionFairy(PoolProxiedConnection):
         if self.dbapi_connection is None:
             util.warn("Can't invalidate an already-closed connection.")
             return
-        if self._connection_record:
-            self._connection_record.invalidate(e=e, soft=soft)
-        if not soft:
-            # prevent any rollback / reset actions etc. on
-            # the connection
-            self.dbapi_connection = None  # type: ignore
+        try:
+            if self._connection_record:
+                self._connection_record.invalidate(e=e, soft=soft)
+        finally:
+            if not soft:
+                # prevent any rollback / reset actions etc. on
+                # the connection, including when the invalidation above
+                # was interrupted.  _checkin() then does no IO; it only
+                # returns the record to the pool
+                self.dbapi_connection = None  # type: ignore
 
-            # finalize
-            self._checkin()
+                # finalize
+                self._checkin()
 
     def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor:
         assert self.dbapi_connection is not None
