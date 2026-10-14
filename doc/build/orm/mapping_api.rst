@@ -148,6 +148,10 @@ Class Mapping API
 
 .. autofunction:: synonym_for
 
+.. autoclass:: Unmapped
+
+.. autofunction:: unmapped_column
+
 .. autofunction:: unmapped_dataclass
 
 .. autofunction:: as_typed_table
