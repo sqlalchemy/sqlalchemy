@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 13673
+    :versions: 2.1.5
+
+    Fixed issue where a task that was cancelled a second time while the
+    connection pool was closing an asyncio connection invalidated by the
+    first cancellation, such as one received while a statement was
+    executing, would leave the closed connection in place in the pool, where
+    it would be handed out to the next checkout and fail upon first use.
+    The pool now discards the connection in all cases once a close has been
+    attempted.  This condition occurs unconditionally for tasks cancelled by
+    an AnyIO cancel scope, which delivers the cancellation repeatedly until
+    the task exits the scope.
