@@ -385,10 +385,10 @@ to the :paramref:`_orm.registry.map_imperatively.properties` dictionary:
 
 .. sourcecode:: python
 
-    from sqlalchemy import Blob
     from sqlalchemy import Column
     from sqlalchemy import ForeignKey
     from sqlalchemy import Integer
+    from sqlalchemy import LargeBinary
     from sqlalchemy import String
     from sqlalchemy import Table
     from sqlalchemy import Text
@@ -402,7 +402,7 @@ to the :paramref:`_orm.registry.map_imperatively.properties` dictionary:
         Column("id", Integer, primary_key=True),
         Column("title", String(50)),
         Column("summary", Text),
-        Column("cover_image", Blob),
+        Column("cover_image", LargeBinary),
     )
 
 
