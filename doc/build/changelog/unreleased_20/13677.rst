@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 13677
+    :versions: 2.1.5
+
+    Fixed issue where dialect-specific keyword arguments established on a
+    :class:`.ForeignKeyConstraint`, :class:`.ForeignKey` or
+    :class:`.CheckConstraint`, such as ``postgresql_not_valid``, were not
+    carried along to the copy of the constraint produced by
+    :meth:`.Table.to_metadata`, so that the copied :class:`.Table` would
+    generate DDL without these options.  The fix for :ticket:`5276` had
+    established this behavior for :class:`.Column`,
+    :class:`.PrimaryKeyConstraint` and :class:`.UniqueConstraint` only.
