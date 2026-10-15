@@ -356,6 +356,7 @@ class declared_attr(interfaces._MappedAttribute[_T_co], _declared_attr_common):
             user_id: Mapped[int] = mapped_column(ForeignKey("user_table.id"))
 
             @declared_attr
+            @classmethod
             def user(cls) -> Mapped["User"]:
                 return relationship("User")
 
@@ -366,6 +367,7 @@ class declared_attr(interfaces._MappedAttribute[_T_co], _declared_attr_common):
 
         class CreateTableName:
             @declared_attr.directive
+            @classmethod
             def __tablename__(cls) -> str:
                 return cls.__name__.lower()
 
@@ -383,6 +385,7 @@ class declared_attr(interfaces._MappedAttribute[_T_co], _declared_attr_common):
             type: Mapped[str] = mapped_column(String(50))
 
             @declared_attr.directive
+            @classmethod
             def __mapper_args__(cls) -> Dict[str, Any]:
                 if cls.__name__ == "Employee":
                     return {
@@ -396,11 +399,8 @@ class declared_attr(interfaces._MappedAttribute[_T_co], _declared_attr_common):
         class Engineer(Employee):
             pass
 
-    :class:`_orm.declared_attr` supports decorating functions that are
-    explicitly decorated with ``@classmethod``. This is never necessary from a
-    runtime perspective, however may be needed in order to support :pep:`484`
-    typing tools that don't otherwise recognize the decorated function as
-    having class-level behaviors for the ``cls`` parameter::
+    :class:`_orm.declared_attr` can also be applied to non-directive
+    attributes such as :func:`_orm.column_property`::
 
         class SomethingMixin:
             x: Mapped[int]
@@ -410,6 +410,18 @@ class declared_attr(interfaces._MappedAttribute[_T_co], _declared_attr_common):
             @classmethod
             def x_plus_y(cls) -> Mapped[int]:
                 return column_property(cls.x + cls.y)
+
+    .. tip::
+
+       The examples above also apply the ``@classmethod`` decorator.  This is
+       not required at runtime, however :pep:`484` typing tools have no way to
+       recognize ``def foo(cls)`` as a classmethod unless ``@classmethod`` is
+       present.  Adding ``@classmethod`` allows typing tools to correctly
+       infer the ``cls`` parameter as the class, which is important when
+       accessing mapped attributes such as ``cls.ph1`` inside the body of
+       the method.  :class:`_orm.declared_attr` supports both
+       ``@declared_attr`` and ``@declared_attr.directive`` being combined
+       with ``@classmethod``.
 
     .. versionadded:: 2.0 - :class:`_orm.declared_attr` can accommodate a
        function decorated with ``@classmethod`` to help with :pep:`484`
