@@ -1,6 +1,8 @@
 import typing
 from typing import assert_type
+from typing import Optional
 
+from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import Text
 from sqlalchemy.orm import DeclarativeBase
@@ -15,9 +17,19 @@ class Base(DeclarativeBase):
 
 
 class HasRelatedDataMixin:
+    __tablename__: str
+
+    ph1: Mapped[int]
+    ph2: Mapped[Optional[int]]
+
     @declared_attr
     def related_data(cls) -> Mapped[str]:
         return mapped_column(Text(), deferred=True)
+
+    @declared_attr.directive
+    @classmethod
+    def __table_args__(cls) -> tuple[Index, ...]:
+        return (Index(cls.__tablename__ + "_ph1_ph2", cls.ph1, cls.ph2),)
 
 
 class User(HasRelatedDataMixin, Base):
