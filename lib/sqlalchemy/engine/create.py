@@ -747,16 +747,26 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
             )
             c._execution_options = util.EMPTY_DICT
 
-            try:
-                dialect.initialize(c)
-            finally:
-                # note that "invalidated" and "closed" are mutually
-                # exclusive in 1.4 Connection.
-                if not c.invalidated and not c.closed:
-                    # transaction is rolled back otherwise, tested by
-                    # test/dialect/postgresql/test_dialect.py
-                    # ::MiscBackendTest::test_initial_transaction_state
-                    dialect.do_rollback(c.connection)
+            dialect.initialize(c)
+
+            # roll back only once initialize() has succeeded, rather than
+            # in a finally: block.  when initialize() raises, the DBAPI
+            # connection may be partway through an operation that c
+            # doesn't know about, such as psycopg's TypeInfo.fetch()
+            # interrupted by a cancellation; the rollback then fails
+            # and its error replaces the original one.  the pool closes
+            # the connection in that case, so there's nothing to roll
+            # back.
+            #
+            # note that "invalidated" and "closed" are mutually
+            # exclusive in 1.4 Connection.  c may be invalidated here if
+            # initialize() caught an error on a statement that was a
+            # disconnect.
+            if not c.invalidated and not c.closed:
+                # transaction is rolled back otherwise, tested by
+                # test/dialect/postgresql/test_dialect.py
+                # ::MiscBackendTest::test_initial_transaction_state
+                dialect.do_rollback(c.connection)
 
         # previously, the "first_connect" event was used here, which was then
         # scaled back if the "on_connect" handler were present.  now,

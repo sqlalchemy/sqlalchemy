@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, engine, pool, asyncio
+    :tickets: 13678
+    :versions: 2.1.5
+
+    Fixed regression caused by :ticket:`13548` where an asyncio cancellation
+    delivered while the pool was closing a connection stranded by an
+    exception raised within the :meth:`_events.PoolEvents.connect` event
+    handler would be suppressed, with the original exception raised in its
+    place.  The task would then not end as cancelled, and code that catches
+    ordinary exceptions in order to retry would continue running after it
+    had been cancelled.  The ``CancelledError`` is now propagated.
+
+    As part of this change, a variety of other cancellation scenarios were
+    caught and repaired.

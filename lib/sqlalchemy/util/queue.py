@@ -296,6 +296,17 @@ class AsyncAdaptedQueue(QueueCommon[_T]):
             return self.get_nowait()
 
         try:
+            # an item that's already available is taken without awaiting.
+            # besides being faster, this avoids a bug in
+            # asyncio.wait_for() on Python 3.11 and earlier, where it
+            # returns the item in place of raising a cancellation that
+            # reaches it once the item has been gotten; cpython issue
+            # gh-86296, fixed in Python 3.12
+            return self._queue.get_nowait()
+        except asyncio.QueueEmpty:
+            pass
+
+        try:
             if timeout is not None:
                 return await_(asyncio.wait_for(self._queue.get(), timeout))
             else:
