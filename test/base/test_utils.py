@@ -12,6 +12,8 @@ import subprocess
 import sys
 import textwrap
 import types
+from typing import Generic
+from typing import TypeVar
 
 from sqlalchemy import exc
 from sqlalchemy import sql
@@ -3424,6 +3426,72 @@ class AsInterfaceTest(fixtures.TestBase):
 
 
 class TestClassHierarchy(fixtures.TestBase):
+    def test_generic(self):
+        eq_(set(util.class_hierarchy(Generic)), {Generic, object})
+
+    def test_generic_families_are_independent(self):
+        T = TypeVar("T")
+
+        class A(Generic[T]):
+            pass
+
+        class B(Generic[T]):
+            pass
+
+        class Child(A[int]):
+            pass
+
+        eq_(set(util.class_hierarchy(A)), {A, Child, Generic, object})
+        eq_(set(util.class_hierarchy(B)), {B, Generic, object})
+
+    def test_generic_diamond_stays_connected(self):
+        T = TypeVar("T")
+
+        class A(Generic[T]):
+            pass
+
+        class B(Generic[T]):
+            pass
+
+        class Child(A[int], B[int]):
+            pass
+
+        expected = {A, B, Child, Generic, object}
+        eq_(set(util.class_hierarchy(A)), expected)
+        eq_(set(util.class_hierarchy(B)), expected)
+
+    def test_generic_shared_base_stays_connected(self):
+        T = TypeVar("T")
+
+        class Base(Generic[T]):
+            pass
+
+        class A(Base[int]):
+            pass
+
+        class B(Base[str]):
+            pass
+
+        expected = {A, B, Base, Generic, object}
+        eq_(set(util.class_hierarchy(A)), expected)
+        eq_(set(util.class_hierarchy(B)), expected)
+
+    def test_shared_base_alongside_generic_stays_connected(self):
+        T = TypeVar("T")
+
+        class Base:
+            pass
+
+        class A(Base, Generic[T]):
+            pass
+
+        class B(Base, Generic[T]):
+            pass
+
+        expected = {A, B, Base, Generic, object}
+        eq_(set(util.class_hierarchy(A)), expected)
+        eq_(set(util.class_hierarchy(B)), expected)
+
     def test_object(self):
         eq_(set(util.class_hierarchy(object)), {object})
 

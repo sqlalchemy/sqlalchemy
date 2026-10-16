@@ -1,3 +1,6 @@
+from typing import Generic
+from typing import TypeVar
+
 import sqlalchemy as sa
 from sqlalchemy import Column
 from sqlalchemy import event
@@ -17,6 +20,7 @@ from sqlalchemy.orm.instrumentation import manager_of_class
 from sqlalchemy.orm.instrumentation import register_class
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -627,6 +631,73 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
 
 
 class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
+    @combinations(True, False)
+    def test_independent_generic_instrumentation(self, custom_first):
+        T = TypeVar("T")
+
+        class Manager(instrumentation.InstrumentationManager):
+            pass
+
+        class Custom(Generic[T]):
+            __sa_instrumentation_manager__ = Manager
+
+        class Native(Generic[T]):
+            pass
+
+        classes = (Custom, Native) if custom_first else (Native, Custom)
+        for cls in classes:
+            register_class(cls)
+        is_(instrumentation.manager_of_class(Custom).factory, Manager)
+        is_(
+            instrumentation.manager_of_class(Native).factory,
+            instrumentation.ClassManager,
+        )
+
+    @combinations(True, False)
+    def test_generic_shared_base_conflicts(self, custom_registered):
+        T = TypeVar("T")
+
+        class Base(Generic[T]):
+            pass
+
+        class Native(Base[int]):
+            pass
+
+        class Custom(Base[int]):
+            __sa_instrumentation_manager__ = (
+                instrumentation.InstrumentationManager
+            )
+
+        if custom_registered:
+            register_class(Custom)
+
+        assert_raises_message(
+            TypeError,
+            "multiple instrumentation implementations",
+            register_class,
+            Native,
+        )
+
+    def test_generic_subclass_conflicts(self):
+        T = TypeVar("T")
+
+        class Base(Generic[T]):
+            __sa_instrumentation_manager__ = (
+                instrumentation.InstrumentationManager
+            )
+
+        register_class(Base)
+
+        class Child(Base[int]):
+            __sa_instrumentation_manager__ = instrumentation.ClassManager
+
+        assert_raises_message(
+            TypeError,
+            "multiple instrumentation implementations",
+            register_class,
+            Child,
+        )
+
     def test_none(self):
         class A:
             pass
