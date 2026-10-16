@@ -851,6 +851,8 @@ def class_hierarchy(cls):
     Fibs slightly: subclasses of builtin types are not returned.  Thus
     class_hierarchy(class A(object)) returns (A, object), not A plus every
     class systemwide that derives from object.
+    Likewise, class_hierarchy(class A(Generic[T])) returns
+    (A, Generic, object), not every class systemwide that derives from Generic.
 
     """
 
@@ -864,7 +866,11 @@ def class_hierarchy(cls):
             process.append(b)
             hier.add(b)
 
-        if c.__module__ == "builtins" or not hasattr(c, "__subclasses__"):
+        if (
+            c is Generic
+            or c.__module__ == "builtins"
+            or not hasattr(c, "__subclasses__")
+        ):
             continue
 
         for s in [
