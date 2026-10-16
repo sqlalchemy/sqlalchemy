@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13680
+    :versions: 2.1.5
+
+    Fixed an issue in the :ref:`instrumentation_toplevel` extension where
+    unrelated classes inheriting from ``typing.Generic`` could incorrectly
+    raise a ``TypeError`` when using different instrumentation
+    implementations.
