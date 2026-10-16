@@ -1946,6 +1946,10 @@ class QueuePoolTest(PoolTestBase):
         def invalidate(dbapi_connection, connection_record, exception):
             raise Interrupted()
 
+        # ensure the soft invalidate time will be later than starttime
+        # for the ConnectionRecord above
+        time.sleep(0.1)
+
         with expect_raises(Interrupted):
             c1.invalidate()
 
