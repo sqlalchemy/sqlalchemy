@@ -21,7 +21,13 @@ which is not necessarily the task performing the await; SQLAlchemy runs
 some operations, such as the ``close()`` performed by an async context
 manager on exit, in a task of its own.
 
-Three things are asserted afterwards:
+Four things are asserted afterwards:
+
+* The cancellation reaches the application.  The task ends cancelled,
+  rather than raising some other exception in place of the
+  ``CancelledError`` or returning normally; an application that treats an
+  ordinary exception as something to retry would otherwise carry on past
+  its own shutdown.
 
 * Every DBAPI connection the pool creates is eventually closed through
   ``Pool._close_connection()``.  A connection that is never closed is
@@ -181,6 +187,7 @@ class ConnectionAccounting:
         self._real_close_connection = pool._close_connection
         self._lost_slots = 0
         self._next_use_error = None
+        self._uncancelled_outcome = None
         self._created = set()
         self._closed = set()
 
@@ -216,6 +223,23 @@ class ConnectionAccounting:
         """Connections that were created but never successfully closed."""
 
         return self._created - self._closed
+
+    def record_cancellation(self, task, cancelled_at):
+        """Record whether a cancellation delivered to ``task`` ended it.
+
+        To be called once ``task`` is done.  ``cancelled_at`` is
+        :attr:`.AwaitPoints.cancelled_at`; if it is empty, nothing was
+        cancelled and there is nothing to record.
+
+        """
+        if not cancelled_at or task.cancelled():
+            return
+
+        err = task.exception()
+        if err is not None:
+            self._uncancelled_outcome = f"raised {type(err).__name__}"
+        else:
+            self._uncancelled_outcome = "returned normally"
 
     def record_lost_slots(self):
         """Record the pool slots still checked out.
@@ -254,6 +278,11 @@ class ConnectionAccounting:
         were none."""
 
         failures = []
+        if self._uncancelled_outcome is not None:
+            failures.append(
+                "the cancelled task was not cancelled; it "
+                f"{self._uncancelled_outcome}"
+            )
         if self.leaked:
             failures.append(
                 f"{len(self.leaked)} of {len(self._created)} connection(s) "
@@ -296,7 +325,8 @@ async def run_scenario(
     before opening its replacement.
 
     Returns the :class:`.AwaitPoints` for the run, and a description of
-    what the cancellation cost the pool, or ``None`` if it cost nothing.
+    what the cancellation cost the pool or the application, or ``None`` if
+    it cost nothing.
 
     """
     assert warm or not recycle, "recycle requires 'warm'"
@@ -309,8 +339,9 @@ async def run_scenario(
                 engine.pool._invalidate(None)
 
         with await_points(cancel_at) as points:
+            task = points.create_task(scenario(engine))
             try:
-                await points.create_task(scenario(engine))
+                await task
             except BaseException:
                 # the cancellation itself, or whatever the dialect raised
                 # in response to it.  What the scenario raised is not the
@@ -323,6 +354,10 @@ async def run_scenario(
                 # otherwise absorb it and carry on sweeping
                 if not points.cancelled_at:
                     raise
+
+        # whatever the scenario raised, a cancellation delivered to it has
+        # to end it as cancelled
+        accounting.record_cancellation(task, points.cancelled_at)
 
         # the scenario is over as far as the application can tell
         accounting.record_lost_slots()
