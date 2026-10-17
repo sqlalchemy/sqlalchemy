@@ -87,7 +87,43 @@ class ConventionDict:
         # note that before [ticket:3989], this method was returning
         # the specification for the :class:`.ForeignKey` itself, which normally
         # would be using the ``.key`` of the column, not the name.
-        return fk.column.name
+        try:
+            return fk.column.name
+        except exc.NoReferenceError as err:
+            # ``fk.column`` resolves the target on access. The name is built
+            # when the constraint is attached to its table, which for a
+            # string-based ForeignKey can be before the referenced Table is
+            # in the MetaData -- every other path resolves lazily, so the
+            # plain "could not find table" message gives no hint that the
+            # naming convention is what forced the resolution.
+            raise self._referred_resolution_error(err) from err
+
+    def _referred_resolution_error(self, err):
+        """Re-raise a failed target resolution as the same error type, saying
+        what actually required the foreign key to be resolvable.
+
+        The type is preserved so that existing
+        ``except NoReferencedTableError`` handling keeps working.
+
+        """
+        message = (
+            "Naming convention including the "
+            "%%(referred_column_0_name)s token requires the foreign key "
+            "target to be resolvable when the constraint is attached to "
+            "table '%s'; %s. Either define the referenced table before this "
+            "one, pass the target Column object to ForeignKey() rather than "
+            "a string, or use the %%(referred_table_name)s token, which is "
+            "read from the string and does not require resolution."
+            % (self.table.name, err.args[0])
+        )
+        if isinstance(err, exc.NoReferencedColumnError):
+            return exc.NoReferencedColumnError(
+                message, err.table_name, err.column_name
+            )
+        elif isinstance(err, exc.NoReferencedTableError):
+            return exc.NoReferencedTableError(message, err.table_name)
+        else:
+            return type(err)(message)
 
     def __getitem__(self, key):
         if key in self.convention:
