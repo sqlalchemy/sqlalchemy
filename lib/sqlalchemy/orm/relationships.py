@@ -1233,7 +1233,10 @@ class RelationshipProperty(
         alias_secondary: bool = True,
         from_entity: Optional[_EntityType[Any]] = None,
     ) -> ColumnElement[bool]:
-        assert instance is not None
+        if instance is None:
+            raise sa_exc.ArgumentError(
+                f"Expected mapped instance for relationship '{self}', got None"
+            )
         adapt_source: Optional[_CoreAdapterProto] = None
         if from_entity is not None:
             insp: Optional[_InternalEntityType[Any]] = inspect(from_entity)
@@ -1290,6 +1293,14 @@ class RelationshipProperty(
             mapper = self.mapper
         else:
             mapper = self.parent
+
+        if not state.mapper.isa(mapper):
+            raise sa_exc.ArgumentError(
+                f"Instance '{state.obj()}' is not an instance of "
+                f"'{mapper.class_.__name__}', which is the "
+                f"{'target' if reverse_direction else 'parent'} class for "
+                f"relationship '{self}'"
+            )
 
         dict_ = attributes.instance_dict(state.obj())
 
