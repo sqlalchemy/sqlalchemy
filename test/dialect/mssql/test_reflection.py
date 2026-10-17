@@ -117,6 +117,31 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             "CREATE TABLE type_test (col1 %s NULL)" % ddl,
         )
 
+    @testing.combinations(
+        (mssql.DATETIME2(3), "DATETIME2(3)"),
+        (mssql.DATETIMEOFFSET(2), "DATETIMEOFFSET(2)"),
+        (mssql.TIME(5), "TIME(5)"),
+        argnames="type_obj,ddl",
+    )
+    def test_datetime_precision_round_trip(
+        self, metadata, connection, type_obj, ddl
+    ):
+        """reflect a DATETIME2/DATETIMEOFFSET/TIME and re-emit DDL
+
+        issue #13497, the fractional-seconds precision was previously
+        dropped during reflection.
+
+        """
+        table = Table("type_test", metadata, Column("col1", type_obj))
+        table.create(connection)
+
+        m2 = MetaData()
+        table2 = Table("type_test", m2, autoload_with=connection)
+        self.assert_compile(
+            schema.CreateTable(table2),
+            "CREATE TABLE type_test (col1 %s NULL)" % ddl,
+        )
+
     def test_lob_types_no_length(self, metadata, connection):
         """TEXT / NTEXT / IMAGE are unlengthed, and a reflected version of
         such a table must remain creatable.
@@ -1666,3 +1691,72 @@ class AliasTypeReflectionTest(fixtures.TestBase):
             insp = inspect(connection)
             cols = {c["name"]: c for c in insp.get_columns("clr_t")}
         assert isinstance(cols["data"]["type"], sqltypes.NullType)
+
+
+class ParseColumnInfoTest(fixtures.TestBase):
+    """Unit tests for :meth:`.MSDialect._parse_column_info`.
+
+    These exercise the ``sys.columns`` row-parsing logic of the mssql
+    dialect without requiring a database connection (issue #13497).
+
+    """
+
+    def _parsed_type(self, type_name, precision, scale):
+        dialect = mssql.dialect()
+        cdict = dialect._parse_column_info(
+            name="some_col",
+            type_=type_name,
+            base_type=None,
+            nullable=True,
+            maxlen=None,
+            numericprec=precision,
+            numericscale=scale,
+            default=None,
+            collation=None,
+            definition=None,
+            is_persisted=None,
+            is_identity=None,
+            identity_start=None,
+            identity_increment=None,
+            comment=None,
+        )
+        return cdict["type"]
+
+    @testing.combinations(
+        ("datetime2", base.DATETIME2, 3, "DATETIME2(3)"),
+        ("datetime2", base.DATETIME2, 0, "DATETIME2(0)"),
+        ("datetimeoffset", base.DATETIMEOFFSET, 2, "DATETIMEOFFSET(2)"),
+        ("time", base.TIME, 5, "TIME(5)"),
+        argnames="type_name, expected_class, precision, expected_ddl",
+    )
+    def test_datetime_precision_reflected(
+        self, type_name, expected_class, precision, expected_ddl
+    ):
+        """DATETIME2 / DATETIMEOFFSET / TIME reflect their precision.
+
+        Issue #13497: reflection dropped the ``(p)`` on these types, so
+        reflect-then-create round trips silently changed the column back
+        to the default scale of 7.
+
+        """
+        type_ = self._parsed_type(type_name, precision, precision)
+        is_(type_.__class__, expected_class)
+        eq_(type_.precision, precision)
+        eq_(type_.compile(dialect=mssql.dialect()), expected_ddl)
+
+    @testing.combinations(
+        ("datetime", 23, 3),
+        ("smalldatetime", 16, 0),
+        argnames="type_name, precision, scale",
+    )
+    def test_legacy_datetime_no_precision(self, type_name, precision, scale):
+        """Legacy DATETIME / SMALLDATETIME accept no precision argument."""
+        type_ = self._parsed_type(type_name, precision, scale)
+        is_(getattr(type_, "precision", None), None)
+        eq_(type_.compile(dialect=mssql.dialect()), type_name.upper())
+
+    def test_numeric_precision_scale_unchanged(self):
+        type_ = self._parsed_type("numeric", 10, 4)
+        is_(type_.__class__, sqltypes.NUMERIC)
+        eq_(type_.precision, 10)
+        eq_(type_.scale, 4)
