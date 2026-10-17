@@ -1,6 +1,8 @@
 import sqlalchemy as sa
 from sqlalchemy import bindparam
+from sqlalchemy import event
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import select
@@ -3205,6 +3207,307 @@ class SubqueryloadDistinctTest(
             [credit.movie.director.name for credit in result],
             ["Woody Allen", "Woody Allen", "Woody Allen"],
         )
+
+
+class SubqueryloadRawTupleTest(
+    _fixtures.FixtureTest, testing.AssertsExecutionResults
+):
+    """coverage for consuming subqueryload results as plain processed
+    tuples and replicating the legacy ``result.unique()`` dedup.
+
+    See ``_SubqCollections._load`` in ``orm/strategies.py``.
+
+    """
+
+    run_inserts = "once"
+    run_deletes = None
+
+    def _m2o_fixture(self):
+        User, Order, Address = (
+            self.classes.User,
+            self.classes.Order,
+            self.classes.Address,
+        )
+        self.mapper_registry.map_imperatively(User, self.tables.users)
+        self.mapper_registry.map_imperatively(Address, self.tables.addresses)
+        self.mapper_registry.map_imperatively(
+            Order,
+            self.tables.orders,
+            properties={
+                "user": relationship(User),
+                "address": relationship(Address),
+            },
+        )
+        return User, Order, Address
+
+    def _o2m_nested_joinedload_fixture(self):
+        # User.orders (subqueryload) -> Order.items (joinedload, collection)
+        # the inner joinedload on a collection sets
+        # multi_row_eager_loaders, so result.context.requires_uniquing is
+        # True and the retained Row-based result.unique() path runs.
+        User, Order, Item = (
+            self.classes.User,
+            self.classes.Order,
+            self.classes.Item,
+        )
+        self.mapper_registry.map_imperatively(
+            User,
+            self.tables.users,
+            properties={
+                "orders": relationship(Order, order_by=self.tables.orders.c.id)
+            },
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            self.tables.orders,
+            properties={
+                "items": relationship(
+                    Item,
+                    secondary=self.tables.order_items,
+                    order_by=self.tables.items.c.id,
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Item, self.tables.items)
+        return User, Order, Item
+
+    def test_dedup_m2o_no_uselist_warning(self):
+        """dedup on the scalar/m2o path: many orders share the same user.
+
+        With ``distinct_target_key=False`` the subquery does NOT apply
+        DISTINCT, so it returns duplicate ``(User, user_id)`` rows -- the
+        SAME key mapping to the SAME related object multiple times.  The new
+        raw-tuple dedup must collapse these to a single related object,
+        otherwise ``load_scalar_from_subq`` sees a collection of len > 1 and
+        emits the "Multiple rows returned with uselist=False" SAWarning
+        (which the test suite escalates to an error).
+        """
+
+        User, Order, Address = self._m2o_fixture()
+
+        # turn off the DISTINCT optimisation so duplicate same-key rows are
+        # actually produced and must be de-duplicated by _SubqCollections.
+        Order.user.property.distinct_target_key = False
+
+        sess = fixture_session()
+        q = sess.query(Order).options(subqueryload(Order.user))
+
+        def go():
+            orders = q.order_by(Order.id).all()
+            # orders 1,3,5 -> user 7 (jack); orders 2,4 -> user 9 (fred)
+            eq_(
+                [(o.id, o.user.id) for o in orders],
+                [(1, 7), (2, 9), (3, 7), (4, 9), (5, 7)],
+            )
+            # the same user object is shared across orders pointing at it
+            users = {o.id: o.user for o in orders}
+            is_(users[1], users[3])
+            is_(users[1], users[5])
+            is_(users[2], users[4])
+
+        # 2 statements (Order + the subqueryload) and, crucially, no
+        # uselist=False warning escalated to an error.
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_dedup_order_by_join_duplicate_rows(self):
+        """ordering across a join that yields duplicate parent rows still
+        dedups the subqueryloaded scalar correctly.
+
+        The outer query joins Order->Address and orders by a joined column;
+        with the DISTINCT optimisation disabled the subquery returns
+        duplicate ``(User, user_id)`` rows in this ordered shape, which must
+        still collapse to one related object per key.
+        """
+
+        User, Order, Address = self._m2o_fixture()
+        Order.user.property.distinct_target_key = False
+
+        sess = fixture_session()
+        q = (
+            sess.query(Order)
+            .join(Order.address)
+            .options(subqueryload(Order.user))
+            .order_by(Address.email_address, Order.id)
+        )
+
+        def go():
+            orders = q.all()
+            # orders with NULL address_id (order 5) are dropped by the join
+            eq_(
+                {o.id: o.user.name for o in orders},
+                {1: "jack", 3: "jack", 2: "fred", 4: "fred"},
+            )
+            # de-duplicated to a single shared User per key
+            by_id = {o.id: o.user for o in orders}
+            is_(by_id[1], by_id[3])
+            is_(by_id[2], by_id[4])
+
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_requires_uniquing_nested_joinedload(self):
+        """requires_uniquing fallback: a joinedload of a collection nested
+        inside the subqueryload drives the retained result.unique() Row
+        path; verify correctly de-duplicated collections."""
+
+        User, Order, Item = self._o2m_nested_joinedload_fixture()
+        sess = fixture_session()
+
+        q = sess.query(User).options(
+            subqueryload(User.orders).joinedload(Order.items)
+        )
+
+        def go():
+            eq_(self.static.user_order_result, q.order_by(User.id).all())
+
+        # query for users + the subqueryload (which itself joins items);
+        # no per-Order item query thanks to the inner joinedload
+        self.assert_sql_count(testing.db, go, 2)
+
+    @testing.variation("nested_joinedload", [True, False])
+    def test_unique_result_from_do_orm_execute(self, nested_joinedload):
+        """a do_orm_execute() hook that returns an already-uniqued Result
+        for the subqueryload's statement; the raw tuple path can't be used
+        for such a result."""
+
+        User, Order, Item = self._o2m_nested_joinedload_fixture()
+        sess = fixture_session()
+
+        @event.listens_for(sess, "do_orm_execute")
+        def go(orm_execute_state):
+            if orm_execute_state.is_relationship_load:
+                return orm_execute_state.invoke_statement().unique()
+
+        if nested_joinedload:
+            opt = subqueryload(User.orders).joinedload(Order.items)
+        else:
+            opt = subqueryload(User.orders)
+
+        eq_(
+            sess.query(User).options(opt).order_by(User.id).all(),
+            self.static.user_order_result,
+        )
+
+    def test_yield_per_selectinload_to_subqueryload(self):
+        """yield_per on the top level statement is propagated to a
+        subqueryload nested inside a selectinload; previously the legacy
+        Query iteration would call unique() on the yield_per result and
+        raise."""
+
+        User, Order, Item = self._o2m_nested_joinedload_fixture()
+        sess = fixture_session()
+
+        stmt = (
+            select(User)
+            .options(selectinload(User.orders).subqueryload(Order.items))
+            .order_by(User.id)
+            .execution_options(yield_per=1)
+        )
+        eq_(
+            sess.scalars(stmt).all(),
+            self.static.user_order_result,
+        )
+
+
+class SubqueryloadCompositeKeyRawTupleTest(fixtures.DeclarativeMappedTest):
+    """subqueryload dedup on a COMPOSITE parent key.
+
+    Every ``SubqueryloadRawTupleTest`` fixture dedups on a single integer
+    key, so the key slice that ``_SubqCollections._load`` de-duplicates on
+    is always a 1-tuple.  Here the parent key has two columns, so the slice
+    has length 2.  See ``orm/strategies.py``.
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Node(ComparableEntity, Base):
+            __tablename__ = "node"
+
+            pk1 = Column(Integer, primary_key=True)
+            pk2 = Column(Integer, primary_key=True)
+            data = Column(String(20))
+
+            leaves = relationship(
+                "Leaf", order_by="Leaf.id", back_populates="node"
+            )
+
+        class Leaf(ComparableEntity, Base):
+            __tablename__ = "leaf"
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            node_pk1 = Column(Integer)
+            node_pk2 = Column(Integer)
+            data = Column(String(20))
+
+            __table_args__ = (
+                ForeignKeyConstraint(
+                    ["node_pk1", "node_pk2"], ["node.pk1", "node.pk2"]
+                ),
+            )
+
+            node = relationship("Node", back_populates="leaves")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Node = cls.classes.Node
+        Leaf = cls.classes.Leaf
+
+        s = Session(connection)
+        s.add_all(
+            [
+                # (1, 1) and (1, 2) share pk1 -- if grouping used only the
+                # first key column they would be merged.
+                Node(
+                    pk1=1,
+                    pk2=1,
+                    leaves=[Leaf(id=1), Leaf(id=2)],
+                ),
+                Node(pk1=1, pk2=2, leaves=[Leaf(id=3)]),
+                Node(pk1=2, pk2=1, leaves=[Leaf(id=4), Leaf(id=5)]),
+                # a parent with no related rows -> empty collection
+                Node(pk1=2, pk2=2, leaves=[]),
+            ]
+        )
+        s.commit()
+
+    def test_composite_key_m2o_dedup(self):
+        """scalar m2o subqueryload on a composite key with
+        ``distinct_target_key=False`` produces duplicate
+        ``(Node, pk1, pk2)`` rows that the raw-tuple dedup
+        (``(id(obj), key)`` with a 2-element key) must collapse,
+        otherwise ``load_scalar_from_subq`` warns on uselist=False."""
+
+        Leaf = self.classes.Leaf
+
+        # no DISTINCT -> duplicate same-key rows are actually produced
+        Leaf.node.property.distinct_target_key = False
+
+        s = fixture_session()
+        q = s.query(Leaf).options(subqueryload(Leaf.node)).order_by(Leaf.id)
+
+        def go():
+            leaves = q.all()
+            # the suite escalates the uselist=False SAWarning to an error,
+            # so a dedup failure here fails loudly.
+            eq_(
+                [(leaf.id, (leaf.node.pk1, leaf.node.pk2)) for leaf in leaves],
+                [
+                    (1, (1, 1)),
+                    (2, (1, 1)),
+                    (3, (1, 2)),
+                    (4, (2, 1)),
+                    (5, (2, 1)),
+                ],
+            )
+            # leaves 1 & 2 (and 4 & 5) resolve to the SAME Node instance
+            is_(leaves[0].node, leaves[1].node)
+            is_(leaves[3].node, leaves[4].node)
+
+        self.assert_sql_count(testing.db, go, 2)
 
 
 class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
