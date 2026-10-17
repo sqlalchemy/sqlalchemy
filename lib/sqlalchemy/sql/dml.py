@@ -1872,7 +1872,16 @@ class Delete(
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
+            ("_return_defaults", InternalTraversal.dp_boolean),
             ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
+            (
+                "_return_defaults_columns",
+                InternalTraversal.dp_clauseelement_tuple,
+            ),
+            (
+                "_supplemental_returning",
+                InternalTraversal.dp_clauseelement_tuple,
+            ),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
