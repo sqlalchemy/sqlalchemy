@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import close_all_sessions
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -604,6 +605,22 @@ class AsyncSessionQueryTest(AsyncFixture):
                 self.static.user_address_result[0:3],
                 self.static.user_address_result[3:],
             ],
+        )
+
+    @async_test
+    @testing.requires.independent_cursors
+    async def test_stream_unique_scalars_joinedload(self, async_session):
+        User = self.classes.User
+
+        stmt = (
+            select(User).options(joinedload(User.addresses)).order_by(User.id)
+        )
+
+        result = await async_session.stream(stmt)
+
+        eq_(
+            await result.unique().scalars().all(),
+            self.static.user_address_result,
         )
 
     @testing.combinations("statement", "execute", argnames="location")
