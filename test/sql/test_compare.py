@@ -713,6 +713,9 @@ class CoreFixtures:
             table_b.insert().with_dialect_options(sqlite_foo="some value"),
             table_b.insert().from_select(["a", "b"], select(table_a)),
             table_b.insert().from_select(
+                ["a", "b"], select(table_a), include_defaults=False
+            ),
+            table_b.insert().from_select(
                 ["a", "b"], select(table_a).where(table_a.c.a > 5)
             ),
             table_b.insert().from_select(["a", "b"], select(table_b)),

@@ -1255,6 +1255,10 @@ class Insert(ValuesBase, HasSyntaxExtensions[Literal["post_values"]]):
             ("_values", InternalTraversal.dp_dml_values),
             ("_multi_values", InternalTraversal.dp_dml_multi_values),
             ("select", InternalTraversal.dp_clauseelement),
+            (
+                "include_insert_from_select_defaults",
+                InternalTraversal.dp_boolean,
+            ),
             ("_post_values_clause", InternalTraversal.dp_clauseelement),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
