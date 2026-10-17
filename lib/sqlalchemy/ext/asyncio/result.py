@@ -458,6 +458,12 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
         it will produce a new :class:`_engine.Result` object each time
         against its stored set of rows.
 
+        The rows are frozen from the underlying :class:`_engine.Result`;
+        filters applied to this :class:`_asyncio.AsyncResult` using
+        :meth:`_asyncio.AsyncResult.unique` or
+        :meth:`_asyncio.AsyncResult.columns` are not applied to the
+        :class:`_engine.FrozenResult`.
+
         .. seealso::
 
             :ref:`do_orm_execute_re_executing` - example usage within the
@@ -465,7 +471,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
 
         """
 
-        return await greenlet_spawn(FrozenResult, self)
+        return await greenlet_spawn(FrozenResult, self._real_result)
 
     @overload
     def scalars(

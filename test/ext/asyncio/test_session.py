@@ -606,6 +606,18 @@ class AsyncSessionQueryTest(AsyncFixture):
             ],
         )
 
+    @async_test
+    @testing.requires.independent_cursors
+    async def test_stream_freeze(self, async_session):
+        User = self.classes.User
+
+        stmt = select(User).order_by(User.id)
+
+        result = await async_session.stream(stmt)
+        frozen = await result.freeze()
+
+        eq_(frozen().scalars().all(), self.static.user_result)
+
     @testing.combinations("statement", "execute", argnames="location")
     @async_test
     @testing.requires.server_side_cursors

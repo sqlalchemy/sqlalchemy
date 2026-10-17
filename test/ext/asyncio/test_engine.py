@@ -1326,6 +1326,18 @@ class AsyncResultTest(EngineFixture):
             all_ = await result.columns(1).all()
             eq_(all_, [("name%d" % i,) for i in range(1, 20)])
 
+    @async_test
+    async def test_freeze(self, async_engine):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            result = await conn.stream(select(users).order_by(users.c.user_id))
+
+            frozen = await result.freeze()
+
+            expected = [(i, "name%d" % i) for i in range(1, 20)]
+            eq_(frozen().all(), expected)
+            eq_(frozen().all(), expected)
+
     @testing.combinations(
         (None,), ("scalars",), ("mappings",), argnames="filter_"
     )
