@@ -1366,6 +1366,44 @@ class AsyncResultTest(EngineFixture):
                 all_ = await result.columns("user_name").mappings().all()
                 eq_(all_, [{"user_name": "name%d" % i} for i in range(1, 20)])
 
+    @testing.variation(
+        "filter_", ["none", "columns", "unique", "columns_unique"]
+    )
+    @async_test
+    async def test_freeze(self, async_engine, filter_):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            result = await conn.stream(
+                union_all(select(users), select(users)).order_by(
+                    users.c.user_id
+                )
+            )
+
+            if filter_.columns:
+                result = result.columns(1)
+                expected = [
+                    ("name%d" % i,) for i in range(1, 20) for _ in range(2)
+                ]
+            elif filter_.unique:
+                result = result.unique()
+                expected = [(i, "name%d" % i) for i in range(1, 20)]
+            elif filter_.columns_unique:
+                result = result.columns(1).unique()
+                expected = [("name%d" % i,) for i in range(1, 20)]
+            elif filter_.none:
+                expected = [
+                    (i, "name%d" % i) for i in range(1, 20) for _ in range(2)
+                ]
+            else:
+                filter_.fail()
+
+            frozen = await result.freeze()
+
+        # the frozen result is invoked after the connection is closed;
+        # all rows were fetched when freeze() was called
+        eq_(frozen().all(), expected)
+        eq_(frozen().all(), expected)
+
     @testing.combinations(
         (None,), ("scalars",), ("mappings",), argnames="filter_"
     )
