@@ -4255,6 +4255,42 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         ):
             str(s)
 
+    @testing.variation("paramstyle", ["named", "qmark"])
+    def test_expanding_bind_name_collision(self, paramstyle):
+        t = table("t", column("a"), column("a_1"))
+        stmt = select(t.c.a, t.c.a_1).where(
+            t.c.a.in_([1, 2]),
+            t.c.a_1 == 5,
+        )
+        dialect = (
+            default.DefaultDialect()
+            if paramstyle.named
+            else sqlite.dialect()
+        )
+        compiled = stmt.compile(dialect=dialect)
+        expanded_state = compiled._process_parameters_for_postcompile(
+            compiled.construct_params()
+        )
+
+        eq_(
+            expanded_state.additional_parameters,
+            {
+                "a_1_1": 5,
+                "a_1_expanded_1_1": 1,
+                "a_1_expanded_1_2": 2,
+            },
+        )
+        eq_(expanded_state.parameters["a_1_1"], 5)
+        if paramstyle.qmark:
+            eq_(
+                expanded_state.positiontup,
+                [
+                    "a_1_expanded_1_1",
+                    "a_1_expanded_1_2",
+                    "a_1_1",
+                ],
+            )
+
     def test_unique_binds_no_clone_collision(self):
         """test #6824"""
         bp = bindparam("foo", unique=True)

@@ -2206,6 +2206,9 @@ class SQLCompiler(Compiled):
             names = self.bind_names.values()
 
         ebn = self.escaped_bind_names
+        occupied_names = set(parameters)
+        if ebn:
+            occupied_names.update(ebn.values())
         for name in names:
             escaped_name = ebn.get(name, name) if ebn else name
             parameter = self.binds[name]
@@ -2238,13 +2241,24 @@ class SQLCompiler(Compiled):
                     # in the escaped_bind_names dictionary.
                     values = parameters.pop(name)
 
-                    leep_res = self._literal_execute_expanding_parameter(
-                        escaped_name, parameter, values
-                    )
-                    to_update, replacement_expr = leep_res
+                    expansion_name = escaped_name
+                    suffix = 0
+                    while True:
+                        to_update, replacement_expr = (
+                            self._literal_execute_expanding_parameter(
+                                expansion_name, parameter, values
+                            )
+                        )
+                        if not any(
+                            key in occupied_names for key, _ in to_update
+                        ):
+                            break
+                        suffix += 1
+                        expansion_name = f"{escaped_name}_expanded_{suffix}"
 
                     to_update_sets[escaped_name] = to_update
                     replacement_expressions[escaped_name] = replacement_expr
+                    occupied_names.update(key for key, _ in to_update)
 
                 if not parameter.literal_execute:
                     parameters.update(to_update)
