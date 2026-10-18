@@ -364,7 +364,11 @@ class URL(NamedTuple):
         return self._replace(**kw)
 
     def update_query_string(
-        self, query_string: str, append: bool = False
+        self,
+        query_string: str,
+        append: bool = False,
+        *,
+        keep_blank_values: bool = False,
     ) -> URL:
         """Return a new :class:`_engine.URL` object with the :attr:`_engine.URL.query`
         parameter dictionary updated by the given query string.
@@ -387,6 +391,13 @@ class URL(NamedTuple):
          If left at its default of False, keys present in the given query
          parameters will replace those of the existing query string.
 
+        :param keep_blank_values: if True, parameters with blank values
+         such as ``key=`` are retained in the query dictionary as empty
+         strings.  If left at its default of False, parameters with blank
+         values are omitted.
+
+         .. versionadded:: 2.1.6
+
         .. versionadded:: 1.4
 
         .. seealso::
@@ -396,7 +407,10 @@ class URL(NamedTuple):
             :meth:`_engine.URL.update_query_dict`
 
         """  # noqa: E501
-        return self.update_query_pairs(parse_qsl(query_string), append=append)
+        return self.update_query_pairs(
+            parse_qsl(query_string, keep_blank_values=keep_blank_values),
+            append=append,
+        )
 
     def update_query_pairs(
         self,
@@ -836,7 +850,9 @@ class URL(NamedTuple):
         return translated
 
 
-def make_url(name_or_url: Union[str, URL]) -> URL:
+def make_url(
+    name_or_url: Union[str, URL], *, keep_blank_values: bool = False
+) -> URL:
     """Given a string, produce a new URL instance.
 
     The format of the URL generally follows `RFC-1738
@@ -846,6 +862,21 @@ def make_url(name_or_url: Union[str, URL]) -> URL:
 
     If a :class:`.URL` object is passed, it is returned as is.
 
+    :param name_or_url: a string URL or :class:`.URL` object.
+
+    :param keep_blank_values: if True, query string parameters with blank
+     values such as ``key=`` are retained in the :attr:`.URL.query`
+     dictionary as empty strings.  If left at its default of False,
+     parameters with blank values are omitted.  Has no effect when a
+     :class:`.URL` object is passed.
+
+     As :func:`_sa.create_engine` parses string URLs using the default
+     setting, a string URL with blank values to be retained should be
+     parsed with :func:`.make_url` first, and the resulting :class:`.URL`
+     passed to :func:`_sa.create_engine`.
+
+     .. versionadded:: 2.1.6
+
     .. seealso::
 
         :ref:`database_urls`
@@ -853,7 +884,7 @@ def make_url(name_or_url: Union[str, URL]) -> URL:
     """
 
     if isinstance(name_or_url, str):
-        return _parse_url(name_or_url)
+        return _parse_url(name_or_url, keep_blank_values=keep_blank_values)
     elif not isinstance(name_or_url, URL) and not hasattr(
         name_or_url, "_sqla_is_testing_if_this_is_a_mock_object"
     ):
@@ -864,7 +895,7 @@ def make_url(name_or_url: Union[str, URL]) -> URL:
         return name_or_url
 
 
-def _parse_url(name: str) -> URL:
+def _parse_url(name: str, keep_blank_values: bool = False) -> URL:
     pattern = re.compile(
         r"""
             (?P<name>[\w\+]+)://
@@ -892,7 +923,9 @@ def _parse_url(name: str) -> URL:
         if components["query"] is not None:
             query = {}
 
-            for key, value in parse_qsl(components["query"]):
+            for key, value in parse_qsl(
+                components["query"], keep_blank_values=keep_blank_values
+            ):
                 if key in query:
                     query[key] = util.to_list(query[key])
                     cast("List[str]", query[key]).append(value)
