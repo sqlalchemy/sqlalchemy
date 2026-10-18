@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13686, 13687
+    :versions: 2.1.6
+
+    Fixed issues in cache key generation involving the DML constructs
+    :class:`.Insert`, :class:`.Update` and :class:`.Delete`.  The
+    :paramref:`.Insert.from_select.include_defaults`,
+    :meth:`.UpdateBase.return_defaults` and
+    :paramref:`.UpdateBase.return_defaults.supplemental_cols`
+    parameters/attributes are now considered as part of the cache key.
