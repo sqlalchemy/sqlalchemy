@@ -278,6 +278,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                 "param_1",
                 compiled.binds["param_1"],
                 compiled.binds["param_1"].value,
+                taken_names=set(),
             ),
             (
                 [
