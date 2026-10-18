@@ -1243,6 +1243,46 @@ class AsyncResultTest(EngineFixture):
             all_ = await result.columns(1).all()
             eq_(all_, [("name%d" % i,) for i in range(1, 20)])
 
+    @testing.combinations(("scalars",), ("mappings",), argnames="filter_")
+    @async_test
+    async def test_unique_filtered_all(self, async_engine, filter_):
+        """test #13688"""
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            result = await conn.stream(
+                union_all(select(users), select(users)).order_by(
+                    users.c.user_id
+                )
+            )
+
+            if filter_ == "scalars":
+                all_ = await result.unique().scalars().all()
+                eq_(all_, list(range(1, 20)))
+            elif filter_ == "mappings":
+                all_ = await result.unique().mappings().all()
+                eq_(
+                    all_,
+                    [
+                        {"user_id": i, "user_name": "name%d" % i}
+                        for i in range(1, 20)
+                    ],
+                )
+
+    @testing.combinations(("scalars",), ("mappings",), argnames="filter_")
+    @async_test
+    async def test_columns_filtered_all(self, async_engine, filter_):
+        """test #13688"""
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            result = await conn.stream(select(users))
+
+            if filter_ == "scalars":
+                all_ = await result.columns("user_name").scalars().all()
+                eq_(all_, ["name%d" % i for i in range(1, 20)])
+            elif filter_ == "mappings":
+                all_ = await result.columns("user_name").mappings().all()
+                eq_(all_, [{"user_name": "name%d" % i} for i in range(1, 20)])
+
     @testing.combinations(
         (None,), ("scalars",), ("mappings",), argnames="filter_"
     )
