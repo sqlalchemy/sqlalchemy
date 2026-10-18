@@ -396,7 +396,9 @@ class URL(NamedTuple):
             :meth:`_engine.URL.update_query_dict`
 
         """  # noqa: E501
-        return self.update_query_pairs(parse_qsl(query_string), append=append)
+        return self.update_query_pairs(
+            parse_qsl(query_string, keep_blank_values=True), append=append
+        )
 
     def update_query_pairs(
         self,
@@ -892,7 +894,9 @@ def _parse_url(name: str) -> URL:
         if components["query"] is not None:
             query = {}
 
-            for key, value in parse_qsl(components["query"]):
+            for key, value in parse_qsl(
+                components["query"], keep_blank_values=True
+            ):
                 if key in query:
                     query[key] = util.to_list(query[key])
                     cast("List[str]", query[key]).append(value)
@@ -920,3 +924,4 @@ def _parse_url(name: str) -> URL:
         raise exc.ArgumentError(
             "Could not parse SQLAlchemy URL from given URL string"
         )
+
