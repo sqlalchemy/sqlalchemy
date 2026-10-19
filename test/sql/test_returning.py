@@ -970,6 +970,54 @@ class InsertReturnDefaultsTest(fixtures.TablesTest):
         )
         eq_(result.all(), [(1, "PROCESSED! d1")])
 
+    @testing.variation(
+        "return_defaults_type", ["plain", "columns", "supplemental"]
+    )
+    def test_insert_return_defaults_cached(
+        self, connection, return_defaults_type
+    ):
+        """test #13687"""
+
+        t1 = self.tables.t1
+
+        def go(id_, return_defaults):
+            stmt = t1.insert().values(id=id_, data=f"d{id_}")
+            if return_defaults:
+                if return_defaults_type.columns:
+                    stmt = stmt.return_defaults(t1.c.insdef)
+                elif return_defaults_type.supplemental:
+                    stmt = stmt.return_defaults(supplemental_cols=[t1.c.data])
+                elif return_defaults_type.plain:
+                    stmt = stmt.return_defaults()
+                else:
+                    return_defaults_type.fail()
+            result = connection.execute(stmt)
+            return (
+                result.returns_rows,
+                (
+                    tuple(result.returned_defaults)
+                    if result.returned_defaults is not None
+                    else None
+                ),
+            )
+
+        # the insdef default renders inline at compile time from a counter;
+        # the plain INSERT compiles first and gets 0, the return_defaults()
+        # form compiles separately and gets 1
+        if return_defaults_type.columns:
+            expected = (True, (1,))
+        elif return_defaults_type.supplemental:
+            expected = (True, ("d2", 1, None))
+        else:
+            expected = (True, (1, None))
+
+        # a plain INSERT, then the return_defaults() form of the same
+        # statement, then a plain INSERT again, all on the same cache
+        eq_(
+            [go(1, False), go(2, True), go(3, False)],
+            [(False, None), expected, (False, None)],
+        )
+
 
 class UpdatedReturnDefaultsTest(fixtures.TablesTest):
     __requires__ = ("update_returning",)
@@ -1111,6 +1159,60 @@ class UpdatedReturnDefaultsTest(fixtures.TablesTest):
         )
         eq_(dict(result.returned_defaults._mapping), {"upddef": 1})
 
+    @testing.variation(
+        "return_defaults_type", ["plain", "columns", "supplemental"]
+    )
+    def test_update_return_defaults_cached(
+        self, connection, return_defaults_type
+    ):
+        """test #13687"""
+
+        t1 = self.tables.t1
+        connection.execute(
+            t1.insert(),
+            [
+                {"id": 1, "data": "d1", "insdef": 1},
+                {"id": 2, "data": "d2", "insdef": 2},
+                {"id": 3, "data": "d3", "insdef": 3},
+            ],
+        )
+
+        def go(id_, return_defaults):
+            stmt = t1.update().where(t1.c.id == id_).values(insdef=10)
+            if return_defaults:
+                if return_defaults_type.columns:
+                    stmt = stmt.return_defaults(t1.c.upddef)
+                elif return_defaults_type.supplemental:
+                    stmt = stmt.return_defaults(supplemental_cols=[t1.c.data])
+                elif return_defaults_type.plain:
+                    stmt = stmt.return_defaults()
+                else:
+                    return_defaults_type.fail()
+            result = connection.execute(stmt)
+            return (
+                result.returns_rows,
+                (
+                    tuple(result.returned_defaults)
+                    if result.returned_defaults is not None
+                    else None
+                ),
+            )
+
+        # the upddef onupdate renders inline at compile time from a counter;
+        # the plain UPDATE compiles first and gets 0, the return_defaults()
+        # form compiles separately and gets 1
+        if return_defaults_type.supplemental:
+            expected = (True, ("d2", 1))
+        else:
+            expected = (True, (1,))
+
+        # a plain UPDATE, then the return_defaults() form of the same
+        # statement, then a plain UPDATE again, all on the same cache
+        eq_(
+            [go(1, False), go(2, True), go(3, False)],
+            [(False, None), expected, (False, None)],
+        )
+
 
 class DeleteReturnDefaultsTest(fixtures.TablesTest):
     __requires__ = ("delete_returning",)
@@ -1179,6 +1281,60 @@ class DeleteReturnDefaultsTest(fixtures.TablesTest):
         # result is rewound
         # but has both return_defaults + supplemental_cols
         eq_(result.all(), [(1, None, 0)])
+
+    @testing.variation(
+        "return_defaults_type", ["plain", "columns", "supplemental"]
+    )
+    def test_delete_return_defaults_cached(
+        self, connection, return_defaults_type
+    ):
+        """test #13687"""
+
+        t1 = self.tables.t1
+        connection.execute(
+            t1.insert(),
+            [
+                {"id": 1, "data": "d1", "upddef": 1},
+                {"id": 2, "data": "d2", "upddef": 2},
+                {"id": 3, "data": "d3", "upddef": 3},
+            ],
+        )
+
+        def go(id_, return_defaults):
+            stmt = t1.delete().where(t1.c.id == id_)
+            if return_defaults:
+                if return_defaults_type.columns:
+                    stmt = stmt.return_defaults(t1.c.upddef)
+                elif return_defaults_type.supplemental:
+                    stmt = stmt.return_defaults(supplemental_cols=[t1.c.data])
+                elif return_defaults_type.plain:
+                    stmt = stmt.return_defaults()
+                else:
+                    return_defaults_type.fail()
+            result = connection.execute(stmt)
+            return (
+                result.returns_rows,
+                (
+                    tuple(result.returned_defaults)
+                    if result.returned_defaults is not None
+                    else None
+                ),
+            )
+
+        if return_defaults_type.columns:
+            expected = (True, (2,))
+        elif return_defaults_type.supplemental:
+            expected = (True, ("d2",))
+        else:
+            # there's no "delete" default, so we get None
+            expected = (False, None)
+
+        # a plain DELETE, then the return_defaults() form of the same
+        # statement, then a plain DELETE again, all on the same cache
+        eq_(
+            [go(1, False), go(2, True), go(3, False)],
+            [(False, None), expected, (False, None)],
+        )
 
 
 class InsertManyReturnDefaultsTest(fixtures.TablesTest):
