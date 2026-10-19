@@ -1045,7 +1045,14 @@ def _finalize_fairy(
             if not isinstance(e, Exception):
                 # a cancellation or similar propagates from here, so the
                 # checkin() below is not reached; return the record now,
-                # rather than leaving it to garbage collection of the fairy
+                # rather than leaving it to garbage collection of the fairy.
+                # the cleanup of the fairy below is not reached either, so
+                # detach it from the record first, so that it can't act on
+                # the record once that's checked out again.  see #13699
+                if fairy is not None:
+                    fairy._finalizer.detach()
+                    fairy.dbapi_connection = None  # type: ignore[assignment]
+                    fairy._connection_record = None
                 if connection_record:
                     connection_record._checkin_failed(e)
                 raise

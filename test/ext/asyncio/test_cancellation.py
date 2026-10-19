@@ -56,6 +56,32 @@ async def _connect_execute_except_exception(async_engine):
         pass
 
 
+async def _connect_close_then_reuse(async_engine):
+    """A fixture that closes a connection directly, rather than through a
+    context manager, and checks out another connection once that close()
+    was cancelled, shown in issue #13699."""
+
+    conn = await async_engine.connect()
+    try:
+        await conn.execute(select(1))
+        await conn.commit()
+    except asyncio.CancelledError:
+        await conn.close()
+        raise
+
+    try:
+        await conn.close()
+    except asyncio.CancelledError:
+        # the connection whose close() was cancelled reports itself
+        # closed, so it can't act on the pool record that the new
+        # checkout receives
+        async with async_engine.connect() as conn2:
+            if not conn.closed:
+                await conn.invalidate()
+            await conn2.execute(select(1))
+        raise
+
+
 class AsyncCancellationTest(fixtures.TestBase):
     __requires__ = ("async_dialect",)
     __backend__ = True
@@ -106,6 +132,23 @@ class AsyncCancellationTest(fixtures.TestBase):
         eq_(
             await cancellation.sweep(
                 engine_factory, _connect_execute, warm=warm
+            ),
+            [],
+        )
+
+    @testing.crashes(
+        "+aioodbc",
+        "aioodbc abandons the cancelled pyodbc call in its executor "
+        "thread; the next call on that connection frees the ODBC "
+        "statement handle underneath it and msodbcsql segfaults",
+    )
+    @testing.combinations((False,), (True,), argnames="warm")
+    @async_test
+    async def test_cancel_anywhere_direct_close(self, engine_factory, warm):
+        """#13699"""
+        eq_(
+            await cancellation.sweep(
+                engine_factory, _connect_close_then_reuse, warm=warm
             ),
             [],
         )

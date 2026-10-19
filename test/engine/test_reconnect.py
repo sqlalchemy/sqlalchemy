@@ -766,6 +766,51 @@ class MockReconnectTest(fixtures.TestBase):
             select(1),
         )
 
+    @testing.variation("close_style", ["close", "context_manager"])
+    def test_close_interrupted_during_reset(self, close_style):
+        """test #13699"""
+
+        pool = self.db.pool
+
+        @event.listens_for(pool, "reset")
+        def reset(dbapi_connection, connection_record, reset_state):
+            raise MockExitIsh()
+
+        conn = self.db.connect()
+        conn.execute(select(1))
+
+        with expect_raises(MockExitIsh):
+            if close_style.close:
+                conn.close()
+            elif close_style.context_manager:
+                with conn:
+                    pass
+            else:
+                close_style.fail()
+
+        # the record was returned to the pool, so the Connection is closed
+        # rather than holding on to it
+        assert conn.closed
+        eq_(pool.checkedout(), 0)
+
+        event.remove(pool, "reset", reset)
+        conn2 = self.db.connect()
+
+        # the stale Connection can't act on the record now used by conn2
+        with expect_raises_message(
+            tsa.exc.ResourceClosedError, "This Connection is closed"
+        ):
+            conn.invalidate()
+        with expect_raises_message(
+            tsa.exc.ResourceClosedError, "This Connection is closed"
+        ):
+            conn.execute(select(1))
+
+        conn2.execute(select(1))
+        assert not conn2.invalidated
+        eq_(pool.checkedout(), 1)
+        conn2.close()
+
     def test_reconnect_on_reentrant(self):
         conn = self.db.connect()
 
