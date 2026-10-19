@@ -1920,6 +1920,19 @@ class SQLCompiler(Compiled):
             if value is not None
         }
 
+    @util.memoized_property
+    def _expanded_bind_names_reserved(self) -> FrozenSet[str]:
+        """Names that the individual elements of an expanding parameter
+        may not take when the parameter is expanded at execution time.
+
+        This is every bound parameter name in the statement, both in its
+        compiled and in its escaped form.  See :ticket:`13695`.
+
+        """
+        return frozenset(self.bind_names.values()).union(
+            self.escaped_bind_names, self.escaped_bind_names.values()
+        )
+
     def is_subquery(self):
         return len(self.stack) > 1
 
@@ -2189,6 +2202,16 @@ class SQLCompiler(Compiled):
         replacement_expressions: Dict[str, Any] = {}
         to_update_sets: Dict[str, Any] = {}
 
+        # names that the elements of expanding parameters can't take, as
+        # they are in use either by other parameters in the statement or by
+        # elements of expanding parameters that were already expanded.
+        # copied into a mutable set, as it is added to within this method's
+        # scope to track the additional element names generated for this
+        # execution
+        expanded_taken_names: Set[str] = set(
+            self._expanded_bind_names_reserved
+        )
+
         # notes:
         # *unescaped* parameter names in:
         # self.bind_names, self.binds, self._bind_processors, self.positiontup
@@ -2239,7 +2262,10 @@ class SQLCompiler(Compiled):
                     values = parameters.pop(name)
 
                     leep_res = self._literal_execute_expanding_parameter(
-                        escaped_name, parameter, values
+                        escaped_name,
+                        parameter,
+                        values,
+                        taken_names=expanded_taken_names,
                     )
                     to_update, replacement_expr = leep_res
 
@@ -2249,17 +2275,16 @@ class SQLCompiler(Compiled):
                 if not parameter.literal_execute:
                     parameters.update(to_update)
                     if parameter.type._is_tuple_type:
-                        assert values is not None
-                        new_processors.update(
-                            (
-                                "%s_%s_%s" % (name, i, j),
-                                tuple_processors[name][j - 1],
+                        if name in tuple_processors:
+                            # to_update is flattened row by row, one entry
+                            # per element of each tuple
+                            element_processors = tuple_processors[name]
+                            num = len(element_processors)
+                            new_processors.update(
+                                (key, element_processors[idx % num])
+                                for idx, (key, _) in enumerate(to_update)
+                                if element_processors[idx % num] is not None
                             )
-                            for i, tuple_element in enumerate(values, 1)
-                            for j, _ in enumerate(tuple_element, 1)
-                            if name in tuple_processors
-                            and tuple_processors[name][j - 1] is not None
-                        )
                     else:
                         new_processors.update(
                             (key, single_processors[name])
@@ -3554,7 +3579,22 @@ class SQLCompiler(Compiled):
 
         return (), replacement_expression
 
-    def _literal_execute_expanding_parameter(self, name, parameter, values):
+    def _literal_execute_expanding_parameter(
+        self, name, parameter, values, *, taken_names
+    ):
+        """Render the per-element bound parameters of an expanding
+        parameter.
+
+        ``taken_names`` is a set of names the elements may not use; each
+        name generated is checked against it and added to it.  The element
+        names are normally ``<name>_<n>``, or ``<name>_<n>_<m>`` for tuples,
+        which may be the name of another parameter in the same statement,
+        e.g. a parameter ``x_1`` alongside the expanding parameter ``x``, or
+        the element of another expanding parameter.  A colliding name is
+        uniquified with a counter, rather than the element value replacing
+        the value of the other parameter.  See :ticket:`13695`.
+
+        """
         if parameter.literal_execute:
             return self._literal_execute_expanding_parameter_literal_binds(
                 parameter, values
@@ -3585,6 +3625,20 @@ class SQLCompiler(Compiled):
             def _render_bindtemplate(name):
                 return bind_template % {"name": name}
 
+        def _unique_name(key):
+            if key in taken_names:
+                base = key
+                counter = 0
+                while key in taken_names:
+                    counter += 1
+                    # double underscore keeps the suffix out of the
+                    # <name>_<n> form generated for anonymous names and
+                    # for the elements themselves, so a renamed element
+                    # won't take a name another element would generate
+                    key = "%s__%d" % (base, counter)
+            taken_names.add(key)
+            return key
+
         if not values:
             to_update = []
             if typ_dialect_impl._is_tuple_type:
@@ -3603,7 +3657,7 @@ class SQLCompiler(Compiled):
         ):
             assert not typ_dialect_impl._is_array
             to_update = [
-                ("%s_%s_%s" % (name, i, j), value)
+                (_unique_name("%s_%s_%s" % (name, i, j)), value)
                 for i, tuple_element in enumerate(values, 1)
                 for j, value in enumerate(tuple_element, 1)
             ]
@@ -3624,7 +3678,7 @@ class SQLCompiler(Compiled):
             )
         else:
             to_update = [
-                ("%s_%s" % (name, i), value)
+                (_unique_name("%s_%s" % (name, i)), value)
                 for i, value in enumerate(values, 1)
             ]
             replacement_expression = ", ".join(

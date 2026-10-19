@@ -68,6 +68,7 @@ from sqlalchemy import true
 from sqlalchemy import try_cast
 from sqlalchemy import tuple_
 from sqlalchemy import type_coerce
+from sqlalchemy import TypeDecorator
 from sqlalchemy import types
 from sqlalchemy import union
 from sqlalchemy import union_all
@@ -4862,7 +4863,10 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             to_update,
             replacement_expr,
         ) = compiled._literal_execute_expanding_parameter(
-            "param_1", expr.right, [(1, "foo"), (5, "bar")]
+            "param_1",
+            expr.right,
+            [(1, "foo"), (5, "bar")],
+            taken_names=set(),
         )
         eq_(
             to_update,
@@ -4898,7 +4902,10 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             to_update,
             replacement_expr,
         ) = compiled._literal_execute_expanding_parameter(
-            "param_1", expr.right, [(1, "foo"), (5, "bar")]
+            "param_1",
+            expr.right,
+            [(1, "foo"), (5, "bar")],
+            taken_names=set(),
         )
         eq_(
             to_update,
@@ -4913,6 +4920,145 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             replacement_expr,
             "VALUES (:param_1_1_1, :param_1_1_2), "
             "(:param_1_2_1, :param_1_2_2)",
+        )
+
+    @testing.variation("paramstyle", ["named", "qmark", "numeric"])
+    @testing.variation("in_first", [True, False])
+    def test_expanding_element_name_collides_w_anon_bind(
+        self, paramstyle, in_first
+    ):
+        """test #13695
+
+        the expanding parameter for ``x`` is named ``x_1``, so its first
+        element is ``x_1_1``, which is also the anonymous name of the
+        parameter compared to the column ``x_1``.   The element is given a
+        different name, rather than the element value replacing the value
+        of the other parameter.
+
+        """
+        t = table("t", column("x"), column("x_1"))
+
+        in_crit = t.c.x.in_([1, 2])
+        eq_crit = t.c.x_1 == 5
+        if in_first:
+            stmt = select(t.c.x).where(in_crit, eq_crit)
+        else:
+            stmt = select(t.c.x).where(eq_crit, in_crit)
+
+        compiled = stmt.compile(
+            dialect=default.DefaultDialect(paramstyle=paramstyle.name)
+        )
+        es = compiled.construct_expanded_state()
+
+        eq_(es.parameters, {"x_1_1": 5, "x_1_1__1": 1, "x_1_2": 2})
+        eq_(es.parameter_expansion, {"x_1": ["x_1_1__1", "x_1_2"]})
+
+        if paramstyle.named:
+            in_sql, eq_sql = "t.x IN (:x_1_1__1, :x_1_2)", "t.x_1 = :x_1_1"
+            is_none(es.positiontup)
+        elif paramstyle.qmark:
+            in_sql, eq_sql = "t.x IN (?, ?)", "t.x_1 = ?"
+            eq_(es.positional_parameters, (1, 2, 5) if in_first else (5, 1, 2))
+        elif paramstyle.numeric:
+            # expanded parameters are numbered after the others
+            in_sql, eq_sql = "t.x IN (:2, :3)", "t.x_1 = :1"
+            eq_(es.positional_parameters, (5, 1, 2))
+        else:
+            paramstyle.fail()
+
+        eq_ignore_whitespace(
+            es.statement,
+            "SELECT t.x FROM t WHERE %s AND %s"
+            % ((in_sql, eq_sql) if in_first else (eq_sql, in_sql)),
+        )
+
+    def test_expanding_element_name_collides_w_named_bind(self):
+        """test #13695 with explicitly named parameters"""
+
+        t = table("t", column("x"), column("data"))
+
+        stmt = select(t.c.x).where(
+            t.c.x.in_(bindparam("q", [1, 2], expanding=True)),
+            t.c.data == bindparam("q_1", 5),
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT t.x FROM t WHERE t.x IN (:q_1__1, :q_2) "
+            "AND t.data = :q_1",
+            checkparams={"q_1": 5, "q_1__1": 1, "q_2": 2},
+            render_postcompile=True,
+        )
+
+    def test_expanding_element_name_collides_w_expanding(self):
+        """test #13695 where the colliding parameter is itself expanding.
+
+        Previously the element ``q_1`` of ``q`` replaced the list value of
+        the parameter ``q_1`` before it was expanded.
+
+        """
+        t = table("t", column("x"), column("data"))
+
+        stmt = select(t.c.x).where(
+            t.c.x.in_(bindparam("q", [1, 2], expanding=True)),
+            t.c.data.in_(bindparam("q_1", [5, 6], expanding=True)),
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT t.x FROM t WHERE t.x IN (:q_1__1, :q_2) "
+            "AND t.data IN (:q_1_1, :q_1_2)",
+            checkparams={"q_1__1": 1, "q_2": 2, "q_1_1": 5, "q_1_2": 6},
+            render_postcompile=True,
+        )
+
+    def test_expanding_element_name_collides_tuple_elements(self):
+        """test #13695 where elements of two expanding parameters collide.
+
+        The tuple element ``q_1_1`` of ``q`` and the element ``q_1_1`` of
+        ``q_1`` are both generated names.  Bind processors apply to the
+        elements under their uniquified names.
+
+        """
+
+        class Proc(TypeDecorator):
+            impl = Integer
+            cache_ok = True
+
+            def process_bind_param(self, value, dialect):
+                return value * 10
+
+        t = table("t", column("x", Proc()), column("data", Proc()))
+
+        stmt = select(t.c.x).where(
+            tuple_(t.c.x, t.c.data).in_(bindparam("q", expanding=True)),
+            t.c.data.in_(bindparam("q_1", expanding=True)),
+        )
+
+        compiled = stmt.compile()
+        es = compiled.construct_expanded_state(
+            {"q": [(1, 2), (3, 4)], "q_1": [5, 6]}
+        )
+
+        eq_ignore_whitespace(
+            es.statement,
+            "SELECT t.x FROM t WHERE (t.x, t.data) IN "
+            "((:q_1_1, :q_1_2), (:q_2_1, :q_2_2)) "
+            "AND t.data IN (:q_1_1__1, :q_1_2__1)",
+        )
+        eq_(
+            {
+                key: es.processors[key](value)
+                for key, value in es.parameters.items()
+            },
+            {
+                "q_1_1": 10,
+                "q_1_2": 20,
+                "q_2_1": 30,
+                "q_2_2": 40,
+                "q_1_1__1": 50,
+                "q_1_2__1": 60,
+            },
         )
 
     def test_construct_params_repeated_postcompile_params_one(self):

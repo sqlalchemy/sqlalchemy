@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13695
+    :versions: 2.1.6
+
+    Fixed issue where the individual bound parameters generated for an
+    "expanding" parameter, such as that of an IN expression, at statement
+    execution time could take on the same name as another bound parameter in
+    the same statement, causing the value of the other parameter to be
+    silently replaced with that of an element of the IN list.  Names are now
+    disambiguated from one another in this scenario.
