@@ -1273,24 +1273,29 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 self._transaction.close()
                 skip_reset = True
         finally:
-            if self._dbapi_connection is not None:
-                conn = self._dbapi_connection
+            try:
+                if self._dbapi_connection is not None:
+                    conn = self._dbapi_connection
 
-                # as we just closed the transaction, close the connection
-                # pool connection without doing an additional reset
-                if skip_reset:
-                    cast("_ConnectionFairy", conn)._close_special(
-                        transaction_reset=True
-                    )
-                else:
-                    conn.close()
-
+                    # as we just closed the transaction, close the connection
+                    # pool connection without doing an additional reset
+                    if skip_reset:
+                        cast("_ConnectionFairy", conn)._close_special(
+                            transaction_reset=True
+                        )
+                    else:
+                        conn.close()
+            finally:
                 # There is a slight chance that conn.close() may have
                 # triggered an invalidation here in which case
                 # _dbapi_connection would already be None, however usually
                 # it will be non-None here and in a "closed" state.
+                #
+                # there is also a chance that the conn.close() here could
+                # itself be interrupted, such as by a cancellation; hence a
+                # second try/finally is needed as well (see #13699)
                 self._dbapi_connection = None
-            self.__can_reconnect = False
+                self.__can_reconnect = False
 
     # special case to handle mypy issue:
     # https://github.com/python/mypy/issues/20651

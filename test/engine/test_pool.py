@@ -1959,6 +1959,47 @@ class QueuePoolTest(PoolTestBase):
         c1 = p.connect()
         assert c1.dbapi_connection is not dbapi_conn
 
+    def test_reset_interrupted_detaches_fairy(self):
+        """test #13699"""
+
+        dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=0)
+
+        class Interrupted(BaseException):
+            pass
+
+        @event.listens_for(p, "reset")
+        def reset(dbapi_connection, connection_record, reset_state):
+            raise Interrupted()
+
+        c1 = p.connect()
+
+        with expect_raises(Interrupted):
+            c1.close()
+
+        # the record went back to the pool, so the fairy no longer refers
+        # to it
+        eq_(
+            (c1.dbapi_connection, c1._connection_record, p.checkedin()),
+            (None, None, 1),
+        )
+
+        event.remove(p, "reset", reset)
+        c2 = p.connect()
+        c2_dbapi_conn = c2.dbapi_connection
+
+        # the stale fairy can't act on the record now used by c2
+        with expect_warnings("Can't invalidate an already-closed connection"):
+            c1.invalidate()
+
+        eq_(
+            (
+                c2.dbapi_connection,
+                c2_dbapi_conn.close.mock_calls,
+                p.checkedout(),
+            ),
+            (c2_dbapi_conn, [], 1),
+        )
+
     def test_recreate(self):
         p = self._queuepool_fixture(
             reset_on_return=None, pool_size=1, max_overflow=0

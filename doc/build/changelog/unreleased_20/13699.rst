@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 13699
+    :versions: 2.1.6
+
+    Fixed regression caused by :ticket:`12710` where a cancellation received
+    by :meth:`_asyncio.AsyncConnection.close` was not handled properly,
+    leaving the :class:`_asyncio.AsyncConnection` in an inconsistent state
+    that could interfere with connections subsequently checked out from the
+    pool.  The connection is now fully closed in this case.
