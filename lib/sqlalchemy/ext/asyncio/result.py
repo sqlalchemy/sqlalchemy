@@ -494,7 +494,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
          referring to this :class:`_asyncio.AsyncResult` object.
 
         """
-        return AsyncScalarResult(self._real_result, index)
+        return AsyncScalarResult(self, index)
 
     def mappings(self) -> AsyncMappingResult:
         """Apply a mappings filter to returned rows, returning an instance of
@@ -505,11 +505,11 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
         objects.
 
         :return: a new :class:`_asyncio.AsyncMappingResult` filtering object
-         referring to the underlying :class:`_result.Result` object.
+         referring to this :class:`_asyncio.AsyncResult` object.
 
         """
 
-        return AsyncMappingResult(self._real_result)
+        return AsyncMappingResult(self)
 
 
 class AsyncScalarResult(AsyncCommon[_R]):
@@ -532,19 +532,21 @@ class AsyncScalarResult(AsyncCommon[_R]):
 
     def __init__(
         self,
-        real_result: Result[Unpack[TupleAny]],
+        result: AsyncResult[Unpack[TupleAny]],
         index: _KeyIndexType,
     ):
-        self._real_result = real_result
+        # rows are fetched from the sync Result; metadata and unique state
+        # come from the AsyncResult, where unique() and columns() apply them
+        self._real_result = result._real_result
 
-        if real_result._source_supports_scalars:
-            self._metadata = real_result._metadata
+        if result._source_supports_scalars:
+            self._metadata = result._metadata
             self._post_creational_filter = None
         else:
-            self._metadata = real_result._metadata._reduce([index])
+            self._metadata = result._metadata._reduce([index])
             self._post_creational_filter = operator.itemgetter(0)
 
-        self._unique_filter_state = real_result._unique_filter_state
+        self._unique_filter_state = result._unique_filter_state
 
     def unique(
         self,
@@ -665,8 +667,11 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
 
     _post_creational_filter = operator.attrgetter("_mapping")
 
-    def __init__(self, result: Result[Unpack[TupleAny]]):
-        self._real_result = result
+    def __init__(self, result: AsyncResult[Unpack[TupleAny]]):
+        # rows are fetched from the sync Result; metadata and unique state
+        # come from the AsyncResult, where unique() and columns() apply them
+        self._real_result = result._real_result
+
         self._unique_filter_state = result._unique_filter_state
         self._metadata = result._metadata
         if result._source_supports_scalars:
