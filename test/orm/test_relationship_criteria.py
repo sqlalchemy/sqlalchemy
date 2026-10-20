@@ -22,6 +22,7 @@ from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import true
 from sqlalchemy import union
 from sqlalchemy import update
 from sqlalchemy.orm import aliased
@@ -416,6 +417,275 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         )
 
         self.assert_compile(stmt, expected)
+
+    @testing.combinations(
+        (
+            "where_exists",
+            lambda User, Address: select(User.id).where(
+                select(Address.id).where(Address.user_id == User.id).exists()
+            ),
+            "SELECT users.id FROM users WHERE (EXISTS (SELECT addresses.id "
+            "FROM addresses WHERE addresses.user_id = users.id)) "
+            "AND users.name != :name_1",
+        ),
+        (
+            "where_in",
+            lambda User, Address: select(User.id).where(
+                User.id.in_(
+                    select(Address.user_id).where(
+                        Address.email_address == User.name
+                    )
+                )
+            ),
+            "SELECT users.id FROM users WHERE users.id IN "
+            "(SELECT addresses.user_id FROM addresses "
+            "WHERE addresses.email_address = users.name) "
+            "AND users.name != :name_1",
+        ),
+        (
+            "scalar_subquery_in_columns",
+            lambda User, Address: select(
+                User.id,
+                select(func.count(Address.id))
+                .where(Address.user_id == User.id)
+                .scalar_subquery(),
+            ),
+            "SELECT users.id, (SELECT count(addresses.id) AS count_1 "
+            "FROM addresses WHERE addresses.user_id = users.id) AS anon_1 "
+            "FROM users WHERE users.name != :name_1",
+        ),
+        (
+            "lateral",
+            lambda User, Address: select(User.id).join(
+                select(Address.id).where(Address.user_id == User.id).lateral(),
+                true(),
+            ),
+            "SELECT users.id FROM users JOIN LATERAL (SELECT addresses.id "
+            "AS id FROM addresses WHERE addresses.user_id = users.id) "
+            "AS anon_1 ON 1 = 1 WHERE users.name != :name_1",
+        ),
+        (
+            "explicit_correlate_two_levels",
+            lambda User, Address: select(User.id).where(
+                select(Address.id)
+                .where(
+                    select(Address.id)
+                    .where(Address.user_id == User.id)
+                    .correlate(User)
+                    .exists()
+                )
+                .exists()
+            ),
+            "SELECT users.id FROM users WHERE (EXISTS (SELECT addresses.id "
+            "FROM addresses WHERE EXISTS (SELECT addresses.id "
+            "FROM addresses WHERE addresses.user_id = users.id))) "
+            "AND users.name != :name_1",
+        ),
+        (
+            "correlate_except",
+            lambda User, Address: select(User.id).where(
+                select(Address.id)
+                .where(Address.user_id == User.id)
+                .correlate_except(Address)
+                .exists()
+            ),
+            "SELECT users.id FROM users WHERE (EXISTS (SELECT addresses.id "
+            "FROM addresses WHERE addresses.user_id = users.id)) "
+            "AND users.name != :name_1",
+        ),
+        (
+            "aliased",
+            lambda aliased_user, Address: select(aliased_user.id).where(
+                select(Address.id)
+                .where(Address.user_id == aliased_user.id)
+                .exists()
+            ),
+            "SELECT users_1.id FROM users AS users_1 WHERE (EXISTS "
+            "(SELECT addresses.id FROM addresses "
+            "WHERE addresses.user_id = users_1.id)) "
+            "AND users_1.name != :name_1",
+        ),
+        (
+            "update",
+            lambda User, Address: update(User)
+            .where(
+                select(Address.id).where(Address.user_id == User.id).exists()
+            )
+            .values(name="newname"),
+            "UPDATE users SET name=:name WHERE (EXISTS (SELECT addresses.id "
+            "FROM addresses WHERE addresses.user_id = users.id)) "
+            "AND users.name != :name_1",
+        ),
+        (
+            "delete",
+            lambda User, Address: delete(User).where(
+                select(Address.id).where(Address.user_id == User.id).exists()
+            ),
+            "DELETE FROM users WHERE (EXISTS (SELECT addresses.id "
+            "FROM addresses WHERE addresses.user_id = users.id)) "
+            "AND users.name != :name_1",
+        ),
+        # in the remaining cases, "users" is a FROM of the subquery
+        # and is not correlated, so it gets the criteria as well
+        (
+            "correlate_none",
+            lambda User, Address: select(User.id).where(
+                select(Address.id)
+                .where(Address.user_id == User.id)
+                .correlate(None)
+                .exists()
+            ),
+            "SELECT users.id FROM users WHERE (EXISTS (SELECT addresses.id "
+            "FROM addresses, users WHERE addresses.user_id = users.id "
+            "AND users.name != :name_1)) AND users.name != :name_1",
+        ),
+        (
+            "from_subquery",
+            lambda User, Address: select(User.id).select_from(
+                select(Address.id).where(Address.user_id == User.id).subquery()
+            ),
+            "SELECT users.id FROM (SELECT addresses.id AS id "
+            "FROM addresses, users WHERE addresses.user_id = users.id "
+            "AND users.name != :name_1) AS anon_1, users "
+            "WHERE users.name != :name_1",
+        ),
+        (
+            "single_from",
+            lambda User: select(User.id).where(
+                select(1).where(User.name == "foo").exists()
+            ),
+            "SELECT users.id FROM users WHERE (EXISTS (SELECT 1 FROM users "
+            "WHERE users.name = :name_1 AND users.name != :name_2)) "
+            "AND users.name != :name_2",
+        ),
+        (
+            "auto_correlate_one_level_only",
+            lambda User, Address: select(User.id).where(
+                select(Address.id)
+                .where(
+                    select(Address.id)
+                    .where(Address.user_id == User.id)
+                    .exists()
+                )
+                .exists()
+            ),
+            "SELECT users.id FROM users WHERE (EXISTS (SELECT addresses.id "
+            "FROM addresses WHERE EXISTS (SELECT addresses.id FROM users "
+            "WHERE addresses.user_id = users.id "
+            "AND users.name != :name_1))) AND users.name != :name_1",
+        ),
+        argnames="statement, expected",
+        id_="iaa",
+    )
+    def test_criteria_not_applied_to_correlated_entity(
+        self, user_address_fixture, statement, expected
+    ):
+        """test #13701
+
+        an entity referenced in the WHERE clause of a subquery receives
+        criteria only if it's a FROM of that subquery, and not correlated
+        to the enclosing statement, where it receives the criteria instead
+
+        """
+        User, Address = user_address_fixture
+
+        stmt = testing.resolve_lambda(
+            statement,
+            User=User,
+            Address=Address,
+            aliased_user=aliased(User),
+        ).options(
+            with_loader_criteria(
+                User, User.name != "name", include_aliases=True
+            )
+        )
+
+        self.assert_compile(stmt, expected)
+
+    @testing.fixture
+    def multiple_correlated_criteria(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        has_ed_address = (
+            select(Address.id)
+            .where(
+                Address.user_id == User.id,
+                Address.email_address.like("%ed%"),
+            )
+            .exists()
+        )
+        has_no_lala_address = ~(
+            select(Address.id)
+            .where(
+                Address.user_id == User.id,
+                Address.email_address == "ed@lala.com",
+            )
+            .exists()
+        )
+
+        return (
+            select(User.id)
+            .options(
+                with_loader_criteria(User, has_ed_address),
+                with_loader_criteria(User, has_no_lala_address),
+            )
+            .order_by(User.id)
+        )
+
+    def test_multiple_correlated_criteria_compile(
+        self, multiple_correlated_criteria
+    ):
+        """test #13701
+
+        each criteria refers to the entity in a correlated subquery; they
+        aren't applied within each other's subquery, which would recurse
+        endlessly
+
+        """
+        self.assert_compile(
+            multiple_correlated_criteria,
+            "SELECT users.id FROM users WHERE (EXISTS (SELECT addresses.id "
+            "FROM addresses WHERE addresses.user_id = users.id "
+            "AND addresses.email_address LIKE :email_address_1)) "
+            "AND NOT (EXISTS (SELECT addresses.id FROM addresses "
+            "WHERE addresses.user_id = users.id "
+            "AND addresses.email_address = :email_address_2)) "
+            "ORDER BY users.id",
+        )
+
+    def test_multiple_correlated_criteria_execute(
+        self, multiple_correlated_criteria
+    ):
+        """test #13701"""
+
+        sess = fixture_session()
+        eq_(sess.scalars(multiple_correlated_criteria).all(), [9])
+
+    def test_criteria_applied_for_expression_with_no_from(
+        self, user_address_col_property_fixture
+    ):
+        """test #13701
+
+        User.num_addresses is a scalar subquery with no FROM objects of its
+        own; it still refers to User, which gets the criteria and is added
+        to the FROM list, and is not considered to be correlated
+
+        """
+        User, Address = user_address_col_property_fixture
+
+        stmt = (
+            select(Address.id)
+            .where(User.num_addresses > 1)
+            .options(with_loader_criteria(User, User.name != "name"))
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT addresses.id FROM addresses, users "
+            "WHERE (SELECT count(addresses.id) AS count_1 "
+            "FROM addresses WHERE addresses.user_id = users.id) "
+            "> :param_1 AND users.name != :name_1",
+        )
 
     def test_select_mapper_mapper_criteria(self, user_address_fixture):
         User, Address = user_address_fixture
