@@ -2349,6 +2349,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
 
 class MySQLTypeCompiler(compiler.GenericTypeCompiler):
+    dialect: MySQLDialect
+
     def _extend_numeric(self, type_: _NumericType, spec: str) -> str:
         "Extend a numeric-type declaration with MySQL specific extensions."
 
@@ -2643,9 +2645,12 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     ) -> str:
         quoted_enums = []
         for e in enumerated_values:
+            e = e.replace("'", "''")
+            if self.dialect._backslash_escapes:
+                e = e.replace("\\", "\\\\")
             if self.dialect.identifier_preparer._double_percents:
                 e = e.replace("%", "%%")
-            quoted_enums.append("'%s'" % e.replace("'", "''"))
+            quoted_enums.append("'%s'" % e)
         return self._extend_string(
             type_, {}, "%s(%s)" % (name, ",".join(quoted_enums))
         )
