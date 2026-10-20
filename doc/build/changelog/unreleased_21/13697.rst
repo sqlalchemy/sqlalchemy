@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, engine
+    :tickets: 13697
+
+    Added :paramref:`.make_url.keep_blank_values` and
+    :paramref:`.URL.update_query_string.keep_blank_values` parameters, which
+    when set to True retain query string parameters with blank values such as
+    ``key=`` in the :attr:`.URL.query` dictionary as empty strings. This allows
+    a :class:`.URL` with empty-string query values to round trip through
+    :meth:`.URL.render_as_string` and :func:`.make_url`. The default behavior
+    of omitting blank values is unchanged, as dialects may not accept an empty
+    string for query parameters that are coerced to other types.
