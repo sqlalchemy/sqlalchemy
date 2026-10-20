@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 13688
+    :versions: 2.1.6
+
+    Fixed issue where calling :meth:`_asyncio.AsyncResult.unique` or
+    :meth:`_asyncio.AsyncResult.columns` on an :class:`_asyncio.AsyncResult`
+    would have no effect on a subsequent call to
+    :meth:`_asyncio.AsyncResult.scalars` or
+    :meth:`_asyncio.AsyncResult.mappings`, as the resulting
+    :class:`_asyncio.AsyncScalarResult` or
+    :class:`_asyncio.AsyncMappingResult` was built from the underlying
+    synchronous result, which did not include those modifications.  Unique
+    filtering and column selection are now carried over in the same way as for
+    :meth:`_engine.Result.scalars` and :meth:`_engine.Result.mappings`.  Among
+    other things, this allows :meth:`_asyncio.AsyncSession.stream` to be used
+    with a joined eager load against a collection, followed by
+    ``.unique().scalars()``, which would previously raise an error indicating
+    that :meth:`_asyncio.AsyncResult.unique` must be invoked.
