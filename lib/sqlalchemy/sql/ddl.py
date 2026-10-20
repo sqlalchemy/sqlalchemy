@@ -682,11 +682,11 @@ class CreateTableAs(DialectKWArgs, _TableViaSelect):
             conn.execute(cas)
 
         # or alternatively, invoke metadata.create_all()
-        some_metdata.create_all(engine)
+        some_metadata.create_all(engine)
 
         # drop is performed in the usual way, via drop_all
         # or table.drop()
-        some_metdata.drop_all(engine)
+        some_metadata.drop_all(engine)
 
     For detailed background on :class:`.CreateTableAs` see
     :ref:`metadata_create_table_as`.
@@ -792,11 +792,11 @@ class CreateView(DialectKWArgs, _TableViaSelect):
             conn.execute(create_view)
 
         # or alternatively, invoke metadata.create_all()
-        some_metdata.create_all(engine)
+        some_metadata.create_all(engine)
 
         # drop is performed in the usual way, via drop_all
         # or table.drop() (will emit DROP VIEW)
-        some_metdata.drop_all(engine)
+        some_metadata.drop_all(engine)
 
     For detailed background on :class:`.CreateView` see
     :ref:`metadata_create_view`.
