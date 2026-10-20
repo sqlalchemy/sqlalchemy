@@ -63,8 +63,7 @@ Major SQLAlchemy features include:
   an extensible Python-based SQL expression
   language, schema metadata, connection pooling,
   type coercion, and custom types.
-* All primary and foreign key constraints are
-  assumed to be composite and natural.  Surrogate
+* Primary and foreign key constraints may be composite and natural. Surrogate
   integer primary keys are of course still the
   norm, but SQLAlchemy never assumes or hardcodes
   to this model.
