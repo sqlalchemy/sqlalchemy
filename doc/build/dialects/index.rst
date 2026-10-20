@@ -132,6 +132,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | OpenGauss                                      | openGauss-sqlalchemy_                 |
 +------------------------------------------------+---------------------------------------+
+| Redis (via ADBC)                               | adbc-driver-redis_                    |
++------------------------------------------------+---------------------------------------+
 | Rockset                                        | rockset-sqlalchemy_                   |
 +------------------------------------------------+---------------------------------------+
 | SAP ASE (fork of former Sybase dialect)        | sqlalchemy-sybase_                    |
@@ -197,3 +199,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _aurora-dsql-sqlalchemy: https://pypi.org/project/aurora-dsql-sqlalchemy/
 .. _pydynamodb: https://pypi.org/project/pydynamodb/
 .. _pymongosql: https://pypi.org/project/pymongosql/
+.. _adbc-driver-redis: https://pypi.org/project/adbc-driver-redis/
