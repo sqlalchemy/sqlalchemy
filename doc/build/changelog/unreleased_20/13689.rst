@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 13689
+    :versions: 2.1.6
+
+    Fixed issue where the :meth:`_asyncio.AsyncResult.freeze` method would
+    fail to fetch rows from the result, producing a
+    :class:`_engine.FrozenResult` that would raise ``TypeError`` when invoked
+    for a Core result, or raising ``AttributeError`` immediately for an ORM
+    result that returns a single entity per row.  The method now fully
+    fetches all rows from the async cursor, honoring
+    :meth:`_asyncio.AsyncResult.unique` and
+    :meth:`_asyncio.AsyncResult.columns` in the same way as the synchronous
+    :meth:`_engine.Result.freeze` method.

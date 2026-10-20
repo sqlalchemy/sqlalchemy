@@ -624,6 +624,35 @@ class AsyncSessionQueryTest(AsyncFixture):
             ],
         )
 
+    @async_test
+    @testing.variation("entity", ["single", "multiple"])
+    async def test_stream_freeze(self, async_session, entity):
+        User = self.classes.User
+
+        if entity.single:
+            stmt = select(User).order_by(User.id)
+        elif entity.multiple:
+            stmt = select(User, User.name).order_by(User.id)
+        else:
+            entity.fail()
+
+        result = await async_session.stream(stmt)
+        frozen = await result.freeze()
+
+        for _ in range(2):
+            if entity.single:
+                eq_(frozen().scalars().all(), self.static.user_result)
+            else:
+                eq_(
+                    frozen().all(),
+                    list(
+                        zip(
+                            self.static.user_result,
+                            ["jack", "ed", "fred", "chuck"],
+                        )
+                    ),
+                )
+
     @testing.combinations("statement", "execute", argnames="location")
     @async_test
     @testing.requires.server_side_cursors

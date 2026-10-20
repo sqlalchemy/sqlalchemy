@@ -1774,10 +1774,12 @@ class FrozenResult(Generic[Unpack[_Ts]]):
         self._source_supports_scalars = result._source_supports_scalars
         self._attributes = result._attributes
 
+        # use _allrows() rather than fetchall() so that AsyncResult, whose
+        # fetchall() is a coroutine, may be frozen within greenlet_spawn()
         if self._source_supports_scalars:
             self.data = list(result._raw_row_iterator())
         else:
-            self.data = result.fetchall()
+            self.data = result._allrows()
 
     def _rewrite_rows(self) -> Sequence[Sequence[Any]]:
         # used only by the orm fn merge_frozen_result
