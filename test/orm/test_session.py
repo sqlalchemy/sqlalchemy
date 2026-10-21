@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import inspect as _py_inspect
 import pickle
 from typing import TYPE_CHECKING
@@ -49,6 +50,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
@@ -2522,6 +2524,99 @@ class DisposedStates(fixtures.MappedTest):
         sess.commit()
 
         sess.rollback()
+
+
+class ReplaceStaleIdentityTest(fixtures.MappedTest):
+    """test #13711"""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        # the primary key is generated within the INSERT, so the new
+        # object's identity is not known until the flush has run
+        Table(
+            "t1",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, autoincrement=False, default=7
+            ),
+            Column("data", String(50)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class T(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        cls.mapper_registry.map_imperatively(cls.classes.T, cls.tables.t1)
+
+    def test_replace_expired_identity_emits_no_sql(self):
+        T = self.classes.T
+        t1 = self.tables.t1
+
+        session = fixture_session()
+
+        # load a row that is then rolled back; the object remains in the
+        # identity map as an expired state
+        session.execute(insert(t1), [{"id": 7, "data": "stale"}])
+        stale = session.get(T, 7)
+        session.rollback()
+        eq_(inspect(stale).expired_attributes, {"id", "data"})
+
+        # flush a new object that receives the same primary key
+        new = T(data="new")
+        session.add(new)
+
+        with self.sql_execution_asserter() as asserter:
+            session.flush()
+
+        # no SELECT is emitted for the replaced state, and the stale
+        # object is not refreshed from the new row
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO t1 (id, data) VALUES (:id, :data)",
+                [{"data": "new"}],
+            )
+        )
+        eq_(inspect(stale).expired_attributes, {"id", "data"})
+        is_(session.get(T, 7), new)
+
+    @testing.requires.predictable_gc
+    def test_replace_expired_identity_gc_during_flush(self):
+        """the replaced object is garbage collected during the flush"""
+        T = self.classes.T
+        t1 = self.tables.t1
+
+        session = fixture_session()
+
+        def load_stale():
+            session.execute(insert(t1), [{"id": 7, "data": "stale"}])
+            stale = session.get(T, 7)
+
+            # place the object in an unreachable reference cycle, so that
+            # it remains in the identity map until the next gc collection
+            cycle = [stale]
+            cycle.append(cycle)
+
+        @event.listens_for(session, "do_orm_execute")
+        def collect(orm_execute_state):
+            gc_collect()
+
+        gc.disable()
+        try:
+            load_stale()
+            session.rollback()
+
+            # flush a new object that receives the same primary key; any
+            # ORM load of the replaced state collects its object first
+            new = T(data="new")
+            session.add(new)
+            session.flush()
+        finally:
+            gc.enable()
+
+        is_(session.get(T, 7), new)
 
 
 class SessionInterface(fixtures.MappedTest):
