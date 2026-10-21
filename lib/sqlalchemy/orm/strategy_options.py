@@ -2407,7 +2407,7 @@ def _parse_attr_argument(
         # TODO: need to figure out this None thing being returned by
         # inspect(), it should not have None as an option in most cases
         # if at all
-        insp: InspectionAttr = inspect(attr)  # type: ignore[assignment]
+        insp: InspectionAttr = inspect(attr)
     except sa_exc.NoInspectionAvailable as err:
         raise sa_exc.ArgumentError(
             "expected ORM mapped attribute for loader strategy argument"

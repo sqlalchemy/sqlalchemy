@@ -80,4 +80,3 @@ def check_any_subject(obj: Named, flag: bool) -> None:
     inspect(obj).identity
     # EXPECTED_MYPY: Item "None" of "Any | None" has no attribute "identity"
     inspect(obj, raiseerr=flag).identity
-
