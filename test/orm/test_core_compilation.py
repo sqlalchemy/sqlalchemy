@@ -59,6 +59,9 @@ from .inheritance import _poly_fixtures
 from .test_query import QueryTest
 from ..sql import test_compiler
 from ..sql.test_compiler import CorrelateTest as _CoreCorrelateTest
+from ..sql.test_statement_params import _all_statement_classes
+from ..sql.test_statement_params import _embeddings
+from ..sql.test_statement_params import ParamsCompilePathsFixture
 
 # TODO:
 # composites / unions, etc.
@@ -412,6 +415,135 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
         with Session(connection) as s:
             res = s.scalars(stmt, {"ids": 7}).all()
         eq_(res, [User(id=7, name="jack")])
+
+
+class StatementParamsTest(ParamsCompilePathsFixture, QueryTest):
+    """ORM version of test/sql/test_statement_params.py CompilePathsTest;
+    test that .params() values are applied for ORM statements whether or
+    not the compiled cache is used.
+
+    """
+
+    def _p(self):
+        return bindparam("p", type_=Integer)
+
+    def _from_statement_cases():
+        return testing.combinations(
+            (
+                lambda User, p: text(
+                    "select users.id, users.name from users "
+                    "where users.id = :p"
+                ),
+            ),
+            (lambda User, p: select(User).where(User.id == p),),
+            (
+                lambda User, p: text(
+                    "select users.id, users.name from users "
+                    "where users.id = :p"
+                ).columns(User.id, User.name),
+            ),
+            argnames="inner",
+        )
+
+    def test_all_statements_covered(self):
+        """test that the tests here cover all ORM statement constructs"""
+        User = self.classes.User
+
+        eq_(
+            {cls_.__visit_name__ for cls_ in _all_statement_classes(True)},
+            {
+                select(User)
+                .from_statement(select(User))
+                .params(p=5)
+                .__visit_name__
+            },
+        )
+
+    @_from_statement_cases()
+    def test_from_statement(self, inner):
+        """test #13709"""
+        User = self.classes.User
+
+        self._assert_params_all_paths(
+            lambda v: select(User)
+            .from_statement(resolve_lambda(inner, User=User, p=self._p()))
+            .params(p=v)
+        )
+
+    @_from_statement_cases()
+    def test_from_statement_outer_params_take_precedence(self, inner):
+        User = self.classes.User
+
+        self._assert_params_all_paths(
+            lambda v: select(User)
+            .from_statement(
+                resolve_lambda(inner, User=User, p=self._p()).params(p=3)
+            )
+            .params(p=v)
+        )
+
+    @testing.combinations(*_embeddings, argnames="embedding")
+    def test_select_embedded(self, embedding):
+        User = self.classes.User
+
+        embed = _embeddings[embedding]
+        self._assert_params_all_paths(
+            lambda v: embed(
+                select(User.id).where(User.id == self._p()).params(p=v)
+            )
+        )
+
+    def test_entity_select(self):
+        User = self.classes.User
+
+        self._assert_params_all_paths(
+            lambda v: select(User).where(User.id == self._p()).params(p=v)
+        )
+
+    def test_aliased_subquery(self):
+        User = self.classes.User
+
+        self._assert_params_all_paths(
+            lambda v: select(
+                aliased(
+                    User,
+                    select(User)
+                    .where(User.id == self._p())
+                    .params(p=v)
+                    .subquery(),
+                )
+            )
+        )
+
+    def test_joinedload_limit(self):
+        """the ORM embeds the statement in a subquery for eager loading
+        with LIMIT"""
+        User = self.classes.User
+
+        self._assert_params_all_paths(
+            lambda v: select(User)
+            .options(joinedload(User.addresses))
+            .where(User.id == self._p())
+            .limit(10)
+            .params(p=v),
+            expected=lambda v: {"p": v, "param_1": 10},
+        )
+
+    def test_orm_update_where(self):
+        User, Address = self.classes("User", "Address")
+
+        self._assert_params_all_paths(
+            lambda v: update(User)
+            .where(
+                User.id.in_(
+                    select(Address.user_id)
+                    .where(Address.id == self._p())
+                    .params(p=v)
+                )
+            )
+            .values(name="x"),
+            expected=lambda v: {"p": v, "name": "x"},
+        )
 
 
 class PropagateAttrsTest(QueryTest):
