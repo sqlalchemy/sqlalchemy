@@ -1653,6 +1653,65 @@ class RelationshipToSingleTest(
             "FROM companies",
         )
 
+    @testing.combinations(
+        (
+            "where_exists",
+            lambda Company, Engineer: select(Engineer.name).where(
+                select(Company.company_id)
+                .where(Company.company_id == Engineer.company_id)
+                .exists()
+            ),
+            "SELECT employees.name FROM employees WHERE (EXISTS "
+            "(SELECT companies.company_id FROM companies "
+            "WHERE companies.company_id = employees.company_id)) "
+            "AND employees.type IN (__[POSTCOMPILE_type_1])",
+        ),
+        (
+            "scalar_subquery_in_columns",
+            lambda Company, Engineer: select(
+                Engineer.name,
+                select(Company.name)
+                .where(Company.company_id == Engineer.company_id)
+                .scalar_subquery(),
+            ),
+            "SELECT employees.name, (SELECT companies.name "
+            "FROM companies WHERE companies.company_id = "
+            "employees.company_id) AS anon_1 FROM employees "
+            "WHERE employees.type IN (__[POSTCOMPILE_type_1])",
+        ),
+        argnames="statement, expected",
+        id_="iaa",
+    )
+    def test_correlated_single_inh_entity(self, statement, expected):
+        """test #13701
+
+        the single inheritance criteria for an entity that's correlated from
+        a subquery are only applied in the enclosing SELECT
+
+        """
+        Company, Employee, Engineer = (
+            self.classes.Company,
+            self.classes.Employee,
+            self.classes.Engineer,
+        )
+        companies, employees = self.tables.companies, self.tables.employees
+
+        self.mapper_registry.map_imperatively(Company, companies)
+        self.mapper_registry.map_imperatively(
+            Employee,
+            employees,
+            polymorphic_on=employees.c.type,
+            properties={"company": relationship(Company)},
+        )
+        self.mapper_registry.map_imperatively(
+            Engineer, inherits=Employee, polymorphic_identity="engineer"
+        )
+
+        stmt = testing.resolve_lambda(
+            statement, Company=Company, Engineer=Engineer
+        )
+        self.assert_compile(stmt, expected)
+
     def test_no_aliasing_from_overlap(self):
         # test [ticket:3233]
 

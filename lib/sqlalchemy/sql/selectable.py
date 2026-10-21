@@ -5088,32 +5088,55 @@ class SelectState(util.MemoizedSlots, CompileState):
         correlating.
 
         """
+        statement = self.statement
+        return self._correlate_froms(
+            self.froms,
+            statement,
+            statement._correlate,
+            statement._correlate_except,
+            statement._auto_correlate,
+            explicit_correlate_froms,
+            implicit_correlate_froms,
+        )
 
-        froms = self.froms
+    @classmethod
+    def _correlate_froms(
+        cls,
+        froms: List[FromClause],
+        statement: Select[Unpack[TupleAny]],
+        to_correlate: Optional[Sequence[FromClause]],
+        to_correlate_except: Optional[Sequence[FromClause]],
+        auto_correlate: bool,
+        explicit_correlate_froms: Optional[Sequence[FromClause]],
+        implicit_correlate_froms: Optional[Sequence[FromClause]],
+    ) -> List[FromClause]:
+        """Given a list of FROM clauses and correlation settings, return
+        the list of FROM clauses that remain after correlation.
 
-        if self.statement._correlate:
-            to_correlate = self.statement._correlate
-            if to_correlate:
-                to_remove = _cloned_intersection(
-                    _cloned_intersection(
-                        froms, explicit_correlate_froms or ()
-                    ),
-                    to_correlate,
-                )
-                froms = [f for f in froms if f not in to_remove]
+        This is the implementation for :meth:`.SelectState._get_display_froms`
+        that is also used by the ORM, which needs to know which FROM clauses
+        will be correlated before it has generated the final statement.
 
-        if self.statement._correlate_except is not None:
-            to_remove = _cloned_difference(
+        For ``explicit_correlate_froms`` and ``implicit_correlate_froms``,
+        see :meth:`.SQLCompiler._enclosing_correlate_froms`.
+
+        """
+
+        if to_correlate:
+            to_remove = _cloned_intersection(
                 _cloned_intersection(froms, explicit_correlate_froms or ()),
-                self.statement._correlate_except,
+                to_correlate,
             )
             froms = [f for f in froms if f not in to_remove]
 
-        if (
-            self.statement._auto_correlate
-            and implicit_correlate_froms
-            and len(froms) > 1
-        ):
+        if to_correlate_except is not None:
+            to_remove = _cloned_difference(
+                _cloned_intersection(froms, explicit_correlate_froms or ()),
+                to_correlate_except,
+            )
+            froms = [f for f in froms if f not in to_remove]
+
+        if auto_correlate and implicit_correlate_froms and len(froms) > 1:
             to_remove = _cloned_intersection(froms, implicit_correlate_froms)
             froms = [f for f in froms if f not in to_remove]
 
@@ -5124,7 +5147,7 @@ class SelectState(util.MemoizedSlots, CompileState):
                     "due to auto-correlation; "
                     "specify correlate(<tables>) "
                     "to control correlation "
-                    "manually." % self.statement
+                    "manually." % statement
                 )
 
         return froms

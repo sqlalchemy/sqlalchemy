@@ -36,6 +36,7 @@ import operator
 import re
 from time import perf_counter
 import typing
+from typing import AbstractSet
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -5125,24 +5126,44 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
-        compile_state = select_stmt._compile_state_factory(select_stmt, self)
+        compile_state = select_stmt._compile_state_factory(
+            select_stmt, self, asfrom=asfrom, lateral=lateral
+        )
 
+        explicit, implicit = self._enclosing_correlate_froms(
+            entry, asfrom, lateral
+        )
+        return compile_state._get_display_froms(
+            explicit_correlate_froms=explicit,
+            implicit_correlate_froms=implicit,
+        )
+
+    def _enclosing_correlate_froms(
+        self, entry: _CompilerStackEntry, asfrom: bool, lateral: bool
+    ) -> Tuple[AbstractSet[FromClause], AbstractSet[FromClause]]:
+        """Given the stack entry of an enclosing statement, return the
+        explicit and implicit correlate FROMs for a SELECT that's embedded
+        within it, as passed to :meth:`.SelectState._get_display_froms`.
+
+        explicit_correlate_froms: FROMs of enclosing SELECTs that this SELECT
+        may correlate to when explicit correlation is used, i.e.
+        :meth:`.Select.correlate` or :meth:`.Select.correlate_except`.
+        Includes the FROMs of all enclosing SELECTs.
+
+        implicit_correlate_froms: FROMs of enclosing SELECTs that this SELECT
+        will correlate to automatically, assuming auto-correlation is in
+        effect.  Includes only the FROMs of the immediately enclosing SELECT,
+        and is empty if this SELECT is a subquery in a FROM clause that's not
+        LATERAL.  Is always a subset of explicit_correlate_froms.
+
+        """
         correlate_froms = entry["correlate_froms"]
         asfrom_froms = entry["asfrom_froms"]
 
         if asfrom and not lateral:
-            froms = compile_state._get_display_froms(
-                explicit_correlate_froms=correlate_froms.difference(
-                    asfrom_froms
-                ),
-                implicit_correlate_froms=(),
-            )
+            return correlate_froms.difference(asfrom_froms), util.EMPTY_SET
         else:
-            froms = compile_state._get_display_froms(
-                explicit_correlate_froms=correlate_froms,
-                implicit_correlate_froms=asfrom_froms,
-            )
-        return froms
+            return correlate_froms, asfrom_froms
 
     translate_select_structure: Any = None
     """if not ``None``, should be a callable which accepts ``(select_stmt,
@@ -5180,7 +5201,7 @@ class SQLCompiler(Compiled):
         kwargs["within_columns_clause"] = False
 
         compile_state = select_stmt._compile_state_factory(
-            select_stmt, self, **kwargs
+            select_stmt, self, asfrom=asfrom, lateral=lateral, **kwargs
         )
         kwargs["ambiguous_table_name_map"] = (
             compile_state._ambiguous_table_name_map
@@ -5211,7 +5232,11 @@ class SQLCompiler(Compiled):
                 select_stmt = new_select_stmt
 
                 compile_state = select_stmt._compile_state_factory(
-                    select_stmt, self, **kwargs
+                    select_stmt,
+                    self,
+                    asfrom=asfrom,
+                    lateral=lateral,
+                    **kwargs,
                 )
                 select_stmt = compile_state.statement
 
@@ -5389,9 +5414,6 @@ class SQLCompiler(Compiled):
     def _setup_select_stack(
         self, select, compile_state, entry, asfrom, lateral, compound_index
     ):
-        correlate_froms = entry["correlate_froms"]
-        asfrom_froms = entry["asfrom_froms"]
-
         if compound_index == 0:
             entry["select_0"] = select
         elif compound_index:
@@ -5412,21 +5434,18 @@ class SQLCompiler(Compiled):
                     )
                 )
 
-        if asfrom and not lateral:
-            froms = compile_state._get_display_froms(
-                explicit_correlate_froms=correlate_froms.difference(
-                    asfrom_froms
-                ),
-                implicit_correlate_froms=(),
-            )
-        else:
-            froms = compile_state._get_display_froms(
-                explicit_correlate_froms=correlate_froms,
-                implicit_correlate_froms=asfrom_froms,
-            )
+        explicit, implicit = self._enclosing_correlate_froms(
+            entry, asfrom, lateral
+        )
+        froms = compile_state._get_display_froms(
+            explicit_correlate_froms=explicit,
+            implicit_correlate_froms=implicit,
+        )
 
         new_correlate_froms = set(_from_objects(*froms))
-        all_correlate_froms = new_correlate_froms.union(correlate_froms)
+        all_correlate_froms = new_correlate_froms.union(
+            entry["correlate_froms"]
+        )
 
         new_entry: _CompilerStackEntry = {
             "asfrom_froms": new_correlate_froms,
