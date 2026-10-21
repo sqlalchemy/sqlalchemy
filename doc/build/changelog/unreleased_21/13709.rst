@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13709
+
+    Fixed regression caused by the new implementation of ``.params()`` for
+    statements introduced in :ticket:`7066`, where parameter values passed to
+    the ``.params()`` method of an ORM statement created using
+    :meth:`.Select.from_statement` would not be applied when the statement
+    was compiled without the compiled statement cache, such as when the cache
+    was disabled or when the statement was stringified directly, leading to
+    an error that a value is required for the bound parameter.

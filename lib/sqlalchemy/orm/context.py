@@ -1025,6 +1025,9 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
 
         """
 
+        if compiler._collect_params:
+            compiler._add_to_params(self)
+
         compile_state = self._compile_state_factory(self, compiler, **kw)
 
         toplevel = not compiler.stack
