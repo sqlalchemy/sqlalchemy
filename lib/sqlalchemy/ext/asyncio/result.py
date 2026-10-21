@@ -9,6 +9,7 @@ from __future__ import annotations
 import operator
 from typing import Any
 from typing import AsyncIterator
+from typing import Iterator
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -21,6 +22,7 @@ from ... import util
 from ...engine import Result
 from ...engine.result import _NO_ROW
 from ...engine.result import _R
+from ...engine.result import _RowData
 from ...engine.result import _WithKeys
 from ...engine.result import FilterResult
 from ...engine.result import FrozenResult
@@ -443,6 +445,11 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
         """
 
         return await greenlet_spawn(FrozenResult, self)
+
+    def _raw_row_iterator(self) -> Iterator[_RowData]:
+        # used by FrozenResult when the source result supports scalars;
+        # must be invoked within greenlet_spawn()
+        return self._real_result._raw_row_iterator()
 
     @overload
     def scalars(
