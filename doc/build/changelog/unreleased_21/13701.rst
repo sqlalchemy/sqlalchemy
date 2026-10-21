@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 13701
-
-    Fixed regression caused by :ticket:`13070` where using more than one
-    :func:`.orm.with_loader_criteria` option for the same entity, where the
-    criteria made use of correlated subqueries referring to that entity, would
-    fail with a ``RecursionError`` when compiling.
