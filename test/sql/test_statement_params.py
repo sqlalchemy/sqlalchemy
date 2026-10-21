@@ -1,16 +1,22 @@
 import random
+import types
 
 from sqlalchemy import testing
+from sqlalchemy.engine import default
 from sqlalchemy.schema import Column
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import column
+from sqlalchemy.sql import delete
 from sqlalchemy.sql import dml
+from sqlalchemy.sql import exists
 from sqlalchemy.sql import func
+from sqlalchemy.sql import insert
 from sqlalchemy.sql import select
 from sqlalchemy.sql import table
 from sqlalchemy.sql import text
 from sqlalchemy.sql import tstring
 from sqlalchemy.sql import union
+from sqlalchemy.sql import update
 from sqlalchemy.sql.base import ExecutableStatement
 from sqlalchemy.sql.elements import literal
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -22,8 +28,18 @@ from sqlalchemy.testing import ne_
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import Integer
 from sqlalchemy.types import Text
+from sqlalchemy.util import compat
 from sqlalchemy.util.compat import Template
 from sqlalchemy.util.langhelpers import class_hierarchy
+
+if compat.py314:
+    from string.templatelib import Interpolation
+else:
+
+    def Interpolation(value, expression):
+        # the Template stand-in for Python < 3.14 accepts any object
+        # with a .value attribute
+        return types.SimpleNamespace(value=value, expression=expression)
 
 
 class BasicTests(fixtures.TestBase):
@@ -77,6 +93,192 @@ class BasicTests(fixtures.TestBase):
         eq_(impl.compile()._collected_params, {})
         eq_(new.compile()._collected_params, {"foo": 5, "bar": 10})
         eq_(new._generate_cache_key()[2], {"foo": 5, "bar": 10})
+
+
+def _all_statement_classes(include_orm):
+    """all ExecutableStatement classes that use the statement-level
+    params() implementation"""
+
+    return {
+        cls_
+        for cls_ in class_hierarchy(ExecutableStatement)
+        if issubclass(cls_, ExecutableStatement)
+        and not issubclass(cls_, dml.UpdateBase)
+        and "__visit_name__" in cls_.__dict__
+        and cls_.__module__.startswith("sqlalchemy.orm") is include_orm
+    }
+
+
+class ParamsCompilePathsFixture:
+    """Compile statements the way :class:`.Connection` does, both with and
+    without the compiled cache, and assert that values given to
+    ``.params()`` are present in the parameters for execution.
+
+    Each statement construct has to collect its own ``.params()`` values,
+    either through the cache key when the compiled cache is used or within
+    the compiler when it is not; constructs that compile themselves
+    separately can miss the second of these (#13709).
+
+    """
+
+    def _assert_params_all_paths(self, build, expected=None):
+        """``build(value)`` returns a statement that will execute with
+        bound parameter ``p`` set to ``value`` via ``.params()``."""
+
+        dialect = default.DefaultDialect()
+        cache = {}
+
+        for value, expected_hit in (
+            (5, dialect.CACHE_MISS),
+            (6, dialect.CACHE_HIT),
+            (5, dialect.CACHE_HIT),
+        ):
+            for compiled_cache, hit in (
+                (cache, expected_hit),
+                (None, dialect.CACHING_DISABLED),
+            ):
+                stmt = build(value)
+                compiled, extracted, param_dict, cache_hit = (
+                    stmt._compile_w_cache(
+                        dialect,
+                        compiled_cache=compiled_cache,
+                        column_keys=[],
+                        for_executemany=False,
+                        schema_translate_map=None,
+                    )
+                )
+                eq_(cache_hit, hit)
+                eq_(
+                    compiled.construct_params(
+                        extracted_parameters=extracted,
+                        _collected_params=param_dict,
+                    ),
+                    ({"p": value} if expected is None else expected(value)),
+                )
+
+
+def _p():
+    return bindparam("p", type_=Integer)
+
+
+_t = table("t", column("id", Integer), column("data", Integer))
+
+# top level forms of each statement construct.  the core forms are
+# required to cover every non-DML ExecutableStatement class
+_statements = {
+    "text": lambda v: text("select :p").params(p=v),
+    "tstring": lambda v: tstring(
+        Template("select ", Interpolation(_p(), "_p()"))
+    ).params(p=v),
+    "textual_select": lambda v: text("select :p as q")
+    .columns(column("q", Integer))
+    .params(p=v),
+    "function": lambda v: func.abs(_p()).params(p=v),
+    "select": lambda v: select(_p().label("q")).params(p=v),
+    "compound_select": lambda v: union(
+        select(_p().label("q")), select(_t.c.id)
+    ).params(p=v),
+}
+
+# row returning statements, which are then embedded inside of
+# other statements
+_selectables = ("select", "compound_select", "textual_select")
+
+_embeddings = {
+    "toplevel": lambda s: s,
+    "subquery": lambda s: select(s.subquery()),
+    "cte": lambda s: select(s.cte()),
+    "scalar_subquery": lambda s: select(s.scalar_subquery()),
+    "exists": lambda s: select(exists(s)),
+    "in": lambda s: select(_t.c.id).where(_t.c.id.in_(s)),
+    # textual select can't be the first element of a UNION
+    "union_member": lambda s: union(select(_t.c.id), s),
+    "insert_from_select": lambda s: insert(_t).from_select(["id"], s),
+    "update_where": lambda s: update(_t)
+    .where(_t.c.id.in_(s))
+    .values(data=_t.c.id),
+    "update_values": lambda s: update(_t).values(data=s.scalar_subquery()),
+    "delete_where": lambda s: delete(_t).where(_t.c.id.in_(s)),
+}
+
+# statements that are not row returning, embedded inside of other
+# statements
+_clause_embeddings = {
+    "text_where": lambda v: select(_t.c.id).where(
+        text("t.id = :p").params(p=v)
+    ),
+    "tstring_where": lambda v: select(_t.c.id).where(
+        tstring(Template("t.id = ", Interpolation(_p(), "_p()"))).params(p=v)
+    ),
+    "function_column": lambda v: select(func.abs(_p()).params(p=v)),
+    "function_where": lambda v: select(_t.c.id).where(
+        _t.c.id == func.abs(_p()).params(p=v)
+    ),
+    "function_over": lambda v: select(func.max(_p()).params(p=v).over()),
+    "function_filter": lambda v: select(
+        func.max(_p()).params(p=v).filter(_t.c.id == _t.c.data)
+    ),
+    "function_within_group": lambda v: select(
+        func.percentile_cont(_p()).params(p=v).within_group(_t.c.id)
+    ),
+    "function_table_valued": lambda v: select(
+        func.json_each(_p()).params(p=v).table_valued("value")
+    ),
+    "function_column_valued": lambda v: select(
+        func.json_each(_p()).params(p=v).column_valued("value")
+    ),
+    "function_insert_values": lambda v: insert(_t).values(
+        data=func.abs(_p()).params(p=v)
+    ),
+    "function_update_values": lambda v: update(_t).values(
+        data=func.abs(_p()).params(p=v)
+    ),
+}
+
+
+class CompilePathsTest(ParamsCompilePathsFixture, fixtures.TestBase):
+    """test that .params() values are applied for every statement
+    construct, whether or not the compiled cache is used, both at the top
+    level and embedded within other statements."""
+
+    def test_all_statements_covered(self):
+        eq_(
+            {cls_.__visit_name__ for cls_ in _all_statement_classes(False)},
+            {build(5).__visit_name__ for build in _statements.values()},
+        )
+
+    @testing.combinations(*_statements, argnames="name")
+    def test_statement(self, name):
+        self._assert_params_all_paths(_statements[name])
+
+    @testing.combinations(*_selectables, argnames="name")
+    @testing.combinations(*_embeddings, argnames="embedding")
+    def test_selectable_embedded(self, name, embedding):
+        build, embed = _statements[name], _embeddings[embedding]
+        self._assert_params_all_paths(lambda v: embed(build(v)))
+
+    @testing.combinations(*_clause_embeddings, argnames="name")
+    def test_clause_embedded(self, name):
+        self._assert_params_all_paths(_clause_embeddings[name])
+
+    @testing.combinations(
+        "subquery",
+        "cte",
+        "scalar_subquery",
+        "exists",
+        "in",
+        "union_member",
+        argnames="embedding",
+    )
+    def test_outer_params_take_precedence(self, embedding):
+        """an outer .params() overrides that of an embedded statement
+        with or without the compiled cache"""
+
+        embed = _embeddings[embedding]
+
+        self._assert_params_all_paths(
+            lambda v: embed(select(_p().label("q")).params(p=3)).params(p=v)
+        )
 
 
 class LiteralBindsTest(fixtures.TestBase, AssertsCompiledSQL):
