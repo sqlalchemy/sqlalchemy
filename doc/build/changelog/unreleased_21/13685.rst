@@ -1,0 +1,14 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 13685
+
+    Added :attr:`_orm.SessionTransaction.connections` and
+    :meth:`_orm.SessionTransaction.bound_connection`, which return the
+    connections a :class:`_orm.SessionTransaction` has already acquired,
+    without acquiring a new one.
+
+    .. seealso::
+
+        :attr:`_orm.SessionTransaction.connections`
+
+        :meth:`_orm.SessionTransaction.bound_connection`

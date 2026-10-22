@@ -36,7 +36,9 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.config import Variation
 from sqlalchemy.testing.fixtures import fixture_session
@@ -1042,6 +1044,190 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         session.connection()
         is_not(session.get_transaction(), None)
+
+
+class TransactionConnectionsTest(FixtureTest):
+    run_inserts = None
+    __sparse_driver_backend__ = True
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    def _assert_recreates_connections(self, trans):
+        eq_(
+            {key: conn for key, (conn, _, _, _) in trans._connections.items()},
+            {
+                key: conn
+                for conn in trans.connections
+                for key in (conn, conn.engine)
+            },
+        )
+
+    def test_none_acquired(self):
+        sess = fixture_session()
+        trans = sess.begin()
+
+        eq_(trans.connections, frozenset())
+        with expect_raises_message(
+            sa_exc.InvalidRequestError, "has not acquired a connection"
+        ):
+            trans.bound_connection()
+        self._assert_recreates_connections(trans)
+
+    def test_engine_bind(self):
+        sess = fixture_session()
+        conn = sess.connection()
+        trans = sess.get_transaction()
+
+        eq_(trans.connections, frozenset([conn]))
+        is_(trans.bound_connection(), conn)
+        self._assert_recreates_connections(trans)
+
+    def test_connection_bind(self, connection_no_trans):
+        sess = Session(connection_no_trans)
+        sess.execute(text("select 1"))
+        trans = sess.get_transaction()
+
+        eq_(trans.connections, frozenset([connection_no_trans]))
+        is_(trans.bound_connection(), connection_no_trans)
+        self._assert_recreates_connections(trans)
+
+    def test_option_engine_bind(self):
+        eng = testing.db.execution_options(foo="bar")
+        sess = Session(eng)
+        conn = sess.connection()
+        trans = sess.get_transaction()
+
+        eq_(trans.connections, frozenset([conn]))
+        is_(trans.bound_connection(), conn)
+        self._assert_recreates_connections(trans)
+        sess.close()
+
+    def test_multiple_binds(self):
+        User, Address = self.classes.User, self.classes.Address
+        e1, e2 = engines.testing_engine(), engines.testing_engine()
+        sess = Session(binds={User: e1, Address: e2})
+        c1 = sess.connection(bind_arguments={"mapper": User})
+        trans = sess.get_transaction()
+
+        eq_(trans.connections, frozenset([c1]))
+        is_(trans.bound_connection(User), c1)
+        with expect_raises_message(
+            sa_exc.InvalidRequestError, "has not acquired a connection"
+        ):
+            trans.bound_connection(Address)
+        with expect_raises(sa_exc.UnboundExecutionError):
+            trans.bound_connection()
+
+        c2 = sess.connection(bind_arguments={"mapper": Address})
+        eq_(trans.connections, frozenset([c1, c2]))
+        is_(trans.bound_connection(Address), c2)
+        self._assert_recreates_connections(trans)
+        sess.close()
+
+    def test_same_engine_bind_and_binds(self):
+        User, Address = self.classes.User, self.classes.Address
+        e1 = engines.testing_engine()
+        sess = Session(e1, binds={User: e1})
+        c1 = sess.connection(bind_arguments={"mapper": User})
+        trans = sess.get_transaction()
+
+        eq_(trans.connections, frozenset([c1]))
+        is_(trans.bound_connection(), c1)
+        is_(trans.bound_connection(User), c1)
+        is_(trans.bound_connection(Address), c1)
+        self._assert_recreates_connections(trans)
+        sess.close()
+
+    def test_snapshot(self):
+        User, Address = self.classes.User, self.classes.Address
+        e1, e2 = engines.testing_engine(), engines.testing_engine()
+        sess = Session(binds={User: e1, Address: e2})
+        c1 = sess.connection(bind_arguments={"mapper": User})
+        trans = sess.get_transaction()
+        connections = trans.connections
+
+        c2 = sess.connection(bind_arguments={"mapper": Address})
+        eq_(connections, frozenset([c1]))
+        eq_(trans.connections, frozenset([c1, c2]))
+        sess.close()
+
+    def test_subtransaction_uses_parent(self):
+        sess = fixture_session()
+        conn = sess.connection()
+        root = sess.get_transaction()
+        subtrans = root._begin()
+
+        eq_(subtrans._connections, {})
+        eq_(subtrans.connections, root.connections)
+        is_(subtrans.bound_connection(), conn)
+        subtrans.close()
+
+    @testing.requires.savepoints
+    def test_savepoint(self):
+        sess = fixture_session()
+        conn = sess.connection()
+        nested = sess.begin_nested()
+        sess.connection()
+
+        eq_(nested.connections, frozenset([conn]))
+        is_(nested.bound_connection(), conn)
+        self._assert_recreates_connections(nested)
+        sess.rollback()
+
+    @testing.requires.savepoints
+    def test_savepoint_before_use(self):
+        sess = fixture_session()
+        conn = sess.connection()
+        nested = sess.begin_nested()
+
+        eq_(nested.connections, frozenset())
+        eq_(sess.get_transaction().connections, frozenset([conn]))
+        with expect_raises_message(
+            sa_exc.InvalidRequestError, "has not acquired a connection"
+        ):
+            nested.bound_connection()
+        sess.rollback()
+
+    def test_closed_transaction(self):
+        sess = fixture_session()
+        conn = sess.connection()
+        trans = sess.get_transaction()
+        sess.commit()
+
+        is_(sess.get_transaction(), None)
+        eq_(trans.connections, frozenset([conn]))
+        is_(trans.bound_connection(), conn)
+        is_true(conn.closed)
+
+    def test_invalidated_connection(self):
+        sess = fixture_session()
+        conn = sess.connection()
+        conn.invalidate()
+        trans = sess.get_transaction()
+
+        is_true(trans.is_active)
+        eq_(trans.connections, frozenset([conn]))
+        is_true(trans.bound_connection().invalidated)
+        sess.rollback()
+
+    def test_inactive_transaction(self):
+        User = self.classes.User
+        sess = fixture_session()
+        sess.add(User(id=1, name="u1"))
+        sess.flush()
+        conn = sess.connection()
+        sess.expunge_all()
+        sess.add(User(id=1, name="u2"))
+        with expect_raises(sa_exc.IntegrityError):
+            sess.flush()
+        trans = sess.get_transaction()
+
+        is_false(trans.is_active)
+        eq_(trans.connections, frozenset([conn]))
+        is_(trans.bound_connection(), conn)
+        sess.rollback()
 
 
 class _LocalFixture(FixtureTest):
