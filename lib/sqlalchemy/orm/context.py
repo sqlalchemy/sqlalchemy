@@ -14,6 +14,7 @@ from typing import AbstractSet
 from typing import Any
 from typing import cast
 from typing import Dict
+from typing import FrozenSet
 from typing import Iterable
 from typing import List
 from typing import Optional
@@ -84,6 +85,7 @@ if TYPE_CHECKING:
     from .query import Query
     from .session import _BindArguments
     from .session import Session
+    from .util import LoaderCriteriaOption
     from ..engine import Result
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..sql._typing import _ColumnsClauseArgument
@@ -1115,6 +1117,13 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
     _explicit_correlate_froms: AbstractSet[FromClause] = util.EMPTY_SET
     _implicit_correlate_froms: AbstractSet[FromClause] = util.EMPTY_SET
 
+    # with_loader_criteria() options whose criteria contain this SELECT,
+    # either directly or within an enclosing SELECT; see
+    # LoaderCriteriaOption._should_include()
+    _containing_loader_criteria: FrozenSet[LoaderCriteriaOption] = (
+        util.EMPTY_SET
+    )
+
     @classmethod
     def _create_orm_context(
         cls,
@@ -1137,6 +1146,21 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
                 kw.get("asfrom", False),
                 kw.get("lateral", False),
             )
+
+            # the nearest enclosing ORM SELECT has already collected the
+            # options of all the SELECTs enclosing it
+            for entry in reversed(compiler.stack):
+                enclosing_state = entry.get("compile_state")
+                if isinstance(enclosing_state, _ORMSelectCompileState):
+                    self._containing_loader_criteria = (
+                        enclosing_state._containing_loader_criteria
+                    )
+                    break
+
+            if "for_loader_criteria" in statement._annotations:
+                self._containing_loader_criteria |= {
+                    statement._annotations["for_loader_criteria"]
+                }
 
         select_statement = statement
 
