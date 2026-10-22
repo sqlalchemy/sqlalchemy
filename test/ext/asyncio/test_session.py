@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_object_session
 from sqlalchemy.ext.asyncio import async_scoped_session
@@ -679,6 +680,79 @@ class AsyncSessionQueryTest(AsyncFixture):
 
 class AsyncSessionTransactionTest(AsyncFixture):
     run_inserts = None
+
+    def _assert_recreates_connections(self, trans):
+        eq_(
+            {
+                key: conn
+                for key, (conn, _, _, _) in (
+                    trans.sync_transaction._connections.items()
+                )
+            },
+            {
+                key: conn.sync_connection
+                for conn in trans.connections
+                for key in (conn.sync_connection, conn.sync_engine)
+            },
+        )
+
+    @async_test
+    async def test_connections_engine_bind(self, async_engine):
+        async with AsyncSession(async_engine) as sess:
+            trans = await sess.begin()
+
+            eq_(trans.connections, frozenset())
+            with expect_raises_message(
+                exc.InvalidRequestError, "has not acquired a connection"
+            ):
+                trans.bound_connection()
+
+            conn = await sess.connection()
+
+            eq_(trans.connections, frozenset([conn]))
+            is_(trans.bound_connection(), conn)
+            is_(sess.get_transaction().bound_connection(), conn)
+            self._assert_recreates_connections(trans)
+
+    @async_test
+    async def test_connections_connection_bind(self, async_engine):
+        async with async_engine.connect() as aconn:
+            async with AsyncSession(aconn) as sess:
+                await sess.execute(text("select 1"))
+                trans = sess.get_transaction()
+
+                eq_(trans.connections, frozenset([aconn]))
+                is_(trans.bound_connection(), aconn)
+                self._assert_recreates_connections(trans)
+
+    @async_test
+    async def test_bound_connection_async_bind(self, async_engine):
+        async with async_engine.connect() as aconn:
+            async with AsyncSession(async_engine) as sess:
+                conn = await sess.connection()
+                trans = sess.get_transaction()
+
+                is_(trans.bound_connection(bind=async_engine), conn)
+                with expect_raises_message(
+                    exc.InvalidRequestError, "has not acquired a connection"
+                ):
+                    trans.bound_connection(bind=aconn)
+
+    @async_test
+    async def test_connections_invalidated(self):
+        async_engine = engines.testing_engine(asyncio=True)
+        try:
+            async with AsyncSession(async_engine) as sess:
+                conn = await sess.connection()
+                await conn.invalidate()
+                trans = sess.get_transaction()
+
+                is_true(trans.is_active)
+                eq_(trans.connections, frozenset([conn]))
+                is_true(trans.bound_connection().invalidated)
+                await sess.rollback()
+        finally:
+            await async_engine.dispose()
 
     @async_test
     async def test_interrupt_ctxmanager_connection(
