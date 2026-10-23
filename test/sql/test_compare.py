@@ -713,6 +713,9 @@ class CoreFixtures:
             table_b.insert().with_dialect_options(sqlite_foo="some value"),
             table_b.insert().from_select(["a", "b"], select(table_a)),
             table_b.insert().from_select(
+                ["a", "b"], select(table_a), include_defaults=False
+            ),
+            table_b.insert().from_select(
                 ["a", "b"], select(table_a).where(table_a.c.a > 5)
             ),
             table_b.insert().from_select(["a", "b"], select(table_b)),
@@ -774,6 +777,12 @@ class CoreFixtures:
         ),
         lambda: (
             table_b.delete(),
+            table_b.delete().return_defaults(),
+            table_b.delete().return_defaults(table_b.c.a),
+            table_b.delete().return_defaults(table_b.c.b),
+            table_b.delete().return_defaults(supplemental_cols=[table_b.c.a]),
+            table_b.delete().return_defaults(supplemental_cols=[table_b.c.b]),
+            table_b.delete().returning(table_b.c.a),
             table_b.delete().with_dialect_options(sqlite_foo="some value"),
             table_b.delete().where(table_b.c.a == 5),
             table_b.delete().where(table_b.c.b == 5),

@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13714
+
+    Fixed regression caused by :ticket:`13070` where using two or more
+    :func:`.orm.with_loader_criteria` options for different entities, where
+    the criteria of each referred to the other entity, such as by using
+    :meth:`.RelationshipProperty.Comparator.any` and
+    :meth:`.RelationshipProperty.Comparator.has`, would fail with a
+    ``RecursionError`` when compiling.  A loader criteria option is now
+    no longer applied to a SELECT that's nested at any level within its own
+    criteria; previously this was only checked for the immediate SELECT
+    within the criteria.  This also repairs the same ``RecursionError`` for
+    criteria which refer to each other using explicit subqueries, an issue
+    also present in the 2.0 series.  No backport is planned at the moment as
+    this is an unusual use case.

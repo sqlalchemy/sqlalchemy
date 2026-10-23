@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 13466
+    :versions: 2.1.6
+
+    Fixed issue where backslashes in the values of a :class:`.mysql.ENUM` or
+    :class:`.mysql.SET` type were not escaped when rendered in DDL, leading to
+    incorrect values or a malformed statement under MySQL's default
+    ``sql_mode``.  Backslashes are now escaped in the same way as for other
+    string literals, unless ``NO_BACKSLASH_ESCAPES`` is in effect.  Pull
+    request courtesy dxbjavid.

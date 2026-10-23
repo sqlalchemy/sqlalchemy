@@ -1554,6 +1554,53 @@ class InsertFromSelectTest(fixtures.TablesTest):
             [(2, 1, 5), (7, 1, 12)],
         )
 
+    @testing.variation("include_defaults_first", [True, False])
+    @testing.provide_metadata
+    def test_insert_from_select_include_defaults_cached(
+        self, connection, include_defaults_first
+    ):
+        """test #13686"""
+
+        data = self.tables.data
+
+        table = Table(
+            "sometable",
+            self.metadata,
+            Column("x", Integer),
+            Column("foo", Integer, default=12),
+            Column("y", Integer),
+        )
+
+        table.create(connection)
+
+        sel = select(data.c.x, data.c.y)
+
+        with_defaults = (
+            table.insert().from_select(["x", "y"], sel),
+            [(2, 12, 5), (7, 12, 12)],
+        )
+        without_defaults = (
+            table.insert().from_select(
+                ["x", "y"], sel, include_defaults=False
+            ),
+            [(2, None, 5), (7, None, 12)],
+        )
+
+        if include_defaults_first:
+            runs = [with_defaults, without_defaults]
+        else:
+            runs = [without_defaults, with_defaults]
+
+        results = []
+        for ins, _ in runs:
+            connection.execute(table.delete())
+            connection.execute(ins)
+            results.append(
+                list(connection.execute(table.select().order_by(table.c.x)))
+            )
+
+        eq_(results, [expected for _, expected in runs])
+
 
 class CurrentParametersTest(fixtures.TablesTest):
     __sparse_driver_backend__ = True

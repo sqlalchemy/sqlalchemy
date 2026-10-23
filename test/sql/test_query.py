@@ -643,6 +643,52 @@ class QueryTest(fixtures.TablesTest):
             [(8, "fred"), (9, "ed")],
         )
 
+    @testing.variation("other_expanding", [True, False])
+    def test_expanding_in_element_name_collision(
+        self, connection, other_expanding
+    ):
+        """test #13695
+
+        the first element of the expanding parameter ``q`` would be named
+        ``q_1``, which is the name of the other parameter.
+
+        """
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [
+                dict(user_id=7, user_name="jack"),
+                dict(user_id=8, user_name="fred"),
+                dict(user_id=9, user_name="ed"),
+            ],
+        )
+
+        if other_expanding:
+            other_crit = users.c.user_name.in_(
+                bindparam("q_1", expanding=True)
+            )
+            other_value = ["jack", "ed"]
+        else:
+            other_crit = users.c.user_name == bindparam("q_1")
+            other_value = "jack"
+
+        stmt = (
+            select(users)
+            .where(
+                users.c.user_id.in_(bindparam("q", expanding=True)),
+                other_crit,
+            )
+            .order_by(users.c.user_id)
+        )
+
+        eq_(
+            connection.execute(
+                stmt, {"q": [7, 8], "q_1": other_value}
+            ).fetchall(),
+            [(7, "jack")],
+        )
+
     def test_expanding_in_repeated(self, connection):
         users = self.tables.users
 

@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import close_all_sessions
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -519,6 +520,23 @@ class AsyncSessionQueryTest(AsyncFixture):
             result = await (await async_session.stream_scalars(stmt)).all()
         eq_(result, self.static.user_address_result)
 
+    @testing.combinations(("execute",), ("stream",), argnames="method")
+    @async_test
+    async def test_joinedload_unique_scalars(self, async_session, method):
+        """test #13688"""
+        User = self.classes.User
+
+        stmt = (
+            select(User).options(joinedload(User.addresses)).order_by(User.id)
+        )
+
+        if method == "execute":
+            result = (await async_session.execute(stmt)).unique().scalars()
+            eq_(result.all(), self.static.user_address_result)
+        elif method == "stream":
+            result = (await async_session.stream(stmt)).unique().scalars()
+            eq_(await result.all(), self.static.user_address_result)
+
     @async_test
     async def test_get(self, async_session):
         User = self.classes.User
@@ -605,6 +623,35 @@ class AsyncSessionQueryTest(AsyncFixture):
                 self.static.user_address_result[3:],
             ],
         )
+
+    @async_test
+    @testing.variation("entity", ["single", "multiple"])
+    async def test_stream_freeze(self, async_session, entity):
+        User = self.classes.User
+
+        if entity.single:
+            stmt = select(User).order_by(User.id)
+        elif entity.multiple:
+            stmt = select(User, User.name).order_by(User.id)
+        else:
+            entity.fail()
+
+        result = await async_session.stream(stmt)
+        frozen = await result.freeze()
+
+        for _ in range(2):
+            if entity.single:
+                eq_(frozen().scalars().all(), self.static.user_result)
+            else:
+                eq_(
+                    frozen().all(),
+                    list(
+                        zip(
+                            self.static.user_result,
+                            ["jack", "ed", "fred", "chuck"],
+                        )
+                    ),
+                )
 
     @testing.combinations("statement", "execute", argnames="location")
     @async_test

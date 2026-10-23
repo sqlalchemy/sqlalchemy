@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13711
+    :versions: 2.1.6
+
+    Fixed issue where a :class:`.Session` flush that replaced an expired
+    object in the identity map with a newly flushed object of the same
+    primary key would emit a SELECT to refresh the expired object, solely in
+    order to determine whether to emit an "Identity map already had an
+    identity" warning.  This could occur when a row loaded within a
+    transaction is rolled back and its primary key value is subsequently
+    reused, and could lead to an ``AttributeError`` if the expired object
+    were garbage collected during that load.  The check now emits no SQL, and
+    an expired object that is replaced in this way no longer causes the
+    warning to be emitted.

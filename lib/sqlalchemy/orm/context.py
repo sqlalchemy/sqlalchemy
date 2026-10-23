@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import collections
 import itertools
+from typing import AbstractSet
 from typing import Any
 from typing import cast
 from typing import Dict
+from typing import FrozenSet
 from typing import Iterable
 from typing import List
 from typing import Optional
@@ -50,6 +52,8 @@ from ..sql import visitors
 from ..sql._typing import is_dml
 from ..sql._typing import is_insert_update
 from ..sql._typing import is_select_base
+from ..sql.base import _expand_cloned
+from ..sql.base import _from_objects
 from ..sql.base import _select_iterables
 from ..sql.base import CacheableOptions
 from ..sql.base import CompileState
@@ -81,6 +85,7 @@ if TYPE_CHECKING:
     from .query import Query
     from .session import _BindArguments
     from .session import Session
+    from .util import LoaderCriteriaOption
     from ..engine import Result
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..sql._typing import _ColumnsClauseArgument
@@ -91,6 +96,7 @@ if TYPE_CHECKING:
     from ..sql.selectable import _LabelConventionCallable
     from ..sql.selectable import _SetupJoinsElement
     from ..sql.selectable import ExecutableReturnsRows
+    from ..sql.selectable import FromClause
     from ..sql.selectable import SelectBase
     from ..sql.type_api import TypeEngine
 
@@ -1025,6 +1031,9 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
 
         """
 
+        if compiler._collect_params:
+            compiler._add_to_params(self)
+
         compile_state = self._compile_state_factory(self, compiler, **kw)
 
         toplevel = not compiler.stack
@@ -1104,6 +1113,17 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
     _where_criteria = ()
     _having_criteria = ()
 
+    # see SQLCompiler._enclosing_correlate_froms()
+    _explicit_correlate_froms: AbstractSet[FromClause] = util.EMPTY_SET
+    _implicit_correlate_froms: AbstractSet[FromClause] = util.EMPTY_SET
+
+    # with_loader_criteria() options whose criteria contain this SELECT,
+    # either directly or within an enclosing SELECT; see
+    # LoaderCriteriaOption._should_include()
+    _containing_loader_criteria: FrozenSet[LoaderCriteriaOption] = (
+        util.EMPTY_SET
+    )
+
     @classmethod
     def _create_orm_context(
         cls,
@@ -1115,6 +1135,32 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
     ) -> _ORMSelectCompileState:
 
         self = cls.__new__(cls)
+
+        if not toplevel:
+            assert compiler is not None
+            (
+                self._explicit_correlate_froms,
+                self._implicit_correlate_froms,
+            ) = compiler._enclosing_correlate_froms(
+                compiler.stack[-1],
+                kw.get("asfrom", False),
+                kw.get("lateral", False),
+            )
+
+            # the nearest enclosing ORM SELECT has already collected the
+            # options of all the SELECTs enclosing it
+            for entry in reversed(compiler.stack):
+                enclosing_state = entry.get("compile_state")
+                if isinstance(enclosing_state, _ORMSelectCompileState):
+                    self._containing_loader_criteria = (
+                        enclosing_state._containing_loader_criteria
+                    )
+                    break
+
+            if "for_loader_criteria" in statement._annotations:
+                self._containing_loader_criteria |= {
+                    statement._annotations["for_loader_criteria"]
+                }
 
         select_statement = statement
 
@@ -2519,6 +2565,44 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         else:
             return ()
 
+    def _get_correlated_froms(self):
+        """Return the set of FROM objects that will be correlated away
+        from this SELECT, given its current state.
+
+        This runs ahead of the final statement being generated, so the
+        FROM list is derived from the ORM-level statement.
+
+        """
+        if not self._explicit_correlate_froms and (
+            not self._implicit_correlate_froms
+        ):
+            return util.EMPTY_SET
+
+        froms = self._get_froms(self.select_statement)
+
+        if self.correlate:
+            to_correlate = [c for c in self.correlate if c is not None]
+        else:
+            to_correlate = None
+
+        display_froms = set(
+            self._correlate_froms(
+                froms,
+                self.select_statement,
+                to_correlate,
+                self.correlate_except,
+                self.select_statement._auto_correlate,
+                self._explicit_correlate_froms,
+                self._implicit_correlate_froms,
+            )
+        )
+
+        return set(
+            _expand_cloned(
+                _from_objects(*[f for f in froms if f not in display_froms])
+            )
+        )
+
     def _adjust_for_extra_criteria(self):
         """Apply extra criteria filtering.
 
@@ -2532,13 +2616,39 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         associated with the global context.
 
         """
+        # entities that are referenced only within the WHERE clause also
+        # receive criteria (#13070), except when the entity is correlated
+        # to an enclosing SELECT, which has the criteria applied
+        # already (#13701)
+        correlated_froms = (
+            self._get_correlated_froms()
+            if self.select_statement._where_criteria
+            else util.EMPTY_SET
+        )
         ext_infos = [
             fromclause._annotations.get("parententity", None)
             for fromclause in self.from_clauses
         ] + [
-            elem._annotations.get("parententity", None)
-            for where_crit in self.select_statement._where_criteria
-            for elem in sql_util.surface_expressions(where_crit)
+            ext_info
+            for elem, ext_info in [
+                (elem, elem._annotations.get("parententity", None))
+                for where_crit in self.select_statement._where_criteria
+                for elem in sql_util.surface_expressions(where_crit)
+            ]
+            if ext_info
+            and not (
+                # if all FROMs for this expression are correlated to an
+                # enclosing query, then skip adding loader criteria for the
+                # entity on behalf of this element, since the actual FROM
+                # clause(s) for it are not local to this subquery
+                # (#13701)
+                correlated_froms
+                and elem._from_objects
+                and all(
+                    correlated_froms.intersection(from_._cloned_set)
+                    for from_ in elem._from_objects
+                )
+            )
         ]
 
         for ext_info in ext_infos:

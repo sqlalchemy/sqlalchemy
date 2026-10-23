@@ -9,6 +9,7 @@ from __future__ import annotations
 import operator
 from typing import Any
 from typing import AsyncIterator
+from typing import Iterator
 from typing import Literal
 from typing import Optional
 from typing import overload
@@ -20,6 +21,7 @@ from typing import TypeVar
 from . import exc as async_exc
 from ... import util
 from ...engine import Result
+from ...engine._result_cy import _RowData
 from ...engine.result import _NO_ROW
 from ...engine.result import _R
 from ...engine.result import _WithKeys
@@ -467,6 +469,11 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
 
         return await greenlet_spawn(FrozenResult, self)
 
+    def _raw_row_iterator(self) -> Iterator[_RowData]:
+        # used by FrozenResult when the source result supports scalars;
+        # must be invoked within greenlet_spawn()
+        return self._real_result._raw_row_iterator()
+
     @overload
     def scalars(
         self: AsyncResult[_T, Unpack[TupleAny]], index: Literal[0]
@@ -494,7 +501,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
          referring to this :class:`_asyncio.AsyncResult` object.
 
         """
-        return AsyncScalarResult(self._real_result, index)
+        return AsyncScalarResult(self, index)
 
     def mappings(self) -> AsyncMappingResult:
         """Apply a mappings filter to returned rows, returning an instance of
@@ -505,11 +512,11 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
         objects.
 
         :return: a new :class:`_asyncio.AsyncMappingResult` filtering object
-         referring to the underlying :class:`_result.Result` object.
+         referring to this :class:`_asyncio.AsyncResult` object.
 
         """
 
-        return AsyncMappingResult(self._real_result)
+        return AsyncMappingResult(self)
 
 
 class AsyncScalarResult(AsyncCommon[_R]):
@@ -532,19 +539,21 @@ class AsyncScalarResult(AsyncCommon[_R]):
 
     def __init__(
         self,
-        real_result: Result[Unpack[TupleAny]],
+        result: AsyncResult[Unpack[TupleAny]],
         index: _KeyIndexType,
     ):
-        self._real_result = real_result
+        # rows are fetched from the sync Result; metadata and unique state
+        # come from the AsyncResult, where unique() and columns() apply them
+        self._real_result = result._real_result
 
-        if real_result._source_supports_scalars:
-            self._metadata = real_result._metadata
+        if result._source_supports_scalars:
+            self._metadata = result._metadata
             self._post_creational_filter = None
         else:
-            self._metadata = real_result._metadata._reduce([index])
+            self._metadata = result._metadata._reduce([index])
             self._post_creational_filter = operator.itemgetter(0)
 
-        self._unique_filter_state = real_result._unique_filter_state
+        self._unique_filter_state = result._unique_filter_state
 
     def unique(
         self,
@@ -665,8 +674,11 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
 
     _post_creational_filter = operator.attrgetter("_mapping")
 
-    def __init__(self, result: Result[Unpack[TupleAny]]):
-        self._real_result = result
+    def __init__(self, result: AsyncResult[Unpack[TupleAny]]):
+        # rows are fetched from the sync Result; metadata and unique state
+        # come from the AsyncResult, where unique() and columns() apply them
+        self._real_result = result._real_result
+
         self._unique_filter_state = result._unique_filter_state
         self._metadata = result._metadata
         if result._source_supports_scalars:

@@ -36,6 +36,7 @@ import operator
 import re
 from time import perf_counter
 import typing
+from typing import AbstractSet
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -1920,6 +1921,19 @@ class SQLCompiler(Compiled):
             if value is not None
         }
 
+    @util.memoized_property
+    def _expanded_bind_names_reserved(self) -> FrozenSet[str]:
+        """Names that the individual elements of an expanding parameter
+        may not take when the parameter is expanded at execution time.
+
+        This is every bound parameter name in the statement, both in its
+        compiled and in its escaped form.  See :ticket:`13695`.
+
+        """
+        return frozenset(self.bind_names.values()).union(
+            self.escaped_bind_names, self.escaped_bind_names.values()
+        )
+
     def is_subquery(self):
         return len(self.stack) > 1
 
@@ -2189,6 +2203,16 @@ class SQLCompiler(Compiled):
         replacement_expressions: Dict[str, Any] = {}
         to_update_sets: Dict[str, Any] = {}
 
+        # names that the elements of expanding parameters can't take, as
+        # they are in use either by other parameters in the statement or by
+        # elements of expanding parameters that were already expanded.
+        # copied into a mutable set, as it is added to within this method's
+        # scope to track the additional element names generated for this
+        # execution
+        expanded_taken_names: Set[str] = set(
+            self._expanded_bind_names_reserved
+        )
+
         # notes:
         # *unescaped* parameter names in:
         # self.bind_names, self.binds, self._bind_processors, self.positiontup
@@ -2239,7 +2263,10 @@ class SQLCompiler(Compiled):
                     values = parameters.pop(name)
 
                     leep_res = self._literal_execute_expanding_parameter(
-                        escaped_name, parameter, values
+                        escaped_name,
+                        parameter,
+                        values,
+                        taken_names=expanded_taken_names,
                     )
                     to_update, replacement_expr = leep_res
 
@@ -2249,17 +2276,16 @@ class SQLCompiler(Compiled):
                 if not parameter.literal_execute:
                     parameters.update(to_update)
                     if parameter.type._is_tuple_type:
-                        assert values is not None
-                        new_processors.update(
-                            (
-                                "%s_%s_%s" % (name, i, j),
-                                tuple_processors[name][j - 1],
+                        if name in tuple_processors:
+                            # to_update is flattened row by row, one entry
+                            # per element of each tuple
+                            element_processors = tuple_processors[name]
+                            num = len(element_processors)
+                            new_processors.update(
+                                (key, element_processors[idx % num])
+                                for idx, (key, _) in enumerate(to_update)
+                                if element_processors[idx % num] is not None
                             )
-                            for i, tuple_element in enumerate(values, 1)
-                            for j, _ in enumerate(tuple_element, 1)
-                            if name in tuple_processors
-                            and tuple_processors[name][j - 1] is not None
-                        )
                     else:
                         new_processors.update(
                             (key, single_processors[name])
@@ -3554,7 +3580,22 @@ class SQLCompiler(Compiled):
 
         return (), replacement_expression
 
-    def _literal_execute_expanding_parameter(self, name, parameter, values):
+    def _literal_execute_expanding_parameter(
+        self, name, parameter, values, *, taken_names
+    ):
+        """Render the per-element bound parameters of an expanding
+        parameter.
+
+        ``taken_names`` is a set of names the elements may not use; each
+        name generated is checked against it and added to it.  The element
+        names are normally ``<name>_<n>``, or ``<name>_<n>_<m>`` for tuples,
+        which may be the name of another parameter in the same statement,
+        e.g. a parameter ``x_1`` alongside the expanding parameter ``x``, or
+        the element of another expanding parameter.  A colliding name is
+        uniquified with a counter, rather than the element value replacing
+        the value of the other parameter.  See :ticket:`13695`.
+
+        """
         if parameter.literal_execute:
             return self._literal_execute_expanding_parameter_literal_binds(
                 parameter, values
@@ -3585,6 +3626,20 @@ class SQLCompiler(Compiled):
             def _render_bindtemplate(name):
                 return bind_template % {"name": name}
 
+        def _unique_name(key):
+            if key in taken_names:
+                base = key
+                counter = 0
+                while key in taken_names:
+                    counter += 1
+                    # double underscore keeps the suffix out of the
+                    # <name>_<n> form generated for anonymous names and
+                    # for the elements themselves, so a renamed element
+                    # won't take a name another element would generate
+                    key = "%s__%d" % (base, counter)
+            taken_names.add(key)
+            return key
+
         if not values:
             to_update = []
             if typ_dialect_impl._is_tuple_type:
@@ -3603,7 +3658,7 @@ class SQLCompiler(Compiled):
         ):
             assert not typ_dialect_impl._is_array
             to_update = [
-                ("%s_%s_%s" % (name, i, j), value)
+                (_unique_name("%s_%s_%s" % (name, i, j)), value)
                 for i, tuple_element in enumerate(values, 1)
                 for j, value in enumerate(tuple_element, 1)
             ]
@@ -3624,7 +3679,7 @@ class SQLCompiler(Compiled):
             )
         else:
             to_update = [
-                ("%s_%s" % (name, i), value)
+                (_unique_name("%s_%s" % (name, i)), value)
                 for i, value in enumerate(values, 1)
             ]
             replacement_expression = ", ".join(
@@ -5071,24 +5126,44 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
-        compile_state = select_stmt._compile_state_factory(select_stmt, self)
+        compile_state = select_stmt._compile_state_factory(
+            select_stmt, self, asfrom=asfrom, lateral=lateral
+        )
 
+        explicit, implicit = self._enclosing_correlate_froms(
+            entry, asfrom, lateral
+        )
+        return compile_state._get_display_froms(
+            explicit_correlate_froms=explicit,
+            implicit_correlate_froms=implicit,
+        )
+
+    def _enclosing_correlate_froms(
+        self, entry: _CompilerStackEntry, asfrom: bool, lateral: bool
+    ) -> Tuple[AbstractSet[FromClause], AbstractSet[FromClause]]:
+        """Given the stack entry of an enclosing statement, return the
+        explicit and implicit correlate FROMs for a SELECT that's embedded
+        within it, as passed to :meth:`.SelectState._get_display_froms`.
+
+        explicit_correlate_froms: FROMs of enclosing SELECTs that this SELECT
+        may correlate to when explicit correlation is used, i.e.
+        :meth:`.Select.correlate` or :meth:`.Select.correlate_except`.
+        Includes the FROMs of all enclosing SELECTs.
+
+        implicit_correlate_froms: FROMs of enclosing SELECTs that this SELECT
+        will correlate to automatically, assuming auto-correlation is in
+        effect.  Includes only the FROMs of the immediately enclosing SELECT,
+        and is empty if this SELECT is a subquery in a FROM clause that's not
+        LATERAL.  Is always a subset of explicit_correlate_froms.
+
+        """
         correlate_froms = entry["correlate_froms"]
         asfrom_froms = entry["asfrom_froms"]
 
         if asfrom and not lateral:
-            froms = compile_state._get_display_froms(
-                explicit_correlate_froms=correlate_froms.difference(
-                    asfrom_froms
-                ),
-                implicit_correlate_froms=(),
-            )
+            return correlate_froms.difference(asfrom_froms), util.EMPTY_SET
         else:
-            froms = compile_state._get_display_froms(
-                explicit_correlate_froms=correlate_froms,
-                implicit_correlate_froms=asfrom_froms,
-            )
-        return froms
+            return correlate_froms, asfrom_froms
 
     translate_select_structure: Any = None
     """if not ``None``, should be a callable which accepts ``(select_stmt,
@@ -5126,7 +5201,7 @@ class SQLCompiler(Compiled):
         kwargs["within_columns_clause"] = False
 
         compile_state = select_stmt._compile_state_factory(
-            select_stmt, self, **kwargs
+            select_stmt, self, asfrom=asfrom, lateral=lateral, **kwargs
         )
         kwargs["ambiguous_table_name_map"] = (
             compile_state._ambiguous_table_name_map
@@ -5157,7 +5232,11 @@ class SQLCompiler(Compiled):
                 select_stmt = new_select_stmt
 
                 compile_state = select_stmt._compile_state_factory(
-                    select_stmt, self, **kwargs
+                    select_stmt,
+                    self,
+                    asfrom=asfrom,
+                    lateral=lateral,
+                    **kwargs,
                 )
                 select_stmt = compile_state.statement
 
@@ -5335,9 +5414,6 @@ class SQLCompiler(Compiled):
     def _setup_select_stack(
         self, select, compile_state, entry, asfrom, lateral, compound_index
     ):
-        correlate_froms = entry["correlate_froms"]
-        asfrom_froms = entry["asfrom_froms"]
-
         if compound_index == 0:
             entry["select_0"] = select
         elif compound_index:
@@ -5358,21 +5434,18 @@ class SQLCompiler(Compiled):
                     )
                 )
 
-        if asfrom and not lateral:
-            froms = compile_state._get_display_froms(
-                explicit_correlate_froms=correlate_froms.difference(
-                    asfrom_froms
-                ),
-                implicit_correlate_froms=(),
-            )
-        else:
-            froms = compile_state._get_display_froms(
-                explicit_correlate_froms=correlate_froms,
-                implicit_correlate_froms=asfrom_froms,
-            )
+        explicit, implicit = self._enclosing_correlate_froms(
+            entry, asfrom, lateral
+        )
+        froms = compile_state._get_display_froms(
+            explicit_correlate_froms=explicit,
+            implicit_correlate_froms=implicit,
+        )
 
         new_correlate_froms = set(_from_objects(*froms))
-        all_correlate_froms = new_correlate_froms.union(correlate_froms)
+        all_correlate_froms = new_correlate_froms.union(
+            entry["correlate_froms"]
+        )
 
         new_entry: _CompilerStackEntry = {
             "asfrom_froms": new_correlate_froms,

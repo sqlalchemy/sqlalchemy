@@ -9,8 +9,46 @@
 
 
 .. changelog::
-    :version: 2.1.6
+    :version: 2.1.7
     :include_notes_from: unreleased_21
+
+.. changelog::
+    :version: 2.1.6
+    :released: October 21, 2026
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 13697
+
+        Added :paramref:`.make_url.keep_blank_values` and
+        :paramref:`.URL.update_query_string.keep_blank_values` parameters, which
+        when set to True retain query string parameters with blank values such as
+        ``key=`` in the :attr:`.URL.query` dictionary as empty strings. This allows
+        a :class:`.URL` with empty-string query values to round trip through
+        :meth:`.URL.render_as_string` and :func:`.make_url`. The default behavior
+        of omitting blank values is unchanged, as dialects may not accept an empty
+        string for query parameters that are coerced to other types.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13701
+
+        Fixed regression caused by :ticket:`13070` where using more than one
+        :func:`.orm.with_loader_criteria` option for the same entity, where the
+        criteria made use of correlated subqueries referring to that entity, would
+        fail with a ``RecursionError`` when compiling.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13709
+
+        Fixed regression caused by the new implementation of ``.params()`` for
+        statements introduced in :ticket:`7066`, where parameter values passed to
+        the ``.params()`` method of an ORM statement created using
+        :meth:`.Select.from_statement` would not be applied when the statement
+        was compiled without the compiled statement cache, such as when the cache
+        was disabled or when the statement was stringified directly, leading to
+        an error that a value is required for the bound parameter.
 
 .. changelog::
     :version: 2.1.5

@@ -414,6 +414,66 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             "id in (:id1, :id2)",
         )
 
+    @testing.variation("inner", ["text", "select"])
+    def test_from_statement_params_compile(self, inner):
+        """test #13709"""
+        User = self.classes.User
+
+        if inner.text:
+            stmt = text("select * from users where id = :id")
+        elif inner.select:
+            stmt = select(User).where(User.id == sa.bindparam("id"))
+        else:
+            inner.fail()
+
+        stmt = select(User).from_statement(stmt).params(id=8)
+
+        self.assert_compile(
+            stmt,
+            (
+                "select * from users where id = :id"
+                if inner.text
+                else "SELECT users.id, users.name FROM users "
+                "WHERE users.id = :id"
+            ),
+            checkparams={"id": 8},
+        )
+
+    @testing.variation("inner", ["text", "select"])
+    @testing.variation("use_cache", [True, False])
+    def test_from_statement_params_execute(self, inner, use_cache):
+        """test #13709"""
+        User = self.classes.User
+
+        if inner.text:
+            stmt = text("select * from users where id = :id or id = :id2")
+        elif inner.select:
+            stmt = select(User).where(
+                sa.or_(
+                    User.id == sa.bindparam("id"),
+                    User.id == sa.bindparam("id2"),
+                )
+            )
+        else:
+            inner.fail()
+
+        # params on the outer statement take precedence over the inner
+        stmt = (
+            select(User).from_statement(stmt.params(id=7, id2=10)).params(id=8)
+        )
+
+        if use_cache:
+            bind = testing.db
+        else:
+            bind = testing.db.execution_options(compiled_cache=None)
+
+        s = fixture_session(bind=bind)
+        for _ in range(2):
+            eq_(
+                s.scalars(stmt).all(),
+                [User(id=8, name="ed"), User(id=10, name="chuck")],
+            )
+
     def test_plain_textual_column(self):
         User = self.classes.User
 

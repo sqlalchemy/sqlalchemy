@@ -3523,10 +3523,17 @@ class Session(_SessionClassMethods, EventTarget):
                 # that is replaced when the primary keys of two instances
                 # are swapped; see test/orm/test_naturalpks.py -> test_reverse
                 old = self.identity_map.replace(state)
+
+                # check the replaced state's identity without emitting
+                # any SQL; an expired state such as one left over from
+                # a rollback will not match and does not warn
                 if (
                     old is not None
-                    and mapper._identity_key_from_state(old) == instance_key
                     and old.obj() is not None
+                    and mapper._identity_key_from_state(
+                        old, PassiveFlag.PASSIVE_NO_FETCH
+                    )
+                    == instance_key
                 ):
                     util.warn(
                         "Identity map already had an identity for %s, "
@@ -4144,17 +4151,18 @@ class Session(_SessionClassMethods, EventTarget):
             # flush current contents if we expect to load data
             self._autoflush()
 
-        return [
-            self._merge(
-                object_state(instance),
-                attributes.instance_dict(instance),
-                load=load,
-                options=options,
-                _recursive={},
-                _resolve_conflict_map={},
-            )
-            for instance in instances
-        ]
+        with self.no_autoflush:
+            return [
+                self._merge(
+                    object_state(instance),
+                    attributes.instance_dict(instance),
+                    load=load,
+                    options=options,
+                    _recursive={},
+                    _resolve_conflict_map={},
+                )
+                for instance in instances
+            ]
 
     def _merge(
         self,

@@ -69,6 +69,7 @@ from .selectable import SelectLabelStyle
 from .selectable import TableClause
 from .selectable import TypedReturnsRows
 from .sqltypes import NullType
+from .visitors import _TraverseInternalsType
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
@@ -435,6 +436,18 @@ class UpdateBase(
     )
     _supplemental_returning: Optional[Tuple[_ColumnsClauseElement, ...]] = None
     _returning: Tuple[_ColumnsClauseElement, ...] = ()
+
+    _return_defaults_traverse_internals: _TraverseInternalsType = [
+        ("_return_defaults", InternalTraversal.dp_boolean),
+        (
+            "_return_defaults_columns",
+            InternalTraversal.dp_clauseelement_tuple,
+        ),
+        (
+            "_supplemental_returning",
+            InternalTraversal.dp_clauseelement_tuple,
+        ),
+    ]
 
     is_dml = True
 
@@ -1258,17 +1271,13 @@ class Insert(ValuesBase, HasSyntaxExtensions[Literal["post_values"]]):
             ("_post_values_clause", InternalTraversal.dp_clauseelement),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
-            ("_return_defaults", InternalTraversal.dp_boolean),
-            (
-                "_return_defaults_columns",
-                InternalTraversal.dp_clauseelement_tuple,
-            ),
-            (
-                "_supplemental_returning",
-                InternalTraversal.dp_clauseelement_tuple,
-            ),
             ("_sort_by_parameter_order", InternalTraversal.dp_boolean),
+            (
+                "include_insert_from_select_defaults",
+                InternalTraversal.dp_boolean,
+            ),
         ]
+        + UpdateBase._return_defaults_traverse_internals
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
         + ExecutableStatement._executable_traverse_internals
@@ -1661,17 +1670,9 @@ class Update(
             ("_values", InternalTraversal.dp_dml_values),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
-            ("_return_defaults", InternalTraversal.dp_boolean),
             ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
-            (
-                "_return_defaults_columns",
-                InternalTraversal.dp_clauseelement_tuple,
-            ),
-            (
-                "_supplemental_returning",
-                InternalTraversal.dp_clauseelement_tuple,
-            ),
         ]
+        + UpdateBase._return_defaults_traverse_internals
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
         + ExecutableStatement._executable_traverse_internals
@@ -1874,6 +1875,7 @@ class Delete(
             ("_hints", InternalTraversal.dp_table_hint_list),
             ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
         ]
+        + UpdateBase._return_defaults_traverse_internals
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
         + ExecutableStatement._executable_traverse_internals

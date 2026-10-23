@@ -107,6 +107,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ORMCOLEXPR
     from .context import _MapperEntity
     from .context import _ORMCompileState
+    from .context import _ORMSelectCompileState
     from .decl_api import RegistryType
     from .mapper import Mapper
     from .path_registry import _AbstractEntityRegistry
@@ -1548,15 +1549,12 @@ class LoaderCriteriaOption(CriteriaOption):
                 else:
                     stack.extend(subclass.__subclasses__())
 
-    def _should_include(self, compile_state: _ORMCompileState) -> bool:
-        if (
-            compile_state.select_statement._annotations.get(
-                "for_loader_criteria", None
-            )
-            is self
-        ):
-            return False
-        return True
+    def _should_include(self, compile_state: _ORMSelectCompileState) -> bool:
+        # don't apply the criteria to a SELECT that's part of the criteria
+        # itself, either directly or nested at any level within other
+        # SELECTs, such as another option's criteria that in turn refers
+        # back to our entity; this would otherwise recurse endlessly (#13714)
+        return self not in compile_state._containing_loader_criteria
 
     def _resolve_where_criteria(
         self, ext_info: _InternalEntityType[Any]
