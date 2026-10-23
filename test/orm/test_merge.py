@@ -55,6 +55,15 @@ class MergeTest(_fixtures.FixtureTest):
 
         return canary
 
+    def _merge(self, sess, instance, merge_method):
+        if merge_method.merge:
+            return sess.merge(instance)
+        elif merge_method.merge_all:
+            (merged,) = sess.merge_all([instance])
+            return merged
+        else:
+            merge_method.fail()
+
     def test_loader_options(self):
         User, Address, addresses, users = (
             self.classes.User,
@@ -147,7 +156,8 @@ class MergeTest(_fixtures.FixtureTest):
         ):
             sess.merge(u)
 
-    def test_transient_to_pending_collection(self):
+    @testing.variation("merge_method", ["merge", "merge_all"])
+    def test_transient_to_pending_collection(self, merge_method):
         User, Address, addresses, users = (
             self.classes.User,
             self.classes.Address,
@@ -179,7 +189,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(load.called, 0)
 
         sess = fixture_session()
-        sess.merge(u)
+        self._merge(sess, u, merge_method)
         eq_(load.called, 3)
 
         merged_users = [e for e in sess if isinstance(e, User)]
@@ -1736,7 +1746,8 @@ class MergeTest(_fixtures.FixtureTest):
             [("a",), ("b",), ("c",)],
         )
 
-    def test_resolve_conflicts_pending(self):
+    @testing.variation("merge_method", ["merge", "merge_all"])
+    def test_resolve_conflicts_pending(self, merge_method):
         User, Address, Order = (
             self.classes.User,
             self.classes.Address,
@@ -1764,12 +1775,13 @@ class MergeTest(_fixtures.FixtureTest):
         ]
 
         sess = fixture_session()
-        sess.merge(u1)
+        self._merge(sess, u1, merge_method)
         sess.flush()
 
         eq_(sess.query(Address).one(), Address(id=1, email_address="c"))
 
-    def test_resolve_conflicts_persistent(self):
+    @testing.variation("merge_method", ["merge", "merge_all"])
+    def test_resolve_conflicts_persistent(self, merge_method):
         User, Address, Order = (
             self.classes.User,
             self.classes.Address,
@@ -1801,7 +1813,7 @@ class MergeTest(_fixtures.FixtureTest):
         ]
 
         sess = fixture_session()
-        sess.merge(u1)
+        self._merge(sess, u1, merge_method)
         sess.flush()
 
         eq_(sess.query(Address).one(), Address(id=1, email_address="c"))
