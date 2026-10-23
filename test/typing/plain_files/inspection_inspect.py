@@ -1,6 +1,8 @@
 from typing import Any
 from typing import assert_type
 from typing import List
+from typing import Optional
+from typing import Protocol
 
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
@@ -61,3 +63,20 @@ assert_type(inspect(e), Inspector)
 
 with e.connect() as conn:
     inspect(conn).get_table_names()
+
+
+class Named(Protocol):
+    name: str
+
+
+def check_any_subject(obj: Named, flag: bool) -> None:
+    assert_type(inspect(obj), Any)
+    assert_type(inspect(obj, True), Any)
+    assert_type(inspect(obj, raiseerr=True), Any)
+    assert_type(inspect(obj, False), Optional[Any])
+    assert_type(inspect(obj, raiseerr=False), Optional[Any])
+    assert_type(inspect(obj, flag), Optional[Any])
+    assert_type(inspect(obj, raiseerr=flag), Optional[Any])
+    inspect(obj).identity
+    # EXPECTED_MYPY: Item "None" of "Any | None" has no attribute "identity"
+    inspect(obj, raiseerr=flag).identity

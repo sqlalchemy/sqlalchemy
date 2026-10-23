@@ -667,7 +667,7 @@ class RelationshipProperty(
 
         def _memoized_attr_entity(self) -> _InternalEntityType[_PT]:
             if self._of_type:
-                return inspect(self._of_type)  # type: ignore[return-value]
+                return inspect(self._of_type)  # type: ignore[no-any-return]
             else:
                 return self.prop.entity
 
