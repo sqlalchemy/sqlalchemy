@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6860
+
+    Improved validation and error messages in :func:`_orm.with_parent`.
+    An :class:`~sqlalchemy.exc.ArgumentError` is now raised early when
+    the given instance is ``None``, is not a mapped instance, or does not
+    match the parent mapper of the specified relationship attribute.
+    Passing a non-attribute or unsupported object as the relationship
+    property also now raises :class:`~sqlalchemy.exc.ArgumentError` rather
+    than falling through to an unhandled ``AttributeError``.
