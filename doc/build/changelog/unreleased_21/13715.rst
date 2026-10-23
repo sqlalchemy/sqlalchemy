@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13715
+
+    Fixed issue where :meth:`.Session.merge_all` did not disable autoflush
+    while merging, unlike :meth:`.Session.merge`.  A lazy load emitted while
+    cascading the merge could flush a partially merged object and fail with
+    an integrity error.

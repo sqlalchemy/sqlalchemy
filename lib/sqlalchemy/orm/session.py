@@ -4151,17 +4151,18 @@ class Session(_SessionClassMethods, EventTarget):
             # flush current contents if we expect to load data
             self._autoflush()
 
-        return [
-            self._merge(
-                object_state(instance),
-                attributes.instance_dict(instance),
-                load=load,
-                options=options,
-                _recursive={},
-                _resolve_conflict_map={},
-            )
-            for instance in instances
-        ]
+        with self.no_autoflush:
+            return [
+                self._merge(
+                    object_state(instance),
+                    attributes.instance_dict(instance),
+                    load=load,
+                    options=options,
+                    _recursive={},
+                    _resolve_conflict_map={},
+                )
+                for instance in instances
+            ]
 
     def _merge(
         self,

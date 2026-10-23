@@ -2325,3 +2325,52 @@ class PolymorphicOnTest(fixtures.MappedTest):
         # merge() returned, but for good measure:
         assert m is not merged
         eq_(m, merged)
+
+
+class MergeAllAutoflushTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("parent", metadata, Column("id", Integer, primary_key=True))
+        Table(
+            "child",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("parent_id", ForeignKey("parent.id"), nullable=False),
+            Column("name", String(50), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Parent(cls.Basic):
+            pass
+
+        class Child(cls.Basic):
+            pass
+
+    def test_merge_all_does_not_autoflush_during_cascade(self):
+        Parent, Child = self.classes.Parent, self.classes.Child
+        self.mapper_registry.map_imperatively(Parent, self.tables.parent)
+        self.mapper_registry.map_imperatively(
+            Child,
+            self.tables.child,
+            properties={"parent": relationship(Parent)},
+        )
+
+        sess = fixture_session()
+        sess.add(Parent(id=1))
+        sess.commit()
+
+        sess = fixture_session()
+        parent = sess.get(Parent, 1)
+        sess.close()
+
+        sess = fixture_session()
+        child = Child(name="c", parent=parent)
+        child.parent_id = None
+
+        merged = sess.merge_all([child])[0]
+        assert merged.parent is not None
+        sess.commit()
+
+        sess = fixture_session()
+        eq_(sess.scalars(select(Child)).one().name, "c")
