@@ -1725,6 +1725,7 @@ class Query(
         *,
         compiled_cache: Optional[CompiledCacheType] = ...,
         logging_token: str = ...,
+        log_note: str = ...,
         isolation_level: IsolationLevel = ...,
         no_parameters: bool = False,
         stream_results: bool = False,
