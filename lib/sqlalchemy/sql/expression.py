@@ -44,6 +44,7 @@ from ._elements_constructors import try_cast as try_cast
 from ._elements_constructors import tstring as tstring
 from ._elements_constructors import tuple_ as tuple_
 from ._elements_constructors import type_coerce as type_coerce
+from ._elements_constructors import window as window
 from ._elements_constructors import within_group as within_group
 from ._selectable_constructors import alias as alias
 from ._selectable_constructors import cte as cte
@@ -114,6 +115,7 @@ from .elements import Tuple as Tuple
 from .elements import TypeClause as TypeClause
 from .elements import TypeCoerce as TypeCoerce
 from .elements import UnaryExpression as UnaryExpression
+from .elements import Window as Window
 from .elements import WithinGroup as WithinGroup
 from .functions import func as func
 from .functions import Function as Function

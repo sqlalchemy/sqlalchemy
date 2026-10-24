@@ -1639,6 +1639,46 @@ We also may make use of the ``ORDER BY`` clause using :paramref:`_functions.Func
     {stop}[(2, 'sandy', 'sandy@sqlalchemy.org'), (2, 'sandy', 'sandy@squirrelpower.org'), (3, 'spongebob', 'spongebob@sqlalchemy.org')]
     {printsql}ROLLBACK{stop}
 
+Named windows allow the same partitioning, ordering, and frame definition to
+be reused by multiple ``OVER`` expressions.  A :func:`_expression.window`
+object passed to :meth:`_functions.FunctionElement.over` is associated with
+the enclosing :class:`_sql.Select` automatically::
+
+    >>> from sqlalchemy import window
+    >>> by_user = window(
+    ...     name="by_user",
+    ...     partition_by=user_table.c.name,
+    ...     order_by=address_table.c.email_address,
+    ... )
+    >>> stmt = (
+    ...     select(
+    ...         func.row_number().over(by_user),
+    ...         user_table.c.name,
+    ...         address_table.c.email_address,
+    ...     )
+    ...     .select_from(user_table)
+    ...     .join(address_table)
+    ... )
+    >>> print(stmt)
+    {printsql}SELECT row_number() OVER by_user AS anon_1, user_account.name,
+    address.email_address
+    FROM user_account JOIN address ON user_account.id = address.user_id
+    WINDOW by_user AS (PARTITION BY user_account.name
+    ORDER BY address.email_address)
+
+A window may instead be referenced by string name and registered explicitly
+using :meth:`_sql.Select.add_window`.  A second window can build on an earlier
+one using :meth:`_sql.Window.window`; SQLAlchemy renders object dependencies in
+the required definition order.
+
+.. seealso::
+
+    :func:`_expression.window`
+
+    :class:`_sql.Window`
+
+    :meth:`_sql.Select.add_window`
+
 Further options for window functions include usage of ranges; see
 :func:`_expression.over` for more examples.
 
