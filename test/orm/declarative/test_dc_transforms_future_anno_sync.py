@@ -39,6 +39,8 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import attribute_keyed_dict
+from sqlalchemy.orm import column_keyed_dict
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import DeclarativeBase
@@ -1152,6 +1154,62 @@ class RelationshipDefaultFactoryTest(fixtures.TestBase):
                     )
                 else:
                     collection_type.fail()
+
+    @testing.variation(
+        "collection_type",
+        ["keyed_dict_list", "keyed_dict_separate_class", "list_subclass_set"],
+    )
+    def test_no_funny_business_custom_collection(
+        self,
+        dc_decl_base: Type[MappedAsDataclass],
+        collection_type: testing.Variation,
+    ):
+        """test #13718"""
+
+        class MyList(list):
+            pass
+
+        if (
+            collection_type.keyed_dict_list
+            or collection_type.keyed_dict_separate_class
+        ):
+            expected = (
+                r"<class 'sqlalchemy.orm.mapped_collection.*_MKeyfuncMapped'>"
+                r" or <class 'dict'>"
+            )
+        elif collection_type.list_subclass_set:
+            expected = r"<class '.*MyList'> or <class 'list'>"
+        else:
+            collection_type.fail()
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"For relationship A.bs using dataclass options, "
+            rf"default_factory must be exactly {expected}",
+        ):
+
+            class A(dc_decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+                if collection_type.keyed_dict_list:
+                    bs: Mapped[Dict[str, "B"]] = relationship(  # noqa: F821
+                        collection_class=attribute_keyed_dict("data"),
+                        default_factory=list,
+                    )
+                elif collection_type.keyed_dict_separate_class:
+                    # each attribute_keyed_dict() call produces a new
+                    # class, so the default_factory is not the exact
+                    # collection class
+                    bs: Mapped[Dict[str, "B"]] = relationship(  # noqa: F821
+                        collection_class=attribute_keyed_dict("data"),
+                        default_factory=attribute_keyed_dict("data"),
+                    )
+                elif collection_type.list_subclass_set:
+                    bs: Mapped[List["B"]] = relationship(  # noqa: F821
+                        collection_class=MyList, default_factory=set
+                    )
 
     @testing.variation("collection_type", ["write_only", "dynamic"])
     def test_no_funny_business_write_only(
@@ -3575,6 +3633,99 @@ class UseDescriptorDefaultsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             # field was explicit so is overridden by merge
             eq_(u3.things, [])
+
+    @testing.combinations(
+        ("attr_keyed_dict", lambda: attribute_keyed_dict("name"), dict),
+        (
+            "col_keyed_dict",
+            lambda Thing: column_keyed_dict(Thing.__table__.c.name),
+            dict,
+        ),
+        ("list_subclass", lambda MyList: MyList, list),
+        ("set_subclass", lambda MySet: MySet, set),
+        argnames="collection_class, plain_type",
+        id_="iaa",
+    )
+    @testing.variation("default_factory_type", ["plain", "exact"])
+    def test_default_factory_custom_collection(
+        self, dc_decl_base, collection_class, plain_type, default_factory_type
+    ):
+        """test #13718"""
+
+        class MyList(list):
+            pass
+
+        class MySet(set):
+            pass
+
+        class Thing(dc_decl_base, eq=False):
+            __tablename__ = "thing"
+
+            # identity hash so that instances can be placed in a set
+            __hash__ = object.__hash__
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            my_id: Mapped[int] = mapped_column(
+                ForeignKey("myclass.id"), init=False
+            )
+            name: Mapped[str]
+
+        collection_class = testing.resolve_lambda(
+            collection_class, MyList=MyList, MySet=MySet, Thing=Thing
+        )
+
+        if default_factory_type.plain:
+            default_factory = plain_type
+        elif default_factory_type.exact:
+            default_factory = collection_class
+        else:
+            default_factory_type.fail()
+
+        class MyClass(dc_decl_base):
+            __tablename__ = "myclass"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+            if plain_type is dict:
+                things: Mapped[Dict[str, Thing]] = relationship(
+                    collection_class=collection_class,
+                    default_factory=default_factory,
+                )
+            elif plain_type is list:
+                things: Mapped[List[Thing]] = relationship(
+                    collection_class=collection_class,
+                    default_factory=default_factory,
+                    order_by=Thing.id,
+                )
+            elif plain_type is set:
+                things: Mapped[Set[Thing]] = relationship(
+                    collection_class=collection_class,
+                    default_factory=default_factory,
+                )
+
+        dc_decl_base.metadata.create_all(testing.db)
+
+        t1, t2 = Thing(name="t1"), Thing(name="t2")
+
+        if plain_type is dict:
+            expected = {"t1": t1, "t2": t2}
+        else:
+            expected = plain_type([t1, t2])
+
+        m1 = MyClass()
+        m2 = MyClass(things=plain_type(expected))
+
+        is_true(isinstance(m1.things, collection_class))
+        is_true(isinstance(m2.things, collection_class))
+        eq_([m1.things, m2.things], [plain_type(), expected])
+
+        with Session(testing.db) as sess:
+            sess.add_all([m1, m2])
+            sess.commit()
+
+            is_true(isinstance(m1.things, collection_class))
+            is_true(isinstance(m2.things, collection_class))
+            eq_([m1.things, m2.things], [plain_type(), expected])
 
 
 class SynonymDescriptorDefaultTest(AssertsCompiledSQL, fixtures.TestBase):

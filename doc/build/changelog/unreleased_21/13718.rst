@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13718
+
+    Fixed regression caused by :ticket:`12168` where a collection-based
+    :func:`_orm.relationship` using the
+    :ref:`orm_declarative_native_dataclasses` feature with a custom
+    :paramref:`_orm.relationship.collection_class` such as
+    :func:`_orm.attribute_keyed_dict` would raise an error if
+    :paramref:`_orm.relationship.default_factory` were set to the plain
+    ``dict``, ``list`` or ``set`` type that the collection class is based on,
+    such as ``default_factory=dict`` for :func:`_orm.attribute_keyed_dict`.
+    The plain collection type is now accepted as the
+    :paramref:`_orm.relationship.default_factory` in addition to the exact
+    collection class.

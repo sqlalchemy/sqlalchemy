@@ -483,7 +483,9 @@ The :class:`_orm.Mapped` annotation in combination with
 :ref:`relationship_patterns`.    When specifying a collection-based
 :func:`_orm.relationship` as an optional keyword argument, the
 :paramref:`_orm.relationship.default_factory` parameter must be passed and it
-must refer to the collection class that's to be used.  Many-to-one and
+must refer to the collection class that's to be used, or the plain ``list``,
+``set`` or ``dict`` type that a custom collection class is based on (see
+:ref:`orm_declarative_dc_custom_collections` below).  Many-to-one and
 scalar object references may make use of
 :paramref:`_orm.relationship.default` if the default value is to be ``None``::
 
@@ -526,6 +528,57 @@ itself, this would break compatibility with dataclasses, as the presence
 of :paramref:`_orm.relationship.default_factory` or
 :paramref:`_orm.relationship.default` is what determines if the parameter is
 to be required or optional when rendered into the ``__init__()`` method.
+
+.. _orm_declarative_dc_custom_collections:
+
+Using Custom Collection Classes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When :paramref:`_orm.relationship.collection_class` is used to establish a
+custom collection class, such as a dictionary collection created by
+:func:`_orm.attribute_keyed_dict`, the
+:paramref:`_orm.relationship.default_factory` parameter may be passed the
+plain ``list``, ``set`` or ``dict`` type that the collection class is based
+on; the collection that's present on a new object is still an instance of
+the custom collection class::
+
+    from typing import Dict
+
+    from sqlalchemy import ForeignKey
+    from sqlalchemy.orm import attribute_keyed_dict
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_as_dataclass
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm import relationship
+
+    reg = registry()
+
+
+    @mapped_as_dataclass(reg)
+    class Parent:
+        __tablename__ = "parent"
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        children: Mapped[Dict[str, "Child"]] = relationship(
+            collection_class=attribute_keyed_dict("name"),
+            default_factory=dict,
+        )
+
+
+    @mapped_as_dataclass(reg)
+    class Child:
+        __tablename__ = "child"
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"), init=False)
+        name: Mapped[str]
+
+Above, ``Parent().children`` will produce an empty dictionary collection
+keyed on ``Child.name``.
+
+.. versionchanged:: 2.1.7 The plain ``list``, ``set`` or ``dict`` type is
+   accepted for :paramref:`_orm.relationship.default_factory` when
+   :paramref:`_orm.relationship.collection_class` refers to a custom collection
+   class.
 
 .. seealso::
 

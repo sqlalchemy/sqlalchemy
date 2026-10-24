@@ -1914,22 +1914,38 @@ class RelationshipProperty(
             self._attribute_options.dataclasses_default_factory
             is not _NoArg.NO_ARG
         ):
+            default_factory = (
+                self._attribute_options.dataclasses_default_factory
+            )
+
             # write only / dynamic relationships have no collection_class,
             # however they accept a list of objects when assigned, so
             # ``list`` is the expected default_factory for these
-            expected_default_factory = (
+            exact_default_factory = (
                 list if is_write_only or is_dynamic else self.collection_class
             )
 
-            if (
-                self._attribute_options.dataclasses_default_factory
-                is not expected_default_factory
+            # the plain list / set / dict that a custom collection class
+            # acts as is also accepted, such as ``dict`` for
+            # attribute_keyed_dict()
+            plain_collection_type = util.duck_type_collection(
+                exact_default_factory
+            )
+            if plain_collection_type is exact_default_factory:
+                plain_collection_type = None
+
+            if default_factory is not exact_default_factory and (
+                plain_collection_type is None
+                or default_factory is not plain_collection_type
             ):
+                expected = str(exact_default_factory)
+                if plain_collection_type is not None:
+                    expected += f" or {plain_collection_type}"
                 raise sa_exc.ArgumentError(
                     "For relationship "
                     f"{self._format_as_string(cls, key)} using "
                     "dataclass options, default_factory must be exactly "
-                    f"{expected_default_factory}"
+                    f"{expected}"
                 )
 
     @util.preload_module("sqlalchemy.orm.mapper")

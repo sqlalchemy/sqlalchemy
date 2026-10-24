@@ -604,7 +604,10 @@ A late addition to the behavioral change brings equivalent behavior to the
 use of the :paramref:`_orm.relationship.default_factory` parameter with
 collection-based relationships.   This parameter is :ref:`documented <orm_declarative_dc_relationships>`
 as being limited to exactly the collection class that's stated on the left side
-of the annotation, which is now enforced at mapper configuration time::
+of the annotation (or for a custom
+:paramref:`_orm.relationship.collection_class`, the plain ``list``, ``set``
+or ``dict`` type that it's based on), which is now enforced at mapper
+configuration time::
 
     class Parent(Base):
         __tablename__ = "parents"
