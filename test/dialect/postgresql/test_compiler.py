@@ -1454,6 +1454,43 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ")",
         )
 
+    @testing.combinations(
+        ("SET NULL (a)", " ON DELETE SET NULL (a)"),
+        ("SET NULL (a, b)", " ON DELETE SET NULL (a, b)"),
+        (
+            'SET DEFAULT ("Some Col", b)',
+            ' ON DELETE SET DEFAULT ("Some Col", b)',
+        ),
+        ("SET NULL (a)); DROP TABLE pktable; --(b)", None),
+        ("SET NULL (a) CASCADE", None),
+        argnames="ondelete, expected",
+    )
+    def test_create_foreign_key_constraint_ondelete_column_list_validated(
+        self, ondelete, expected
+    ):
+        m = MetaData()
+        Table("pktable", m, Column("id", Integer, primary_key=True))
+        fktable = Table(
+            "fktable",
+            m,
+            Column("a", Integer),
+            ForeignKeyConstraint(["a"], ["pktable.id"], ondelete=ondelete),
+        )
+
+        if expected is None:
+            with expect_raises_message(
+                exc.CompileError, "Unexpected SQL phrase"
+            ):
+                schema.CreateTable(fktable).compile(
+                    dialect=postgresql.dialect()
+                )
+        else:
+            self.assert_compile(
+                schema.CreateTable(fktable),
+                "CREATE TABLE fktable (a INTEGER, "
+                "FOREIGN KEY(a) REFERENCES pktable (id)%s)" % expected,
+            )
+
     def test_exclude_constraint_info(self):
         ec = ExcludeConstraint(("a", "="))
         eq_(ec.info, {})

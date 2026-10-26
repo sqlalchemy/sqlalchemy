@@ -2783,10 +2783,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     @util.memoized_property
     def _fk_ondelete_pattern(self):
+        # a keyword phrase, optionally followed by the column list accepted
+        # by SET NULL / SET DEFAULT.  column names may be double-quoted, as
+        # rendered by pg_get_constraintdef() when reflected
+        ident = r'(?:[\w$]+|"(?:[^"]|"")+")'
         return re.compile(
-            r"^(?:RESTRICT|CASCADE|SET (?:NULL|DEFAULT)(?:\s*\(.+\))?"
-            r"|NO ACTION)$",
-            re.I,
+            r"^\w+(?:\s+\w+)*"
+            rf"(?:\s*\(\s*{ident}(?:\s*,\s*{ident})*\s*\))?$"
         )
 
     def define_constraint_ondelete_cascade(self, constraint):
