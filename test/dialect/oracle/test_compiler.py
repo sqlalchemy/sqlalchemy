@@ -38,6 +38,7 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.schema import Column
@@ -1657,6 +1658,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t),
             f"CREATE TABLE table1 (x INTEGER) {expected_sql}",
         )
+
+    def test_fk_ondelete_validated(self):
+        m = MetaData()
+        Table("pk", m, Column("id", Integer, primary_key=True))
+        t = Table(
+            "fk",
+            m,
+            Column("a", Integer, ForeignKey("pk.id", ondelete="SET NULL")),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE fk (a INTEGER, "
+            "FOREIGN KEY(a) REFERENCES pk (id) ON DELETE SET NULL)",
+        )
+
+        t = Table(
+            "fk2",
+            m,
+            Column(
+                "a",
+                Integer,
+                ForeignKey("pk.id", ondelete="CASCADE; DROP TABLE pk"),
+            ),
+        )
+        with expect_raises_message(
+            exc.CompileError,
+            "Unexpected SQL phrase: 'CASCADE; DROP TABLE pk'",
+        ):
+            schema.CreateTable(t).compile(dialect=oracle.OracleDialect())
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
