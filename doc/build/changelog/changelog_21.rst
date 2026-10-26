@@ -2137,9 +2137,9 @@
 
         The :meth:`_events.SessionEvents.do_orm_execute` event now allows direct
         mutation or replacement of the :attr:`.ORMExecuteState.parameters`
-        dictionary or list, which will take effect when the the statement is
-        executed.  Previously, changes to this collection were not accommodated by
-        the event hook.  Pull request courtesy Shamil.
+        dictionary or list, which will take effect when the statement is executed.
+        Previously, changes to this collection were not accommodated by the event
+        hook.  Pull request courtesy Shamil.
 
 
     .. change::

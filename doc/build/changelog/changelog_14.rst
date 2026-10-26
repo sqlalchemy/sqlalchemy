@@ -2572,7 +2572,7 @@ This document details individual issue-level changes made throughout
         :tickets: 7491
 
         Fixed recursion overflow which could occur within ORM statement compilation
-        when using either the :func:`_orm.with_loader_criteria` feature or the the
+        when using either the :func:`_orm.with_loader_criteria` feature or the
         :meth:`_orm.PropComparator.and_` method within a loader strategy in
         conjunction with a subquery which referred to the same entity being altered
         by the criteria option, or loaded by the loader strategy.  A check for
