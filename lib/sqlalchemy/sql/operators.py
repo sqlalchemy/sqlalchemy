@@ -2805,6 +2805,8 @@ _OPERATOR_CLASSES: util.immutabledict[OperatorType, OperatorClass] = (
         {
             # BASE operators
             null_op: OperatorClass.BASE,
+            is_: OperatorClass.BASE,
+            is_not: OperatorClass.BASE,
             # COMPARISON operators
             lt: OperatorClass.COMPARISON,
             le: OperatorClass.COMPARISON,
@@ -2816,8 +2818,6 @@ _OPERATOR_CLASSES: util.immutabledict[OperatorType, OperatorClass] = (
             is_not_distinct_from: OperatorClass.COMPARISON,
             in_op: OperatorClass.COMPARISON,
             not_in_op: OperatorClass.COMPARISON,
-            is_: OperatorClass.COMPARISON,
-            is_not: OperatorClass.COMPARISON,
             between_op: OperatorClass.COMPARISON,
             not_between_op: OperatorClass.COMPARISON,
             desc_op: OperatorClass.COMPARISON,

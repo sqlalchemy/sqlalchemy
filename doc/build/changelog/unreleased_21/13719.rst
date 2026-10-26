@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 13719
+
+    Fixed regression caused by :ticket:`12736` where the
+    :meth:`_sql.ColumnOperators.is_` and :meth:`_sql.ColumnOperators.is_not`
+    operators were assigned to the :attr:`.OperatorClass.COMPARISON` operator
+    class, which is not present on all datatypes.  As these operators are valid
+    for every SQL datatype, they are now part of :attr:`.OperatorClass.BASE`,
+    so that expressions such as ``hstore_column.is_not(None)`` no longer emit a
+    deprecation warning.
