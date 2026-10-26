@@ -3261,18 +3261,26 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
         pk_cols = query_info.pk_cols
         in_expr = query_info.in_expr
 
-        if not query_info.load_with_join:
+        omit_join_m2m = (
+            not query_info.load_with_join
+            and self.parent_property.secondary is not None
+        )
+
+        if (
+            not query_info.load_with_join
+            and not omit_join_m2m
+            and effective_entity.is_aliased_class
+        ):
             # in "omit join" mode, the primary key column and the
             # "in" expression are in terms of the related entity.  So
             # if the related entity is polymorphic or otherwise aliased,
             # we need to adapt our "pk_cols" and "in_expr" to that
             # entity.   in non-"omit join" mode, these are against the
-            # parent entity and do not need adaption.
-            if effective_entity.is_aliased_class:
-                pk_cols = [
-                    effective_entity._adapt_element(col) for col in pk_cols
-                ]
-                in_expr = effective_entity._adapt_element(in_expr)
+            # parent entity and do not need adaption; in "omit join" mode
+            # for many-to-many, these are against the secondary table and
+            # also do not need adaption.
+            pk_cols = [effective_entity._adapt_element(col) for col in pk_cols]
+            in_expr = effective_entity._adapt_element(in_expr)
 
         entity_sql = effective_entity.__clause_element__()
         q = Select._create_raw_select(
@@ -3284,16 +3292,20 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
             },
         )
 
-        if (
-            self.parent_property.secondary is not None
-            and self.omit_join is True
-        ):
+        if omit_join_m2m:
             # The secondaryjoin condition is used to connect the
             # secondary table to the related entity,
             # and is required for composite foreign keys where SQLAlchemy
-            # cannot determine the join condition.
+            # cannot determine the join condition.  If the related entity
+            # is aliased, e.g. via of_type(), the secondaryjoin is adapted
+            # to refer to that alias.
+            secondaryjoin = self.parent_property._join_condition.secondaryjoin
+            if effective_entity.is_aliased_class:
+                secondaryjoin = effective_entity._adapter.traverse(
+                    secondaryjoin
+                )
             q = q.select_from(self.parent_property.secondary).join(
-                entity_sql, self.parent_property._join_condition.secondaryjoin
+                entity_sql, secondaryjoin
             )
         elif not query_info.load_with_join:
             # the pk columns in the "omit_join" case are raw, non-annotated

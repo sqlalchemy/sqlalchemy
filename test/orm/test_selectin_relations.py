@@ -4267,6 +4267,40 @@ class M2MOmitJoinTest(fixtures.TestBase, AssertsExecutionResults):
             b_ids = [b.id for b in a.bs]
             eq_(len(b_ids), len(set(b_ids)))
 
+    def test_m2m_selectin_of_type_aliased(self, simple_m2m, connection):
+        """test #13726; the secondaryjoin is adapted to an aliased target
+        in the omit_join case"""
+        A = simple_m2m
+        b_alias = aliased(A.bs.entity.class_)
+
+        with Session(connection) as session:
+
+            def go():
+                statement = (
+                    select(A)
+                    .options(selectinload(A.bs.of_type(b_alias)))
+                    .order_by(A.id)
+                )
+                return session.execute(statement).scalars().all()
+
+            results = self.assert_sql_execution(
+                connection,
+                go,
+                CompiledSQL("SELECT a.id FROM a ORDER BY a.id", {}),
+                CompiledSQL(
+                    "SELECT a_b.a_id, b_1.id "
+                    "FROM a_b JOIN b AS b_1 ON b_1.id = a_b.b_id "
+                    "WHERE a_b.a_id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    {"primary_keys": [1, 2]},
+                ),
+            )
+
+        eq_(
+            {a.id: sorted(b.id for b in a.bs) for a in results},
+            {1: [1, 2], 2: [1]},
+        )
+
 
 class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
     @classmethod

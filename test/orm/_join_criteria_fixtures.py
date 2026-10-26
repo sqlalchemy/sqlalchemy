@@ -5,6 +5,11 @@ Each relationship loader suite subclasses
 :class:`._JoinCriteriaLoaderTest`, establishing the loader option under
 test and the number of statements it is expected to emit.
 
+Collection tests additionally run against an aliased target, established
+using :meth:`.PropComparator.of_type` with either an :func:`.aliased`
+construct or a single-inheritance subclass, both of which require that the
+join criteria be adapted to the aliased target.
+
 """
 
 from sqlalchemy import and_
@@ -12,7 +17,9 @@ from sqlalchemy import Boolean
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -27,17 +34,18 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
     relationships.
 
     Each table has a boolean column "x" that's the target of the criteria;
-    rows below are listed as (x=True) or (x=False):
+    rows below are listed as (x=True) or (x=False).  Rows marked with
+    ``*`` are of the single-inheritance subclass BSub or CSub:
 
     .. sourcecode:: text
 
         a:   a1 (x=True), a2 (x=False), a3 (x=True)
-        b:   b1 (x=True), b2 (x=False), b3 (x=True)
+        b:   b1* (x=True), b2 (x=False), b3* (x=True)
         a_b: a1 -> b1 (x=True), b2 (x=True), b3 (x=False)
              a2 -> b1 (x=False), b2 (x=True), b3 (x=True)
-        c:   c1 -> a1 (x=True), c2 -> a1 (x=False),
-             c3 -> a2 (x=True), c4 -> a2 (x=False),
-             c5 -> a3 (x=True)
+        c:   c1* -> a1 (x=True), c2 -> a1 (x=False),
+             c3* -> a2 (x=True), c4 -> a2 (x=False),
+             c5* -> a3 (x=True)
 
     """
 
@@ -64,6 +72,7 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
             "b",
             metadata,
             Column("id", Integer, primary_key=True),
+            Column("type", String(10), nullable=False),
             Column("x", Boolean, nullable=False),
         )
         Table(
@@ -78,6 +87,7 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
             metadata,
             Column("id", Integer, primary_key=True),
             Column("a_id", ForeignKey("a.id")),
+            Column("type", String(10), nullable=False),
             Column("x", Boolean, nullable=False),
         )
 
@@ -89,12 +99,18 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
         class B(cls.Comparable):
             pass
 
+        class BSub(B):
+            pass
+
         class C(cls.Comparable):
+            pass
+
+        class CSub(C):
             pass
 
     @classmethod
     def setup_mappers(cls):
-        A, B, C = cls.classes("A", "B", "C")
+        A, B, BSub, C, CSub = cls.classes("A", "B", "BSub", "C", "CSub")
         a, b, a_b, c = cls.tables("a", "b", "a_b", "c")
 
         cls.mapper_registry.map_imperatively(
@@ -175,10 +191,17 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
                 ),
             },
         )
-        cls.mapper_registry.map_imperatively(B, b)
+        cls.mapper_registry.map_imperatively(
+            B, b, polymorphic_on=b.c.type, polymorphic_identity="b"
+        )
+        cls.mapper_registry.map_imperatively(
+            BSub, inherits=B, polymorphic_identity="bsub"
+        )
         cls.mapper_registry.map_imperatively(
             C,
             c,
+            polymorphic_on=c.c.type,
+            polymorphic_identity="c",
             properties={
                 "a": relationship(A, viewonly=True),
                 "a_pj_target": relationship(
@@ -190,6 +213,9 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
                     viewonly=True,
                 ),
             },
+        )
+        cls.mapper_registry.map_imperatively(
+            CSub, inherits=C, polymorphic_identity="csub"
         )
 
     @classmethod
@@ -207,9 +233,9 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
         connection.execute(
             b.insert(),
             [
-                {"id": 1, "x": True},
-                {"id": 2, "x": False},
-                {"id": 3, "x": True},
+                {"id": 1, "type": "bsub", "x": True},
+                {"id": 2, "type": "b", "x": False},
+                {"id": 3, "type": "bsub", "x": True},
             ],
         )
         connection.execute(
@@ -226,17 +252,28 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
         connection.execute(
             c.insert(),
             [
-                {"id": 1, "a_id": 1, "x": True},
-                {"id": 2, "a_id": 1, "x": False},
-                {"id": 3, "a_id": 2, "x": True},
-                {"id": 4, "a_id": 2, "x": False},
-                {"id": 5, "a_id": 3, "x": True},
+                {"id": 1, "a_id": 1, "type": "csub", "x": True},
+                {"id": 2, "a_id": 1, "type": "c", "x": False},
+                {"id": 3, "a_id": 2, "type": "csub", "x": True},
+                {"id": 4, "a_id": 2, "type": "c", "x": False},
+                {"id": 5, "a_id": 3, "type": "csub", "x": True},
             ],
         )
 
-    def _assert_collection(self, attrname, expected):
+    def _assert_collection(self, attrname, target, expected):
         A = self.classes.A
         attr = getattr(A, attrname)
+
+        B, BSub, C, CSub = self.classes("B", "BSub", "C", "CSub")
+
+        if target.aliased:
+            attr = attr.of_type(aliased(attr.entity.class_))
+        elif target.subclass:
+            attr = attr.of_type({B: BSub, C: CSub}[attr.entity.class_])
+        elif target.plain:
+            pass
+        else:
+            target.fail()
 
         sess = fixture_session()
 
@@ -278,41 +315,60 @@ class _JoinCriteriaLoaderTest(fixtures.MappedTest):
         result = self.assert_sql_count(testing.db, go, self.statement_count)
         eq_(result, expected)
 
-    def test_m2m_plain(self):
-        self._assert_collection("bs", {1: [1, 2, 3], 2: [1, 2, 3], 3: []})
-
-    def test_m2m_primaryjoin_criteria_on_secondary(self):
-        """test #13626"""
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_m2m_plain(self, target):
         self._assert_collection(
-            "bs_pj_secondary", {1: [1, 2], 2: [2, 3], 3: []}
+            "bs", target, {1: [1, 2, 3], 2: [1, 2, 3], 3: []}
         )
 
-    def test_m2m_primaryjoin_criteria_on_parent(self):
-        """test #13626"""
-        self._assert_collection("bs_pj_parent", {1: [1, 2, 3], 2: [], 3: []})
-
-    def test_m2m_primaryjoin_criteria_parent_to_secondary(self):
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_m2m_primaryjoin_criteria_on_secondary(self, target):
         """test #13626"""
         self._assert_collection(
-            "bs_pj_parent_to_secondary", {1: [1, 2], 2: [1], 3: []}
+            "bs_pj_secondary", target, {1: [1, 2], 2: [2, 3], 3: []}
         )
 
-    def test_m2m_secondaryjoin_criteria_on_secondary(self):
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_m2m_primaryjoin_criteria_on_parent(self, target):
+        """test #13626"""
         self._assert_collection(
-            "bs_sj_secondary", {1: [1, 2], 2: [2, 3], 3: []}
+            "bs_pj_parent", target, {1: [1, 2, 3], 2: [], 3: []}
         )
 
-    def test_m2m_secondaryjoin_criteria_on_target(self):
-        self._assert_collection("bs_sj_target", {1: [1, 3], 2: [1, 3], 3: []})
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_m2m_primaryjoin_criteria_parent_to_secondary(self, target):
+        """test #13626"""
+        self._assert_collection(
+            "bs_pj_parent_to_secondary", target, {1: [1, 2], 2: [1], 3: []}
+        )
 
-    def test_o2m_plain(self):
-        self._assert_collection("cs", {1: [1, 2], 2: [3, 4], 3: [5]})
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_m2m_secondaryjoin_criteria_on_secondary(self, target):
+        self._assert_collection(
+            "bs_sj_secondary", target, {1: [1, 2], 2: [2, 3], 3: []}
+        )
 
-    def test_o2m_primaryjoin_criteria_on_target(self):
-        self._assert_collection("cs_pj_target", {1: [1], 2: [3], 3: [5]})
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_m2m_secondaryjoin_criteria_on_target(self, target):
+        self._assert_collection(
+            "bs_sj_target", target, {1: [1, 3], 2: [1, 3], 3: []}
+        )
 
-    def test_o2m_primaryjoin_criteria_on_parent(self):
-        self._assert_collection("cs_pj_parent", {1: [1, 2], 2: [], 3: [5]})
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_o2m_plain(self, target):
+        self._assert_collection("cs", target, {1: [1, 2], 2: [3, 4], 3: [5]})
+
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_o2m_primaryjoin_criteria_on_target(self, target):
+        self._assert_collection(
+            "cs_pj_target", target, {1: [1], 2: [3], 3: [5]}
+        )
+
+    @testing.variation("target", ["plain", "aliased", "subclass"])
+    def test_o2m_primaryjoin_criteria_on_parent(self, target):
+        self._assert_collection(
+            "cs_pj_parent", target, {1: [1, 2], 2: [], 3: [5]}
+        )
 
     def test_m2o_plain(self):
         self._assert_scalar("a", {1: 1, 3: 2, 5: 3})

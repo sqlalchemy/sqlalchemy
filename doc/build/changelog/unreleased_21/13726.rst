@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13726
+
+    Fixed regression caused by :ticket:`5987` where the :func:`.selectinload`
+    loader strategy, when loading a many-to-many relationship against an
+    aliased target, such as when using :meth:`.PropComparator.of_type` with a
+    single-inheritance subclass or an :func:`.aliased` construct, would render
+    the join between the association table and the aliased target using the
+    unaliased table name, producing invalid SQL.
