@@ -1940,7 +1940,7 @@ class RelationshipToSingleTest(
         """additional tests related to #13070.
 
         this test is using any() with single-inh criteria, however this
-        doesnt seem to actually need anything from the #13070 change
+        doesn't seem to actually need anything from the #13070 change
         as the `Engineer.name` criteria itself already includes the
         single-inh criteria with no need for _adjust_for_extra_criteria.
         apparently.

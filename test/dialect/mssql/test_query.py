@@ -185,7 +185,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         To enable the workaround, the Table must be instantiated
         with the init parameter 'implicit_returning = False'.
 
-        Note: this **wont work** with SELECT @@identity.  it has to be
+        Note: this **won't work** with SELECT @@identity.  it has to be
         SCOPE_IDENTITY().   for pyodbc, this means the function has to be
         embedded on the same line as the INSERT.
 
