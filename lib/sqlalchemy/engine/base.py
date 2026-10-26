@@ -2176,7 +2176,13 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
             if self._echo:
                 self._log_info(statement)
-                self._log_info("[raw sql] %r", parameters)
+                if not self.engine.hide_parameters:
+                    self._log_info("[raw sql] %r", parameters)
+                else:
+                    self._log_info(
+                        "[raw sql] [SQL parameters hidden due to "
+                        "hide_parameters=True]"
+                    )
 
             for fn in (
                 ()

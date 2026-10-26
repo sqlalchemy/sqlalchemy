@@ -5,6 +5,7 @@ import sqlalchemy as tsa
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -92,6 +93,23 @@ class LogParamsTest(fixtures.TestBase):
             self.buf.buffer[2].message,
             "[raw sql] [SQL parameters hidden due to hide_parameters=True]",
         )
+
+    def test_log_no_parameters_default_clause(self):
+        """test that hide_parameters applies to the parameters of a SQL
+        expression default, which is executed separately via
+        Connection._cursor_execute()"""
+
+        col = Column("data", String, default=literal("some secret") + "x")
+
+        with self.no_param_engine.connect() as conn:
+            eq_(conn.scalar(col.default), "some secretx")
+
+        messages = [rec.message for rec in self.buf.buffer]
+        assert (
+            "[raw sql] [SQL parameters hidden due to hide_parameters=True]"
+            in messages
+        )
+        assert not any("some secret" in msg for msg in messages)
 
     def test_log_large_list_of_tuple(self):
         exec_sql(
