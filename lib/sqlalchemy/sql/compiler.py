@@ -264,6 +264,7 @@ FK_ON_UPDATE = re.compile(
     r"^(?:RESTRICT|CASCADE|SET NULL|NO ACTION|SET DEFAULT)$", re.I
 )
 FK_INITIALLY = re.compile(r"^(?:DEFERRED|IMMEDIATE)$", re.I)
+FK_MATCH = re.compile(r"^(?:FULL|PARTIAL|SIMPLE)$", re.I)
 _WINDOW_EXCLUDE_RE = re.compile(
     r"^(?:CURRENT ROW|GROUP|TIES|NO OTHERS)$", re.I
 )
@@ -7808,7 +7809,9 @@ class DDLCompiler(Compiled):
     def define_constraint_match(self, constraint: ForeignKeyConstraint) -> str:
         text = ""
         if constraint.match is not None:
-            text += " MATCH %s" % constraint.match
+            text += " MATCH %s" % self.preparer.validate_sql_phrase(
+                constraint.match, FK_MATCH
+            )
         return text
 
     def visit_computed_column(self, generated, **kw):

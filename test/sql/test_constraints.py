@@ -1075,6 +1075,28 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "REFERENCES tbl (a) MATCH SIMPLE",
         )
 
+    @testing.combinations(
+        ("ondelete", "CASCADE; DROP TABLE tbl"),
+        ("onupdate", "CASCADE; DROP TABLE tbl"),
+        ("initially", "DEFERRED; DROP TABLE tbl"),
+        ("match", "FULL; DROP TABLE tbl"),
+        argnames="keyword, value",
+    )
+    def test_fk_illegal_sql_phrase(self, keyword, value):
+        t = Table(
+            "tbl",
+            MetaData(),
+            Column("a", Integer),
+            Column("b", Integer, ForeignKey("tbl.a", **{keyword: value})),
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            "Unexpected SQL phrase",
+            schema.CreateTable(t).compile,
+            dialect=default.DefaultDialect(),
+        )
+
     def test_create_table_omit_fks(self):
         fkcs = [
             ForeignKeyConstraint(["a"], ["remote.id"], name="foo"),

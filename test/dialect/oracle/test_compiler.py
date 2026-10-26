@@ -1691,6 +1691,36 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             f"CREATE TABLE table1 (x INTEGER) {expected_sql}",
         )
 
+    def test_fk_ondelete_validated(self):
+        m = MetaData()
+        Table("pk", m, Column("id", Integer, primary_key=True))
+        t = Table(
+            "fk",
+            m,
+            Column("a", Integer, ForeignKey("pk.id", ondelete="SET NULL")),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE fk (a INTEGER, "
+            "FOREIGN KEY(a) REFERENCES pk (id) ON DELETE SET NULL)",
+        )
+
+        t = Table(
+            "fk2",
+            m,
+            Column(
+                "a",
+                Integer,
+                ForeignKey("pk.id", ondelete="CASCADE; DROP TABLE pk"),
+            ),
+        )
+        assert_raises_message(
+            exc.CompileError,
+            "Unexpected SQL phrase",
+            schema.CreateTable(t).compile,
+            dialect=oracle.OracleDialect(),
+        )
+
     @testing.combinations(
         (lambda t: t.c.a**t.c.b, "POWER(t.a, t.b)", {}),
         (lambda t: t.c.a**3, "POWER(t.a, :pow_1)", {"pow_1": 3}),

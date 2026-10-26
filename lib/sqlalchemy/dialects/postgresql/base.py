@@ -2783,8 +2783,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     @util.memoized_property
     def _fk_ondelete_pattern(self):
+        ident = r'(?:[\w$]+|"(?:[^"]|"")+")'
         return re.compile(
-            r"^(?:RESTRICT|CASCADE|SET (?:NULL|DEFAULT)(?:\s*\(.+\))?"
+            r"^(?:RESTRICT|CASCADE|SET (?:NULL|DEFAULT)"
+            rf"(?:\s*\(\s*{ident}(?:\s*,\s*{ident})*\s*\))?"
             r"|NO ACTION)$",
             re.I,
         )
