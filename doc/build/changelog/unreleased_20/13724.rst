@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 13724
+    :versions: 2.1.7
+
+    Fixed issue where the :paramref:`_sa.create_engine.hide_parameters`
+    parameter was not honored when logging bound parameters for "side"
+    statements that are executed separately from the main statement, such as
+    pre-executed SQL expression column defaults, so that parameter values were
+    written to the log in plain form.  These parameters are now hidden in the
+    same way as those of the main statement.

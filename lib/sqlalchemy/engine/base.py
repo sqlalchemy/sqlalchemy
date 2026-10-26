@@ -176,6 +176,29 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     # characteristics.LoggingTokenCharacteristic
     _message_formatter: Any = None
 
+    def _log_parameters(
+        self,
+        parameters: _AnyExecuteParams | None,
+        stats: str,
+        *,
+        ismulti: bool,
+    ) -> None:
+        if not self.engine.hide_parameters:
+            self._log_info(
+                "[%s] %r",
+                stats,
+                sql_util._repr_params(
+                    parameters,
+                    batches=10,
+                    ismulti=ismulti,
+                ),
+            )
+        else:
+            self._log_info(
+                "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                stats,
+            )
+
     def _log_info(self, message: str, *arg: Any, **kw: Any) -> None:
         fmt = self._message_formatter
 
@@ -1914,21 +1937,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
             stats = context._get_cache_stats()
 
-            if not self.engine.hide_parameters:
-                self._log_info(
-                    "[%s] %r",
-                    stats,
-                    sql_util._repr_params(
-                        effective_parameters,
-                        batches=10,
-                        ismulti=context.executemany,
-                    ),
-                )
-            else:
-                self._log_info(
-                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
-                    stats,
-                )
+            self._log_parameters(
+                effective_parameters, stats, ismulti=context.executemany
+            )
 
         evt_handled: bool = False
         try:
@@ -2109,22 +2120,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 else:
                     stats = f"insertmanyvalues{imv_stats}"
 
-                if not self.engine.hide_parameters:
-                    self._log_info(
-                        "[%s] %r",
-                        stats,
-                        sql_util._repr_params(
-                            sub_params,
-                            batches=10,
-                            ismulti=False,
-                        ),
-                    )
-                else:
-                    self._log_info(
-                        "[%s] [SQL parameters hidden due to "
-                        "hide_parameters=True]",
-                        stats,
-                    )
+                self._log_parameters(sub_params, stats, ismulti=False)
 
             try:
                 for fn in do_execute_dispatch:
@@ -2207,7 +2203,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         if self._echo:
             self._log_info(statement)
-            self._log_info("[raw sql] %r", parameters)
+            self._log_parameters(parameters, "raw sql", ismulti=False)
         try:
             for fn in (
                 ()
