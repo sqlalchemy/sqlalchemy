@@ -1,3 +1,4 @@
+from sqlalchemy import bindparam
 from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import func
@@ -216,6 +217,36 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "(lower('hi'), lower('there'), lower('some'), lower('expr'))",
                 literal_binds=True,
             )
+
+    @testing.variation("compile_opt", ["postcompile", "literal_binds"])
+    def test_in_binds_literal_execute(self, compile_opt):
+        """test that a value containing the ", " separator renders intact
+        when a bind_expression is applied to a literal_execute expanding
+        parameter
+
+        """
+        table = self._fixture()
+
+        stmt = select(table).where(
+            table.c.y.in_(
+                bindparam(
+                    "q",
+                    ["hi, there", "some"],
+                    type_=table.c.y.type,
+                    expanding=True,
+                    literal_execute=True,
+                )
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT test_table.x, lower(test_table.y) AS y FROM "
+            "test_table WHERE test_table.y IN "
+            "(lower('hi, there'), lower('some'))",
+            render_postcompile=compile_opt.postcompile,
+            literal_binds=compile_opt.literal_binds,
+        )
 
     def test_dialect(self):
         table = self._fixture()
@@ -519,6 +550,32 @@ class TypeDecRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
             metadata,
             Column("x", String(50)),
             Column("y", MyString(50)),
+        )
+
+    def test_in_literal_execute_round_trip(self, connection):
+        """test that a value containing the ", " separator is matched
+        intact when a bind_expression is applied to a literal_execute
+        expanding parameter
+
+        """
+        tt = self.tables.test_table
+        connection.execute(
+            tt.insert(),
+            [{"x": "X1", "y": "Y1, Y2"}, {"x": "X2", "y": "Y3"}],
+        )
+
+        eq_(
+            connection.execute(
+                select(tt.c.x)
+                .where(
+                    tt.c.y.in_(
+                        bindparam("q", expanding=True, literal_execute=True)
+                    )
+                )
+                .order_by(tt.c.x),
+                {"q": ["Y1, Y2", "Y3"]},
+            ).fetchall(),
+            [("X1",), ("X2",)],
         )
 
 

@@ -1328,6 +1328,13 @@ class SQLCompiler(Compiled):
 
     """
 
+    _expanding_bind_expression_templates: Optional[Dict[str, str]] = None
+    """Stores the bind_expression templates rendered into the SQL string for
+    "expanding" parameters, keyed by escaped parameter name, for cases where
+    'post_compile' were used.
+
+    """
+
     _pre_expanded_positiontup: Optional[List[str]] = None
 
     _insertmanyvalues: Optional[_InsertManyValues] = None
@@ -2180,6 +2187,21 @@ class SQLCompiler(Compiled):
         if pre_expanded_string is None:
             pre_expanded_string = self.string
 
+        # bind_expression templates for expanding parameters, rendered as
+        # "__[POSTCOMPILE_name~~left~~REPL~~right~~]"; these are applied
+        # around each element when the parameter is expanded
+        bind_expression_templates = self._expanding_bind_expression_templates
+        if bind_expression_templates is None:
+            bind_expression_templates = (
+                self._expanding_bind_expression_templates
+            ) = {
+                m.group(1): m.group(0)
+                for m in self._post_compile_pattern.finditer(
+                    pre_expanded_string
+                )
+                if m.group(2)
+            }
+
         if self.positional:
             new_positiontup = []
 
@@ -2240,6 +2262,9 @@ class SQLCompiler(Compiled):
                         self.render_literal_bindparam(
                             parameter,
                             render_literal_value=parameters.pop(escaped_name),
+                            bind_expression_template=(
+                                bind_expression_templates.get(escaped_name)
+                            ),
                         )
                     )
                 continue
@@ -2267,6 +2292,9 @@ class SQLCompiler(Compiled):
                         parameter,
                         values,
                         taken_names=expanded_taken_names,
+                        bind_expression_template=(
+                            bind_expression_templates.get(escaped_name)
+                        ),
                     )
                     to_update, replacement_expr = leep_res
 
@@ -2308,19 +2336,10 @@ class SQLCompiler(Compiled):
                 new_positiontup.append(name)
 
         def process_expanding(m):
-            key = m.group(1)
-            expr = replacement_expressions[key]
-
-            # if POSTCOMPILE included a bind_expression, render that
-            # around each element
-            if m.group(2):
-                tok = m.group(2).split("~~")
-                be_left, be_right = tok[1], tok[3]
-                expr = ", ".join(
-                    "%s%s%s" % (be_left, exp, be_right)
-                    for exp in expr.split(", ")
-                )
-            return expr
+            # the bind_expression template, if any, was already applied to
+            # each element of the replacement expression when it was
+            # rendered; the rendered text itself may contain ", "
+            return replacement_expressions[m.group(1)]
 
         statement = re.sub(
             self._post_compile_pattern, process_expanding, pre_expanded_string
@@ -3506,6 +3525,16 @@ class SQLCompiler(Compiled):
             % self.dialect.name
         )
 
+    def _bind_expression_template_parts(self, bind_expression_template):
+        """Split the bind_expression template rendered for an expanding
+        parameter into the text to render before and after each element.
+
+        """
+        m = self._post_compile_pattern.search(bind_expression_template)
+        assert m and m.group(2), "unexpected format for expanding parameter"
+        tok = m.group(2).split("~~")
+        return tok[1], tok[3]
+
     def _literal_execute_expanding_parameter_literal_binds(
         self, parameter, values, bind_expression_template=None
     ):
@@ -3555,14 +3584,9 @@ class SQLCompiler(Compiled):
             )
         else:
             if bind_expression_template:
-                post_compile_pattern = self._post_compile_pattern
-                m = post_compile_pattern.search(bind_expression_template)
-                assert m and m.group(
-                    2
-                ), "unexpected format for expanding parameter"
-
-                tok = m.group(2).split("~~")
-                be_left, be_right = tok[1], tok[3]
+                be_left, be_right = self._bind_expression_template_parts(
+                    bind_expression_template
+                )
                 replacement_expression = ", ".join(
                     "%s%s%s"
                     % (
@@ -3581,7 +3605,13 @@ class SQLCompiler(Compiled):
         return (), replacement_expression
 
     def _literal_execute_expanding_parameter(
-        self, name, parameter, values, *, taken_names
+        self,
+        name,
+        parameter,
+        values,
+        *,
+        taken_names,
+        bind_expression_template=None,
     ):
         """Render the per-element bound parameters of an expanding
         parameter.
@@ -3598,7 +3628,9 @@ class SQLCompiler(Compiled):
         """
         if parameter.literal_execute:
             return self._literal_execute_expanding_parameter_literal_binds(
-                parameter, values
+                parameter,
+                values,
+                bind_expression_template=bind_expression_template,
             )
 
         dialect = self.dialect
@@ -3609,22 +3641,33 @@ class SQLCompiler(Compiled):
         else:
             bind_template = self.bindtemplate
 
+        if bind_expression_template:
+            be_left, be_right = self._bind_expression_template_parts(
+                bind_expression_template
+            )
+        else:
+            be_left = be_right = ""
+
         if (
             self.dialect._bind_typing_render_casts
             and typ_dialect_impl.render_bind_cast
         ):
 
             def _render_bindtemplate(name):
-                return self.render_bind_cast(
-                    parameter.type,
-                    typ_dialect_impl,
-                    bind_template % {"name": name},
+                return (
+                    be_left
+                    + self.render_bind_cast(
+                        parameter.type,
+                        typ_dialect_impl,
+                        bind_template % {"name": name},
+                    )
+                    + be_right
                 )
 
         else:
 
             def _render_bindtemplate(name):
-                return bind_template % {"name": name}
+                return be_left + bind_template % {"name": name} + be_right
 
         def _unique_name(key):
             if key in taken_names:
