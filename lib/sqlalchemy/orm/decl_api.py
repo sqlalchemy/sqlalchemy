@@ -498,8 +498,13 @@ class _stateful_declared_attr(declared_attr[_T_co]):
         return _stateful_declared_attr(**new_kw)
 
     def __call__(
-        self, fn: _DeclaredAttrDecorated[_T_co]
-    ) -> declared_attr[_T_co]:
+        self, fn: _DeclaredAttrDecorated[_TT]
+    ) -> declared_attr[_TT]:
+        # Use a fresh type variable here rather than the class-level _T_co.
+        # _T_co is already bound by the time ``declared_attr.cascading`` is
+        # accessed, so the decorated callable had nothing left to solve and
+        # mypy/pyright rejected the documented usage. _declared_directive.__call__
+        # above already does this with _TT.
         return declared_attr(fn, **self.kw)
 
 

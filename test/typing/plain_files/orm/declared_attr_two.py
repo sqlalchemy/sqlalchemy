@@ -60,3 +60,26 @@ if typing.TYPE_CHECKING:
     assert_type(u1.related_data, str)
 
     assert_type(User.related_data, InstrumentedAttribute[str])
+
+
+class HasCascadingIdMixin:
+    @declared_attr.cascading
+    @classmethod
+    def id(cls) -> Mapped[int]:
+        return mapped_column(Integer, primary_key=True)
+
+
+class CascadingParent(HasCascadingIdMixin, Base):
+    __tablename__ = "cascading_parent"
+
+    name: Mapped[str]
+
+
+class CascadingChild(CascadingParent):
+    __tablename__ = "cascading_child"
+
+
+if typing.TYPE_CHECKING:
+    # the decorator must keep the mapped type rather than collapsing to Any
+    assert_type(CascadingParent.id, InstrumentedAttribute[int])
+    assert_type(CascadingChild.id, InstrumentedAttribute[int])
