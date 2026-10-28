@@ -3066,7 +3066,15 @@ def _schema_elements(schema):
 
         # test for internal brackets
         if re.match(r".*\].*\[.*", dbname[1:-1]):
-            dbname = quoted_name(dbname, quote=False)
+            # dbname is rendered as is, so bracket any tokens that
+            # weren't bracketed already
+            dbname = quoted_name(
+                ".".join(
+                    "[%s]" % token if token and token[0] != "[" else token
+                    for token in push[0:-1]
+                ),
+                quote=False,
+            )
         else:
             dbname = dbname.lstrip("[").rstrip("]")
 

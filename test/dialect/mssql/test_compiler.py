@@ -775,6 +775,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM [abc].[def].[efg].hij.test",
         )
 
+    @testing.combinations((True,), (False,), argnames="use_schema_translate")
+    def test_schema_many_tokens_unbracketed_token(self, use_schema_translate):
+        schema = "[abc].def; select 1 --.[efg].hij"
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            schema=schema if not use_schema_translate else None,
+        )
+
+        self.assert_compile(
+            select(tbl),
+            "SELECT [abc].[def; select 1 --].[efg].hij.test.id "
+            "FROM [abc].[def; select 1 --].[efg].hij.test",
+            schema_translate_map=(
+                {None: schema} if use_schema_translate else None
+            ),
+            render_schema_translate=True if use_schema_translate else False,
+        )
+
     def test_force_schema_quoted_name_w_dot_case_insensitive(self):
         metadata = MetaData()
         tbl = Table(

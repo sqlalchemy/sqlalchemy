@@ -1512,6 +1512,12 @@ class OwnerPlusDBTest(fixtures.TestBase):
             "hij",
             "use [abc].[def].[efg]",
         ),
+        (
+            "[abc].def; select 1 --.[efg].hij",
+            "[abc].[def; select 1 --].[efg]",
+            "hij",
+            "use [abc].[def; select 1 --].[efg]",
+        ),
         ("abc.def.efg.hij", "abc.def.efg", "hij", "use [abc.def.efg]"),
     )
     def test_owner_database_pairs(
