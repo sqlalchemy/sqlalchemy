@@ -721,8 +721,12 @@ class _ConnectionRecord(ConnectionPoolEntry):
         fairy = _ConnectionFairy(pool, dbapi_connection, rec, echo)
 
         # assign fairy_ref to the ConnectionRecord; note that under StaticPool,
-        # this could be swapping out an existing fairy on that ConnectionRecord
-        rec.fairy_ref = weakref.ref(fairy)
+        # this could replace an existing fairy on that ConnectionRecord.
+        # the weakref is given a callback so that the garbage collector clears
+        # it before it calls any weakref callback, including the fairy's
+        # finalizer; Python 3.15 clears weakrefs that have no callback only
+        # after those callbacks run (cpython gh-135552)
+        rec.fairy_ref = weakref.ref(fairy, _fairy_ref_callback)
 
         if echo:
             pool.logger.debug(
@@ -950,6 +954,10 @@ class _ConnectionRecord(ConnectionPoolEntry):
                         # asyncio terminate() propagates in place of the
                         # original exception
                         self.dbapi_connection = None
+
+
+def _fairy_ref_callback(ref: weakref.ref[_ConnectionFairy]) -> None:
+    pass
 
 
 def _finalize_fairy(

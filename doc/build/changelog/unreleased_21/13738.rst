@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, pool, regression
+    :tickets: 13738
+
+    Fixed a regression introduced in 2.1.0rc2 where connections collected as
+    part of a reference cycle on Python 3.15 would not be returned to the
+    connection pool, eventually exhausting the available connections. The
+    pool now accounts for the changed weak reference clearing order in
+    Python 3.15, restoring garbage collection cleanup for both synchronous
+    and asyncio connections.

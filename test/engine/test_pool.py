@@ -816,6 +816,57 @@ class PoolEventsTest(PoolTestBase):
         else:
             is_not_none(dbapi_connection())
 
+    @testing.requires.predictable_gc
+    @testing.variation("is_asyncio", [(True, testing.requires.asyncio), False])
+    def test_checkin_event_gc_reference_cycle(self, is_asyncio):
+        """Cyclic garbage must return the connection record to the pool."""
+
+        p, canary = self._checkin_event_fixture(
+            _is_asyncio=bool(is_asyncio), _has_terminate=True
+        )
+
+        c1 = p.connect()
+        c1.cycle = c1
+        del c1
+
+        eq_(canary, [])
+        eq_(p.checkedout(), 1)
+
+        if is_asyncio:
+            with expect_warnings(
+                "The garbage collector is trying to clean up.*which will "
+                "be terminated."
+            ):
+                gc_collect()
+            eq_(canary, ["reset_no_rollback", "detach", "close_detached"])
+        else:
+            gc_collect()
+            eq_(canary, ["reset_rollback_ok", "checkin"])
+
+        eq_(p.checkedout(), 0)
+
+    @testing.requires.predictable_gc
+    def test_gc_reference_cycle_superseded_fairy(self):
+        """GC of an old fairy must not check in its replacement's record."""
+
+        p = pool.StaticPool(creator=MockDBAPI().connect)
+        canary = []
+        event.listen(p, "checkin", lambda *arg: canary.append("checkin"))
+
+        c1 = p.connect()
+        c1.cycle = c1
+        c2 = p.connect()
+        is_(c1._connection_record, c2._connection_record)
+        del c1
+
+        gc_collect()
+
+        eq_(canary, [])
+        is_true(c2._connection_record.in_use)
+
+        c2.close()
+        eq_(canary, ["checkin"])
+
     def test_checkin_event_on_subsequently_recreated(self):
         p, canary = self._checkin_event_fixture()
 
