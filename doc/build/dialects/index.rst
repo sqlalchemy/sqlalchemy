@@ -132,7 +132,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | OpenGauss                                      | openGauss-sqlalchemy_                 |
 +------------------------------------------------+---------------------------------------+
-| Redis (via ADBC)                               | adbc-driver-redis_                    |
+| `Redis (via ADBC)`_                            | adbc-driver-redis_                    |
 +------------------------------------------------+---------------------------------------+
 | Rockset                                        | rockset-sqlalchemy_                   |
 +------------------------------------------------+---------------------------------------+
@@ -200,3 +200,5 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _pydynamodb: https://pypi.org/project/pydynamodb/
 .. _pymongosql: https://pypi.org/project/pymongosql/
 .. _adbc-driver-redis: https://pypi.org/project/adbc-driver-redis/
+
+.. _Redis (via ADBC): https://github.com/redis/redis-adbc-driver/blob/f78bcb7/docs/integrations/sqlalchemy.md
