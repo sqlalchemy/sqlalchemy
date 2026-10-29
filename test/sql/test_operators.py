@@ -1027,6 +1027,49 @@ class OperatorClassTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(expr, "q LIKE :q_1", checkparams={"q_1": "hi"})
 
+    @combinations(
+        (operators.is_, "IS NULL"),
+        (operators.is_not, "IS NOT NULL"),
+    )
+    def test_is_is_not_are_base_operators(self, op, expected):
+        """test ``is_`` / ``is_not`` are BASE, not COMPARISON operators.
+
+        [ticket:13719]
+
+        """
+
+        class BaseOnlyType(TypeEngine):
+            operator_classes = OperatorClass.BASE
+
+        # a type that only supports BASE operators should not warn
+        expr = op(column("q", BaseOnlyType()), None)
+        self.assert_compile(expr, f"q {expected}")
+
+    def test_is_is_not_hstore(self):
+        """test ``is_`` / ``is_not`` work on HSTORE, which has no COMPARISON.
+
+        [ticket:13719]
+
+        """
+
+        self.assert_compile(
+            column("xyz", postgresql.HSTORE()).is_(None), "xyz IS NULL"
+        )
+        self.assert_compile(
+            column("xyz", postgresql.HSTORE()).is_not(None), "xyz IS NOT NULL"
+        )
+
+    def test_comparison_ops_still_warn(self):
+        """operators in COMPARISON should still warn on a type without it"""
+
+        with expect_deprecated(
+            r"Type object .*HSTORE.* does not include "
+            "operator 'gt' in its operator classes."
+        ):
+            expr = column("xyz", postgresql.HSTORE()) > "q"
+
+        self.assert_compile(expr, "xyz > :xyz_1")
+
 
 class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
