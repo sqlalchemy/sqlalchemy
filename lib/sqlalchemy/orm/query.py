@@ -1307,7 +1307,7 @@ class Query(
             for prop in mapper.iterate_properties:
                 if (
                     isinstance(prop, relationships.RelationshipProperty)
-                    and prop.mapper is entity_zero.mapper  # type: ignore[union-attr]  # noqa: E501
+                    and prop.mapper is entity_zero.mapper
                 ):
                     property = prop  # type: ignore[assignment]  # noqa: A001
                     break
@@ -1316,7 +1316,7 @@ class Query(
                     "Could not locate a property which relates instances "
                     "of class '%s' to instances of class '%s'"
                     % (
-                        entity_zero.mapper.class_.__name__,  # type: ignore[union-attr]  # noqa: E501
+                        entity_zero.mapper.class_.__name__,
                         instance.__class__.__name__,
                     )
                 )
@@ -1325,7 +1325,7 @@ class Query(
             with_parent(
                 instance,
                 property,  # type: ignore[arg-type]
-                entity_zero.entity,  # type: ignore[union-attr]
+                entity_zero.entity,
             )
         )
 
