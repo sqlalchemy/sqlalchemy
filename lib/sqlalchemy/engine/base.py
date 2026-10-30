@@ -129,6 +129,11 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     _execution_options: _ExecuteOptions
 
+    # set to True at the class level by ConnectionEvents when listeners
+    # are associated with the Connection class; set at the instance level
+    # when listeners are associated with a specific Connection
+    _has_events: bool = False
+
     _transaction: Optional[RootTransaction]
     _nested_transaction: Optional[NestedTransaction]
 
@@ -167,10 +172,13 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             # if _has_events is sent explicitly as False,
             # then don't join the dispatch of the engine; we don't
             # want to handle any of the engine's events in that case.
+            # the engine's _has_events is checked alongside our own at
+            # each event point; leave our own _has_events unset so that
+            # the class-level flag, set by listeners on the Connection
+            # class, takes effect
             self.dispatch = self.dispatch._join(engine.dispatch)
-        self._has_events = _has_events or (
-            _has_events is None and engine._has_events
-        )
+        else:
+            self._has_events = _has_events
 
         self._execution_options = engine._execution_options
 
