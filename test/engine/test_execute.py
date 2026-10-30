@@ -1705,6 +1705,8 @@ class EngineEventsTest(fixtures.TestBase):
     def teardown_test(self):
         Engine.dispatch._clear()
         Engine._has_events = False
+        Connection.dispatch._clear()
+        Connection._has_events = False
 
     def _assert_stmts(self, expected, received):
         list(received)
@@ -1787,6 +1789,57 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(canary.be1.call_count, 2)
         eq_(canary.be2.call_count, 1)
         eq_(canary.be3.call_count, 2)
+
+    @testing.variation("engine_has_events", [True, False])
+    def test_connection_clslevel_events(
+        self, testing_engine, engine_has_events
+    ):
+        """test #13743"""
+
+        canary = Mock()
+        e1 = testing_engine(config.db_url)
+
+        if engine_has_events:
+            event.listen(e1, "engine_connect", canary.engine_level)
+
+        eq_(e1._has_events, bool(engine_has_events))
+
+        # run the engine's first connect ahead of time
+        e1.connect().close()
+
+        event.listen(Connection, "engine_connect", canary.engine_connect)
+        event.listen(Connection, "before_execute", canary.before_execute)
+
+        s1 = select(1)
+        with e1.connect() as conn:
+            conn.execute(s1)
+
+        eq_(
+            [c[0] for c in canary.mock_calls if c[0] != "engine_level"],
+            ["engine_connect", "before_execute"],
+        )
+
+    @testing.variation("engine_has_events", [True, False])
+    def test_connection_clslevel_events_after_connect(
+        self, testing_engine, engine_has_events
+    ):
+        """test #13743, class-level events established on Connection
+        after a Connection is created"""
+
+        canary = Mock()
+        e1 = testing_engine(config.db_url)
+
+        if engine_has_events:
+            event.listen(e1, "engine_connect", canary.engine_level)
+
+        with e1.connect() as conn:
+            event.listen(Connection, "before_execute", canary.before_execute)
+            conn.execute(select(1))
+
+        eq_(
+            [c[0] for c in canary.mock_calls if c[0] != "engine_level"],
+            ["before_execute"],
+        )
 
     def test_option_engine_registration_issue_one(self):
         """test #12289"""

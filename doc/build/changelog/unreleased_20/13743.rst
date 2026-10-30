@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 13743
+    :versions: 2.1.7
+
+    Fixed issue where event listeners established on the
+    :class:`_engine.Connection` class itself, such as
+    :meth:`_events.ConnectionEvents.before_execute`, would not be invoked
+    for connections procured from an :class:`_engine.Engine` that did not
+    itself have any event listeners associated with it.
