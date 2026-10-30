@@ -18,6 +18,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
+from typing import FrozenSet
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
@@ -1051,6 +1052,60 @@ class SessionTransaction(_StateChange, TransactionalContext):
     ) -> Connection:
         bind = self.session.get_bind(bindkey, **kwargs)
         return self._connection_for_bind(bind, execution_options)
+
+    @property
+    def _connections_boundary(self) -> SessionTransaction:
+        trans = self
+        while not trans._is_transaction_boundary:
+            assert trans._parent is not None
+            trans = trans._parent
+        return trans
+
+    @property
+    def connections(self) -> FrozenSet[Connection]:
+        """The :class:`_engine.Connection` objects this
+        :class:`.SessionTransaction` has acquired so far.
+
+        Reading this attribute never acquires a connection, and works in any
+        state of the transaction.  After the transaction ends, it still holds
+        the connections that were used.  A savepoint holds only the
+        connections it has used itself.
+
+        .. versionadded:: 2.1.7
+
+        .. seealso::
+
+            :meth:`.SessionTransaction.bound_connection`
+
+        """
+        connections = self._connections_boundary._connections
+        return frozenset(conn for conn, _, _, _ in connections.values())
+
+    def bound_connection(
+        self, bindkey: Optional[_EntityBindKey[Any]] = None, **kwargs: Any
+    ) -> Connection:
+        """Return the :class:`_engine.Connection` this
+        :class:`.SessionTransaction` has acquired for the given bind key.
+
+        The bind key is resolved as in :meth:`_orm.Session.connection`, but
+        no connection is acquired; if the transaction holds none for that
+        bind, :class:`~sqlalchemy.exc.InvalidRequestError` is raised.
+
+        .. versionadded:: 2.1.7
+
+        .. seealso::
+
+            :attr:`.SessionTransaction.connections`
+
+        """
+        bind = self.session.get_bind(bindkey, **kwargs)
+        entry = self._connections_boundary._connections.get(bind)
+        if entry is None:
+            raise sa_exc.InvalidRequestError(
+                "This transaction has not acquired a connection for "
+                f"bind {bind!r}"
+            )
+        return entry[0]
 
     @_StateChange.declare_states(
         (SessionTransactionState.ACTIVE,), _StateChangeStates.NO_CHANGE

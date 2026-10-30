@@ -12,6 +12,7 @@ from typing import Callable
 from typing import cast
 from typing import Concatenate
 from typing import Dict
+from typing import FrozenSet
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
@@ -2163,6 +2164,56 @@ class AsyncSessionTransaction(
         if not self.sync_transaction:
             self._raise_for_not_started()
         return self.sync_transaction
+
+    @property
+    def connections(self) -> FrozenSet[AsyncConnection]:
+        """The :class:`_asyncio.AsyncConnection` objects this transaction
+        has already acquired.
+
+        This is the asyncio-facing counterpart to
+        :attr:`_orm.SessionTransaction.connections`.
+
+        .. versionadded:: 2.1.7
+
+        .. seealso::
+
+            :attr:`_orm.SessionTransaction.connections` - main documentation
+            for "connections"
+
+        """
+        return frozenset(
+            engine.AsyncConnection._retrieve_proxy_for_target(conn)
+            for conn in self._sync_transaction().connections
+        )
+
+    def bound_connection(
+        self,
+        bindkey: Optional[_EntityBindKey[Any]] = None,
+        *,
+        bind: Optional[_AsyncSessionBind] = None,
+        **kw: Any,
+    ) -> AsyncConnection:
+        """Return the :class:`_asyncio.AsyncConnection` this transaction has
+        already acquired for the given bind key.
+
+        This is the asyncio-facing counterpart to
+        :meth:`_orm.SessionTransaction.bound_connection`.
+        :paramref:`.AsyncSessionTransaction.bound_connection.bind` is given
+        as an asyncio object, and is translated on the way in.
+
+        .. versionadded:: 2.1.7
+
+        .. seealso::
+
+            :meth:`_orm.SessionTransaction.bound_connection` - main
+            documentation for "bound_connection"
+
+        """
+        if bind is not None:
+            kw["bind"] = engine._get_sync_engine_or_connection(bind)
+        return engine.AsyncConnection._retrieve_proxy_for_target(
+            self._sync_transaction().bound_connection(bindkey, **kw)
+        )
 
     async def rollback(self) -> None:
         """Roll back this :class:`_asyncio.AsyncTransaction`."""
