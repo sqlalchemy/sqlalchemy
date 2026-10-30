@@ -7273,31 +7273,64 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             "INITIALLY DEFERRED",
         )
 
-    def test_fk_illegal_sql_phrases(self):
+    @testing.combinations(
+        ("ondelete", "ON DELETE"),
+        ("onupdate", "ON UPDATE"),
+        ("initially", "INITIALLY"),
+        ("match", "MATCH"),
+        argnames="kw, rendered",
+    )
+    @testing.combinations(
+        "CASCADE",
+        "SET NULL",
+        "set  default",
+        "SOME FUTURE KEYWORD",
+        argnames="phrase",
+    )
+    def test_fk_keyword_phrases(self, kw, rendered, phrase):
+        """keyword phrases are rendered as is; the backend decides if the
+        keywords are valid"""
+
         a = Table("a", MetaData(), Column("q", Integer))
         b = Table("b", MetaData(), Column("p", Integer))
 
-        for kw in ("onupdate", "ondelete", "initially"):
-            for phrase in (
-                "NOT SQL",
-                "INITIALLY NOT SQL",
-                "FOO RESTRICT",
-                "CASCADE WRONG",
-                "SET  NULL",
-                # test that PostgreSQL's syntax added in #11595 is not
-                # accepted by base compiler
-                "SET NULL(postgresql_db.some_column)",
-            ):
-                const = schema.AddConstraint(
-                    schema.ForeignKeyConstraint(
-                        [a.c.q], [b.c.p], **{kw: phrase}
-                    )
-                )
-                assert_raises_message(
-                    exc.CompileError,
-                    rf"Unexpected SQL phrase: '{re.escape(phrase)}'",
-                    const.compile,
-                )
+        self.assert_compile(
+            schema.AddConstraint(
+                schema.ForeignKeyConstraint([a.c.q], [b.c.p], **{kw: phrase})
+            ),
+            f"ALTER TABLE a ADD FOREIGN KEY(q) REFERENCES b (p) "
+            f"{rendered} {phrase}",
+        )
+
+    @testing.combinations(
+        "ondelete", "onupdate", "initially", "match", argnames="kw"
+    )
+    @testing.combinations(
+        "CASCADE; DROP TABLE b",
+        "CASCADE -- comment",
+        "CASCADE /* comment */",
+        "'CASCADE'",
+        '"CASCADE"',
+        " CASCADE",
+        "CASCADE ",
+        "",
+        # PostgreSQL's syntax added in #11595 is not accepted by the base
+        # compiler
+        "SET NULL(postgresql_db.some_column)",
+        argnames="phrase",
+    )
+    def test_fk_illegal_sql_phrases(self, kw, phrase):
+        a = Table("a", MetaData(), Column("q", Integer))
+        b = Table("b", MetaData(), Column("p", Integer))
+
+        const = schema.AddConstraint(
+            schema.ForeignKeyConstraint([a.c.q], [b.c.p], **{kw: phrase})
+        )
+        with expect_raises_message(
+            exc.CompileError,
+            rf"Unexpected SQL phrase: {re.escape(repr(phrase))}",
+        ):
+            const.compile()
 
 
 class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
