@@ -248,13 +248,13 @@ LEGAL_CHARACTERS = re.compile(r"^[A-Z0-9_$]+$", re.I)
 LEGAL_CHARACTERS_PLUS_SPACE = re.compile(r"^[A-Z0-9_ $]+$", re.I)
 ILLEGAL_INITIAL_CHARACTERS = {str(x) for x in range(0, 10)}.union(["$"])
 
-FK_ON_DELETE = re.compile(
-    r"^(?:RESTRICT|CASCADE|SET NULL|NO ACTION|SET DEFAULT)$", re.I
-)
-FK_ON_UPDATE = re.compile(
-    r"^(?:RESTRICT|CASCADE|SET NULL|NO ACTION|SET DEFAULT)$", re.I
-)
-FK_INITIALLY = re.compile(r"^(?:DEFERRED|IMMEDIATE)$", re.I)
+# a sequence of one or more SQL keywords, e.g. "CASCADE", "SET NULL".
+# keywords are never quoted, so a phrase with any other characters is
+# rejected; whether the keywords themselves are valid is left to the backend
+SQL_KEYWORD_PHRASE = re.compile(r"^\w+(?:\s+\w+)*$")
+
+# legacy names, retained for third party dialects
+FK_ON_DELETE = FK_ON_UPDATE = FK_INITIALLY = SQL_KEYWORD_PHRASE
 BIND_PARAMS = elements.TextClause._bind_params_regex
 BIND_PARAMS_ESC = re.compile(r"\x5c(:\w*)(?![:\w])", re.UNICODE)
 
@@ -7387,14 +7387,14 @@ class DDLCompiler(Compiled):
         self, constraint: ForeignKeyConstraint
     ) -> str:
         return " ON DELETE %s" % self.preparer.validate_sql_phrase(
-            constraint.ondelete, FK_ON_DELETE
+            constraint.ondelete
         )
 
     def define_constraint_onupdate_cascade(
         self, constraint: ForeignKeyConstraint
     ) -> str:
         return " ON UPDATE %s" % self.preparer.validate_sql_phrase(
-            constraint.onupdate, FK_ON_UPDATE
+            constraint.onupdate
         )
 
     def define_constraint_deferrability(self, constraint: Constraint) -> str:
@@ -7406,14 +7406,16 @@ class DDLCompiler(Compiled):
                 text += " NOT DEFERRABLE"
         if constraint.initially is not None:
             text += " INITIALLY %s" % self.preparer.validate_sql_phrase(
-                constraint.initially, FK_INITIALLY
+                constraint.initially
             )
         return text
 
     def define_constraint_match(self, constraint: ForeignKeyConstraint) -> str:
         text = ""
         if constraint.match is not None:
-            text += " MATCH %s" % constraint.match
+            text += " MATCH %s" % self.preparer.validate_sql_phrase(
+                constraint.match
+            )
         return text
 
     def visit_computed_column(self, generated, **kw):
@@ -7818,12 +7820,14 @@ class IdentifierPreparer:
 
         return value.replace(self.escape_to_quote, self.escape_quote)
 
-    def validate_sql_phrase(self, element, reg):
+    def validate_sql_phrase(self, element, reg=SQL_KEYWORD_PHRASE):
         """keyword sequence filter.
 
         a filter for elements that are intended to represent keyword sequences,
         such as "INITIALLY", "INITIALLY DEFERRED", etc.   no special characters
-        should be present.
+        should be present.  ``reg`` defaults to a pattern accepting any
+        sequence of keywords; a more specific pattern may be passed for
+        phrases that include other elements.
 
         .. versionadded:: 1.3
 

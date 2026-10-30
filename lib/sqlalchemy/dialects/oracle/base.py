@@ -1775,7 +1775,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
     def define_constraint_cascades(self, constraint):
         text = ""
         if constraint.ondelete is not None:
-            text += " ON DELETE %s" % constraint.ondelete
+            text += self.define_constraint_ondelete_cascade(constraint)
 
         # oracle has no ON UPDATE CASCADE -
         # its only available via triggers

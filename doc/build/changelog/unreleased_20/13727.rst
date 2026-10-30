@@ -1,0 +1,23 @@
+.. change::
+    :tags: bug, sql, postgresql, oracle
+    :tickets: 13727
+    :versions: 2.1.7
+
+    Reworked the validation applied to the keyword phrases accepted by the
+    :paramref:`_schema.ForeignKeyConstraint.ondelete`,
+    :paramref:`_schema.ForeignKeyConstraint.onupdate`,
+    :paramref:`_schema.ForeignKeyConstraint.initially` and
+    :paramref:`_schema.ForeignKeyConstraint.match` parameters so that it is
+    applied consistently on all backends.  Previously, some of these phrases
+    were checked against a fixed list of keywords, which rejected
+    backend-specific syntaxes, while others were not validated at all,
+    including ``MATCH`` on all backends, ``ON DELETE`` on the Oracle dialect,
+    and the column list accepted by PostgreSQL for ``SET NULL`` / ``SET
+    DEFAULT``, allowing arbitrary text to be rendered into DDL.  These phrases
+    are now accepted as any sequence of SQL keywords, leaving it to the
+    database to determine if the keywords are valid, and a
+    :class:`.CompileError` is raised for a phrase that contains other
+    characters such as punctuation or quotes.  On PostgreSQL, the column list
+    for ``SET NULL`` / ``SET DEFAULT`` is accepted as a comma-separated list
+    of plain or double-quoted column names.  Pull request courtesy
+    basavaraj-sm05.
