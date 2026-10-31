@@ -1,6 +1,7 @@
 from typing import Any
 from typing import assert_type
 
+from sqlalchemy import BigInteger
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import ColumnClause
@@ -11,6 +12,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import Named
 from sqlalchemy import Select
 from sqlalchemy import select
+from sqlalchemy import SmallInteger
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
@@ -212,3 +214,109 @@ def test_row_pos() -> None:
     # https://github.com/python/mypy/issues/14243
     # assert_type(join.select(), Select[str, float])
     assert_type(join.select(), Select[Unpack[tuple[Any, ...]]])
+
+
+def test_column_assigned_to_wider_annotation() -> None:
+    """test #13654"""
+
+    class widened_cols(TypedColumns):
+        a: Named[int | None] = Column(SmallInteger)
+        b: Named[str | None] = Column(String(42))
+        c: Named[int | None] = Column("c", Integer, nullable=True)
+        d: Named[str | None] = Column(type_=String(42))
+        e: Column[int | None] = Column(Integer)
+        f: Named[str] = Column(String(42))
+        g: Named[int] = Column(primary_key=True)
+        # nullability comes from the annotation, not from Column's
+        # nullable default
+        h: Named[int | None] = Column(BigInteger)
+        i: Named[int] = Column(BigInteger)
+        j: Named[int | None] = Column()
+        k: Named[int] = Column()
+        m: Named[str | None] = Column(String(42), nullable=True)
+        n: Named[str] = Column(primary_key=True)
+
+    widened = Table("widened", meta, widened_cols)
+
+    assert_type(widened.c.a, Column[int | None])
+    assert_type(widened.c.b, Column[str | None])
+    assert_type(widened.c.e, Column[int | None])
+    assert_type(
+        select(widened.c.h, widened.c.i, widened.c.j, widened.c.k),
+        Select[int | None, int, int | None, int],
+    )
+    assert_type(select(widened.c.m, widened.c.n), Select[str | None, str])
+    assert_type(
+        select(widened.c.a, widened.c.b, widened.c.f, widened.c.g),
+        Select[int | None, str | None, str, int],
+    )
+
+    x: Column[int | None] = Column("x", Integer)
+    assert_type(select(x), Select[int | None])
+
+
+def test_column_type_not_affected_by_nullable(flag: bool) -> None:
+    """a non-annotated Column infers the python type of the SQL type;
+    nullable and primary_key don't change it"""
+
+    assert_type(Column(Integer), Column[int])
+    assert_type(Column("x", Integer), Column[int])
+    assert_type(Column("y", Integer, nullable=True), Column[int])
+    assert_type(Column("z", Integer, nullable=False), Column[int])
+    assert_type(
+        Column("c", Integer, nullable=True, primary_key=True), Column[int]
+    )
+    assert_type(Column("c", Integer, primary_key=True), Column[int])
+    assert_type(Column("q", Integer, nullable=flag), Column[int])
+    assert_type(Column("q", Integer, primary_key=flag), Column[int])
+
+
+def test_column_explicit_nullable_independent_of_annotation() -> None:
+    """an explicit nullable may differ from the annotation, e.g. a column
+    that's NULL-able for schema reasons but is not expected to contain
+    NULL values.  the annotation determines the python type, the explicit
+    nullable determines the schema; neither is a typing error"""
+
+    class explicit_nullable_cols(TypedColumns):
+        a: Named[str] = Column(String(42), nullable=True)
+        b: Named[str | None] = Column(String(42), nullable=False)
+
+    explicit_nullable = Table(
+        "explicit_nullable", meta, explicit_nullable_cols
+    )
+    assert_type(
+        select(explicit_nullable.c.a, explicit_nullable.c.b),
+        Select[str, str | None],
+    )
+
+
+def test_select_typed_columns() -> None:
+    assert_type(select(user.c.id, user.c.name), Select[int, str])
+    assert_type(select(user.c.id, user.c.middle_name), Select[int, str | None])
+    assert_type(
+        select(plain_now_typed.c.x, plain_now_typed.c.y),
+        Select[int | None, str | None],
+    )
+
+    class plain_cols_w_types(TypedColumns):
+        x: Named[int | None] = Column(SmallInteger)
+        y: Named[str | None] = Column(String(42))
+
+    plain_w_types = plain.with_cols(plain_cols_w_types)
+    assert_type(plain_w_types.c.x, Column[int | None])
+    assert_type(
+        select(plain_w_types.c.x, plain_w_types.c.y),
+        Select[int | None, str | None],
+    )
+
+
+def test_column_incompatible_annotation() -> None:
+    class bad_cols(TypedColumns):
+        # EXPECTED_MYPY: Argument 1 to "Column" has incompatible type "Integer"
+        # EXPECTED_MYPY: Following member(s) of "Integer" have conflicts:
+        # EXPECTED_MYPY_RE: \s+_sa_typing_python_type: expected "str", got "int"  # noqa: E501
+        a: Named[str] = Column(Integer())
+        # EXPECTED_MYPY: Argument 1 to "Column" has incompatible type "String"
+        # EXPECTED_MYPY: Following member(s) of "String" have conflicts:
+        # EXPECTED_MYPY_RE: \s+_sa_typing_python_type: expected .+, got "str"
+        b: Named[int | None] = Column(String(30))
