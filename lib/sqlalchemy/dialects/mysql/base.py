@@ -556,15 +556,15 @@ available.
 
     :class:`_mysql.match`
 
-INSERT/DELETE...RETURNING
--------------------------
+INSERT/UPDATE/DELETE...RETURNING
+--------------------------------
 
-The MariaDB dialect supports 10.5+'s ``INSERT..RETURNING`` and
-``DELETE..RETURNING`` (10.0+) syntaxes.   ``INSERT..RETURNING`` may be used
-automatically in some cases in order to fetch newly generated identifiers in
-place of the traditional approach of using ``cursor.lastrowid``, however
-``cursor.lastrowid`` is currently still preferred for simple single-statement
-cases for its better performance.
+The MariaDB dialect supports 10.5+'s ``INSERT..RETURNING``,
+``DELETE..RETURNING`` (10.0+) and ``UPDATE..RETURNING`` (13.0.1+) syntaxes.
+``INSERT..RETURNING`` may be used automatically in some cases in order to fetch
+newly generated identifiers in place of the traditional approach of using
+``cursor.lastrowid``, however ``cursor.lastrowid`` is currently still preferred
+for simple single-statement cases for its better performance.
 
 To specify an explicit ``RETURNING`` clause, use the
 :meth:`._UpdateBase.returning` method on a per-statement basis::
@@ -572,6 +572,15 @@ To specify an explicit ``RETURNING`` clause, use the
     # INSERT..RETURNING
     result = connection.execute(
         table.insert().values(name="foo").returning(table.c.col1, table.c.col2)
+    )
+    print(result.all())
+
+    # UPDATE..RETURNING
+    result = connection.execute(
+        table.update()
+        .where(table.c.name == "foo")
+        .values(name="bar")
+        .returning(table.c.col1, table.c.col2)
     )
     print(result.all())
 
@@ -583,7 +592,13 @@ To specify an explicit ``RETURNING`` clause, use the
     )
     print(result.all())
 
+``UPDATE..RETURNING`` is supported for single-table UPDATE statements only;
+MariaDB does not support ``RETURNING`` with the multiple-table
+``UPDATE t1, t2 SET ...`` form.
+
 .. versionadded:: 2.0  Added support for MariaDB RETURNING
+
+.. versionadded:: 2.1  Added support for MariaDB 13.0's ``UPDATE..RETURNING``
 
 .. _mysql_insert_on_duplicate_key_update:
 
