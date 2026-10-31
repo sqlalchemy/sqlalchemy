@@ -330,6 +330,27 @@ _PropagateAttrsType = util.immutabledict[str, Any]
 
 _TypeEngineArgument = Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
 
+
+class _HasPythonType(Protocol[_T_co]):
+    """covariant view of the python type of a TypeEngine[_T].
+
+    TypeEngine is invariant in _T.  When a Column is assigned to a
+    declared type such as ``Named[int | None]``, mypy infers the Column's
+    _T from the declared type before looking at the arguments, so an
+    invariant ``TypeEngine[int]`` argument would be rejected.  Matching
+    against this covariant protocol instead accepts ``TypeEngine[int]``
+    where ``int | None`` is expected.
+
+    """
+
+    @property
+    def _sa_typing_python_type(self) -> _T_co: ...
+
+
+_CovariantTypeEngineArgument = Union[
+    Type[_HasPythonType[_T]], _HasPythonType[_T]
+]
+
 _EquivalentColumnMap = Dict["ColumnElement[Any]", Set["ColumnElement[Any]"]]
 
 _LimitOffsetType = Union[int, _ColumnExpressionArgument[int], None]

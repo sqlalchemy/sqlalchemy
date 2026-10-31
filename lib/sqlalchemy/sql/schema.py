@@ -104,6 +104,7 @@ from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
     from ._typing import _AutoIncrementType
+    from ._typing import _CovariantTypeEngineArgument
     from ._typing import _CreateDropBind
     from ._typing import _DDLColumnArgument
     from ._typing import _DDLColumnReferenceArgument
@@ -1787,15 +1788,15 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T], Named[_T]):
     def __init__(
         self,
         __name_pos: Optional[
-            Union[str, _TypeEngineArgument[_T], SchemaEventTarget]
+            Union[str, _CovariantTypeEngineArgument[_T], SchemaEventTarget]
         ] = None,
         __type_pos: Optional[
-            Union[_TypeEngineArgument[_T], SchemaEventTarget]
+            Union[_CovariantTypeEngineArgument[_T], SchemaEventTarget]
         ] = None,
         /,
         *args: SchemaEventTarget,
         name: Optional[str] = None,
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
         autoincrement: _AutoIncrementType = "auto",
         default: Optional[Any] = _NoArg.NO_ARG,
         insert_default: Optional[Any] = _NoArg.NO_ARG,
