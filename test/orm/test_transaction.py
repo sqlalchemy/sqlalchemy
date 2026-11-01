@@ -930,6 +930,175 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         ):
             sess.connection(execution_options={"isolation_level": "FOO"})
 
+    def _non_default_isolation_level(self):
+        levels = testing.requires.get_isolation_levels(testing.config)
+
+        s = set(levels["supported"]).difference(
+            ["AUTOCOMMIT", levels["default"]]
+        )
+        if s:
+            return s.pop()
+        else:
+            testing.config.skip_test(
+                "no non-default isolation level available"
+            )
+
+    def _exec_opts_fixture(self, **session_kw):
+        eng = engines.testing_engine()
+        applied = []
+
+        @event.listens_for(eng, "set_connection_execution_options")
+        def set_opts(conn, opts):
+            applied.append(dict(opts))
+
+        return Session(eng, **session_kw), applied
+
+    @testing.requires.savepoints
+    @testing.variation("savepoints", ["one", "two"])
+    def test_execution_options_savepoint_acquires_connection(self, savepoints):
+        """per-call execution options passed for the first connection of
+        a savepoint that also begins the enclosing transaction are applied
+        once
+
+        """
+        sess, applied = self._exec_opts_fixture()
+
+        for _ in range(2 if savepoints.two else 1):
+            sess.begin_nested()
+        conn = sess.connection(execution_options={"logging_token": "x"})
+
+        eq_(applied, [{"logging_token": "x"}])
+        eq_(conn.get_execution_options(), {"logging_token": "x"})
+        sess.close()
+
+    @testing.requires.savepoints
+    @testing.variation("savepoints", ["one", "two"])
+    @testing.variation("existing_options", [True, False])
+    def test_execution_options_ignored_connected_before_savepoint(
+        self, savepoints, existing_options
+    ):
+        """per-call execution options passed within a savepoint when the
+        enclosing transaction already has the connection are ignored with
+        a warning, as documented
+
+        """
+        sess, applied = self._exec_opts_fixture()
+
+        if existing_options:
+            conn = sess.connection(execution_options={"logging_token": "x"})
+        else:
+            conn = sess.connection()
+        for _ in range(2 if savepoints.two else 1):
+            sess.begin_nested()
+        with expect_warnings(
+            "Connection is already established for the "
+            "given bind; execution_options ignored"
+        ):
+            sess.connection(execution_options={"logging_token": "y"})
+
+        if existing_options:
+            eq_(applied, [{"logging_token": "x"}])
+            eq_(conn.get_execution_options(), {"logging_token": "x"})
+        else:
+            eq_(applied, [])
+            eq_(conn.get_execution_options(), {})
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_connection_execution_options_in_savepoint(self):
+        """Connection.execution_options() called on the connection within
+        a savepoint applies options to it in place
+
+        """
+        sess, applied = self._exec_opts_fixture()
+
+        conn = sess.connection()
+        sess.begin_nested()
+        sess.connection().execution_options(logging_token="x")
+
+        eq_(applied, [{"logging_token": "x"}])
+        eq_(conn.get_execution_options(), {"logging_token": "x"})
+        sess.close()
+
+    @testing.requires.savepoints
+    @testing.requires.isolation_level
+    def test_isolation_level_savepoint_acquires_connection(self):
+        """an isolation level passed for the first connection of a savepoint
+        that also begins the enclosing transaction is applied before BEGIN,
+        and not applied again for the savepoint
+
+        """
+        level = self._non_default_isolation_level()
+
+        sess = Session(engines.testing_engine())
+        sess.begin_nested()
+        conn = sess.connection(execution_options={"isolation_level": level})
+        eq_(conn.get_isolation_level(), level)
+        sess.close()
+
+    @testing.requires.savepoints
+    @testing.variation("connected_before_savepoint", [True, False])
+    @testing.variation("per_call_options", [True, False])
+    def test_session_execution_options_savepoint(
+        self, connected_before_savepoint, per_call_options
+    ):
+        """Session-level execution options are applied once, when the
+        enclosing transaction acquires the connection, and not again for
+        a savepoint
+
+        """
+        sess, applied = self._exec_opts_fixture(
+            execution_options={"my_opt": "s"}
+        )
+
+        if connected_before_savepoint:
+            sess.connection()
+        sess.begin_nested()
+
+        if per_call_options and connected_before_savepoint:
+            with expect_warnings(
+                "Connection is already established for the "
+                "given bind; execution_options ignored"
+            ):
+                conn = sess.connection(
+                    execution_options={"logging_token": "x"}
+                )
+        elif per_call_options:
+            conn = sess.connection(execution_options={"logging_token": "x"})
+        else:
+            conn = sess.connection()
+
+        if per_call_options and not connected_before_savepoint:
+            eq_(applied, [{"my_opt": "s", "logging_token": "x"}])
+            eq_(
+                conn.get_execution_options(),
+                {"my_opt": "s", "logging_token": "x"},
+            )
+        else:
+            eq_(applied, [{"my_opt": "s"}])
+            eq_(conn.get_execution_options(), {"my_opt": "s"})
+        sess.close()
+
+    @testing.requires.savepoints
+    @testing.requires.isolation_level
+    @testing.variation("connected_before_savepoint", [True, False])
+    def test_session_isolation_level_savepoint(
+        self, connected_before_savepoint
+    ):
+        """test #13744"""
+        level = self._non_default_isolation_level()
+
+        sess = Session(
+            engines.testing_engine(),
+            execution_options={"isolation_level": level},
+        )
+        if connected_before_savepoint:
+            sess.connection()
+        sess.begin_nested()
+        sess.execute(text("select 1"))
+        eq_(sess.connection().get_isolation_level(), level)
+        sess.close()
+
     def test_warning_on_using_inactive_session_new(self):
         User = self.classes.User
 

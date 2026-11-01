@@ -1186,6 +1186,9 @@ class SessionTransaction(_StateChange, TransactionalContext):
 
         try:
             if self._parent:
+                # the root transaction applies execution options if it
+                # acquires the connection here, else warns that they are
+                # ignored
                 conn = self._parent._connection_for_bind(
                     bind, execution_options
                 )
@@ -1204,13 +1207,16 @@ class SessionTransaction(_StateChange, TransactionalContext):
                     local_connect = True
 
             try:
-                conn_exec_opts: Dict[str, Any] = {}
-                if self.session.execution_options:
-                    conn_exec_opts.update(self.session.execution_options)
-                if execution_options:
-                    conn_exec_opts.update(execution_options)
-                if conn_exec_opts:
-                    conn = conn.execution_options(**conn_exec_opts)
+                # a savepoint receives the connection from the root
+                # transaction with execution options already applied
+                if self._parent is None:
+                    conn_exec_opts: Dict[str, Any] = {}
+                    if self.session.execution_options:
+                        conn_exec_opts.update(self.session.execution_options)
+                    if execution_options:
+                        conn_exec_opts.update(execution_options)
+                    if conn_exec_opts:
+                        conn = conn.execution_options(**conn_exec_opts)
 
                 transaction: Transaction
                 if self.session.twophase and self._parent is None:
