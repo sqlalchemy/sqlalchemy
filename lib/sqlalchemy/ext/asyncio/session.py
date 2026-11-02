@@ -2173,6 +2173,16 @@ class AsyncSessionTransaction(
         This is the asyncio-facing counterpart to
         :attr:`_orm.SessionTransaction.connections`.
 
+        .. note::
+
+            A savepoint holds only the connections it has used itself.
+            To get all connections in the outer transaction, even while a
+            savepoint is active, use :meth:`.AsyncSession.get_transaction`
+            rather than :meth:`.AsyncSession.get_nested_transaction`::
+
+                root = async_session.get_transaction()
+                connections = root.connections
+
         .. versionadded:: 2.1.7
 
         .. seealso::
@@ -2200,6 +2210,16 @@ class AsyncSessionTransaction(
         :meth:`_orm.SessionTransaction.bound_connection`.
         :paramref:`.AsyncSessionTransaction.bound_connection.bind` is given
         as an asyncio object, and is translated on the way in.
+
+        .. note::
+
+            A savepoint can return only a connection it has used itself.
+            To look up a connection in the outer transaction, even while a
+            savepoint is active, use :meth:`.AsyncSession.get_transaction`
+            rather than :meth:`.AsyncSession.get_nested_transaction`::
+
+                root = async_session.get_transaction()
+                connection = root.bound_connection(bindkey)
 
         .. versionadded:: 2.1.7
 

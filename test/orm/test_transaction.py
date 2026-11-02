@@ -1359,6 +1359,28 @@ class TransactionConnectionsTest(FixtureTest):
             nested.bound_connection()
         sess.rollback()
 
+    @testing.requires.savepoints
+    def test_savepoint_multiple_binds(self):
+        User, Address = self.classes.User, self.classes.Address
+        e1, e2 = engines.testing_engine(), engines.testing_engine()
+        with Session(binds={User: e1, Address: e2}) as sess:
+            c1 = sess.connection(bind_arguments={"mapper": User})
+            c2 = sess.connection(bind_arguments={"mapper": Address})
+            nested = sess.begin_nested()
+            sess.connection(bind_arguments={"mapper": User})
+
+            eq_(nested.connections, frozenset([c1]))
+            is_(nested.bound_connection(User), c1)
+            with expect_raises_message(
+                sa_exc.InvalidRequestError, "has not acquired a connection"
+            ):
+                nested.bound_connection(Address)
+
+            root = sess.get_transaction()
+            eq_(root.connections, frozenset([c1, c2]))
+            is_(root.bound_connection(User), c1)
+            is_(root.bound_connection(Address), c2)
+
     def test_closed_transaction(self):
         sess = fixture_session()
         conn = sess.connection()

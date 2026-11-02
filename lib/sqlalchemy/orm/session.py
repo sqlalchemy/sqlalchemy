@@ -1068,8 +1068,17 @@ class SessionTransaction(_StateChange, TransactionalContext):
 
         Reading this attribute never acquires a connection, and works in any
         state of the transaction.  After the transaction ends, it still holds
-        the connections that were used.  A savepoint holds only the
-        connections it has used itself.
+        the connections that were used.
+
+        .. note::
+
+            A savepoint holds only the connections it has used itself.
+            To get all connections in the outer transaction, even while a
+            savepoint is active, use :meth:`.Session.get_transaction`
+            rather than :meth:`.Session.get_nested_transaction`::
+
+                root = session.get_transaction()
+                connections = root.connections
 
         .. versionadded:: 2.1.7
 
@@ -1090,6 +1099,16 @@ class SessionTransaction(_StateChange, TransactionalContext):
         The bind key is resolved as in :meth:`_orm.Session.connection`, but
         no connection is acquired; if the transaction holds none for that
         bind, :class:`~sqlalchemy.exc.InvalidRequestError` is raised.
+
+        .. note::
+
+            A savepoint can return only a connection it has used itself.
+            To look up a connection in the outer transaction, even while a
+            savepoint is active, use :meth:`.Session.get_transaction`
+            rather than :meth:`.Session.get_nested_transaction`::
+
+                root = session.get_transaction()
+                connection = root.bound_connection(bindkey)
 
         .. versionadded:: 2.1.7
 
