@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 13746
+
+    Fixed bug where :meth:`.URL.difference_update_query` would silently remove
+    nothing when passed a one-shot iterable such as a generator expression: the
+    iterable was consumed once to test for an intersection and then reused to
+    build the new query, so the second use saw it empty.
