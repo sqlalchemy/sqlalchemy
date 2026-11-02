@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import dataclasses
 import hashlib
@@ -21,6 +22,7 @@ import sys
 import sysconfig
 import typing
 from typing import Any
+from typing import Awaitable
 from typing import Callable
 from typing import Dict
 from typing import Iterable
@@ -31,6 +33,9 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import TypeVar
+
+_T = TypeVar("_T")
 
 py314b1 = sys.version_info >= (3, 14, 0, "beta", 1)
 py314 = sys.version_info >= (3, 14)
@@ -296,3 +301,34 @@ else:
     import contextlib
 
     mini_gil = contextlib.nullcontext()  # type: ignore[assignment]
+
+
+# use sys.version_info to enable mypy version narrowing
+if sys.version_info >= (3, 12):
+
+    async def wait_for(
+        timeout: float,
+        fn: Callable[..., Awaitable[_T]],
+        *arg: Any,
+        **kw: Any,
+    ) -> _T:
+        """Await ``fn(*arg, **kw)`` with a timeout, raising
+        ``TimeoutError`` when the timeout is reached.
+
+        """
+        return await asyncio.wait_for(fn(*arg, **kw), timeout)
+
+else:
+
+    async def wait_for(
+        timeout: float,
+        fn: Callable[..., Awaitable[_T]],
+        *arg: Any,
+        **kw: Any,
+    ) -> _T:
+        # on Python 3.11, asyncio.wait_for() returns normally in place of
+        # raising a cancellation that reaches it once the inner operation
+        # has completed; cpython issue gh-86296, fixed in Python 3.12.
+        # this version can be removed when Python 3.11 support is dropped
+        async with asyncio.timeout(timeout):
+            return await fn(*arg, **kw)

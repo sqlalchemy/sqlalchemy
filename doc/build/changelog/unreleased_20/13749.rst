@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 13749
+    :versions: 2.1.7
+
+    Fixed issue where an asyncio cancellation delivered to a task waiting for
+    a connection from :class:`.AsyncAdaptedQueuePool` would be lost on Python
+    3.11, if a connection were returned to the pool in the same event loop
+    iteration in which the task was cancelled.  The task would receive the
+    connection and continue running as though it had not been cancelled.
+    This was due to a known issue in ``asyncio.wait_for()`` which is fixed in
+    Python 3.12; on Python 3.11, the pool now uses ``asyncio.timeout()`` in
+    place of ``asyncio.wait_for()`` when waiting for a connection.  The issue
+    remains on Python 3.10 and earlier, where ``asyncio.timeout()`` is not
+    available.
