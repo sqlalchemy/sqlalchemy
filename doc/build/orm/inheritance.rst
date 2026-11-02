@@ -425,6 +425,38 @@ present, :func:`_orm.mapped_column` will map the column normally, adding it
 as one of the columns in the :class:`.Table` referenced by the
 ``Employee`` superclass.
 
+.. note::
+
+   When :paramref:`_orm.mapped_column.use_existing_column` takes effect and
+   the column is already present, additional :class:`_schema.Column`-level
+   arguments given to :func:`_orm.mapped_column` are silently ignored (this
+   does not apply to dataclass arguments; see the next tip).  It is therefore
+   usually a good idea to keep :class:`_schema.Column`-level arguments such
+   as :paramref:`_orm.mapped_column.insert_default` and
+   :paramref:`_orm.mapped_column.nullable` in agreement across each
+   :func:`_orm.mapped_column`, which a mixin, as illustrated further below,
+   accomplishes automatically.
+
+.. tip:: When using :ref:`orm_declarative_native_dataclasses`, the dataclass
+   default set up by :paramref:`_orm.mapped_column.default` still takes
+   effect for INSERT when the existing :class:`_schema.Column` is used.  Each
+   subclass maintains its own dataclass default independently, so that
+   above, if ``Engineer`` and ``Manager`` each established a different
+   :paramref:`_orm.mapped_column.default` for ``start_date``, an
+   ``Engineer`` object would INSERT the ``Engineer`` default and a
+   ``Manager`` object would INSERT the ``Manager`` default, even though both
+   share the single ``start_date`` column.
+
+   .. versionchanged:: 2.1.7 The system by which dataclass defaults are
+      delivered to the INSERT statement when
+      :paramref:`_orm.mapped_column.use_existing_column` maps an existing
+      :class:`_schema.Column` has been hardened.  This fixes a regression in
+      earlier 2.1 releases where the dataclass default of the subclass would
+      not be persisted, as well as a long-standing issue in the 2.0 series
+      where an attribute explicitly set to ``None`` would receive the default
+      of the superclass column rather than the dataclass default of the
+      subclass.
+
 
 .. versionadded:: 2.0.0b4 - Added :paramref:`_orm.mapped_column.use_existing_column`,
    which provides a 2.0-compatible means of mapping a column on an inheriting

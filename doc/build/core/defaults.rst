@@ -812,6 +812,7 @@ Default Objects API
 
 
 .. autoclass:: ColumnDefault
+    :members: compare, compare_argument
 
 
 .. autoclass:: DefaultClause

@@ -5379,6 +5379,90 @@ class ColumnDefaultsTest(fixtures.TestBase):
         ):
             self._fixture(insert_default="x", default="y")
 
+    def _compare_arguments(self):
+        """distinct arguments for ColumnDefault, as factories so that
+        each call produces a new, equivalent object"""
+
+        def no_ctx():
+            return 5
+
+        def other_no_ctx():
+            return 5
+
+        def with_ctx(context):
+            return 5
+
+        return [
+            lambda: 5,
+            lambda: 6,
+            lambda: "5",
+            lambda: func.now(),
+            lambda: func.current_timestamp(),
+            lambda: literal_column("5"),
+            lambda: text("now()"),
+            lambda: text("foo()"),
+            lambda: no_ctx,
+            lambda: other_no_ctx,
+            lambda: with_ctx,
+        ]
+
+    def _compare_fixtures(self):
+        return [
+            (
+                lambda arg=arg, for_update=for_update: ColumnDefault(
+                    arg(), for_update=for_update
+                )
+            )
+            for arg in self._compare_arguments()
+            for for_update in (False, True)
+        ] + [lambda: _InsertSentinelColumnDefault()]
+
+    def test_compare(self):
+        fixtures = self._compare_fixtures()
+
+        eq_(
+            [
+                [fixture_a().compare(fixture_b()) for fixture_b in fixtures]
+                for fixture_a in fixtures
+            ],
+            [
+                [idx_a == idx_b for idx_b in range(len(fixtures))]
+                for idx_a in range(len(fixtures))
+            ],
+        )
+
+    def test_compare_argument(self):
+        arguments = self._compare_arguments()
+
+        eq_(
+            [
+                [
+                    ColumnDefault(arg_a()).compare_argument(arg_b())
+                    for arg_b in arguments
+                ]
+                for arg_a in arguments
+            ],
+            [
+                [idx_a == idx_b for idx_b in range(len(arguments))]
+                for idx_a in range(len(arguments))
+            ],
+        )
+
+    def test_compare_argument_sentinel(self):
+        default = _InsertSentinelColumnDefault()
+        eq_(
+            [default.compare_argument(None), default.compare_argument(5)],
+            [True, False],
+        )
+
+    def test_compare_copy(self):
+        defaults = [fixture() for fixture in self._compare_fixtures()]
+
+        eq_(
+            [default._copy().compare(default) for default in defaults],
+            [True] * len(defaults),
+        )
+
 
 class ColumnOptionsTest(fixtures.TestBase):
     def test_default_generators(self):

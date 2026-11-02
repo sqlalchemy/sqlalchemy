@@ -4148,6 +4148,43 @@ class ColumnDefault(DefaultGenerator, ABC):
 
         return object.__new__(cls)
 
+    def compare(self, other: ColumnDefault) -> bool:
+        """Compare this :class:`.ColumnDefault` to another
+        :class:`.ColumnDefault`.
+
+        Returns True if both objects are of the same type, both apply to
+        INSERT or both apply to UPDATE, and both represent the same default
+        as determined by :meth:`.ColumnDefault.compare_argument`.
+
+        .. versionadded:: 2.1.7
+
+        """
+        return (
+            self.__class__ is other.__class__
+            and self.for_update == other.for_update
+            and self.compare_argument(other._given_arg)
+        )
+
+    def compare_argument(self, argument: Any) -> bool:
+        """Compare the default represented by this :class:`.ColumnDefault`
+        to the given argument, in the form that would be passed to
+        :class:`.ColumnDefault` or :paramref:`_schema.Column.default`.
+
+        Returns True for a plain Python value that is equal to this
+        default's value, a SQL expression that compares as equal to this
+        default's expression using :meth:`_expression.ClauseElement.compare`,
+        or the same Python callable as this default's callable.
+
+        .. versionadded:: 2.1.7
+
+        """
+        raise NotImplementedError()
+
+    @property
+    def _given_arg(self) -> Any:
+        """the argument as it was passed to the constructor"""
+        return self.arg
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.arg!r})"
 
@@ -4169,6 +4206,13 @@ class ScalarElementColumnDefault(ColumnDefault):
     def _copy(self) -> ScalarElementColumnDefault:
         return ScalarElementColumnDefault(
             arg=self.arg, for_update=self.for_update
+        )
+
+    def compare_argument(self, argument: Any) -> bool:
+        return self.arg is argument or (
+            not callable(argument)
+            and not isinstance(argument, ClauseElement)
+            and bool(self.arg == argument)
         )
 
 
@@ -4209,6 +4253,9 @@ class _InsertSentinelColumnDefault(ColumnDefault):
     def _copy(self) -> _InsertSentinelColumnDefault:
         return _InsertSentinelColumnDefault()
 
+    def compare_argument(self, argument: Any) -> bool:
+        return argument is None
+
 
 _SQLExprDefault = Union["ColumnElement[Any]", "TextClause"]
 
@@ -4235,6 +4282,11 @@ class ColumnElementColumnDefault(ColumnDefault):
     def _copy(self) -> ColumnElementColumnDefault:
         return ColumnElementColumnDefault(
             arg=self.arg, for_update=self.for_update
+        )
+
+    def compare_argument(self, argument: Any) -> bool:
+        return isinstance(argument, ClauseElement) and self.arg.compare(
+            argument
         )
 
     @util.memoized_property
@@ -4269,16 +4321,29 @@ class CallableColumnDefault(ColumnDefault):
     arg: _CallableColumnDefaultProtocol
     has_arg = True
 
+    _fn: Union[_CallableColumnDefaultProtocol, Callable[[], Any]]
+
     def __init__(
         self,
         arg: Union[_CallableColumnDefaultProtocol, Callable[[], Any]],
         for_update: bool = False,
     ) -> None:
         self.for_update = for_update
+
+        # the callable as given, before it's possibly wrapped to accept
+        # a context
+        self._fn = arg
         self.arg = self._maybe_wrap_callable(arg)
 
     def _copy(self) -> CallableColumnDefault:
-        return CallableColumnDefault(arg=self.arg, for_update=self.for_update)
+        return CallableColumnDefault(arg=self._fn, for_update=self.for_update)
+
+    def compare_argument(self, argument: Any) -> bool:
+        return argument is self._fn
+
+    @property
+    def _given_arg(self) -> Any:
+        return self._fn
 
     def _maybe_wrap_callable(
         self, fn: Union[_CallableColumnDefaultProtocol, Callable[[], Any]]
