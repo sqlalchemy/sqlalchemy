@@ -49,6 +49,7 @@ from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.base import HasCacheKey
 from sqlalchemy.sql.base import SingletonConstant
 from sqlalchemy.sql.elements import _label_reference
+from sqlalchemy.sql.elements import _OverrideBinds
 from sqlalchemy.sql.elements import _textual_label_reference
 from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import ClauseElement
@@ -193,6 +194,11 @@ class CoreFixtures:
             _label_reference(table_a.c.a.asc()),
         ),
         lambda: (_textual_label_reference("a"), _textual_label_reference("b")),
+        lambda: (
+            _OverrideBinds(column("q") == 5, [], []),
+            _OverrideBinds(column("p") == 5, [], []),
+            _OverrideBinds(or_(column("q") == 5, column("p") == 6), [], []),
+        ),
         lambda: (
             text("select a, b from table").columns(a=Integer, b=String),
             text("select a, b, c from table").columns(
@@ -1329,6 +1335,32 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         # the replacement bound value is what's used
         eq_(select(new_expr).compile().params, {"a_1": 10})
 
+    def test_apply_params_to_element_self_group(self):
+        """test #13753
+
+        the element returned by _apply_params_to_element has to be grouped
+        the same way as the element it replaces when embedded into an
+        enclosing expression, and produce the same cache key as that
+        expression.
+
+        """
+
+        expr = or_(table_a.c.a == 5, table_a.c.b == "x")
+        replacement = or_(table_a.c.a == 10, table_a.c.b == "y")
+
+        new_expr = replacement._generate_cache_key()._apply_params_to_element(
+            expr._generate_cache_key(), expr
+        )
+
+        crit = and_(table_a.c.a > 1, new_expr)
+        orig_crit = and_(table_a.c.a > 1, expr)
+
+        compiled = crit.compile()
+        eq_(str(compiled), "a.a > :a_1 AND (a.a = :a_2 OR a.b = :b_1)")
+        eq_(compiled.params, {"a_1": 1, "a_2": 10, "b_1": "y"})
+
+        eq_(crit._generate_cache_key(), orig_crit._generate_cache_key())
+
     def test_bindparam_subclass_nocache(self):
         # does not implement inherit_cache
         class _literal_bindparam(BindParameter):
@@ -1671,6 +1703,10 @@ class HasCacheKeySubclass(fixtures.TestBase):
             {"args"},
         ),
         "array": ({"type", "clauses"}, {"clauses", "type_"}),
+        "_OverrideBinds": (
+            {"element", "type"},
+            {"element", "bindparams", "replaces_params"},
+        ),
         "next_value": ({"sequence"}, {"seq"}),
     }
 
