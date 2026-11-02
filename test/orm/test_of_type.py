@@ -15,6 +15,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
@@ -1540,3 +1541,117 @@ class ChainedLoaderAfterOfTypeTest(
                     " top_2.id = foo_2.id) ON foo_2.id = bar_1.foo_id"
                 )
             )
+
+
+class MultipleOfTypeTest(
+    testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest
+):
+    """test multiple of_type() options along the same relationship,
+    #13751"""
+
+    run_setup_classes = "once"
+    run_setup_mappers = "once"
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            type = Column(String(10))
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class B1(B):
+            __tablename__ = "b1"
+            id = Column(ForeignKey("b.id"), primary_key=True)
+            __mapper_args__ = {"polymorphic_identity": "b1"}
+
+        class B2(B):
+            __tablename__ = "b2"
+            id = Column(ForeignKey("b.id"), primary_key=True)
+            __mapper_args__ = {"polymorphic_identity": "b2"}
+
+    @testing.variation("loader", ["joined", "selectin", "contains_eager"])
+    @testing.variation("targets", ["aliased_aliased", "plain_aliased"])
+    def test_differing_targets_raise(self, loader, targets):
+        A, B1, B2 = self.classes("A", "B1", "B2")
+
+        b2 = aliased(B2, flat=True)
+
+        if targets.aliased_aliased:
+            b1 = aliased(B1, flat=True)
+            first = r"aliased\(B1\)"
+        elif targets.plain_aliased:
+            b1 = B1
+            first = r"with_polymorphic\(B, \[B1\]\)"
+        else:
+            targets.fail()
+
+        stmt = select(A)
+        if loader.joined:
+            stmt = stmt.options(
+                joinedload(A.bs.of_type(b1)), joinedload(A.bs.of_type(b2))
+            )
+        elif loader.selectin:
+            stmt = stmt.options(
+                selectinload(A.bs.of_type(b1)),
+                selectinload(A.bs.of_type(b2)),
+            )
+        elif loader.contains_eager:
+            stmt = (
+                stmt.join(A.bs.of_type(b1))
+                .join(A.bs.of_type(b2))
+                .options(
+                    contains_eager(A.bs.of_type(b1)),
+                    contains_eager(A.bs.of_type(b2)),
+                )
+            )
+        else:
+            loader.fail()
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            rf"Can't combine of_type\(\) targets {first} and "
+            r"aliased\(B2\) along the relationship A.bs in the same "
+            r"query.  To load multiple subclasses along a single "
+            r"relationship, use a single with_polymorphic\(\) object",
+        ):
+            stmt.compile()
+
+    def test_plain_subclasses_merge(self):
+        A, B1, B2 = self.classes("A", "B1", "B2")
+
+        stmt = select(A).options(
+            joinedload(A.bs.of_type(B1)), joinedload(A.bs.of_type(B2))
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT a.id, b_1.id AS id_1, b_1.a_id, b_1.type, "
+            "b1_1.id AS id_2, b2_1.id AS id_3 FROM a LEFT OUTER JOIN "
+            "(b AS b_1 LEFT OUTER JOIN b1 AS b1_1 ON b_1.id = b1_1.id "
+            "LEFT OUTER JOIN b2 AS b2_1 ON b_1.id = b2_1.id) "
+            "ON a.id = b_1.a_id",
+        )
+
+    def test_same_aliased_target_twice(self):
+        A, B1 = self.classes("A", "B1")
+
+        b1 = aliased(B1, flat=True)
+        stmt = select(A).options(
+            joinedload(A.bs.of_type(b1)), joinedload(A.bs.of_type(b1))
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT a.id, b_1.id AS id_1, b_1.a_id, b_1.type, "
+            "b1_1.id AS id_2 FROM a LEFT OUTER JOIN "
+            "(b AS b_1 JOIN b1 AS b1_1 ON b_1.id = b1_1.id) "
+            "ON a.id = b_1.a_id",
+        )
