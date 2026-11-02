@@ -2755,6 +2755,39 @@ class Mapper(
         }
 
     @HasMemoized.memoized_attribute
+    def _insert_orm_defaults(
+        self,
+    ) -> Mapping[FromClause, Sequence[Tuple[str, ColumnElement[Any], Any]]]:
+        """per table, (propkey, column, value) for ORM-level defaults on
+        column properties, i.e. dataclass defaults, which the column's own
+        default would not deliver to an INSERT.
+
+        Normally the ORM-level default is the same as the column's default.
+        They differ when the column is shared with another mapper, as is the
+        case for use_existing_column on single inheritance subclasses, #13748
+
+        """
+        return {
+            table: [
+                (prop.key, col, prop._default_scalar_value)
+                for col in columns
+                # None indicates no ORM-level default; a None value would
+                # be omitted from the INSERT in any case
+                if (prop := self._columntoproperty[col])._default_scalar_value
+                is not None
+                # skip if the column's own default already delivers the
+                # same value
+                and not (
+                    col.default is not None
+                    and col.default.compare_argument(
+                        prop._default_scalar_value
+                    )
+                )
+            ]
+            for table, columns in self._cols_by_table.items()
+        }
+
+    @HasMemoized.memoized_attribute
     def _propkey_to_col(self):
         return {
             table: {self._columntoproperty[col].key: col for col in columns}

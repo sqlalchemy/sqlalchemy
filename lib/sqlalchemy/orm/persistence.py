@@ -322,6 +322,19 @@ def _organize_states_for_delete(base_mapper, states, uowtransaction):
         yield (state, dict_, mapper, connection, update_version_id)
 
 
+def _set_insert_value(col, value, params, value_params):
+    """Place a value for an INSERT into either ``value_params``, if it is a
+    SQL expression, or ``params``, if it is a plain value.
+
+    """
+    if hasattr(value, "__clause_element__"):
+        value_params[col] = value.__clause_element__()
+    elif isinstance(value, sql.ClauseElement):
+        value_params[col] = value
+    else:
+        params[col.key] = value
+
+
 def _collect_insert_commands(
     table,
     states_to_insert,
@@ -351,19 +364,19 @@ def _collect_insert_commands(
             col = propkey_to_col[propkey]
             if value is None and col not in eval_none and not render_nulls:
                 continue
-            elif not bulk and (
-                hasattr(value, "__clause_element__")
-                or isinstance(value, sql.ClauseElement)
-            ):
-                value_params[col] = (
-                    value.__clause_element__()
-                    if hasattr(value, "__clause_element__")
-                    else value
-                )
-            else:
+            elif bulk:
                 params[col.key] = value
+            else:
+                _set_insert_value(col, value, params, value_params)
 
         if not bulk:
+            # ORM-level defaults, i.e. dataclass defaults, for columns that
+            # have no value, where the column's own default does not
+            # deliver the value, #13748
+            for propkey, col, value in mapper._insert_orm_defaults[table]:
+                if col.key not in params and col not in value_params:
+                    _set_insert_value(col, value, params, value_params)
+
             # for all the columns that have no default and we don't have
             # a value and where "None" is not a special value, add
             # explicit None to the INSERT.   This is a legacy behavior
@@ -1658,6 +1671,18 @@ def _postfetch(
         and mapper.version_id_col in mapper._cols_by_table[table]
     ):
         prefetch_cols = list(prefetch_cols) + [mapper.version_id_col]
+
+    if not isupdate:
+        # ORM-level defaults that _collect_insert_commands delivered to the
+        # INSERT for attributes with no value are handled in the same way as
+        # prefetched column defaults, #13748
+        orm_default_cols = [
+            col
+            for pkey, col, _ in mapper._insert_orm_defaults[table]
+            if dict_.get(pkey) is None and params.get(col.key) is not None
+        ]
+        if orm_default_cols:
+            prefetch_cols = list(prefetch_cols) + orm_default_cols
 
     refresh_flush = bool(mapper.class_manager.dispatch.refresh_flush)
     if refresh_flush:
