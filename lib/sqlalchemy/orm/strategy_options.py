@@ -2057,6 +2057,15 @@ class _AttributeStrategyLoad(_LoadElement):
         if key in context:
             existing_aliased_insp = context[key]
             this_aliased_insp = pwpi
+            if existing_aliased_insp.mapper is not this_aliased_insp.mapper:
+                raise sa_exc.InvalidRequestError(
+                    "Can't combine of_type() targets "
+                    f"{existing_aliased_insp} and {this_aliased_insp} "
+                    f"along the relationship {start_path[-1]} in "
+                    "the same query.  To load multiple subclasses along a "
+                    "single relationship, use a single with_polymorphic() "
+                    "object that includes all of the target classes."
+                )
             new_aliased_insp = existing_aliased_insp._merge_with(
                 this_aliased_insp
             )
