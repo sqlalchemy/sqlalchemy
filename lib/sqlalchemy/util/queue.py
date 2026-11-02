@@ -33,6 +33,7 @@ from typing import Generic
 from typing import Optional
 from typing import TypeVar
 
+from . import compat
 from .concurrency import await_fallback
 from .concurrency import await_only
 from .langhelpers import memoized_property
@@ -290,7 +291,7 @@ class AsyncAdaptedQueue(QueueCommon[_T]):
 
         try:
             if timeout is not None:
-                self.await_(asyncio.wait_for(self._queue.put(item), timeout))
+                self.await_(compat.wait_for(timeout, self._queue.put, item))
             else:
                 self.await_(self._queue.put(item))
         except (asyncio.QueueFull, asyncio.TimeoutError) as err:
@@ -308,20 +309,15 @@ class AsyncAdaptedQueue(QueueCommon[_T]):
 
         try:
             # an item that's already available is taken without awaiting.
-            # besides being faster, this avoids a bug in
-            # asyncio.wait_for() on Python 3.11 and earlier, where it
-            # returns the item in place of raising a cancellation that
-            # reaches it once the item has been gotten; cpython issue
-            # gh-86296, fixed in Python 3.12
+            # on Python 3.10 and earlier, this also avoids the issue in
+            # asyncio.wait_for() noted at compat.wait_for() for that case
             return self._queue.get_nowait()
         except asyncio.QueueEmpty:
             pass
 
         try:
             if timeout is not None:
-                return self.await_(
-                    asyncio.wait_for(self._queue.get(), timeout)
-                )
+                return self.await_(compat.wait_for(timeout, self._queue.get))
             else:
                 return self.await_(self._queue.get())
         except (asyncio.QueueEmpty, asyncio.TimeoutError) as err:

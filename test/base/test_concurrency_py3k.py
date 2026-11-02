@@ -267,6 +267,65 @@ class TestAsyncAdaptedQueue(fixtures.TestBase):
 
         is_true(run[0])
 
+    async def _cancel_after(self, waiter_fn, release):
+        waiter = asyncio.create_task(greenlet_spawn(waiter_fn))
+
+        # let the waiter block in the queue
+        for _ in range(3):
+            await asyncio.sleep(0)
+        is_true(not waiter.done())
+
+        # unblock the waiter, then cancel it in the same loop iteration
+        release()
+        cancelled = waiter.cancel()
+
+        try:
+            await waiter
+        except asyncio.CancelledError:
+            return cancelled, "cancelled"
+        else:
+            return cancelled, "completed"
+
+    @testing.requires.python311
+    @async_test
+    async def test_get_timeout_cancel_after_put(self):
+        """test #13749"""
+
+        q = queue.AsyncAdaptedQueue()
+
+        result = await self._cancel_after(
+            lambda: q.get(timeout=30), lambda: q.put_nowait("item")
+        )
+
+        # the cancellation is raised, and the item stays in the queue
+        eq_((result, q.qsize()), ((True, "cancelled"), 1))
+
+    @testing.requires.python311
+    @async_test
+    async def test_put_timeout_cancel_after_get(self):
+        """test #13749"""
+
+        q = queue.AsyncAdaptedQueue(maxsize=1)
+        q.put_nowait("item")
+
+        result = await self._cancel_after(
+            lambda: q.put("other item", timeout=30), q.get_nowait
+        )
+
+        # the cancellation is raised, and the item is not put
+        eq_((result, q.qsize()), ((True, "cancelled"), 0))
+
+    @async_test
+    async def test_put_timeout(self):
+        q = queue.AsyncAdaptedQueue(maxsize=1)
+        q.put_nowait("item")
+
+        def go():
+            q.put("other item", timeout=0.1)
+
+        with expect_raises(queue.Full):
+            await greenlet_spawn(go)
+
 
 class GracefulNoGreenletTest(fixtures.TestBase):
     __requires__ = ("no_greenlet",)
