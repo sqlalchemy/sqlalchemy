@@ -19,3 +19,8 @@
     constructs such as :func:`_orm.column_property`, :func:`_orm.deferred`
     and :func:`_orm.query_expression` that are assigned to a wider
     ``Mapped[]`` annotation.
+
+    This includes assignment of a :class:`_schema.Column` to a wider
+    :class:`_schema.Named` annotation within a :class:`_schema.TypedColumns`
+    class, e.g. ``x: Named[int | None] = Column(SmallInteger)``, for which
+    :class:`_schema.Named` is now covariant.

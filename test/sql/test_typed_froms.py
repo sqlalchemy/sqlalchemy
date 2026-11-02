@@ -1,6 +1,7 @@
 from typing import Annotated
 
 import sqlalchemy as sa
+from sqlalchemy import BigInteger
 from sqlalchemy import Column
 from sqlalchemy import Double
 from sqlalchemy import Integer
@@ -197,6 +198,28 @@ class TypedTableTest(fixtures.TestBase):
         is_(records.c.id.nullable, True)
         is_instance_of(records.c.description.type, String)
         is_(records.c.description.nullable, False)
+
+    def test_nullable_from_annotation_with_column(self, metadata):
+        """Test nullable inference from the annotation when a Column with
+        no nullable setting is assigned, #13654"""
+
+        class records_cols(TypedColumns):
+            a: Named[int | None] = Column(BigInteger)
+            b: Named[int] = Column(BigInteger)
+            c: Named[int | None] = Column()
+            d: Named[int] = Column()
+
+        records = Table("records", metadata, records_cols)
+
+        eq_(
+            [(c.name, type(c.type), c.nullable) for c in records.c],
+            [
+                ("a", BigInteger, True),
+                ("b", BigInteger, False),
+                ("c", Integer, True),
+                ("d", Integer, False),
+            ],
+        )
 
     @combinations(True, False, argnames="define_cols")
     def test_use_same_typedcols_multiple_times(self, metadata, define_cols):

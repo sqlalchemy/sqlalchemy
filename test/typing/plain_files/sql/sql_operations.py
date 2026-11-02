@@ -6,6 +6,7 @@ from typing import assert_type
 from sqlalchemy import and_
 from sqlalchemy import Boolean
 from sqlalchemy import cast
+from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import DateTime
 from sqlalchemy import false
@@ -32,7 +33,11 @@ c1 = column("a", String)
 
 c2 = column("a", Integer)
 
+C1 = Column("x", String)
+C2 = Column("y", Integer)
+
 expr2 = c2.in_([1, 2, 3])
+expr21 = C2.in_([1, 2, 3])
 
 expr2_set = c2.in_({1, 2, 3})
 
@@ -57,6 +62,7 @@ no_empty_1 = and_()
 no_empty_2 = or_()
 
 expr3 = c2 / 5
+expr31 = C2 / 5
 
 expr4 = -c2
 
@@ -66,8 +72,10 @@ q = column("q", Boolean)
 expr6 = ~q
 
 expr7 = c1 + "x"
+expr71 = C1 + "x"
 
 expr8 = c2 + 10
+expr81 = C2 + 10
 
 stmt = select(column("q")).where(lambda: column("g") > 5).where(c2 == 5)
 
@@ -126,8 +134,10 @@ if typing.TYPE_CHECKING:
     assert_type(c2, ColumnClause[int])
 
     assert_type(expr2, BinaryExpression[bool])
+    assert_type(expr21, BinaryExpression[bool])
 
     assert_type(expr3, ColumnElement[float | Decimal])
+    assert_type(expr31, ColumnElement[float | Decimal])
 
     assert_type(expr4, UnaryExpression[int])
 
@@ -136,7 +146,9 @@ if typing.TYPE_CHECKING:
     assert_type(expr6, ColumnElement[bool])
 
     assert_type(expr7, ColumnElement[str])
+    assert_type(expr71, ColumnElement[str])
 
     assert_type(expr8, ColumnElement[int])
+    assert_type(expr81, ColumnElement[int])
 
     assert_type(expr9, BinaryExpression[bool])

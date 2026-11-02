@@ -15,7 +15,7 @@ from typing import Protocol
 from typing import TYPE_CHECKING
 
 from . import sqltypes
-from ._typing import _T
+from ._typing import _T_co
 from ._typing import _Ts
 from .base import _NoArg
 from .base import ReadOnlyColumnCollection
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from ..util.typing import _AnnotationScanType
 
 
-class Named(Generic[_T]):
+class Named(Generic[_T_co]):
     """A named descriptor that is interpreted by SQLAlchemy in various ways.
 
     .. seealso::
@@ -61,7 +61,7 @@ class Named(Generic[_T]):
         @overload
         def __get__(
             self, instance: TypedColumns, owner: Any
-        ) -> Column[_T]: ...
+        ) -> Column[_T_co]: ...
         @overload
         def __get__(self, instance: Any, owner: Any) -> Self: ...
 

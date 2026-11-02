@@ -45,6 +45,8 @@ def test_uuid_column_types() -> None:
     """Test UUID column type inference with as_uuid parameter."""
     c1 = Column(UUID())
     assert_type(c1, Column[_py_uuid])
+    assert_type(Column(UUID(), nullable=False), Column[_py_uuid])
+    assert_type(Column(UUID(), nullable=True), Column[_py_uuid])
 
     c2 = Column(UUID(as_uuid=False))
     assert_type(c2, Column[str])
@@ -169,6 +171,10 @@ def test_json_column_types() -> None:
     c_json_dict = Column(JSON[Dict[str, Any]]())
     assert_type(c_json_dict, Column[Dict[str, Any]])
 
+    # nullable does not change the type, #13654
+    c_json_dict_nn = Column(JSON[Dict[str, Any]](), nullable=False)
+    assert_type(c_json_dict_nn, Column[Dict[str, Any]])
+
 
 def test_json_orm_mapping() -> None:
     """Test JSON type in ORM mapped columns."""
@@ -191,6 +197,10 @@ def test_jsonb_column_types() -> None:
 
     c_jsonb_dict = Column(JSONB[Dict[str, Any]]())
     assert_type(c_jsonb_dict, Column[Dict[str, Any]])
+
+    # nullable does not change the type, #13654
+    c_jsonb_dict_nn = Column(JSONB[Dict[str, Any]](), nullable=False)
+    assert_type(c_jsonb_dict_nn, Column[Dict[str, Any]])
 
 
 def test_jsonb_orm_mapping() -> None:

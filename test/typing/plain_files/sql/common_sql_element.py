@@ -24,6 +24,7 @@ from sqlalchemy import intersect
 from sqlalchemy import intersect_all
 from sqlalchemy import literal
 from sqlalchemy import MetaData
+from sqlalchemy import Nullable
 from sqlalchemy import Select
 from sqlalchemy import select
 from sqlalchemy import SQLColumnExpression
@@ -274,3 +275,19 @@ assert_type(first_stmt.except_(third_stmt), CompoundSelect[str, int])
 assert_type(first_stmt.except_all(third_stmt), CompoundSelect[str, int])
 assert_type(first_stmt.intersect(third_stmt), CompoundSelect[str, int])
 assert_type(first_stmt.intersect_all(third_stmt), CompoundSelect[str, int])
+
+
+assert_type(select(Column(Integer)), Select[int])
+assert_type(select(Column(Integer, nullable=False)), Select[int])
+assert_type(select(Column(Integer), Column(String)), Select[int, str])
+assert_type(
+    select(Nullable(Column(Integer)), Column(String)),
+    Select[int | None, str],
+)
+ci = Column(Integer)
+ci_nm = Column(Integer, nullable=False)
+cs = Nullable(Column(String))
+assert_type(select(ci), Select[int])
+assert_type(select(ci_nm), Select[int])
+assert_type(select(ci, cs), Select[int, str | None])
+assert_type(select(ci_nm, cs), Select[int, str | None])

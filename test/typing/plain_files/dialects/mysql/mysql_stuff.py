@@ -40,6 +40,10 @@ def test_json_column_types() -> None:
     c_json_dict = Column(JSON[Dict[str, Any]]())
     assert_type(c_json_dict, Column[Dict[str, Any]])
 
+    # nullable does not change the type, #13654
+    c_json_dict_nn = Column(JSON[Dict[str, Any]](), nullable=False)
+    assert_type(c_json_dict_nn, Column[Dict[str, Any]])
+
 
 def test_json_orm_mapping() -> None:
     """Test JSON type in ORM mapped columns."""
