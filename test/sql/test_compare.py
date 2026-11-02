@@ -19,6 +19,7 @@ from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
+from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy import PickleType
 from sqlalchemy import select
@@ -54,6 +55,7 @@ from sqlalchemy.sql.cache_key import _cache_key_traversal_visitor
 from sqlalchemy.sql.cache_key import _CacheKeyTraversal
 from sqlalchemy.sql.cache_key import CacheKey
 from sqlalchemy.sql.elements import _label_reference
+from sqlalchemy.sql.elements import _OverrideBinds
 from sqlalchemy.sql.elements import _textual_label_reference
 from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import ClauseElement
@@ -223,6 +225,11 @@ class CoreFixtures:
             ),
         ),
         lambda: (_textual_label_reference("a"), _textual_label_reference("b")),
+        lambda: (
+            _OverrideBinds(column("q") == 5, [], []),
+            _OverrideBinds(column("p") == 5, [], []),
+            _OverrideBinds(or_(column("q") == 5, column("p") == 6), [], []),
+        ),
         lambda: (
             text("select a, b from table").columns(a=Integer, b=String),
             text("select a, b, c from table").columns(
@@ -1444,6 +1451,73 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         # the replacement bound value is what's used
         eq_(select(new_expr).compile().params, {"a_1": 10})
 
+    @testing.combinations(
+        (
+            lambda table_a, a_value1, b_value1: or_(
+                table_a.c.a == a_value1, table_a.c.b == b_value1
+            ),
+            lambda table_a, expr, a_value2: and_(table_a.c.a > a_value2, expr),
+            "a.a > :a_1 AND (a.a = :a_2 OR a.b = :b_1)",
+            lambda a_value1, b_value1, a_value2: {
+                "a_1": a_value2,
+                "a_2": a_value1,
+                "b_1": b_value1,
+            },
+        ),
+        (
+            lambda table_a, a_value1, b_value1: or_(
+                table_a.c.a == a_value1, table_a.c.b == b_value1
+            ),
+            lambda table_a, expr, a_value2: not_(expr),
+            "NOT (a.a = :a_1 OR a.b = :b_1)",
+            lambda a_value1, b_value1, a_value2: {
+                "a_1": a_value1,
+                "b_1": b_value1,
+            },
+        ),
+        (
+            lambda table_a, a_value1, b_value1: table_a.c.a + a_value1,
+            lambda table_a, expr, a_value2: expr * a_value2,
+            "(a.a + :a_1) * :param_1",
+            lambda a_value1, b_value1, a_value2: {
+                "a_1": a_value1,
+                "param_1": a_value2,
+            },
+        ),
+        argnames="element_fn, enclosing_fn, expected_sql, expected_params_fn",
+    )
+    def test_apply_params_to_element_self_group(
+        self, element_fn, enclosing_fn, expected_sql, expected_params_fn
+    ):
+        """test #13753
+
+        the element returned by _apply_params_to_element has to be grouped
+        the same way as the element it replaces when embedded into an
+        enclosing expression, and produce the same cache key as that
+        expression.
+
+        """
+
+        expr = element_fn(table_a, 5, "x")
+        replacement = element_fn(table_a, 10, "y")
+
+        new_expr = replacement._generate_cache_key()._apply_params_to_element(
+            expr._generate_cache_key(), expr
+        )
+
+        orig_crit = enclosing_fn(table_a, expr, 1)
+        crit = enclosing_fn(table_a, new_expr, 2)
+
+        orig_compiled = orig_crit.compile()
+        eq_(str(orig_compiled), expected_sql)
+        eq_(orig_compiled.params, expected_params_fn(5, "x", 1))
+
+        compiled = crit.compile()
+        eq_(str(compiled), expected_sql)
+        eq_(compiled.params, expected_params_fn(10, "y", 2))
+
+        eq_(crit._generate_cache_key(), orig_crit._generate_cache_key())
+
     def test_bindparam_subclass_nocache(self):
         # does not implement inherit_cache
         class _literal_bindparam(BindParameter):
@@ -1825,6 +1899,10 @@ class HasCacheKeySubclass(fixtures.TestBase):
             {"args"},
         ),
         "array": ({"type", "clauses"}, {"clauses", "type_"}),
+        "_OverrideBinds": (
+            {"element", "type"},
+            {"element", "bindparams", "replaces_params"},
+        ),
         "next_value": ({"sequence"}, {"seq"}),
     }
 

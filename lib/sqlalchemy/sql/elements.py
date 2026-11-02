@@ -4485,7 +4485,7 @@ class Grouping(GroupedElement, ColumnElement[_T]):
         ) -> Self: ...
 
 
-class _OverrideBinds(Grouping[_T]):
+class _OverrideBinds(ColumnElement[_T]):
     """used by cache_key->_apply_params_to_element to allow compilation /
     execution of a SQL element that's been cached, using an alternate set of
     bound parameter values.
@@ -4496,11 +4496,22 @@ class _OverrideBinds(Grouping[_T]):
     .params() method which would perform a deep-copy instead.  This deep
     copy proved to be too expensive for more complex expressions.
 
+    The construct is a stand-in for the element it wraps; it renders, groups
+    and generates a cache key the same way as that element, differing only in
+    the bound parameter values it delivers.
+
     See #11085
 
     """
 
     __visit_name__ = "override_binds"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
+    ]
+
+    element: ColumnElement[_T]
 
     def __init__(
         self,
@@ -4510,9 +4521,9 @@ class _OverrideBinds(Grouping[_T]):
     ):
         self.element = element
 
-        # as with Grouping, take on the type of the element we wrap;
-        # otherwise the construct reports NULLTYPE and the result set
-        # for a column that's compiled from here has no result processor
+        # take on the type of the element we wrap; otherwise the construct
+        # reports NULLTYPE and the result set for a column that's compiled
+        # from here has no result processor
         self.type = element.type
         self.translate = {
             k.key: v.value for k, v in zip(replaces_params, bindparams)
@@ -4541,6 +4552,43 @@ class _OverrideBinds(Grouping[_T]):
         # ck derives from _gen_cache_key, a compiled function in
         # _cache_key_cy that mypy sees as untyped
         return ck  # type: ignore[no-any-return]
+
+    def self_group(self, against: Optional[OperatorType] = None) -> Self:
+        # group the element we wrap the same way it would group on its own.
+        # see #13753
+        grouped = self.element.self_group(against=against)
+        if grouped is self.element:
+            return self
+
+        new = self._clone()
+        new.element = grouped
+        return new
+
+    def _negate(self) -> ColumnElement[Any]:
+        # negate the element we wrap the same way it would negate on its
+        # own, e.g. NOT (a OR b) rather than NOT a OR b.  see #13753
+        new = self._clone()
+        new.element = self.element._negate()
+        new.type = new.element.type
+        return new
+
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
+        return self.element._from_objects
+
+    @util.non_memoized_property
+    def _is_implicitly_boolean(self) -> bool:
+        return self.element._is_implicitly_boolean
+
+    @util.non_memoized_property
+    def _proxies(self) -> List[ColumnElement[Any]]:
+        return [self.element]
+
+    @util.non_memoized_property
+    def _tq_label(self) -> Optional[str]:
+        return (
+            getattr(self.element, "_tq_label", None) or self._anon_name_label
+        )
 
 
 _FrameIntTuple = tuple[int | None, int | None]
