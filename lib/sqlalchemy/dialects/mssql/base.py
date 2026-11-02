@@ -3614,35 +3614,27 @@ order by
                 **kw,
             )
 
-    def _temp_table_name_like_pattern(self, tablename):
-        # LIKE uses '%' to match zero or more characters and '_' to match any
-        # single character. We want to match literal underscores, so T-SQL
-        # requires that we enclose them in square brackets.
-        return tablename + (
-            ("[_][_][_]%") if not tablename.startswith("##") else ""
-        )
-
     def _get_internal_temp_table_name(self, connection, tablename):
         # it's likely that schema is always "dbo", but since we can
         # get it here, let's get it.
         # see https://stackoverflow.com/questions/8311959/
         # specifying-schema-for-temporary-tables
 
+        # object_id() resolves a local temp table name only against the
+        # current session's tables (plus any ##global one), so the lookup
+        # neither sees nor locks other sessions' same-named temp tables in
+        # tempdb, as a scan of tempdb's catalog by name would.  See #13754.
         try:
             return connection.execute(
                 sql.text(
-                    "select table_schema, table_name "
-                    "from tempdb.information_schema.tables "
-                    "where table_name like :p1"
+                    "select s.name, o.name "
+                    "from tempdb.sys.objects as o "
+                    "join tempdb.sys.schemas as s "
+                    "on s.schema_id = o.schema_id "
+                    "where o.object_id = object_id(:qualified, 'U')"
                 ),
-                {"p1": self._temp_table_name_like_pattern(tablename)},
+                {"qualified": f"tempdb..[{tablename}]"},
             ).one()
-        except exc.MultipleResultsFound as me:
-            raise exc.UnreflectableTableError(
-                "Found more than one temporary table named '%s' in tempdb "
-                "at this time. Cannot reliably resolve that name to its "
-                "internal table name." % tablename
-            ) from me
         except exc.NoResultFound as ne:
             raise exc.NoSuchTableError(
                 "Unable to find a temporary table named '%s' in tempdb."
