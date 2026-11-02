@@ -576,7 +576,8 @@ class URL(NamedTuple):
 
         """
 
-        if not set(names).intersection(self.query):
+        names = set(names)
+        if not names.intersection(self.query):
             return self
 
         return URL(

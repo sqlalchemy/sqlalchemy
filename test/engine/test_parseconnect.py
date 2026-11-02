@@ -345,6 +345,13 @@ class URLTest(fixtures.TestBase):
             url.make_url("drivername:///?%s" % expected),
         )
 
+    def test_difference_update_query_generator(self):
+        u = url.make_url("drivername:///?foo=bar&bat=hi&hoho=lala")
+        eq_(
+            u.difference_update_query(name for name in ["foo", "bat"]),
+            url.make_url("drivername:///?hoho=lala"),
+        )
+
     @testing.combinations(
         "drivername://",
         "drivername://?foo=bar",
