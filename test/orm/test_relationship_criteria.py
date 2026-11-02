@@ -16,6 +16,7 @@ from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
+from sqlalchemy import or_
 from sqlalchemy import orm
 from sqlalchemy import select
 from sqlalchemy import sql
@@ -2903,6 +2904,102 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     [{"param_1": 10, "email_address_1": value}],
                 ),
             )
+
+    @testing.combinations(
+        (
+            selectinload,
+            "SELECT addresses.user_id, addresses.id, "
+            "addresses.email_address FROM addresses "
+            "WHERE addresses.user_id IN "
+            "(__[POSTCOMPILE_primary_keys]) "
+            "AND (addresses.email_address = :email_address_1 "
+            "OR addresses.email_address = :email_address_2) "
+            "ORDER BY addresses.id",
+            {"primary_keys": [8]},
+        ),
+        (
+            lazyload,
+            "SELECT addresses.id, addresses.user_id, "
+            "addresses.email_address FROM addresses "
+            "WHERE :param_1 = addresses.user_id "
+            "AND (addresses.email_address = :email_address_1 "
+            "OR addresses.email_address = :email_address_2) "
+            "ORDER BY addresses.id",
+            {"param_1": 8},
+        ),
+        (
+            subqueryload,
+            "SELECT addresses.id AS addresses_id, addresses.user_id "
+            "AS addresses_user_id, addresses.email_address "
+            "AS addresses_email_address, anon_1.users_id "
+            "AS anon_1_users_id FROM (SELECT users.id AS users_id "
+            "FROM users WHERE users.id = :id_1) AS anon_1 "
+            "JOIN addresses ON anon_1.users_id = addresses.user_id "
+            "AND (addresses.email_address = :email_address_1 "
+            "OR addresses.email_address = :email_address_2) "
+            "ORDER BY addresses.id",
+            {"id_1": 8},
+        ),
+        argnames="loader_fn, loader_sql, loader_params",
+        id_="naa",
+    )
+    def test_local_criteria_or_grouping_cached(
+        self, user_address_fixture, loader_fn, loader_sql, loader_params
+    ):
+        """test #13753
+
+        the User statement is cached by a run that loads no rows, so the
+        loader's statement is first compiled given the cached User statement,
+        where the criteria is wrapped in order to apply new bound parameter
+        values.  The OR has to remain grouped against the relationship join
+        condition.
+
+        """
+        User, Address = user_address_fixture
+
+        s = Session(testing.db)
+
+        def go(user_id):
+            s.close()
+            stmt = (
+                select(User)
+                .where(User.id == user_id)
+                .options(
+                    loader_fn(
+                        User.addresses.and_(
+                            or_(
+                                Address.email_address == "ed@lala.com",
+                                Address.email_address == "fred@fred.com",
+                            )
+                        )
+                    ),
+                )
+            )
+            return s.scalars(stmt).all()
+
+        # caches the User statement; no addresses are loaded
+        eq_(go(12), [])
+
+        with self.sql_execution_asserter() as asserter:
+            eq_(go(8), [User(id=8, addresses=[Address(id=4)])])
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users "
+                "WHERE users.id = :id_1",
+                [{"id_1": 8}],
+            ),
+            CompiledSQL(
+                loader_sql,
+                [
+                    {
+                        **loader_params,
+                        "email_address_1": "ed@lala.com",
+                        "email_address_2": "fred@fred.com",
+                    }
+                ],
+            ),
+        )
 
     def test_subqueryload_local_criteria(self, user_address_fixture):
         User, Address = user_address_fixture
