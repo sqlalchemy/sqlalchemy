@@ -565,6 +565,82 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                         "drop table #myveryveryuniquetemptablename"
                     )
 
+    def test_reflect_temp_not_present_but_another_session(self):
+        """test #13754"""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+            try:
+                with c1.begin():
+                    c1.exec_driver_sql("create table #reflecttemp (a int)")
+
+                with expect_raises(exc.NoSuchTableError):
+                    inspect(c2).get_columns("#reflecttemp")
+            finally:
+                c1.rollback()
+                with c1.begin():
+                    c1.exec_driver_sql("drop table #reflecttemp")
+
+    def test_reflect_temp_present_both_sessions(self):
+        """test #13754"""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+            try:
+                with c1.begin():
+                    c1.exec_driver_sql("create table #reflecttemp (a int)")
+                with c2.begin():
+                    c2.exec_driver_sql(
+                        "create table #reflecttemp (x int, y int)"
+                    )
+
+                eq_(
+                    [
+                        [col["name"] for col in inspect(c).get_columns(name)]
+                        for c, name in [
+                            (c1, "#reflecttemp"),
+                            (c2, "#reflecttemp"),
+                        ]
+                    ],
+                    [["a"], ["x", "y"]],
+                )
+            finally:
+                for c in (c1, c2):
+                    c.rollback()
+                    with c.begin():
+                        c.exec_driver_sql("drop table #reflecttemp")
+
+    def test_reflect_temp_not_blocked_by_other_session(self):
+        """test #13754
+
+        reflecting a temp table must not read other sessions' rows in the
+        tempdb catalog, which would block on another session's uncommitted
+        temp table of a similar name
+
+        """
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+            try:
+                with c2.begin():
+                    c2.exec_driver_sql("create table #rt_two (x int)")
+
+                c1.begin()
+                c1.exec_driver_sql("create table #rt_one (a int)")
+
+                c2.exec_driver_sql("SET LOCK_TIMEOUT 5000")
+                eq_(
+                    [
+                        col["name"]
+                        for col in inspect(c2).get_columns("#rt_two")
+                    ],
+                    ["x"],
+                )
+            finally:
+                c1.rollback()
+                c2.rollback()
+                c2.exec_driver_sql("SET LOCK_TIMEOUT -1")
+                c2.rollback()
+                with c2.begin():
+                    c2.exec_driver_sql("drop table #rt_two")
+
     @testing.fixture
     def temp_db_alt_collation_fixture(
         self, connection_no_trans, testing_engine
