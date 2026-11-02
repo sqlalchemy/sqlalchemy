@@ -90,6 +90,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _CovariantTypeEngineArgument
     from ._typing import _HasDialect
     from ._typing import _InfoType
     from ._typing import _OnlyColumnArgument
@@ -141,7 +142,7 @@ _NMT = TypeVar("_NMT", bound="_NUMBER")
 @overload
 def literal(
     value: Any,
-    type_: _TypeEngineArgument[_T],
+    type_: _CovariantTypeEngineArgument[_T],
     literal_execute: bool = False,
 ) -> BindParameter[_T]: ...
 
@@ -164,7 +165,7 @@ def literal(
 
 def literal(
     value: Any,
-    type_: Optional[_TypeEngineArgument[Any]] = None,
+    type_: Optional[_CovariantTypeEngineArgument[Any]] = None,
     literal_execute: bool = False,
 ) -> BindParameter[Any]:
     r"""Return a literal clause, bound to a bind parameter.
@@ -200,7 +201,7 @@ def literal(
 
 
 def literal_column(
-    text: str, type_: Optional[_TypeEngineArgument[_T]] = None
+    text: str, type_: Optional[_CovariantTypeEngineArgument[_T]] = None
 ) -> ColumnClause[_T]:
     r"""Produce a :class:`.ColumnClause` object that has the
     :paramref:`_expression.column.is_literal` flag set to True.
@@ -1763,7 +1764,7 @@ class ColumnElement(
             co._is_clone_of = selectable._is_clone_of.columns.get(key)
         return key, co
 
-    def cast(self, type_: _TypeEngineArgument[_OPT]) -> Cast[_OPT]:
+    def cast(self, type_: _CovariantTypeEngineArgument[_OPT]) -> Cast[_OPT]:
         """Produce a type cast, i.e. ``CAST(<expression> AS <type>)``.
 
         This is a shortcut to the :func:`_expression.cast` function.
@@ -2061,7 +2062,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         self,
         key: Optional[str],
         value: Any = _NoArg.NO_ARG,
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
         unique: bool = False,
         required: Union[bool, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
         quote: Optional[bool] = None,
@@ -2145,8 +2146,8 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
             else:
                 self.type = type_api._resolve_value_to_type(check_value)
         elif isinstance(type_, type):
-            self.type = type_()
-        elif is_tuple_type(type_):
+            self.type = type_()  # type: ignore[assignment]
+        elif is_tuple_type(type_):  # type: ignore[arg-type]
             if value:
                 if expanding:
                     check_value = value[0]
@@ -2158,7 +2159,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
             else:
                 cast("BindParameter[TupleAny]", self).type = type_
         else:
-            self.type = type_
+            self.type = type_  # type: ignore[assignment]
 
     def _with_value(self, value, maintain_key=False, required=NO_ARG):
         """Return a copy of this :class:`.BindParameter` with the given value
@@ -3748,7 +3749,7 @@ class Cast(WrapsColumnExpression[_T]):
     def __init__(
         self,
         expression: _ColumnExpressionArgument[Any],
-        type_: _TypeEngineArgument[_T],
+        type_: _CovariantTypeEngineArgument[_T],
     ):
         self.type = type_api.to_instance(type_)
         self.clause = coercions.expect(
@@ -3811,7 +3812,7 @@ class TypeCoerce(WrapsColumnExpression[_T]):
     def __init__(
         self,
         expression: _ColumnExpressionArgument[Any],
-        type_: _TypeEngineArgument[_T],
+        type_: _CovariantTypeEngineArgument[_T],
     ):
         self.type = type_api.to_instance(type_)
         self.clause = coercions.expect(
@@ -5208,7 +5209,7 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         self,
         name: Optional[str],
         element: _ColumnExpressionArgument[_T],
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
     ):
         orig_element = element
         element = coercions.expect(
@@ -5449,7 +5450,7 @@ class ColumnClause(
     def __init__(
         self,
         text: str,
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
         is_literal: bool = False,
         _selectable: Optional[FromClause] = None,
     ):

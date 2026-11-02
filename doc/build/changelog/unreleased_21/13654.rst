@@ -1,0 +1,21 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 13654
+
+    Fixed typing issue where constructs that infer their Python type from a
+    SQL type argument could not be assigned to a wider declared type, such as
+    ``x: Column[int | None] = Column(Integer)`` or ``x: ColumnElement[int |
+    None] = cast(expr, Integer)``, which raised an incompatible argument error
+    under mypy and an incompatible assignment error under pyright.  The
+    construct still infers its type from the given SQL type, where
+    ``Column(Integer)`` is typed as ``Column[int]``; this type may now be
+    widened by the declared type, which is also where nullability is
+    indicated.  This applies to :class:`_schema.Column`, :func:`.cast`,
+    :func:`_sql.try_cast`, :func:`.type_coerce`, :func:`.bindparam`,
+    :func:`_sql.literal`, :func:`_sql.column`, :func:`_sql.literal_column`,
+    :func:`_sql.label`, :meth:`_expression.ColumnElement.cast`,
+    :class:`.Function`, :class:`_types.ARRAY` and
+    :class:`_postgresql.ARRAY`, including when these are passed to ORM
+    constructs such as :func:`_orm.column_property`, :func:`_orm.deferred`
+    and :func:`_orm.query_expression` that are assigned to a wider
+    ``Mapped[]`` annotation.

@@ -69,6 +69,7 @@ if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _CovariantTypeEngineArgument
     from ._typing import _StarOrOne
     from ._typing import _TypeEngineArgument
     from .base import _EntityNamespace
@@ -1009,7 +1010,7 @@ class _FunctionGenerator:
 
     @overload
     def __call__(
-        self, *c: Any, type_: _TypeEngineArgument[_T], **kwargs: Any
+        self, *c: Any, type_: _CovariantTypeEngineArgument[_T], **kwargs: Any
     ) -> Function[_T]: ...
 
     @overload
@@ -1446,7 +1447,7 @@ class Function(FunctionElement[_T]):
         self,
         name: str,
         *clauses: _ColumnExpressionOrLiteralArgument[Any],
-        type_: _TypeEngineArgument[_T] = ...,
+        type_: _CovariantTypeEngineArgument[_T] = ...,
         packagenames: Optional[Tuple[str, ...]] = ...,
         monotonic: bool = ...,
     ) -> None: ...
@@ -1455,7 +1456,7 @@ class Function(FunctionElement[_T]):
         self,
         name: str,
         *clauses: _ColumnExpressionOrLiteralArgument[Any],
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
         packagenames: Optional[Tuple[str, ...]] = None,
         monotonic: bool = False,
     ) -> None:

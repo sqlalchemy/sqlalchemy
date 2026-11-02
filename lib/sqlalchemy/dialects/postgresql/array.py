@@ -29,6 +29,7 @@ from ...sql.visitors import InternalTraversal
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
     from ...sql._typing import _ColumnExpressionArgument
+    from ...sql._typing import _CovariantTypeEngineArgument
     from ...sql._typing import _TypeEngineArgument
     from ...sql.elements import ColumnElement
     from ...sql.elements import Grouping
@@ -324,7 +325,7 @@ class ARRAY(sqltypes.ARRAY[_T]):
 
     def __init__(
         self,
-        item_type: _TypeEngineArgument[_T],
+        item_type: _CovariantTypeEngineArgument[_T],
         as_tuple: bool = False,
         dimensions: Optional[int] = None,
         zero_indexes: bool = False,
@@ -366,9 +367,7 @@ class ARRAY(sqltypes.ARRAY[_T]):
                 "Do not nest ARRAY types; ARRAY(basetype) "
                 "handles multi-dimensional arrays of basetype"
             )
-        if isinstance(item_type, type):
-            item_type = item_type()
-        self.item_type = item_type
+        self.item_type = sqltypes.to_instance(item_type)
         self.as_tuple = as_tuple
         self.dimensions = dimensions
         self.zero_indexes = zero_indexes

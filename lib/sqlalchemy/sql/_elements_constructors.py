@@ -57,6 +57,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _CovariantTypeEngineArgument
     from ._typing import _OnlyColumnArgument
     from ._typing import _TypeEngineArgument
     from .elements import _FrameIntTuple
@@ -553,7 +554,7 @@ def from_dml_column(column: _OnlyColumnArgument[_T]) -> DMLTargetCopy[_T]:
 def bindparam(
     key: Optional[str],
     value: Any = _NoArg.NO_ARG,
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
     unique: bool = False,
     required: Union[bool, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
     quote: Optional[bool] = None,
@@ -938,7 +939,7 @@ def case(
 
 def cast(
     expression: _ColumnExpressionOrLiteralArgument[Any],
-    type_: _TypeEngineArgument[_T],
+    type_: _CovariantTypeEngineArgument[_T],
 ) -> Cast[_T]:
     r"""Produce a ``CAST`` expression.
 
@@ -997,7 +998,7 @@ def cast(
 
 def try_cast(
     expression: _ColumnExpressionOrLiteralArgument[Any],
-    type_: _TypeEngineArgument[_T],
+    type_: _CovariantTypeEngineArgument[_T],
 ) -> TryCast[_T]:
     """Produce a ``TRY_CAST`` expression for backends which support it;
     this is a ``CAST`` which returns NULL for un-castable conversions.
@@ -1040,7 +1041,7 @@ def try_cast(
 
 def column(
     text: str,
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
     is_literal: bool = False,
     _selectable: Optional[FromClause] = None,
 ) -> ColumnClause[_T]:
@@ -1384,7 +1385,7 @@ def funcfilter(
 def label(
     name: str,
     element: _ColumnExpressionArgument[_T],
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
 ) -> Label[_T]:
     """Return a :class:`Label` object for the
     given :class:`_expression.ColumnElement`.
@@ -2036,7 +2037,7 @@ def tuple_(
 
 def type_coerce(
     expression: _ColumnExpressionOrLiteralArgument[Any],
-    type_: _TypeEngineArgument[_T],
+    type_: _CovariantTypeEngineArgument[_T],
 ) -> TypeCoerce[_T]:
     r"""Associate a SQL expression with a particular type, without rendering
     ``CAST``.

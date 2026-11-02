@@ -45,6 +45,7 @@ from ..util.typing import Self
 
 # these are back-assigned by sqltypes.
 if typing.TYPE_CHECKING:
+    from ._typing import _CovariantTypeEngineArgument
     from ._typing import _TypeEngineArgument
     from .elements import BindParameter
     from .elements import ColumnElement
@@ -134,6 +135,14 @@ class TypeEngine(Visitable, Generic[_T]):
     _is_table_value = False
     _is_array = False
     _is_type_decorator = False
+
+    if TYPE_CHECKING:
+
+        @property
+        def _sa_typing_python_type(self) -> _T:
+            """typing-only accessor for _T in a covariant position; see
+            _CovariantTypeEngineArgument"""
+            ...
 
     render_bind_cast = False
     """Render bind casts for :attr:`.BindTyping.RENDER_CASTS` mode.
@@ -667,7 +676,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     @staticmethod
     def _to_instance(cls_or_self: Union[Type[_TE], _TE]) -> _TE:
-        return to_instance(cls_or_self)
+        return to_instance(cls_or_self)  # type: ignore[no-any-return]
 
     def compare_values(self, x: Any, y: Any) -> bool:
         """Compare two values for equality."""
@@ -2443,9 +2452,13 @@ def to_instance(
 def to_instance(typeobj: None, *arg: Any, **kw: Any) -> TypeEngine[None]: ...
 
 
+@overload
 def to_instance(
-    typeobj: Union[Type[_TE], _TE, None], *arg: Any, **kw: Any
-) -> Union[_TE, TypeEngine[None]]:
+    typeobj: _CovariantTypeEngineArgument[_T], *arg: Any, **kw: Any
+) -> TypeEngine[_T]: ...
+
+
+def to_instance(typeobj: Any, *arg: Any, **kw: Any) -> Any:
     if typeobj is None:
         return NULLTYPE
 
