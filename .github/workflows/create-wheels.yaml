@@ -1,23 +1,65 @@
 name: Create wheel
 
+# started by the release scripts (exec_release.sh) once the GitHub release
+# exists and the locally built sdist has been attached to it:
+#
+#   gh workflow run create-wheels.yaml --ref rel_X_Y_Z \
+#       -f tag=rel_X_Y_Z -f sha256=<sha256 of the local sdist>
+#
+# the sdist is published first, then the wheels are built.  every file is
+# uploaded to PyPI via trusted publishing with an attestation, so that the
+# release has complete provenance.
 on:
-  # run when a release has been created
-  release:
-    types: [created]
-  # push:
-  #   branches:
-  #     - "go_wheel_*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "release tag, e.g. rel_2_1_8"
+        required: true
+      sha256:
+        description: "sha256 of the sdist attached to the GitHub release"
+        required: true
 
 permissions:
   id-token: write
   contents: write
 
-# env:
-#   # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
-#   TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
-
 jobs:
+  publish_sdist:
+    name: publish sdist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download sdist from the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          SHA256: ${{ inputs.sha256 }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^rel_[0-9]+_[0-9]+_[0-9]+([a-z]+[0-9]+)?$ ]]; then
+            echo "invalid tag: $TAG"
+            exit 1
+          fi
+          version=$(echo "${TAG#rel_}" | tr _ .)
+          sdist="sqlalchemy-${version}.tar.gz"
+          mkdir dist
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --pattern "$sdist" --dir dist
+          # make sure this is exactly the file that was reviewed locally
+          echo "${SHA256}  dist/${sdist}" | sha256sum --check -
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Publish sdist
+        run: |
+          python -m pip install pypi-attestations "twine>=6.2.0"
+          python -m pypi_attestations sign ./dist/*
+          python -m twine upload --skip-existing --attestations ./dist/*
+
   build_wheels:
+    needs: publish_sdist
     name: ${{ matrix.wheel_mode }} wheels ${{ matrix.python }} on ${{ matrix.os }} ${{ matrix.os == 'ubuntu-22.04' && matrix.linux_archs || '' }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -74,6 +116,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag }}
           persist-credentials: false
 
       # See details at https://cibuildwheel.readthedocs.io/en/stable/faq/#emulation
@@ -107,34 +150,68 @@ jobs:
           pip list
           DISABLE_SQLALCHEMY_CEXT=y python -m build --wheel --outdir ./wheelhouse
 
-      # - uses: actions/upload-artifact@v3
-      #   with:
-      #     path: ./wheelhouse/*.whl
-
       - name: Upload wheels to release
         # upload the generated wheels to the github release
         continue-on-error: true
         uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: ${{ inputs.tag }}
           files: './wheelhouse/*.whl'
 
-      - name: Generate attestations
-        id: attestations
-        continue-on-error: true
+      # pypi-attestations can't be installed on windows-11-arm (no
+      # cryptography wheels), so those wheels are handed to the
+      # publish_windows_arm job below, which signs them on linux.  every
+      # other job signs and uploads its own wheels, so that a failure in one
+      # job doesn't hold back the others.  a wheel is never uploaded without
+      # an attestation, since a file can't be re-uploaded later to add one;
+      # if signing fails, the job fails and can be re-run.
+      - name: Save windows-11-arm wheels for signing on linux
+        if: ${{ matrix.os == 'windows-11-arm' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-arm-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+          overwrite: true
+
+      - name: Sign and publish wheels
+        if: ${{ matrix.os != 'windows-11-arm' }}
         shell: bash
         env:
           PYTHONUTF8: "1"
         run: |
-          python -m pip install pypi-attestations
+          python -m pip install pypi-attestations "twine>=6.2.0"
           python -m pypi_attestations sign ./wheelhouse/*
+          python -m twine upload --skip-existing --attestations ./wheelhouse/*
 
-      - name: Publish wheel
-        shell: bash
+  publish_windows_arm:
+    name: sign and publish windows-11-arm wheels
+    needs: build_wheels
+    # publish whichever windows-11-arm wheels were built, even if some of the
+    # other wheel jobs failed
+    if: ${{ !cancelled() && needs.build_wheels.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download windows-11-arm wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-windows-arm-*
+          merge-multiple: true
+          path: ./wheelhouse
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Sign and publish wheels
         run: |
-          python -m pip install "twine>=6.2.0"
-          if [[ "${{ steps.attestations.outcome }}" == "success" ]]; then
-            python -m twine upload --skip-existing --attestations ./wheelhouse/*
-          else
-            python -m twine upload --skip-existing ./wheelhouse/*
+          shopt -s nullglob
+          wheels=(./wheelhouse/*.whl)
+          if (( ${#wheels[@]} == 0 )); then
+            echo "no windows-11-arm wheels were built"
+            exit 1
           fi
+          python -m pip install pypi-attestations "twine>=6.2.0"
+          python -m pypi_attestations sign "${wheels[@]}"
+          python -m twine upload --skip-existing --attestations ./wheelhouse/*
