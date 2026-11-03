@@ -10,7 +10,234 @@
 
 .. changelog::
     :version: 2.0.56
-    :include_notes_from: unreleased_20
+    :released: November 3, 2026
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 13466
+        :versions: 2.1.6
+
+        Fixed issue where backslashes in the values of a :class:`.mysql.ENUM` or
+        :class:`.mysql.SET` type were not escaped when rendered in DDL, leading to
+        incorrect values or a malformed statement under MySQL's default
+        ``sql_mode``.  Backslashes are now escaped in the same way as for other
+        string literals, unless ``NO_BACKSLASH_ESCAPES`` is in effect.  Pull
+        request courtesy dxbjavid.
+
+    .. change::
+        :tags: bug, orm extensions
+        :tickets: 13680
+        :versions: 2.1.6
+
+        Fixed an issue in the :ref:`instrumentation_toplevel` extension where
+        unrelated classes inheriting from ``typing.Generic`` could incorrectly
+        raise a ``TypeError`` when using different instrumentation implementations.
+        Pull request courtesy TomasCaruso10.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13686, 13687
+        :versions: 2.1.6
+
+        Fixed issues in cache key generation involving the DML constructs
+        :class:`.Insert`, :class:`.Update` and :class:`.Delete`.  The
+        :paramref:`.Insert.from_select.include_defaults`,
+        :meth:`.UpdateBase.return_defaults` and
+        :paramref:`.UpdateBase.return_defaults.supplemental_cols`
+        parameters/attributes are now considered as part of the cache key.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 13688
+        :versions: 2.1.6
+
+        Fixed issue where calling :meth:`_asyncio.AsyncResult.unique` or
+        :meth:`_asyncio.AsyncResult.columns` on an :class:`_asyncio.AsyncResult`
+        would have no effect on a subsequent call to
+        :meth:`_asyncio.AsyncResult.scalars` or
+        :meth:`_asyncio.AsyncResult.mappings`, as the resulting
+        :class:`_asyncio.AsyncScalarResult` or
+        :class:`_asyncio.AsyncMappingResult` was built from the underlying
+        synchronous result, which did not include those modifications.  Unique
+        filtering and column selection are now carried over in the same way as for
+        :meth:`_engine.Result.scalars` and :meth:`_engine.Result.mappings`.  Among
+        other things, this allows :meth:`_asyncio.AsyncSession.stream` to be used
+        with a joined eager load against a collection, followed by
+        ``.unique().scalars()``, which would previously raise an error indicating
+        that :meth:`_asyncio.AsyncResult.unique` must be invoked.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 13689
+        :versions: 2.1.6
+
+        Fixed issue where the :meth:`_asyncio.AsyncResult.freeze` method would
+        fail to fetch rows from the result, producing a
+        :class:`_engine.FrozenResult` that would raise ``TypeError`` when invoked
+        for a Core result, or raising ``AttributeError`` immediately for an ORM
+        result that returns a single entity per row.  The method now fully
+        fetches all rows from the async cursor, honoring
+        :meth:`_asyncio.AsyncResult.unique` and
+        :meth:`_asyncio.AsyncResult.columns` in the same way as the synchronous
+        :meth:`_engine.Result.freeze` method.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13695
+        :versions: 2.1.6
+
+        Fixed issue where the individual bound parameters generated for an
+        "expanding" parameter, such as that of an IN expression, at statement
+        execution time could take on the same name as another bound parameter in
+        the same statement, causing the value of the other parameter to be
+        silently replaced with that of an element of the IN list.  Names are now
+        disambiguated from one another in this scenario.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 13699
+        :versions: 2.1.6
+
+        Fixed regression caused by :ticket:`12710` where a cancellation received
+        by :meth:`_asyncio.AsyncConnection.close` was not handled properly,
+        leaving the :class:`_asyncio.AsyncConnection` in an inconsistent state
+        that could interfere with connections subsequently checked out from the
+        pool.  The connection is now fully closed in this case.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13711
+        :versions: 2.1.6
+
+        Fixed issue where a :class:`.Session` flush that replaced an expired
+        object in the identity map with a newly flushed object of the same
+        primary key would emit a SELECT to refresh the expired object, solely in
+        order to determine whether to emit an "Identity map already had an
+        identity" warning.  This could occur when a row loaded within a
+        transaction is rolled back and its primary key value is subsequently
+        reused, and could lead to an ``AttributeError`` if the expired object
+        were garbage collected during that load.  The check now emits no SQL, and
+        an expired object that is replaced in this way no longer causes the
+        warning to be emitted.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 13724
+        :versions: 2.1.7
+
+        Fixed issue where the :paramref:`_sa.create_engine.hide_parameters`
+        parameter was not honored when logging bound parameters for "side"
+        statements that are executed separately from the main statement, such as
+        pre-executed SQL expression column defaults, so that parameter values were
+        written to the log in plain form.  These parameters are now hidden in the
+        same way as those of the main statement.
+
+    .. change::
+        :tags: bug, sql, postgresql, oracle
+        :tickets: 13727
+        :versions: 2.1.7
+
+        Reworked the validation applied to the keyword phrases accepted by the
+        :paramref:`_schema.ForeignKeyConstraint.ondelete`,
+        :paramref:`_schema.ForeignKeyConstraint.onupdate`,
+        :paramref:`_schema.ForeignKeyConstraint.initially` and
+        :paramref:`_schema.ForeignKeyConstraint.match` parameters so that it is
+        applied consistently on all backends.  Previously, some of these phrases
+        were checked against a fixed list of keywords, which rejected
+        backend-specific syntaxes, while others were not validated at all,
+        including ``MATCH`` on all backends, ``ON DELETE`` on the Oracle dialect,
+        and the column list accepted by PostgreSQL for ``SET NULL`` / ``SET
+        DEFAULT``, allowing arbitrary text to be rendered into DDL.  These phrases
+        are now accepted as any sequence of SQL keywords, leaving it to the
+        database to determine if the keywords are valid, and a
+        :class:`.CompileError` is raised for a phrase that contains other
+        characters such as punctuation or quotes.  On PostgreSQL, the column list
+        for ``SET NULL`` / ``SET DEFAULT`` is accepted as a comma-separated list
+        of plain or double-quoted column names.  Pull request courtesy
+        basavaraj-sm05.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 13743
+        :versions: 2.1.7
+
+        Fixed issue where event listeners established on the
+        :class:`_engine.Connection` class itself, such as
+        :meth:`_events.ConnectionEvents.before_execute`, would not be invoked
+        for connections procured from an :class:`_engine.Engine` that did not
+        itself have any event listeners associated with it.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 13749
+        :versions: 2.1.7
+
+        Fixed issue where an asyncio cancellation delivered to a task waiting for
+        a connection from :class:`.AsyncAdaptedQueuePool` would be lost on Python
+        3.11, if a connection were returned to the pool in the same event loop
+        iteration in which the task was cancelled.  The task would receive the
+        connection and continue running as though it had not been cancelled.
+        This was due to a known issue in ``asyncio.wait_for()`` which is fixed in
+        Python 3.12; on Python 3.11, the pool now uses ``asyncio.timeout()`` in
+        place of ``asyncio.wait_for()`` when waiting for a connection.  The issue
+        remains on Python 3.10 and earlier, where ``asyncio.timeout()`` is not
+        available.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13751
+        :versions: 2.1.7
+
+        An informative :class:`.InvalidRequestError` is now raised when more than
+        one :meth:`.PropComparator.of_type` loader option is applied along the
+        same relationship using targets of differing classes, such as two
+        :func:`_orm.aliased` constructs against different subclasses, which
+        previously failed with a bare ``AssertionError`` during compilation.
+        These options can't be combined since each target brings its own aliased
+        copy of the base table; to load multiple subclasses along a single
+        relationship, a single :func:`_orm.with_polymorphic` object that includes
+        all of the target classes should be used.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13753
+        :versions: 2.1.7
+
+        Fixed issue where criteria applied to a relationship using
+        :meth:`.PropComparator.and_` within :func:`_orm.selectinload` or
+        :func:`_orm.lazyload` would not be parenthesized against the
+        relationship's join condition when the enclosing statement was retrieved
+        from the compiled cache, so that criteria consisting of an
+        :func:`_sql.or_` would render as ``a = ? AND b = ? OR c = ?``.  For
+        :func:`_orm.lazyload`, this could load rows belonging to other parents into
+        the collection.  The issue typically appeared as a race condition in
+        multithreaded applications, but could also occur within a single thread
+        depending on the order in which statements were executed.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 13754
+        :versions: 2.1.7
+
+        Reflection of SQL Server local temporary tables, such as ``#tmp``, now
+        supports tables of the same name existing in multiple sessions at once,
+        each session reflecting its own table.  Previously, the table was located
+        without the use of the ``object_id()`` function, which is what limits the
+        lookup to the current session, so that same-named tables in other sessions
+        would interfere with reflection.  The change also eliminates blocking and
+        deadlocks which could occur when reflecting a temporary table while other
+        sessions were creating temporary tables of a similar name within a
+        transaction.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 13757
+        :versions: 2.1.7
+
+        Fixed issue where :meth:`.URL.difference_update_query` would not remove
+        any parameters when passed a generator or other single-use iterable, as
+        the iterable was consumed twice internally.  Pull request courtesy
+        Huang-404-Q.
 
 .. changelog::
     :version: 2.0.55

@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 13757
-    :versions: 2.1.7
-
-    Fixed issue where :meth:`.URL.difference_update_query` would not remove
-    any parameters when passed a generator or other single-use iterable, as
-    the iterable was consumed twice internally.  Pull request courtesy
-    Huang-404-Q.
