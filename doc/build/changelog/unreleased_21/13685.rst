@@ -1,0 +1,22 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 13685
+
+    Added :attr:`_orm.SessionTransaction.connections` and
+    :meth:`_orm.SessionTransaction.bound_connection`, which return the
+    connections a :class:`_orm.SessionTransaction` has already acquired,
+    without acquiring a new one.  This allows, for example, checking whether
+    any connection in the transaction has been invalidated before emitting
+    further SQL.  A SAVEPOINT transaction returned by
+    :meth:`_orm.Session.begin_nested` reports only the connections used
+    within that SAVEPOINT; the root transaction returned by
+    :meth:`_orm.Session.get_transaction` reports all connections.  The same
+    accessors are available on :class:`_asyncio.AsyncSessionTransaction`,
+    returning :class:`_asyncio.AsyncConnection` objects.  Pull request
+    courtesy Artur Shiriev.
+
+    .. seealso::
+
+        :attr:`_orm.SessionTransaction.connections`
+
+        :meth:`_orm.SessionTransaction.bound_connection`
