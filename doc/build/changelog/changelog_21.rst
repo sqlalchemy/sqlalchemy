@@ -10,7 +10,172 @@
 
 .. changelog::
     :version: 2.1.7
-    :include_notes_from: unreleased_21
+    :released: November 3, 2026
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 13654
+
+        Fixed typing issue where constructs that infer their Python type from a
+        SQL type argument could not be assigned to a wider declared type, such as
+        ``x: Column[int | None] = Column(Integer)`` or ``x: ColumnElement[int |
+        None] = cast(expr, Integer)``, which raised an incompatible argument error
+        under mypy and an incompatible assignment error under pyright.  The
+        construct still infers its type from the given SQL type, where
+        ``Column(Integer)`` is typed as ``Column[int]``; this type may now be
+        widened by the declared type, which is also where nullability is
+        indicated.  This applies to :class:`_schema.Column`, :func:`.cast`,
+        :func:`_sql.try_cast`, :func:`.type_coerce`, :func:`.bindparam`,
+        :func:`_sql.literal`, :func:`_sql.column`, :func:`_sql.literal_column`,
+        :func:`_sql.label`, :meth:`_expression.ColumnElement.cast`,
+        :class:`.Function`, :class:`_types.ARRAY` and
+        :class:`_postgresql.ARRAY`, including when these are passed to ORM
+        constructs such as :func:`_orm.column_property`, :func:`_orm.deferred`
+        and :func:`_orm.query_expression` that are assigned to a wider
+        ``Mapped[]`` annotation.
+
+        This includes assignment of a :class:`_schema.Column` to a wider
+        :class:`_schema.Named` annotation within a :class:`_schema.TypedColumns`
+        class, e.g. ``x: Named[int | None] = Column(SmallInteger)``, for which
+        :class:`_schema.Named` is now covariant.
+
+    .. change::
+        :tags: feature, orm
+        :tickets: 13685
+
+        Added :attr:`_orm.SessionTransaction.connections` and
+        :meth:`_orm.SessionTransaction.bound_connection`, which return the
+        connections a :class:`_orm.SessionTransaction` has already acquired,
+        without acquiring a new one.  This allows, for example, checking whether
+        any connection in the transaction has been invalidated before emitting
+        further SQL.  A SAVEPOINT transaction returned by
+        :meth:`_orm.Session.begin_nested` reports only the connections used
+        within that SAVEPOINT; the root transaction returned by
+        :meth:`_orm.Session.get_transaction` reports all connections.  The same
+        accessors are available on :class:`_asyncio.AsyncSessionTransaction`,
+        returning :class:`_asyncio.AsyncConnection` objects.  Pull request
+        courtesy Artur Shiriev.
+
+        .. seealso::
+
+            :attr:`_orm.SessionTransaction.connections`
+
+            :meth:`_orm.SessionTransaction.bound_connection`
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13714
+
+        Fixed regression caused by :ticket:`13070` where using two or more
+        :func:`.orm.with_loader_criteria` options for different entities, where
+        the criteria of each referred to the other entity, such as by using
+        :meth:`.RelationshipProperty.Comparator.any` and
+        :meth:`.RelationshipProperty.Comparator.has`, would fail with a
+        ``RecursionError`` when compiling.  A loader criteria option is now
+        no longer applied to a SELECT that's nested at any level within its own
+        criteria; previously this was only checked for the immediate SELECT
+        within the criteria.  This also repairs the same ``RecursionError`` for
+        criteria which refer to each other using explicit subqueries, an issue
+        also present in the 2.0 series.  No backport is planned at the moment as
+        this is an unusual use case.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13715
+
+        Fixed issue where :meth:`_orm.Session.merge_all` did not disable autoflush
+        while merging, as :meth:`_orm.Session.merge` does, so that a lazy load
+        emitted during the merge cascade could autoflush a partially merged
+        object, leading to integrity errors or other failures.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13718
+
+        Fixed regression caused by :ticket:`12168` where a collection-based
+        :func:`_orm.relationship` using the
+        :ref:`orm_declarative_native_dataclasses` feature with a custom
+        :paramref:`_orm.relationship.collection_class` such as
+        :func:`_orm.attribute_keyed_dict` would raise an error if
+        :paramref:`_orm.relationship.default_factory` were set to the plain
+        ``dict``, ``list`` or ``set`` type that the collection class is based on,
+        such as ``default_factory=dict`` for :func:`_orm.attribute_keyed_dict`.
+        The plain collection type is now accepted as the
+        :paramref:`_orm.relationship.default_factory` in addition to the exact
+        collection class.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 13719
+
+        Fixed regression caused by :ticket:`12736` where the
+        :meth:`_sql.ColumnOperators.is_` and :meth:`_sql.ColumnOperators.is_not`
+        operators were assigned to the :attr:`.OperatorClass.COMPARISON` operator
+        class, which is not present on all datatypes.  As these operators are valid
+        for every SQL datatype, they are now part of :attr:`.OperatorClass.BASE`,
+        so that expressions such as ``hstore_column.is_not(None)`` no longer emit a
+        deprecation warning.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13726
+
+        Fixed regression caused by :ticket:`5987` where the :func:`.selectinload`
+        loader strategy, when loading a many-to-many relationship against an
+        aliased target, such as when using :meth:`.PropComparator.of_type` with a
+        single-inheritance subclass or an :func:`.aliased` construct, would render
+        the join between the association table and the aliased target using the
+        unaliased table name, producing invalid SQL.
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 13738
+
+        Fixed regression where a checked-out pool connection that was garbage
+        collected as part of a reference cycle would not be returned to the pool
+        on Python 3.15, permanently consuming a slot in the pool.  This occurred
+        because Python 3.15 changed the garbage collector to clear weak references
+        that have no callback only after weak reference callbacks have run, which
+        interfered with the pool's ``weakref.finalize()`` based cleanup introduced
+        in 2.1.0rc2.  An ORM :class:`_orm.Session` or :class:`_engine.Connection`
+        that was dropped without being closed while in a transaction was affected.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13744, 13745
+
+        Fixed issue where a SAVEPOINT started by :meth:`_orm.Session.begin_nested`
+        would apply execution options to the connection a second time, causing
+        options such as ``isolation_level`` to raise.  Additionally, execution
+        options passed to :meth:`_orm.Session.connection` within a SAVEPOINT are
+        now ignored with a warning if the connection is already present, as
+        documented, where previously they were applied.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13748
+
+        Fixed regression caused by :ticket:`12168` where a
+        :func:`_orm.mapped_column` using
+        :paramref:`_orm.mapped_column.use_existing_column` along with
+        :paramref:`_orm.mapped_column.default` in an
+        :ref:`orm_declarative_native_dataclasses` mapping would not persist the
+        given default value.  As the existing :class:`_schema.Column` from the
+        superclass table is mapped in this case, the default value would not take
+        effect for INSERT, and the default from the superclass column, if any,
+        would be used instead.  The unit of work now delivers the dataclass
+        default of an attribute that was never set to the INSERT statement in
+        those cases where the mapped :class:`_schema.Column` does not supply that
+        same default, while the attribute continues to remain un-set until the
+        object is flushed, so that the behaviors established by :ticket:`12168`
+        are maintained.
+
+        This includes a behavioral change for an attribute that is set to ``None``
+        explicitly, which the ORM treats as the default case for a column that has
+        a default, as described at :ref:`session_forcing_null`.  Such an attribute
+        now receives the dataclass default of the subclass, consistent with an
+        attribute that was never set, where previously the default of the
+        superclass column would take effect.
 
 .. changelog::
     :version: 2.1.6
