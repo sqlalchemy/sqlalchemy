@@ -10,7 +10,20 @@
 
 .. changelog::
     :version: 2.0.57
-    :include_notes_from: unreleased_20
+    :released: November 3, 2026
+
+    .. change::
+        :tags: change, general
+        :tickets: 13759
+        :versions: 2.1.8
+
+        All files published to PyPI for a release, including the source
+        distribution as well as all wheels, are now uploaded using PyPI's trusted
+        publishing mechanism from SQLAlchemy's GitHub Actions workflow, and include
+        a :pep:`740` attestation, so that every file in a release carries
+        provenance information.  Previously, the source distribution and some
+        wheels were uploaded without an attestation, which caused PyPI to display
+        provenance warnings for recent releases.
 
 .. changelog::
     :version: 2.0.56
