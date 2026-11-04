@@ -10,7 +10,7 @@
 
 .. changelog::
     :version: 2.1.8
-    :include_notes_from: unreleased_21
+    :released: November 3, 2026
 
 .. changelog::
     :version: 2.1.7
