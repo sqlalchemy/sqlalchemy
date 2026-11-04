@@ -172,7 +172,10 @@ jobs:
           DISABLE_SQLALCHEMY_CEXT=y python -m build --wheel --outdir ./wheelhouse
 
       - name: Upload wheels to release
-        # upload the generated wheels to the github release
+        # upload the generated wheels to the github release.  if the wheels
+        # are already there from an earlier attempt of this job, the upload
+        # fails; that's fine, so continue on to publishing to pypi
+        continue-on-error: true
         uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
