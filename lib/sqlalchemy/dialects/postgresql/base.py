@@ -1959,6 +1959,7 @@ from .types import REGCLASS as REGCLASS
 from .types import REGCONFIG as REGCONFIG  # noqa: F401
 from .types import TIME as TIME
 from .types import TIMESTAMP as TIMESTAMP
+from .types import TSQUERY as TSQUERY
 from .types import TSVECTOR as TSVECTOR
 from ... import exc
 from ... import schema
@@ -2168,6 +2169,8 @@ ischema_names = {
     "boolean": BOOLEAN,
     "interval": INTERVAL,
     "tsvector": TSVECTOR,
+    "tsquery": TSQUERY,
+    "regconfig": REGCONFIG,
 }
 
 
