@@ -13,6 +13,8 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.ext.automap import name_for_collection_relationship_snake_case
+from sqlalchemy.ext.automap import name_for_scalar_relationship_snake_case
 from sqlalchemy.ext.automap import AutomapBase
 from sqlalchemy.ext.automap import generate_relationship
 from sqlalchemy.orm import configure_mappers
@@ -263,6 +265,57 @@ class AutomapTest(fixtures.MappedTest):
         a1 = Address()
         u1.coll_cls_addresses.append(a1)
         assert a1.scalar_cls_users is u1
+
+    def test_naming_schemes_snake_case(self):
+        Base = automap_base(metadata=self.tables_test_metadata)
+
+        def classname_for_table(base, tablename, table):
+            return {"users": "UserData", "addresses": "AddressRow"}.get(
+                tablename, tablename
+            )
+
+        Base.prepare(
+            classname_for_table=classname_for_table,
+            name_for_scalar_relationship=(
+                name_for_scalar_relationship_snake_case
+            ),
+            name_for_collection_relationship=(
+                name_for_collection_relationship_snake_case
+            ),
+        )
+
+        UserData = Base.classes.UserData
+        AddressRow = Base.classes.AddressRow
+
+        u1 = UserData()
+        a1 = AddressRow(email_address="e1")
+        u1.address_row_collection.append(a1)
+        assert a1.user_data is u1
+
+    def test_snake_case_naming_functions(self):
+        ProcessStatus = type("ProcessStatus", (), {})
+        HTTPResponse = type("HTTPResponse", (), {})
+
+        constraint = Mock()
+
+        assert (
+            name_for_scalar_relationship_snake_case(
+                None, None, ProcessStatus, constraint
+            )
+            == "process_status"
+        )
+        assert (
+            name_for_collection_relationship_snake_case(
+                None, None, ProcessStatus, constraint
+            )
+            == "process_status_collection"
+        )
+        assert (
+            name_for_scalar_relationship_snake_case(
+                None, None, HTTPResponse, constraint
+            )
+            == "http_response"
+        )
 
     def test_relationship_m2m(self):
         Base = automap_base(metadata=self.tables_test_metadata)

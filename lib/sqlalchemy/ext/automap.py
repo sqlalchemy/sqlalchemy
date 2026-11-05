@@ -714,6 +714,7 @@ be applied as::
 from __future__ import annotations
 
 import dataclasses
+import re
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -880,6 +881,85 @@ def name_for_collection_relationship(
 
     """
     return referred_cls.__name__.lower() + "_collection"
+
+
+def _snake_case(name: str) -> str:
+    """Convert a PascalCase or camelCase class name to snake_case."""
+    return re.sub(
+        r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name
+    ).lower()
+
+
+def name_for_scalar_relationship_snake_case(
+    base: Type[Any],
+    local_cls: Type[Any],
+    referred_cls: Type[Any],
+    constraint: ForeignKeyConstraint,
+) -> str:
+    """Return the attribute name that should be used to refer from one
+    class to another, for a scalar object reference, converting the
+    referred class name from PascalCase to snake_case.
+
+    This is an alternate to the default
+    :func:`.name_for_scalar_relationship`, which uses the plain lowercased
+    class name; select it using the
+    :paramref:`.AutomapBase.prepare.name_for_scalar_relationship`
+    parameter.
+
+    The implementation is::
+
+        return _snake_case(referred_cls.__name__)
+
+    e.g. a class named ``ProcessStatus`` produces the relationship name
+    ``process_status``.
+
+    :param base: the :class:`.AutomapBase` class doing the prepare.
+
+    :param local_cls: the class to be mapped on the local side.
+
+    :param referred_cls: the class to be mapped on the referring side.
+
+    :param constraint: the :class:`_schema.ForeignKeyConstraint` that is being
+     inspected to produce this relationship.
+
+    """
+    return _snake_case(referred_cls.__name__)
+
+
+def name_for_collection_relationship_snake_case(
+    base: Type[Any],
+    local_cls: Type[Any],
+    referred_cls: Type[Any],
+    constraint: ForeignKeyConstraint,
+) -> str:
+    """Return the attribute name that should be used to refer from one
+    class to another, for a collection reference, converting the
+    referred class name from PascalCase to snake_case.
+
+    This is an alternate to the default
+    :func:`.name_for_collection_relationship`, which uses the plain
+    lowercased class name plus ``"_collection"``; select it using the
+    :paramref:`.AutomapBase.prepare.name_for_collection_relationship`
+    parameter.
+
+    The implementation is::
+
+        return _snake_case(referred_cls.__name__) + "_collection"
+
+    e.g. a class named ``ProcessStatus`` produces the relationship name
+    ``process_status_collection``.
+
+    :param base: the :class:`.AutomapBase` class doing the prepare.
+
+    :param local_cls: the class to be mapped on the local side.
+
+    :param referred_cls: the class to be mapped on the referring side.
+
+    :param constraint: the :class:`_schema.ForeignKeyConstraint` that is being
+     inspected to produce this relationship.
+
+    """
+    return _snake_case(referred_cls.__name__) + "_collection"
 
 
 class GenerateRelationshipType(Protocol):
