@@ -30,6 +30,26 @@ This dialect should normally be used only with the
 
 .. versionadded:: 1.4
 
+.. _asyncpg_statement_timeout:
+
+Per-Statement Timeout
+---------------------
+
+The ``asyncpg_timeout`` execution option may be used to pass a timeout, in
+seconds, to asyncpg for an individual statement execution::
+
+    from sqlalchemy import text
+
+    async with engine.connect() as connection:
+        result = await connection.execute(
+            text("select pg_sleep(10)"),
+            execution_options={"asyncpg_timeout": 1},
+        )
+
+The option also applies to executemany operations and server-side cursors.
+
+.. versionadded:: 2.0.54
+
 .. note::
 
     By default asyncpg does not decode the ``json`` and ``jsonb`` types and
@@ -481,6 +501,10 @@ class PGExecutionContext_asyncpg(PGExecutionContext):
             self.dialect._invalidate_schema_cache()
 
     def pre_exec(self):
+        self.cursor._asyncpg_timeout = self.execution_options.get(
+            "asyncpg_timeout"
+        )
+
         if self.isddl:
             self.dialect._invalidate_schema_cache()
 
@@ -511,7 +535,11 @@ class _AsyncpgTransaction(Protocol):
 
 class _AsyncpgConnection(Protocol):
     async def executemany(
-        self, operation: Any, seq_of_parameters: Sequence[Tuple[Any, ...]]
+        self,
+        operation: Any,
+        seq_of_parameters: Sequence[Tuple[Any, ...]],
+        *,
+        timeout: Optional[float] = None,
     ) -> Any: ...
 
     async def reload_schema_state(self) -> None: ...
@@ -538,7 +566,9 @@ class _AsyncpgConnection(Protocol):
 
 
 class _AsyncpgCursor(Protocol):
-    def fetch(self, size: int) -> Any: ...
+    async def fetch(
+        self, size: int, *, timeout: Optional[float] = None
+    ) -> Any: ...
 
 
 class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
@@ -547,6 +577,7 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
         "_arraysize",
         "_rowcount",
         "_invalidate_schema_cache_asof",
+        "_asyncpg_timeout",
     )
 
     _adapt_connection: AsyncAdapt_asyncpg_connection
@@ -563,6 +594,7 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
         self._arraysize = 1
         self._rowcount = -1
         self._invalidate_schema_cache_asof = 0
+        self._asyncpg_timeout = None
 
     def _handle_exception(self, error):
         self._adapt_connection._handle_exception(error)
@@ -599,10 +631,16 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
                     self._description = None
 
                 if self.server_side:
-                    self._cursor = await prepared_stmt.cursor(*parameters)
+                    self._cursor = await prepared_stmt.cursor(
+                        *parameters, timeout=self._asyncpg_timeout
+                    )
                     self._rowcount = -1
                 else:
-                    self._rows = deque(await prepared_stmt.fetch(*parameters))
+                    self._rows = deque(
+                        await prepared_stmt.fetch(
+                            *parameters, timeout=self._asyncpg_timeout
+                        )
+                    )
                     status = prepared_stmt.get_statusmsg()
 
                     reg = re.match(
@@ -647,7 +685,9 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
 
             try:
                 return await self._connection.executemany(
-                    operation, seq_of_parameters
+                    operation,
+                    seq_of_parameters,
+                    timeout=self._asyncpg_timeout,
                 )
             except Exception as error:
                 self._handle_exception(error)
@@ -677,7 +717,9 @@ class AsyncAdapt_asyncpg_ss_cursor(
 
     def _buffer_rows(self):
         assert self._cursor is not None
-        new_rows = await_(self._cursor.fetch(50))
+        new_rows = await_(
+            self._cursor.fetch(50, timeout=self._asyncpg_timeout)
+        )
         self._rowbuffer.extend(new_rows)
 
     def __aiter__(self):
@@ -710,7 +752,13 @@ class AsyncAdapt_asyncpg_ss_cursor(
         rb = self._rowbuffer
         lb = len(rb)
         if size > lb:
-            rb.extend(await_(self._cursor.fetch(size - lb)))
+            rb.extend(
+                await_(
+                    self._cursor.fetch(
+                        size - lb, timeout=self._asyncpg_timeout
+                    )
+                )
+            )
 
         return [rb.popleft() for _ in range(min(size, len(rb)))]
 
@@ -728,7 +776,9 @@ class AsyncAdapt_asyncpg_ss_cursor(
         # TODO: looks like we have to hand-roll some kind of batching here.
         # hardcoding for the moment but this should be improved.
         while True:
-            batch = await self._cursor.fetch(1000)
+            batch = await self._cursor.fetch(
+                1000, timeout=self._asyncpg_timeout
+            )
             if batch:
                 rows.extend(batch)
                 continue
