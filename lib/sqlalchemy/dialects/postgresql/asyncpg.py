@@ -1056,7 +1056,7 @@ class AsyncAdapt_asyncpg_dbapi(AsyncAdapt_dbapi_module):
 
         return {
             asyncpg.exceptions.IntegrityConstraintViolationError: self.IntegrityError,  # noqa: E501
-            asyncpg.exceptions.PostgresError: self.Error,
+            asyncpg.exceptions.PostgresError: self.DatabaseError,
             asyncpg.exceptions.SyntaxOrAccessError: self.ProgrammingError,
             asyncpg.exceptions.InterfaceError: self.InterfaceError,
             asyncpg.exceptions.InvalidCachedStatementError: self.InvalidCachedStatementError,  # noqa: E501
@@ -1068,6 +1068,39 @@ class AsyncAdapt_asyncpg_dbapi(AsyncAdapt_dbapi_module):
             asyncpg.exceptions.CheckViolationError: self.CheckViolationError,
             asyncpg.exceptions.ExclusionViolationError: self.ExclusionViolationError,  # noqa: E501
             asyncpg.exceptions.InternalClientError: self.InternalClientError,
+            asyncpg.exceptions.PostgresConnectionError: self.OperationalError,
+            asyncpg.exceptions.FeatureNotSupportedError: self.NotSupportedError,  # noqa: E501
+            asyncpg.exceptions.CaseNotFoundError: self.ProgrammingError,
+            asyncpg.exceptions.CardinalityViolationError: self.ProgrammingError,  # noqa: E501
+            asyncpg.exceptions.DataError: self.DataError,
+            asyncpg.exceptions.InvalidCursorStateError: self.InternalError,
+            asyncpg.exceptions.InvalidTransactionStateError: self.InternalError,  # noqa: E501
+            asyncpg.exceptions.InvalidSQLStatementNameError: self.ProgrammingError,  # noqa: E501
+            asyncpg.exceptions.TriggeredDataChangeViolationError: self.OperationalError,  # noqa: E501
+            asyncpg.exceptions.InvalidAuthorizationSpecificationError: self.OperationalError,  # noqa: E501
+            asyncpg.exceptions.DependentPrivilegeDescriptorsStillExistError: self.InternalError,  # noqa: E501
+            asyncpg.exceptions.InvalidTransactionTerminationError: self.InternalError,  # noqa: E501
+            asyncpg.exceptions.SQLRoutineError: self.OperationalError,
+            asyncpg.exceptions.InvalidCursorNameError: self.ProgrammingError,
+            asyncpg.exceptions.ExternalRoutineError: self.OperationalError,
+            asyncpg.exceptions.ExternalRoutineInvocationError: self.OperationalError,  # noqa: E501
+            asyncpg.exceptions.SavepointError: self.OperationalError,
+            asyncpg.exceptions.InvalidCatalogNameError: self.ProgrammingError,
+            asyncpg.exceptions.InvalidSchemaNameError: self.ProgrammingError,
+            asyncpg.exceptions.TransactionRollbackError: self.OperationalError,
+            asyncpg.exceptions.WithCheckOptionViolationError: self.ProgrammingError,  # noqa: E501
+            asyncpg.exceptions.InsufficientResourcesError: self.OperationalError,  # noqa: E501
+            asyncpg.exceptions.ProgramLimitExceededError: self.OperationalError,  # noqa: E501
+            asyncpg.exceptions.ObjectNotInPrerequisiteStateError: self.OperationalError,  # noqa: E501
+            asyncpg.exceptions.OperatorInterventionError: self.OperationalError,  # noqa: E501
+            asyncpg.exceptions.PostgresSystemError: self.OperationalError,
+            asyncpg.exceptions.ConfigFileError: self.OperationalError,
+            asyncpg.exceptions.FDWError: self.OperationalError,
+            asyncpg.exceptions.PLPGSQLError: self.ProgrammingError,
+            # class 10 (XQuery) is left to the PostgresError fallback, as
+            # asyncpg only has InvalidArgumentForXqueryError since 0.30.0
+            # (https://github.com/MagicStack/asyncpg/pull/1189) and naming
+            # it here would raise AttributeError on older versions
         }
 
     def Binary(self, value):
