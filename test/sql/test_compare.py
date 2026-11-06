@@ -535,6 +535,8 @@ class CoreFixtures:
             select(table_a.c.a)
             .where(table_a.c.b == 5)
             .correlate_except(table_b),
+            select(table_a.c.a).where(table_a.c.b == 5).correlate(None),
+            select(table_a.c.a).where(table_a.c.b == 5).correlate_except(None),
         ),
         lambda: (
             select(table_a.c.a),
@@ -1642,6 +1644,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
                 "_order_by_clauses",
                 "_raw_columns",
                 "_correlate_except",
+                "_correlate_mode",
                 "_statement_hints",
                 "_hints",
                 "_independent_ctes",

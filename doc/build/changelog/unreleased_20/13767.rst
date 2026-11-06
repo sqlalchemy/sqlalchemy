@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13767
+    :versions: 2.1.9
+
+    Fixed issue in cache key generation where calling
+    :meth:`_sql.Select.correlate` or :meth:`_sql.Select.correlate_except`
+    with ``None`` would not change the cache key of the :class:`_sql.Select`,
+    so that a statement which disables correlation, or correlates all FROM
+    objects to enclosing SELECTs, could share a cached SQL string with an
+    otherwise identical statement using the default auto-correlation
+    behavior, leading to incorrect SQL being emitted for whichever statement
+    was executed second.
