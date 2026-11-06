@@ -31,6 +31,8 @@ from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.dialects.postgresql import INTEGER
 from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.dialects.postgresql import pg_catalog
+from sqlalchemy.dialects.postgresql import REGCONFIG
+from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.engine import ObjectKind
 from sqlalchemy.engine import ObjectScope
@@ -3527,6 +3529,34 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             assert len(column_info) == 1
             column_info = column_info[0]
             assert isinstance(column_info["type"], NullType)
+
+    def test_tsquery_and_regconfig_reflected(self):
+        """test #13762"""
+
+        dialect = postgresql.PGDialect()
+        for sch, typ in [
+            ("tsquery", TSQUERY),
+            ("regconfig", REGCONFIG),
+        ]:
+            row_dict = {
+                "name": "colname",
+                "table_name": "tblname",
+                "format_type": sch,
+                "default": None,
+                "not_null": False,
+                "collation": None,
+                "comment": None,
+                "generated": "",
+                "identity_options": None,
+            }
+            column_info = dialect._get_columns_info(
+                [row_dict], self.NTL({}, {}), "public"
+            )
+            assert ("public", "tblname") in column_info
+            column_info = column_info[("public", "tblname")]
+            assert len(column_info) == 1
+            column_info = column_info[0]
+            assert isinstance(column_info["type"], typ)
 
 
 class IntervalReflectionTest(fixtures.TestBase):
