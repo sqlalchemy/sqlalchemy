@@ -1835,7 +1835,7 @@ class _SubqueryLoader(_PostLoader):
             return self._data.get(key, default)
 
         def _load(self):
-            self._data = collections.defaultdict(list)
+            self._data = data = collections.defaultdict(list)
 
             q = self.subq
             assert q.session is None
@@ -1846,13 +1846,45 @@ class _SubqueryLoader(_PostLoader):
                 q = q.populate_existing()
             # to work with baked query, the parameters may have been
             # updated since this query was created, so take these into account
+            q = q.params(self.params)
 
-            data = self._data
-            for row in q.params(self.params):
-                # group plain tuples rather than Row slices, which would
-                # incur Row construction and Row.__eq__ per row
-                tup = row._to_tuple_instance()
-                data[tup[1:]].append(tup[0])
+            # execute the statement directly rather than iterating the Query,
+            # which (for an entity result like this one) routes through
+            # Query.__iter__ -> Query._iter() -> result.unique() and builds a
+            # Row object per row.  the dedup that unique() performs is still
+            # required, but the Row-based machinery is not: in the common case
+            # we consume the raw tuples and replicate the dedup on a plain
+            # tuple slice (see the else branch below).
+            result = self.session.execute(
+                q._statement_20(),
+                q._params,
+                execution_options={"_sa_orm_load_options": q.load_options},
+            )
+
+            if result._unique_filter_state is not None:
+                # the result requires uniquing, e.g. a joinedload of a
+                # collection nested inside the subqueryload, or uniquing was
+                # applied by a do_orm_execute() hook; _raw_all_tuples() can't
+                # be used, so iterate Row objects instead
+                rows = result.unique()
+            else:
+                rows = result._raw_all_tuples()
+
+            # legacy Query iteration applied result.unique() to this entity
+            # result; replicate that dedup here.  the related object is
+            # keyed on identity, matching the ORM uniquing filter
+            # (use_id_for_hash), and the parent key columns by value, which
+            # is also what the grouping below requires.
+            seen: set = set()
+            seen_add = seen.add
+            for row in rows:
+                obj = row[0]
+                key = row[1:]
+                unique_key = (id(obj), key)
+                if unique_key in seen:
+                    continue
+                seen_add(unique_key)
+                data[key].append(obj)
 
         def loader(self, state, dict_, row):
             if self._data is None:

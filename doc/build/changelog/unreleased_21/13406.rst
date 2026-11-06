@@ -1,0 +1,17 @@
+.. change::
+    :tags: performance, orm
+    :tickets: 13406
+
+    Improved performance of :func:`_orm.subqueryload` result handling.  The
+    related rows are now consumed as plain tuples, rather than by iterating
+    a legacy :class:`_orm.Query`, which constructed a :class:`.Row` object
+    and applied :meth:`_engine.Result.unique` to every row.  The
+    de-duplication that :meth:`_engine.Result.unique` performed is now
+    applied directly, keying the related object on identity and the parent
+    key columns on value.  As a side effect, a ``yield_per`` execution option
+    on a statement with a :func:`_orm.subqueryload` nested inside a
+    :func:`_orm.selectinload` no longer raises ``InvalidRequestError``.
+    Parent key columns of a datatype that sets ``hashable=False`` are now
+    also de-duplicated by value, so duplicate subquery rows no longer
+    produce repeated collection members.  Pull request courtesy Oliver
+    Parker.
