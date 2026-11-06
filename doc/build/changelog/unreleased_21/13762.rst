@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13762
+
+    Fixed PostgreSQL reflection of ``tsquery`` and ``regconfig`` columns, which
+    returned ``NullType`` and emitted a warning even though the dialect exposes
+    ``TSQUERY`` and ``REGCONFIG`` types. The types are now included in
+    ``ischema_names`` so reflection uses them consistently with ``tsvector``.
+    Pull request courtesy Lushiyao5.
