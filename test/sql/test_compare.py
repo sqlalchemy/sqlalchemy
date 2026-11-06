@@ -1518,6 +1518,36 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
 
         eq_(crit._generate_cache_key(), orig_crit._generate_cache_key())
 
+    def test_apply_params_to_element_previously_visited(self):
+        """test #13766
+
+        bound parameters of the element replaced by _apply_params_to_element
+        may have been collected by an enclosing statement before reaching
+        the element, in which case those parameters have to take on the
+        replacement values as well.
+
+        """
+
+        def element(a_value, b_value):
+            subq = select(table_a).where(table_a.c.a == a_value).subquery()
+            return subq, subq.c.b == b_value
+
+        subq, expr = element(5, "x")
+        _, replacement = element(10, "y")
+
+        new_expr = replacement._generate_cache_key()._apply_params_to_element(
+            expr._generate_cache_key(), expr
+        )
+
+        # the subquery is visited from the columns clause ahead of the
+        # WHERE clause
+        orig_key = select(subq.c.a).where(expr)._generate_cache_key()
+        key = select(subq.c.a).where(new_expr)._generate_cache_key()
+
+        eq_(key, orig_key)
+        eq_([bp.value for bp in orig_key.bindparams], [5, "x"])
+        eq_([bp.value for bp in key.bindparams], [10, "y"])
+
     def test_bindparam_subclass_nocache(self):
         # does not implement inherit_cache
         class _literal_bindparam(BindParameter):

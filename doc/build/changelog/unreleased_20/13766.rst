@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13766
+    :versions: 2.1.9
+
+    Fixed issue where criteria applied to a relationship using
+    :meth:`.PropComparator.and_` within :func:`_orm.selectinload` or
+    :func:`_orm.lazyload`, where the criteria referred to an
+    :func:`_orm.aliased` construct against a subquery that's also the parent
+    entity of the loader option, would load the related collection using
+    the bound parameter values within that subquery from the first
+    execution of the statement, once the statement was retrieved from the
+    compiled cache.
