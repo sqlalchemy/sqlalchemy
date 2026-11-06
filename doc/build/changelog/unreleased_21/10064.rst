@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, dataclasses
+    :tickets: 10064
+
+    Added an :class:`~sqlalchemy.exc.SAWarning` when an unmapped class
+    (such as a mixin or abstract base class) configured with
+    :class:`_orm.MappedAsDataclass` is directly instantiated. Direct
+    instantiation of unmapped dataclass models is not supported and will
+    become an error in a future release; concrete mapped subclasses are
+    unaffected and instantiate normally without warning.
