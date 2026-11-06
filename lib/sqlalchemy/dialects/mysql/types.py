@@ -70,7 +70,10 @@ class _FloatType(
         ):
             raise exc.ArgumentError(
                 "You must specify both precision and scale or omit "
-                "both altogether."
+                "both altogether. The DOUBLE(M,D), REAL(M,D) and "
+                "FLOAT(M,D) syntaxes are non-standard MySQL extensions "
+                "which are deprecated by MySQL; omitting precision and "
+                "scale is recommended."
             )
         super().__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
@@ -218,6 +221,17 @@ class DOUBLE(_FloatType, sqltypes.DOUBLE[Union[decimal.Decimal, float]]):
             to change this scale, or ``asdecimal=False`` to return values
             directly as Python floating points.
 
+        .. warning::
+
+            Specifying both ``precision`` and ``scale`` renders the
+            ``DOUBLE(M,D)`` syntax, which is a non-standard MySQL extension
+            that is deprecated by MySQL; MySQL documentation indicates that
+            support for it may be removed in a future release.  Omitting
+            ``precision`` and ``scale`` is recommended.  See
+            `Floating-Point Types
+            <https://dev.mysql.com/doc/refman/8.4/en/floating-point-types.html>`_
+            in the MySQL documentation.
+
         :param precision: Total digits in this number.  If scale and precision
           are both None, values are stored to limits allowed by the server.
 
@@ -258,6 +272,17 @@ class REAL(_FloatType, sqltypes.REAL[Union[decimal.Decimal, float]]):
             to change this scale, or ``asdecimal=False`` to return values
             directly as Python floating points.
 
+        .. warning::
+
+            Specifying both ``precision`` and ``scale`` renders the
+            ``REAL(M,D)`` syntax, which is a non-standard MySQL extension
+            that is deprecated by MySQL; MySQL documentation indicates that
+            support for it may be removed in a future release.  Omitting
+            ``precision`` and ``scale`` is recommended.  See
+            `Floating-Point Types
+            <https://dev.mysql.com/doc/refman/8.4/en/floating-point-types.html>`_
+            in the MySQL documentation.
+
         :param precision: Total digits in this number.  If scale and precision
           are both None, values are stored to limits allowed by the server.
 
@@ -289,6 +314,17 @@ class FLOAT(_FloatType, sqltypes.FLOAT[Union[decimal.Decimal, float]]):
         **kw: Any,
     ):
         """Construct a FLOAT.
+
+        .. warning::
+
+            Specifying both ``precision`` and ``scale`` renders the
+            ``FLOAT(M,D)`` syntax, which is a non-standard MySQL extension
+            that is deprecated by MySQL; MySQL documentation indicates that
+            support for it may be removed in a future release.  Omitting
+            ``precision`` and ``scale`` is recommended.  See
+            `Floating-Point Types
+            <https://dev.mysql.com/doc/refman/8.4/en/floating-point-types.html>`_
+            in the MySQL documentation.
 
         :param precision: Total digits in this number.  If scale and precision
           are both None, values are stored to limits allowed by the server.
