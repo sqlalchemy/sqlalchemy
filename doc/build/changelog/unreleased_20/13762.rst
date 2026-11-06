@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13762
+    :versions: 2.1.9
+
+    Fixed issue where reflection of PostgreSQL columns of type ``tsquery`` or
+    ``regconfig`` would return :class:`.NullType` and emit a warning, even
+    though the :class:`_postgresql.TSQUERY` and :class:`_postgresql.REGCONFIG`
+    types are provided by the PostgreSQL dialect. These types are now mapped
+    for reflection in the same way as :class:`_postgresql.TSVECTOR`. Pull
+    request courtesy Lushiyao5.
