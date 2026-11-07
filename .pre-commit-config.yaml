@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 -   repo: https://github.com/python/black
-    rev: 26.3.1
+    rev: 26.10.1
     hooks:
     -   id: black
 
@@ -39,4 +39,4 @@ repos:
         types: [rst]
         exclude: README.*
         additional_dependencies:
-            - black==26.3.1
+            - black==26.10.1
