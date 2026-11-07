@@ -8019,6 +8019,57 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
             select(t2).having(t2.c.a == s1.correlate(None).scalar_subquery())
         )
 
+    @testing.variation("first", ["auto", "none", "except_none"])
+    def test_correlate_none_cached(self, first):
+        """test #13767"""
+
+        a = table("a", column("id"))
+        b = table("b", column("id"), column("a_id"))
+        c = table("c", column("id"), column("a_id"), column("b_id"))
+
+        inner = select(c.c.id).where(c.c.b_id == b.c.id, c.c.a_id == a.c.id)
+
+        variations = {
+            "auto": (
+                inner,
+                "SELECT a.id FROM a WHERE EXISTS (SELECT b.id FROM b "
+                "WHERE b.a_id = a.id AND (EXISTS (SELECT c.id FROM c, a "
+                "WHERE c.b_id = b.id AND c.a_id = a.id)))",
+            ),
+            "none": (
+                inner.correlate(None),
+                "SELECT a.id FROM a WHERE EXISTS (SELECT b.id FROM b "
+                "WHERE b.a_id = a.id AND (EXISTS (SELECT c.id FROM c, b, a "
+                "WHERE c.b_id = b.id AND c.a_id = a.id)))",
+            ),
+            "except_none": (
+                inner.correlate_except(None),
+                "SELECT a.id FROM a WHERE EXISTS (SELECT b.id FROM b "
+                "WHERE b.a_id = a.id AND (EXISTS (SELECT c.id FROM c "
+                "WHERE c.b_id = b.id AND c.a_id = a.id)))",
+            ),
+        }
+
+        # compile the given variation first, so that each one gets a
+        # chance to be the cached statement the others could collide with
+        order = [first.name] + [k for k in variations if k != first.name]
+
+        dialect = default.DefaultDialect()
+        cache = {}
+        for name in order:
+            correlated, expected = variations[name]
+            stmt = select(a.c.id).where(
+                select(b.c.id)
+                .where(b.c.a_id == a.c.id, correlated.exists())
+                .exists()
+            )
+            compiled = stmt._compile_w_cache(
+                dialect, compiled_cache=cache, column_keys=[]
+            )[0]
+            eq_ignore_whitespace(str(compiled), expected)
+
+        eq_(len(cache), 3)
+
     def test_correlate_all_where(self):
         t1, t2, s1 = self._fixture()
         self._assert_where_all_correlated(
