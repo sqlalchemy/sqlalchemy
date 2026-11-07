@@ -2605,8 +2605,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
          True, this will be the key used in the operation, such as
          ``collection[some_key_or_index] = value``.
          The parameter is not passed
-         to the event at all if the the
-         :paramref:`.AttributeEvents.include_key`
+         to the event at all if the :paramref:`.AttributeEvents.include_key`
          was not used to set up the event; this is to allow backwards
          compatibility with existing event handlers that don't include the
          ``key`` parameter.
@@ -2660,8 +2659,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
          True, this will be the key used in the operation, such as
          ``collection[some_key_or_index] = value``.
          The parameter is not passed
-         to the event at all if the the
-         :paramref:`.AttributeEvents.include_key`
+         to the event at all if the :paramref:`.AttributeEvents.include_key`
          was not used to set up the event; this is to allow backwards
          compatibility with existing event handlers that don't include the
          ``key`` parameter.
@@ -2730,8 +2728,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
          :paramref:`.AttributeEvents.include_key` parameter set to
          True, this will be the sequence of keys used in the operation,
          typically only for a dictionary update.  The parameter is not passed
-         to the event at all if the the
-         :paramref:`.AttributeEvents.include_key`
+         to the event at all if the :paramref:`.AttributeEvents.include_key`
          was not used to set up the event; this is to allow backwards
          compatibility with existing event handlers that don't include the
          ``key`` parameter.
@@ -2769,8 +2766,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
          :paramref:`.AttributeEvents.include_key` parameter set to
          True, this will be the key used in the operation, such as
          ``del collection[some_key_or_index]``.  The parameter is not passed
-         to the event at all if the the
-         :paramref:`.AttributeEvents.include_key`
+         to the event at all if the :paramref:`.AttributeEvents.include_key`
          was not used to set up the event; this is to allow backwards
          compatibility with existing event handlers that don't include the
          ``key`` parameter.
