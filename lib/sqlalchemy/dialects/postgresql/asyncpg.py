@@ -174,6 +174,21 @@ client using this setting passed to :func:`_asyncio.create_async_engine`::
 
     https://github.com/MagicStack/asyncpg/issues/727
 
+DBAPI Error Messages
+---------------------
+
+The asyncpg error message are wrapped by in :class:`.EmulatedDBAPIException`
+object providing a more consistent experience for the async drivers.
+A side effect of this change is that the textual representation of
+the error may be different than it was in previous sqlalchemy versions,
+and the ``DETAIL`` line may be missing.
+The original asyncpg exception can be accessed using the
+:attr:`.DBAPIError.driver_exception` attribute.
+
+.. versionchanged:: 2.1.0
+
+    The exceptions are wrapped in :class:`.EmulatedDBAPIException` objects.
+
 """  # noqa
 
 from __future__ import annotations
