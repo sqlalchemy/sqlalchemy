@@ -5351,6 +5351,7 @@ class Select(
             ("_setup_joins", InternalTraversal.dp_setup_join_tuple),
             ("_correlate", InternalTraversal.dp_clauseelement_tuple),
             ("_correlate_except", InternalTraversal.dp_clauseelement_tuple),
+            ("_correlate_mode", InternalTraversal.dp_plain_obj),
             ("_limit_clause", InternalTraversal.dp_clauseelement),
             ("_offset_clause", InternalTraversal.dp_clauseelement),
             ("_fetch_clause", InternalTraversal.dp_clauseelement),
@@ -5374,6 +5375,27 @@ class Select(
     ]
 
     _compile_state_factory: Type[SelectState]
+
+    @property
+    def _correlate_mode(self) -> Optional[str]:
+        """Correlation state not otherwise captured by ``_correlate`` and
+        ``_correlate_except``, for comparison and cache key purposes.
+
+        ``None`` for the default of auto-correlation; ``"explicit"`` once
+        correlate() or correlate_except() has been called, which includes
+        correlate(None) that disables correlation; ``"except_all"`` when
+        correlate_except() was called with no FROM objects, which
+        correlates all FROM objects to enclosing SELECTs.  The latter two
+        are otherwise indistinguishable from the default, as the cache key
+        omits empty ``_correlate`` / ``_correlate_except`` tuples.
+
+        """
+        if self._auto_correlate:
+            return None
+        elif self._correlate_except == ():
+            return "except_all"
+        else:
+            return "explicit"
 
     @classmethod
     def _create_raw_select(cls, **kw: Any) -> Select[Any]:
