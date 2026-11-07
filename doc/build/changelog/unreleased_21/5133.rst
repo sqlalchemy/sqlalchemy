@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 5133
+
+    Added first-class support for ``CROSS APPLY`` and ``OUTER APPLY`` through
+    the new :class:`_sql.Apply` construct and the
+    :func:`_sql.cross_apply` / :func:`_sql.outer_apply` constructors.  The
+    corresponding :meth:`_sql.Selectable.cross_apply` and
+    :meth:`_sql.Selectable.outer_apply` methods preserve lateral correlation
+    while allowing an APPLY expression to be joined without an ``ON`` clause,
+    supporting SQL Server and Oracle APPLY syntax without overloading the
+    existing :class:`_sql.Lateral` construct.
