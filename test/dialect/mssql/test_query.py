@@ -134,6 +134,29 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
         conn.execute(cattable.insert().values({cattable.c.id: literal(5)}))
         eq_(conn.scalar(select(cattable.c.id)), 5)
 
+    def test_identity_insert_warn(self, connection):
+        conn = connection
+        conn.dialect.automatic_identity_insert = "warn"
+        cattable = self.tables.cattable
+        cats = conn.execute(cattable.select().order_by(cattable.c.id))
+        eq_([(9, "Python")], list(cats))
+
+    def test_identity_insert_silence(self, connection):
+        conn = connection
+        conn.dialect.automatic_identity_insert = "silence"
+        cattable = self.tables.cattable
+        conn.execute(cattable.insert().values(id=9, description="Python"))
+        cats = conn.execute(cattable.select().order_by(cattable.c.id))
+        eq_([(9, "Python")], list(cats))
+
+    def test_identity_insert_enabled(self, connection):
+        conn = connection
+        conn.dialect.automatic_identity_insert = True
+        cattable = self.tables.cattable
+        conn.execute(cattable.insert().values(id=9, description="Python"))
+        cats = conn.execute(cattable.select().order_by(cattable.c.id))
+        eq_([(9, "Python")], list(cats))
+
     @testing.requires.schemas
     def test_insert_using_schema_translate(self, connection, metadata):
         t = Table(
