@@ -1000,8 +1000,8 @@ example of ``Point`` and ``Vertex`` from that section using hybrids, where
 
 Above, the ``operate()`` method is where the most "hybrid" behavior takes
 place, making use of ``op()`` (the Python operator function in use) along
-with the the bitwise ``&`` operator provides us with the SQL AND operator
-in a SQL context, and boolean "and" in a Python boolean context.
+with the bitwise ``&`` operator provides us with the SQL AND operator in a SQL
+context, and boolean "and" in a Python boolean context.
 
 Following from there, the owning ``Vertex`` class now uses hybrids to
 represent ``start`` and ``end``::

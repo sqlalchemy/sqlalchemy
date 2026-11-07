@@ -192,7 +192,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         """test #12931
 
         when join_from() is indicated, favor the explicit "left" side given
-        over the "left side of hte join" for creating onclause.
+        over the "left side of the join" for creating onclause.
 
         when join() is indicated, use the normal behavior of assuming
         right side of the previous join is the new left side.

@@ -377,7 +377,7 @@ def _linecache_cache_getter():
 
     linecache.cache despite being non-underscored and widely used is
     nonetheless not documented by cPython.   Therefore we cannot trust that it
-    it's present in third party Python distributions, or that it wont
+    it's present in third party Python distributions, or that it won't
     suddenly be removed or changed.  Guard against this such that linecache
     features will be silently disabled if this should happen.  Unit tests in
     test/base/test_utils.py ensures linecache.cache remains available for new

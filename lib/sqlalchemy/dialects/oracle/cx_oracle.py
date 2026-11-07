@@ -1485,7 +1485,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         connection level.
 
         note that when using a Compiled statement that has types (e.g.
-        TypeEngine), we set up a per-cursor handler instead which supercedes
+        TypeEngine), we set up a per-cursor handler instead which supersedes
         this one, using Oracle-specific TypeEngine handlers delivered by the
         _cx_oracle_outputtypehandler() method of each one.
 

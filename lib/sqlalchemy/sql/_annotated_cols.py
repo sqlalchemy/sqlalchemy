@@ -97,7 +97,7 @@ class TypedColumns(ReadOnlyColumnCollection[str, "Column[Any]"]):
       to set the SQL type and nullability if not provided by the instance.
       The information provided in the instance will take precedence over
       the annotation when they are conflicting, for example if setting
-      nullable=True with an annotation tha does not include ``None``.
+      nullable=True with an annotation that does not include ``None``.
 
     In all cases the name is inferred from the attribute name, unless
     explicitly provided.
