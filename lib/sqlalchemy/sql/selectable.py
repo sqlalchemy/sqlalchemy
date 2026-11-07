@@ -5592,6 +5592,11 @@ class Select(
             ("_setup_joins", InternalTraversal.dp_setup_join_tuple),
             ("_correlate", InternalTraversal.dp_clauseelement_tuple),
             ("_correlate_except", InternalTraversal.dp_clauseelement_tuple),
+            # part of the cache key: correlate() and correlate_except() both
+            # set this to False without necessarily touching _correlate /
+            # _correlate_except (e.g. correlate(None)), which changes the SQL
+            # that renders but left the key unchanged (#13767)
+            ("_auto_correlate", InternalTraversal.dp_boolean),
             ("_limit_clause", InternalTraversal.dp_clauseelement),
             ("_offset_clause", InternalTraversal.dp_clauseelement),
             ("_fetch_clause", InternalTraversal.dp_clauseelement),

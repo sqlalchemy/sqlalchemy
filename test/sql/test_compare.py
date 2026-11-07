@@ -955,6 +955,26 @@ class CoreFixtures:
             select(table_a.c.a).where(table_a.c.b == 5).scalar_subquery(),
         ),
         lambda: (
+            # correlate() / correlate_except() state participates in the
+            # cache key: correlate(None) and correlate_except() set
+            # _auto_correlate False without touching _correlate /
+            # _correlate_except, yet change the SQL that renders (#13767)
+            select(table_a.c.a).where(
+                select(table_b.c.b).scalar_subquery() > 0
+            ),
+            select(table_a.c.a).where(
+                select(table_b.c.b).correlate(None).scalar_subquery() > 0
+            ),
+        ),
+        lambda: (
+            select(table_a.c.a).where(
+                select(table_b.c.b).scalar_subquery() > 0
+            ),
+            select(table_a.c.a).where(
+                select(table_b.c.b).correlate_except().scalar_subquery() > 0
+            ),
+        ),
+        lambda: (
             exists().where(table_a.c.a == 5),
             exists().where(table_a.c.b == 5),
         ),
