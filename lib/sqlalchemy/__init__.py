@@ -233,6 +233,8 @@ from .sql.expression import Values as Values
 from .sql.expression import values as values
 from .sql.expression import ValuesBase as ValuesBase
 from .sql.expression import Visitable as Visitable
+from .sql.expression import Window as Window
+from .sql.expression import window as window
 from .sql.expression import within_group as within_group
 from .sql.expression import WithinGroup as WithinGroup
 from .types import ARRAY as ARRAY
