@@ -1,0 +1,11 @@
+.. change::
+    :tags: performance, engine
+    :tickets: 13769
+
+    Improved the performance of :meth:`_engine.Result.mappings` and
+    :meth:`_asyncio.AsyncResult.mappings` when the Cython extensions are in
+    use.  The conversion of each :class:`_engine.Row` into a
+    :class:`_engine.RowMapping` is now performed within the compiled
+    extension, rather than through a Python-level access of the
+    :attr:`_engine.Row._mapping` attribute, substantially reducing per-row
+    overhead when fetching rows as mappings.

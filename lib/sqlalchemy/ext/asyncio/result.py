@@ -24,6 +24,7 @@ from ...engine import Result
 from ...engine._result_cy import _RowData
 from ...engine.result import _NO_ROW
 from ...engine.result import _R
+from ...engine.result import _row_to_mapping
 from ...engine.result import _WithKeys
 from ...engine.result import FilterResult
 from ...engine.result import FrozenResult
@@ -672,7 +673,7 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
 
     _generate_rows = True
 
-    _post_creational_filter = operator.attrgetter("_mapping")
+    _post_creational_filter = _row_to_mapping
 
     def __init__(self, result: AsyncResult[Unpack[TupleAny]]):
         # rows are fetched from the sync Result; metadata and unique state

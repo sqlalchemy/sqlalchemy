@@ -184,7 +184,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):  # type: ignore
         .. versionadded:: 1.4
 
         """
-        return RowMapping(self._parent, None, self._key_to_index, self._data)
+        return self._as_row_class(RowMapping)
 
     def _filter_on_values(
         self, processor: Optional[_ProcessorsType]

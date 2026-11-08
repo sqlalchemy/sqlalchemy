@@ -1586,6 +1586,9 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             ...
 
 
+_row_to_mapping = operator.methodcaller("_as_row_class", RowMapping)
+
+
 class MappingResult(_WithKeys, FilterResult[RowMapping]):
     """A wrapper for a :class:`_engine.Result` that returns dictionary values
     rather than :class:`_engine.Row` values.
@@ -1599,7 +1602,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
     _generate_rows = True
 
-    _post_creational_filter = operator.attrgetter("_mapping")
+    _post_creational_filter = _row_to_mapping
 
     def __init__(self, result: Result[Unpack[TupleAny]]):
         self._real_result = result

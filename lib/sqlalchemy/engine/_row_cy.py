@@ -19,6 +19,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypeVar
 
 if TYPE_CHECKING:
     from .result import _KeyType
@@ -42,6 +43,8 @@ def _is_compiled() -> bool:
 
 
 # END GENERATED CYTHON IMPORT
+
+_BR = TypeVar("_BR", bound="BaseRow")
 
 
 @cython.cclass
@@ -91,6 +94,15 @@ class BaseRow:
             object.__setattr__(self, "_parent", parent)
             object.__setattr__(self, "_key_to_index", key_to_index)
             object.__setattr__(self, "_data", data)
+
+    def _as_row_class(self, cls: Type[_BR]) -> _BR:
+        """Return a new object of the given :class:`.BaseRow` subclass
+        that shares this row's data, without re-applying processors.
+
+        """
+        new: BaseRow = cls.__new__(cls)
+        new._set_attrs(self._parent, self._key_to_index, self._data)
+        return new  # type: ignore[return-value]
 
     def __reduce__(self) -> Tuple[Any, Any]:
         return (
