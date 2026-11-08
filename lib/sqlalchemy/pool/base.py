@@ -371,12 +371,27 @@ class Pool(log.Identified, event.EventTarget):
             else:
                 self._dialect.do_close(connection)
         except BaseException as e:
-            self.logger.error(
-                f"Exception {'terminating' if terminate else 'closing'} "
-                f"connection %r",
-                connection,
-                exc_info=True,
-            )
+            if (
+                terminate
+                and self._dialect.has_terminate
+                and util.is_cancellation_exception(e)
+            ):
+                # the asyncio terminate() force-closes the connection before
+                # letting a cancellation of its graceful close propagate, so
+                # the connection is closed and there is no error to report.
+                # see #13772
+                self.logger.debug(
+                    "Cancellation during terminate of connection %r; "
+                    "connection was force-closed",
+                    connection,
+                )
+            else:
+                self.logger.error(
+                    f"Exception {'terminating' if terminate else 'closing'} "
+                    f"connection %r",
+                    connection,
+                    exc_info=True,
+                )
             if not isinstance(e, Exception):
                 raise
 

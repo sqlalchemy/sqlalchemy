@@ -1,3 +1,4 @@
+import asyncio
 import collections
 import random
 import threading
@@ -1954,6 +1955,71 @@ class QueuePoolTest(PoolTestBase):
         c1 = None
         c1 = p.connect()
         assert c1.dbapi_connection is not dbapi_conn
+
+    @testing.variation("exc_kind", ["cancelled", "interrupted", "error"])
+    @testing.variation("terminate", [True, False])
+    @testing.variation("has_terminate", [True, False])
+    def test_close_connection_logging(
+        self, exc_kind, terminate, has_terminate
+    ):
+        """test #13772; a cancellation of terminate() on a dialect that
+        has terminate is logged at debug, as the connection was force-closed
+        before the cancellation propagated; anything else is an error"""
+
+        dbapi, p = self._queuepool_dbapi_fixture(
+            _is_asyncio=True, _has_terminate=bool(has_terminate)
+        )
+
+        class Interrupted(BaseException):
+            pass
+
+        if exc_kind.cancelled:
+            err = asyncio.CancelledError()
+        elif exc_kind.interrupted:
+            err = Interrupted()
+        elif exc_kind.error:
+            err = Exception("close failed")
+        else:
+            exc_kind.fail()
+
+        dbapi_conn = Mock()
+        close_method = "do_terminate" if terminate else "do_close"
+
+        with (
+            patch.object(p._dialect, close_method, side_effect=err),
+            patch.object(p, "logger") as logger,
+        ):
+            if exc_kind.error:
+                p._close_connection(dbapi_conn, terminate=bool(terminate))
+            else:
+                with expect_raises(type(err)):
+                    p._close_connection(dbapi_conn, terminate=bool(terminate))
+
+        if exc_kind.cancelled and terminate and has_terminate:
+            expected = call.debug(
+                "Cancellation during terminate of connection %r; "
+                "connection was force-closed",
+                dbapi_conn,
+            )
+        else:
+            expected = call.error(
+                f"Exception {'terminating' if terminate else 'closing'} "
+                "connection %r",
+                dbapi_conn,
+                exc_info=True,
+            )
+
+        eq_(
+            logger.mock_calls,
+            [
+                call.debug(
+                    "%s connection %r",
+                    "Hard-closing" if terminate else "Closing",
+                    dbapi_conn,
+                ),
+                expected,
+            ],
+        )
 
     def test_invalidate_close_interrupted(self):
         """test #13673"""

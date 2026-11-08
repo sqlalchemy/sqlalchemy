@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 13772
+    :versions: 2.1.9
+
+    The ``asyncio.CancelledError`` that occurs frequently for tasks cancelled
+    under anyio, where the connection is nonetheless successfully terminated,
+    is now logged by the connection pool at DEBUG level rather than ERROR.
