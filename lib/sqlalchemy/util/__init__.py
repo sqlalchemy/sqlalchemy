@@ -71,6 +71,9 @@ from .compat import win32 as win32
 from .concurrency import await_ as await_
 from .concurrency import await_only as await_only
 from .concurrency import greenlet_spawn as greenlet_spawn
+from .concurrency import (
+    is_cancellation_exception as is_cancellation_exception,
+)
 from .concurrency import is_exit_exception as is_exit_exception
 from .deprecations import became_legacy_20 as became_legacy_20
 from .deprecations import deprecated as deprecated

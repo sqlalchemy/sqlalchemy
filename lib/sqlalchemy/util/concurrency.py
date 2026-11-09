@@ -35,6 +35,10 @@ def is_exit_exception(e: BaseException) -> bool:
     )
 
 
+def is_cancellation_exception(e: BaseException) -> bool:
+    return isinstance(e, asyncio.CancelledError)
+
+
 _ERROR_MESSAGE = (
     "The SQLAlchemy asyncio module requires that the Python 'greenlet' "
     "library is installed.  In order to ensure this dependency is "
