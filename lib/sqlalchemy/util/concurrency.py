@@ -37,6 +37,10 @@ else:
 _T = TypeVar("_T")
 
 
+def is_cancellation_exception(e: BaseException) -> bool:
+    return isinstance(e, asyncio.CancelledError)
+
+
 class _AsyncUtil:
     """Asyncio util for test suite/ util only"""
 
