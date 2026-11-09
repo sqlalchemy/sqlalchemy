@@ -4536,19 +4536,27 @@ class _OverrideBinds(ColumnElement[_T]):
         """generate a cache key for the given element, substituting its bind
         values for the translation values present."""
 
-        existing_bps: List[BindParameter[Any]] = []
-        ck = self.element._gen_cache_key(anon_map, existing_bps)
+        translate = self.translate
 
-        bindparams.extend(
+        ck = self.element._gen_cache_key(anon_map, bindparams)
+
+        # the anon_map check stops self.element's traversal at objects
+        # already visited, so their bound parameters aren't collected again
+        # here.  this happens when an element visited ahead of this one,
+        # such as the path of a loader option, refers to the same aliased()
+        # subquery as the criteria wrapped here.  those parameters are
+        # already in bindparams with the original values, so the
+        # translation is applied to the whole list.  see #13766
+        bindparams[:] = [
             (
                 bp._with_value(
-                    self.translate[bp.key], maintain_key=True, required=False
+                    translate[bp.key], maintain_key=True, required=False
                 )
-                if bp.key in self.translate
+                if bp.key in translate
                 else bp
             )
-            for bp in existing_bps
-        )
+            for bp in bindparams
+        ]
 
         # ck derives from _gen_cache_key, a compiled function in
         # _cache_key_cy that mypy sees as untyped

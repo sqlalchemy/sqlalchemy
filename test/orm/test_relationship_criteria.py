@@ -201,6 +201,31 @@ class _Fixtures(_fixtures.FixtureTest):
         return User, Order, Item
 
     @testing.fixture
+    def user_address_dingaling_fixture(self):
+        User, Address, Dingaling = self.classes("User", "Address", "Dingaling")
+        users, addresses, dingalings = self.tables(
+            "users", "addresses", "dingalings"
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, order_by=addresses.c.id)
+            },
+        )
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={
+                "dingalings": relationship(Dingaling, order_by=dingalings.c.id)
+            },
+        )
+        self.mapper_registry.map_imperatively(Dingaling, dingalings)
+
+        return User, Address, Dingaling
+
+    @testing.fixture
     def mixin_fixture(self):
         users = self.tables.users
 
@@ -2999,6 +3024,95 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     }
                 ],
             ),
+        )
+
+    @testing.combinations(selectinload, lazyload, argnames="loader_fn")
+    def test_local_criteria_aliased_subquery_cached(
+        self, user_address_fixture, loader_fn
+    ):
+        """test #13766
+
+        the criteria refers to an aliased() subquery that's also in the
+        path of the loader option.  bound parameters within the subquery
+        need to take on the values of the current statement, not those of
+        the cached one.
+
+        """
+        User, Address = user_address_fixture
+
+        s = Session(testing.db)
+
+        def go(user_id):
+            s.close()
+            ua = aliased(
+                User, select(User).where(User.id == user_id).subquery()
+            )
+            stmt = select(ua).options(
+                loader_fn(ua.addresses.and_(Address.user_id == ua.id))
+            )
+            return s.scalars(stmt).all()
+
+        eq_(go(7), [User(id=7, addresses=[Address(id=1)])])
+        eq_(
+            go(8),
+            [
+                User(
+                    id=8,
+                    addresses=[Address(id=2), Address(id=3), Address(id=4)],
+                )
+            ],
+        )
+        eq_(go(9), [User(id=9, addresses=[Address(id=5)])])
+
+    @testing.combinations(selectinload, lazyload, argnames="loader_fn")
+    def test_nested_criteria_aliased_subquery_cached(
+        self, user_address_dingaling_fixture, loader_fn
+    ):
+        """test #13766
+
+        as test_local_criteria_aliased_subquery_cached, with the criteria
+        on a nested loader option
+
+        """
+        User, Address, Dingaling = user_address_dingaling_fixture
+
+        s = Session(testing.db)
+
+        def go(user_id):
+            s.close()
+            ua = aliased(
+                User, select(User).where(User.id == user_id).subquery()
+            )
+            stmt = select(ua).options(
+                selectinload(ua.addresses).options(
+                    loader_fn(
+                        Address.dingalings.and_(Dingaling.id == ua.id - 7)
+                    )
+                )
+            )
+            return s.scalars(stmt).all()
+
+        eq_(
+            go(8),
+            [
+                User(
+                    id=8,
+                    addresses=[
+                        Address(id=2, dingalings=[Dingaling(id=1)]),
+                        Address(id=3, dingalings=[]),
+                        Address(id=4, dingalings=[]),
+                    ],
+                )
+            ],
+        )
+        eq_(
+            go(9),
+            [
+                User(
+                    id=9,
+                    addresses=[Address(id=5, dingalings=[Dingaling(id=2)])],
+                )
+            ],
         )
 
     def test_subqueryload_local_criteria(self, user_address_fixture):
