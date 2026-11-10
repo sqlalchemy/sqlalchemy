@@ -132,6 +132,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | OpenGauss                                      | openGauss-sqlalchemy_                 |
 +------------------------------------------------+---------------------------------------+
+| Opteryx                                        | opteryx-sqlalchemy_                   |
++------------------------------------------------+---------------------------------------+
 | Redis (via ADBC)                               | adbc-driver-redis_                    |
 +------------------------------------------------+---------------------------------------+
 | Rockset                                        | rockset-sqlalchemy_                   |
@@ -200,3 +202,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _pydynamodb: https://pypi.org/project/pydynamodb/
 .. _pymongosql: https://pypi.org/project/pymongosql/
 .. _adbc-driver-redis: https://pypi.org/project/adbc-driver-redis/
+.. _opteryx-sqlalchemy: https://github.com/mabel-dev/opteryx-sqlalchemy
