@@ -3254,58 +3254,14 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
         q = q.filter(in_expr.in_(sql.bindparam("primary_keys")))
 
-        # a test which exercises what these comments talk about is
-        # test_selectin_relations.py -> test_twolevel_selectin_w_polymorphic
-        #
         # effective_entity above is given to us in terms of the cached
-        # statement, namely this one:
-        orig_query = context.compile_state.select_statement
-
-        # the actual statement that was requested is this one:
-        #  context_query = context.user_passed_query
-        #
-        # that's not the cached one, however.  So while it is of the identical
-        # structure, if it has entities like AliasedInsp, which we get from
-        # aliased() or with_polymorphic(), the AliasedInsp will likely be a
-        # different object identity each time, and will not match up
-        # hashing-wise to the corresponding AliasedInsp that's in the
-        # cached query, meaning it won't match on paths and loader lookups
-        # and loaders like this one will be skipped if it is used in options.
-        #
-        # as it turns out, standard loader options like selectinload(),
-        # lazyload() that have a path need
-        # to come from the cached query so that the AliasedInsp etc. objects
-        # that are in the query line up with the object that's in the path
-        # of the strategy object. however other options like
-        # with_loader_criteria() that doesn't have a path (has a fixed entity)
-        # and needs to have access to the latest closure state in order to
-        # be correct, we need to use the uncached one.
-        #
-        # as of #8399 we let the loader option itself figure out what it
-        # wants to do given cached and uncached version of itself.
+        # statement, so options with paths need to come from the cached
+        # statement as well; see QueryContext._loader_strategy_options().
+        # a test which exercises this is
+        # test_selectin_relations.py -> test_twolevel_selectin_w_polymorphic
+        new_options = context._loader_strategy_options()
 
         effective_path = path[self.parent_property]
-
-        if orig_query is context.user_passed_query:
-            new_options = orig_query._with_options
-        else:
-            cached_options = orig_query._with_options
-            uncached_options = context.user_passed_query._with_options
-
-            # propagate compile state options from the original query,
-            # updating their "extra_criteria" as necessary.
-            # note this will create a different cache key than
-            # "orig" options if extra_criteria is present, because the copy
-            # of extra_criteria will have different boundparam than that of
-            # the QueryableAttribute in the path
-            new_options = [
-                orig_opt._adapt_cached_option_to_uncached_option(
-                    context, uncached_opt
-                )
-                for orig_opt, uncached_opt in zip(
-                    cached_options, uncached_options
-                )
-            ]
 
         if loadopt and loadopt._extra_criteria:
             new_options += (

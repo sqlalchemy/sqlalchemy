@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13777
+    :versions: 2.1.9
+
+    Fixed issue where loader options nested beneath a
+    :func:`_orm.selectin_polymorphic` option, such as a
+    :func:`_orm.selectinload` for a subclass-specific relationship, would be
+    silently skipped when the enclosing relationship load was against an
+    aliased entity such as one produced by :func:`_orm.with_polymorphic`, and
+    a structurally different parent statement using the same loader options
+    had been executed and cached previously.  The selectin polymorphic loader
+    now uses options from the cached statement in the same way as the
+    selectin relationship loader already does.
