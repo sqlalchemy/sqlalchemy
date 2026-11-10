@@ -1562,10 +1562,18 @@ class _SubqueryLoader(_PostLoader):
         leftmost_attr,
         leftmost_relationship,
         orig_entity,
+        options,
     ):
         # reformat the original query
         # to look only for significant columns
         q = orig_query._clone().correlate(None)
+
+        # use the same option objects as the outer statement; the columns
+        # of this query are replaced below so options with paths have
+        # no effect, however sharing them keeps the cache key of the
+        # outer statement the same whether or not the statement being
+        # invoked is the cached one
+        q._with_options = options
 
         # LEGACY: make a Query back from the select() !!
         # This suits at least two legacy cases:
@@ -1760,20 +1768,10 @@ class _SubqueryLoader(_PostLoader):
         context,
         q,
         subq_path,
-        rewritten_path,
-        orig_query,
+        new_options,
         effective_entity,
         loadopt,
     ):
-        # note that because the subqueryload object
-        # does not reuse the cached query, instead always making
-        # use of the current invoked query, while we have two queries
-        # here (orig and context.query), they are both non-cached
-        # queries and we can transfer the options as is without
-        # adjusting for new criteria.   Some work on #6881 / #6889
-        # brought this into question.
-        new_options = orig_query._with_options
-
         if loadopt and loadopt._extra_criteria:
             new_options += (
                 orm_util.LoaderCriteriaOption(
@@ -1783,8 +1781,10 @@ class _SubqueryLoader(_PostLoader):
             )
 
         # propagate loader options etc. to the new query.
-        # these will fire relative to subq_path.
-        q = q._with_current_path(rewritten_path)
+        # these will fire relative to subq_path.  rewritten_path is not
+        # used here, as its leading entity is from the statement being
+        # invoked and would not line up with the options
+        q = q._with_current_path(subq_path)
         q = q.options(*new_options)
 
         return q
@@ -1889,11 +1889,20 @@ class _SubqueryLoader(_PostLoader):
         else:
             effective_entity = self.entity
 
-        subq_path, rewritten_path = context.query._execution_options.get(
-            ("subquery_paths", None),
-            (orm_util.PathRegistry.root, orm_util.PathRegistry.root),
+        # rewritten_path is in terms of the statement being invoked, as it
+        # is used to locate the leftmost entity within orig_query below
+        rewritten_path = context.query._execution_options.get(
+            ("subquery_rewritten_path", None), None
         )
-        is_root = subq_path is orm_util.PathRegistry.root
+        is_root = rewritten_path is None
+        if is_root:
+            subq_path = rewritten_path = orm_util.PathRegistry.root
+        else:
+            # subq_path is in terms of the cached statement, the same as
+            # "path" and the loader options applied in _setup_options().
+            # the cached statement is a subquery load statement as well,
+            # whose current path is the subq_path it was created with
+            subq_path = compile_state.current_path
         subq_path = subq_path + path
         rewritten_path = rewritten_path + path
 
@@ -1946,6 +1955,12 @@ class _SubqueryLoader(_PostLoader):
 
         # generate a new Query from the original, then
         # produce a subquery from it.
+        # subq_path and effective_entity are given to us in terms of the
+        # cached statement, so options with paths need to come from the
+        # cached statement as well, rather than from orig_query;
+        # see QueryContext._loader_strategy_options() and #13779
+        new_options = context._loader_strategy_options()
+
         left_alias = self._generate_from_original_query(
             orig_compile_state,
             orig_query,
@@ -1953,6 +1968,7 @@ class _SubqueryLoader(_PostLoader):
             leftmost_attr,
             leftmost_relationship,
             entity,
+            new_options,
         )
 
         # generate another Query that will join the
@@ -1967,7 +1983,7 @@ class _SubqueryLoader(_PostLoader):
             context.execution_options,
             {
                 ("orig_query", _SubqueryLoader): orig_query,
-                ("subquery_paths", None): (subq_path, rewritten_path),
+                ("subquery_rewritten_path", None): rewritten_path,
             },
         )
 
@@ -1985,8 +2001,7 @@ class _SubqueryLoader(_PostLoader):
             context,
             q,
             subq_path,
-            rewritten_path,
-            orig_query,
+            new_options,
             effective_entity,
             loadopt,
         )
