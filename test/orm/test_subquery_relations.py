@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import select
@@ -14,6 +15,7 @@ from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -3947,3 +3949,226 @@ class OfTypeWithCriteriaTest(fixtures.DeclarativeMappedTest):
                 [{"primary_language_1": "python"}],
             ),
         )
+
+
+class NestedOptsUnderAliasedSubqloadCachedTest(
+    fixtures.DeclarativeMappedTest, testing.AssertsExecutionResults
+):
+    """test #13779"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B", order_by="B.id")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            data = Column(String(10))
+            other = deferred(Column(String(10)))
+            cs = relationship("C", order_by="C.id")
+
+        class C(Base):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey("b.id"))
+            data = Column(String(10))
+            other = deferred(Column(String(10)))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B, C = cls.classes("A", "B", "C")
+        with Session(connection) as sess:
+            sess.add(
+                A(
+                    id=1,
+                    bs=[
+                        B(
+                            id=1,
+                            data="b1",
+                            other="o",
+                            cs=[
+                                C(id=1, data="c1", other="o"),
+                                C(id=2, data="c2", other="o"),
+                            ],
+                        ),
+                        B(
+                            id=2,
+                            data="b2",
+                            other="o",
+                            cs=[C(id=3, data="c1", other="o")],
+                        ),
+                    ],
+                )
+            )
+            sess.commit()
+
+    def _assert_loaded(self, a1, expected):
+        def go():
+            eq_(
+                [
+                    (
+                        b.id,
+                        sorted(inspect(b).unloaded),
+                        (
+                            None
+                            if "cs" in inspect(b).unloaded
+                            else [
+                                (c.id, sorted(inspect(c).unloaded))
+                                for c in b.cs
+                            ]
+                        ),
+                    )
+                    for b in a1.bs
+                ],
+                expected,
+            )
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    @testing.combinations(
+        "load_only", "undefer", "selectinload", "subqueryload", argnames="opt"
+    )
+    @testing.variation("alias_root", [True, False])
+    def test_nested_opts(self, connection, opt, alias_root):
+        """the statement is run twice with a new aliased() each time;
+        the second run uses the cached statement, whose paths refer to
+        the aliased() of the first run
+
+        """
+        A, B, C = self.classes("A", "B", "C")
+
+        connection = connection.execution_options(compiled_cache={})
+
+        for i in range(2):
+            aa = aliased(A) if alias_root else A
+            bb = aliased(B)
+
+            if opt == "load_only":
+                nested = load_only(bb.data)
+                expected = [
+                    (1, ["a_id", "cs", "other"], None),
+                    (2, ["a_id", "cs", "other"], None),
+                ]
+            elif opt == "undefer":
+                nested = undefer(bb.other)
+                expected = [(1, ["cs"], None), (2, ["cs"], None)]
+            elif opt == "selectinload":
+                nested = selectinload(bb.cs)
+                expected = [
+                    (1, ["other"], [(1, ["other"]), (2, ["other"])]),
+                    (2, ["other"], [(3, ["other"])]),
+                ]
+            elif opt == "subqueryload":
+                nested = subqueryload(bb.cs).load_only(C.data)
+                expected = [
+                    (
+                        1,
+                        ["other"],
+                        [(1, ["b_id", "other"]), (2, ["b_id", "other"])],
+                    ),
+                    (2, ["other"], [(3, ["b_id", "other"])]),
+                ]
+            else:
+                assert False
+
+            stmt = select(aa).options(
+                subqueryload(aa.bs.of_type(bb)).options(nested)
+            )
+
+            with Session(connection) as sess:
+                a1 = sess.scalars(stmt).one()
+                self._assert_loaded(a1, expected)
+
+    @testing.combinations(
+        (("plain", "order"),),
+        (("order", "plain"),),
+        argnames="order",
+    )
+    @testing.variation("alias_root", [True, False])
+    def test_nested_opts_w_different_parent_stmts(
+        self, connection, order, alias_root
+    ):
+        """the subqueryload for A.bs does not include the ORDER BY of the
+        parent statement, so it is cached independently of it; the
+        subqueryload beneath it needs to line up with the cached path
+        that refers to the aliased() of the first parent statement
+
+        """
+        A, B, C = self.classes("A", "B", "C")
+
+        connection = connection.execution_options(compiled_cache={})
+
+        for style in order:
+            aa = aliased(A) if alias_root else A
+            cc = aliased(C)
+
+            stmt = select(aa).options(
+                subqueryload(aa.bs)
+                .subqueryload(B.cs.of_type(cc))
+                .load_only(cc.data)
+            )
+            if style == "order":
+                stmt = stmt.order_by(aa.id)
+
+            with Session(connection) as sess:
+                a1 = sess.scalars(stmt).one()
+                self._assert_loaded(
+                    a1,
+                    [
+                        (
+                            1,
+                            ["other"],
+                            [(1, ["b_id", "other"]), (2, ["b_id", "other"])],
+                        ),
+                        (2, ["other"], [(3, ["b_id", "other"])]),
+                    ],
+                )
+
+    @testing.variation("criteria_on", ["outer", "nested"])
+    def test_nested_opts_w_criteria(self, connection, criteria_on):
+        """criteria in the options of the cached statement are applied
+        using the values present in the statement being invoked
+
+        """
+        A, B, C = self.classes("A", "B", "C")
+
+        connection = connection.execution_options(compiled_cache={})
+
+        for value in ("1", "2"):
+            bb = aliased(B)
+
+            if criteria_on.outer:
+                stmt = select(A).options(
+                    subqueryload(
+                        A.bs.of_type(bb).and_(bb.data == f"b{value}")
+                    ).undefer(bb.other)
+                )
+                expected = [(int(value), ["cs"], None)]
+            elif criteria_on.nested:
+                stmt = select(A).options(
+                    subqueryload(A.bs.of_type(bb)).subqueryload(
+                        bb.cs.and_(C.data == f"c{value}")
+                    )
+                )
+                expected = {
+                    "1": [
+                        (1, ["other"], [(1, ["other"])]),
+                        (2, ["other"], [(3, ["other"])]),
+                    ],
+                    "2": [
+                        (1, ["other"], [(2, ["other"])]),
+                        (2, ["other"], []),
+                    ],
+                }[value]
+            else:
+                criteria_on.fail()
+
+            with Session(connection) as sess:
+                a1 = sess.scalars(stmt).one()
+                self._assert_loaded(a1, expected)
