@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13780
+    :versions: 2.1.9
+
+    Fixed issue where a subclass configured with
+    :paramref:`_orm.Mapper.polymorphic_load` set to ``"selectin"`` would
+    cause a statement to raise :class:`.ArgumentError` when the statement
+    selected from an :func:`_orm.aliased` or :func:`_orm.with_polymorphic`
+    construct against the base class, or included another entity, along with
+    loader options such as :func:`_orm.undefer` or :func:`_orm.selectinload`
+    against that construct or entity.  The automatic load of the subclass
+    now leaves out loader options that refer to other entities, which were
+    already applied by the enclosing statement.
