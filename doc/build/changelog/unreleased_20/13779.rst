@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13779
+    :versions: 2.1.9
+
+    Fixed issue where loader options nested beneath a
+    :func:`_orm.subqueryload` option against an aliased entity, such as
+    ``subqueryload(A.bs.of_type(aliased(B)))``, would be silently skipped
+    when the statement was served from the compiled cache and was
+    constructed using a new :func:`_orm.aliased` or
+    :func:`_orm.with_polymorphic` object, as is typical when the statement
+    is built within a function.  Nested options such as
+    :func:`_orm.load_only`, :func:`_orm.undefer` and
+    :func:`_orm.selectinload` took effect only the first time the statement
+    was run.  The subquery loader now uses options from the cached statement
+    in the same way as the selectin relationship loader.
