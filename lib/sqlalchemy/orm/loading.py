@@ -1290,16 +1290,19 @@ def _load_subclass_via_in(
             if not states:
                 return
 
-        orig_query = context.query
-
         if path.parent:
             enable_opt_lcl = enable_opt._prepend_path(path)
             disable_opt_lcl = disable_opt._prepend_path(path)
         else:
             enable_opt_lcl = enable_opt
             disable_opt_lcl = disable_opt
+
+        # options need to be in terms of the cached statement in order
+        # to line up with "path"; see #13777
         options = (
-            (enable_opt_lcl,) + orig_query._with_options + (disable_opt_lcl,)
+            (enable_opt_lcl,)
+            + context._loader_strategy_options()
+            + (disable_opt_lcl,)
         )
 
         q2 = q.options(*options)

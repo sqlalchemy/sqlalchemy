@@ -1739,3 +1739,138 @@ class PolymorphicOnExprTest(
             eq_(obj, [Foo(type_id=foo_type.id, foo_attr="foo value")])
 
         self.assert_sql_count(testing.db, go, 0 if use_load != "none" else 1)
+
+
+class NestedOptsUnderSelectinPolyCachedTest(
+    fixtures.DeclarativeMappedTest, testing.AssertsExecutionResults
+):
+    """test #13777"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(ComparableEntity, Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(10))
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "parent",
+            }
+
+        class A(Parent):
+            __tablename__ = "a"
+            id = Column(ForeignKey("parent.id"), primary_key=True)
+            data = Column(String(10))
+            children = relationship("Child", order_by="Child.id")
+            __mapper_args__ = {"polymorphic_identity": "a"}
+
+        class Child(ComparableEntity, Base):
+            __tablename__ = "child"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(10))
+            parent_id = Column(ForeignKey("a.id"))
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "child",
+            }
+
+        class Group(Child):
+            __tablename__ = "grp"
+            id = Column(ForeignKey("child.id"), primary_key=True)
+            members = relationship("Member", order_by="Member.id")
+            __mapper_args__ = {"polymorphic_identity": "group"}
+
+        class Member(ComparableEntity, Base):
+            __tablename__ = "member"
+            id = Column(Integer, primary_key=True)
+            group_id = Column(ForeignKey("grp.id"))
+            data = Column(String(10))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, Child, Group, Member = cls.classes("A", "Child", "Group", "Member")
+        with Session(connection) as sess:
+            sess.add(
+                A(
+                    id=1,
+                    data="a1",
+                    children=[
+                        Group(
+                            id=10,
+                            members=[
+                                Member(id=1, data="m1"),
+                                Member(id=2, data="m2"),
+                            ],
+                        ),
+                        Child(id=11),
+                    ],
+                )
+            )
+            sess.commit()
+
+    @testing.combinations(
+        (("plain", "where"),),
+        (("where", "plain"),),
+        argnames="order",
+    )
+    @testing.variation("use_criteria", [True, False])
+    def test_nested_opts_w_different_parent_stmts(
+        self, connection, order, use_criteria
+    ):
+        """the selectinload for A.children is cached independently of the
+        parent statement; the selectin_polymorphic load beneath it needs to
+        use the cached options in order to line up with the cached path
+        that refers to the with_polymorphic() of the first parent statement
+
+        """
+        Parent, A, Child, Group, Member = self.classes(
+            "Parent", "A", "Child", "Group", "Member"
+        )
+
+        connection = connection.execution_options(compiled_cache={})
+
+        for style, member_data in zip(order, ["m1", "m2"]):
+            poly = with_polymorphic(Parent, [A])
+
+            if use_criteria:
+                members_opt = selectinload(
+                    Group.members.and_(Member.data == member_data)
+                )
+                expected_members = [
+                    Member(id=int(member_data[1]), data=member_data)
+                ]
+            else:
+                members_opt = selectinload(Group.members)
+                expected_members = [
+                    Member(id=1, data="m1"),
+                    Member(id=2, data="m2"),
+                ]
+
+            stmt = select(poly).options(
+                selectinload(poly.A.children)
+                .selectin_polymorphic([Group])
+                .options(members_opt)
+            )
+            if style == "where":
+                stmt = stmt.where(poly.A.data == "a1")
+
+            with Session(connection) as sess:
+                result = sess.scalars(stmt).all()
+
+                def go():
+                    eq_(
+                        result,
+                        [
+                            A(
+                                id=1,
+                                children=[
+                                    Group(id=10, members=expected_members),
+                                    Child(id=11),
+                                ],
+                            )
+                        ],
+                    )
+
+                self.assert_sql_count(connection, go, 0)
