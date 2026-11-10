@@ -40,6 +40,8 @@ from .context import _ORMCompileState
 from .context import FromStatement
 from .context import QueryContext
 from .strategies import _SelectInLoader
+from .strategy_options import Load
+from .util import _entity_corresponds_to
 from .util import _none_set
 from .util import state_str
 from .. import exc as sa_exc
@@ -1306,11 +1308,25 @@ def _load_subclass_via_in(
 
         # options need to be in terms of the cached statement in order
         # to line up with "path"; see #13777
-        options = (
-            (enable_opt_lcl,)
-            + context._loader_strategy_options()
-            + (disable_opt_lcl,)
-        )
+        query_options = context._loader_strategy_options()
+
+        if not path.parent:
+            # for a top level entity, there's no current path to select
+            # among the options of the parent query, which are processed
+            # against the root entity of our query as is.  leave out
+            # those against some other entity, such as an aliased() or
+            # with_polymorphic() of the base or another entity in the
+            # statement; these would raise for not linking to our root
+            # entity, and were applied by the parent query already.
+            # see #13780
+            query_options = tuple(
+                opt
+                for opt in query_options
+                if not isinstance(opt, Load)
+                or _entity_corresponds_to(entity, opt.path[0])
+            )
+
+        options = (enable_opt_lcl,) + query_options + (disable_opt_lcl,)
 
         q2 = q.options(*options)
 
