@@ -4268,7 +4268,7 @@ class GenerativeSelect(DialectKWArgs, SelectBase, Generative):
 
         This is a numeric value which usually renders as ``FETCH {FIRST | NEXT}
         [ count ] {ROW | ROWS} {ONLY | WITH TIES}`` expression in the resulting
-        select. This functionality is is currently implemented for Oracle
+        select. This functionality is currently implemented for Oracle
         Database, PostgreSQL, MSSQL.
 
         Use :meth:`_sql.GenerativeSelect.offset` to specify the offset.

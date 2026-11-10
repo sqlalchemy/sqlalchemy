@@ -693,7 +693,7 @@ Scalar Relationships
 --------------------
 
 The example below illustrates the use of the association proxy on the many
-side of of a one-to-many relationship, accessing attributes of a scalar
+side of a one-to-many relationship, accessing attributes of a scalar
 object::
 
     from __future__ import annotations
