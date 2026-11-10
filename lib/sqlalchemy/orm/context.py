@@ -89,6 +89,7 @@ if TYPE_CHECKING:
     from ..engine import Result
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..sql._typing import _ColumnsClauseArgument
+    from ..sql.base import ExecutableOption
     from ..sql.compiler import SQLCompiler
     from ..sql.dml import _DMLTableElement
     from ..sql.elements import ColumnElement
@@ -229,6 +230,39 @@ class QueryContext:
 
     def _get_top_level_context(self) -> QueryContext:
         return self.top_level_context or self
+
+    def _loader_strategy_options(self) -> Tuple[ExecutableOption, ...]:
+        """Return the options to be used by a loader strategy that emits
+        a new statement on behalf of this query, such as a selectin
+        loader or a selectin polymorphic loader.
+
+        The loader strategy is given paths and entities in terms of the
+        cached statement, i.e. ``compile_state.select_statement``, which
+        may not be the statement passed by the user.  While the two are of
+        identical structure, entities like :class:`.AliasedInsp` from
+        :func:`_orm.aliased` or :func:`_orm.with_polymorphic` will usually
+        be a different object identity in each, and will not match up with
+        paths and loader lookups.  So options with paths need to come from
+        the cached statement, while other options like
+        :func:`_orm.with_loader_criteria` need the latest state from the
+        uncached statement; as of #8399 each option decides this for itself
+        given both versions of itself.
+
+        """
+        orig_query = self.compile_state.select_statement
+
+        if orig_query is self.user_passed_query:
+            return orig_query._with_options
+
+        return tuple(
+            orig_opt._adapt_cached_option_to_uncached_option(
+                self, uncached_opt
+            )
+            for orig_opt, uncached_opt in zip(
+                orig_query._with_options,
+                self.user_passed_query._with_options,
+            )
+        )
 
 
 _orm_load_exec_options = util.immutabledict(
