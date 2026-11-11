@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10936
+    :versions: 2.1.9
+
+    Fixed issue where deleting the parent object of a one-to-many
+    relationship configured with :paramref:`_orm.relationship.post_update`,
+    such as the one-to-many side of a bidirectional ``post_update``
+    relationship, would emit the UPDATE that sets the foreign key of the
+    remaining related objects to NULL twice: once within the regular UPDATE
+    for those objects and again as the post-update. Only the post-update
+    UPDATE is now emitted, and it is explicitly ordered to run before the
+    DELETE of the parent row. Fix approach courtesy 18Abhinav07, with
+    thanks to canblmz1 for the initial analysis.
