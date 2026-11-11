@@ -1250,6 +1250,104 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
 
         is_(b1.person, None)
 
+    def _bidirectional_post_update_fixture(self):
+        person, ball, Ball, Person = (
+            self.tables.person,
+            self.tables.ball,
+            self.classes.Ball,
+            self.classes.Person,
+        )
+
+        self.mapper_registry.map_imperatively(Ball, ball)
+        self.mapper_registry.map_imperatively(
+            Person,
+            person,
+            properties=dict(
+                favorite=relationship(
+                    Ball,
+                    primaryjoin=person.c.favorite_ball_id == ball.c.id,
+                    post_update=True,
+                    backref="favorites",
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
+                )
+            ),
+        )
+        b = Ball(data="some data")
+        p1 = Person(data="p1")
+        p2 = Person(data="p2")
+        p1.favorite = b
+        p2.favorite = b
+        sess = fixture_session()
+        sess.add_all([b, p1, p2])
+        sess.flush()
+        return sess, b, p1, p2
+
+    def test_no_double_update_on_delete_bidirectional_post_update(self):
+        """test #10936"""
+
+        sess, b, p1, p2 = self._bidirectional_post_update_fixture()
+
+        sess.delete(b)
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "UPDATE person SET favorite_ball_id=:favorite_ball_id "
+                "WHERE person.id = :person_id",
+                lambda ctx: [
+                    {"favorite_ball_id": None, "person_id": p1.id},
+                    {"favorite_ball_id": None, "person_id": p2.id},
+                ],
+            ),
+            CompiledSQL(
+                "DELETE FROM ball WHERE ball.id = :id",
+                lambda ctx: {"id": b.id},
+            ),
+        )
+
+    def test_no_double_update_on_delete_bidirectional_post_update_dirty(
+        self,
+    ):
+        """test #10936 where a child has other changes; the regular UPDATE
+        should not include the post_update column"""
+
+        Person = self.classes.Person
+
+        sess, b, p1, p2 = self._bidirectional_post_update_fixture()
+
+        p1.data = "p1 new"
+        sess.delete(b)
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "UPDATE person SET data=:data WHERE person.id = :person_id",
+                lambda ctx: {"data": "p1 new", "person_id": p1.id},
+            ),
+            CompiledSQL(
+                "UPDATE person SET favorite_ball_id=:favorite_ball_id "
+                "WHERE person.id = :person_id",
+                lambda ctx: [
+                    {"favorite_ball_id": None, "person_id": p1.id},
+                    {"favorite_ball_id": None, "person_id": p2.id},
+                ],
+            ),
+            CompiledSQL(
+                "DELETE FROM ball WHERE ball.id = :id",
+                lambda ctx: {"id": b.id},
+            ),
+        )
+        eq_(
+            sess.query(Person.data, Person.favorite_ball_id)
+            .order_by(Person.id)
+            .all(),
+            [("p1 new", None), ("p2", None)],
+        )
+
 
 class SelfReferentialPostUpdateTest(fixtures.MappedTest):
     """Post_update on a single self-referential mapper."""
@@ -1431,6 +1529,56 @@ class SelfReferentialPostUpdateTest(fixtures.MappedTest):
         session.delete(about)
         cats.prev_sibling = None
         session.flush()
+
+    def test_o2m_post_update_delete_parent(self):
+        """test #10936 for a self-referential one-to-many; the children are
+        updated once, before the parent is deleted"""
+
+        node, Node = self.tables.node, self.classes.Node
+
+        self.mapper_registry.map_imperatively(
+            Node,
+            node,
+            properties={
+                "children": relationship(
+                    Node,
+                    primaryjoin=node.c.id == node.c.parent_id,
+                    post_update=True,
+                ),
+            },
+        )
+
+        session = fixture_session()
+        root = Node("root")
+        c1 = Node("c1")
+        c2 = Node("c2")
+        root.children = [c1, c2]
+        session.add(root)
+        session.flush()
+
+        c2.path = "c2 new"
+        session.delete(root)
+
+        self.assert_sql_execution(
+            testing.db,
+            session.flush,
+            CompiledSQL(
+                "UPDATE node SET path=:path WHERE node.id = :node_id",
+                lambda ctx: {"path": "c2 new", "node_id": c2.id},
+            ),
+            CompiledSQL(
+                "UPDATE node SET parent_id=:parent_id "
+                "WHERE node.id = :node_id",
+                lambda ctx: [
+                    {"parent_id": None, "node_id": c1.id},
+                    {"parent_id": None, "node_id": c2.id},
+                ],
+            ),
+            CompiledSQL(
+                "DELETE FROM node WHERE node.id = :id",
+                lambda ctx: {"id": root.id},
+            ),
+        )
 
 
 class SelfReferentialPostUpdateTest2(fixtures.MappedTest):
