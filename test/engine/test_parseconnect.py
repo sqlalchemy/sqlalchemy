@@ -132,9 +132,7 @@ class URLTest(fixtures.TestBase):
             "dbtype://user:pass word + other%3Awords@host/dbname",
         )
 
-        u = url.make_url(
-            "dbtype://username:apples%2Foranges@hostspec/database"
-        )
+        u = url.make_url("dbtype://username:apples%2Foranges@hostspec/database")
         eq_(u.password, "apples/oranges")
         eq_(str(u), "dbtype://username:***@hostspec/database")
         eq_(
@@ -142,9 +140,7 @@ class URLTest(fixtures.TestBase):
             "dbtype://username:apples%2Foranges@hostspec/database",
         )
 
-        u = url.make_url(
-            "dbtype://username:apples%40oranges%40%40@hostspec/database"
-        )
+        u = url.make_url("dbtype://username:apples%40oranges%40%40@hostspec/database")
         eq_(u.password, "apples@oranges@@")
         eq_(str(u), "dbtype://username:***@hostspec/database")
         eq_(
@@ -182,9 +178,7 @@ class URLTest(fixtures.TestBase):
                 return self.value
 
         sp = SecurePassword("secured_password")
-        u = url.URL.create(
-            "dbtype", username="x", password=sp, host="localhost"
-        )
+        u = url.URL.create("dbtype", username="x", password=sp, host="localhost")
 
         eq_(u.password, "secured_password")
         eq_(
@@ -235,9 +229,7 @@ class URLTest(fixtures.TestBase):
             "dialect://user:pass@host?arg1=param1&arg2=param2",
         )
 
-        u = url.make_url(
-            "dialect://user:pass@host:450?arg1=param1&arg2=param2"
-        )
+        u = url.make_url("dialect://user:pass@host:450?arg1=param1&arg2=param2")
         eq_(u.port, 450)
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
         eq_(
@@ -264,6 +256,20 @@ class URLTest(fixtures.TestBase):
         eq_(u.normalized_query, {"arg1=": ("param1",), "arg2": ("param 2",)})
         eq_(u.render_as_string(hide_password=False), test_url)
 
+    def test_render_as_string_query_key_sort(self):
+        a = url.make_url("d://h/db?a=1&b=2")
+        b = url.make_url("d://h/db?b=2&a=1")
+
+        eq_(a, b)
+        eq_(hash(a), hash(b))
+        eq_(len({a, b}), 1)
+
+        expected = "d://h/db?a=1&b=2"
+        eq_(a.render_as_string(), expected)
+        eq_(b.render_as_string(), expected)
+        eq_(str(a), expected)
+        eq_(str(b), expected)
+
     def test_comparison(self):
         common_url = (
             "dbtype://username:password"
@@ -281,17 +287,13 @@ class URLTest(fixtures.TestBase):
         is_false(url1 == url3)
 
     def test_copy(self):
-        url1 = url.make_url(
-            "dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2"
-        )
+        url1 = url.make_url("dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2")
         url2 = copy.copy(url1)
         eq_(url1, url2)
         is_not(url1, url2)
 
     def test_deepcopy(self):
-        url1 = url.make_url(
-            "dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2"
-        )
+        url1 = url.make_url("dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2")
         url2 = copy.deepcopy(url1)
         eq_(url1, url2)
         is_not(url1, url2)
@@ -397,9 +399,7 @@ class URLTest(fixtures.TestBase):
             False,
         ),
     )
-    def test_update_query_string(
-        self, starting, update_with, expected, append
-    ):
+    def test_update_query_string(self, starting, update_with, expected, append):
         eq_(
             url.make_url("drivername:///?%s" % starting).update_query_string(
                 update_with, append=append
@@ -423,9 +423,7 @@ class URLTest(fixtures.TestBase):
         if keep_blank_values.omitted:
             u = url.make_url(urlstr)
         else:
-            u = url.make_url(
-                urlstr, keep_blank_values=bool(keep_blank_values.keep)
-            )
+            u = url.make_url(urlstr, keep_blank_values=bool(keep_blank_values.keep))
 
         if keep_blank_values.keep:
             eq_(u.query, blanks_query)
@@ -567,9 +565,7 @@ class URLTest(fixtures.TestBase):
         )
         eq_(
             u1,
-            url.make_url(
-                "somedriver://user:secret@10.20.30.40:1234/DB?key=value"
-            ),
+            url.make_url("somedriver://user:secret@10.20.30.40:1234/DB?key=value"),
         )
 
     @testing.fails()
@@ -680,8 +676,7 @@ class DBAPIVersionTest(fixtures.TestBase):
         d = NoHookDialect(dbapi=Mock(__version__="1.2.3"))
         with expect_raises_message(
             NotImplementedError,
-            "Dialect nohook\\+nohook does not implement "
-            "retrieve_dbapi_version\\(\\)",
+            "Dialect nohook\\+nohook does not implement retrieve_dbapi_version\\(\\)",
         ):
             d.dbapi_version
 
@@ -748,9 +743,7 @@ class MinimumDBAPIVersionTest(fixtures.TestBase):
 
     @testing.combinations("2.5", "2.5.1", "3.0", argnames="version")
     def test_version_ok(self, version):
-        d = self._dialect_cls()(
-            dbapi=Mock(__name__="mydbapi", __version__=version)
-        )
+        d = self._dialect_cls()(dbapi=Mock(__name__="mydbapi", __version__=version))
         eq_(d.dbapi_version, tsa.util.parse_version_string(version))
 
     @testing.combinations("2.4.9", "2.5rc1", "1.0", argnames="version")
@@ -761,9 +754,7 @@ class MinimumDBAPIVersionTest(fixtures.TestBase):
             f"of the mydbapi DBAPI; version {re.escape(version)} is "
             "installed",
         ):
-            self._dialect_cls()(
-                dbapi=Mock(__name__="mydbapi", __version__=version)
-            )
+            self._dialect_cls()(dbapi=Mock(__name__="mydbapi", __version__=version))
 
     @testing.combinations("no_dbapi", "no_version", argnames="scenario")
     def test_no_version_no_check(self, scenario):
@@ -804,12 +795,9 @@ class CreateEngineTest(fixtures.TestBase):
         e.connect()
 
     def test_kwargs(self):
-        dbapi = MockDBAPI(
-            foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
-        )
+        dbapi = MockDBAPI(foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue")
         e = create_engine(
-            "postgresql+psycopg2://scott:tiger@somehost/test?fooz="
-            "somevalue",
+            "postgresql+psycopg2://scott:tiger@somehost/test?fooz=somevalue",
             connect_args={"foober": 12, "lala": 18, "hoho": {"this": "dict"}},
             module=dbapi,
             _initialize=False,
@@ -893,9 +881,7 @@ class CreateEngineTest(fixtures.TestBase):
 
         global dialect
         dialect = MyDialect
-        registry.register(
-            "mockdialect.barb", ".".join(tokens[0:-1]), tokens[-1]
-        )
+        registry.register("mockdialect.barb", ".".join(tokens[0:-1]), tokens[-1])
 
         config = {
             "sqlalchemy.url": "mockdialect+barb://",
@@ -919,9 +905,7 @@ class CreateEngineTest(fixtures.TestBase):
 
         global dialect
         dialect = MyDialect
-        registry.register(
-            "mockdialect.ocu", ".".join(tokens[0:-1]), tokens[-1]
-        )
+        registry.register("mockdialect.ocu", ".".join(tokens[0:-1]), tokens[-1])
 
         create_engine("mockdialect+ocu://foo:bar@host/test")
         eq_(
@@ -940,9 +924,7 @@ class CreateEngineTest(fixtures.TestBase):
         )
 
     def test_custom(self):
-        dbapi = MockDBAPI(
-            foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
-        )
+        dbapi = MockDBAPI(foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue")
 
         def connect():
             return dbapi.connect(
@@ -961,9 +943,7 @@ class CreateEngineTest(fixtures.TestBase):
         e.connect()
 
     def test_recycle(self):
-        dbapi = MockDBAPI(
-            foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
-        )
+        dbapi = MockDBAPI(foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue")
         e = create_engine(
             "postgresql+psycopg2://",
             pool_recycle=472,
@@ -973,9 +953,7 @@ class CreateEngineTest(fixtures.TestBase):
         assert e.pool._recycle == 472
 
     def test_reset_on_return(self):
-        dbapi = MockDBAPI(
-            foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
-        )
+        dbapi = MockDBAPI(foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue")
         for value, expected in [
             ("rollback", pool.reset_rollback),
             ("commit", pool.reset_commit),
@@ -1001,9 +979,7 @@ class CreateEngineTest(fixtures.TestBase):
         )
 
     def test_bad_args(self):
-        assert_raises(
-            exc.ArgumentError, create_engine, "foobar://", module=mock_dbapi
-        )
+        assert_raises(exc.ArgumentError, create_engine, "foobar://", module=mock_dbapi)
 
         # bad arg
 
@@ -1124,13 +1100,9 @@ class CreateEngineTest(fixtures.TestBase):
                 return self.value
 
         sp = SecurePassword("secured_password")
-        u = url.URL.create(
-            "mysql+pymysql", username="x", password=sp, host="localhost"
-        )
+        u = url.URL.create("mysql+pymysql", username="x", password=sp, host="localhost")
         if not creator:
-            dbapi = MockDBAPI(
-                user="x", password="secured_password", host="localhost"
-            )
+            dbapi = MockDBAPI(user="x", password="secured_password", host="localhost")
 
             e = create_engine(u, module=dbapi, _initialize=False)
 
@@ -1140,9 +1112,7 @@ class CreateEngineTest(fixtures.TestBase):
             def connect():
                 return dbapi.connect(foober=12, lala=18, fooz="somevalue")
 
-            e = create_engine(
-                u, creator=connect, module=dbapi, _initialize=False
-            )
+            e = create_engine(u, creator=connect, module=dbapi, _initialize=False)
         e.connect()
         e.connect()
         e.connect()
@@ -1238,9 +1208,7 @@ class TestRegNewDBAPI(fixtures.TestBase):
 
         global dialect
         dialect = MockDialect
-        registry.register(
-            "mockdialect.foob", ".".join(tokens[0:-1]), tokens[-1]
-        )
+        registry.register("mockdialect.foob", ".".join(tokens[0:-1]), tokens[-1])
 
         e = create_engine("mockdialect+foob://")
         assert isinstance(e.dialect, MockDialect)
@@ -1317,8 +1285,7 @@ class TestRegNewDBAPI(fixtures.TestBase):
             [
                 call(
                     url.make_url(
-                        "mockdialect://?plugin=engineplugin"
-                        "&foo=bar&myplugin_arg=bat"
+                        "mockdialect://?plugin=engineplugin&foo=bar&myplugin_arg=bat"
                     ),
                     {},
                 ),
@@ -1341,16 +1308,10 @@ class TestRegNewDBAPI(fixtures.TestBase):
             return MyEnginePlugin2
 
         def update_url(url):
-            return url.difference_update_query(
-                ["myplugin1_arg", "myplugin2_arg"]
-            )
+            return url.difference_update_query(["myplugin1_arg", "myplugin2_arg"])
 
-        MyEnginePlugin1 = Mock(
-            side_effect=side_effect_1, update_url=update_url
-        )
-        MyEnginePlugin2 = Mock(
-            side_effect=side_effect_2, update_url=update_url
-        )
+        MyEnginePlugin1 = Mock(side_effect=side_effect_1, update_url=update_url)
+        MyEnginePlugin2 = Mock(side_effect=side_effect_2, update_url=update_url)
 
         plugins.register("engineplugin1", __name__, "MyEnginePlugin1")
         plugins.register("engineplugin2", __name__, "MyEnginePlugin2")
@@ -1446,9 +1407,7 @@ class TestGetDialect(fixtures.TestBase):
         global MockDialectGetDialect
         MockDialectGetDialect = Mock()
         MockDialectGetDialect.get_dialect_cls.side_effect = get_dialect_cls
-        MockDialectGetDialect.get_async_dialect_cls.side_effect = (
-            get_dialect_cls
-        )
+        MockDialectGetDialect.get_async_dialect_cls.side_effect = get_dialect_cls
 
         registry.register("mockdialect", __name__, "MockDialectGetDialect")
 
