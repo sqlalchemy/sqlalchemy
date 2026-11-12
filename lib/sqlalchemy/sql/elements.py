@@ -2134,7 +2134,10 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         if type_ is None:
             if expanding:
                 if value:
-                    check_value = value[0]
+                    check_value = next(
+                        (item for item in value if item is not None),
+                        None,
+                    )
                 else:
                     check_value = type_api._NO_VALUE_IN_LIST
             else:
