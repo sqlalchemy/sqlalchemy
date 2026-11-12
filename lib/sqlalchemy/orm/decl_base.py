@@ -1439,7 +1439,11 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                     continue
 
                 collected_annotation = self._collect_annotation(
-                    name, annotation, originating_class, True, obj
+                    name,
+                    annotation,
+                    originating_class,
+                    not self.allow_unmapped_annotations,
+                    obj,
                 )
                 assert collected_annotation is not None
                 mapped_col = _mapped_column_for_annotation(
@@ -1458,7 +1462,11 @@ class _DeclarativeMapperConfig(_MapperConfig, _ClassScanAbstractConfig):
                     continue
 
                 collected_annotation = self._collect_annotation(
-                    name, annotation, originating_class, True, obj
+                    name,
+                    annotation,
+                    originating_class,
+                    not self.allow_unmapped_annotations,
+                    obj,
                 )
                 obj = (
                     collected_annotation.attr_value
