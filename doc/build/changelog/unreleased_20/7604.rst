@@ -1,0 +1,7 @@
+.. change::
+    :tags: feature, postgresql
+    :tickets: 7604
+
+    Added the ``asyncpg_timeout`` execution option to the asyncpg dialect,
+    allowing a timeout in seconds to be passed to asyncpg for individual
+    statement and executemany executions, including server-side cursors.
