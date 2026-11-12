@@ -88,6 +88,7 @@ from ..sql.elements import ColumnClause
 from ..sql.elements import ColumnElement
 from ..sql.util import _deep_annotate
 from ..sql.util import _deep_deannotate
+from ..sql.util import _lateral_correlated_froms
 from ..sql.util import _shallow_annotate
 from ..sql.util import adapt_criterion_to_null
 from ..sql.util import ClauseAdapter
@@ -2273,6 +2274,21 @@ class RelationshipProperty(
     @util.memoized_property
     def _is_self_referential(self) -> bool:
         return self.mapper.common_parent(self.parent)
+
+    @util.memoized_property
+    def _target_correlates_to_parent(self) -> bool:
+        """Return True if the target selectable, such as a LATERAL
+        subquery, correlates to the parent's table.
+
+        Such a target can only be loaded in a query where the parent's
+        table, or an alias of it, is present in the FROM clause.
+
+        """
+        return bool(
+            _lateral_correlated_froms(
+                self.entity.selectable, self.parent.selectable
+            )
+        )
 
     def _create_joins(
         self,

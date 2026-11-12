@@ -1974,6 +1974,28 @@ class _ORMJoin(expression.Join):
                 extra_criteria=_extra_criteria,
             )
 
+            # a target such as a LATERAL subquery may correlate to the
+            # parent's table; when joining from an alias of the parent,
+            # adapt those references to the alias.  only the parent's
+            # table is adapted, as "adapt_from" may be a subquery that
+            # also includes tables the LATERAL selects from on its own
+            if (
+                adapt_from is not None
+                and adapt_from is not prop.parent.selectable
+                and adapt_from is not prop.parent.local_table
+                and isinstance(adapt_to, FromClause)
+            ):
+                correlated = sql_util._lateral_correlated_froms(
+                    adapt_to, prop.parent.selectable
+                )
+                if correlated:
+                    right = sql_util.ClauseAdapter(
+                        adapt_from,
+                        include_fn=lambda elem: not correlated.isdisjoint(
+                            elem._from_objects
+                        ),
+                    ).traverse(adapt_to)
+
             if sj is not None:
                 if isouter:
                     # note this is an inner join from secondary->right
