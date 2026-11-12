@@ -641,6 +641,42 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 with c2.begin():
                     c2.exec_driver_sql("drop table #rt_two")
 
+    @testing.combinations(("regular",), ("temp",), argnames="kind")
+    def test_reflect_pk_not_blocked_by_other_session(self, kind):
+        """test #13789
+
+        primary key reflection must not block on another session's
+        uncommitted table that has a primary key
+
+        """
+        prefix = "#" if kind == "temp" else ""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+            with c2.begin():
+                c2.exec_driver_sql(
+                    f"create table {prefix}pk_two (x int primary key, y int)"
+                )
+            try:
+                c1.begin()
+                c1.exec_driver_sql(
+                    f"create table {prefix}pk_one (a int primary key, b int)"
+                )
+
+                c2.exec_driver_sql("SET LOCK_TIMEOUT 5000")
+                eq_(
+                    inspect(c2).get_pk_constraint(f"{prefix}pk_two")[
+                        "constrained_columns"
+                    ],
+                    ["x"],
+                )
+            finally:
+                c1.rollback()
+                c2.rollback()
+                c2.exec_driver_sql("SET LOCK_TIMEOUT -1")
+                c2.rollback()
+                with c2.begin():
+                    c2.exec_driver_sql(f"drop table {prefix}pk_two")
+
     @testing.fixture
     def temp_db_alt_collation_fixture(
         self, connection_no_trans, testing_engine

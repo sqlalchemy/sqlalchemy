@@ -4267,6 +4267,14 @@ index_info AS (
                     == sys_key_constraints.c.unique_index_id,
                 ),
             )
+            # a table with a primary key that another session is creating
+            # within a transaction has its key constraint rows locked until
+            # that transaction ends; the plan for this query can read those
+            # rows even though the filter discards them, so skip them
+            # rather than block on them.  See #13789.
+            .with_hint(
+                sys_key_constraints, "WITH (READPAST)", dialect_name="mssql"
+            )
             .where(
                 sys_key_constraints.c.type == "PK",
                 ischema.sys_schemas.c.name == sql.bindparam("owner"),

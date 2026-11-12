@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 13789
+
+    Fixed issue where reflection of a table's primary key constraint on SQL
+    Server could block, or deadlock, against another session that was
+    creating a table with a primary key within a transaction, for both
+    regular and temporary tables.  The catalog query used for primary key
+    reflection now skips rows that are locked by other sessions.
