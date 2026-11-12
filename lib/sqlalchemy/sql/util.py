@@ -28,6 +28,7 @@ from typing import Optional
 from typing import overload
 from typing import Protocol
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -60,11 +61,14 @@ from .elements import Null
 from .elements import UnaryExpression
 from .schema import Column
 from .selectable import Alias
+from .selectable import AliasedReturnsRows
 from .selectable import FromClause
 from .selectable import FromGrouping
 from .selectable import Join
 from .selectable import ScalarSelect
+from .selectable import Select
 from .selectable import SelectBase
+from .selectable import SelectState
 from .selectable import TableClause
 from .visitors import _ET
 from .. import exc
@@ -852,6 +856,66 @@ def adapt_criterion_to_null(crit: _CE, nulls: Collection[Any]) -> _CE:
     return visitors.cloned_traverse(crit, {}, {"binary": visit_binary})
 
 
+def _lateral_correlated_froms(
+    target: FromClause, source: FromClause
+) -> Set[FromClause]:
+    """Return the FROM objects that LATERAL subqueries within ``target``
+    correlate to, limited to those that ``source`` is derived from.
+
+    ``source`` is the element on the left side of a JOIN to ``target`` that
+    is being replaced with an alias or subquery, such as the parent table
+    of a relationship; the returned FROM objects are those which need to be
+    adapted to the replacement.  Other FROM objects the LATERAL may
+    correlate to, such as further elements on the left side of the JOIN
+    which are not being replaced, are not included.  Correlation follows
+    the same rules as the compiler, so that a FROM which the LATERAL
+    selects from on its own, rather than correlating to it, is also not
+    included.
+
+    """
+    correlated: Set[FromClause] = set()
+
+    # the LATERAL may be wrapped in further aliases, e.g. when the ORM
+    # aliases it, and may itself wrap a subquery, e.g.
+    # select().subquery().lateral(), so track it through the alias chain
+    # down to the SELECT
+    stack: List[Tuple[FromClause, bool]] = [(target, False)]
+    while stack:
+        elem, lateral = stack.pop()
+        if isinstance(elem, Join):
+            stack.extend(((elem.left, False), (elem.right, False)))
+        elif isinstance(elem, FromGrouping):
+            stack.append((elem.element, lateral))
+        elif isinstance(elem, AliasedReturnsRows):
+            lateral = lateral or elem._is_lateral
+            if isinstance(elem.element, FromClause):
+                stack.append((elem.element, lateral))
+                continue
+            elif not lateral or not isinstance(elem.element, Select):
+                continue
+
+            stmt = elem.element
+            froms = list(
+                _from_objects(
+                    *stmt._raw_columns, *stmt._where_criteria, *stmt._from_obj
+                )
+            )
+            enclosing = [f for f in froms if source.is_derived_from(f)]
+            if not enclosing:
+                continue
+            remaining = SelectState._correlate_froms(
+                froms,
+                stmt,
+                stmt._correlate,
+                stmt._correlate_except,
+                stmt._auto_correlate,
+                enclosing,
+                enclosing,
+            )
+            correlated.update(f for f in froms if f not in remaining)
+    return correlated
+
+
 def splice_joins(
     left: Optional[FromClause],
     right: Optional[FromClause],
@@ -862,6 +926,14 @@ def splice_joins(
 
     stack: List[Tuple[Optional[FromClause], Optional[Join]]] = [(right, None)]
 
+    # the element at the far left of "right" which "left" takes the place
+    # of.  a LATERAL within "right" that correlates to it is adapted to
+    # "left" along with the ON clauses, while correlation to any other
+    # element of "right" is left as is.
+    replaced = right
+    while isinstance(replaced, Join) and replaced is not stop_on:
+        replaced = replaced.left
+
     adapter = ClauseAdapter(left)
     ret = None
     while stack:
@@ -869,6 +941,17 @@ def splice_joins(
         if isinstance(right, Join) and right is not stop_on:
             right = right._clone()
             right.onclause = adapter.traverse(right.onclause)
+
+            assert replaced is not None
+            correlated = _lateral_correlated_froms(right.right, replaced)
+            if correlated:
+                right.right = ClauseAdapter(
+                    left,
+                    include_fn=lambda elem: not correlated.isdisjoint(
+                        elem._from_objects
+                    ),
+                ).traverse(right.right)
+
             stack.append((right.left, right))
         else:
             right = adapter.traverse(right)

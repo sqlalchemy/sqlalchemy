@@ -9,6 +9,7 @@ from sqlalchemy import join
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import foreign
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import noload
 from sqlalchemy.orm import relationship
@@ -398,3 +399,223 @@ class StructuralEagerLoadCycleTest(fixtures.DeclarativeMappedTest):
                 a = results.first()
 
         a.bs
+
+
+class LateralFixture(fixtures.DeclarativeMappedTest):
+    """relationship to an aliased class against a correlated LATERAL
+    subquery, as in #13783"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(ComparableEntity, Base):
+            __tablename__ = "parent"
+            id = Column(Integer, primary_key=True)
+
+        class Child(ComparableEntity, Base):
+            __tablename__ = "child"
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(ForeignKey("parent.id"))
+            x = Column(Integer)
+
+        class Link(ComparableEntity, Base):
+            __tablename__ = "link"
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(ForeignKey("parent.id"))
+            data = Column(Integer)
+
+        Parent.links = relationship(Link)
+
+        latest = aliased(
+            Child,
+            select(Child)
+            .where(Child.parent_id == Parent.id)
+            .order_by(Child.x.desc())
+            .limit(1)
+            .correlate(Parent)
+            .subquery()
+            .lateral(),
+            flat=True,
+        )
+        Parent.latest_child = relationship(
+            latest,
+            primaryjoin=foreign(latest.parent_id) == Parent.id,
+            uselist=False,
+            viewonly=True,
+        )
+        Parent.latest_children = relationship(
+            latest,
+            primaryjoin=foreign(latest.parent_id) == Parent.id,
+            viewonly=True,
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        Parent, Child, Link = cls.classes("Parent", "Child", "Link")
+
+        sess = Session(connection)
+        sess.add_all([Parent(id=1), Parent(id=2)])
+        sess.flush()
+        sess.add_all(
+            [
+                Child(id=1, parent_id=1, x=5),
+                Child(id=2, parent_id=1, x=9),
+                Child(id=3, parent_id=2, x=3),
+                Link(id=1, parent_id=1, data=1),
+                Link(id=2, parent_id=2, data=2),
+                Link(id=3, parent_id=2, data=2),
+            ]
+        )
+        sess.commit()
+
+    def _wrapped_stmt(self, kind):
+        Parent, Child, Link = self.classes("Parent", "Child", "Link")
+
+        if kind.m2o_distinct:
+            return (
+                select(Parent, Link.data)
+                .join(Parent.links)
+                .distinct()
+                .order_by(Parent.id)
+                .options(joinedload(Parent.latest_child))
+            )
+        elif kind.m2o_group_by:
+            return (
+                select(Parent, func.count(Link.id))
+                .join(Parent.links)
+                .group_by(Parent.id)
+                .order_by(Parent.id)
+                .options(joinedload(Parent.latest_child))
+            )
+        elif kind.o2m_limit:
+            return (
+                select(Parent)
+                .order_by(Parent.id)
+                .limit(5)
+                .options(joinedload(Parent.latest_children))
+            )
+        else:
+            kind.fail()
+
+
+class LateralRelationshipCompileTest(
+    LateralFixture, testing.AssertsCompiledSQL
+):
+    __dialect__ = "default"
+
+    def test_joinedload_not_wrapped(self):
+        Parent = self.classes.Parent
+
+        self.assert_compile(
+            select(Parent).options(joinedload(Parent.latest_child)),
+            "SELECT parent.id, anon_1.id AS id_1, anon_1.parent_id, "
+            "anon_1.x FROM parent "
+            "LEFT OUTER JOIN LATERAL (SELECT child.id AS id, "
+            "child.parent_id AS parent_id, child.x AS x FROM child "
+            "WHERE child.parent_id = parent.id ORDER BY child.x DESC "
+            "LIMIT :param_1) AS anon_1 ON anon_1.parent_id = parent.id",
+        )
+
+    @testing.variation("kind", ["m2o_distinct", "m2o_group_by", "o2m_limit"])
+    def test_joinedload_wrapped(self, kind):
+        """test #13783"""
+
+        if kind.m2o_distinct:
+            expected = (
+                "SELECT anon_1.id, anon_1.data, anon_2.id AS id_1, "
+                "anon_2.parent_id, anon_2.x FROM (SELECT DISTINCT "
+                "parent.id AS id, link.data AS data FROM parent "
+                "JOIN link ON parent.id = link.parent_id "
+                "ORDER BY parent.id) AS anon_1 "
+                "LEFT OUTER JOIN LATERAL (SELECT child.id AS id, "
+                "child.parent_id AS parent_id, child.x AS x FROM child "
+                "WHERE child.parent_id = anon_1.id ORDER BY child.x DESC "
+                "LIMIT :param_1) AS anon_2 ON anon_2.parent_id = anon_1.id "
+                "ORDER BY anon_1.id"
+            )
+        elif kind.m2o_group_by:
+            expected = (
+                "SELECT anon_1.id, anon_1.count_1, anon_2.id AS id_1, "
+                "anon_2.parent_id, anon_2.x FROM (SELECT parent.id AS id, "
+                "count(link.id) AS count_1 FROM parent "
+                "JOIN link ON parent.id = link.parent_id "
+                "GROUP BY parent.id ORDER BY parent.id) AS anon_1 "
+                "LEFT OUTER JOIN LATERAL (SELECT child.id AS id, "
+                "child.parent_id AS parent_id, child.x AS x FROM child "
+                "WHERE child.parent_id = anon_1.id ORDER BY child.x DESC "
+                "LIMIT :param_1) AS anon_2 ON anon_2.parent_id = anon_1.id "
+                "ORDER BY anon_1.id"
+            )
+        elif kind.o2m_limit:
+            expected = (
+                "SELECT anon_1.id, anon_2.id AS id_1, anon_2.parent_id, "
+                "anon_2.x FROM (SELECT parent.id AS id FROM parent "
+                "ORDER BY parent.id LIMIT :param_1) AS anon_1 "
+                "LEFT OUTER JOIN LATERAL (SELECT child.id AS id, "
+                "child.parent_id AS parent_id, child.x AS x FROM child "
+                "WHERE child.parent_id = anon_1.id ORDER BY child.x DESC "
+                "LIMIT :param_2) AS anon_2 ON anon_2.parent_id = anon_1.id "
+                "ORDER BY anon_1.id"
+            )
+        else:
+            kind.fail()
+
+        self.assert_compile(self._wrapped_stmt(kind), expected)
+
+    def test_joinedload_wrapped_own_from_not_adapted(self):
+        """test #13783; the LATERAL selects from "child" on its own, which
+        is not adapted to the wrapping subquery even though the enclosing
+        query also selects from "child" """
+
+        Parent, Child = self.classes("Parent", "Child")
+
+        self.assert_compile(
+            select(Parent, Child)
+            .join(Child, Child.parent_id == Parent.id)
+            .limit(5)
+            .options(joinedload(Parent.latest_children)),
+            "SELECT anon_1.id, anon_1.id_1, anon_1.parent_id, anon_1.x, "
+            "anon_2.id AS id_2, anon_2.parent_id AS parent_id_1, "
+            "anon_2.x AS x_1 FROM (SELECT parent.id AS id, "
+            "child.id AS id_1, child.parent_id AS parent_id, child.x AS x "
+            "FROM parent JOIN child ON child.parent_id = parent.id "
+            "LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN LATERAL (SELECT child.id AS id, "
+            "child.parent_id AS parent_id, child.x AS x FROM child "
+            "WHERE child.parent_id = anon_1.id ORDER BY child.x DESC "
+            "LIMIT :param_2) AS anon_2 ON anon_2.parent_id = anon_1.id",
+        )
+
+
+class LateralRelationshipRoundTripTest(LateralFixture):
+    __requires__ = ("lateral",)
+    __backend__ = True
+
+    @testing.variation("kind", ["m2o_distinct", "m2o_group_by", "o2m_limit"])
+    def test_joinedload_wrapped(self, kind):
+        """test #13783"""
+
+        Parent, Child = self.classes("Parent", "Child")
+
+        sess = fixture_session()
+        parents = [
+            row[0] for row in sess.execute(self._wrapped_stmt(kind)).unique()
+        ]
+
+        if kind.o2m_limit:
+            eq_(
+                parents,
+                [
+                    Parent(id=1, latest_children=[Child(id=2)]),
+                    Parent(id=2, latest_children=[Child(id=3)]),
+                ],
+            )
+        else:
+            eq_(
+                parents,
+                [
+                    Parent(id=1, latest_child=Child(id=2)),
+                    Parent(id=2, latest_child=Child(id=3)),
+                ],
+            )

@@ -997,6 +997,20 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def lateral(self):
+        """Target database supports LATERAL subqueries"""
+        return only_on(
+            [
+                "postgresql",
+                "oracle",
+                lambda config: against(config, "mysql")
+                and not config.db.dialect._is_mariadb
+                and config.db.dialect.server_version_info >= (8, 0, 14),
+            ],
+            "Backend does not support LATERAL",
+        )
+
+    @property
     def window_range(self):
         """Target backend supports RANGE in window functions with int frames"""
         return skip_if(["mssql"])
