@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13788
+
+    Fixed regression caused by :ticket:`13748` where an ORM mapped dataclass
+    that included a column using :func:`_orm.orm_insert_sentinel`, or a
+    :func:`_orm.mapped_column` given a :class:`.ColumnDefault` or
+    :class:`.Sequence` object for :paramref:`_orm.mapped_column.default`,
+    would fail to flush, as the default object itself would be delivered to
+    the INSERT statement as a parameter value.  These objects now apply to
+    the :class:`.Column` only, and are no longer used as the Python-side
+    default value of the attribute, which now remains ``None`` until the
+    object is flushed.

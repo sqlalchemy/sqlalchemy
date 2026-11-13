@@ -71,6 +71,7 @@ from ..sql.base import ExecutableOption
 from ..sql.cache_key import HasCacheKey
 from ..sql.operators import ColumnOperators
 from ..sql.schema import Column
+from ..sql.schema import DefaultGenerator
 from ..sql.type_api import TypeEngine
 from ..util import warn_deprecated
 from ..util.typing import RODescriptorReference
@@ -418,7 +419,16 @@ class _DataclassDefaultsDontSet(_DCAttributeOptions):
             self._attribute_options.dataclasses_default_factory
         )
 
-        if dataclasses_default is not _NoArg.NO_ARG and not callable(
+        if isinstance(dataclasses_default, DefaultGenerator):
+            # a ColumnDefault or Sequence passed as default, including the
+            # default established by orm_insert_sentinel(), applies to the
+            # Column only and is not a Python value for the attribute,
+            # #13788
+            self._default_scalar_value = None
+            return self._attribute_options._replace(
+                dataclasses_default=DONT_SET,
+            )
+        elif dataclasses_default is not _NoArg.NO_ARG and not callable(
             dataclasses_default
         ):
             self._default_scalar_value = (

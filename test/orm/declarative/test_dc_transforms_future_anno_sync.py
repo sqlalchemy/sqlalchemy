@@ -27,6 +27,7 @@ from unittest import mock
 
 from sqlalchemy import BigInteger
 from sqlalchemy import Column
+from sqlalchemy import ColumnDefault
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
@@ -35,6 +36,7 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import select
+from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -54,6 +56,7 @@ from sqlalchemy.orm import mapped_as_dataclass
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import MappedColumn
+from sqlalchemy.orm import orm_insert_sentinel
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import registry as _RegistryType
@@ -3786,6 +3789,75 @@ class UseDescriptorDefaultsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 sess.scalar(select(MyClass.__table__.c.data)),
                 "some_default",
             )
+
+    def test_orm_insert_sentinel(self, dc_decl_base):
+        """test #13788"""
+
+        class MyClass(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str]
+            _sentinel: Mapped[int] = orm_insert_sentinel()
+
+        dc_decl_base.metadata.create_all(testing.db)
+
+        with Session(testing.db) as sess:
+            sess.add_all([MyClass(data="d1"), MyClass(data="d2")])
+            sess.commit()
+
+            eq_(
+                sess.scalars(
+                    select(MyClass.data).order_by(MyClass.data)
+                ).all(),
+                ["d1", "d2"],
+            )
+
+    @testing.variation("default_type", ["column_default", "sequence"])
+    def test_default_generator_as_default(self, dc_decl_base, default_type):
+        """test #13788; a ColumnDefault or Sequence given as the default
+        applies to the Column only, and is not a value for the attribute"""
+
+        if not dc_decl_base.use_descriptor_defaults:
+            testing.config.skip_test(
+                "default generator is placed in __dict__ by the dataclass "
+                "__init__ when descriptor defaults are disabled"
+            )
+
+        if default_type.column_default:
+            default = ColumnDefault(5)
+        elif default_type.sequence:
+            default = Sequence("some_seq")
+        else:
+            default_type.fail()
+
+        class MyClass(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[Optional[int]] = mapped_column(default=default)
+
+        is_(MyClass.__table__.c.data.default, default)
+
+        mc = MyClass()
+        eq_(mc.data, None)
+        assert "data" not in mc.__dict__
+
+        dc_decl_base.metadata.create_all(testing.db)
+
+        with Session(testing.db) as sess:
+            sess.add(mc)
+            sess.commit()
+
+            if default_type.column_default:
+                expected = 5
+            elif testing.requires.sequences.enabled:
+                expected = 1
+            else:
+                # sequence is ignored on backends that don't support them
+                expected = None
+
+            eq_(sess.scalar(select(MyClass.__table__.c.data)), expected)
 
     @testing.variation("use_attr_init", [True, False])
     def test_fk_set_scenario(self, dc_decl_base, use_attr_init):
