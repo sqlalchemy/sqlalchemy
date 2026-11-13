@@ -2729,6 +2729,162 @@ class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
             "table1.col3 = table4_1.col3",
         )
 
+    @testing.variation(
+        "correlate",
+        ["auto", "explicit", "explicit_except", "aliased_lateral", "nested"],
+    )
+    def test_splice_lateral_correlated(self, correlate):
+        """test #13783"""
+
+        stmt = select(table2).where(table2.c.col1 == table1.c.col1)
+
+        if correlate.auto or correlate.aliased_lateral:
+            pass
+        elif correlate.explicit:
+            stmt = stmt.correlate(table1)
+        elif correlate.explicit_except:
+            stmt = stmt.correlate_except(table2)
+        elif correlate.nested:
+            stmt = stmt.where(
+                table2.c.col2
+                == select(table3.c.col2)
+                .where(table3.c.col3 == table1.c.col3)
+                .correlate(table1)
+                .scalar_subquery()
+            ).correlate(table1)
+        else:
+            correlate.fail()
+
+        lat = stmt.lateral("lat")
+        if correlate.aliased_lateral:
+            lat = lat.alias("lat_1")
+
+        j = table1.join(lat, lat.c.col1 == table1.c.col1)
+        s = select(table1).where(table1.c.col2 < 5).alias()
+
+        if correlate.nested:
+            where = (
+                "table2.col1 = anon_1.col1 AND table2.col2 = "
+                "(SELECT table3.col2 FROM table3 "
+                "WHERE table3.col3 = anon_1.col3)"
+            )
+        else:
+            where = "table2.col1 = anon_1.col1"
+
+        if correlate.aliased_lateral:
+            lat_name = "lat_1"
+        else:
+            lat_name = "lat"
+
+        self.assert_compile(
+            select(literal_column("*")).select_from(
+                sql_util.splice_joins(s, j)
+            ),
+            "SELECT * FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "
+            "table1.col3 AS col3 FROM table1 "
+            "WHERE table1.col2 < :col2_1) AS anon_1 "
+            "JOIN LATERAL (SELECT table2.col1 AS col1, table2.col2 AS col2, "
+            f"table2.col3 AS col3 FROM table2 WHERE {where}) AS {lat_name} "
+            f"ON {lat_name}.col1 = anon_1.col1",
+        )
+
+    def test_splice_lateral_own_from_not_adapted(self):
+        """test #13783; a table on the left side that the LATERAL selects
+        from on its own, rather than correlating to it, is not adapted"""
+
+        lat = (
+            select(table2)
+            .where(table2.c.col1 == table1.c.col1)
+            .correlate(table1)
+            .lateral("lat")
+        )
+        j = table1.join(lat, lat.c.col1 == table1.c.col1)
+        s = (
+            select(table1, table2.c.col3.label("t2col3"))
+            .join_from(table1, table2, table1.c.col2 == table2.c.col2)
+            .alias()
+        )
+
+        self.assert_compile(
+            select(literal_column("*")).select_from(
+                sql_util.splice_joins(s, j)
+            ),
+            "SELECT * FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "
+            "table1.col3 AS col3, table2.col3 AS t2col3 FROM table1 "
+            "JOIN table2 ON table1.col2 = table2.col2) AS anon_1 "
+            "JOIN LATERAL (SELECT table2.col1 AS col1, table2.col2 AS col2, "
+            "table2.col3 AS col3 FROM table2 "
+            "WHERE table2.col1 = anon_1.col1) AS lat "
+            "ON lat.col1 = anon_1.col1",
+        )
+
+    @testing.variation("correlate", ["explicit", "auto"])
+    def test_splice_lateral_sibling_not_adapted(self, correlate):
+        """test #13783; the LATERAL correlates to a table further along the
+        join, rather than to the element that the left side replaces.  The
+        left side is derived from that table as well, however the LATERAL
+        is not adapted to it"""
+
+        stmt = select(table2).where(table2.c.col1 == table3.c.col3)
+        if correlate.explicit:
+            stmt = stmt.correlate(table3)
+
+        lat = stmt.lateral("lat")
+        j = table1.join(table3, table1.c.col2 == table3.c.col2).join(
+            lat, lat.c.col1 == table3.c.col1
+        )
+        s = (
+            select(table1, table3.c.col3.label("t3col3"))
+            .join_from(table1, table3, table1.c.col1 == table3.c.col1)
+            .alias()
+        )
+
+        self.assert_compile(
+            select(literal_column("*")).select_from(
+                sql_util.splice_joins(s, j)
+            ),
+            "SELECT * FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "
+            "table1.col3 AS col3, table3.col3 AS t3col3 FROM table1 "
+            "JOIN table3 ON table1.col1 = table3.col1) AS anon_1 "
+            "JOIN table3 ON anon_1.col2 = table3.col2 "
+            "JOIN LATERAL (SELECT table2.col1 AS col1, table2.col2 AS col2, "
+            "table2.col3 AS col3 FROM table2 "
+            "WHERE table2.col1 = table3.col3) AS lat "
+            "ON lat.col1 = table3.col1",
+        )
+
+    @testing.variation("kind", ["subquery", "lateral_no_correlate"])
+    def test_splice_uncorrelated_not_adapted(self, kind):
+        """test #13783; a FROM that does not correlate to the left side is
+        not adapted"""
+
+        stmt = select(table2).where(table2.c.col1 == table1.c.col1)
+
+        if kind.subquery:
+            subq = stmt.subquery("subq")
+            lateral = ""
+        elif kind.lateral_no_correlate:
+            subq = stmt.correlate(None).lateral("subq")
+            lateral = "LATERAL "
+        else:
+            kind.fail()
+
+        j = table1.join(subq, subq.c.col1 == table1.c.col1)
+        s = select(table1).where(table1.c.col2 < 5).alias()
+
+        self.assert_compile(
+            select(literal_column("*")).select_from(
+                sql_util.splice_joins(s, j)
+            ),
+            "SELECT * FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "
+            "table1.col3 AS col3 FROM table1 "
+            "WHERE table1.col2 < :col2_1) AS anon_1 "
+            f"JOIN {lateral}(SELECT table2.col1 AS col1, "
+            "table2.col2 AS col2, table2.col3 AS col3 FROM table2, table1 "
+            "WHERE table2.col1 = table1.col1) AS subq "
+            "ON subq.col1 = anon_1.col1",
+        )
+
 
 class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     """tests the generative capability of Select"""

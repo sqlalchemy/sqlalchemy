@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13783
+
+    Fixed regression caused by :ticket:`11226` where a relationship to an
+    aliased class against a correlated LATERAL subquery, when loaded with
+    :func:`_orm.joinedload` in a query that includes DISTINCT or GROUP BY,
+    would render the LATERAL without its correlation, returning incorrect
+    rows. The correlated elements within the LATERAL are now adapted along
+    with the rest of the eager join when the query is wrapped in a subquery.
