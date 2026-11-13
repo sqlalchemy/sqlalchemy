@@ -1058,6 +1058,14 @@ class _LazyLoader(
             _propagate_attrs=clauseelement._propagate_attrs,
             _compile_options=_ORMCompileState.default_compile_options,
         )
+        if self.parent_property._target_correlates_to_parent:
+            # the target, such as a LATERAL subquery, can't be selected
+            # without the parent present; select from an alias of the
+            # parent joined to the target
+            parent_alias = AliasedClass(self.parent.class_)
+            stmt = stmt.select_from(parent_alias).join(
+                getattr(parent_alias, self.key).of_type(self.entity)
+            )
         load_options = QueryContext.default_load_options
 
         load_options += {
@@ -3036,6 +3044,9 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
 
         if self.parent_property.omit_join is not None:
             self.omit_join = self.parent_property.omit_join
+        elif self.parent_property._target_correlates_to_parent:
+            # the target can't be selected without the parent present
+            self.omit_join = False
         else:
             lazyloader = self.parent_property._get_strategy(
                 (("lazy", "select"),)

@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13786
+
+    Fixed issue where a relationship to an aliased class against a correlated
+    LATERAL subquery would render the LATERAL without its correlation,
+    returning incorrect rows, when loaded with :func:`_orm.selectinload`,
+    :func:`_orm.subqueryload`, :func:`_orm.lazyload` or
+    :func:`_orm.immediateload`, or when joined or joined eager loaded from an
+    :func:`_orm.aliased` parent. The correlated elements within the LATERAL
+    are now adapted to the parent in each of these cases.
