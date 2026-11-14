@@ -115,6 +115,7 @@ class HSTORE(
 
     operator_classes = (
         OperatorClass.BASE
+        | OperatorClass.EQUALITY
         | OperatorClass.CONTAINS
         | OperatorClass.INDEXABLE
         | OperatorClass.CONCATENABLE

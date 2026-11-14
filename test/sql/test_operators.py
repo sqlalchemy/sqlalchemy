@@ -1034,7 +1034,7 @@ class OperatorClassTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_is_is_not_are_base_operators(self, op, expected):
         """test ``is_`` / ``is_not`` are BASE, not COMPARISON operators.
 
-        [ticket:13719]
+        #13719
 
         """
 
@@ -1045,18 +1045,41 @@ class OperatorClassTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         expr = op(column("q", BaseOnlyType()), None)
         self.assert_compile(expr, f"q {expected}")
 
-    def test_is_is_not_hstore(self):
-        """test ``is_`` / ``is_not`` work on HSTORE, which has no COMPARISON.
+    @combinations(
+        (operators.is_, "IS NULL"),
+        (operators.is_not, "IS NOT NULL"),
+        (operators.eq, "IS NULL"),
+        (operators.ne, "IS NOT NULL"),
+        (operators.is_distinct_from, "IS DISTINCT FROM NULL"),
+        (operators.is_not_distinct_from, "IS NOT DISTINCT FROM NULL"),
+    )
+    def test_scalar_hstore(self, op, expected):
+        """test operators work on HSTORE, which has no COMPARISON.
 
-        [ticket:13719]
-
+        #13719
+        #13781
         """
 
         self.assert_compile(
-            column("xyz", postgresql.HSTORE()).is_(None), "xyz IS NULL"
+            op(column("xyz", postgresql.HSTORE()), None), "xyz " + expected
         )
+
+    @combinations(
+        (lambda c: c.in_([42]), "xyz IN (:xyz_1_1)"),
+        (lambda c: c.not_in([42]), "(xyz NOT IN (:xyz_1_1))"),
+        (lambda c: c.any_() == 42, ":param_1 = ANY (xyz)"),
+        (lambda c: c.all_() == 42, ":param_1 = ALL (xyz)"),
+    )
+    def test_list_hstore(self, fn, expected):
+        """test operators on lists work on HSTORE, which has no COMPARISON.
+
+        #13781
+        """
+
         self.assert_compile(
-            column("xyz", postgresql.HSTORE()).is_not(None), "xyz IS NOT NULL"
+            fn(column("xyz", postgresql.HSTORE())),
+            expected,
+            render_postcompile=True,
         )
 
     def test_comparison_ops_still_warn(self):

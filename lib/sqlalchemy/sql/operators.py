@@ -85,7 +85,12 @@ class OperatorClass(Flag):
     UNSPECIFIED = auto()
     BASE = auto()
     BOOLEAN_ALGEBRA = auto()
-    COMPARISON = auto()
+    EQUALITY = auto()
+    """.. versionadded:: 2.1.9
+    """
+    ORDERING = auto()
+    """.. versionadded:: 2.1.9
+    """
     INDEXABLE = auto()  # noqa: F811
     CONTAINS = auto()
     CONCATENABLE = auto()
@@ -95,6 +100,7 @@ class OperatorClass(Flag):
     DATE_ARITHEMETIC = auto()
     JSON_GETITEM = auto()
 
+    COMPARISON = EQUALITY | ORDERING
     STRING = (
         BASE | COMPARISON | STRING_MATCH | CONTAINS | CONCATENABLE | INDEXABLE
     )
@@ -2807,26 +2813,27 @@ _OPERATOR_CLASSES: util.immutabledict[OperatorType, OperatorClass] = (
             null_op: OperatorClass.BASE,
             is_: OperatorClass.BASE,
             is_not: OperatorClass.BASE,
-            # COMPARISON operators
-            lt: OperatorClass.COMPARISON,
-            le: OperatorClass.COMPARISON,
-            ne: OperatorClass.COMPARISON,
-            gt: OperatorClass.COMPARISON,
-            ge: OperatorClass.COMPARISON,
-            eq: OperatorClass.COMPARISON,
-            is_distinct_from: OperatorClass.COMPARISON,
-            is_not_distinct_from: OperatorClass.COMPARISON,
-            in_op: OperatorClass.COMPARISON,
-            not_in_op: OperatorClass.COMPARISON,
-            between_op: OperatorClass.COMPARISON,
-            not_between_op: OperatorClass.COMPARISON,
-            desc_op: OperatorClass.COMPARISON,
-            asc_op: OperatorClass.COMPARISON,
-            nulls_first_op: OperatorClass.COMPARISON,
-            nulls_last_op: OperatorClass.COMPARISON,
-            distinct_op: OperatorClass.COMPARISON,
-            any_op: OperatorClass.COMPARISON,
-            all_op: OperatorClass.COMPARISON,
+            is_distinct_from: OperatorClass.BASE,
+            is_not_distinct_from: OperatorClass.BASE,
+            # EQUALITY operators
+            ne: OperatorClass.EQUALITY,
+            eq: OperatorClass.EQUALITY,
+            in_op: OperatorClass.EQUALITY,
+            not_in_op: OperatorClass.EQUALITY,
+            any_op: OperatorClass.EQUALITY,
+            all_op: OperatorClass.EQUALITY,
+            distinct_op: OperatorClass.EQUALITY,
+            # ORDERING operators
+            lt: OperatorClass.ORDERING,
+            le: OperatorClass.ORDERING,
+            gt: OperatorClass.ORDERING,
+            ge: OperatorClass.ORDERING,
+            between_op: OperatorClass.ORDERING,
+            not_between_op: OperatorClass.ORDERING,
+            desc_op: OperatorClass.ORDERING,
+            asc_op: OperatorClass.ORDERING,
+            nulls_first_op: OperatorClass.ORDERING,
+            nulls_last_op: OperatorClass.ORDERING,
             # BOOLEAN_ALGEBRA operators
             and_: OperatorClass.BOOLEAN_ALGEBRA,
             or_: OperatorClass.BOOLEAN_ALGEBRA,

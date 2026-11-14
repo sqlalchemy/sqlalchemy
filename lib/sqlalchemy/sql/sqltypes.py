@@ -3789,7 +3789,7 @@ class TableValueType(HasCacheKey, TypeEngine[Any]):
 
     _is_table_value = True
 
-    operator_classes = OperatorClass.BASE
+    operator_classes = OperatorClass.BASE | OperatorClass.EQUALITY
 
     _traverse_internals = [
         ("_elements", InternalTraversal.dp_clauseelement_list),
