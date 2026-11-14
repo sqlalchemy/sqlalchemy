@@ -248,11 +248,20 @@ class QueryContext:
         uncached statement; as of #8399 each option decides this for itself
         given both versions of itself.
 
+        Options that apply only to this statement are not included, such
+        as criteria that a relationship loader added to this query from
+        :meth:`.PropComparator.and_`, which is for that relationship load
+        only (#13799).
+
         """
         orig_query = self.compile_state.select_statement
 
         if orig_query is self.user_passed_query:
-            return orig_query._with_options
+            return tuple(
+                opt
+                for opt in orig_query._with_options
+                if not opt.statement_only
+            )
 
         return tuple(
             orig_opt._adapt_cached_option_to_uncached_option(
@@ -262,6 +271,7 @@ class QueryContext:
                 orig_query._with_options,
                 self.user_passed_query._with_options,
             )
+            if not orig_opt.statement_only
         )
 
 

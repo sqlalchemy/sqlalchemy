@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13799
+
+    Fixed issue where criteria added to a relationship using
+    :meth:`.PropComparator.and_` within :func:`_orm.lazyload`,
+    :func:`_orm.selectinload` or :func:`_orm.subqueryload` would also be
+    applied to further relationship loads of the same entity beneath that
+    relationship, such as the next level of a self-referential relationship,
+    filtering the collections at those levels as well.  The criteria now
+    applies only to the relationship that the loader option refers to, as was
+    already the case for :func:`_orm.joinedload`, so that additional rows may
+    be loaded at deeper levels.  To apply the criteria to subsequent levels,
+    :meth:`.PropComparator.and_` may be added to the loader option for each
+    level, or in the case of :func:`_orm.selectinload`,
+    :paramref:`_orm.selectinload.recursion_depth` may be used, where the
+    criteria continues to apply to each level loaded by that recursion.

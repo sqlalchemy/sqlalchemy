@@ -1097,7 +1097,12 @@ class _LazyLoader(
             if loadopt and loadopt._extra_criteria:
                 use_get = False
                 opts += (
-                    orm_util.LoaderCriteriaOption(self.entity, extra_criteria),
+                    orm_util.LoaderCriteriaOption(
+                        self.entity,
+                        extra_criteria,
+                        propagate_to_loaders=False,
+                        statement_only=True,
+                    ),
                 )
 
             stmt._with_options = opts
@@ -1785,6 +1790,8 @@ class _SubqueryLoader(_PostLoader):
                 orm_util.LoaderCriteriaOption(
                     effective_entity,
                     loadopt._generate_extra_criteria(context),
+                    propagate_to_loaders=False,
+                    statement_only=True,
                 ),
             )
 
@@ -3365,6 +3372,8 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                 orm_util.LoaderCriteriaOption(
                     effective_entity,
                     loadopt._generate_extra_criteria(context),
+                    propagate_to_loaders=False,
+                    statement_only=True,
                 ),
             )
 

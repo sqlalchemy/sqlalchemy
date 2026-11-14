@@ -1302,6 +1302,19 @@ class ORMOption(ExecutableOption):
     to "secondary" SELECT statements that occur for relationship
     lazy loaders as well as attribute load / refresh operations.
 
+    Always False when :attr:`.ORMOption.statement_only` is True.
+
+    """
+
+    statement_only = False
+    """if True, indicate this option applies only to the statement it's
+    present on, and isn't passed to the statements that loader strategies
+    such as selectin or subquery loaders emit on behalf of that statement.
+
+    This is separate from :attr:`.ORMOption.propagate_to_loaders`, which
+    refers to options carried along with loaded objects; an option with
+    that attribute set to False is still passed to these loader strategies.
+
     """
 
     _is_core = False
