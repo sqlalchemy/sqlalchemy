@@ -39,6 +39,7 @@ from .expression import column as column
 from .expression import ColumnCollection as ColumnCollection
 from .expression import ColumnElement as ColumnElement
 from .expression import CompoundSelect as CompoundSelect
+from .expression import cross_apply as cross_apply
 from .expression import cte as cte
 from .expression import Delete as Delete
 from .expression import delete as delete
@@ -82,6 +83,7 @@ from .expression import nulls_last as nulls_last
 from .expression import nullsfirst as nullsfirst
 from .expression import nullslast as nullslast
 from .expression import or_ as or_
+from .expression import outer_apply as outer_apply
 from .expression import outerjoin as outerjoin
 from .expression import outparam as outparam
 from .expression import over as over
