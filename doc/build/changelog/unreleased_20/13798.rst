@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 13798
+    :versions: 2.1.9
+
+    Fixed issue where joined eager loading that wraps the statement in a
+    subquery, as occurs with LIMIT, OFFSET or DISTINCT, would populate
+    joined inheritance subclass objects loaded by the main entity with column
+    values from another row, when the statement also joined to an
+    :func:`_orm.aliased` construct of that same subclass and referred to its
+    columns, such as in ORDER BY.

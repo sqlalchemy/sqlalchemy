@@ -3417,3 +3417,171 @@ class ChainedJoinedloadInheritedRelationshipTest(
                 "ON meta_1.id = top_2.meta_id"
             )
         )
+
+
+class CompoundEagerAliasedSubclassOrderByTest(fixtures.DeclarativeMappedTest):
+    """test #13798 - joined eager loading that wraps the statement in a
+    subquery, where the statement also joins to an aliased() joined
+    inheritance subclass and refers to the alias' columns, must not populate
+    subclass rows of the main entity from the alias' columns.
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Person(ComparableEntity, Base):
+            __tablename__ = "person"
+            id = Column(Integer, primary_key=True)
+            manager_id = Column(ForeignKey("person.id"))
+            type = Column(String(20))
+
+            notes = relationship("Note", order_by="Note.id")
+            manager = relationship(
+                "Manager",
+                primaryjoin="Person.manager_id == Manager.id",
+                foreign_keys=manager_id,
+                remote_side="Manager.id",
+            )
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "person",
+            }
+
+        class Manager(Person):
+            __tablename__ = "manager"
+            id = Column(ForeignKey("person.id"), primary_key=True)
+            data = Column(String(20))
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+                "inherit_condition": id == Person.id,
+            }
+
+        class Note(ComparableEntity, Base):
+            __tablename__ = "note"
+            id = Column(Integer, primary_key=True)
+            person_id = Column(ForeignKey("person.id"))
+
+    @classmethod
+    def insert_data(cls, connection):
+        Person, Manager, Note = cls.classes("Person", "Manager", "Note")
+
+        with Session(connection) as sess:
+            m1 = Manager(id=1, data="d1")
+            m2 = Manager(id=2, data="d2", manager=m1, notes=[Note(id=1)])
+            sess.add_all(
+                [
+                    m1,
+                    m2,
+                    Person(id=3, manager=m1, notes=[Note(id=2), Note(id=3)]),
+                    Person(id=4, manager=m1),
+                    Manager(id=5, data="d5", manager=m2, notes=[Note(id=4)]),
+                ]
+            )
+            sess.commit()
+
+    @testing.variation("flat", [True, False])
+    @testing.variation("wrap", ["offset", "distinct"])
+    @testing.variation("entities", ["person", "person_alias", "person_col"])
+    def test_load(self, flat, wrap, entities):
+        Person, Manager, Note = self.classes("Person", "Manager", "Note")
+
+        m = aliased(Manager, flat=bool(flat))
+
+        if entities.person:
+            stmt = select(Person)
+        elif entities.person_alias:
+            stmt = select(Person, m)
+        elif entities.person_col:
+            stmt = select(Person, m.id)
+        else:
+            entities.fail()
+
+        stmt = (
+            stmt.join(Person.manager.of_type(m))
+            .order_by(m.id, Person.id.desc())
+            .options(joinedload(Person.notes))
+        )
+
+        # (person, id of person's manager)
+        expected_persons = [
+            (Person(id=3, notes=[Note(id=2), Note(id=3)]), 1),
+            (Manager(id=2, data="d2", notes=[Note(id=1)]), 1),
+            (Manager(id=5, data="d5", notes=[Note(id=4)]), 2),
+        ]
+        if wrap.offset:
+            stmt = stmt.offset(1)
+        elif wrap.distinct:
+            stmt = stmt.distinct()
+            expected_persons.insert(0, (Person(id=4, notes=[]), 1))
+        else:
+            wrap.fail()
+
+        sess = fixture_session()
+        rows = sess.execute(stmt).unique().all()
+
+        if entities.person:
+            expected = [(p,) for p, _ in expected_persons]
+        elif entities.person_alias:
+            expected = [
+                (p, Manager(id=mid, data=f"d{mid}"))
+                for p, mid in expected_persons
+            ]
+        else:
+            expected = expected_persons
+
+        eq_(
+            [tuple((type(elem), elem) for elem in row) for row in rows],
+            [tuple((type(elem), elem) for elem in row) for row in expected],
+        )
+
+    @testing.variation("flat", [True, False])
+    @testing.variation("wrap", ["offset", "distinct"])
+    @testing.variation(
+        "entities", ["manager", "manager_alias", "manager_alias_to_plain"]
+    )
+    def test_load_subclass(self, flat, wrap, entities):
+        """the subclass as the main entity, plain or aliased, joined to its
+        manager, aliased or plain.  the subclass table is present as a plain
+        table in the inner statement, or the main entity's columns are
+        already adapted to its alias, so the main entity's columns adapt as
+        they did before #13798.
+
+        """
+        Manager, Note = self.classes("Manager", "Note")
+
+        if entities.manager:
+            ent = Manager
+            target = aliased(Manager, flat=bool(flat))
+            stmt = select(ent).join(ent.manager.of_type(target))
+        elif entities.manager_alias:
+            ent = aliased(Manager, flat=bool(flat))
+            target = aliased(Manager, flat=bool(flat))
+            stmt = select(ent).join(ent.manager.of_type(target))
+        elif entities.manager_alias_to_plain:
+            ent = aliased(Manager, flat=bool(flat))
+            target = Manager
+            stmt = select(ent).join(ent.manager)
+        else:
+            entities.fail()
+
+        stmt = stmt.order_by(target.id, ent.id.desc()).options(
+            joinedload(ent.notes)
+        )
+
+        expected = [Manager(id=5, data="d5", notes=[Note(id=4)])]
+        if wrap.offset:
+            stmt = stmt.offset(1)
+        elif wrap.distinct:
+            stmt = stmt.distinct()
+            expected.insert(0, Manager(id=2, data="d2", notes=[Note(id=1)]))
+        else:
+            wrap.fail()
+
+        sess = fixture_session()
+        rows = sess.scalars(stmt).unique().all()
+        eq_(
+            [(type(elem), elem) for elem in rows],
+            [(type(elem), elem) for elem in expected],
+        )
