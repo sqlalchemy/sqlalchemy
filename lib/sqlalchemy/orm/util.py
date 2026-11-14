@@ -118,6 +118,7 @@ if typing.TYPE_CHECKING:
     from ..sql.annotation import _SA
     from ..sql.base import ReadOnlyColumnCollection
     from ..sql.elements import BindParameter
+    from ..sql.elements import ClauseElement
     from ..sql.selectable import _ColumnsClauseElement
     from ..sql.selectable import Select
     from ..sql.selectable import Selectable
@@ -563,6 +564,7 @@ class ORMStatementAdapter(sql_util.ColumnAdapter):
         anonymize_labels: bool = False,
         adapt_on_names: bool = False,
         adapt_from_selectables: Optional[AbstractSet[FromClause]] = None,
+        exclude_fn: Optional[Callable[[ClauseElement], bool]] = None,
     ):
         self.role = role
         super().__init__(
@@ -573,6 +575,7 @@ class ORMStatementAdapter(sql_util.ColumnAdapter):
             anonymize_labels=anonymize_labels,
             adapt_on_names=adapt_on_names,
             adapt_from_selectables=adapt_from_selectables,
+            exclude_fn=exclude_fn,
         )
 
 

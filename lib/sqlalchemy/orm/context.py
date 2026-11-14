@@ -57,6 +57,7 @@ from ..sql.base import Executable
 from ..sql.base import Generative
 from ..sql.base import Options
 from ..sql.dml import UpdateBase
+from ..sql.elements import ColumnClause
 from ..sql.elements import GroupedElement
 from ..sql.elements import TextClause
 from ..sql.selectable import CompoundSelectState
@@ -1656,12 +1657,43 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             **self._select_args,
         )
 
+        # tables that are directly in the FROM list of the inner statement,
+        # as opposed to being present only by way of an alias
+        inner_tables = {
+            elem
+            for from_ in inner.get_final_froms()
+            for elem in sql_util.surface_selectables(from_)
+            if elem._is_table
+        }
+
+        def _exclude_fn(elem):
+            # a column of an un-aliased table is at the root of the lineage
+            # of every column derived from that table, so
+            # corresponding_column() can match it to a column of any alias
+            # of that table; a column of an alias only matches columns
+            # derived from that same alias.  so skip adapting a column
+            # that's attached to an un-aliased table when that table isn't
+            # present as a plain table in the inner statement's FROM list,
+            # either directly or within a join.  the inner statement may
+            # still have a column derived from that table by way of an
+            # alias, such as that of an aliased() joined inheritance
+            # subclass, but that alias refers to different rows, #13798
+            return (
+                isinstance(elem, ColumnClause)
+                and elem.table is not None
+                and elem.table._is_table
+                and elem.table not in inner_tables
+            )
+
         inner = inner.alias()
 
         equivs = self._all_equivs()
 
         self.compound_eager_adapter = ORMStatementAdapter(
-            _TraceAdaptRole.COMPOUND_EAGER_STATEMENT, inner, equivalents=equivs
+            _TraceAdaptRole.COMPOUND_EAGER_STATEMENT,
+            inner,
+            equivalents=equivs,
+            exclude_fn=_exclude_fn,
         )
 
         statement = future.select(
