@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 13636
+
+    Fixed issue where the asyncpg dialect raised a plain :class:`.DBAPIError`
+    for most PostgreSQL errors, instead of the PEP 249 subclass that matches
+    the SQLSTATE class of the error.  A data exception (class 22) now raises
+    :class:`.DataError` and a deadlock (class 40) raises
+    :class:`.OperationalError`, the same classes psycopg uses.

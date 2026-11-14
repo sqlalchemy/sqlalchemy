@@ -432,3 +432,84 @@ class AsyncPgTest(fixtures.TestBase):
         async with engine.begin() as conn:
             await conn.execute(select(1))
             assert len(cache) > 0
+
+
+class AsyncPgErrorTest(fixtures.TestBase):
+    __requires__ = ("async_dialect",)
+    __only_on__ = "postgresql+asyncpg"
+
+    # PEP 249 class per SQLSTATE class, following psycopg
+    sqlstate_classes = {
+        "03": exc.DatabaseError,
+        "08": exc.OperationalError,
+        "09": exc.DatabaseError,
+        "0A": exc.NotSupportedError,
+        "0B": exc.DatabaseError,
+        "0F": exc.DatabaseError,
+        "0L": exc.DatabaseError,
+        "0P": exc.DatabaseError,
+        "0Z": exc.DatabaseError,
+        # psycopg has ProgrammingError, see the note in the asyncpg dialect
+        "10": exc.DatabaseError,
+        "20": exc.ProgrammingError,
+        "21": exc.ProgrammingError,
+        "22": exc.DataError,
+        "23": exc.IntegrityError,
+        "24": exc.InternalError,
+        "25": exc.InternalError,
+        "26": exc.ProgrammingError,
+        "27": exc.OperationalError,
+        "28": exc.OperationalError,
+        "2B": exc.InternalError,
+        "2D": exc.InternalError,
+        "2F": exc.OperationalError,
+        "34": exc.ProgrammingError,
+        "38": exc.OperationalError,
+        "39": exc.OperationalError,
+        "3B": exc.OperationalError,
+        "3D": exc.ProgrammingError,
+        "3F": exc.ProgrammingError,
+        "40": exc.OperationalError,
+        "42": exc.ProgrammingError,
+        "44": exc.ProgrammingError,
+        "53": exc.OperationalError,
+        "54": exc.OperationalError,
+        "55": exc.OperationalError,
+        "57": exc.OperationalError,
+        "58": exc.OperationalError,
+        "72": exc.DatabaseError,
+        "F0": exc.OperationalError,
+        "HV": exc.OperationalError,
+        "P0": exc.ProgrammingError,
+        "XX": exc.InternalError,
+    }
+
+    def test_all_sqlstates(self, connection):
+        """test #13636"""
+
+        exceptions = connection.dialect.dbapi.asyncpg.exceptions
+
+        mismatched = {}
+        for cls in vars(exceptions).values():
+            if not (
+                isinstance(cls, type)
+                and issubclass(cls, exceptions.PostgresError)
+                and "sqlstate" in vars(cls)
+            ):
+                continue
+
+            with expect_raises(exc.DBAPIError) as err:
+                with connection.begin_nested():
+                    connection.exec_driver_sql(
+                        "DO $$ BEGIN RAISE EXCEPTION 'error' "
+                        f"USING ERRCODE = '{cls.sqlstate}'; END $$"
+                    )
+
+            expected = self.sqlstate_classes.get(cls.sqlstate[:2])
+            if type(err.error) is not expected:
+                mismatched[cls.__name__] = (
+                    cls.sqlstate,
+                    type(err.error).__name__,
+                )
+
+        eq_(mismatched, {})
