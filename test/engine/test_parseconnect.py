@@ -264,6 +264,17 @@ class URLTest(fixtures.TestBase):
         eq_(u.normalized_query, {"arg1=": ("param1",), "arg2": ("param 2",)})
         eq_(u.render_as_string(hide_password=False), test_url)
 
+    def test_url_query_different_order(self):
+        u1 = url.make_url("dialect://u:p@host/db?arg1=param1&arg2=param2")
+        u2 = url.make_url("dialect://u:p@host/db?arg2=param2&arg1=param1")
+
+        eq_(u1, u2)
+        eq_(hash(u1), hash(u2))
+
+        expected = "dialect://u:***@host/db?arg1=param1&arg2=param2"
+        eq_(u1.render_as_string(), expected)
+        eq_(u2.render_as_string(), expected)
+
     def test_comparison(self):
         common_url = (
             "dbtype://username:password"
