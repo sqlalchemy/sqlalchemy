@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 13770
+    :versions: 2.1.9
+
+    Fixed issue in :meth:`_engine.URL.update_query_pairs` where a key that
+    was repeated with a sequence of strings as its value would produce a
+    nested tuple in :attr:`_engine.URL.query`, causing the URL to fail to
+    render as a string.  Passing a sequence of strings as a value, which was
+    indicated by the type annotations but not documented, is now documented,
+    and the annotations for :meth:`_engine.URL.update_query_pairs` and
+    :meth:`_engine.URL.update_query_dict` are corrected to accept any
+    sequence of strings rather than only a list.
