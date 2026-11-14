@@ -1166,7 +1166,7 @@ class async_scoped_session(Generic[_AS]):
 
         Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
-        ..versionadded: 2.0.22
+        .. versionadded:: 2.0.22
 
         .. seealso::
 
