@@ -441,7 +441,7 @@ class DeferredReflection:
         :param bind: :class:`_engine.Engine` or :class:`_engine.Connection`
          instance
 
-         ..versionchanged:: 2.0.16 a :class:`_engine.Connection` is also
+         .. versionchanged:: 2.0.16 a :class:`_engine.Connection` is also
          accepted.
 
         :param \**reflect_kw: additional keyword arguments passed to

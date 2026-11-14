@@ -1008,7 +1008,7 @@ class Dialect(EventTarget):
     inject this handler at the connection/cursor level, rather than
     having JSON data returned as a string to be handled by the type
 
-    ..versionadded:: 2.1
+    .. versionadded:: 2.1
 
     """
 
