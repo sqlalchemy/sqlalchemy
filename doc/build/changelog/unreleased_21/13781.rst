@@ -1,0 +1,10 @@
+.. change::
+    :tags: sql, bug
+    :tickets: 13781
+
+    Split the :attr:`.OperatorClass.COMPARISON` into equality and ordering
+    operators (:attr:`.OperatorClass.EQUALITY` and
+    :attr:`.OperatorClass.ORDERING`).
+    The types :class:`_postgresql.HSTORE` and the type used
+    by :meth:`.FunctionElement.table_valued` now have the
+    :attr:`.OperatorClass.EQUALITY` operator class.
