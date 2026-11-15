@@ -414,7 +414,7 @@ class URL(NamedTuple):
 
     def update_query_pairs(
         self,
-        key_value_pairs: Iterable[Tuple[str, Union[str, List[str]]]],
+        key_value_pairs: Iterable[Tuple[str, Union[str, Sequence[str]]]],
         append: bool = False,
     ) -> URL:
         """Return a new :class:`_engine.URL` object with the
@@ -435,8 +435,24 @@ class URL(NamedTuple):
             >>> str(url)
             'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
-        :param key_value_pairs: A sequence of tuples containing two strings
-         each.
+        A value may also be given as a sequence of strings, which is
+        equivalent to passing the same key once for each string; the
+        above example may also be expressed as::
+
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
+            >>> url = url.update_query_pairs(
+            ...     [
+            ...         ("alt_host", ["host1", "host2"]),
+            ...         ("ssl_cipher", "/path/to/crt"),
+            ...     ]
+            ... )
+            >>> str(url)
+            'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
+
+        :param key_value_pairs: A sequence of tuples, each containing a
+         string key and a value that is either a string or a sequence of
+         strings.  A key may appear more than once, in which case all of
+         its values are combined in the order given.
 
         :param append: if True, parameters in the existing query string will
          not be removed; new parameters will be in addition to those present.
@@ -444,6 +460,9 @@ class URL(NamedTuple):
          parameters will replace those of the existing query string.
 
         .. versionadded:: 1.4
+
+        .. versionchanged:: 2.0.58, 2.1.9  A value may be given as a sequence
+           of strings, including for a key that appears more than once.
 
         .. seealso::
 
@@ -456,12 +475,13 @@ class URL(NamedTuple):
         """  # noqa: E501
 
         existing_query = self.query
-        new_keys: Dict[str, Union[str, List[str]]] = {}
+        new_keys: Dict[str, Union[str, Sequence[str]]] = {}
 
         for key, value in key_value_pairs:
             if key in new_keys:
-                new_keys[key] = util.to_list(new_keys[key])
-                cast("List[str]", new_keys[key]).append(cast(str, value))
+                current_as_list = util.to_list(new_keys[key])
+                current_as_list.extend(util.to_list(value))
+                new_keys[key] = current_as_list
             else:
                 new_keys[key] = (
                     list(value) if isinstance(value, (list, tuple)) else value
@@ -487,17 +507,12 @@ class URL(NamedTuple):
                 }
             )
         else:
-            new_query = self.query.union(
-                {
-                    k: tuple(v) if isinstance(v, list) else v
-                    for k, v in new_keys.items()
-                }
-            )
+            new_query = {**self.query, **new_keys}
         return self.set(query=new_query)
 
     def update_query_dict(
         self,
-        query_parameters: Mapping[str, Union[str, List[str]]],
+        query_parameters: Mapping[str, Union[str, Sequence[str]]],
         append: bool = False,
     ) -> URL:
         """Return a new :class:`_engine.URL` object with the
