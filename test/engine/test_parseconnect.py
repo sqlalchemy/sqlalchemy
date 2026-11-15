@@ -530,6 +530,46 @@ class URLTest(fixtures.TestBase):
             is_true("foo" in res)
             eq_(res["foo"], u.host)
 
+    def test_update_query_pairs(self):
+        u = url.make_url("drivername:///?foo=bar&bat=hi")
+        u1 = u.update_query_pairs([("foo", "new"), ("a", "b")])
+
+        eq_(u.query, {"foo": "bar", "bat": "hi"})
+        eq_(u1.query, {"foo": "new", "bat": "hi", "a": "b"})
+        u2 = u.update_query_pairs([("a", "x"), ("a", ["y", "z"])])
+        eq_(u2.query, {"foo": "bar", "bat": "hi", "a": ("x", "y", "z")})
+        u3 = u.update_query_pairs([("a", ["y", "z"]), ("a", "x")])
+        eq_(u3.query, {"foo": "bar", "bat": "hi", "a": ("y", "z", "x")})
+        u4 = u.update_query_pairs([("a", "x"), ("a", ("y", "z"))])
+        eq_(u4.query, {"foo": "bar", "bat": "hi", "a": ("x", "y", "z")})
+        eq_(
+            u4.render_as_string(),
+            "drivername:///?a=x&a=y&a=z&bat=hi&foo=bar",
+        )
+
+    def test_update_query_pairs_append(self):
+        u = url.make_url("drivername:///?foo=bar&bat=hi")
+        u1 = u.update_query_pairs([("foo", "new"), ("a", "b")], append=True)
+
+        eq_(u.query, {"foo": "bar", "bat": "hi"})
+        eq_(u1.query, {"foo": ("bar", "new"), "bat": "hi", "a": "b"})
+        u2 = u1.update_query_pairs(
+            [("a", "x"), ("a", ["y", "z"])], append=True
+        )
+        eq_(
+            u2.query,
+            {"foo": ("bar", "new"), "bat": "hi", "a": ("b", "x", "y", "z")},
+        )
+        u3 = u2.update_query_pairs([("a", ["1"]), ("a", "2")], append=True)
+        eq_(
+            u3.query,
+            {
+                "foo": ("bar", "new"),
+                "bat": "hi",
+                "a": ("b", "x", "y", "z", "1", "2"),
+            },
+        )
+
 
 class DialectImportTest(fixtures.TestBase):
     def test_import_base_dialects(self):
