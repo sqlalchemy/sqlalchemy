@@ -1053,6 +1053,121 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             jj._generate_cache_key()[1],
         )
 
+    @testing.combinations(
+        (
+            "join_from",
+            lambda cte, b: select(b.c.id).join_from(
+                cte, b, cte.c.id == b.c.id
+            ),
+        ),
+        (
+            "select_from",
+            lambda cte, b: select(b.c.id).select_from(cte).order_by(cte.c.id),
+        ),
+        (
+            "select_from_join",
+            lambda cte, b: select(b.c.id)
+            .select_from(b.join(cte, cte.c.id == b.c.id))
+            .order_by(cte.c.x),
+        ),
+        (
+            "select_from_grouping",
+            lambda cte, b: select(b.c.id)
+            .select_from(b.join(cte, cte.c.id == b.c.id).self_group())
+            .order_by(cte.c.x),
+        ),
+        (
+            "join_with_only_columns",
+            lambda cte, b: select(b.c.id)
+            .join(cte, cte.c.id == b.c.id)
+            .with_only_columns(b.c.id),
+        ),
+        (
+            "columns_with_only_columns",
+            lambda cte, b: select(cte.c.id)
+            .join(b, cte.c.id == b.c.id)
+            .with_only_columns(b.c.id),
+        ),
+        argnames="build",
+        id_="ia",
+    )
+    @testing.variation("method", ["cloned_traverse", "params"])
+    def test_clone_cte_not_in_columns(self, build, method):
+        """test #13791"""
+
+        a = table("a", column("id", Integer), column("x", Integer))
+        b = table("b", column("id", Integer))
+
+        def go(value):
+            cte = select(a).where(a.c.x == bindparam("p", 0)).cte()
+            stmt = build(cte, b)
+
+            if method.cloned_traverse:
+
+                def visit_bindparam(bind):
+                    bind.value = value
+
+                return cloned_traverse(
+                    stmt, {}, {"bindparam": visit_bindparam}
+                )
+            elif method.params:
+                return stmt.params(p=value)
+            else:
+                method.fail()
+
+        stmt1 = go(5)
+        stmt2 = go(6)
+        key1 = stmt1._generate_cache_key()
+        key2 = stmt2._generate_cache_key()
+        eq_(key1, key2)
+        eq_([bp.key for bp in key1.bindparams + key2.bindparams], ["p", "p"])
+
+        # the compiled form of the first statement, as would be retrieved
+        # from the compiled cache, is used with the parameters extracted
+        # from each statement's cache key
+        compiled = stmt1.compile(cache_key=key1)
+        eq_(
+            [
+                compiled.construct_params(
+                    extracted_parameters=key.bindparams,
+                )
+                for key in (key1, key2)
+            ],
+            [{"p": 5}, {"p": 6}],
+        )
+
+    @testing.combinations(
+        (
+            lambda a, b: select(a.c.x).join(b, a.c.id == b.c.id),
+            "SELECT a.x FROM a JOIN (b JOIN c ON b.id = c.id) "
+            "ON a.id = b.id",
+        ),
+        (
+            lambda a, b: select(a.c.x).join_from(a, b, a.c.id == b.c.id),
+            "SELECT a.x FROM a JOIN (b JOIN c ON b.id = c.id) "
+            "ON a.id = b.id",
+        ),
+        (
+            lambda a, b: select(a.c.x).where(a.c.id == b.c.id),
+            "SELECT a.x FROM b JOIN c ON b.id = c.id, a WHERE a.id = b.id",
+        ),
+        argnames="build, expected",
+    )
+    def test_replace_from_with_join(self, build, expected):
+        """test #13791"""
+
+        a = table("a", column("id", Integer), column("x", Integer))
+        b = table("b", column("id", Integer))
+        c = table("c", column("id", Integer))
+
+        def replace(elem):
+            if elem is b:
+                return b.join(c, b.c.id == c.c.id)
+            return None
+
+        stmt = visitors.replacement_traverse(build(a, b), {}, replace)
+        self.assert_compile(stmt, expected)
+
     def test_in(self):
         expr = t1.c.col1.in_(["foo", "bar"])
         expr2 = CloningVisitor().traverse(expr)

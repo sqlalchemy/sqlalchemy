@@ -5895,27 +5895,73 @@ class Select(
         # they've become.  This allows us to ensure the same cloned from
         # is used when other items such as columns are "cloned"
 
-        all_the_froms = set(
-            itertools.chain(
-                _from_objects(*self._raw_columns),
-                _from_objects(*self._where_criteria),
-                _from_objects(*[elem[0] for elem in self._setup_joins]),
+        # FROMs of the columns clause and WHERE clause.  if any of these
+        # are converted into Join objects by the clone, these need to be
+        # added to _from_obj explicitly, because otherwise they won't be
+        # part of the new state, as a Join's columns are those of the
+        # tables within it, which would then be found as the FROMs instead.
+        column_froms = set(
+            _from_objects(*self._raw_columns, *self._where_criteria)
+        )
+
+        # explicit FROMs, i.e. select_from(), join targets and the left
+        # side of join_from(), including joins memoized by
+        # with_only_columns().  these aren't candidates for adding to
+        # _from_obj, as they are already part of the new state, either in
+        # _from_obj or _setup_joins
+        all_setup_joins = self._setup_joins + tuple(
+            itertools.chain.from_iterable(
+                memoized._setup_joins
+                for memoized in self._memoized_select_entities
+            )
+        )
+        explicit_froms = (
+            *self._from_obj,
+            *(target for target, _, _, _ in all_setup_joins),
+            *(
+                from_
+                for _, _, from_, _ in all_setup_joins
+                if from_ is not None
+            ),
+        )
+
+        # FROMs contained within the explicit FROMs, as given by
+        # _from_objects().  for a table or alias this is the element
+        # itself, but for a FromGrouping or SQL function it is only what's
+        # inside of it
+        contained_froms = _from_objects(*explicit_froms)
+
+        # FROMs of the columns memoized by with_only_columns()
+        memoized_column_froms = _from_objects(
+            *itertools.chain.from_iterable(
+                memoized._raw_columns
+                for memoized in self._memoized_select_entities
             )
         )
 
-        # do a clone for the froms we've gathered.  what is important here
-        # is if any of the things we are selecting from, like tables,
-        # were converted into Join objects.   if so, these need to be
-        # added to _from_obj explicitly, because otherwise they won't be
-        # part of the new state, as they don't associate themselves with
-        # their columns.
-        new_froms = {f: clone(f, **kw) for f in all_the_froms}
+        # do a clone for all of these, so that columns which refer to them,
+        # such as those of a CTE, are pointed to the clone (#13791)
+        from_clones = {
+            f: clone(f, **kw)
+            for f in column_froms.union(contained_froms, memoized_column_froms)
+        }
 
-        # 2. copy FROM collections, adding in joins that we've created.
+        # 2. copy FROM collections, adding in joins that we've created
+        # from the column FROMs.  the elements of _from_obj are cloned
+        # directly rather than looked up in from_clones, as an annotated
+        # FROM hashes and compares as equal to its unannotated form, so
+        # the lookup can return the clone of the other one.  e.g. the ORM
+        # annotates the subquery used by relationship any() / has() with
+        # "no_replacement_traverse", so that replacement_traverse() leaves
+        # it as is, which only works if that exact element is cloned
         existing_from_obj = [clone(f, **kw) for f in self._from_obj]
         add_froms = (
-            {f for f in new_froms.values() if isinstance(f, Join)}
-            .difference(all_the_froms)
+            {
+                from_clones[f]
+                for f in column_froms
+                if isinstance(from_clones[f], Join)
+            }
+            .difference(column_froms)
             .difference(existing_from_obj)
         )
 
@@ -5927,8 +5973,8 @@ class Select(
             obj: Union[BinaryExpression[Any], ColumnClause[Any]],
             **kw: Any,
         ) -> Optional[KeyedColumnElement[Any]]:
-            if isinstance(obj, ColumnClause) and obj.table in new_froms:
-                newelem = new_froms[obj.table].corresponding_column(obj)
+            if isinstance(obj, ColumnClause) and obj.table in from_clones:
+                newelem = from_clones[obj.table].corresponding_column(obj)
                 return newelem
             return None
 
