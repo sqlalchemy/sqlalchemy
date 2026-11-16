@@ -10,7 +10,166 @@
 
 .. changelog::
     :version: 2.0.58
-    :include_notes_from: unreleased_20
+    :released: November 16, 2026
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10936
+        :versions: 2.1.9
+
+        Fixed issue where deleting the parent object of a one-to-many
+        relationship configured with :paramref:`_orm.relationship.post_update`,
+        such as the one-to-many side of a bidirectional ``post_update``
+        relationship, would emit the UPDATE that sets the foreign key of the
+        remaining related objects to NULL twice: once within the regular UPDATE
+        for those objects and again as the post-update. Only the post-update
+        UPDATE is now emitted, and it is explicitly ordered to run before the
+        DELETE of the parent row. Fix approach courtesy 18Abhinav07, with
+        thanks to canblmz1 for the initial analysis.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 13762
+        :versions: 2.1.9
+
+        Fixed issue where reflection of PostgreSQL columns of type ``tsquery`` or
+        ``regconfig`` would return :class:`.NullType` and emit a warning, even
+        though the :class:`_postgresql.TSQUERY` and :class:`_postgresql.REGCONFIG`
+        types are provided by the PostgreSQL dialect. These types are now mapped
+        for reflection in the same way as :class:`_postgresql.TSVECTOR`. Pull
+        request courtesy Lushiyao5.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13766
+        :versions: 2.1.9
+
+        Fixed issue where criteria applied to a relationship using
+        :meth:`.PropComparator.and_` within :func:`_orm.selectinload` or
+        :func:`_orm.lazyload`, where the criteria referred to an
+        :func:`_orm.aliased` construct against a subquery that's also the parent
+        entity of the loader option, would load the related collection using
+        the bound parameter values within that subquery from the first
+        execution of the statement, once the statement was retrieved from the
+        compiled cache.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13767
+        :versions: 2.1.9
+
+        Fixed issue in cache key generation where calling
+        :meth:`_sql.Select.correlate` or :meth:`_sql.Select.correlate_except`
+        with ``None`` would not change the cache key of the :class:`_sql.Select`,
+        so that a statement which disables correlation, or correlates all FROM
+        objects to enclosing SELECTs, could share a cached SQL string with an
+        otherwise identical statement using the default auto-correlation
+        behavior, leading to incorrect SQL being emitted for whichever statement
+        was executed second.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 13770
+        :versions: 2.1.9
+
+        Fixed issue in :meth:`_engine.URL.update_query_pairs` where a key that
+        was repeated with a sequence of strings as its value would produce a
+        nested tuple in :attr:`_engine.URL.query`, causing the URL to fail to
+        render as a string.  Passing a sequence of strings as a value, which was
+        indicated by the type annotations but not documented, is now documented,
+        and the annotations for :meth:`_engine.URL.update_query_pairs` and
+        :meth:`_engine.URL.update_query_dict` are corrected to accept any
+        sequence of strings rather than only a list.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 13772
+        :versions: 2.1.9
+
+        The ``asyncio.CancelledError`` that occurs frequently for tasks cancelled
+        under anyio, where the connection is nonetheless successfully terminated,
+        is now logged by the connection pool at DEBUG level rather than ERROR.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13777
+        :versions: 2.1.9
+
+        Fixed issue where loader options nested beneath a
+        :func:`_orm.selectin_polymorphic` option, such as a
+        :func:`_orm.selectinload` for a subclass-specific relationship, would be
+        silently skipped when the enclosing relationship load was against an
+        aliased entity such as one produced by :func:`_orm.with_polymorphic`, and
+        a structurally different parent statement using the same loader options
+        had been executed and cached previously.  The selectin polymorphic loader
+        now uses options from the cached statement in the same way as the
+        selectin relationship loader already does.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13779
+        :versions: 2.1.9
+
+        Fixed issue where loader options nested beneath a
+        :func:`_orm.subqueryload` option against an aliased entity, such as
+        ``subqueryload(A.bs.of_type(aliased(B)))``, would be silently skipped
+        when the statement was served from the compiled cache and was
+        constructed using a new :func:`_orm.aliased` or
+        :func:`_orm.with_polymorphic` object, as is typical when the statement
+        is built within a function.  Nested options such as
+        :func:`_orm.load_only`, :func:`_orm.undefer` and
+        :func:`_orm.selectinload` took effect only the first time the statement
+        was run.  The subquery loader now uses options from the cached statement
+        in the same way as the selectin relationship loader.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13780
+        :versions: 2.1.9
+
+        Fixed issue where a subclass configured with
+        :paramref:`_orm.Mapper.polymorphic_load` set to ``"selectin"`` would
+        cause a statement to raise :class:`.ArgumentError` when the statement
+        selected from an :func:`_orm.aliased` or :func:`_orm.with_polymorphic`
+        construct against the base class, or included another entity, along with
+        loader options such as :func:`_orm.undefer` or :func:`_orm.selectinload`
+        against that construct or entity.  The automatic load of the subclass
+        now leaves out loader options that refer to other entities, which were
+        already applied by the enclosing statement.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 13791
+        :versions: 2.1.9
+
+        Fixed issue where a :func:`_sql.select` that refers to a :class:`.CTE`
+        only within :meth:`_sql.Select.select_from`, as the left side of
+        :meth:`_sql.Select.join_from`, or within a join that was followed by
+        :meth:`_sql.Select.with_only_columns`, would not be copied correctly by
+        :meth:`_sql.Select.params` or :func:`.visitors.cloned_traverse`, such that
+        the new parameter values could be ignored when the statement was invoked
+        using the compiled cache, with the original values used instead.  On the
+        2.1 series, where :meth:`_sql.Select.params` no longer copies the
+        statement, the issue still applies to :func:`.visitors.cloned_traverse`
+        and similar traversals.
+
+        Also fixed a related issue where, if a traversal such as
+        :func:`.visitors.replacement_traverse` replaced the target of
+        :meth:`_sql.Select.join` or :meth:`_sql.Select.join_from` with a
+        :class:`.Join`, that join would render twice in the FROM clause of the
+        resulting statement.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13798
+        :versions: 2.1.9
+
+        Fixed issue where joined eager loading that wraps the statement in a
+        subquery, as occurs with LIMIT, OFFSET or DISTINCT, would populate
+        joined inheritance subclass objects loaded by the main entity with column
+        values from another row, when the statement also joined to an
+        :func:`_orm.aliased` construct of that same subclass and referred to its
+        columns, such as in ORDER BY.
 
 .. changelog::
     :version: 2.0.57
