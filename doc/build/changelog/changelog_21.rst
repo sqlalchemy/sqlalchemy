@@ -10,7 +10,77 @@
 
 .. changelog::
     :version: 2.1.9
-    :include_notes_from: unreleased_21
+    :released: November 16, 2026
+
+    .. change::
+        :tags: performance, engine
+        :tickets: 13769
+
+        Improved the performance of :meth:`_engine.Result.mappings` and
+        :meth:`_asyncio.AsyncResult.mappings` when the Cython extensions are in
+        use.  The conversion of each :class:`_engine.Row` into a
+        :class:`_engine.RowMapping` is now performed within the compiled
+        extension, rather than through a Python-level access of the
+        :attr:`_engine.Row._mapping` attribute, substantially reducing per-row
+        overhead when fetching rows as mappings.
+
+    .. change::
+        :tags: sql, bug
+        :tickets: 13781
+
+        Split the :attr:`.OperatorClass.COMPARISON` into equality and ordering
+        operators (:attr:`.OperatorClass.EQUALITY` and
+        :attr:`.OperatorClass.ORDERING`).
+        The types :class:`_postgresql.HSTORE` and the type used
+        by :meth:`.FunctionElement.table_valued` now have the
+        :attr:`.OperatorClass.EQUALITY` operator class.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13783
+
+        Fixed regression caused by :ticket:`11226` where a relationship to an
+        aliased class against a correlated LATERAL subquery, when loaded with
+        :func:`_orm.joinedload` in a query that includes DISTINCT or GROUP BY,
+        would render the LATERAL without its correlation, returning incorrect
+        rows. The correlated elements within the LATERAL are now adapted along
+        with the rest of the eager join when the query is wrapped in a subquery.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 13786
+
+        Fixed issue where a relationship to an aliased class against a correlated
+        LATERAL subquery would render the LATERAL without its correlation,
+        returning incorrect rows, when loaded with :func:`_orm.selectinload`,
+        :func:`_orm.subqueryload`, :func:`_orm.lazyload` or
+        :func:`_orm.immediateload`, or when joined or joined eager loaded from an
+        :func:`_orm.aliased` parent. The correlated elements within the LATERAL
+        are now adapted to the parent in each of these cases.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 13788
+
+        Fixed regression caused by :ticket:`13748` where an ORM mapped dataclass
+        that included a column using :func:`_orm.orm_insert_sentinel`, or a
+        :func:`_orm.mapped_column` given a :class:`.ColumnDefault` or
+        :class:`.Sequence` object for :paramref:`_orm.mapped_column.default`,
+        would fail to flush, as the default object itself would be delivered to
+        the INSERT statement as a parameter value.  These objects now apply to
+        the :class:`.Column` only, and are no longer used as the Python-side
+        default value of the attribute, which now remains ``None`` until the
+        object is flushed.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 13789
+
+        Fixed issue where reflection of a table's primary key constraint on SQL
+        Server could block, or deadlock, against another session that was
+        creating a table with a primary key within a transaction, for both
+        regular and temporary tables.  The catalog query used for primary key
+        reflection now skips rows that are locked by other sessions.
 
 .. changelog::
     :version: 2.1.8
