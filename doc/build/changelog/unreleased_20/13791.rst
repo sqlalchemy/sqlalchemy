@@ -1,0 +1,21 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 13791
+    :versions: 2.1.9
+
+    Fixed issue where a :func:`_sql.select` that refers to a :class:`.CTE`
+    only within :meth:`_sql.Select.select_from`, as the left side of
+    :meth:`_sql.Select.join_from`, or within a join that was followed by
+    :meth:`_sql.Select.with_only_columns`, would not be copied correctly by
+    :meth:`_sql.Select.params` or :func:`.visitors.cloned_traverse`, such that
+    the new parameter values could be ignored when the statement was invoked
+    using the compiled cache, with the original values used instead.  On the
+    2.1 series, where :meth:`_sql.Select.params` no longer copies the
+    statement, the issue still applies to :func:`.visitors.cloned_traverse`
+    and similar traversals.
+
+    Also fixed a related issue where, if a traversal such as
+    :func:`.visitors.replacement_traverse` replaced the target of
+    :meth:`_sql.Select.join` or :meth:`_sql.Select.join_from` with a
+    :class:`.Join`, that join would render twice in the FROM clause of the
+    resulting statement.
