@@ -74,6 +74,23 @@ assert_type(func.coalesce(column("x", Integer), 3), coalesce[int])
 
 assert_type(func.coalesce(Foo._d, 100), coalesce[int])
 
+# a nullable ColumnElement, such as an aggregate, is unwrapped as well
+assert_type(func.coalesce(func.sum(Foo._d), 0), coalesce[int])
+assert_type(func.coalesce(func.max(Foo._d), 0), coalesce[int])
+assert_type(
+    func.coalesce(func.sum(Foo._d).filter(Foo.a > 0), 0), coalesce[int]
+)
+assert_type(func.coalesce(Foo._d + 1, 0), coalesce[int])
+assert_type(coalesce(func.sum(Foo._d), 0), coalesce[int])
+
+# non-nullable arguments are unchanged
+assert_type(func.coalesce(func.sum(Foo.a), 0), coalesce[int])
+assert_type(func.coalesce(Foo.a + 1, 0), coalesce[int])
+assert_type(func.coalesce(func.count(), 0), coalesce[int])
+
+stmt3 = select(Foo.a, func.coalesce(func.sum(Foo._d), 0)).group_by(Foo.a)
+assert_type(stmt3, Select[int, int])
+
 stmt2 = select(Foo.a, func.coalesce(Foo.c, "a", "b")).group_by(Foo.a)
 assert_type(stmt2, Select[int, str])
 

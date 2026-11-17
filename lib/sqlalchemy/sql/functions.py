@@ -1100,6 +1100,17 @@ class _FunctionGenerator:
         @property
         def char_length(self) -> Type[_char_length_func]: ...
 
+        # match a nullable ColumnElement first, so that its
+        # None is removed rather than bound into _T
+
+        @overload
+        def coalesce(
+            self,
+            col: ColumnElement[Optional[_T]],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> _coalesce_func[_T]: ...
+
         # set ColumnElement[_T] as a separate overload, to appease
         # mypy which seems to not want to accept _T from
         # _ColumnExpressionArgument. Seems somewhat related to the covariant
@@ -1786,6 +1797,16 @@ class ReturnTypeFromArgs(GenericFunction[_T]):
 
 class ReturnTypeFromOptionalArgs(ReturnTypeFromArgs[_T]):
     inherit_cache = True
+
+    # match a nullable ColumnElement first, so that its None is removed
+    # rather than bound into _T
+    @overload
+    def __init__(
+        self,
+        col: ColumnElement[Optional[_T]],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
+        **kwargs: Any,
+    ) -> None: ...
 
     @overload
     def __init__(
