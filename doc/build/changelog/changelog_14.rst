@@ -968,7 +968,7 @@ This document details individual issue-level changes made throughout
         :tickets: 8717
         :versions: 2.0.0b3
 
-        Fixed issue where the :meth:`.PoolEvents.reset` event hook would not be be
+        Fixed issue where the :meth:`.PoolEvents.reset` event hook would not be
         called in all cases when a :class:`_engine.Connection` were closed and was
         in the process of returning its DBAPI connection to the connection pool.
 

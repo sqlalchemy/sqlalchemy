@@ -1425,7 +1425,7 @@ object, a JSON string into a Python ``json.loads()`` result, etc.).
 The immediate rationale for this is so that the row can act more like a Python
 named tuple, rather than a mapping, where the values in the tuple are the
 subject of the ``__contains__`` operator on the tuple, rather than the keys.
-With :class:`.Row` acting like a named tuple, it is then suitable for use as as
+With :class:`.Row` acting like a named tuple, it is then suitable for use as
 replacement for the ORM's :class:`.KeyedTuple` object, leading to an eventual
 API where both the ORM and Core deliver result sets that  behave identically.
 Unification of major patterns within ORM and Core is a major goal of SQLAlchemy
