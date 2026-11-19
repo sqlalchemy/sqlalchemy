@@ -1595,6 +1595,84 @@ $$ LANGUAGE plpgsql;
         eq_(cursor.rowcount, 1)
 
 
+class AsyncpgTimeoutTest(fixtures.TestBase):
+    def _adapt_connection(self, prepared_statement):
+        return mock.Mock(
+            _connection=mock.Mock(
+                executemany=mock.AsyncMock(return_value=None)
+            ),
+            _execute_mutex=asyncio.Lock(),
+            _transaction=mock.sentinel.transaction,
+            _prepare=mock.AsyncMock(return_value=(prepared_statement, ())),
+            _check_type_cache_invalidation=mock.AsyncMock(return_value=None),
+        )
+
+    def test_execution_option_is_applied_to_cursor(self):
+        context = object.__new__(asyncpg_dialect.PGExecutionContext_asyncpg)
+        context.cursor = mock.Mock()
+        context.dialect = mock.Mock(_invalidate_schema_cache_asof=0)
+        context.execution_options = {"asyncpg_timeout": 2.5}
+        context.isddl = False
+        context.compiled = None
+
+        context.pre_exec()
+
+        eq_(context.cursor._asyncpg_timeout, 2.5)
+
+    def test_timeout_is_passed_to_prepared_statement_fetch(self):
+        prepared_statement = mock.Mock(
+            fetch=mock.AsyncMock(return_value=[]),
+            get_statusmsg=mock.Mock(return_value="SELECT 0"),
+        )
+        cursor = asyncpg_dialect.AsyncAdapt_asyncpg_cursor(
+            self._adapt_connection(prepared_statement)
+        )
+        cursor._asyncpg_timeout = 2.5
+
+        asyncio.run(cursor._prepare_and_execute("select $1", (1,)))
+
+        eq_(
+            prepared_statement.fetch.await_args_list,
+            [mock.call(1, timeout=2.5)],
+        )
+
+    def test_timeout_is_passed_to_server_side_cursor(self):
+        raw_cursor = mock.Mock(fetch=mock.AsyncMock(return_value=[]))
+        prepared_statement = mock.Mock(
+            cursor=mock.AsyncMock(return_value=raw_cursor)
+        )
+        cursor = asyncpg_dialect.AsyncAdapt_asyncpg_ss_cursor(
+            self._adapt_connection(prepared_statement)
+        )
+        cursor._asyncpg_timeout = 3
+
+        asyncio.run(cursor._prepare_and_execute("select $1", (1,)))
+
+        eq_(
+            prepared_statement.cursor.await_args_list,
+            [mock.call(1, timeout=3)],
+        )
+
+        asyncio.run(cursor._all())
+
+        eq_(
+            raw_cursor.fetch.await_args_list,
+            [mock.call(1000, timeout=3)],
+        )
+
+    def test_timeout_is_passed_to_executemany(self):
+        adapt_connection = self._adapt_connection(mock.Mock())
+        cursor = asyncpg_dialect.AsyncAdapt_asyncpg_cursor(adapt_connection)
+        cursor._asyncpg_timeout = 4
+
+        asyncio.run(cursor._executemany("insert into t values ($1)", [(1,)]))
+
+        eq_(
+            adapt_connection._connection.executemany.await_args_list,
+            [mock.call("insert into t values ($1)", [(1,)], timeout=4)],
+        )
+
+
 class Psycopg3Test(fixtures.TestBase):
     __only_on__ = ("postgresql+psycopg",)
 
