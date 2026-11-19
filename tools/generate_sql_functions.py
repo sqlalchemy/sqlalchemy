@@ -69,6 +69,25 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                         guess_its_generic = True
                         if issubclass(fn_class, ReturnTypeFromOptionalArgs):
                             _TEE = "Optional[_T]"
+                            buf.write(
+                                textwrap.indent(
+                                    f"""
+
+# match a nullable ColumnElement first, so that its
+# None is removed rather than bound into _T
+
+@overload
+def {key}( {'  # noqa: A001' if is_reserved_word else ''}
+    self,
+    col: ColumnElement[Optional[_T]],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
+    **kwargs: Any,
+) -> {class_name}[_T]:
+    ...
+    """,
+                                    indent,
+                                )
+                            )
                         else:
                             _TEE = "_T"
 
