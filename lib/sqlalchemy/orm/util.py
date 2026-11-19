@@ -1445,6 +1445,7 @@ class LoaderCriteriaOption(CriteriaOption):
         "_where_crit_orig",
         "include_aliases",
         "propagate_to_loaders",
+        "statement_only",
     )
 
     _traverse_internals = [
@@ -1453,6 +1454,7 @@ class LoaderCriteriaOption(CriteriaOption):
         ("where_criteria", visitors.InternalTraversal.dp_clauseelement),
         ("include_aliases", visitors.InternalTraversal.dp_boolean),
         ("propagate_to_loaders", visitors.InternalTraversal.dp_boolean),
+        ("statement_only", visitors.InternalTraversal.dp_boolean),
     ]
 
     root_entity: Optional[Type[Any]]
@@ -1461,6 +1463,7 @@ class LoaderCriteriaOption(CriteriaOption):
     deferred_where_criteria: bool
     include_aliases: bool
     propagate_to_loaders: bool
+    statement_only: bool
 
     _where_crit_orig: Any
 
@@ -1475,6 +1478,8 @@ class LoaderCriteriaOption(CriteriaOption):
         include_aliases: bool = False,
         propagate_to_loaders: bool = True,
         track_closure_variables: bool = True,
+        *,
+        statement_only: bool = False,
     ):
         entity = cast(
             "_InternalEntityType[Any]",
@@ -1510,8 +1515,10 @@ class LoaderCriteriaOption(CriteriaOption):
                 roles.WhereHavingRole, where_criteria
             )
 
+        assert not (statement_only and propagate_to_loaders)
         self.include_aliases = include_aliases
         self.propagate_to_loaders = propagate_to_loaders
+        self.statement_only = statement_only
 
     @classmethod
     def _unreduce(

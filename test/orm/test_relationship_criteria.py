@@ -3544,3 +3544,171 @@ class JoinedloadOfTypeAndTest(fixtures.DeclarativeMappedTest):
                 " AND anon_1.dog_breed = :breed_1",
             ),
         )
+
+
+class SelfRefCriteriaTest(fixtures.DeclarativeMappedTest):
+    """test #13799
+
+    criteria added with and_() to a self-referential relationship applies
+    to the first level of the relationship only, not to the loads of the
+    same relationship further down.
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Node(Base):
+            __tablename__ = "node"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            parent_id: Mapped[int] = mapped_column(
+                ForeignKey("node.id"), nullable=True
+            )
+            data: Mapped[str] = mapped_column(String(10))
+            children = relationship("Node", order_by="Node.id")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Node = cls.classes.Node
+        with Session(connection) as s:
+            s.add(
+                Node(
+                    id=1,
+                    data="a",
+                    children=[
+                        Node(
+                            id=2,
+                            data="a",
+                            children=[
+                                Node(
+                                    id=4,
+                                    data="a",
+                                    children=[
+                                        Node(id=6, data="a"),
+                                        Node(id=7, data="b"),
+                                    ],
+                                ),
+                                Node(id=5, data="b"),
+                            ],
+                        ),
+                        Node(id=3, data="b"),
+                    ],
+                )
+            )
+            s.commit()
+
+    def _run(self, opt):
+        Node = self.classes.Node
+
+        with fixture_session() as s:
+            n1 = (
+                s.scalars(select(Node).where(Node.id == 1).options(opt))
+                .unique()
+                .one()
+            )
+            return (
+                [n.id for n in n1.children],
+                [[c.id for c in n.children] for n in n1.children],
+            )
+
+    _strategies = {
+        "lazyload": lazyload,
+        "joinedload": joinedload,
+        "selectinload": selectinload,
+        "subqueryload": subqueryload,
+    }
+
+    @testing.variation(
+        "strategy", ["lazyload", "joinedload", "selectinload", "subqueryload"]
+    )
+    @testing.variation(
+        "nested",
+        ["none", "lazyload", "joinedload", "selectinload", "subqueryload"],
+    )
+    def test_criteria_first_level_only(self, strategy, nested):
+        Node = self.classes.Node
+
+        opt = self._strategies[strategy.name](
+            Node.children.and_(Node.data == "a")
+        )
+        if not nested.none:
+            opt = getattr(opt, nested.name)(Node.children)
+
+        eq_(self._run(opt), ([2], [[4, 5]]))
+
+    @testing.variation("strategy", ["lazyload", "joinedload", "selectinload"])
+    def test_criteria_each_level(self, strategy):
+        Node = self.classes.Node
+
+        loader = self._strategies[strategy.name]
+        opt = getattr(
+            loader(Node.children.and_(Node.data == "a")), strategy.name
+        )(Node.children.and_(Node.data == "b"))
+
+        eq_(self._run(opt), ([2], [[5]]))
+
+    @testing.combinations(
+        (1, [6, 7]),
+        (2, [6]),
+        (-1, [6]),
+        argnames="recursion_depth, third_level",
+    )
+    def test_criteria_within_recursion_depth(
+        self, recursion_depth, third_level
+    ):
+        """criteria applies to each level loaded by recursion_depth, and
+        not to levels beyond it."""
+
+        Node = self.classes.Node
+
+        with fixture_session() as s:
+            n1 = s.scalars(
+                select(Node)
+                .where(Node.id == 1)
+                .options(
+                    selectinload(
+                        Node.children.and_(Node.data == "a"),
+                        recursion_depth=recursion_depth,
+                    )
+                )
+            ).one()
+            n2 = n1.children[0]
+            n4 = n2.children[0]
+
+            eq_(
+                (
+                    [n.id for n in n1.children],
+                    [n.id for n in n2.children],
+                    [n.id for n in n4.children],
+                ),
+                ([2], [4], third_level),
+            )
+
+    def test_lazyload_sql(self):
+        Node = self.classes.Node
+
+        with self.sql_execution_asserter(testing.db) as asserter_:
+            eq_(
+                self._run(lazyload(Node.children.and_(Node.data == "a"))),
+                ([2], [[4, 5]]),
+            )
+
+        asserter_.assert_(
+            CompiledSQL(
+                "SELECT node.id, node.parent_id, node.data FROM node "
+                "WHERE node.id = :id_1",
+                [{"id_1": 1}],
+            ),
+            CompiledSQL(
+                "SELECT node.id, node.parent_id, node.data FROM node "
+                "WHERE :param_1 = node.parent_id AND node.data = :data_1 "
+                "ORDER BY node.id",
+                [{"param_1": 1, "data_1": "a"}],
+            ),
+            CompiledSQL(
+                "SELECT node.id, node.parent_id, node.data FROM node "
+                "WHERE :param_1 = node.parent_id ORDER BY node.id",
+                [{"param_1": 2}],
+            ),
+        )

@@ -1843,9 +1843,10 @@ class HasCacheKeySubclass(fixtures.TestBase):
         ),
         "LoaderCriteriaOption": (
             {"where_criteria", "entity", "propagate_to_loaders"}
-            | {"root_entity", "include_aliases"},
+            | {"root_entity", "include_aliases", "statement_only"},
             {"where_criteria", "include_aliases", "propagate_to_loaders"}
-            | {"entity_or_base", "loader_only", "track_closure_variables"},
+            | {"entity_or_base", "loader_only", "track_closure_variables"}
+            | {"statement_only"},
         ),
         "NullLambdaStatement": ({"_resolved"}, {"statement"}),
         "ScalarFunctionColumn": (
