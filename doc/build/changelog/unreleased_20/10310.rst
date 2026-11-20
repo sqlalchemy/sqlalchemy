@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 10310
+
+    Fixed compilation of the :class:`_sql.Values` construct for MySQL to
+    render each row using the required ``ROW()`` constructor syntax.  This
+    syntax is required by the MySQL ``VALUES`` statement available as of
+    MySQL 8.0.19.  MariaDB compilation retains its existing table value
+    constructor syntax.
