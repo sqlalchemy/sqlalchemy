@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 11132
+
+    Documented that the ``DOUBLE(M,D)``, ``REAL(M,D)`` and ``FLOAT(M,D)``
+    precision / scale syntaxes rendered by the MySQL dialect's
+    :class:`_mysql.DOUBLE`, :class:`_mysql.REAL` and :class:`_mysql.FLOAT`
+    datatypes are non-standard MySQL extensions which are deprecated by
+    MySQL, and altered the error message raised when only one of
+    ``precision`` / ``scale`` is passed to mention this caveat.
