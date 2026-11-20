@@ -982,7 +982,7 @@
         :tickets:
 
       Added "no_autoflush" context
-      manager to Session, used with with:
+      manager to Session, used with:
       will temporarily disable autoflush.
 
     .. change::
