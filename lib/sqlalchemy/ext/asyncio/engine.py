@@ -13,6 +13,7 @@ from typing import Callable
 from typing import Concatenate
 from typing import Dict
 from typing import Generator
+from typing import List
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -40,6 +41,7 @@ from ...engine import create_pool_from_url as _create_pool_from_url
 from ...engine import Engine
 from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
+from ...engine.base import TwoPhaseTransaction
 from ...exc import ArgumentError
 from ...util import immutabledict
 from ...util.concurrency import greenlet_spawn
@@ -344,6 +346,63 @@ class AsyncConnection(  # type: ignore[misc]
         """Begin a nested transaction and return a transaction handle."""
         assert self._proxied
         return AsyncTransaction(self, nested=True)
+
+    def begin_twophase(self, xid: Optional[Any] = None) -> AsyncTransaction:
+        """Begin a two-phase or XA transaction and return a transaction
+        handle.
+
+        The returned object is an instance of :class:`.AsyncTransaction`,
+        which provides the :meth:`_asyncio.AsyncTransaction.prepare` method
+        in addition to the usual transaction methods.
+
+        :param xid: the two phase transaction id.  If not supplied, a
+          random id will be generated. The accepted type and value depends on
+          the driver in use.
+
+        .. seealso::
+
+            :meth:`_engine.Connection.begin_twophase`
+
+        """
+        assert self._proxied
+        return AsyncTransaction(self, is_two_phase=True, xid=xid)
+
+    async def recover_twophase(self) -> List[Any]:
+        """Return a list of prepared two-phase transaction identifiers.
+
+        .. seealso::
+
+            :meth:`_engine.Connection.recover_twophase`
+
+        """
+
+        return await greenlet_spawn(self._proxied.recover_twophase)
+
+    async def rollback_prepared(self, xid: Any, recover: bool = False) -> None:
+        """Roll back a prepared two-phase transaction.
+
+        .. seealso::
+
+            :meth:`_engine.Connection.rollback_prepared`
+
+        """
+
+        await greenlet_spawn(
+            self._proxied.rollback_prepared, xid, recover=recover
+        )
+
+    async def commit_prepared(self, xid: Any, recover: bool = False) -> None:
+        """Commit a prepared two-phase transaction.
+
+        .. seealso::
+
+            :meth:`_engine.Connection.commit_prepared`
+
+        """
+
+        await greenlet_spawn(
+            self._proxied.commit_prepared, xid, recover=recover
+        )
 
     async def invalidate(
         self, exception: Optional[BaseException] = None
@@ -1346,21 +1405,56 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):  # type: ignore[mi
     # END PROXY METHODS AsyncEngine
 
 
+@util.create_proxy_methods(
+    Transaction,
+    ":class:`_engine.Transaction`",
+    ":class:`_asyncio.AsyncTransaction`",
+    classmethods=[],
+    methods=[],
+    attributes=[
+        "is_valid",
+    ],
+)
 class AsyncTransaction(
     ProxyComparable[Transaction], StartableContext["AsyncTransaction"]
 ):
-    """An asyncio proxy for a :class:`_engine.Transaction`."""
+    """An asyncio proxy for a :class:`_engine.Transaction`.
 
-    __slots__ = ("connection", "sync_transaction", "nested")
+    When the transaction refers to a two-phase transaction created by
+    :meth:`_asyncio.AsyncConnection.begin_twophase`,
+    :attr:`_asyncio.AsyncTransaction.is_two_phase` will be ``True``,
+    :attr:`_asyncio.AsyncTransaction.xid` refers to the transaction id,
+    and the :meth:`_asyncio.AsyncTransaction.prepare` method may also be
+    used.
+
+    """
+
+    __slots__ = (
+        "connection",
+        "sync_transaction",
+        "nested",
+        "_is_two_phase",
+        "_xid",
+    )
 
     sync_transaction: Optional[Transaction]
     connection: AsyncConnection
     nested: bool
+    _is_two_phase: bool
+    _xid: Optional[Any]
 
-    def __init__(self, connection: AsyncConnection, nested: bool = False):
+    def __init__(
+        self,
+        connection: AsyncConnection,
+        nested: bool = False,
+        is_two_phase: bool = False,
+        xid: Optional[Any] = None,
+    ):
         self.connection = connection
         self.sync_transaction = None
         self.nested = nested
+        self._is_two_phase = is_two_phase
+        self._xid = xid
 
     @classmethod
     def _regenerate_proxy_for_target(
@@ -1379,7 +1473,23 @@ class AsyncTransaction(
         obj.connection = async_connection
         obj.sync_transaction = obj._assign_proxied(sync_transaction)
         obj.nested = nested
+        if isinstance(target, TwoPhaseTransaction):
+            obj._is_two_phase = True
+            obj._xid = target.xid
+        else:
+            obj._is_two_phase = False
+            obj._xid = None
         return obj
+
+    @property
+    def is_two_phase(self) -> bool:
+        """True if this transaction is a two-phase transaction."""
+        return self._is_two_phase
+
+    @property
+    def xid(self) -> Optional[Any]:
+        """The transaction id of this two-phase transaction."""
+        return self._xid
 
     @util.ro_non_memoized_property
     def _proxied(self) -> Transaction:
@@ -1388,12 +1498,24 @@ class AsyncTransaction(
         return self.sync_transaction
 
     @property
-    def is_valid(self) -> bool:
-        return self._proxied.is_valid
-
-    @property
     def is_active(self) -> bool:
         return self._proxied.is_active
+
+    # START PROXY METHODS AsyncTransaction
+
+    # code within this block is **programmatically,
+    # statically generated** by tools/generate_proxy_methods.py
+
+    @property
+    def is_valid(self) -> bool:
+        r"""Proxy for the :attr:`_engine.Transaction.is_valid` attribute
+        on behalf of the :class:`_asyncio.AsyncTransaction` class.
+
+        """  # noqa: E501
+
+        return self._proxied.is_valid
+
+    # END PROXY METHODS AsyncTransaction
 
     async def close(self) -> None:
         """Close this :class:`.AsyncTransaction`.
@@ -1417,19 +1539,38 @@ class AsyncTransaction(
 
         await greenlet_spawn(self._proxied.commit)
 
+    async def prepare(self) -> None:
+        """Prepare this two-phase :class:`.AsyncTransaction`.
+
+        After a PREPARE, the transaction can be committed.
+
+        """
+        if not self.is_two_phase:
+            raise exc.InvalidRequestError(
+                "This transaction is not a two phase transaction"
+            )
+        assert isinstance(self._proxied, TwoPhaseTransaction)
+        await greenlet_spawn(self._proxied.prepare)
+
     async def start(self, is_ctxmanager: bool = False) -> AsyncTransaction:
         """Start this :class:`_asyncio.AsyncTransaction` object's context
         outside of using a Python ``with:`` block.
 
         """
 
-        self.sync_transaction = self._assign_proxied(
-            await greenlet_spawn(
+        if self.is_two_phase:
+            sync_transaction: Transaction = await greenlet_spawn(
+                self.connection._proxied.begin_twophase, self._xid
+            )
+            assert isinstance(sync_transaction, TwoPhaseTransaction)
+            self._xid = sync_transaction.xid
+        else:
+            sync_transaction = await greenlet_spawn(
                 self.connection._proxied.begin_nested
                 if self.nested
                 else self.connection._proxied.begin
             )
-        )
+        self.sync_transaction = self._assign_proxied(sync_transaction)
         if is_ctxmanager:
             self.sync_transaction.__enter__()
         return self
