@@ -113,7 +113,7 @@ def _collection_gced(ref: weakref.ref[Any]) -> None:
         if key in _key_to_collection:
             # defaultdict, so can't get a KeyError
             dispatch_reg = _key_to_collection[key]
-            dispatch_reg.pop(ref)
+            dispatch_reg.pop(ref, None)
             if not dispatch_reg:
                 _key_to_collection.pop(key)
 
@@ -123,10 +123,10 @@ def _stored_in_collection(
 ) -> bool:
     key = event_key._key
 
-    dispatch_reg = _key_to_collection[key]
-
     owner_ref = owner.ref
     listen_ref = weakref.ref(event_key._listen_fn)
+
+    dispatch_reg = _key_to_collection[key]
 
     if owner_ref in dispatch_reg:
         return False
@@ -144,11 +144,11 @@ def _removed_from_collection(
 ) -> None:
     key = event_key._key
 
-    dispatch_reg = _key_to_collection[key]
-
+    owner_ref = owner.ref
     listen_ref = weakref.ref(event_key._listen_fn)
 
-    owner_ref = owner.ref
+    dispatch_reg = _key_to_collection[key]
+
     dispatch_reg.pop(owner_ref, None)
     if not dispatch_reg:
         del _key_to_collection[key]

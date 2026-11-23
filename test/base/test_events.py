@@ -1792,3 +1792,51 @@ class RemovalTest(TearDownLocalEventsFixture, fixtures.TestBase):
         t1.dispatch.event_one("t2")
 
         eq_(listen_one.mock_calls, [call("adapted t1")])
+
+    @testing.requires.predictable_gc
+    def test_stored_in_collection_gc_race(self):
+        # test for #13805
+        import gc
+        import sys
+        import types
+        import weakref
+
+        from sqlalchemy.event import registry
+        from sqlalchemy.pool import QueuePool
+
+        errors = []
+        old_unraisablehook = sys.unraisablehook
+        sys.unraisablehook = lambda u: errors.append(repr(u.exc_value))
+
+        def on_connect(dbapi_connection, record):
+            pass
+
+        _orig_ref = weakref.ref
+
+        def ref_that_collects(*args, **kwargs):
+            gc.collect()
+            return _orig_ref(*args, **kwargs)
+
+        orig_weakref = registry.weakref
+        registry.weakref = types.SimpleNamespace(ref=ref_that_collects)
+        gc_was_enabled = gc.isenabled()
+        gc.disable()
+        try:
+            for _ in range(50):
+                pool = QueuePool(lambda: None)
+                event.listen(pool, "connect", on_connect)
+                heir = pool.recreate()
+                heir.cycle = heir
+                heir2 = heir.recreate()
+                heir2.cycle = heir2
+                del pool
+                if errors:
+                    break
+        finally:
+            registry.weakref = orig_weakref
+            sys.unraisablehook = old_unraisablehook
+            if gc_was_enabled:
+                gc.enable()
+
+        eq_(errors, [])
+
