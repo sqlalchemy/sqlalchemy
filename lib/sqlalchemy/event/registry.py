@@ -123,10 +123,13 @@ def _stored_in_collection(
 ) -> bool:
     key = event_key._key
 
-    dispatch_reg = _key_to_collection[key]
-
     owner_ref = owner.ref
     listen_ref = weakref.ref(event_key._listen_fn)
+
+    # look up dispatch_reg only after allocating the weakref; the allocation
+    # can run the cyclic collector, which may detach this dict from
+    # _key_to_collection via _collection_gced, see #13805
+    dispatch_reg = _key_to_collection[key]
 
     if owner_ref in dispatch_reg:
         return False
@@ -144,9 +147,10 @@ def _removed_from_collection(
 ) -> None:
     key = event_key._key
 
-    dispatch_reg = _key_to_collection[key]
-
     listen_ref = weakref.ref(event_key._listen_fn)
+
+    # look up dispatch_reg after allocating the weakref, see #13805
+    dispatch_reg = _key_to_collection[key]
 
     owner_ref = owner.ref
     dispatch_reg.pop(owner_ref, None)

@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 13805
+    :versions: 2.1.10
+
+    Fixed issue in the event registry where a garbage collection occurring
+    while an event listener was being associated with a target could leave the
+    internal listener bookkeeping in an inconsistent state, causing a
+    ``KeyError`` to be raised within a weakref callback, reported as
+    "Exception ignored while calling weakref callback", when the listener's
+    target was later garbage collected.  The issue could occur intermittently
+    for listeners applied to a :class:`_pool.Pool` that is recreated, such as
+    when :meth:`_engine.Engine.dispose` is called.
+
+    Credit to Tommaso Movis for identifying the issue and fix.

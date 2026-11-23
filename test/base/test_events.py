@@ -1,11 +1,15 @@
 """Test event registration and listening."""
 
+import types
 from unittest.mock import call
 from unittest.mock import Mock
+from unittest.mock import patch
+import weakref
 
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import testing
+from sqlalchemy.event import registry
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -1671,6 +1675,45 @@ class RemovalTest(TearDownLocalEventsFixture, fixtures.TestBase):
         # to be cleaned up
         assert key in registry._key_to_collection
         assert collection_ref in registry._collection_to_key
+
+    def test_collection_gced_during_stored_in_collection(self):
+        """test #13805"""
+
+        Target = self._fixture()
+
+        m1 = Mock()
+        t1 = Target()
+        t2 = Target()
+        event.listen(t1, "event_one", m1)
+        event.listen(t2, "event_one", m1)
+
+        event_key = registry._EventKey(t1, "event_one", m1, t1)
+        key = event_key._key
+        (t1_collection_ref,) = registry._key_to_collection[key]
+        t2_collection = t2.dispatch.event_one
+
+        real_ref = weakref.ref
+
+        def ref_that_collects(*arg):
+            # simulate the cyclic collector running at the weakref
+            # allocation and collecting the only other collection for
+            # the key
+            registry._collection_gced(t1_collection_ref)
+            return real_ref(*arg)
+
+        with patch.object(
+            registry, "weakref", types.SimpleNamespace(ref=ref_that_collects)
+        ):
+            registry._stored_in_collection(event_key, t2_collection)
+
+        eq_(
+            registry._key_to_collection[key],
+            {t2_collection.ref: weakref.ref(m1)},
+        )
+
+        # removal from the collection finds the owner and cleans up the key
+        registry._removed_from_collection(event_key, t2_collection)
+        assert key not in registry._key_to_collection
 
     def test_remove_not_listened(self):
         Target = self._fixture()
