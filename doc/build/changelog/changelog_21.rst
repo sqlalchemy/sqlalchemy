@@ -1966,7 +1966,7 @@
 
         Added the ability to create custom SQL constructs that can define new
         clauses within SELECT, INSERT, UPDATE, and DELETE statements without
-        needing to modify the construction or compilation code of of
+        needing to modify the construction or compilation code of
         :class:`.Select`, :class:`_sql.Insert`, :class:`.Update`, or :class:`.Delete`
         directly.  Support for testing these constructs, including caching support,
         is present along with an example test suite.  The use case for these
@@ -2464,7 +2464,7 @@
         :tags: schema, usecase
         :tickets: 13006
 
-        The the parameter :paramref:`_schema.DropConstraint.isolate_from_table`
+        The parameter :paramref:`_schema.DropConstraint.isolate_from_table`
         was deprecated since it has no effect on the drop table behavior.
         Its default values was also changed to ``False``.
 
