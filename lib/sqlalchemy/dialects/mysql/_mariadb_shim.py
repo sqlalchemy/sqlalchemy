@@ -244,6 +244,7 @@ class MariaDBShim(DefaultDialect):
             # if using older mariadb version
             self.delete_returning = True
             self.insert_returning = True
+            self.update_returning = True
 
         self.is_mariadb = is_mariadb
 
@@ -281,6 +282,9 @@ class MariaDBShim(DefaultDialect):
         self.delete_returning = self.server_version_info >= (10, 0, 5)
 
         self.insert_returning = self.server_version_info >= (10, 5)
+
+        # ref https://jira.mariadb.org/browse/MDEV-5092
+        self.update_returning = self.server_version_info >= (13, 0, 1)
 
         self._warn_for_known_db_issues()
 
