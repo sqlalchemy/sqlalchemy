@@ -1,0 +1,14 @@
+.. change::
+    :tags: use case, asyncio
+    :tickets: 12803
+
+    Added two-phase transaction support to the asyncio extension.
+    :meth:`_asyncio.AsyncConnection.begin_twophase` returns an
+    :class:`_asyncio.AsyncTransaction` which provides the
+    :attr:`_asyncio.AsyncTransaction.is_two_phase` and
+    :attr:`_asyncio.AsyncTransaction.xid` attributes as well as the
+    :meth:`_asyncio.AsyncTransaction.prepare` method, and the
+    :meth:`_asyncio.AsyncConnection.recover_twophase`,
+    :meth:`_asyncio.AsyncConnection.commit_prepared` and
+    :meth:`_asyncio.AsyncConnection.rollback_prepared` methods proxy
+    the corresponding core methods.

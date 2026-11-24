@@ -485,6 +485,8 @@ class AsyncEngineTest(EngineFixture):
 
         is_true(conn.in_transaction())
         is_false(conn.in_nested_transaction())
+        is_true(trans.is_active)
+        is_true(trans.is_valid)
 
         is_(trans.sync_transaction, conn.get_transaction().sync_transaction)
 
@@ -511,6 +513,145 @@ class AsyncEngineTest(EngineFixture):
         is_none(conn.get_transaction())
         is_false(conn.in_transaction())
         is_false(conn.in_nested_transaction())
+        is_false(trans.is_active)
+        is_false(trans.is_valid)
+
+    @async_test
+    async def test_prepare_on_non_two_phase_transaction(
+        self, async_connection
+    ):
+        trans = await async_connection.begin()
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "This transaction is not a two phase transaction",
+        ):
+            await trans.prepare()
+        await trans.rollback()
+
+    @testing.requires.two_phase_transactions
+    @async_test
+    async def test_two_phase_transaction(self, async_connection):
+        conn = async_connection
+        users = self.tables.users
+
+        trans = await conn.begin_twophase()
+        is_true(trans.is_two_phase)
+        is_true(conn.in_transaction())
+
+        await conn.execute(
+            users.insert(), {"user_id": 100, "user_name": "user100"}
+        )
+        await trans.prepare()
+        await trans.commit()
+
+        is_false(conn.in_transaction())
+        eq_(
+            (
+                await conn.execute(
+                    select(users.c.user_name).where(users.c.user_id == 100)
+                )
+            ).scalar_one(),
+            "user100",
+        )
+
+    @testing.requires.two_phase_transactions
+    @async_test
+    async def test_two_phase_transaction_rollback(self, async_connection):
+        conn = async_connection
+        users = self.tables.users
+
+        trans = await conn.begin_twophase()
+        await conn.execute(
+            users.insert(), {"user_id": 100, "user_name": "user100"}
+        )
+        await trans.rollback()
+
+        is_false(conn.in_transaction())
+        eq_(
+            (
+                await conn.execute(
+                    select(users.c.user_id).where(users.c.user_id == 100)
+                )
+            ).first(),
+            None,
+        )
+
+    @testing.requires.two_phase_transactions
+    @async_test
+    async def test_two_phase_transaction_xid(self, async_connection):
+        conn = async_connection
+
+        trans = await conn.begin_twophase("sa_test_xid")
+        eq_(trans.xid, "sa_test_xid")
+        eq_(trans.sync_transaction.xid, "sa_test_xid")
+        await trans.rollback()
+
+    @testing.requires.two_phase_transactions
+    @async_test
+    async def test_two_phase_get_transaction(self, async_connection):
+        conn = async_connection
+        users = self.tables.users
+
+        await conn.run_sync(
+            lambda sync_conn: sync_conn.begin_twophase("sa_test_xid")
+        )
+        # the transaction was begun on the sync connection, so
+        # get_transaction() has to regenerate the proxy
+        trans = conn.get_transaction()
+        assert trans is not None
+        is_true(trans.is_two_phase)
+        eq_(trans.xid, "sa_test_xid")
+
+        await conn.execute(
+            users.insert(), {"user_id": 100, "user_name": "user100"}
+        )
+        await trans.prepare()
+        await trans.commit()
+
+        eq_(
+            (
+                await conn.execute(
+                    select(users.c.user_name).where(users.c.user_id == 100)
+                )
+            ).scalar_one(),
+            "user100",
+        )
+
+    @testing.requires.two_phase_transactions
+    @testing.requires.two_phase_recovery
+    @testing.variation("commit", [True, False])
+    @async_test
+    async def test_two_phase_recover(self, async_engine, commit):
+        users = self.tables.users
+
+        async with async_engine.connect() as conn:
+            trans = await conn.begin_twophase()
+            await conn.execute(
+                users.insert(), {"user_id": 100, "user_name": "user100"}
+            )
+            await trans.prepare()
+            xid = trans.xid
+            await conn.invalidate()
+
+        async with async_engine.connect() as conn:
+            recoverables = await conn.recover_twophase()
+            assert xid in recoverables
+
+            if commit:
+                await conn.commit_prepared(xid, recover=True)
+                expected = 100
+            else:
+                await conn.rollback_prepared(xid, recover=True)
+                expected = None
+
+            eq_(
+                (
+                    await conn.execute(
+                        select(users.c.user_id).where(users.c.user_id == 100)
+                    )
+                ).scalar(),
+                expected,
+            )
 
     @testing.requires.queue_pool
     @async_test
