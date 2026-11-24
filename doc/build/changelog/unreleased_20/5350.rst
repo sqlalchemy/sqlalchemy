@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 5350
+
+    Improved the error raised when a naming convention using a
+    ``%(referred_column_0_name)s`` token cannot resolve the target of a
+    string-based :class:`_schema.ForeignKey`, which happens when the
+    referenced :class:`_schema.Table` has not been defined yet.  Reading that
+    token resolves the foreign key while the constraint name is being built,
+    whereas the target is otherwise resolved lazily; the resulting
+    :class:`_exc.NoReferencedTableError` named only the missing table and gave
+    no indication that the naming convention was what required it.  The error
+    now names the token, and points at defining the referenced table first,
+    passing the :class:`_schema.Column` object rather than a string, or using
+    ``%(referred_table_name)s``, which is read from the string and needs no
+    resolution.  The exception type is unchanged.
