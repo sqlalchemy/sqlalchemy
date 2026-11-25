@@ -111,6 +111,24 @@ class DialectTest(fixtures.TestBase):
                 [mock.call.close(timeout=2), mock.call.terminate()],
             )
 
+    def test_asyncpg_data_error_translation(self):
+        """test for #13636"""
+
+        import asyncpg
+
+        dbapi = asyncpg_dialect.AsyncAdapt_asyncpg_dbapi(asyncpg)
+        error = asyncpg.exceptions.StringDataRightTruncationError(
+            "value too long for type character varying(5)"
+        )
+
+        with expect_raises_message(
+            asyncpg_dialect.AsyncAdapt_asyncpg_dbapi.DataError,
+            "value too long for type character varying",
+        ):
+            asyncpg_dialect.AsyncAdapt_asyncpg_connection._handle_exception_no_connection(  # noqa: E501
+                dbapi, error
+            )
+
     def test_version_parsing(self):
         def mock_conn(res):
             return mock.Mock(

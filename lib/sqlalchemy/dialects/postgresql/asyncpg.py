@@ -1083,6 +1083,7 @@ class AsyncAdapt_asyncpg_dbapi(AsyncAdapt_dbapi_module):
             asyncpg.exceptions.CheckViolationError: self.CheckViolationError,
             asyncpg.exceptions.ExclusionViolationError: self.ExclusionViolationError,  # noqa: E501
             asyncpg.exceptions.InternalClientError: self.InternalClientError,
+            asyncpg.exceptions.DataError: self.DataError,
         }
 
     def Binary(self, value):
