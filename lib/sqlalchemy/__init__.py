@@ -97,6 +97,7 @@ from .sql.expression import AliasedReturnsRows as AliasedReturnsRows
 from .sql.expression import all_ as all_
 from .sql.expression import and_ as and_
 from .sql.expression import any_ as any_
+from .sql.expression import Apply as Apply
 from .sql.expression import asc as asc
 from .sql.expression import between as between
 from .sql.expression import BinaryExpression as BinaryExpression
@@ -119,6 +120,7 @@ from .sql.expression import ColumnCollection as ColumnCollection
 from .sql.expression import ColumnElement as ColumnElement
 from .sql.expression import ColumnOperators as ColumnOperators
 from .sql.expression import CompoundSelect as CompoundSelect
+from .sql.expression import cross_apply as cross_apply
 from .sql.expression import CTE as CTE
 from .sql.expression import cte as cte
 from .sql.expression import custom_op as custom_op
@@ -183,6 +185,7 @@ from .sql.expression import nullslast as nullslast
 from .sql.expression import Operators as Operators
 from .sql.expression import or_ as or_
 from .sql.expression import OrderByList as OrderByList
+from .sql.expression import outer_apply as outer_apply
 from .sql.expression import outerjoin as outerjoin
 from .sql.expression import outparam as outparam
 from .sql.expression import Over as Over

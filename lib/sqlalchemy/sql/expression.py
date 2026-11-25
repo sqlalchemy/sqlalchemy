@@ -46,6 +46,7 @@ from ._elements_constructors import tuple_ as tuple_
 from ._elements_constructors import type_coerce as type_coerce
 from ._elements_constructors import within_group as within_group
 from ._selectable_constructors import alias as alias
+from ._selectable_constructors import cross_apply as cross_apply
 from ._selectable_constructors import cte as cte
 from ._selectable_constructors import except_ as except_
 from ._selectable_constructors import except_all as except_all
@@ -54,6 +55,7 @@ from ._selectable_constructors import intersect as intersect
 from ._selectable_constructors import intersect_all as intersect_all
 from ._selectable_constructors import join as join
 from ._selectable_constructors import lateral as lateral
+from ._selectable_constructors import outer_apply as outer_apply
 from ._selectable_constructors import outerjoin as outerjoin
 from ._selectable_constructors import select as select
 from ._selectable_constructors import table as table
@@ -128,6 +130,7 @@ from .operators import OperatorClass as OperatorClass
 from .operators import Operators as Operators
 from .selectable import Alias as Alias
 from .selectable import AliasedReturnsRows as AliasedReturnsRows
+from .selectable import Apply as Apply
 from .selectable import CompoundSelect as CompoundSelect
 from .selectable import CTE as CTE
 from .selectable import Exists as Exists

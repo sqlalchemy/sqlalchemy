@@ -57,9 +57,13 @@ the :func:`_sql.alias` function is usually invoked via the
 
 .. autofunction:: cte
 
+.. autofunction:: cross_apply
+
 .. autofunction:: join
 
 .. autofunction:: lateral
+
+.. autofunction:: outer_apply
 
 .. autofunction:: outerjoin
 
@@ -74,6 +78,9 @@ The classes here are generated using the constructors listed at
 :ref:`fromclause_modifier_constructors`.
 
 .. autoclass:: Alias
+   :members:
+
+.. autoclass:: Apply
    :members:
 
 .. autoclass:: AliasedReturnsRows
