@@ -1932,6 +1932,19 @@ class RelationshipProperty(
             plain_collection_type = util.duck_type_collection(
                 exact_default_factory
             )
+            if plain_collection_type is None and not isinstance(
+                exact_default_factory, type
+            ):
+                # the collection class may be a no-arg callable that
+                # produces the collection, such as ordering_list(),
+                # which returns a lambda rather than a class; resolve
+                # the plain type from a sample instance
+                try:
+                    sample = exact_default_factory()
+                except Exception:
+                    sample = None
+                if sample is not None:
+                    plain_collection_type = util.duck_type_collection(sample)
             if plain_collection_type is exact_default_factory:
                 plain_collection_type = None
 

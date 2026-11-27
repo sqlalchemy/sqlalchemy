@@ -4113,6 +4113,51 @@ class UseDescriptorDefaultsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             is_true(isinstance(m2.things, collection_class))
             eq_([m1.things, m2.things], [plain_type(), expected])
 
+    def test_default_factory_ordering_list(
+        self, dc_decl_base: Type[MappedAsDataclass]
+    ):
+        """test #13818"""
+
+        from sqlalchemy.ext.orderinglist import ordering_list
+
+        class Thing(dc_decl_base, eq=False):
+            __tablename__ = "thing"
+
+            # identity hash so that instances can be placed in a set
+            __hash__ = object.__hash__
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            my_id: Mapped[int] = mapped_column(
+                ForeignKey("myclass.id"), init=False
+            )
+            position: Mapped[int] = mapped_column(init=False)
+            name: Mapped[str]
+
+        class MyClass(dc_decl_base):
+            __tablename__ = "myclass"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+            things: Mapped[List[Thing]] = relationship(
+                collection_class=ordering_list("position"),
+                default_factory=list,
+                order_by=Thing.position,
+            )
+
+        dc_decl_base.metadata.create_all(testing.db)
+
+        t1, t2 = Thing(name="t1"), Thing(name="t2")
+
+        m1 = MyClass()
+        m1.things.append(t1)
+        m1.things.append(t2)
+        eq_([t.position for t in m1.things], [0, 1])
+
+        with Session(testing.db) as sess:
+            sess.add(m1)
+            sess.commit()
+            eq_([t.position for t in m1.things], [0, 1])
+
 
 class SynonymDescriptorDefaultTest(AssertsCompiledSQL, fixtures.TestBase):
     """test new behaviors for synonyms given dataclasses descriptor defaults

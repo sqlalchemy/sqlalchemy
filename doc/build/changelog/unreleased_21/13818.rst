@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13818
+
+    Fixed regression caused by :ticket:`12168` where a collection-based
+    :func:`_orm.relationship` using the
+    :ref:`orm_declarative_native_dataclasses` feature with
+    :paramref:`_orm.relationship.collection_class` set to
+    :func:`_orm.ordering_list` would raise an error if
+    :paramref:`_orm.relationship.default_factory` were set to the plain
+    ``list`` type.  The plain collection type is now resolved from a sample
+    instance when the collection factory is a no-argument callable, so
+    ``default_factory=list`` is accepted for :func:`_orm.ordering_list`
+    as it already was for :func:`_orm.attribute_keyed_dict`.
