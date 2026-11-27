@@ -1588,13 +1588,33 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         )
 
         for element in statement._raw_columns:
-            if "entity_namespace" in element._annotations:
-                ens = element._annotations["entity_namespace"]
+            ens = element._annotations.get("entity_namespace")
+            if isinstance(ens, attributes._AdHocHasEntityNamespace):
+                # hybrids annotate their expression with a wrapper around
+                # the mapper or aliased entity; unwrap it so it
+                # deduplicates with other references to that entity.  a
+                # hybrid on an unmapped class wraps None, so it falls
+                # through to the _from_objects branch below, like any
+                # other SQL expression
+                ens = ens._entity_namespace
+
+            if ens is not None:
                 entities.add(ens)
             elif "_no_filter_by" not in element._annotations:
                 entities.update(element._from_objects)
 
-        return entities
+        # SQL expressions such as func.lower(User.name), Table columns and
+        # select_from(user_table) contribute the raw Table rather than the
+        # mapper.  A Table belonging to a non-aliased mapper that's already
+        # present is the same FROM clause entity, so it's dropped; an
+        # aliased entity is a separate FROM and keeps the Table separate.
+        mapped_tables = {
+            table
+            for entity in entities
+            if getattr(entity, "is_mapper", False)
+            for table in entity.tables
+        }
+        return entities.difference(mapped_tables)
 
     @classmethod
     def all_selected_columns(cls, statement):

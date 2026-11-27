@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 13817
+
+    Fixed regression caused by :ticket:`8601` where
+    :meth:`_sql.Select.filter_by` would raise
+    :class:`_exc.AmbiguousColumnError` when selecting a mapped entity or
+    attribute along with a SQL function, :class:`.hybrid_property` or other
+    expression derived from that same entity, as the expression would be
+    counted as a separate FROM clause entity.

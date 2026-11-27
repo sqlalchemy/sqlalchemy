@@ -1,5 +1,7 @@
 from sqlalchemy import bindparam
+from sqlalchemy import cast
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import exists
@@ -15,6 +17,7 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
@@ -22,6 +25,7 @@ from sqlalchemy import union
 from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
@@ -3491,6 +3495,89 @@ class FilterByTest(QueryTest, AssertsCompiledSQL):
         ):
             stmt.filter_by(nonexistent="foo")
 
+    @testing.variation(
+        "expr",
+        [
+            "func",
+            "entity_w_func",
+            "cast",
+            "label",
+            "table_column",
+            "select_from_table",
+        ],
+    )
+    def test_filter_by_w_mapped_attribute_and_table(self, expr):
+        """SQL expressions on mapped columns, columns of the mapped Table,
+        and select_from(table) all contribute the raw Table; filter_by()
+        should treat it as part of the mapped entity that's also selected,
+        rather than as a second entity that has the same column attributes.
+
+        """
+        User = self.classes.User
+        users = self.tables.users
+
+        if expr.entity_w_func:
+            stmt = select(User, func.lower(User.name)).filter_by(id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT users.id, users.name, lower(users.name) AS lower_1 "
+                "FROM users WHERE users.id = :id_1",
+            )
+        elif expr.func:
+            stmt = select(User.name, func.lower(User.name)).filter_by(id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT users.name, lower(users.name) AS lower_1 FROM users "
+                "WHERE users.id = :id_1",
+            )
+        elif expr.cast:
+            stmt = select(User.name, cast(User.id, String)).filter_by(id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT users.name, CAST(users.id AS VARCHAR) AS id "
+                "FROM users WHERE users.id = :id_1",
+            )
+        elif expr.label:
+            stmt = select(User.name, (User.id + 5).label("x")).filter_by(id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT users.name, users.id + :id_1 AS x FROM users "
+                "WHERE users.id = :id_2",
+            )
+        elif expr.table_column:
+            stmt = select(User.name, users.c.id).filter_by(id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT users.name, users.id FROM users "
+                "WHERE users.id = :id_1",
+            )
+        elif expr.select_from_table:
+            stmt = select(User.name).select_from(users).filter_by(id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT users.name FROM users WHERE users.id = :id_1",
+            )
+        else:
+            expr.fail()
+
+    @testing.variation("source", ["join", "aliased_and_expression"])
+    def test_filter_by_ambiguous(self, source):
+        User, Address = self.classes("User", "Address")
+
+        if source.join:
+            stmt = select(User).join(Address)
+        elif source.aliased_and_expression:
+            stmt = select(aliased(User).name, func.lower(User.name))
+        else:
+            source.fail()
+
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "id" is ambiguous; it exists in multiple FROM '
+            "clause entities",
+        ):
+            stmt.filter_by(id=5)
+
     @testing.fixture
     def m2m_fixture(self, decl_base):
         atob = Table(
@@ -3556,3 +3643,79 @@ class FilterByTest(QueryTest, AssertsCompiledSQL):
                 "SELECT a.a_id FROM a, atob WHERE a.a_id = atob.a_id "
                 "AND atob.b_id = :b_id_1",
             )
+
+    @testing.variation("use_aliased", [True, False])
+    def test_filter_by_w_mapped_attribute_and_hybrid(
+        self, decl_base, use_aliased
+    ):
+        """A hybrid's expression is annotated with a wrapper around its
+        entity; filter_by() should treat it as the same entity as a plain
+        attribute of that entity.
+
+        """
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            x: Mapped[int]
+            y: Mapped[int]
+
+            @hybrid_property
+            def x_plus_y(self) -> int:
+                return self.x + self.y
+
+        if use_aliased:
+            a1 = aliased(A)
+            stmt = select(a1.x, a1.x_plus_y).filter_by(id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT a_1.x, a_1.x + a_1.y AS x_plus_y FROM a AS a_1 "
+                "WHERE a_1.id = :id_1",
+            )
+        else:
+            stmt = select(A.x, A.x_plus_y).filter_by(id=5)
+            self.assert_compile(
+                stmt,
+                "SELECT a.x, a.x + a.y AS x_plus_y FROM a WHERE a.id = :id_1",
+            )
+
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "id" is ambiguous; it exists in multiple FROM '
+            "clause entities",
+        ):
+            select(A.x, aliased(A).x_plus_y).filter_by(id=5)
+
+    def test_filter_by_w_mapped_attribute_and_unmapped_hybrid(self):
+        """A hybrid on a class that isn't mapped has no entity to search;
+        filter_by() should search the FROM objects of its expression
+        instead.
+
+        """
+        User = self.classes.User
+        t = table("t", column("id", Integer), column("x", Integer))
+
+        class NotMapped:
+            @hybrid_property
+            def x(self) -> int:
+                return self._x
+
+            @x.inplace.expression
+            @classmethod
+            def _x_expression(cls):
+                return t.c.x
+
+        stmt = select(User.name, NotMapped.x).filter_by(name="ed")
+        self.assert_compile(
+            stmt,
+            "SELECT users.name, t.x FROM users, t "
+            "WHERE users.name = :name_1",
+        )
+
+        with expect_raises_message(
+            exc.AmbiguousColumnError,
+            'Attribute name "id" is ambiguous; it exists in multiple FROM '
+            "clause entities",
+        ):
+            select(User.name, NotMapped.x).filter_by(id=5)
