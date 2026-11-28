@@ -1903,6 +1903,14 @@ class _SubqueryLoader(_PostLoader):
             effective_entity = with_poly_entity
         else:
             effective_entity = self.entity
+            if (
+                loadopt
+                and loadopt._extra_criteria
+                and self.parent.isa(self.mapper)
+            ):
+                effective_entity = orm_util.AliasedClass(
+                    effective_entity, use_mapper_path=True
+                )
 
         # rewritten_path is in terms of the statement being invoked, as it
         # is used to locate the leftmost entity within orig_query below

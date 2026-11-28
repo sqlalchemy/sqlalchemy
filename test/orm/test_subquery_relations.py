@@ -2623,6 +2623,37 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 3)
 
+    def test_subqueryload_self_referential_and_criteria(self):
+        nodes = self.tables.nodes
+
+        class Node(ComparableEntity):
+            def append(self, node):
+                self.children.append(node)
+
+        self.mapper_registry.map_imperatively(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(Node, order_by=nodes.c.id)
+            },
+        )
+        sess = fixture_session()
+        n1 = Node(data="root")
+        n1.append(Node(data="match"))
+        n1.append(Node(data="other"))
+        sess.add(n1)
+        sess.flush()
+        sess.expunge_all()
+
+        stmt = (
+            select(Node)
+            .where(Node.data == "root")
+            .options(subqueryload(Node.children.and_(Node.data == "match")))
+        )
+        res = sess.scalars(stmt).all()
+        eq_(len(res), 1)
+        eq_([c.data for c in res[0].children], ["match"])
+
     def test_options(self):
         nodes = self.tables.nodes
 
